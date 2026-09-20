@@ -1,7 +1,12 @@
 // Package domain contains the domain models, state machine transitions, and business errors for the content module.
 package domain
 
-import "github.com/fluentra/fluentra/internal/shared/apperr"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/fluentra/fluentra/internal/shared/apperr"
+)
 
 // Error codes owned by the content module, per AGENT.md §12 and ERROR_HANDLING.md.
 var (
@@ -63,4 +68,30 @@ var (
 
 	// ErrReportNoteTooLong is returned when report note exceeds 500 characters.
 	ErrReportNoteTooLong = apperr.New(apperr.Validation, "NOTE_TOO_LONG", "Note cannot exceed 500 characters.")
+
+	// ErrTaxonomyNodeNotFound is returned when a requested taxonomy node does not exist.
+	ErrTaxonomyNodeNotFound = apperr.New(apperr.NotFound, "TAXONOMY_NODE_NOT_FOUND", "The taxonomy node was not found.")
+
+	// ErrTaxonomyCycle is returned when proposed prerequisites would create a cycle (BR-FOUNDATION-02).
+	ErrTaxonomyCycle = apperr.New(apperr.Validation, "TAXONOMY_CYCLE",
+		"The proposed prerequisites would create a cyclic dependency.")
+
+	// ErrFoundationIncomplete is returned when publishing a foundation topic
+	// with no exercises, quiz or review questions on its node (BR-FOUNDATION-05).
+	ErrFoundationIncomplete = apperr.New(apperr.Conflict, "FOUNDATION_INCOMPLETE",
+		"A foundation topic cannot be published without at least one exercise, "+
+			"one quiz, and one review question tagged to its node.")
 )
+
+// AmbiguousTaxonomyCode reports a code claimed by more than one namespace.
+//
+// BR-FOUNDATION-01 makes a code permanent, so the fix is never to rename one:
+// the caller names the namespace it meant.
+func AmbiguousTaxonomyCode(code string, namespaces ...string) error {
+	return apperr.New(
+		apperr.Validation,
+		"TAXONOMY_CODE_AMBIGUOUS",
+		fmt.Sprintf("The code %q exists in more than one namespace (%s); name the one you mean.",
+			code, strings.Join(namespaces, ", ")),
+	)
+}

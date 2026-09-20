@@ -34,7 +34,8 @@
       { "name": "content_tags", "purpose": "Item ↔ taxonomy mapping", "notes": "Composite PK; indexed for filtered browsing" },
       { "name": "content_reviews", "purpose": "Review workflow record", "notes": "`version_id`, `reviewer_id`, `decision`, `comments`" },
       { "name": "item_reports", "purpose": "Learner issue reports on content versions", "notes": "`content_version_id`, `user_id`, `reason`, `note`. Unique on (content_version_id, user_id)." },
-      { "name": "tts_cache", "purpose": "Pre-generated synthesised speech audio keyed by text hash and voice", "notes": "`text_hash`, `voice`, `engine`, `engine_version`, `object_key`, `created_at`" }
+      { "name": "tts_cache", "purpose": "Pre-generated synthesised speech audio keyed by text hash and voice", "notes": "`text_hash`, `voice`, `engine`, `engine_version`, `object_key`, `created_at`" },
+      { "name": "taxonomy_prerequisites", "purpose": "Prerequisite DAG edges between taxonomy nodes in the same strand", "notes": "`node_id`, `requires_node_id`, `created_at`. Unique on (node_id, requires_node_id)." }
     ],
 
     "indexes": [
@@ -51,7 +52,13 @@
       { "method": "POST", "path": "/api/v1/admin/content/{id}/submit", "permission": "content.edit", "purpose": "Submit for review", "success": "200" },
       { "method": "POST", "path": "/api/v1/admin/content/{id}/review", "permission": "content.review", "purpose": "Approve or request changes", "success": "200", "errors": ["SELF_APPROVAL_FORBIDDEN"] },
       { "method": "POST", "path": "/api/v1/admin/content/{id}/publish", "permission": "content.publish", "purpose": "Publish the approved version", "success": "200" },
-      { "method": "POST", "path": "/api/v1/admin/content/{id}/archive", "permission": "content.publish", "purpose": "Archive", "success": "200", "errors": ["CONTENT_IN_USE"] }
+      { "method": "POST", "path": "/api/v1/admin/content/{id}/archive", "permission": "content.publish", "purpose": "Archive", "success": "200", "errors": ["CONTENT_IN_USE"] },
+      { "method": "GET", "path": "/api/v1/foundation/topics", "permission": "content.read.published", "purpose": "Browse foundation topics with taxonomy filters", "success": "200" },
+      { "method": "GET", "path": "/api/v1/foundation/topics/{code}", "permission": "content.read.published", "purpose": "Get a foundation topic by code", "success": "200", "errors": ["NOT_FOUND"] },
+      { "method": "GET", "path": "/api/v1/foundation/path", "permission": "content.read.published", "purpose": "Get topologically sorted foundation learning path", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/foundation/topics", "permission": "content.create", "purpose": "Create a new foundation taxonomy topic", "success": "201", "errors": ["TAXONOMY_CODE_IMMUTABLE", "VALIDATION_FAILED"] },
+      { "method": "PATCH", "path": "/api/v1/admin/foundation/topics/{code}", "permission": "content.edit", "purpose": "Update foundation topic metadata", "success": "200", "errors": ["TAXONOMY_CODE_IMMUTABLE", "NOT_FOUND"] },
+      { "method": "PUT", "path": "/api/v1/admin/foundation/topics/{code}/prerequisites", "permission": "content.edit", "purpose": "Replace prerequisites for a foundation topic", "success": "200", "errors": ["TAXONOMY_CYCLE", "CROSS_NAMESPACE_PREREQUISITE"] }
     ],
     "contract": [
       { "kind": "interface", "name": "content.Reader", "purpose": "`GetVersion`, `GetManyVersions`, `Browse` — batched to avoid N+1 from lesson rendering" },
@@ -136,7 +143,13 @@
       { "question": "Who assigns the CEFR level?", "choice": "A human, with AI assistance", "why": "Levelling is a pedagogical judgement with real consequences for learner experience; the model proposes, the author disposes" },
       { "question": "Who may read published content, and who may change it?", "choice": "Any signed-in learner reads; only an administrator writes", "why": "Published material is the first thing a learner reads that is not their own data, so `self` cannot express it and it needs a named permission — `content.read.published`, held by the `user` role. Leaving the reads anonymous would hand a whole course to anyone with the URL and remove the surface Phase 4 attaches entitlements to. Create, edit, review, publish and archive stay with `admin` (migration 1700000180)" },
       { "question": "Where does `archived` live — on the item or on the version?", "choice": "On the item", "why": "A version is an immutable snapshot, and `trg_content_versions_immutable` refuses every UPDATE once it is published — including a status change — so `content_versions.status` can never become `archived`. Archiving sets `content_items.status`. The consequence the reads must honour: a published version stays `published` forever, so filtering only on the version status returns archived material; every learner-facing query joins `content_items` and filters there as well (P7.2)" },
-      { "question": "What happens to a learner mid-session when the item is archived?", "choice": "Version stays readable by direct ID, hidden from discovery only", "why": "A learner who opened a lesson holds a version ID. Archiving must not 404 that learner's session; GetVersion by ID has no status filter and remains readable (P7.3 integration test step 12). Discovery queries (Browse, GetPublishedVersionBySlug, Count) join content_items and filter status='published', so archived material disappears from lists. Recorded in P7.3 per its trap." }
+      { "question": "What happens to a learner mid-session when the item is archived?", "choice": "Version stays readable by direct ID, hidden from discovery only", "why": "A learner who opened a lesson holds a version ID. Archiving must not 404 that learner's session; GetVersion by ID has no status filter and remains readable (P7.3 integration test step 12). Discovery queries (Browse, GetPublishedVersionBySlug, Count) join content_items and filter status='published', so archived material disappears from lists. Recorded in P7.3 per its trap." },
+      { "question": "How to associate exercises, quizzes and reviews with a topic? (D16-1)", "choice": "Tag content items to taxonomy rather than nesting", "why": "Exercises belong to each skill module and already have rich schemas; nesting would duplicate kinds and schemas. BR-FOUNDATION-05 enforces completeness at the publish gate." },
+      { "question": "Where do CEFR level and prerequisites live? (D16-2)", "choice": "On taxonomy nodes and content.taxonomy_prerequisites", "why": "The taxonomy spine represents the curriculum DAG independent of any specific content version." },
+      { "question": "How to prevent cycles in the prerequisite graph? (D16-3)", "choice": "In-memory 3-color DFS check before DB write", "why": "Validating before write provides informative error messages naming the offending cycle chain without rolling back transactions." },
+      { "question": "Can a taxonomy code be renamed? (D16-4)", "choice": "No, codes are permanently immutable", "why": "External references and question bank rely on canonical codes; typos are fixed by deprecating and creating a new node." },
+      { "question": "Cross-namespace prerequisite edges? (D16-5)", "choice": "Forbidden; use related topics instead", "why": "Ordering across distinct strands is pedantically indefensible and leads to graph tangling." },
+      { "question": "Anonymous access for foundation spine reads? (D16-6)", "choice": "Allowed per ADR-0025", "why": "Published curriculum taxonomy and learning paths are public read surfaces." }
     ],
     "adrs": [{ "id": "ADR-0015", "file": "ADR-0015-content-exercise-core.md", "title": "Shared content + exercise engine" }],
     "todo": [
@@ -148,6 +161,14 @@
         "Admin authoring UI",
         "AI level estimation as a suggestion",
         "Seed content: one course, eight lessons, two hundred words"
+      ]},
+      { "title": "Phase 4 - Knowledge Spine (Work Order 16)", "items": [
+        "Extend content.taxonomies with description, cefr_level, position, deprecated_at",
+        "content.taxonomy_prerequisites DAG edge table",
+        "In-memory cycle detection and stable topological ordering",
+        "Foundation topic JSON schema validation and BR-FOUNDATION-05 publish gate",
+        "Public and admin endpoints for foundation topics, prerequisites and path",
+        "Seed 69 canonical foundation topics and prerequisite DAG edges"
       ]}
     ],
     "future": ["Scheduled publishing", "Content localisation", "Structural diff view between versions", "Reusable content blocks across items"],

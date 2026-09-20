@@ -2997,6 +2997,360 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /foundation/topics:
+    get:
+      tags: [content]
+      operationId: listFoundationTopics
+      summary: Browse foundation topics with taxonomy filters.
+      description: >-
+        Returns canonical knowledge spine topics with optional namespace, level, and
+        parent filters. Public read per ADR-0025.
+      security: []
+      parameters:
+        - name: namespace
+          in: query
+          required: false
+          description: Filter topics by taxonomy namespace.
+          schema:
+            $ref: '#/components/schemas/TaxonomyNamespace'
+        - name: cefr_level
+          in: query
+          required: false
+          description: Filter topics by CEFR level.
+          schema:
+            $ref: '#/components/schemas/CEFRLevel'
+        - name: parent_id
+          in: query
+          required: false
+          description: Filter topics by parent taxonomy ID.
+          schema:
+            type: string
+            format: uuid
+        - name: q
+          in: query
+          required: false
+          description: Search topics by code or label.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum topics to return.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          description: Topics to skip before the page starts.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of foundation topics matching filters.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoundationTopicList'
+              example:
+                items:
+                  - id: "0199a1c2-3d4e-7f80-9abc-def01234567e"
+                    namespace: "grammar"
+                    code: "PRESENT_PERFECT"
+                    label: "Present Perfect"
+                    description: "Express experience and unfinished actions."
+                    cefr_level: "B1"
+                    parent_id: null
+                    position: 10
+                    deprecated_at: null
+                    created_at: "2026-09-20T12:00:00Z"
+                    updated_at: "2026-09-20T12:00:00Z"
+                total: 1
+                limit: 20
+                offset: 0
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /foundation/topics/{code}:
+    get:
+      tags: [content]
+      operationId: getFoundationTopic
+      summary: Get a foundation topic by code.
+      description: >-
+        Returns a single topic by its canonical code, including prerequisites,
+        dependants, related topics, attached content counts, and published body.
+        Public read per ADR-0025.
+      security: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          description: Canonical topic code.
+          schema:
+            type: string
+            example: PRESENT_PERFECT
+      responses:
+        '200':
+          description: Detailed topic view.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoundationTopicDetail'
+              example:
+                id: "0199a1c2-3d4e-7f80-9abc-def01234567e"
+                namespace: "grammar"
+                code: "PRESENT_PERFECT"
+                label: "Present Perfect"
+                description: "Express experience and unfinished actions."
+                cefr_level: "B1"
+                parent_id: null
+                position: 10
+                deprecated_at: null
+                created_at: "2026-09-20T12:00:00Z"
+                updated_at: "2026-09-20T12:00:00Z"
+                body: null
+                prerequisites: []
+                dependants: []
+                related: ["PAST_SIMPLE"]
+                exercise_count: 3
+                quiz_count: 1
+                review_count: 2
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /foundation/path:
+    get:
+      tags: [content]
+      operationId: getFoundationPath
+      summary: Get topologically sorted foundation learning path.
+      description: >-
+        Returns an ordered sequence of topics respecting prerequisite DAG constraints.
+        Supports targeting a specific topic (?target=CODE) or ordering an entire namespace (?namespace=NAME).
+        Public read per ADR-0025.
+      security: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          description: Target topic code whose prerequisite chain should be calculated.
+          schema:
+            type: string
+            example: PRESENT_PERFECT
+        - name: namespace
+          in: query
+          required: false
+          description: Namespace to sort (defaults to grammar if target is omitted).
+          schema:
+            $ref: '#/components/schemas/TaxonomyNamespace'
+      responses:
+        '200':
+          description: Ordered learning path.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoundationPath'
+              example:
+                target: "PRESENT_PERFECT"
+                namespace: "grammar"
+                items:
+                  - id: "0199a1c2-3d4e-7f80-9abc-def01234567a"
+                    namespace: "grammar"
+                    code: "SENTENCE_STRUCTURE"
+                    label: "Sentence Structure"
+                    description: "Basic sentence construction."
+                    cefr_level: "A1"
+                    parent_id: null
+                    position: 1
+                    deprecated_at: null
+                    created_at: "2026-09-20T12:00:00Z"
+                    updated_at: "2026-09-20T12:00:00Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/foundation/topics:
+    post:
+      tags: [content]
+      operationId: createFoundationTopic
+      summary: Create a new foundation taxonomy topic.
+      description: >-
+        Creates a new canonical spine topic. Code must be in SCREAMING_SNAKE format
+        and is permanently immutable.
+      x-permission: content.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFoundationTopicRequest'
+            example:
+              namespace: "grammar"
+              code: "PRESENT_PERFECT"
+              label: "Present Perfect"
+              description: "Express experience and unfinished actions."
+              cefr_level: "B1"
+              position: 10
+      responses:
+        '201':
+          description: Foundation topic created.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoundationTopic'
+              example:
+                id: "0199a1c2-3d4e-7f80-9abc-def01234567e"
+                namespace: "grammar"
+                code: "PRESENT_PERFECT"
+                label: "Present Perfect"
+                description: "Express experience and unfinished actions."
+                cefr_level: "B1"
+                parent_id: null
+                position: 10
+                deprecated_at: null
+                created_at: "2026-09-20T12:00:00Z"
+                updated_at: "2026-09-20T12:00:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/foundation/topics/{code}:
+    patch:
+      tags: [content]
+      operationId: updateFoundationTopic
+      summary: Update foundation topic metadata.
+      description: >-
+        Updates label, description, CEFR level, parent, position, or deprecation status.
+        The code is immutable and cannot be modified (TAXONOMY_CODE_IMMUTABLE).
+      x-permission: content.edit
+      parameters:
+        - name: code
+          in: path
+          required: true
+          description: Topic code to update.
+          schema:
+            type: string
+            example: PRESENT_PERFECT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFoundationTopicRequest'
+            example:
+              label: "Present Perfect Tense"
+              description: "Updated description for present perfect."
+              cefr_level: "B1"
+      responses:
+        '200':
+          description: Topic updated.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoundationTopic'
+              example:
+                id: "0199a1c2-3d4e-7f80-9abc-def01234567e"
+                namespace: "grammar"
+                code: "PRESENT_PERFECT"
+                label: "Present Perfect Tense"
+                description: "Updated description for present perfect."
+                cefr_level: "B1"
+                parent_id: null
+                position: 10
+                deprecated_at: null
+                created_at: "2026-09-20T12:00:00Z"
+                updated_at: "2026-09-20T12:00:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/foundation/topics/{code}/prerequisites:
+    put:
+      tags: [content]
+      operationId: replaceFoundationPrerequisites
+      summary: Replace prerequisites for a foundation topic.
+      description: >-
+        Replaces the prerequisite edge set for a topic within the same namespace.
+        An in-memory cycle check runs on the proposed graph before database modification.
+        Refuses any cycle with 422 TAXONOMY_CYCLE.
+      x-permission: content.edit
+      parameters:
+        - name: code
+          in: path
+          required: true
+          description: Topic code whose prerequisites are being replaced.
+          schema:
+            type: string
+            example: PRESENT_PERFECT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplacePrerequisitesRequest'
+            example:
+              requires_codes: ["PAST_SIMPLE", "PRESENT_SIMPLE"]
+      responses:
+        '200':
+          description: Prerequisites replaced successfully.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoundationTopicDetail'
+              example:
+                id: "0199a1c2-3d4e-7f80-9abc-def01234567e"
+                namespace: "grammar"
+                code: "PRESENT_PERFECT"
+                label: "Present Perfect"
+                description: "Express experience and unfinished actions."
+                cefr_level: "B1"
+                parent_id: null
+                position: 10
+                deprecated_at: null
+                created_at: "2026-09-20T12:00:00Z"
+                updated_at: "2026-09-20T12:00:00Z"
+                body: null
+                prerequisites: []
+                dependants: []
+                related: []
+                exercise_count: 0
+                quiz_count: 0
+                review_count: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /admin/content:
     get:
       tags: [content]
@@ -7505,6 +7859,22 @@ components:
       $ref: ./components/content.yaml#/ReportedContentVersion
     ReportedContentList:
       $ref: ./components/content.yaml#/ReportedContentList
+    TaxonomyNamespace:
+      $ref: ./components/content.yaml#/TaxonomyNamespace
+    FoundationTopic:
+      $ref: ./components/content.yaml#/FoundationTopic
+    FoundationTopicDetail:
+      $ref: ./components/content.yaml#/FoundationTopicDetail
+    FoundationTopicList:
+      $ref: ./components/content.yaml#/FoundationTopicList
+    FoundationPath:
+      $ref: ./components/content.yaml#/FoundationPath
+    CreateFoundationTopicRequest:
+      $ref: ./components/content.yaml#/CreateFoundationTopicRequest
+    UpdateFoundationTopicRequest:
+      $ref: ./components/content.yaml#/UpdateFoundationTopicRequest
+    ReplacePrerequisitesRequest:
+      $ref: ./components/content.yaml#/ReplacePrerequisitesRequest
     CourseSummary:
       $ref: ./components/lesson.yaml#/CourseSummary
     CourseList:

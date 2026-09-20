@@ -7,22 +7,101 @@ package sqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
 
+const countTaggedContentByKindForTaxonomy = `-- name: CountTaggedContentByKindForTaxonomy :many
+SELECT ci.kind, count(DISTINCT ci.id)::bigint AS item_count
+FROM content.content_tags ct
+JOIN content.content_items ci ON ci.id = ct.item_id
+WHERE ct.taxonomy_id = $1
+  AND ci.status = 'published'
+GROUP BY ci.kind
+`
+
+type CountTaggedContentByKindForTaxonomyRow struct {
+	Kind      string
+	ItemCount int64
+}
+
+// Published only. This count is what BR-FOUNDATION-05 gates publication on and
+// what the public topic response reports, and counting drafts would let a topic
+// publish against exercises nobody has written yet.
+func (q *Queries) CountTaggedContentByKindForTaxonomy(ctx context.Context, taxonomyID uuid.UUID) ([]CountTaggedContentByKindForTaxonomyRow, error) {
+	rows, err := q.db.Query(ctx, countTaggedContentByKindForTaxonomy, taxonomyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountTaggedContentByKindForTaxonomyRow
+	for rows.Next() {
+		var i CountTaggedContentByKindForTaxonomyRow
+		if err := rows.Scan(&i.Kind, &i.ItemCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countTaxonomiesFiltered = `-- name: CountTaxonomiesFiltered :one
+SELECT count(*)
+FROM content.taxonomies
+WHERE ($1::text IS NULL OR namespace = $1)
+  AND ($2::text IS NULL OR cefr_level = $2)
+  AND ($3::uuid IS NULL OR parent_id = $3)
+  AND ($4::text IS NULL OR (code ILIKE '%' || $4 || '%' OR label ILIKE '%' || $4 || '%'))
+  AND ($5::boolean = true OR deprecated_at IS NULL)
+`
+
+type CountTaxonomiesFilteredParams struct {
+	Namespace         *string
+	CefrLevel         *string
+	ParentID          *uuid.UUID
+	Query             *string
+	IncludeDeprecated bool
+}
+
+func (q *Queries) CountTaxonomiesFiltered(ctx context.Context, arg CountTaxonomiesFilteredParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countTaxonomiesFiltered,
+		arg.Namespace,
+		arg.CefrLevel,
+		arg.ParentID,
+		arg.Query,
+		arg.IncludeDeprecated,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createTaxonomy = `-- name: CreateTaxonomy :one
-INSERT INTO content.taxonomies (id, namespace, code, label, parent_id)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, namespace, code, label, parent_id, created_at, updated_at
+INSERT INTO content.taxonomies (
+    id, namespace, code, label, parent_id,
+    description, cefr_level, position, deprecated_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING
+    id, namespace, code, label, parent_id,
+    created_at, updated_at,
+    description, cefr_level, position, deprecated_at
 `
 
 type CreateTaxonomyParams struct {
-	ID        uuid.UUID
-	Namespace string
-	Code      string
-	Label     string
-	ParentID  *uuid.UUID
+	ID           uuid.UUID
+	Namespace    string
+	Code         string
+	Label        string
+	ParentID     *uuid.UUID
+	Description  string
+	CefrLevel    *string
+	Position     int32
+	DeprecatedAt *time.Time
 }
 
 func (q *Queries) CreateTaxonomy(ctx context.Context, arg CreateTaxonomyParams) (ContentTaxonomy, error) {
@@ -32,6 +111,10 @@ func (q *Queries) CreateTaxonomy(ctx context.Context, arg CreateTaxonomyParams) 
 		arg.Code,
 		arg.Label,
 		arg.ParentID,
+		arg.Description,
+		arg.CefrLevel,
+		arg.Position,
+		arg.DeprecatedAt,
 	)
 	var i ContentTaxonomy
 	err := row.Scan(
@@ -42,8 +125,22 @@ func (q *Queries) CreateTaxonomy(ctx context.Context, arg CreateTaxonomyParams) 
 		&i.ParentID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Description,
+		&i.CefrLevel,
+		&i.Position,
+		&i.DeprecatedAt,
 	)
 	return i, err
+}
+
+const deletePrerequisitesForNode = `-- name: DeletePrerequisitesForNode :exec
+DELETE FROM content.taxonomy_prerequisites
+WHERE node_id = $1
+`
+
+func (q *Queries) DeletePrerequisitesForNode(ctx context.Context, nodeID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deletePrerequisitesForNode, nodeID)
+	return err
 }
 
 const deleteTaxonomy = `-- name: DeleteTaxonomy :exec
@@ -56,8 +153,29 @@ func (q *Queries) DeleteTaxonomy(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const getPublishedTopicBodyByTaxonomyID = `-- name: GetPublishedTopicBodyByTaxonomyID :one
+SELECT cv.body
+FROM content.content_tags ct
+JOIN content.content_items ci ON ci.id = ct.item_id
+JOIN content.content_versions cv ON cv.id = ci.current_version_id
+WHERE ct.taxonomy_id = $1
+  AND ci.kind = 'foundation_topic'
+  AND ci.status = 'published'
+LIMIT 1
+`
+
+func (q *Queries) GetPublishedTopicBodyByTaxonomyID(ctx context.Context, taxonomyID uuid.UUID) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getPublishedTopicBodyByTaxonomyID, taxonomyID)
+	var body []byte
+	err := row.Scan(&body)
+	return body, err
+}
+
 const getTaxonomyByID = `-- name: GetTaxonomyByID :one
-SELECT id, namespace, code, label, parent_id, created_at, updated_at
+SELECT
+    id, namespace, code, label, parent_id,
+    created_at, updated_at,
+    description, cefr_level, position, deprecated_at
 FROM content.taxonomies
 WHERE id = $1
 `
@@ -73,12 +191,19 @@ func (q *Queries) GetTaxonomyByID(ctx context.Context, id uuid.UUID) (ContentTax
 		&i.ParentID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Description,
+		&i.CefrLevel,
+		&i.Position,
+		&i.DeprecatedAt,
 	)
 	return i, err
 }
 
 const getTaxonomyByNamespaceCode = `-- name: GetTaxonomyByNamespaceCode :one
-SELECT id, namespace, code, label, parent_id, created_at, updated_at
+SELECT
+    id, namespace, code, label, parent_id,
+    created_at, updated_at,
+    description, cefr_level, position, deprecated_at
 FROM content.taxonomies
 WHERE namespace = $1 AND code = $2
 `
@@ -99,14 +224,64 @@ func (q *Queries) GetTaxonomyByNamespaceCode(ctx context.Context, arg GetTaxonom
 		&i.ParentID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Description,
+		&i.CefrLevel,
+		&i.Position,
+		&i.DeprecatedAt,
 	)
 	return i, err
 }
 
+const insertPrerequisiteEdge = `-- name: InsertPrerequisiteEdge :exec
+INSERT INTO content.taxonomy_prerequisites (node_id, requires_node_id)
+VALUES ($1, $2)
+ON CONFLICT (node_id, requires_node_id) DO NOTHING
+`
+
+type InsertPrerequisiteEdgeParams struct {
+	NodeID         uuid.UUID
+	RequiresNodeID uuid.UUID
+}
+
+func (q *Queries) InsertPrerequisiteEdge(ctx context.Context, arg InsertPrerequisiteEdgeParams) error {
+	_, err := q.db.Exec(ctx, insertPrerequisiteEdge, arg.NodeID, arg.RequiresNodeID)
+	return err
+}
+
+const listAllPrerequisiteEdgesInNamespace = `-- name: ListAllPrerequisiteEdgesInNamespace :many
+SELECT p.node_id, p.requires_node_id, p.created_at
+FROM content.taxonomy_prerequisites p
+JOIN content.taxonomies t ON t.id = p.node_id
+WHERE t.namespace = $1
+`
+
+func (q *Queries) ListAllPrerequisiteEdgesInNamespace(ctx context.Context, namespace string) ([]ContentTaxonomyPrerequisite, error) {
+	rows, err := q.db.Query(ctx, listAllPrerequisiteEdgesInNamespace, namespace)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContentTaxonomyPrerequisite
+	for rows.Next() {
+		var i ContentTaxonomyPrerequisite
+		if err := rows.Scan(&i.NodeID, &i.RequiresNodeID, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAllTaxonomies = `-- name: ListAllTaxonomies :many
-SELECT id, namespace, code, label, parent_id, created_at, updated_at
+SELECT
+    id, namespace, code, label, parent_id,
+    created_at, updated_at,
+    description, cefr_level, position, deprecated_at
 FROM content.taxonomies
-ORDER BY namespace, code
+ORDER BY namespace, position, code
 `
 
 func (q *Queries) ListAllTaxonomies(ctx context.Context) ([]ContentTaxonomy, error) {
@@ -126,6 +301,184 @@ func (q *Queries) ListAllTaxonomies(ctx context.Context) ([]ContentTaxonomy, err
 			&i.ParentID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Description,
+			&i.CefrLevel,
+			&i.Position,
+			&i.DeprecatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllTaxonomiesInNamespace = `-- name: ListAllTaxonomiesInNamespace :many
+SELECT
+    id, namespace, code, label, parent_id,
+    created_at, updated_at,
+    description, cefr_level, position, deprecated_at
+FROM content.taxonomies
+WHERE namespace = $1 AND deprecated_at IS NULL
+ORDER BY position, code
+`
+
+func (q *Queries) ListAllTaxonomiesInNamespace(ctx context.Context, namespace string) ([]ContentTaxonomy, error) {
+	rows, err := q.db.Query(ctx, listAllTaxonomiesInNamespace, namespace)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContentTaxonomy
+	for rows.Next() {
+		var i ContentTaxonomy
+		if err := rows.Scan(
+			&i.ID,
+			&i.Namespace,
+			&i.Code,
+			&i.Label,
+			&i.ParentID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Description,
+			&i.CefrLevel,
+			&i.Position,
+			&i.DeprecatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDependantsForNode = `-- name: ListDependantsForNode :many
+SELECT
+    t.id, t.namespace, t.code, t.label, t.parent_id,
+    t.created_at, t.updated_at,
+    t.description, t.cefr_level, t.position, t.deprecated_at
+FROM content.taxonomy_prerequisites p
+JOIN content.taxonomies t ON t.id = p.node_id
+WHERE p.requires_node_id = $1
+ORDER BY t.position, t.code
+`
+
+func (q *Queries) ListDependantsForNode(ctx context.Context, requiresNodeID uuid.UUID) ([]ContentTaxonomy, error) {
+	rows, err := q.db.Query(ctx, listDependantsForNode, requiresNodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContentTaxonomy
+	for rows.Next() {
+		var i ContentTaxonomy
+		if err := rows.Scan(
+			&i.ID,
+			&i.Namespace,
+			&i.Code,
+			&i.Label,
+			&i.ParentID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Description,
+			&i.CefrLevel,
+			&i.Position,
+			&i.DeprecatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPrerequisitesForNode = `-- name: ListPrerequisitesForNode :many
+SELECT
+    t.id, t.namespace, t.code, t.label, t.parent_id,
+    t.created_at, t.updated_at,
+    t.description, t.cefr_level, t.position, t.deprecated_at
+FROM content.taxonomy_prerequisites p
+JOIN content.taxonomies t ON t.id = p.requires_node_id
+WHERE p.node_id = $1
+ORDER BY t.position, t.code
+`
+
+func (q *Queries) ListPrerequisitesForNode(ctx context.Context, nodeID uuid.UUID) ([]ContentTaxonomy, error) {
+	rows, err := q.db.Query(ctx, listPrerequisitesForNode, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContentTaxonomy
+	for rows.Next() {
+		var i ContentTaxonomy
+		if err := rows.Scan(
+			&i.ID,
+			&i.Namespace,
+			&i.Code,
+			&i.Label,
+			&i.ParentID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Description,
+			&i.CefrLevel,
+			&i.Position,
+			&i.DeprecatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTaxonomiesByCode = `-- name: ListTaxonomiesByCode :many
+SELECT
+    id, namespace, code, label, parent_id,
+    created_at, updated_at,
+    description, cefr_level, position, deprecated_at
+FROM content.taxonomies
+WHERE code = $1
+ORDER BY namespace
+LIMIT 2
+`
+
+// (namespace, code) is the unique key, so a bare code can match more than one
+// row. Two are fetched rather than one: the caller needs to tell "found" from
+// "ambiguous", and `LIMIT 1` answered an arbitrary one of them.
+func (q *Queries) ListTaxonomiesByCode(ctx context.Context, code string) ([]ContentTaxonomy, error) {
+	rows, err := q.db.Query(ctx, listTaxonomiesByCode, code)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContentTaxonomy
+	for rows.Next() {
+		var i ContentTaxonomy
+		if err := rows.Scan(
+			&i.ID,
+			&i.Namespace,
+			&i.Code,
+			&i.Label,
+			&i.ParentID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Description,
+			&i.CefrLevel,
+			&i.Position,
+			&i.DeprecatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -138,10 +491,13 @@ func (q *Queries) ListAllTaxonomies(ctx context.Context) ([]ContentTaxonomy, err
 }
 
 const listTaxonomiesByNamespace = `-- name: ListTaxonomiesByNamespace :many
-SELECT id, namespace, code, label, parent_id, created_at, updated_at
+SELECT
+    id, namespace, code, label, parent_id,
+    created_at, updated_at,
+    description, cefr_level, position, deprecated_at
 FROM content.taxonomies
 WHERE namespace = $1
-ORDER BY code
+ORDER BY position, code
 `
 
 func (q *Queries) ListTaxonomiesByNamespace(ctx context.Context, namespace string) ([]ContentTaxonomy, error) {
@@ -161,6 +517,10 @@ func (q *Queries) ListTaxonomiesByNamespace(ctx context.Context, namespace strin
 			&i.ParentID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Description,
+			&i.CefrLevel,
+			&i.Position,
+			&i.DeprecatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -170,4 +530,129 @@ func (q *Queries) ListTaxonomiesByNamespace(ctx context.Context, namespace strin
 		return nil, err
 	}
 	return items, nil
+}
+
+const listTaxonomiesFiltered = `-- name: ListTaxonomiesFiltered :many
+SELECT
+    id, namespace, code, label, parent_id,
+    created_at, updated_at,
+    description, cefr_level, position, deprecated_at
+FROM content.taxonomies
+WHERE ($1::text IS NULL OR namespace = $1)
+  AND ($2::text IS NULL OR cefr_level = $2)
+  AND ($3::uuid IS NULL OR parent_id = $3)
+  AND ($4::text IS NULL OR (code ILIKE '%' || $4 || '%' OR label ILIKE '%' || $4 || '%'))
+  AND ($5::boolean = true OR deprecated_at IS NULL)
+ORDER BY position ASC, code ASC
+LIMIT $7::int OFFSET $6::int
+`
+
+type ListTaxonomiesFilteredParams struct {
+	Namespace         *string
+	CefrLevel         *string
+	ParentID          *uuid.UUID
+	Query             *string
+	IncludeDeprecated bool
+	ResultOffset      int32
+	ResultLimit       int32
+}
+
+func (q *Queries) ListTaxonomiesFiltered(ctx context.Context, arg ListTaxonomiesFilteredParams) ([]ContentTaxonomy, error) {
+	rows, err := q.db.Query(ctx, listTaxonomiesFiltered,
+		arg.Namespace,
+		arg.CefrLevel,
+		arg.ParentID,
+		arg.Query,
+		arg.IncludeDeprecated,
+		arg.ResultOffset,
+		arg.ResultLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContentTaxonomy
+	for rows.Next() {
+		var i ContentTaxonomy
+		if err := rows.Scan(
+			&i.ID,
+			&i.Namespace,
+			&i.Code,
+			&i.Label,
+			&i.ParentID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Description,
+			&i.CefrLevel,
+			&i.Position,
+			&i.DeprecatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateTaxonomy = `-- name: UpdateTaxonomy :one
+UPDATE content.taxonomies
+SET
+    label = COALESCE($2, label),
+    description = COALESCE($3, description),
+    cefr_level = CASE WHEN $4::boolean THEN $5 ELSE cefr_level END,
+    parent_id = CASE WHEN $6::boolean THEN $7 ELSE parent_id END,
+    position = COALESCE($8, position),
+    deprecated_at = CASE WHEN $9::boolean THEN $10 ELSE deprecated_at END,
+    updated_at = now()
+WHERE id = $1
+RETURNING
+    id, namespace, code, label, parent_id,
+    created_at, updated_at,
+    description, cefr_level, position, deprecated_at
+`
+
+type UpdateTaxonomyParams struct {
+	ID              uuid.UUID
+	Label           *string
+	Description     *string
+	SetCefrLevel    bool
+	CefrLevel       *string
+	SetParentID     bool
+	ParentID        *uuid.UUID
+	Position        *int32
+	SetDeprecatedAt bool
+	DeprecatedAt    *time.Time
+}
+
+func (q *Queries) UpdateTaxonomy(ctx context.Context, arg UpdateTaxonomyParams) (ContentTaxonomy, error) {
+	row := q.db.QueryRow(ctx, updateTaxonomy,
+		arg.ID,
+		arg.Label,
+		arg.Description,
+		arg.SetCefrLevel,
+		arg.CefrLevel,
+		arg.SetParentID,
+		arg.ParentID,
+		arg.Position,
+		arg.SetDeprecatedAt,
+		arg.DeprecatedAt,
+	)
+	var i ContentTaxonomy
+	err := row.Scan(
+		&i.ID,
+		&i.Namespace,
+		&i.Code,
+		&i.Label,
+		&i.ParentID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Description,
+		&i.CefrLevel,
+		&i.Position,
+		&i.DeprecatedAt,
+	)
+	return i, err
 }

@@ -118,6 +118,44 @@ type Repository interface {
 	GetTTSCache(ctx context.Context, textHash, voice string) (string, bool, error)
 	UpsertTTSCache(ctx context.Context, textHash, voice, engine, engineVersion, objectKey string) error
 
+	CreateTaxonomy(
+		ctx context.Context,
+		id uuid.UUID,
+		namespace, code, label string,
+		parentID *uuid.UUID,
+		description string,
+		cefrLevel *string,
+		position int,
+		deprecatedAt *time.Time,
+	) (domain.Taxonomy, error)
+	GetTaxonomyByID(ctx context.Context, id uuid.UUID) (domain.Taxonomy, error)
+	GetTaxonomyByCode(ctx context.Context, code string) (domain.Taxonomy, error)
+	ListTaxonomiesFiltered(
+		ctx context.Context,
+		namespace, cefrLevel *string,
+		parentID *uuid.UUID,
+		query *string,
+		includeDeprecated bool,
+		limit, offset int32,
+	) ([]domain.Taxonomy, int64, error)
+	UpdateTaxonomy(
+		ctx context.Context,
+		id uuid.UUID,
+		label, description *string,
+		cefrLevel *string, setCEFR bool,
+		parentID *uuid.UUID, setParent bool,
+		position *int,
+		deprecatedAt *time.Time, setDeprecated bool,
+	) (domain.Taxonomy, error)
+	DeleteTaxonomy(ctx context.Context, id uuid.UUID) error
+	ListPrerequisitesForNode(ctx context.Context, nodeID uuid.UUID) ([]domain.Taxonomy, error)
+	ListDependantsForNode(ctx context.Context, nodeID uuid.UUID) ([]domain.Taxonomy, error)
+	ListAllPrerequisiteEdgesInNamespace(ctx context.Context, namespace string) ([]domain.PrerequisiteEdge, error)
+	ListAllTaxonomiesInNamespace(ctx context.Context, namespace string) ([]domain.Taxonomy, error)
+	ReplacePrerequisites(ctx context.Context, nodeID uuid.UUID, requiresNodeIDs []uuid.UUID) error
+	CountTaggedContentByKindForTaxonomy(ctx context.Context, taxonomyID uuid.UUID) (map[string]int, error)
+	GetPublishedTopicBodyByTaxonomyID(ctx context.Context, taxonomyID uuid.UUID) ([]byte, bool, error)
+
 	WithTx(tx pgx.Tx) Repository
 }
 
@@ -349,6 +387,12 @@ func (s *Service) CreateItem(
 		bodyBytes = []byte("{}")
 	}
 
+	if req.Kind == KindFoundationTopic {
+		if err := domain.ValidateFoundationTopicBody(bodyBytes); err != nil {
+			return domain.Item{}, domain.Version{}, err
+		}
+	}
+
 	itemID := s.newID()
 	versionID := s.newID()
 
@@ -432,6 +476,12 @@ func (s *Service) createNewDraftFromPublished(
 		bodyBytes = []byte("{}")
 	}
 
+	if item.Kind == KindFoundationTopic {
+		if err := domain.ValidateFoundationTopicBody(bodyBytes); err != nil {
+			return domain.Version{}, err
+		}
+	}
+
 	v, err := txRepo.CreateVersion(
 		ctx,
 		newVerID,
@@ -476,6 +526,12 @@ func (s *Service) updateExistingDraftVersion(
 	bodyBytes := []byte(req.Body)
 	if len(bodyBytes) == 0 {
 		bodyBytes = []byte(draftVersion.Body)
+	}
+
+	if draftVersion.Kind == KindFoundationTopic {
+		if err := domain.ValidateFoundationTopicBody(bodyBytes); err != nil {
+			return domain.Version{}, err
+		}
 	}
 
 	if err := domain.ValidateTransition(draftVersion.Status, domain.StatusDraft); err != nil {
@@ -720,6 +776,59 @@ func (s *Service) verifyMediaAssetsReady(
 	return nil
 }
 
+// verifyFoundationComplete enforces BR-FOUNDATION-05: a spine topic does not
+// publish until its node carries at least one published exercise, one quiz item
+// and one review question.
+//
+// The gate is what stops a half-written Foundation reaching learners, which is
+// why it counts published content rather than drafts: an exercise still being
+// written is not one a learner can do.
+func verifyFoundationComplete(ctx context.Context, repo Repository, kind string, itemID uuid.UUID) error {
+	if kind != KindFoundationTopic {
+		return nil
+	}
+	tags, err := repo.ListTagsForContentItem(ctx, itemID)
+	if err != nil {
+		return err
+	}
+	if len(tags) == 0 {
+		return domain.ErrFoundationIncomplete
+	}
+	for _, tagNode := range tags {
+		counts, err := repo.CountTaggedContentByKindForTaxonomy(ctx, tagNode.ID)
+		if err != nil {
+			return err
+		}
+		if !hasCompleteFoundationSet(counts) {
+			return domain.ErrFoundationIncomplete
+		}
+	}
+	return nil
+}
+
+// draftReadyToPublish returns the draft version of an item once every gate on
+// publication has passed: the state transition is legal, referenced media is
+// ready (BR-CONTENT-04), and a spine topic carries its exercises
+// (BR-FOUNDATION-05).
+func (s *Service) draftReadyToPublish(
+	ctx context.Context, repo Repository, item domain.Item, itemID uuid.UUID,
+) (domain.Version, error) {
+	draftVersion, err := repo.GetDraftVersionByItemID(ctx, itemID)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	if err := domain.ValidateTransition(draftVersion.Status, domain.StatusPublished); err != nil {
+		return domain.Version{}, err
+	}
+	if err := s.verifyMediaAssetsReady(ctx, repo, draftVersion.MediaRefs); err != nil {
+		return domain.Version{}, err
+	}
+	if err := verifyFoundationComplete(ctx, repo, item.Kind, itemID); err != nil {
+		return domain.Version{}, err
+	}
+	return draftVersion, nil
+}
+
 // Publish finalizes an approved version, making it immutable and emitting content.published outbox event.
 // Enforces BR-CONTENT-04: Publishing is blocked until referenced media assets are ready.
 func (s *Service) Publish(ctx context.Context, actorID, itemID uuid.UUID) (domain.Version, error) {
@@ -743,17 +852,8 @@ func (s *Service) Publish(ctx context.Context, actorID, itemID uuid.UUID) (domai
 			}
 		}
 
-		draftVersion, err := txRepo.GetDraftVersionByItemID(ctx, itemID)
+		draftVersion, err := s.draftReadyToPublish(ctx, txRepo, item, itemID)
 		if err != nil {
-			return err
-		}
-
-		if err := domain.ValidateTransition(draftVersion.Status, domain.StatusPublished); err != nil {
-			return err
-		}
-
-		// BR-CONTENT-04: Verify all media refs are ready
-		if err := s.verifyMediaAssetsReady(ctx, txRepo, draftVersion.MediaRefs); err != nil {
 			return err
 		}
 

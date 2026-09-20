@@ -1273,6 +1273,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/foundation/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Browse foundation topics with taxonomy filters.
+         * @description Returns canonical knowledge spine topics with optional namespace, level, and parent filters. Public read per ADR-0025.
+         */
+        get: operations["listFoundationTopics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/foundation/topics/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a foundation topic by code.
+         * @description Returns a single topic by its canonical code, including prerequisites, dependants, related topics, attached content counts, and published body. Public read per ADR-0025.
+         */
+        get: operations["getFoundationTopic"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/foundation/path": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get topologically sorted foundation learning path.
+         * @description Returns an ordered sequence of topics respecting prerequisite DAG constraints. Supports targeting a specific topic (?target=CODE) or ordering an entire namespace (?namespace=NAME). Public read per ADR-0025.
+         */
+        get: operations["getFoundationPath"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/foundation/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a new foundation taxonomy topic.
+         * @description Creates a new canonical spine topic. Code must be in SCREAMING_SNAKE format and is permanently immutable.
+         */
+        post: operations["createFoundationTopic"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/foundation/topics/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update foundation topic metadata.
+         * @description Updates label, description, CEFR level, parent, position, or deprecation status. The code is immutable and cannot be modified (TAXONOMY_CODE_IMMUTABLE).
+         */
+        patch: operations["updateFoundationTopic"];
+        trace?: never;
+    };
+    "/admin/foundation/topics/{code}/prerequisites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace prerequisites for a foundation topic.
+         * @description Replaces the prerequisite edge set for a topic within the same namespace. An in-memory cycle check runs on the proposed graph before database modification. Refuses any cycle with 422 TAXONOMY_CYCLE.
+         */
+        put: operations["replaceFoundationPrerequisites"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/content": {
         parameters: {
             query?: never;
@@ -4393,6 +4513,111 @@ export interface components {
             total: number;
             limit: number;
             offset: number;
+        };
+        /**
+         * @description Canonical namespace for a taxonomy node.
+         * @enum {string}
+         */
+        TaxonomyNamespace: "course_topic" | "grammar" | "vocabulary" | "pattern" | "pronunciation" | "skill";
+        /** @description A canonical knowledge spine taxonomy entry. */
+        FoundationTopic: {
+            /** Format: uuid */
+            id: string;
+            namespace: components["schemas"]["TaxonomyNamespace"];
+            /** @example PRESENT_PERFECT */
+            code: string;
+            /** @example Present Perfect */
+            label: string;
+            /** @example Express experience and unfinished actions. */
+            description: string;
+            cefr_level?: components["schemas"]["CEFRLevel"];
+            /** Format: uuid */
+            parent_id?: string | null;
+            /** @example 10 */
+            position: number;
+            /** Format: date-time */
+            deprecated_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description Detailed view of a foundation topic including graph relations and content counts. */
+        FoundationTopicDetail: {
+            /** Format: uuid */
+            id: string;
+            namespace: components["schemas"]["TaxonomyNamespace"];
+            /** @example PRESENT_PERFECT */
+            code: string;
+            /** @example Present Perfect */
+            label: string;
+            description: string;
+            cefr_level?: components["schemas"]["CEFRLevel"];
+            /** Format: uuid */
+            parent_id?: string | null;
+            position: number;
+            /** Format: date-time */
+            deprecated_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** @description Published foundation topic body payload, if published. */
+            body?: Record<string, never> | null;
+            prerequisites: components["schemas"]["FoundationTopic"][];
+            dependants: components["schemas"]["FoundationTopic"][];
+            related: string[];
+            /** @description Number of exercise items attached to this topic. */
+            exercise_count: number;
+            /** @description Number of quiz items attached to this topic. */
+            quiz_count: number;
+            /** @description Number of review question items attached to this topic. */
+            review_count: number;
+        };
+        FoundationTopicList: {
+            items: components["schemas"]["FoundationTopic"][];
+            total: number;
+            limit: number;
+            offset: number;
+        };
+        /** @description Topologically sorted learning path of foundation topics. */
+        FoundationPath: {
+            /**
+             * @description Target topic code, if requested with ?target.
+             * @example PRESENT_PERFECT
+             */
+            target?: string | null;
+            namespace: components["schemas"]["TaxonomyNamespace"];
+            items: components["schemas"]["FoundationTopic"][];
+        };
+        CreateFoundationTopicRequest: {
+            namespace: components["schemas"]["TaxonomyNamespace"];
+            /** @example PRESENT_PERFECT */
+            code: string;
+            /** @example Present Perfect */
+            label: string;
+            /** @example Express experience and unfinished actions. */
+            description?: string;
+            cefr_level?: components["schemas"]["CEFRLevel"];
+            /** Format: uuid */
+            parent_id?: string | null;
+            /** @default 0 */
+            position: number;
+        };
+        /** @description Update topic metadata. Code is immutable and cannot be updated. */
+        UpdateFoundationTopicRequest: {
+            label?: string;
+            description?: string;
+            cefr_level?: components["schemas"]["CEFRLevel"];
+            /** Format: uuid */
+            parent_id?: string | null;
+            position?: number;
+            /** @description Set to true to deprecate this topic, or false to restore it. */
+            deprecated?: boolean;
+        };
+        ReplacePrerequisitesRequest: {
+            /** @description Complete set of prerequisite topic codes within the same namespace. */
+            requires_codes: string[];
         };
         CourseSummary: {
             /** Format: uuid */
@@ -9448,6 +9673,331 @@ export interface operations {
             404: components["responses"]["NotFound"];
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalServerError"];
+        };
+    };
+    listFoundationTopics: {
+        parameters: {
+            query?: {
+                /** @description Filter topics by taxonomy namespace. */
+                namespace?: components["schemas"]["TaxonomyNamespace"];
+                /** @description Filter topics by CEFR level. */
+                cefr_level?: components["schemas"]["CEFRLevel"];
+                /** @description Filter topics by parent taxonomy ID. */
+                parent_id?: string;
+                /** @description Search topics by code or label. */
+                q?: string;
+                /** @description Maximum topics to return. */
+                limit?: number;
+                /** @description Topics to skip before the page starts. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of foundation topics matching filters. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *           "namespace": "grammar",
+                     *           "code": "PRESENT_PERFECT",
+                     *           "label": "Present Perfect",
+                     *           "description": "Express experience and unfinished actions.",
+                     *           "cefr_level": "B1",
+                     *           "parent_id": null,
+                     *           "position": 10,
+                     *           "deprecated_at": null,
+                     *           "created_at": "2026-09-20T12:00:00Z",
+                     *           "updated_at": "2026-09-20T12:00:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "limit": 20,
+                     *       "offset": 0
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationTopicList"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getFoundationTopic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Canonical topic code. */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Detailed topic view. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "namespace": "grammar",
+                     *       "code": "PRESENT_PERFECT",
+                     *       "label": "Present Perfect",
+                     *       "description": "Express experience and unfinished actions.",
+                     *       "cefr_level": "B1",
+                     *       "parent_id": null,
+                     *       "position": 10,
+                     *       "deprecated_at": null,
+                     *       "created_at": "2026-09-20T12:00:00Z",
+                     *       "updated_at": "2026-09-20T12:00:00Z",
+                     *       "body": null,
+                     *       "prerequisites": [],
+                     *       "dependants": [],
+                     *       "related": [
+                     *         "PAST_SIMPLE"
+                     *       ],
+                     *       "exercise_count": 3,
+                     *       "quiz_count": 1,
+                     *       "review_count": 2
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationTopicDetail"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getFoundationPath: {
+        parameters: {
+            query?: {
+                /** @description Target topic code whose prerequisite chain should be calculated. */
+                target?: string;
+                /** @description Namespace to sort (defaults to grammar if target is omitted). */
+                namespace?: components["schemas"]["TaxonomyNamespace"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ordered learning path. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "target": "PRESENT_PERFECT",
+                     *       "namespace": "grammar",
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "namespace": "grammar",
+                     *           "code": "SENTENCE_STRUCTURE",
+                     *           "label": "Sentence Structure",
+                     *           "description": "Basic sentence construction.",
+                     *           "cefr_level": "A1",
+                     *           "parent_id": null,
+                     *           "position": 1,
+                     *           "deprecated_at": null,
+                     *           "created_at": "2026-09-20T12:00:00Z",
+                     *           "updated_at": "2026-09-20T12:00:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationPath"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createFoundationTopic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "namespace": "grammar",
+                 *       "code": "PRESENT_PERFECT",
+                 *       "label": "Present Perfect",
+                 *       "description": "Express experience and unfinished actions.",
+                 *       "cefr_level": "B1",
+                 *       "position": 10
+                 *     }
+                 */
+                "application/json": components["schemas"]["CreateFoundationTopicRequest"];
+            };
+        };
+        responses: {
+            /** @description Foundation topic created. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "namespace": "grammar",
+                     *       "code": "PRESENT_PERFECT",
+                     *       "label": "Present Perfect",
+                     *       "description": "Express experience and unfinished actions.",
+                     *       "cefr_level": "B1",
+                     *       "parent_id": null,
+                     *       "position": 10,
+                     *       "deprecated_at": null,
+                     *       "created_at": "2026-09-20T12:00:00Z",
+                     *       "updated_at": "2026-09-20T12:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationTopic"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    updateFoundationTopic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Topic code to update. */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "label": "Present Perfect Tense",
+                 *       "description": "Updated description for present perfect.",
+                 *       "cefr_level": "B1"
+                 *     }
+                 */
+                "application/json": components["schemas"]["UpdateFoundationTopicRequest"];
+            };
+        };
+        responses: {
+            /** @description Topic updated. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "namespace": "grammar",
+                     *       "code": "PRESENT_PERFECT",
+                     *       "label": "Present Perfect Tense",
+                     *       "description": "Updated description for present perfect.",
+                     *       "cefr_level": "B1",
+                     *       "parent_id": null,
+                     *       "position": 10,
+                     *       "deprecated_at": null,
+                     *       "created_at": "2026-09-20T12:00:00Z",
+                     *       "updated_at": "2026-09-20T12:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationTopic"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    replaceFoundationPrerequisites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Topic code whose prerequisites are being replaced. */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "requires_codes": [
+                 *         "PAST_SIMPLE",
+                 *         "PRESENT_SIMPLE"
+                 *       ]
+                 *     }
+                 */
+                "application/json": components["schemas"]["ReplacePrerequisitesRequest"];
+            };
+        };
+        responses: {
+            /** @description Prerequisites replaced successfully. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "namespace": "grammar",
+                     *       "code": "PRESENT_PERFECT",
+                     *       "label": "Present Perfect",
+                     *       "description": "Express experience and unfinished actions.",
+                     *       "cefr_level": "B1",
+                     *       "parent_id": null,
+                     *       "position": 10,
+                     *       "deprecated_at": null,
+                     *       "created_at": "2026-09-20T12:00:00Z",
+                     *       "updated_at": "2026-09-20T12:00:00Z",
+                     *       "body": null,
+                     *       "prerequisites": [],
+                     *       "dependants": [],
+                     *       "related": [],
+                     *       "exercise_count": 0,
+                     *       "quiz_count": 0,
+                     *       "review_count": 0
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationTopicDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     adminListContent: {

@@ -77,13 +77,17 @@ func toDomainMediaAsset(row sqlc.ContentMediaAsset) domain.MediaAsset {
 
 func toDomainTaxonomy(row sqlc.ContentTaxonomy) domain.Taxonomy {
 	return domain.Taxonomy{
-		ID:        row.ID,
-		Namespace: row.Namespace,
-		Code:      row.Code,
-		Label:     row.Label,
-		ParentID:  row.ParentID,
-		CreatedAt: row.CreatedAt,
-		UpdatedAt: row.UpdatedAt,
+		ID:           row.ID,
+		Namespace:    row.Namespace,
+		Code:         row.Code,
+		Label:        row.Label,
+		ParentID:     row.ParentID,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
+		Description:  row.Description,
+		CEFRLevel:    row.CefrLevel,
+		Position:     int(row.Position),
+		DeprecatedAt: row.DeprecatedAt,
 	}
 }
 

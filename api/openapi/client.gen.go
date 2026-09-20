@@ -355,6 +355,60 @@ type ClientInterface interface {
 	// Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
 	AdminUpdateFlag(ctx context.Context, key string, body AdminUpdateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateFoundationTopicWithBody Create a new foundation taxonomy topic.
+	//
+	// Creates a new canonical spine topic. Code must be in SCREAMING_SNAKE format and is permanently immutable.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/foundation/topics (the `CreateFoundationTopic` operationId).
+	CreateFoundationTopicWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateFoundationTopic Create a new foundation taxonomy topic.
+	//
+	// Creates a new canonical spine topic. Code must be in SCREAMING_SNAKE format and is permanently immutable.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/foundation/topics (the `CreateFoundationTopic` operationId).
+	CreateFoundationTopic(ctx context.Context, body CreateFoundationTopicJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateFoundationTopicWithBody Update foundation topic metadata.
+	//
+	// Updates label, description, CEFR level, parent, position, or deprecation status. The code is immutable and cannot be modified (TAXONOMY_CODE_IMMUTABLE).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /admin/foundation/topics/{code} (the `UpdateFoundationTopic` operationId).
+	UpdateFoundationTopicWithBody(ctx context.Context, code string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateFoundationTopic Update foundation topic metadata.
+	//
+	// Updates label, description, CEFR level, parent, position, or deprecation status. The code is immutable and cannot be modified (TAXONOMY_CODE_IMMUTABLE).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /admin/foundation/topics/{code} (the `UpdateFoundationTopic` operationId).
+	UpdateFoundationTopic(ctx context.Context, code string, body UpdateFoundationTopicJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReplaceFoundationPrerequisitesWithBody Replace prerequisites for a foundation topic.
+	//
+	// Replaces the prerequisite edge set for a topic within the same namespace. An in-memory cycle check runs on the proposed graph before database modification. Refuses any cycle with 422 TAXONOMY_CYCLE.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /admin/foundation/topics/{code}/prerequisites (the `ReplaceFoundationPrerequisites` operationId).
+	ReplaceFoundationPrerequisitesWithBody(ctx context.Context, code string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReplaceFoundationPrerequisites Replace prerequisites for a foundation topic.
+	//
+	// Replaces the prerequisite edge set for a topic within the same namespace. An in-memory cycle check runs on the proposed graph before database modification. Refuses any cycle with 422 TAXONOMY_CYCLE.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /admin/foundation/topics/{code}/prerequisites (the `ReplaceFoundationPrerequisites` operationId).
+	ReplaceFoundationPrerequisites(ctx context.Context, code string, body ReplaceFoundationPrerequisitesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AdminUpdateLessonActivitiesWithBody Update or reorder lesson activities.
 	//
 	// Replaces the ordered activity list of a lesson, used to assemble a lesson from published content versions.
@@ -1107,6 +1161,27 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /exams/{id}/attempts (the `StartExamAttempt` operationId).
 	StartExamAttempt(ctx context.Context, id openapi_types.UUID, body StartExamAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetFoundationPath Get topologically sorted foundation learning path.
+	//
+	// Returns an ordered sequence of topics respecting prerequisite DAG constraints. Supports targeting a specific topic (?target=CODE) or ordering an entire namespace (?namespace=NAME). Public read per ADR-0025.
+	//
+	// Corresponds with GET /foundation/path (the `GetFoundationPath` operationId).
+	GetFoundationPath(ctx context.Context, params *GetFoundationPathParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListFoundationTopics Browse foundation topics with taxonomy filters.
+	//
+	// Returns canonical knowledge spine topics with optional namespace, level, and parent filters. Public read per ADR-0025.
+	//
+	// Corresponds with GET /foundation/topics (the `ListFoundationTopics` operationId).
+	ListFoundationTopics(ctx context.Context, params *ListFoundationTopicsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetFoundationTopic Get a foundation topic by code.
+	//
+	// Returns a single topic by its canonical code, including prerequisites, dependants, related topics, attached content counts, and published body. Public read per ADR-0025.
+	//
+	// Corresponds with GET /foundation/topics/{code} (the `GetFoundationTopic` operationId).
+	GetFoundationTopic(ctx context.Context, code string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SystemHealth Check process liveness.
 	//
@@ -2606,6 +2681,120 @@ func (c *Client) AdminUpdateFlagWithBody(ctx context.Context, key string, conten
 // Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
 func (c *Client) AdminUpdateFlag(ctx context.Context, key string, body AdminUpdateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAdminUpdateFlagRequest(c.Server, key, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateFoundationTopicWithBody Create a new foundation taxonomy topic.
+//
+// Creates a new canonical spine topic. Code must be in SCREAMING_SNAKE format and is permanently immutable.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/foundation/topics (the `CreateFoundationTopic` operationId).
+func (c *Client) CreateFoundationTopicWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateFoundationTopicRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateFoundationTopic Create a new foundation taxonomy topic.
+//
+// Creates a new canonical spine topic. Code must be in SCREAMING_SNAKE format and is permanently immutable.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/foundation/topics (the `CreateFoundationTopic` operationId).
+func (c *Client) CreateFoundationTopic(ctx context.Context, body CreateFoundationTopicJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateFoundationTopicRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateFoundationTopicWithBody Update foundation topic metadata.
+//
+// Updates label, description, CEFR level, parent, position, or deprecation status. The code is immutable and cannot be modified (TAXONOMY_CODE_IMMUTABLE).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /admin/foundation/topics/{code} (the `UpdateFoundationTopic` operationId).
+func (c *Client) UpdateFoundationTopicWithBody(ctx context.Context, code string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateFoundationTopicRequestWithBody(c.Server, code, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateFoundationTopic Update foundation topic metadata.
+//
+// Updates label, description, CEFR level, parent, position, or deprecation status. The code is immutable and cannot be modified (TAXONOMY_CODE_IMMUTABLE).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /admin/foundation/topics/{code} (the `UpdateFoundationTopic` operationId).
+func (c *Client) UpdateFoundationTopic(ctx context.Context, code string, body UpdateFoundationTopicJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateFoundationTopicRequest(c.Server, code, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReplaceFoundationPrerequisitesWithBody Replace prerequisites for a foundation topic.
+//
+// Replaces the prerequisite edge set for a topic within the same namespace. An in-memory cycle check runs on the proposed graph before database modification. Refuses any cycle with 422 TAXONOMY_CYCLE.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /admin/foundation/topics/{code}/prerequisites (the `ReplaceFoundationPrerequisites` operationId).
+func (c *Client) ReplaceFoundationPrerequisitesWithBody(ctx context.Context, code string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReplaceFoundationPrerequisitesRequestWithBody(c.Server, code, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReplaceFoundationPrerequisites Replace prerequisites for a foundation topic.
+//
+// Replaces the prerequisite edge set for a topic within the same namespace. An in-memory cycle check runs on the proposed graph before database modification. Refuses any cycle with 422 TAXONOMY_CYCLE.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /admin/foundation/topics/{code}/prerequisites (the `ReplaceFoundationPrerequisites` operationId).
+func (c *Client) ReplaceFoundationPrerequisites(ctx context.Context, code string, body ReplaceFoundationPrerequisitesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReplaceFoundationPrerequisitesRequest(c.Server, code, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4129,6 +4318,57 @@ func (c *Client) StartExamAttemptWithBody(ctx context.Context, id openapi_types.
 // Corresponds with POST /exams/{id}/attempts (the `StartExamAttempt` operationId).
 func (c *Client) StartExamAttempt(ctx context.Context, id openapi_types.UUID, body StartExamAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStartExamAttemptRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetFoundationPath Get topologically sorted foundation learning path.
+//
+// Returns an ordered sequence of topics respecting prerequisite DAG constraints. Supports targeting a specific topic (?target=CODE) or ordering an entire namespace (?namespace=NAME). Public read per ADR-0025.
+//
+// Corresponds with GET /foundation/path (the `GetFoundationPath` operationId).
+func (c *Client) GetFoundationPath(ctx context.Context, params *GetFoundationPathParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetFoundationPathRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListFoundationTopics Browse foundation topics with taxonomy filters.
+//
+// Returns canonical knowledge spine topics with optional namespace, level, and parent filters. Public read per ADR-0025.
+//
+// Corresponds with GET /foundation/topics (the `ListFoundationTopics` operationId).
+func (c *Client) ListFoundationTopics(ctx context.Context, params *ListFoundationTopicsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListFoundationTopicsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetFoundationTopic Get a foundation topic by code.
+//
+// Returns a single topic by its canonical code, including prerequisites, dependants, related topics, attached content counts, and published body. Public read per ADR-0025.
+//
+// Corresponds with GET /foundation/topics/{code} (the `GetFoundationTopic` operationId).
+func (c *Client) GetFoundationTopic(ctx context.Context, code string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetFoundationTopicRequest(c.Server, code)
 	if err != nil {
 		return nil, err
 	}
@@ -7376,6 +7616,140 @@ func NewAdminUpdateFlagRequestWithBody(server string, key string, contentType st
 	return req, nil
 }
 
+// NewCreateFoundationTopicRequest calls the generic CreateFoundationTopic builder with application/json body
+func NewCreateFoundationTopicRequest(server string, body CreateFoundationTopicJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateFoundationTopicRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateFoundationTopicRequestWithBody constructs an http.Request for the CreateFoundationTopic method, with any body, and a specified content type
+func NewCreateFoundationTopicRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/foundation/topics")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewUpdateFoundationTopicRequest calls the generic UpdateFoundationTopic builder with application/json body
+func NewUpdateFoundationTopicRequest(server string, code string, body UpdateFoundationTopicJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateFoundationTopicRequestWithBody(server, code, "application/json", bodyReader)
+}
+
+// NewUpdateFoundationTopicRequestWithBody constructs an http.Request for the UpdateFoundationTopic method, with any body, and a specified content type
+func NewUpdateFoundationTopicRequestWithBody(server string, code string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "code", code, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/foundation/topics/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewReplaceFoundationPrerequisitesRequest calls the generic ReplaceFoundationPrerequisites builder with application/json body
+func NewReplaceFoundationPrerequisitesRequest(server string, code string, body ReplaceFoundationPrerequisitesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReplaceFoundationPrerequisitesRequestWithBody(server, code, "application/json", bodyReader)
+}
+
+// NewReplaceFoundationPrerequisitesRequestWithBody constructs an http.Request for the ReplaceFoundationPrerequisites method, with any body, and a specified content type
+func NewReplaceFoundationPrerequisitesRequestWithBody(server string, code string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "code", code, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/foundation/topics/%s/prerequisites", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewAdminUpdateLessonActivitiesRequest calls the generic AdminUpdateLessonActivities builder with application/json body
 func NewAdminUpdateLessonActivitiesRequest(server string, id openapi_types.UUID, body AdminUpdateLessonActivitiesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -9968,6 +10342,220 @@ func NewStartExamAttemptRequestWithBody(server string, id openapi_types.UUID, co
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetFoundationPathRequest constructs an http.Request for the GetFoundationPath method
+func NewGetFoundationPathRequest(server string, params *GetFoundationPathParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/foundation/path")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Target != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "target", *params.Target, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Namespace != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "namespace", *params.Namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListFoundationTopicsRequest constructs an http.Request for the ListFoundationTopics method
+func NewListFoundationTopicsRequest(server string, params *ListFoundationTopicsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/foundation/topics")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Namespace != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "namespace", *params.Namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.CefrLevel != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cefr_level", *params.CefrLevel, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ParentId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "parent_id", *params.ParentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Q != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", *params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetFoundationTopicRequest constructs an http.Request for the GetFoundationTopic method
+func NewGetFoundationTopicRequest(server string, code string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "code", code, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/foundation/topics/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -13712,6 +14300,60 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
 	AdminUpdateFlagWithResponse(ctx context.Context, key string, body AdminUpdateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminUpdateFlagResponse, error)
 
+	// CreateFoundationTopicWithBodyWithResponse Create a new foundation taxonomy topic.
+	//
+	// Creates a new canonical spine topic. Code must be in SCREAMING_SNAKE format and is permanently immutable.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/foundation/topics (the `CreateFoundationTopic` operationId).
+	CreateFoundationTopicWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateFoundationTopicResponse, error)
+
+	// CreateFoundationTopicWithResponse Create a new foundation taxonomy topic.
+	//
+	// Creates a new canonical spine topic. Code must be in SCREAMING_SNAKE format and is permanently immutable.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/foundation/topics (the `CreateFoundationTopic` operationId).
+	CreateFoundationTopicWithResponse(ctx context.Context, body CreateFoundationTopicJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateFoundationTopicResponse, error)
+
+	// UpdateFoundationTopicWithBodyWithResponse Update foundation topic metadata.
+	//
+	// Updates label, description, CEFR level, parent, position, or deprecation status. The code is immutable and cannot be modified (TAXONOMY_CODE_IMMUTABLE).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /admin/foundation/topics/{code} (the `UpdateFoundationTopic` operationId).
+	UpdateFoundationTopicWithBodyWithResponse(ctx context.Context, code string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateFoundationTopicResponse, error)
+
+	// UpdateFoundationTopicWithResponse Update foundation topic metadata.
+	//
+	// Updates label, description, CEFR level, parent, position, or deprecation status. The code is immutable and cannot be modified (TAXONOMY_CODE_IMMUTABLE).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /admin/foundation/topics/{code} (the `UpdateFoundationTopic` operationId).
+	UpdateFoundationTopicWithResponse(ctx context.Context, code string, body UpdateFoundationTopicJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateFoundationTopicResponse, error)
+
+	// ReplaceFoundationPrerequisitesWithBodyWithResponse Replace prerequisites for a foundation topic.
+	//
+	// Replaces the prerequisite edge set for a topic within the same namespace. An in-memory cycle check runs on the proposed graph before database modification. Refuses any cycle with 422 TAXONOMY_CYCLE.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/foundation/topics/{code}/prerequisites (the `ReplaceFoundationPrerequisites` operationId).
+	ReplaceFoundationPrerequisitesWithBodyWithResponse(ctx context.Context, code string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceFoundationPrerequisitesResponse, error)
+
+	// ReplaceFoundationPrerequisitesWithResponse Replace prerequisites for a foundation topic.
+	//
+	// Replaces the prerequisite edge set for a topic within the same namespace. An in-memory cycle check runs on the proposed graph before database modification. Refuses any cycle with 422 TAXONOMY_CYCLE.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/foundation/topics/{code}/prerequisites (the `ReplaceFoundationPrerequisites` operationId).
+	ReplaceFoundationPrerequisitesWithResponse(ctx context.Context, code string, body ReplaceFoundationPrerequisitesJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceFoundationPrerequisitesResponse, error)
+
 	// AdminUpdateLessonActivitiesWithBodyWithResponse Update or reorder lesson activities.
 	//
 	// Replaces the ordered activity list of a lesson, used to assemble a lesson from published content versions.
@@ -14534,6 +15176,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /exams/{id}/attempts (the `StartExamAttempt` operationId).
 	StartExamAttemptWithResponse(ctx context.Context, id openapi_types.UUID, body StartExamAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*StartExamAttemptResponse, error)
+
+	// GetFoundationPathWithResponse Get topologically sorted foundation learning path.
+	//
+	// Returns an ordered sequence of topics respecting prerequisite DAG constraints. Supports targeting a specific topic (?target=CODE) or ordering an entire namespace (?namespace=NAME). Public read per ADR-0025.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /foundation/path (the `GetFoundationPath` operationId).
+	GetFoundationPathWithResponse(ctx context.Context, params *GetFoundationPathParams, reqEditors ...RequestEditorFn) (*GetFoundationPathResponse, error)
+
+	// ListFoundationTopicsWithResponse Browse foundation topics with taxonomy filters.
+	//
+	// Returns canonical knowledge spine topics with optional namespace, level, and parent filters. Public read per ADR-0025.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /foundation/topics (the `ListFoundationTopics` operationId).
+	ListFoundationTopicsWithResponse(ctx context.Context, params *ListFoundationTopicsParams, reqEditors ...RequestEditorFn) (*ListFoundationTopicsResponse, error)
+
+	// GetFoundationTopicWithResponse Get a foundation topic by code.
+	//
+	// Returns a single topic by its canonical code, including prerequisites, dependants, related topics, attached content counts, and published body. Public read per ADR-0025.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /foundation/topics/{code} (the `GetFoundationTopic` operationId).
+	GetFoundationTopicWithResponse(ctx context.Context, code string, reqEditors ...RequestEditorFn) (*GetFoundationTopicResponse, error)
 
 	// SystemHealthWithResponse Check process liveness.
 	//
@@ -17234,6 +17903,234 @@ func (r AdminUpdateFlagResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AdminUpdateFlagResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CreateFoundationTopicResponse201Headers the declared response headers of an HTTP 201 response for CreateFoundationTopic
+type CreateFoundationTopicResponse201Headers struct {
+	XRequestId *string
+}
+
+type CreateFoundationTopicResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *FoundationTopic
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *CreateFoundationTopicResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateFoundationTopicResponse) GetJSON201() *FoundationTopic {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CreateFoundationTopicResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r CreateFoundationTopicResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r CreateFoundationTopicResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r CreateFoundationTopicResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateFoundationTopicResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateFoundationTopicResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateFoundationTopicResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateFoundationTopicResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UpdateFoundationTopicResponse200Headers the declared response headers of an HTTP 200 response for UpdateFoundationTopic
+type UpdateFoundationTopicResponse200Headers struct {
+	XRequestId *string
+}
+
+type UpdateFoundationTopicResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FoundationTopic
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UpdateFoundationTopicResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateFoundationTopicResponse) GetJSON200() *FoundationTopic {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UpdateFoundationTopicResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r UpdateFoundationTopicResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UpdateFoundationTopicResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r UpdateFoundationTopicResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateFoundationTopicResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateFoundationTopicResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateFoundationTopicResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateFoundationTopicResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ReplaceFoundationPrerequisitesResponse200Headers the declared response headers of an HTTP 200 response for ReplaceFoundationPrerequisites
+type ReplaceFoundationPrerequisitesResponse200Headers struct {
+	XRequestId *string
+}
+
+type ReplaceFoundationPrerequisitesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FoundationTopicDetail
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ReplaceFoundationPrerequisitesResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReplaceFoundationPrerequisitesResponse) GetJSON200() *FoundationTopicDetail {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ReplaceFoundationPrerequisitesResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ReplaceFoundationPrerequisitesResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ReplaceFoundationPrerequisitesResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ReplaceFoundationPrerequisitesResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r ReplaceFoundationPrerequisitesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReplaceFoundationPrerequisitesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReplaceFoundationPrerequisitesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReplaceFoundationPrerequisitesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -21591,6 +22488,178 @@ func (r StartExamAttemptResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r StartExamAttemptResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetFoundationPathResponse200Headers the declared response headers of an HTTP 200 response for GetFoundationPath
+type GetFoundationPathResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetFoundationPathResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FoundationPath
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetFoundationPathResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetFoundationPathResponse) GetJSON200() *FoundationPath {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetFoundationPathResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r GetFoundationPathResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r GetFoundationPathResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetFoundationPathResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetFoundationPathResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetFoundationPathResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ListFoundationTopicsResponse200Headers the declared response headers of an HTTP 200 response for ListFoundationTopics
+type ListFoundationTopicsResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListFoundationTopicsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FoundationTopicList
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListFoundationTopicsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListFoundationTopicsResponse) GetJSON200() *FoundationTopicList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ListFoundationTopicsResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r ListFoundationTopicsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListFoundationTopicsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListFoundationTopicsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListFoundationTopicsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetFoundationTopicResponse200Headers the declared response headers of an HTTP 200 response for GetFoundationTopic
+type GetFoundationTopicResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetFoundationTopicResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FoundationTopicDetail
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetFoundationTopicResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetFoundationTopicResponse) GetJSON200() *FoundationTopicDetail {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetFoundationTopicResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetFoundationTopicResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetFoundationTopicResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetFoundationTopicResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetFoundationTopicResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -27999,6 +29068,96 @@ func (c *ClientWithResponses) AdminUpdateFlagWithResponse(ctx context.Context, k
 	return ParseAdminUpdateFlagResponse(rsp)
 }
 
+// CreateFoundationTopicWithBodyWithResponse Create a new foundation taxonomy topic.
+//
+// Creates a new canonical spine topic. Code must be in SCREAMING_SNAKE format and is permanently immutable.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/foundation/topics (the `CreateFoundationTopic` operationId).
+func (c *ClientWithResponses) CreateFoundationTopicWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateFoundationTopicResponse, error) {
+	rsp, err := c.CreateFoundationTopicWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateFoundationTopicResponse(rsp)
+}
+
+// CreateFoundationTopicWithResponse Create a new foundation taxonomy topic.
+//
+// Creates a new canonical spine topic. Code must be in SCREAMING_SNAKE format and is permanently immutable.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/foundation/topics (the `CreateFoundationTopic` operationId).
+func (c *ClientWithResponses) CreateFoundationTopicWithResponse(ctx context.Context, body CreateFoundationTopicJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateFoundationTopicResponse, error) {
+	rsp, err := c.CreateFoundationTopic(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateFoundationTopicResponse(rsp)
+}
+
+// UpdateFoundationTopicWithBodyWithResponse Update foundation topic metadata.
+//
+// Updates label, description, CEFR level, parent, position, or deprecation status. The code is immutable and cannot be modified (TAXONOMY_CODE_IMMUTABLE).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /admin/foundation/topics/{code} (the `UpdateFoundationTopic` operationId).
+func (c *ClientWithResponses) UpdateFoundationTopicWithBodyWithResponse(ctx context.Context, code string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateFoundationTopicResponse, error) {
+	rsp, err := c.UpdateFoundationTopicWithBody(ctx, code, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateFoundationTopicResponse(rsp)
+}
+
+// UpdateFoundationTopicWithResponse Update foundation topic metadata.
+//
+// Updates label, description, CEFR level, parent, position, or deprecation status. The code is immutable and cannot be modified (TAXONOMY_CODE_IMMUTABLE).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /admin/foundation/topics/{code} (the `UpdateFoundationTopic` operationId).
+func (c *ClientWithResponses) UpdateFoundationTopicWithResponse(ctx context.Context, code string, body UpdateFoundationTopicJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateFoundationTopicResponse, error) {
+	rsp, err := c.UpdateFoundationTopic(ctx, code, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateFoundationTopicResponse(rsp)
+}
+
+// ReplaceFoundationPrerequisitesWithBodyWithResponse Replace prerequisites for a foundation topic.
+//
+// Replaces the prerequisite edge set for a topic within the same namespace. An in-memory cycle check runs on the proposed graph before database modification. Refuses any cycle with 422 TAXONOMY_CYCLE.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/foundation/topics/{code}/prerequisites (the `ReplaceFoundationPrerequisites` operationId).
+func (c *ClientWithResponses) ReplaceFoundationPrerequisitesWithBodyWithResponse(ctx context.Context, code string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceFoundationPrerequisitesResponse, error) {
+	rsp, err := c.ReplaceFoundationPrerequisitesWithBody(ctx, code, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReplaceFoundationPrerequisitesResponse(rsp)
+}
+
+// ReplaceFoundationPrerequisitesWithResponse Replace prerequisites for a foundation topic.
+//
+// Replaces the prerequisite edge set for a topic within the same namespace. An in-memory cycle check runs on the proposed graph before database modification. Refuses any cycle with 422 TAXONOMY_CYCLE.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/foundation/topics/{code}/prerequisites (the `ReplaceFoundationPrerequisites` operationId).
+func (c *ClientWithResponses) ReplaceFoundationPrerequisitesWithResponse(ctx context.Context, code string, body ReplaceFoundationPrerequisitesJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceFoundationPrerequisitesResponse, error) {
+	rsp, err := c.ReplaceFoundationPrerequisites(ctx, code, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReplaceFoundationPrerequisitesResponse(rsp)
+}
+
 // AdminUpdateLessonActivitiesWithBodyWithResponse Update or reorder lesson activities.
 //
 // Replaces the ordered activity list of a lesson, used to assemble a lesson from published content versions.
@@ -29282,6 +30441,51 @@ func (c *ClientWithResponses) StartExamAttemptWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseStartExamAttemptResponse(rsp)
+}
+
+// GetFoundationPathWithResponse Get topologically sorted foundation learning path.
+//
+// Returns an ordered sequence of topics respecting prerequisite DAG constraints. Supports targeting a specific topic (?target=CODE) or ordering an entire namespace (?namespace=NAME). Public read per ADR-0025.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /foundation/path (the `GetFoundationPath` operationId).
+func (c *ClientWithResponses) GetFoundationPathWithResponse(ctx context.Context, params *GetFoundationPathParams, reqEditors ...RequestEditorFn) (*GetFoundationPathResponse, error) {
+	rsp, err := c.GetFoundationPath(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetFoundationPathResponse(rsp)
+}
+
+// ListFoundationTopicsWithResponse Browse foundation topics with taxonomy filters.
+//
+// Returns canonical knowledge spine topics with optional namespace, level, and parent filters. Public read per ADR-0025.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /foundation/topics (the `ListFoundationTopics` operationId).
+func (c *ClientWithResponses) ListFoundationTopicsWithResponse(ctx context.Context, params *ListFoundationTopicsParams, reqEditors ...RequestEditorFn) (*ListFoundationTopicsResponse, error) {
+	rsp, err := c.ListFoundationTopics(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListFoundationTopicsResponse(rsp)
+}
+
+// GetFoundationTopicWithResponse Get a foundation topic by code.
+//
+// Returns a single topic by its canonical code, including prerequisites, dependants, related topics, attached content counts, and published body. Public read per ADR-0025.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /foundation/topics/{code} (the `GetFoundationTopic` operationId).
+func (c *ClientWithResponses) GetFoundationTopicWithResponse(ctx context.Context, code string, reqEditors ...RequestEditorFn) (*GetFoundationTopicResponse, error) {
+	rsp, err := c.GetFoundationTopic(ctx, code, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetFoundationTopicResponse(rsp)
 }
 
 // SystemHealthWithResponse Check process liveness.
@@ -32443,6 +33647,207 @@ func ParseAdminUpdateFlagResponse(rsp *http.Response) (*AdminUpdateFlagResponse,
 	switch {
 	case rsp.StatusCode == 200:
 		var headers AdminUpdateFlagResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseCreateFoundationTopicResponse parses an HTTP response from a CreateFoundationTopicWithResponse call
+func ParseCreateFoundationTopicResponse(rsp *http.Response) (*CreateFoundationTopicResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateFoundationTopicResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest FoundationTopic
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers CreateFoundationTopicResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUpdateFoundationTopicResponse parses an HTTP response from a UpdateFoundationTopicWithResponse call
+func ParseUpdateFoundationTopicResponse(rsp *http.Response) (*UpdateFoundationTopicResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateFoundationTopicResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FoundationTopic
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UpdateFoundationTopicResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseReplaceFoundationPrerequisitesResponse parses an HTTP response from a ReplaceFoundationPrerequisitesWithResponse call
+func ParseReplaceFoundationPrerequisitesResponse(rsp *http.Response) (*ReplaceFoundationPrerequisitesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReplaceFoundationPrerequisitesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FoundationTopicDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ReplaceFoundationPrerequisitesResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
@@ -36678,6 +38083,151 @@ func ParseStartExamAttemptResponse(rsp *http.Response) (*StartExamAttemptRespons
 			headers.RetryAfter = &value
 		}
 		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetFoundationPathResponse parses an HTTP response from a GetFoundationPathWithResponse call
+func ParseGetFoundationPathResponse(rsp *http.Response) (*GetFoundationPathResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetFoundationPathResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FoundationPath
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetFoundationPathResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseListFoundationTopicsResponse parses an HTTP response from a ListFoundationTopicsWithResponse call
+func ParseListFoundationTopicsResponse(rsp *http.Response) (*ListFoundationTopicsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListFoundationTopicsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FoundationTopicList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListFoundationTopicsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetFoundationTopicResponse parses an HTTP response from a GetFoundationTopicWithResponse call
+func ParseGetFoundationTopicResponse(rsp *http.Response) (*GetFoundationTopicResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetFoundationTopicResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FoundationTopicDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetFoundationTopicResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil
