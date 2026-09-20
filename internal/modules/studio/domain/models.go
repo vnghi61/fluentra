@@ -58,9 +58,32 @@ type CreatorProfile struct {
 	Bio            string
 	Headline       string
 	PayoutEligible bool
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	// TrustedAt is when this creator stopped needing a human for free courses.
+	// Nil means every submission of theirs is reviewed.
+	TrustedAt           *time.Time
+	ApprovedCourseCount int
+	// UpheldReportCount counts reports a moderator agreed with. One clears
+	// trust: being wrong once puts a creator back in front of a human.
+	UpheldReportCount int
+	SuspendedAt       *time.Time
+	SuspendedReason   *string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
+
+// Trusted reports whether this creator's free courses may publish on the
+// automated gate alone.
+func (p *CreatorProfile) Trusted() bool {
+	return p != nil && p.TrustedAt != nil && p.SuspendedAt == nil
+}
+
+// Suspended reports whether this creator may submit or sell at all.
+func (p *CreatorProfile) Suspended() bool {
+	return p != nil && p.SuspendedAt != nil
+}
+
+// TrustThreshold is how many approved courses earn trust (WO 15 §8).
+const TrustThreshold = 3
 
 // PayoutAccount domain model.
 type PayoutAccount struct {
@@ -100,10 +123,16 @@ type Submission struct {
 	ReviewerID         *uuid.UUID
 	Feedback           *string
 	VerificationReport json.RawMessage
-	SubmittedAt        time.Time
-	ReviewedAt         *time.Time
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	// Gate2Required is decided when the submission is made and kept, not
+	// recomputed at review time: a creator who becomes trusted while their
+	// submission sits in the queue should not have it silently skip the human
+	// who was about to read it.
+	Gate2Required bool
+	Gate2Reason   *string
+	SubmittedAt   time.Time
+	ReviewedAt    *time.Time
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // Pricing models.
@@ -208,4 +237,19 @@ type EarningsSummary struct {
 	PayoutAccountHolder     *string
 	PayoutMaskedAccount     *string
 	RecentLedger            []*CreatorLedgerEntry
+}
+
+// Takedown is a course removed from sale, and why.
+//
+// Kept as a record rather than only flipping the listing's status, because
+// "when, by whom and on what grounds" is what anybody asks about a takedown
+// afterwards, and a status column answers none of it.
+type Takedown struct {
+	ID           uuid.UUID
+	CourseID     uuid.UUID
+	ActorID      uuid.UUID
+	Reason       string
+	ReinstatedAt *time.Time
+	ReinstatedBy *uuid.UUID
+	CreatedAt    time.Time
 }

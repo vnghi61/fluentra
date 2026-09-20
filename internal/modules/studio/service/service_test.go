@@ -28,6 +28,7 @@ type mockRepo struct {
 	listings       map[uuid.UUID]*domain.Listing
 	purchases      map[uuid.UUID]*domain.Purchase
 	ledger         []*domain.CreatorLedgerEntry
+	takedowns      []*domain.Takedown
 }
 
 func newMockRepo() *mockRepo {
@@ -286,6 +287,106 @@ func (
 	e.CreatedAt = time.Now()
 	m.ledger = append(m.ledger, e)
 	return e, nil
+}
+
+// ---------------------------------------- creator trust and moderation
+
+func (m *mockRepo) RecordApprovedCourse(
+	_ context.Context, creatorID uuid.UUID,
+) (*domain.CreatorProfile, error) {
+	p := m.profiles[creatorID]
+	if p == nil {
+		p = &domain.CreatorProfile{UserID: creatorID}
+		m.profiles[creatorID] = p
+	}
+	p.ApprovedCourseCount++
+	if p.TrustedAt == nil && p.ApprovedCourseCount >= domain.TrustThreshold && p.UpheldReportCount == 0 {
+		now := time.Now()
+		p.TrustedAt = &now
+	}
+	return p, nil
+}
+
+func (m *mockRepo) RecordUpheldReport(
+	_ context.Context, creatorID uuid.UUID,
+) (*domain.CreatorProfile, error) {
+	p := m.profiles[creatorID]
+	if p == nil {
+		p = &domain.CreatorProfile{UserID: creatorID}
+		m.profiles[creatorID] = p
+	}
+	p.UpheldReportCount++
+	p.TrustedAt = nil
+	return p, nil
+}
+
+func (m *mockRepo) SuspendCreator(
+	_ context.Context, creatorID uuid.UUID, reason string,
+) (*domain.CreatorProfile, error) {
+	p := m.profiles[creatorID]
+	if p == nil {
+		return nil, domain.ErrProfileNotFound
+	}
+	now := time.Now()
+	p.SuspendedAt = &now
+	p.SuspendedReason = &reason
+	p.TrustedAt = nil
+	return p, nil
+}
+
+func (m *mockRepo) ReinstateCreator(
+	_ context.Context, creatorID uuid.UUID,
+) (*domain.CreatorProfile, error) {
+	p := m.profiles[creatorID]
+	if p == nil {
+		return nil, domain.ErrProfileNotFound
+	}
+	p.SuspendedAt = nil
+	p.SuspendedReason = nil
+	return p, nil
+}
+
+func (m *mockRepo) CreateTakedown(
+	_ context.Context, courseID, actorID uuid.UUID, reason string,
+) (*domain.Takedown, error) {
+	t := &domain.Takedown{
+		ID: uuid.New(), CourseID: courseID, ActorID: actorID,
+		Reason: reason, CreatedAt: time.Now(),
+	}
+	m.takedowns = append(m.takedowns, t)
+	return t, nil
+}
+
+func (m *mockRepo) GetOpenTakedown(_ context.Context, courseID uuid.UUID) (*domain.Takedown, error) {
+	for i := len(m.takedowns) - 1; i >= 0; i-- {
+		if m.takedowns[i].CourseID == courseID && m.takedowns[i].ReinstatedAt == nil {
+			return m.takedowns[i], nil
+		}
+	}
+	return nil, domain.ErrTakedownNotFound
+}
+
+func (m *mockRepo) ReinstateTakedown(_ context.Context, id, actorID uuid.UUID) (*domain.Takedown, error) {
+	for _, t := range m.takedowns {
+		if t.ID == id && t.ReinstatedAt == nil {
+			now := time.Now()
+			t.ReinstatedAt = &now
+			t.ReinstatedBy = &actorID
+			return t, nil
+		}
+	}
+	return nil, domain.ErrTakedownNotFound
+}
+
+func (m *mockRepo) SetListingStatus(
+	_ context.Context, courseID uuid.UUID, status string,
+) (*domain.Listing, error) {
+	l := m.listings[courseID]
+	if l == nil {
+		return nil, domain.ErrListingNotFound
+	}
+	l.Status = status
+	return l, nil
 }
 
 func (m *mockRepo) GetSaleLedgerEntryByPurchaseID(

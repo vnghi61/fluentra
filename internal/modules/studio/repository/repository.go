@@ -86,6 +86,16 @@ type Repository interface {
 	CreateLedgerEntry(
 		ctx context.Context, entry *domain.CreatorLedgerEntry,
 	) (*domain.CreatorLedgerEntry, error)
+	// Creator trust and moderation
+	RecordApprovedCourse(ctx context.Context, creatorID uuid.UUID) (*domain.CreatorProfile, error)
+	RecordUpheldReport(ctx context.Context, creatorID uuid.UUID) (*domain.CreatorProfile, error)
+	SuspendCreator(ctx context.Context, creatorID uuid.UUID, reason string) (*domain.CreatorProfile, error)
+	ReinstateCreator(ctx context.Context, creatorID uuid.UUID) (*domain.CreatorProfile, error)
+	CreateTakedown(ctx context.Context, courseID, actorID uuid.UUID, reason string) (*domain.Takedown, error)
+	GetOpenTakedown(ctx context.Context, courseID uuid.UUID) (*domain.Takedown, error)
+	ReinstateTakedown(ctx context.Context, id, actorID uuid.UUID) (*domain.Takedown, error)
+	SetListingStatus(ctx context.Context, courseID uuid.UUID, status string) (*domain.Listing, error)
+
 	GetSaleLedgerEntryByPurchaseID(
 		ctx context.Context, purchaseID uuid.UUID,
 	) (*domain.CreatorLedgerEntry, error)
@@ -120,14 +130,7 @@ func (r *pgRepository) GetCreatorProfile(ctx context.Context, userID uuid.UUID) 
 		}
 		return nil, err
 	}
-	return &domain.CreatorProfile{
-		UserID:         row.UserID,
-		Bio:            row.Bio,
-		Headline:       row.Headline,
-		PayoutEligible: row.PayoutEligible,
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
-	}, nil
+	return toDomainProfile(row), nil
 }
 
 func (
@@ -145,14 +148,7 @@ func (
 	if err != nil {
 		return nil, err
 	}
-	return &domain.CreatorProfile{
-		UserID:         row.UserID,
-		Bio:            row.Bio,
-		Headline:       row.Headline,
-		PayoutEligible: row.PayoutEligible,
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
-	}, nil
+	return toDomainProfile(row), nil
 }
 
 func (
@@ -171,14 +167,7 @@ func (
 		}
 		return nil, err
 	}
-	return &domain.CreatorProfile{
-		UserID:         row.UserID,
-		Bio:            row.Bio,
-		Headline:       row.Headline,
-		PayoutEligible: row.PayoutEligible,
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
-	}, nil
+	return toDomainProfile(row), nil
 }
 
 func (r *pgRepository) GetPayoutAccount(ctx context.Context, creatorID uuid.UUID) (*domain.PayoutAccount, error) {
@@ -494,6 +483,36 @@ func toDomainDraft(row sqlc.StudioCourseDraft) *domain.CourseDraft {
 	}
 }
 
+// toDomainProfile maps a creator profile row, including the trust and
+// suspension columns.
+func toDomainProfile(row sqlc.StudioCreatorProfile) *domain.CreatorProfile {
+	return &domain.CreatorProfile{
+		UserID:              row.UserID,
+		Bio:                 row.Bio,
+		Headline:            row.Headline,
+		PayoutEligible:      row.PayoutEligible,
+		TrustedAt:           row.TrustedAt,
+		ApprovedCourseCount: int(row.ApprovedCourseCount),
+		UpheldReportCount:   int(row.UpheldReportCount),
+		SuspendedAt:         row.SuspendedAt,
+		SuspendedReason:     row.SuspendedReason,
+		CreatedAt:           row.CreatedAt,
+		UpdatedAt:           row.UpdatedAt,
+	}
+}
+
+func toDomainTakedown(row sqlc.StudioTakedown) *domain.Takedown {
+	return &domain.Takedown{
+		ID:           row.ID,
+		CourseID:     row.CourseID,
+		ActorID:      row.ActorID,
+		Reason:       row.Reason,
+		ReinstatedAt: row.ReinstatedAt,
+		ReinstatedBy: row.ReinstatedBy,
+		CreatedAt:    row.CreatedAt,
+	}
+}
+
 func toDomainSubmission(row sqlc.StudioSubmission) *domain.Submission {
 	return &domain.Submission{
 		ID:                 row.ID,
@@ -504,6 +523,8 @@ func toDomainSubmission(row sqlc.StudioSubmission) *domain.Submission {
 		ReviewerID:         row.ReviewerID,
 		Feedback:           row.Feedback,
 		VerificationReport: row.VerificationReport,
+		Gate2Required:      row.Gate2Required,
+		Gate2Reason:        row.Gate2Reason,
 		SubmittedAt:        row.SubmittedAt,
 		ReviewedAt:         row.ReviewedAt,
 		CreatedAt:          row.CreatedAt,
@@ -823,4 +844,119 @@ func pageBounds(limit, offset int) (int32, int32) {
 		boundedOffset = pageInt32(int32(offset), 1_000_000) //nolint:gosec // bounded by the comparison above
 	}
 	return pageInt32(boundedLimit, maxLimit), pageInt32(boundedOffset, maxOffset)
+}
+
+// ------------------------------------------ Creator trust and moderation
+
+func (r *pgRepository) RecordApprovedCourse(
+	ctx context.Context, creatorID uuid.UUID,
+) (*domain.CreatorProfile, error) {
+	row, err := r.q.RecordApprovedCourse(ctx, sqlc.RecordApprovedCourseParams{
+		UserID:              creatorID,
+		ApprovedCourseCount: int32(domain.TrustThreshold),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrProfileNotFound
+		}
+		return nil, err
+	}
+	return toDomainProfile(row), nil
+}
+
+func (r *pgRepository) RecordUpheldReport(
+	ctx context.Context, creatorID uuid.UUID,
+) (*domain.CreatorProfile, error) {
+	row, err := r.q.RecordUpheldReport(ctx, creatorID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrProfileNotFound
+		}
+		return nil, err
+	}
+	return toDomainProfile(row), nil
+}
+
+func (r *pgRepository) SuspendCreator(
+	ctx context.Context, creatorID uuid.UUID, reason string,
+) (*domain.CreatorProfile, error) {
+	row, err := r.q.SuspendCreator(ctx, sqlc.SuspendCreatorParams{
+		UserID:          creatorID,
+		SuspendedReason: &reason,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrProfileNotFound
+		}
+		return nil, err
+	}
+	return toDomainProfile(row), nil
+}
+
+func (r *pgRepository) ReinstateCreator(
+	ctx context.Context, creatorID uuid.UUID,
+) (*domain.CreatorProfile, error) {
+	row, err := r.q.ReinstateCreator(ctx, creatorID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrProfileNotFound
+		}
+		return nil, err
+	}
+	return toDomainProfile(row), nil
+}
+
+func (r *pgRepository) CreateTakedown(
+	ctx context.Context, courseID, actorID uuid.UUID, reason string,
+) (*domain.Takedown, error) {
+	row, err := r.q.CreateTakedown(ctx, sqlc.CreateTakedownParams{
+		CourseID: courseID,
+		ActorID:  actorID,
+		Reason:   reason,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return toDomainTakedown(row), nil
+}
+
+func (r *pgRepository) GetOpenTakedown(ctx context.Context, courseID uuid.UUID) (*domain.Takedown, error) {
+	row, err := r.q.GetOpenTakedownByCourseID(ctx, courseID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrTakedownNotFound
+		}
+		return nil, err
+	}
+	return toDomainTakedown(row), nil
+}
+
+func (r *pgRepository) ReinstateTakedown(ctx context.Context, id, actorID uuid.UUID) (*domain.Takedown, error) {
+	row, err := r.q.ReinstateTakedown(ctx, sqlc.ReinstateTakedownParams{
+		ID:           id,
+		ReinstatedBy: &actorID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrTakedownNotFound
+		}
+		return nil, err
+	}
+	return toDomainTakedown(row), nil
+}
+
+func (r *pgRepository) SetListingStatus(
+	ctx context.Context, courseID uuid.UUID, status string,
+) (*domain.Listing, error) {
+	row, err := r.q.SetListingStatus(ctx, sqlc.SetListingStatusParams{
+		CourseID: courseID,
+		Status:   status,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrListingNotFound
+		}
+		return nil, err
+	}
+	return toDomainListing(row), nil
 }

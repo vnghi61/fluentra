@@ -2967,6 +2967,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/moderation/courses/{id}/takedown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remove a community course from sale.
+         * @description Takes a published community course down. Learners who already bought it keep it (BR-STUDIO-04): a takedown is not a refund, and revoking what somebody paid for because somebody else complained is a different decision with a different owner. It counts against the creator, who loses trust and is reviewed again.
+         */
+        post: operations["moderationTakedownCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/courses/{id}/reinstate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Put a taken-down course back on sale.
+         * @description Lifts an open takedown and returns the listing to active. Reinstating a course that is not down is a 404 rather than a silent success.
+         */
+        post: operations["moderationReinstateCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/creators/{id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop a creator submitting or selling.
+         * @description Suspends a creator. Their published courses stay readable for the learners who bought them, and their trust is cleared: reinstating them later does not restore it, so they go back through review.
+         */
+        post: operations["moderationSuspendCreator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/creators/{id}/reinstate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lift a creator suspension.
+         * @description Lets a suspended creator submit and sell again. Trust is not restored with it: a creator who was suspended goes back through review.
+         */
+        post: operations["moderationReinstateCreator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/moderation/courses": {
         parameters: {
             query?: never;
@@ -6325,6 +6405,32 @@ export interface components {
         AdminPayoutList: {
             items: components["schemas"]["PayoutResponse"][];
             total: number;
+        };
+        /** @description A community course removed from sale, and why. Learners who already bought it keep it (BR-STUDIO-04): a takedown is not a refund. */
+        Takedown: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            course_id: string;
+            reason: string;
+            /** Format: date-time */
+            reinstated_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        /** @description A creator's standing after a moderator acted on them. */
+        CreatorModeration: {
+            /** Format: uuid */
+            user_id: string;
+            /** Format: date-time */
+            suspended_at?: string | null;
+            suspended_reason?: string | null;
+            /** @description Whether this creator's free courses publish on the automated gate alone. Cleared by a suspension or an upheld report. */
+            trusted: boolean;
+        };
+        ModerationReasonRequest: {
+            /** @description Why the moderator acted. Required: an action nobody explained is one nobody can review or undo fairly. */
+            reason: string;
         };
         FulfillPayoutRequest: {
             /** @example VCB-TRF-123456 */
@@ -13585,6 +13691,172 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationTakedownCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "reason": "plagiarised from a textbook"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ModerationReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description The course is down. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345680",
+                     *       "course_id": "0199a1c2-3d4e-7f80-9abc-def012345640",
+                     *       "reason": "plagiarised from a textbook",
+                     *       "reinstated_at": null,
+                     *       "created_at": "2026-09-20T12:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Takedown"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationReinstateCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The course is back on sale. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345680",
+                     *       "course_id": "0199a1c2-3d4e-7f80-9abc-def012345640",
+                     *       "reason": "plagiarised from a textbook",
+                     *       "reinstated_at": "2026-09-21T09:00:00Z",
+                     *       "created_at": "2026-09-20T12:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Takedown"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationSuspendCreator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Creator user ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "reason": "repeated plagiarism across three courses"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ModerationReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description The creator is suspended. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345601",
+                     *       "suspended_at": "2026-09-20T12:00:00Z",
+                     *       "suspended_reason": "repeated plagiarism across three courses",
+                     *       "trusted": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CreatorModeration"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationReinstateCreator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Creator user ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The suspension is lifted. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345601",
+                     *       "suspended_at": null,
+                     *       "suspended_reason": null,
+                     *       "trusted": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CreatorModeration"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
         };
     };

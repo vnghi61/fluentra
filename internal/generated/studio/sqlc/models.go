@@ -522,6 +522,13 @@ type StudioCreatorProfile struct {
 	PayoutEligible bool
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	// When this creator stopped needing Gate 2 for free courses. Null means always reviewed.
+	TrustedAt           *time.Time
+	ApprovedCourseCount int32
+	// Reports a moderator agreed with. One clears trust.
+	UpheldReportCount int32
+	SuspendedAt       *time.Time
+	SuspendedReason   *string
 }
 
 type StudioListing struct {
@@ -572,4 +579,18 @@ type StudioSubmission struct {
 	ReviewedAt         *time.Time
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
+	// Whether this submission needs a human decision, decided when it was made.
+	Gate2Required bool
+	// Why, so a moderator reading the queue knows what they are being asked to judge.
+	Gate2Reason *string
+}
+
+type StudioTakedown struct {
+	ID           uuid.UUID
+	CourseID     uuid.UUID
+	ActorID      uuid.UUID
+	Reason       string
+	ReinstatedAt *time.Time
+	ReinstatedBy *uuid.UUID
+	CreatedAt    time.Time
 }

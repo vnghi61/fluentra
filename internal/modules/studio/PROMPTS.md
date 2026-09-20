@@ -6,7 +6,7 @@ status: ACTIVE
 phase: 3
 owner: "@commerce-team"
 schema: studio
-tables: [creator_profiles, payout_accounts, course_drafts, submissions, listings, purchases, creator_ledger]
+tables: [creator_profiles, payout_accounts, course_drafts, submissions, listings, purchases, creator_ledger, takedowns]
 depends_on: [content, lesson, learning, payment, job]
 depended_on_by: [admin, lesson, learning]
 spec_version: 1.0.0

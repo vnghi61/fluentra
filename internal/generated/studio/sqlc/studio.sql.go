@@ -181,16 +181,19 @@ func (q *Queries) CreatePurchase(ctx context.Context, arg CreatePurchaseParams) 
 }
 
 const createSubmission = `-- name: CreateSubmission :one
-INSERT INTO studio.submissions (draft_id, version, status, submitted_by, submitted_at, updated_at)
-VALUES ($1, $2, $3, $4, now(), now())
-RETURNING id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at
+INSERT INTO studio.submissions (
+    draft_id, version, status, submitted_by, gate2_required, gate2_reason, submitted_at, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+RETURNING id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason
 `
 
 type CreateSubmissionParams struct {
-	DraftID     uuid.UUID
-	Version     int32
-	Status      string
-	SubmittedBy uuid.UUID
+	DraftID       uuid.UUID
+	Version       int32
+	Status        string
+	SubmittedBy   uuid.UUID
+	Gate2Required bool
+	Gate2Reason   *string
 }
 
 func (q *Queries) CreateSubmission(ctx context.Context, arg CreateSubmissionParams) (StudioSubmission, error) {
@@ -199,6 +202,8 @@ func (q *Queries) CreateSubmission(ctx context.Context, arg CreateSubmissionPara
 		arg.Version,
 		arg.Status,
 		arg.SubmittedBy,
+		arg.Gate2Required,
+		arg.Gate2Reason,
 	)
 	var i StudioSubmission
 	err := row.Scan(
@@ -214,6 +219,37 @@ func (q *Queries) CreateSubmission(ctx context.Context, arg CreateSubmissionPara
 		&i.ReviewedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Gate2Required,
+		&i.Gate2Reason,
+	)
+	return i, err
+}
+
+const createTakedown = `-- name: CreateTakedown :one
+
+INSERT INTO studio.takedowns (course_id, actor_id, reason)
+VALUES ($1, $2, $3)
+RETURNING id, course_id, actor_id, reason, reinstated_at, reinstated_by, created_at
+`
+
+type CreateTakedownParams struct {
+	CourseID uuid.UUID
+	ActorID  uuid.UUID
+	Reason   string
+}
+
+// ---------------------------------------------------------------- takedowns
+func (q *Queries) CreateTakedown(ctx context.Context, arg CreateTakedownParams) (StudioTakedown, error) {
+	row := q.db.QueryRow(ctx, createTakedown, arg.CourseID, arg.ActorID, arg.Reason)
+	var i StudioTakedown
+	err := row.Scan(
+		&i.ID,
+		&i.CourseID,
+		&i.ActorID,
+		&i.Reason,
+		&i.ReinstatedAt,
+		&i.ReinstatedBy,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -332,7 +368,7 @@ func (q *Queries) GetCreatorLifetimeEarnings(ctx context.Context, creatorID uuid
 }
 
 const getCreatorProfile = `-- name: GetCreatorProfile :one
-SELECT user_id, bio, headline, payout_eligible, created_at, updated_at
+SELECT user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason
 FROM studio.creator_profiles
 WHERE user_id = $1
 `
@@ -347,6 +383,11 @@ func (q *Queries) GetCreatorProfile(ctx context.Context, userID uuid.UUID) (Stud
 		&i.PayoutEligible,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TrustedAt,
+		&i.ApprovedCourseCount,
+		&i.UpheldReportCount,
+		&i.SuspendedAt,
+		&i.SuspendedReason,
 	)
 	return i, err
 }
@@ -365,7 +406,7 @@ func (q *Queries) GetCreatorTotalPaidOut(ctx context.Context, creatorID uuid.UUI
 }
 
 const getLatestSubmissionByDraftID = `-- name: GetLatestSubmissionByDraftID :one
-SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at
+SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason
 FROM studio.submissions
 WHERE draft_id = $1
 ORDER BY version DESC
@@ -388,6 +429,8 @@ func (q *Queries) GetLatestSubmissionByDraftID(ctx context.Context, draftID uuid
 		&i.ReviewedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Gate2Required,
+		&i.Gate2Reason,
 	)
 	return i, err
 }
@@ -410,6 +453,29 @@ func (q *Queries) GetListingByCourseID(ctx context.Context, courseID uuid.UUID) 
 		&i.Status,
 		&i.PublishedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getOpenTakedownByCourseID = `-- name: GetOpenTakedownByCourseID :one
+SELECT id, course_id, actor_id, reason, reinstated_at, reinstated_by, created_at
+FROM studio.takedowns
+WHERE course_id = $1 AND reinstated_at IS NULL
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetOpenTakedownByCourseID(ctx context.Context, courseID uuid.UUID) (StudioTakedown, error) {
+	row := q.db.QueryRow(ctx, getOpenTakedownByCourseID, courseID)
+	var i StudioTakedown
+	err := row.Scan(
+		&i.ID,
+		&i.CourseID,
+		&i.ActorID,
+		&i.Reason,
+		&i.ReinstatedAt,
+		&i.ReinstatedBy,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -493,7 +559,7 @@ func (q *Queries) GetSaleLedgerEntryByPurchaseID(ctx context.Context, purchaseID
 }
 
 const getSubmissionByID = `-- name: GetSubmissionByID :one
-SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at
+SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason
 FROM studio.submissions
 WHERE id = $1
 `
@@ -514,6 +580,8 @@ func (q *Queries) GetSubmissionByID(ctx context.Context, id uuid.UUID) (StudioSu
 		&i.ReviewedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Gate2Required,
+		&i.Gate2Reason,
 	)
 	return i, err
 }
@@ -688,7 +756,7 @@ func (q *Queries) ListListingsByCourseIDs(ctx context.Context, dollar_1 []uuid.U
 }
 
 const listPendingVerificationSubmissions = `-- name: ListPendingVerificationSubmissions :many
-SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at
+SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason
 FROM studio.submissions
 WHERE status IN ('submitted', 'verifying')
 ORDER BY submitted_at ASC
@@ -717,6 +785,8 @@ func (q *Queries) ListPendingVerificationSubmissions(ctx context.Context, limit 
 			&i.ReviewedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Gate2Required,
+			&i.Gate2Reason,
 		); err != nil {
 			return nil, err
 		}
@@ -774,7 +844,7 @@ func (q *Queries) ListPurchasesByUserID(ctx context.Context, arg ListPurchasesBy
 }
 
 const listSubmissionsByStatus = `-- name: ListSubmissionsByStatus :many
-SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at
+SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason
 FROM studio.submissions
 WHERE status = $1
 ORDER BY submitted_at ASC
@@ -809,6 +879,8 @@ func (q *Queries) ListSubmissionsByStatus(ctx context.Context, arg ListSubmissio
 			&i.ReviewedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Gate2Required,
+			&i.Gate2Reason,
 		); err != nil {
 			return nil, err
 		}
@@ -818,6 +890,134 @@ func (q *Queries) ListSubmissionsByStatus(ctx context.Context, arg ListSubmissio
 		return nil, err
 	}
 	return items, nil
+}
+
+const recordApprovedCourse = `-- name: RecordApprovedCourse :one
+
+UPDATE studio.creator_profiles
+SET approved_course_count = approved_course_count + 1,
+    trusted_at = CASE
+        WHEN trusted_at IS NOT NULL THEN trusted_at
+        WHEN approved_course_count + 1 >= $2 AND upheld_report_count = 0 THEN now()
+        ELSE NULL
+    END,
+    updated_at = now()
+WHERE user_id = $1
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason
+`
+
+type RecordApprovedCourseParams struct {
+	UserID              uuid.UUID
+	ApprovedCourseCount int32
+}
+
+// ------------------------------------------------------------- creator trust
+// RecordApprovedCourse counts an approval and grants trust at the third one,
+// as long as no report against this creator has been upheld. Trust means a
+// free course of theirs publishes on the automated gate alone.
+func (q *Queries) RecordApprovedCourse(ctx context.Context, arg RecordApprovedCourseParams) (StudioCreatorProfile, error) {
+	row := q.db.QueryRow(ctx, recordApprovedCourse, arg.UserID, arg.ApprovedCourseCount)
+	var i StudioCreatorProfile
+	err := row.Scan(
+		&i.UserID,
+		&i.Bio,
+		&i.Headline,
+		&i.PayoutEligible,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.TrustedAt,
+		&i.ApprovedCourseCount,
+		&i.UpheldReportCount,
+		&i.SuspendedAt,
+		&i.SuspendedReason,
+	)
+	return i, err
+}
+
+const recordUpheldReport = `-- name: RecordUpheldReport :one
+UPDATE studio.creator_profiles
+SET upheld_report_count = upheld_report_count + 1,
+    trusted_at = NULL,
+    updated_at = now()
+WHERE user_id = $1
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason
+`
+
+// RecordUpheldReport counts a report a moderator agreed with and revokes
+// trust. Being wrong once puts a creator back in front of a human.
+func (q *Queries) RecordUpheldReport(ctx context.Context, userID uuid.UUID) (StudioCreatorProfile, error) {
+	row := q.db.QueryRow(ctx, recordUpheldReport, userID)
+	var i StudioCreatorProfile
+	err := row.Scan(
+		&i.UserID,
+		&i.Bio,
+		&i.Headline,
+		&i.PayoutEligible,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.TrustedAt,
+		&i.ApprovedCourseCount,
+		&i.UpheldReportCount,
+		&i.SuspendedAt,
+		&i.SuspendedReason,
+	)
+	return i, err
+}
+
+const reinstateCreator = `-- name: ReinstateCreator :one
+UPDATE studio.creator_profiles
+SET suspended_at = NULL,
+    suspended_reason = NULL,
+    updated_at = now()
+WHERE user_id = $1
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason
+`
+
+func (q *Queries) ReinstateCreator(ctx context.Context, userID uuid.UUID) (StudioCreatorProfile, error) {
+	row := q.db.QueryRow(ctx, reinstateCreator, userID)
+	var i StudioCreatorProfile
+	err := row.Scan(
+		&i.UserID,
+		&i.Bio,
+		&i.Headline,
+		&i.PayoutEligible,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.TrustedAt,
+		&i.ApprovedCourseCount,
+		&i.UpheldReportCount,
+		&i.SuspendedAt,
+		&i.SuspendedReason,
+	)
+	return i, err
+}
+
+const reinstateTakedown = `-- name: ReinstateTakedown :one
+UPDATE studio.takedowns
+SET reinstated_at = now(),
+    reinstated_by = $2
+WHERE id = $1 AND reinstated_at IS NULL
+RETURNING id, course_id, actor_id, reason, reinstated_at, reinstated_by, created_at
+`
+
+type ReinstateTakedownParams struct {
+	ID           uuid.UUID
+	ReinstatedBy *uuid.UUID
+}
+
+func (q *Queries) ReinstateTakedown(ctx context.Context, arg ReinstateTakedownParams) (StudioTakedown, error) {
+	row := q.db.QueryRow(ctx, reinstateTakedown, arg.ID, arg.ReinstatedBy)
+	var i StudioTakedown
+	err := row.Scan(
+		&i.ID,
+		&i.CourseID,
+		&i.ActorID,
+		&i.Reason,
+		&i.ReinstatedAt,
+		&i.ReinstatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const revokePurchase = `-- name: RevokePurchase :one
@@ -852,11 +1052,39 @@ func (q *Queries) RevokePurchase(ctx context.Context, arg RevokePurchaseParams) 
 	return i, err
 }
 
+const setListingStatus = `-- name: SetListingStatus :one
+UPDATE studio.listings
+SET status = $2, updated_at = now()
+WHERE course_id = $1
+RETURNING course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at
+`
+
+type SetListingStatusParams struct {
+	CourseID uuid.UUID
+	Status   string
+}
+
+func (q *Queries) SetListingStatus(ctx context.Context, arg SetListingStatusParams) (StudioListing, error) {
+	row := q.db.QueryRow(ctx, setListingStatus, arg.CourseID, arg.Status)
+	var i StudioListing
+	err := row.Scan(
+		&i.CourseID,
+		&i.CreatorID,
+		&i.PricingModel,
+		&i.PriceVnd,
+		&i.RevenueShareBps,
+		&i.Status,
+		&i.PublishedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const setPayoutEligible = `-- name: SetPayoutEligible :one
 UPDATE studio.creator_profiles
 SET payout_eligible = $2, updated_at = now()
 WHERE user_id = $1
-RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason
 `
 
 type SetPayoutEligibleParams struct {
@@ -874,6 +1102,45 @@ func (q *Queries) SetPayoutEligible(ctx context.Context, arg SetPayoutEligiblePa
 		&i.PayoutEligible,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TrustedAt,
+		&i.ApprovedCourseCount,
+		&i.UpheldReportCount,
+		&i.SuspendedAt,
+		&i.SuspendedReason,
+	)
+	return i, err
+}
+
+const suspendCreator = `-- name: SuspendCreator :one
+UPDATE studio.creator_profiles
+SET suspended_at = now(),
+    suspended_reason = $2,
+    trusted_at = NULL,
+    updated_at = now()
+WHERE user_id = $1
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason
+`
+
+type SuspendCreatorParams struct {
+	UserID          uuid.UUID
+	SuspendedReason *string
+}
+
+func (q *Queries) SuspendCreator(ctx context.Context, arg SuspendCreatorParams) (StudioCreatorProfile, error) {
+	row := q.db.QueryRow(ctx, suspendCreator, arg.UserID, arg.SuspendedReason)
+	var i StudioCreatorProfile
+	err := row.Scan(
+		&i.UserID,
+		&i.Bio,
+		&i.Headline,
+		&i.PayoutEligible,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.TrustedAt,
+		&i.ApprovedCourseCount,
+		&i.UpheldReportCount,
+		&i.SuspendedAt,
+		&i.SuspendedReason,
 	)
 	return i, err
 }
@@ -1029,7 +1296,7 @@ SET status = $2,
     reviewed_at = now(),
     updated_at = now()
 WHERE id = $1
-RETURNING id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at
+RETURNING id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason
 `
 
 type UpdateSubmissionReviewParams struct {
@@ -1060,6 +1327,8 @@ func (q *Queries) UpdateSubmissionReview(ctx context.Context, arg UpdateSubmissi
 		&i.ReviewedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Gate2Required,
+		&i.Gate2Reason,
 	)
 	return i, err
 }
@@ -1071,7 +1340,7 @@ SET status = $2,
     feedback = $4,
     updated_at = now()
 WHERE id = $1
-RETURNING id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at
+RETURNING id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason
 `
 
 type UpdateSubmissionVerificationParams struct {
@@ -1102,6 +1371,8 @@ func (q *Queries) UpdateSubmissionVerification(ctx context.Context, arg UpdateSu
 		&i.ReviewedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Gate2Required,
+		&i.Gate2Reason,
 	)
 	return i, err
 }
@@ -1113,7 +1384,7 @@ ON CONFLICT (user_id) DO UPDATE
 SET bio = EXCLUDED.bio,
     headline = EXCLUDED.headline,
     updated_at = now()
-RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason
 `
 
 type UpsertCreatorProfileParams struct {
@@ -1132,6 +1403,11 @@ func (q *Queries) UpsertCreatorProfile(ctx context.Context, arg UpsertCreatorPro
 		&i.PayoutEligible,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TrustedAt,
+		&i.ApprovedCourseCount,
+		&i.UpheldReportCount,
+		&i.SuspendedAt,
+		&i.SuspendedReason,
 	)
 	return i, err
 }

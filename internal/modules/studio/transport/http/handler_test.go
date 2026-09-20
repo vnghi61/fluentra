@@ -29,6 +29,44 @@ type mockStudioService struct {
 	err           error
 }
 
+func (m *mockStudioService) TakedownCourse(
+	_ context.Context, _, courseID uuid.UUID, reason string,
+) (*domain.Takedown, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return &domain.Takedown{ID: uuid.New(), CourseID: courseID, Reason: reason}, nil
+}
+
+func (m *mockStudioService) ReinstateCourse(
+	_ context.Context, _, courseID uuid.UUID,
+) (*domain.Takedown, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	now := time.Now()
+	return &domain.Takedown{ID: uuid.New(), CourseID: courseID, ReinstatedAt: &now}, nil
+}
+
+func (m *mockStudioService) SuspendCreator(
+	_ context.Context, creatorID uuid.UUID, reason string,
+) (*domain.CreatorProfile, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	now := time.Now()
+	return &domain.CreatorProfile{UserID: creatorID, SuspendedAt: &now, SuspendedReason: &reason}, nil
+}
+
+func (m *mockStudioService) ReinstateCreator(
+	_ context.Context, creatorID uuid.UUID,
+) (*domain.CreatorProfile, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return &domain.CreatorProfile{UserID: creatorID}, nil
+}
+
 func (m *mockStudioService) GetCreatorProfile(_ context.Context, _ uuid.UUID) (*domain.CreatorProfile, error) {
 	return m.profile, m.err
 }

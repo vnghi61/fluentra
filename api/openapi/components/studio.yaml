@@ -474,4 +474,54 @@ FulfillPayoutRequest:
       type: [string, 'null']
       example: Transferred from corporate Vietcombank
 
+Takedown:
+  type: object
+  description: >-
+    A community course removed from sale, and why. Learners who already bought
+    it keep it (BR-STUDIO-04): a takedown is not a refund.
+  required: [id, course_id, reason, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    course_id:
+      type: string
+      format: uuid
+    reason:
+      type: string
+    reinstated_at:
+      type: [string, 'null']
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
 
+CreatorModeration:
+  type: object
+  description: A creator's standing after a moderator acted on them.
+  required: [user_id, trusted]
+  properties:
+    user_id:
+      type: string
+      format: uuid
+    suspended_at:
+      type: [string, 'null']
+      format: date-time
+    suspended_reason:
+      type: [string, 'null']
+    trusted:
+      type: boolean
+      description: >-
+        Whether this creator's free courses publish on the automated gate
+        alone. Cleared by a suspension or an upheld report.
+
+ModerationReasonRequest:
+  type: object
+  required: [reason]
+  properties:
+    reason:
+      type: string
+      minLength: 1
+      description: >-
+        Why the moderator acted. Required: an action nobody explained is one
+        nobody can review or undo fairly.

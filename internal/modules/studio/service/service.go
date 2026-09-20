@@ -321,6 +321,18 @@ func (s *Service) SubmitDraft(ctx context.Context, ownerID, draftID uuid.UUID) (
 		return nil, domain.ErrCannotSubmit
 	}
 
+	// A creator with no profile is not trusted, which needsHumanReview already
+	// answers for. Refusing the submission instead would make opening the
+	// studio a second, separate step before the first draft could be sent.
+	profile, err := s.repo.GetCreatorProfile(ctx, ownerID)
+	if err != nil && !errors.Is(err, domain.ErrProfileNotFound) {
+		return nil, err
+	}
+	if profile.Suspended() {
+		return nil, domain.ErrCreatorSuspended
+	}
+	gate2Required, gate2Reason := needsHumanReview(profile, draft)
+
 	version := 1
 	latest, err := s.repo.GetLatestSubmissionByDraftID(ctx, draftID)
 	if err == nil && latest != nil {
@@ -328,10 +340,12 @@ func (s *Service) SubmitDraft(ctx context.Context, ownerID, draftID uuid.UUID) (
 	}
 
 	sub := &domain.Submission{
-		DraftID:     draftID,
-		Version:     version,
-		Status:      domain.SubmissionStatusSubmitted,
-		SubmittedBy: ownerID,
+		DraftID:       draftID,
+		Version:       version,
+		Status:        domain.SubmissionStatusSubmitted,
+		SubmittedBy:   ownerID,
+		Gate2Required: gate2Required,
+		Gate2Reason:   gate2Reason,
 	}
 
 	created, err := s.repo.CreateSubmission(ctx, sub)
@@ -516,7 +530,140 @@ func (s *Service) RunGate1Verification(
 		return nil, err
 	}
 
+	// A free course from a trusted creator that passed every check does not
+	// wait for a person. This is what the trust model is for: a moderator's
+	// time goes to courses that are sold, creators nobody has vouched for, and
+	// anyone who has been wrong before.
+	if passed && !updatedSub.Gate2Required {
+		if err := s.PublishApprovedByGate1(ctx, updatedSub.ID); err != nil {
+			slog.ErrorContext(ctx, "could not auto-publish a verified submission; it waits for review",
+				"submission_id", updatedSub.ID, "error", err)
+			return updatedSub, nil
+		}
+		return s.repo.GetSubmissionByID(ctx, updatedSub.ID)
+	}
+
 	return updatedSub, nil
+}
+
+// needsHumanReview decides whether a submission goes to a moderator (WO 15 §8).
+//
+// Money is the first line: a course somebody pays for is read by a person, every
+// time. After that it is about the creator — their first courses, and anyone a
+// report has been upheld against, are reviewed until they have earned otherwise.
+//
+// Decided once, when the submission is made, and stored. Recomputing it at
+// review time would let a creator who became trusted while queued have their
+// submission silently skip the human who was about to read it.
+func needsHumanReview(profile *domain.CreatorProfile, draft *domain.CourseDraft) (bool, *string) {
+	switch {
+	case draft.PriceVND > 0:
+		reason := "the course is sold, so a person reads it"
+		return true, &reason
+	case profile == nil || !profile.Trusted():
+		reason := "the creator has not published enough reviewed courses yet"
+		return true, &reason
+	case profile.UpheldReportCount > 0:
+		reason := "a report against this creator has been upheld"
+		return true, &reason
+	default:
+		return false, nil
+	}
+}
+
+// PublishApprovedByGate1 publishes a free submission from a trusted creator
+// that passed the automated gate, without waiting for a moderator.
+//
+// It is the whole point of the trust model: a moderator's time is spent on
+// courses that are sold, on creators nobody has vouched for yet, and on anyone
+// who has been wrong before — not on the fourth free course from somebody whose
+// last three were fine.
+func (s *Service) PublishApprovedByGate1(ctx context.Context, submissionID uuid.UUID) error {
+	sub, err := s.repo.GetSubmissionByID(ctx, submissionID)
+	if err != nil {
+		return err
+	}
+	if sub.Gate2Required || sub.Status != domain.SubmissionStatusInReview {
+		return nil
+	}
+	const note = "Published automatically: verified, and from a trusted creator"
+	_, err = s.publishSubmission(ctx, sub, sub.SubmittedBy, note)
+	return err
+}
+
+// TakedownCourse removes a community course from sale.
+//
+// Existing purchasers keep it (BR-STUDIO-04): taking a course down is not a
+// refund, and revoking what somebody bought because somebody else complained is
+// a different decision with a different owner.
+func (s *Service) TakedownCourse(
+	ctx context.Context, actorID, courseID uuid.UUID, reason string,
+) (*domain.Takedown, error) {
+	if strings.TrimSpace(reason) == "" {
+		return nil, domain.ErrReasonRequired
+	}
+	listing, err := s.repo.GetListingByCourseID(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+
+	takedown, err := s.repo.CreateTakedown(ctx, courseID, actorID, reason)
+	if err != nil {
+		return nil, fmt.Errorf("record takedown: %w", err)
+	}
+	if _, err := s.repo.SetListingStatus(ctx, courseID, domain.ListingStatusTakenDown); err != nil {
+		return nil, fmt.Errorf("take listing down: %w", err)
+	}
+	if _, err := s.repo.RecordUpheldReport(ctx, listing.CreatorID); err != nil {
+		slog.ErrorContext(ctx, "could not count a takedown against its creator",
+			"creator_id", listing.CreatorID, "error", err)
+	}
+
+	slog.InfoContext(ctx, "community course taken down",
+		"course_id", courseID, "actor_id", actorID, "reason", reason)
+	return takedown, nil
+}
+
+// ReinstateCourse puts a taken-down course back on sale.
+func (s *Service) ReinstateCourse(
+	ctx context.Context, actorID, courseID uuid.UUID,
+) (*domain.Takedown, error) {
+	open, err := s.repo.GetOpenTakedown(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+	reinstated, err := s.repo.ReinstateTakedown(ctx, open.ID, actorID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.repo.SetListingStatus(ctx, courseID, domain.ListingStatusActive); err != nil {
+		return nil, fmt.Errorf("put the listing back: %w", err)
+	}
+	return reinstated, nil
+}
+
+// SuspendCreator stops a creator submitting or selling. Their published
+// courses stay readable for the learners who bought them.
+func (s *Service) SuspendCreator(
+	ctx context.Context, creatorID uuid.UUID, reason string,
+) (*domain.CreatorProfile, error) {
+	if strings.TrimSpace(reason) == "" {
+		return nil, domain.ErrReasonRequired
+	}
+	profile, err := s.repo.SuspendCreator(ctx, creatorID, reason)
+	if err != nil {
+		return nil, err
+	}
+	slog.InfoContext(ctx, "creator suspended", "creator_id", creatorID, "reason", reason)
+	return profile, nil
+}
+
+// ReinstateCreator lifts a suspension. Trust is not restored with it: a
+// creator who was suspended goes back through review.
+func (s *Service) ReinstateCreator(
+	ctx context.Context, creatorID uuid.UUID,
+) (*domain.CreatorProfile, error) {
+	return s.repo.ReinstateCreator(ctx, creatorID)
 }
 
 // draftItem is one activity of a draft, flattened with the position that names
@@ -814,6 +961,18 @@ func (s *Service) ApproveSubmission(
 			"Submission has not passed automated verification yet")
 	}
 
+	feedback := "Approved by moderator"
+	return s.publishSubmission(ctx, sub, reviewerID, feedback)
+}
+
+// publishSubmission turns an approved submission into a published course.
+//
+// Shared by the human gate and by the automatic publish a trusted creator's
+// free course gets, so there is one path from "verified" to "in the
+// catalogue" rather than two that can drift.
+func (s *Service) publishSubmission(
+	ctx context.Context, sub *domain.Submission, reviewerID uuid.UUID, feedback string,
+) (*domain.Submission, error) {
 	draft, err := s.repo.GetCourseDraftByID(ctx, sub.DraftID)
 	if err != nil {
 		return nil, err
@@ -864,7 +1023,6 @@ func (s *Service) ApproveSubmission(
 		}
 	}
 
-	feedback := "Approved by moderator"
 	approvedSub, err := s.repo.UpdateSubmissionReview(ctx, sub.ID, domain.SubmissionStatusApproved, reviewerID, &feedback)
 	if err != nil {
 		return nil, err
@@ -872,6 +1030,15 @@ func (s *Service) ApproveSubmission(
 
 	if _, err := s.repo.UpdateCourseDraftStatus(ctx, draft.ID, domain.DraftStatusPublished); err != nil {
 		return nil, err
+	}
+
+	// Counted towards the trust that lets this creator's next free course
+	// publish on the automated gate alone. A failure here costs them a step
+	// towards trust, not their published course, so it is logged rather than
+	// unwinding an approval.
+	if _, err := s.repo.RecordApprovedCourse(ctx, draft.OwnerID); err != nil {
+		slog.ErrorContext(ctx, "could not count an approved course towards creator trust",
+			"creator_id", draft.OwnerID, "error", err)
 	}
 
 	return approvedSub, nil

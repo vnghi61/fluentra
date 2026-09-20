@@ -450,13 +450,14 @@
       "Bank transfer matching — that is `payment`"
     ],
     "tables": [
-      { "name": "creator_profiles", "purpose": "Creator profiles", "notes": "`user_id` PK, `display_name`, `bio`, `headline`, `trusted_at`, `upheld_report_count`" },
-      { "name": "payout_accounts", "purpose": "Creator payout bank accounts", "notes": "`creator_id` PK, `bank_name`, `account_number_hash`, `encrypted_account_number`, `account_holder_name`" },
+      { "name": "creator_profiles", "purpose": "Creator profiles", "notes": "`user_id` PK, `bio`, `headline`, `payout_eligible`, `trusted_at`, `approved_course_count`, `upheld_report_count`, `suspended_at`" },
+      { "name": "payout_accounts", "purpose": "Creator payout bank accounts", "notes": "`id` PK, `creator_id`, `bank_code`, `account_number`, `account_holder_name`, `is_default`. Never in a list response and never logged (BR-STUDIO-09)" },
       { "name": "course_drafts", "purpose": "In-flight course authoring drafts", "notes": "`id` PK, `creator_id`, `title`, `description`, `units` jsonb, `status`" },
-      { "name": "submissions", "purpose": "Course submissions undergoing review", "notes": "`id` PK, `draft_id`, `status`, `gate1_report` jsonb, `gate2_required`, `submitted_by`" },
+      { "name": "submissions", "purpose": "Course submissions undergoing review", "notes": "`id` PK, `draft_id`, `version`, `status`, `submitted_by`, `reviewer_id`, `verification_report` jsonb, `gate2_required`, `gate2_reason`" },
       { "name": "listings", "purpose": "Course pricing and catalogue listings", "notes": "`course_id` PK, `creator_id`, `pricing_model`, `price_vnd`, `revenue_share_bps`, `status`" },
       { "name": "purchases", "purpose": "User course purchases and free claims", "notes": "`id` PK, `user_id`, `course_id`, `price_paid_vnd`, `status`, `refund_reason`" },
-      { "name": "creator_ledger", "purpose": "Double-entry accounting ledger for creator earnings", "notes": "`id` PK, `creator_id`, `entry_type`, `amount_vnd`, `balance_after_vnd`, `reference_id`" }
+      { "name": "creator_ledger", "purpose": "Double-entry accounting ledger for creator earnings", "notes": "`id` PK, `creator_id`, `entry_type`, `amount_vnd`, `balance_after_vnd`, `reference_id`" },
+      { "name": "takedowns", "purpose": "Community courses removed from sale, and why", "notes": "`id` PK, `course_id`, `actor_id`, `reason`, `reinstated_at`, `reinstated_by`. Kept as a record because when, by whom and on what grounds is what anybody asks afterwards" }
     ],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/studio/creator/profile", "permission": "self", "purpose": "Get current creator profile", "success": "200" },

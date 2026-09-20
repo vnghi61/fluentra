@@ -22,6 +22,7 @@ import (
 // Permissions required by studio and moderation operations.
 const (
 	PermModerationRead = "moderation.read"
+	PermModerationAct  = "moderation.act"
 	PermContentReview  = "content.review"
 	PermContentPublish = "content.publish"
 )
@@ -33,6 +34,13 @@ type Guard interface {
 
 // StudioService describes use cases needed by HTTP handlers.
 type StudioService interface {
+	// Moderation, beyond approving and rejecting: a course already published
+	// can be taken down, and a creator can be stopped from publishing more.
+	TakedownCourse(ctx context.Context, actorID, courseID uuid.UUID, reason string) (*domain.Takedown, error)
+	ReinstateCourse(ctx context.Context, actorID, courseID uuid.UUID) (*domain.Takedown, error)
+	SuspendCreator(ctx context.Context, creatorID uuid.UUID, reason string) (*domain.CreatorProfile, error)
+	ReinstateCreator(ctx context.Context, creatorID uuid.UUID) (*domain.CreatorProfile, error)
+
 	GetCreatorProfile(ctx context.Context, userID uuid.UUID) (*domain.CreatorProfile, error)
 	UpsertCreatorProfile(ctx context.Context, userID uuid.UUID, bio, headline string) (*domain.CreatorProfile, error)
 	GetPayoutAccount(ctx context.Context, creatorID uuid.UUID) (*domain.PayoutAccount, error)
@@ -111,6 +119,10 @@ func (h *Handler) ModerationRoutes(router chi.Router) {
 	router.Get("/moderation/courses", h.listModerationQueue)
 	router.Post("/moderation/courses/{id}/approve", h.approveCourse)
 	router.Post("/moderation/courses/{id}/reject", h.rejectCourse)
+	router.Post("/moderation/courses/{id}/takedown", h.takedownCourse)
+	router.Post("/moderation/courses/{id}/reinstate", h.reinstateCourse)
+	router.Post("/moderation/creators/{id}/suspend", h.suspendCreator)
+	router.Post("/moderation/creators/{id}/reinstate", h.reinstateCreator)
 }
 
 // ---------------------------------------------------------------- DTOs
@@ -827,4 +839,164 @@ func (h *Handler) requestPayout(w http.ResponseWriter, r *http.Request) {
 		SentAt:        payout.SentAt,
 		CreatedAt:     payout.CreatedAt,
 	})
+}
+
+// ------------------------------------------------- Moderation: takedowns
+
+// ReasonRequestBody carries why a moderator acted. A takedown or a suspension
+// with no reason is one nobody can review or undo fairly.
+type ReasonRequestBody struct {
+	Reason string `json:"reason"`
+}
+
+// TakedownResponse is a course removed from sale, and why.
+type TakedownResponse struct {
+	ID           uuid.UUID  `json:"id"`
+	CourseID     uuid.UUID  `json:"course_id"`
+	Reason       string     `json:"reason"`
+	ReinstatedAt *time.Time `json:"reinstated_at"`
+	CreatedAt    time.Time  `json:"created_at"`
+}
+
+func toTakedownResponse(t *domain.Takedown) TakedownResponse {
+	return TakedownResponse{
+		ID: t.ID, CourseID: t.CourseID, Reason: t.Reason,
+		ReinstatedAt: t.ReinstatedAt, CreatedAt: t.CreatedAt,
+	}
+}
+
+// takedownCourse removes a community course from sale.
+//
+// Learners who already bought it keep it (BR-STUDIO-04): a takedown is not a
+// refund, and revoking what somebody paid for because somebody else complained
+// is a different decision with a different owner.
+func (h *Handler) takedownCourse(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if h.guard != nil {
+		if err := h.guard.Require(ctx, PermModerationAct); err != nil {
+			httpx.WriteProblem(w, r, err)
+			return
+		}
+	}
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required"))
+		return
+	}
+	courseID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid course ID"))
+		return
+	}
+	var req ReasonRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_BODY", "Failed to parse request body"))
+		return
+	}
+
+	takedown, err := h.svc.TakedownCourse(ctx, actor.UserID, courseID, req.Reason)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, toTakedownResponse(takedown))
+}
+
+// reinstateCourse puts a taken-down course back on sale.
+func (h *Handler) reinstateCourse(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if h.guard != nil {
+		if err := h.guard.Require(ctx, PermModerationAct); err != nil {
+			httpx.WriteProblem(w, r, err)
+			return
+		}
+	}
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required"))
+		return
+	}
+	courseID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid course ID"))
+		return
+	}
+
+	takedown, err := h.svc.ReinstateCourse(ctx, actor.UserID, courseID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, toTakedownResponse(takedown))
+}
+
+// ------------------------------------------------ Moderation: creators
+
+// CreatorModerationResponse is a creator's standing after a moderator acted.
+type CreatorModerationResponse struct {
+	UserID          uuid.UUID  `json:"user_id"`
+	SuspendedAt     *time.Time `json:"suspended_at"`
+	SuspendedReason *string    `json:"suspended_reason"`
+	Trusted         bool       `json:"trusted"`
+}
+
+func toCreatorModerationResponse(p *domain.CreatorProfile) CreatorModerationResponse {
+	return CreatorModerationResponse{
+		UserID:          p.UserID,
+		SuspendedAt:     p.SuspendedAt,
+		SuspendedReason: p.SuspendedReason,
+		Trusted:         p.Trusted(),
+	}
+}
+
+// suspendCreator stops a creator submitting or selling. Their published
+// courses stay readable for the learners who bought them.
+func (h *Handler) suspendCreator(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if h.guard != nil {
+		if err := h.guard.Require(ctx, PermModerationAct); err != nil {
+			httpx.WriteProblem(w, r, err)
+			return
+		}
+	}
+	creatorID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid creator ID"))
+		return
+	}
+	var req ReasonRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_BODY", "Failed to parse request body"))
+		return
+	}
+
+	profile, err := h.svc.SuspendCreator(ctx, creatorID, req.Reason)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, toCreatorModerationResponse(profile))
+}
+
+// reinstateCreator lifts a suspension. Trust is not restored with it.
+func (h *Handler) reinstateCreator(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if h.guard != nil {
+		if err := h.guard.Require(ctx, PermModerationAct); err != nil {
+			httpx.WriteProblem(w, r, err)
+			return
+		}
+	}
+	creatorID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid creator ID"))
+		return
+	}
+
+	profile, err := h.svc.ReinstateCreator(ctx, creatorID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, toCreatorModerationResponse(profile))
 }

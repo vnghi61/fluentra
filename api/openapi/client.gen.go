@@ -1581,6 +1581,13 @@ type ClientInterface interface {
 	// Corresponds with POST /moderation/courses/{id}/approve (the `ModerationApproveCourse` operationId).
 	ModerationApproveCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ModerationReinstateCourse Put a taken-down course back on sale.
+	//
+	// Lifts an open takedown and returns the listing to active. Reinstating a course that is not down is a 404 rather than a silent success.
+	//
+	// Corresponds with POST /moderation/courses/{id}/reinstate (the `ModerationReinstateCourse` operationId).
+	ModerationReinstateCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ModerationRejectCourseWithBody Reject or request changes on course submission.
 	//
 	// Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
@@ -1598,6 +1605,49 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /moderation/courses/{id}/reject (the `ModerationRejectCourse` operationId).
 	ModerationRejectCourse(ctx context.Context, id openapi_types.UUID, body ModerationRejectCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ModerationTakedownCourseWithBody Remove a community course from sale.
+	//
+	// Takes a published community course down. Learners who already bought it keep it (BR-STUDIO-04): a takedown is not a refund, and revoking what somebody paid for because somebody else complained is a different decision with a different owner. It counts against the creator, who loses trust and is reviewed again.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /moderation/courses/{id}/takedown (the `ModerationTakedownCourse` operationId).
+	ModerationTakedownCourseWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ModerationTakedownCourse Remove a community course from sale.
+	//
+	// Takes a published community course down. Learners who already bought it keep it (BR-STUDIO-04): a takedown is not a refund, and revoking what somebody paid for because somebody else complained is a different decision with a different owner. It counts against the creator, who loses trust and is reviewed again.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /moderation/courses/{id}/takedown (the `ModerationTakedownCourse` operationId).
+	ModerationTakedownCourse(ctx context.Context, id openapi_types.UUID, body ModerationTakedownCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ModerationReinstateCreator Lift a creator suspension.
+	//
+	// Lets a suspended creator submit and sell again. Trust is not restored with it: a creator who was suspended goes back through review.
+	//
+	// Corresponds with POST /moderation/creators/{id}/reinstate (the `ModerationReinstateCreator` operationId).
+	ModerationReinstateCreator(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ModerationSuspendCreatorWithBody Stop a creator submitting or selling.
+	//
+	// Suspends a creator. Their published courses stay readable for the learners who bought them, and their trust is cleared: reinstating them later does not restore it, so they go back through review.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /moderation/creators/{id}/suspend (the `ModerationSuspendCreator` operationId).
+	ModerationSuspendCreatorWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ModerationSuspendCreator Stop a creator submitting or selling.
+	//
+	// Suspends a creator. Their published courses stay readable for the learners who bought them, and their trust is cleared: reinstating them later does not restore it, so they go back through review.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /moderation/creators/{id}/suspend (the `ModerationSuspendCreator` operationId).
+	ModerationSuspendCreator(ctx context.Context, id openapi_types.UUID, body ModerationSuspendCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SystemPing Check API dependency connectivity.
 	//
@@ -5152,6 +5202,23 @@ func (c *Client) ModerationApproveCourse(ctx context.Context, id openapi_types.U
 	return c.Client.Do(req)
 }
 
+// ModerationReinstateCourse Put a taken-down course back on sale.
+//
+// Lifts an open takedown and returns the listing to active. Reinstating a course that is not down is a 404 rather than a silent success.
+//
+// Corresponds with POST /moderation/courses/{id}/reinstate (the `ModerationReinstateCourse` operationId).
+func (c *Client) ModerationReinstateCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewModerationReinstateCourseRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ModerationRejectCourseWithBody Reject or request changes on course submission.
 //
 // Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
@@ -5180,6 +5247,99 @@ func (c *Client) ModerationRejectCourseWithBody(ctx context.Context, id openapi_
 // Corresponds with POST /moderation/courses/{id}/reject (the `ModerationRejectCourse` operationId).
 func (c *Client) ModerationRejectCourse(ctx context.Context, id openapi_types.UUID, body ModerationRejectCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewModerationRejectCourseRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ModerationTakedownCourseWithBody Remove a community course from sale.
+//
+// Takes a published community course down. Learners who already bought it keep it (BR-STUDIO-04): a takedown is not a refund, and revoking what somebody paid for because somebody else complained is a different decision with a different owner. It counts against the creator, who loses trust and is reviewed again.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /moderation/courses/{id}/takedown (the `ModerationTakedownCourse` operationId).
+func (c *Client) ModerationTakedownCourseWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewModerationTakedownCourseRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ModerationTakedownCourse Remove a community course from sale.
+//
+// Takes a published community course down. Learners who already bought it keep it (BR-STUDIO-04): a takedown is not a refund, and revoking what somebody paid for because somebody else complained is a different decision with a different owner. It counts against the creator, who loses trust and is reviewed again.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /moderation/courses/{id}/takedown (the `ModerationTakedownCourse` operationId).
+func (c *Client) ModerationTakedownCourse(ctx context.Context, id openapi_types.UUID, body ModerationTakedownCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewModerationTakedownCourseRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ModerationReinstateCreator Lift a creator suspension.
+//
+// Lets a suspended creator submit and sell again. Trust is not restored with it: a creator who was suspended goes back through review.
+//
+// Corresponds with POST /moderation/creators/{id}/reinstate (the `ModerationReinstateCreator` operationId).
+func (c *Client) ModerationReinstateCreator(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewModerationReinstateCreatorRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ModerationSuspendCreatorWithBody Stop a creator submitting or selling.
+//
+// Suspends a creator. Their published courses stay readable for the learners who bought them, and their trust is cleared: reinstating them later does not restore it, so they go back through review.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /moderation/creators/{id}/suspend (the `ModerationSuspendCreator` operationId).
+func (c *Client) ModerationSuspendCreatorWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewModerationSuspendCreatorRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ModerationSuspendCreator Stop a creator submitting or selling.
+//
+// Suspends a creator. Their published courses stay readable for the learners who bought them, and their trust is cleared: reinstating them later does not restore it, so they go back through review.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /moderation/creators/{id}/suspend (the `ModerationSuspendCreator` operationId).
+func (c *Client) ModerationSuspendCreator(ctx context.Context, id openapi_types.UUID, body ModerationSuspendCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewModerationSuspendCreatorRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -11441,6 +11601,40 @@ func NewModerationApproveCourseRequest(server string, id openapi_types.UUID) (*h
 	return req, nil
 }
 
+// NewModerationReinstateCourseRequest constructs an http.Request for the ModerationReinstateCourse method
+func NewModerationReinstateCourseRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/moderation/courses/%s/reinstate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewModerationRejectCourseRequest calls the generic ModerationRejectCourse builder with application/json body
 func NewModerationRejectCourseRequest(server string, id openapi_types.UUID, body ModerationRejectCourseJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -11469,6 +11663,134 @@ func NewModerationRejectCourseRequestWithBody(server string, id openapi_types.UU
 	}
 
 	operationPath := fmt.Sprintf("/moderation/courses/%s/reject", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewModerationTakedownCourseRequest calls the generic ModerationTakedownCourse builder with application/json body
+func NewModerationTakedownCourseRequest(server string, id openapi_types.UUID, body ModerationTakedownCourseJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewModerationTakedownCourseRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewModerationTakedownCourseRequestWithBody constructs an http.Request for the ModerationTakedownCourse method, with any body, and a specified content type
+func NewModerationTakedownCourseRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/moderation/courses/%s/takedown", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewModerationReinstateCreatorRequest constructs an http.Request for the ModerationReinstateCreator method
+func NewModerationReinstateCreatorRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/moderation/creators/%s/reinstate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewModerationSuspendCreatorRequest calls the generic ModerationSuspendCreator builder with application/json body
+func NewModerationSuspendCreatorRequest(server string, id openapi_types.UUID, body ModerationSuspendCreatorJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewModerationSuspendCreatorRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewModerationSuspendCreatorRequestWithBody constructs an http.Request for the ModerationSuspendCreator method, with any body, and a specified content type
+func NewModerationSuspendCreatorRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/moderation/creators/%s/suspend", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -14748,6 +15070,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /moderation/courses/{id}/approve (the `ModerationApproveCourse` operationId).
 	ModerationApproveCourseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*ModerationApproveCourseResponse, error)
 
+	// ModerationReinstateCourseWithResponse Put a taken-down course back on sale.
+	//
+	// Lifts an open takedown and returns the listing to active. Reinstating a course that is not down is a 404 rather than a silent success.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /moderation/courses/{id}/reinstate (the `ModerationReinstateCourse` operationId).
+	ModerationReinstateCourseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*ModerationReinstateCourseResponse, error)
+
 	// ModerationRejectCourseWithBodyWithResponse Reject or request changes on course submission.
 	//
 	// Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
@@ -14765,6 +15096,51 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /moderation/courses/{id}/reject (the `ModerationRejectCourse` operationId).
 	ModerationRejectCourseWithResponse(ctx context.Context, id openapi_types.UUID, body ModerationRejectCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*ModerationRejectCourseResponse, error)
+
+	// ModerationTakedownCourseWithBodyWithResponse Remove a community course from sale.
+	//
+	// Takes a published community course down. Learners who already bought it keep it (BR-STUDIO-04): a takedown is not a refund, and revoking what somebody paid for because somebody else complained is a different decision with a different owner. It counts against the creator, who loses trust and is reviewed again.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /moderation/courses/{id}/takedown (the `ModerationTakedownCourse` operationId).
+	ModerationTakedownCourseWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModerationTakedownCourseResponse, error)
+
+	// ModerationTakedownCourseWithResponse Remove a community course from sale.
+	//
+	// Takes a published community course down. Learners who already bought it keep it (BR-STUDIO-04): a takedown is not a refund, and revoking what somebody paid for because somebody else complained is a different decision with a different owner. It counts against the creator, who loses trust and is reviewed again.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /moderation/courses/{id}/takedown (the `ModerationTakedownCourse` operationId).
+	ModerationTakedownCourseWithResponse(ctx context.Context, id openapi_types.UUID, body ModerationTakedownCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*ModerationTakedownCourseResponse, error)
+
+	// ModerationReinstateCreatorWithResponse Lift a creator suspension.
+	//
+	// Lets a suspended creator submit and sell again. Trust is not restored with it: a creator who was suspended goes back through review.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /moderation/creators/{id}/reinstate (the `ModerationReinstateCreator` operationId).
+	ModerationReinstateCreatorWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*ModerationReinstateCreatorResponse, error)
+
+	// ModerationSuspendCreatorWithBodyWithResponse Stop a creator submitting or selling.
+	//
+	// Suspends a creator. Their published courses stay readable for the learners who bought them, and their trust is cleared: reinstating them later does not restore it, so they go back through review.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /moderation/creators/{id}/suspend (the `ModerationSuspendCreator` operationId).
+	ModerationSuspendCreatorWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModerationSuspendCreatorResponse, error)
+
+	// ModerationSuspendCreatorWithResponse Stop a creator submitting or selling.
+	//
+	// Suspends a creator. Their published courses stay readable for the learners who bought them, and their trust is cleared: reinstating them later does not restore it, so they go back through review.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /moderation/creators/{id}/suspend (the `ModerationSuspendCreator` operationId).
+	ModerationSuspendCreatorWithResponse(ctx context.Context, id openapi_types.UUID, body ModerationSuspendCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*ModerationSuspendCreatorResponse, error)
 
 	// SystemPingWithResponse Check API dependency connectivity.
 	//
@@ -24231,6 +24607,82 @@ func (r ModerationApproveCourseResponse) ContentType() string {
 	return ""
 }
 
+// ModerationReinstateCourseResponse200Headers the declared response headers of an HTTP 200 response for ModerationReinstateCourse
+type ModerationReinstateCourseResponse200Headers struct {
+	XRequestId *string
+}
+
+type ModerationReinstateCourseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Takedown
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ModerationReinstateCourseResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ModerationReinstateCourseResponse) GetJSON200() *Takedown {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ModerationReinstateCourseResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ModerationReinstateCourseResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ModerationReinstateCourseResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ModerationReinstateCourseResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ModerationReinstateCourseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ModerationReinstateCourseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ModerationReinstateCourseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ModerationReinstateCourseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ModerationRejectCourseResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -24301,6 +24753,248 @@ func (r ModerationRejectCourseResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ModerationRejectCourseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ModerationTakedownCourseResponse200Headers the declared response headers of an HTTP 200 response for ModerationTakedownCourse
+type ModerationTakedownCourseResponse200Headers struct {
+	XRequestId *string
+}
+
+type ModerationTakedownCourseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Takedown
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ModerationTakedownCourseResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ModerationTakedownCourseResponse) GetJSON200() *Takedown {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ModerationTakedownCourseResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ModerationTakedownCourseResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ModerationTakedownCourseResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ModerationTakedownCourseResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ModerationTakedownCourseResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ModerationTakedownCourseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ModerationTakedownCourseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ModerationTakedownCourseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ModerationTakedownCourseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ModerationReinstateCreatorResponse200Headers the declared response headers of an HTTP 200 response for ModerationReinstateCreator
+type ModerationReinstateCreatorResponse200Headers struct {
+	XRequestId *string
+}
+
+type ModerationReinstateCreatorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CreatorModeration
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ModerationReinstateCreatorResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ModerationReinstateCreatorResponse) GetJSON200() *CreatorModeration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ModerationReinstateCreatorResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ModerationReinstateCreatorResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ModerationReinstateCreatorResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ModerationReinstateCreatorResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ModerationReinstateCreatorResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ModerationReinstateCreatorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ModerationReinstateCreatorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ModerationReinstateCreatorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ModerationSuspendCreatorResponse200Headers the declared response headers of an HTTP 200 response for ModerationSuspendCreator
+type ModerationSuspendCreatorResponse200Headers struct {
+	XRequestId *string
+}
+
+type ModerationSuspendCreatorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CreatorModeration
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ModerationSuspendCreatorResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ModerationSuspendCreatorResponse) GetJSON200() *CreatorModeration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ModerationSuspendCreatorResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ModerationSuspendCreatorResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ModerationSuspendCreatorResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ModerationSuspendCreatorResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ModerationSuspendCreatorResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ModerationSuspendCreatorResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ModerationSuspendCreatorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ModerationSuspendCreatorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ModerationSuspendCreatorResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -29479,6 +30173,21 @@ func (c *ClientWithResponses) ModerationApproveCourseWithResponse(ctx context.Co
 	return ParseModerationApproveCourseResponse(rsp)
 }
 
+// ModerationReinstateCourseWithResponse Put a taken-down course back on sale.
+//
+// Lifts an open takedown and returns the listing to active. Reinstating a course that is not down is a 404 rather than a silent success.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /moderation/courses/{id}/reinstate (the `ModerationReinstateCourse` operationId).
+func (c *ClientWithResponses) ModerationReinstateCourseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*ModerationReinstateCourseResponse, error) {
+	rsp, err := c.ModerationReinstateCourse(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseModerationReinstateCourseResponse(rsp)
+}
+
 // ModerationRejectCourseWithBodyWithResponse Reject or request changes on course submission.
 //
 // Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
@@ -29507,6 +30216,81 @@ func (c *ClientWithResponses) ModerationRejectCourseWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseModerationRejectCourseResponse(rsp)
+}
+
+// ModerationTakedownCourseWithBodyWithResponse Remove a community course from sale.
+//
+// Takes a published community course down. Learners who already bought it keep it (BR-STUDIO-04): a takedown is not a refund, and revoking what somebody paid for because somebody else complained is a different decision with a different owner. It counts against the creator, who loses trust and is reviewed again.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /moderation/courses/{id}/takedown (the `ModerationTakedownCourse` operationId).
+func (c *ClientWithResponses) ModerationTakedownCourseWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModerationTakedownCourseResponse, error) {
+	rsp, err := c.ModerationTakedownCourseWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseModerationTakedownCourseResponse(rsp)
+}
+
+// ModerationTakedownCourseWithResponse Remove a community course from sale.
+//
+// Takes a published community course down. Learners who already bought it keep it (BR-STUDIO-04): a takedown is not a refund, and revoking what somebody paid for because somebody else complained is a different decision with a different owner. It counts against the creator, who loses trust and is reviewed again.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /moderation/courses/{id}/takedown (the `ModerationTakedownCourse` operationId).
+func (c *ClientWithResponses) ModerationTakedownCourseWithResponse(ctx context.Context, id openapi_types.UUID, body ModerationTakedownCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*ModerationTakedownCourseResponse, error) {
+	rsp, err := c.ModerationTakedownCourse(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseModerationTakedownCourseResponse(rsp)
+}
+
+// ModerationReinstateCreatorWithResponse Lift a creator suspension.
+//
+// Lets a suspended creator submit and sell again. Trust is not restored with it: a creator who was suspended goes back through review.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /moderation/creators/{id}/reinstate (the `ModerationReinstateCreator` operationId).
+func (c *ClientWithResponses) ModerationReinstateCreatorWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*ModerationReinstateCreatorResponse, error) {
+	rsp, err := c.ModerationReinstateCreator(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseModerationReinstateCreatorResponse(rsp)
+}
+
+// ModerationSuspendCreatorWithBodyWithResponse Stop a creator submitting or selling.
+//
+// Suspends a creator. Their published courses stay readable for the learners who bought them, and their trust is cleared: reinstating them later does not restore it, so they go back through review.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /moderation/creators/{id}/suspend (the `ModerationSuspendCreator` operationId).
+func (c *ClientWithResponses) ModerationSuspendCreatorWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModerationSuspendCreatorResponse, error) {
+	rsp, err := c.ModerationSuspendCreatorWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseModerationSuspendCreatorResponse(rsp)
+}
+
+// ModerationSuspendCreatorWithResponse Stop a creator submitting or selling.
+//
+// Suspends a creator. Their published courses stay readable for the learners who bought them, and their trust is cleared: reinstating them later does not restore it, so they go back through review.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /moderation/creators/{id}/suspend (the `ModerationSuspendCreator` operationId).
+func (c *ClientWithResponses) ModerationSuspendCreatorWithResponse(ctx context.Context, id openapi_types.UUID, body ModerationSuspendCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*ModerationSuspendCreatorResponse, error) {
+	rsp, err := c.ModerationSuspendCreator(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseModerationSuspendCreatorResponse(rsp)
 }
 
 // SystemPingWithResponse Check API dependency connectivity.
@@ -38479,6 +39263,73 @@ func ParseModerationApproveCourseResponse(rsp *http.Response) (*ModerationApprov
 	return response, nil
 }
 
+// ParseModerationReinstateCourseResponse parses an HTTP response from a ModerationReinstateCourseWithResponse call
+func ParseModerationReinstateCourseResponse(rsp *http.Response) (*ModerationReinstateCourseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ModerationReinstateCourseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Takedown
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ModerationReinstateCourseResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseModerationRejectCourseResponse parses an HTTP response from a ModerationRejectCourseWithResponse call
 func ParseModerationRejectCourseResponse(rsp *http.Response) (*ModerationRejectCourseResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -38535,6 +39386,221 @@ func ParseModerationRejectCourseResponse(rsp *http.Response) (*ModerationRejectC
 		}
 		response.ApplicationproblemJSON500 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseModerationTakedownCourseResponse parses an HTTP response from a ModerationTakedownCourseWithResponse call
+func ParseModerationTakedownCourseResponse(rsp *http.Response) (*ModerationTakedownCourseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ModerationTakedownCourseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Takedown
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ModerationTakedownCourseResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseModerationReinstateCreatorResponse parses an HTTP response from a ModerationReinstateCreatorWithResponse call
+func ParseModerationReinstateCreatorResponse(rsp *http.Response) (*ModerationReinstateCreatorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ModerationReinstateCreatorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CreatorModeration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ModerationReinstateCreatorResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseModerationSuspendCreatorResponse parses an HTTP response from a ModerationSuspendCreatorWithResponse call
+func ParseModerationSuspendCreatorResponse(rsp *http.Response) (*ModerationSuspendCreatorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ModerationSuspendCreatorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CreatorModeration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ModerationSuspendCreatorResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil

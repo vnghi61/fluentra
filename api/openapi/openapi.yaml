@@ -6973,6 +6973,171 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '500': { $ref: '#/components/responses/InternalServerError' }
+  /moderation/courses/{id}/takedown:
+    post:
+      tags: [moderation]
+      operationId: moderationTakedownCourse
+      summary: Remove a community course from sale.
+      description: >-
+        Takes a published community course down. Learners who already bought it keep it
+        (BR-STUDIO-04): a takedown is not a refund, and revoking what somebody paid for because
+        somebody else complained is a different decision with a different owner. It counts
+        against the creator, who loses trust and is reviewed again.
+      x-permission: moderation.act
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Course ID.
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModerationReasonRequest'
+            example: {"reason": "plagiarised from a textbook"}
+      responses:
+        '200':
+          description: The course is down.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Takedown'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345680", "course_id": "0199a1c2-3d4e-7f80-9abc-def012345640", "reason": "plagiarised from a textbook", "reinstated_at": null, "created_at": "2026-09-20T12:00:00Z"}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /moderation/courses/{id}/reinstate:
+    post:
+      tags: [moderation]
+      operationId: moderationReinstateCourse
+      summary: Put a taken-down course back on sale.
+      description: >-
+        Lifts an open takedown and returns the listing to active. Reinstating a course that is
+        not down is a 404 rather than a silent success.
+      x-permission: moderation.act
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Course ID.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The course is back on sale.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Takedown'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345680", "course_id": "0199a1c2-3d4e-7f80-9abc-def012345640", "reason": "plagiarised from a textbook", "reinstated_at": "2026-09-21T09:00:00Z", "created_at": "2026-09-20T12:00:00Z"}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /moderation/creators/{id}/suspend:
+    post:
+      tags: [moderation]
+      operationId: moderationSuspendCreator
+      summary: Stop a creator submitting or selling.
+      description: >-
+        Suspends a creator. Their published courses stay readable for the learners who bought
+        them, and their trust is cleared: reinstating them later does not restore it, so they
+        go back through review.
+      x-permission: moderation.act
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Creator user ID.
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModerationReasonRequest'
+            example: {"reason": "repeated plagiarism across three courses"}
+      responses:
+        '200':
+          description: The creator is suspended.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatorModeration'
+              example: {"user_id": "0199a1c2-3d4e-7f80-9abc-def012345601", "suspended_at": "2026-09-20T12:00:00Z", "suspended_reason": "repeated plagiarism across three courses", "trusted": false}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /moderation/creators/{id}/reinstate:
+    post:
+      tags: [moderation]
+      operationId: moderationReinstateCreator
+      summary: Lift a creator suspension.
+      description: >-
+        Lets a suspended creator submit and sell again. Trust is not restored with it: a creator
+        who was suspended goes back through review.
+      x-permission: moderation.act
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Creator user ID.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The suspension is lifted.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatorModeration'
+              example: {"user_id": "0199a1c2-3d4e-7f80-9abc-def012345601", "suspended_at": null, "suspended_reason": null, "trusted": false}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /moderation/courses:
     get:
       tags: [moderation]
@@ -7602,6 +7767,12 @@ components:
       $ref: ./components/studio.yaml#/PayoutResponse
     AdminPayoutList:
       $ref: ./components/studio.yaml#/AdminPayoutList
+    Takedown:
+      $ref: ./components/studio.yaml#/Takedown
+    CreatorModeration:
+      $ref: ./components/studio.yaml#/CreatorModeration
+    ModerationReasonRequest:
+      $ref: ./components/studio.yaml#/ModerationReasonRequest
     FulfillPayoutRequest:
       $ref: ./components/studio.yaml#/FulfillPayoutRequest
     BillingOrder:

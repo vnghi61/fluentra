@@ -6,7 +6,7 @@ status: ACTIVE
 phase: 3
 owner: "@commerce-team"
 schema: studio
-tables: [creator_profiles, payout_accounts, course_drafts, submissions, listings, purchases, creator_ledger]
+tables: [creator_profiles, payout_accounts, course_drafts, submissions, listings, purchases, creator_ledger, takedowns]
 depends_on: [content, lesson, learning, payment, job]
 depended_on_by: [admin, lesson, learning]
 spec_version: 1.0.0
@@ -93,13 +93,14 @@ Migrations: `db/migrations/studio/` · Queries: `db/queries/studio/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
-| `studio.creator_profiles` | Creator profiles | `user_id` PK, `display_name`, `bio`, `headline`, `trusted_at`, `upheld_report_count` |
-| `studio.payout_accounts` | Creator payout bank accounts | `creator_id` PK, `bank_name`, `account_number_hash`, `encrypted_account_number`, `account_holder_name` |
+| `studio.creator_profiles` | Creator profiles | `user_id` PK, `bio`, `headline`, `payout_eligible`, `trusted_at`, `approved_course_count`, `upheld_report_count`, `suspended_at` |
+| `studio.payout_accounts` | Creator payout bank accounts | `id` PK, `creator_id`, `bank_code`, `account_number`, `account_holder_name`, `is_default`. Never in a list response and never logged (BR-STUDIO-09) |
 | `studio.course_drafts` | In-flight course authoring drafts | `id` PK, `creator_id`, `title`, `description`, `units` jsonb, `status` |
-| `studio.submissions` | Course submissions undergoing review | `id` PK, `draft_id`, `status`, `gate1_report` jsonb, `gate2_required`, `submitted_by` |
+| `studio.submissions` | Course submissions undergoing review | `id` PK, `draft_id`, `version`, `status`, `submitted_by`, `reviewer_id`, `verification_report` jsonb, `gate2_required`, `gate2_reason` |
 | `studio.listings` | Course pricing and catalogue listings | `course_id` PK, `creator_id`, `pricing_model`, `price_vnd`, `revenue_share_bps`, `status` |
 | `studio.purchases` | User course purchases and free claims | `id` PK, `user_id`, `course_id`, `price_paid_vnd`, `status`, `refund_reason` |
 | `studio.creator_ledger` | Double-entry accounting ledger for creator earnings | `id` PK, `creator_id`, `entry_type`, `amount_vnd`, `balance_after_vnd`, `reference_id` |
+| `studio.takedowns` | Community courses removed from sale, and why | `id` PK, `course_id`, `actor_id`, `reason`, `reinstated_at`, `reinstated_by`. Kept as a record because when, by whom and on what grounds is what anybody asks afterwards |
 
 <!-- END GENERATED: schema -->
 

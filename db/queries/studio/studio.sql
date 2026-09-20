@@ -1,5 +1,5 @@
 -- name: GetCreatorProfile :one
-SELECT user_id, bio, headline, payout_eligible, created_at, updated_at
+SELECT user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason
 FROM studio.creator_profiles
 WHERE user_id = $1;
 
@@ -10,13 +10,13 @@ ON CONFLICT (user_id) DO UPDATE
 SET bio = EXCLUDED.bio,
     headline = EXCLUDED.headline,
     updated_at = now()
-RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at;
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason;
 
 -- name: SetPayoutEligible :one
 UPDATE studio.creator_profiles
 SET payout_eligible = $2, updated_at = now()
 WHERE user_id = $1
-RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at;
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason;
 
 -- name: GetPayoutAccountByCreatorID :one
 SELECT id, creator_id, bank_code, account_number, account_holder_name, is_default, created_at, updated_at
@@ -77,24 +77,25 @@ WHERE id = $1
 RETURNING id, owner_id, title, slug, description, cefr_level, topic_taxonomy_id, price_vnd, status, structure, created_at, updated_at;
 
 -- name: CreateSubmission :one
-INSERT INTO studio.submissions (draft_id, version, status, submitted_by, submitted_at, updated_at)
-VALUES ($1, $2, $3, $4, now(), now())
-RETURNING id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at;
+INSERT INTO studio.submissions (
+    draft_id, version, status, submitted_by, gate2_required, gate2_reason, submitted_at, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+RETURNING id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason;
 
 -- name: GetSubmissionByID :one
-SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at
+SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason
 FROM studio.submissions
 WHERE id = $1;
 
 -- name: GetLatestSubmissionByDraftID :one
-SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at
+SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason
 FROM studio.submissions
 WHERE draft_id = $1
 ORDER BY version DESC
 LIMIT 1;
 
 -- name: ListSubmissionsByStatus :many
-SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at
+SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason
 FROM studio.submissions
 WHERE status = $1
 ORDER BY submitted_at ASC
@@ -112,7 +113,7 @@ SET status = $2,
     feedback = $4,
     updated_at = now()
 WHERE id = $1
-RETURNING id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at;
+RETURNING id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason;
 
 -- name: UpdateSubmissionReview :one
 UPDATE studio.submissions
@@ -122,10 +123,10 @@ SET status = $2,
     reviewed_at = now(),
     updated_at = now()
 WHERE id = $1
-RETURNING id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at;
+RETURNING id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason;
 
 -- name: ListPendingVerificationSubmissions :many
-SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at
+SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason
 FROM studio.submissions
 WHERE status IN ('submitted', 'verifying')
 ORDER BY submitted_at ASC
@@ -249,4 +250,73 @@ SELECT COALESCE(SUM(ABS(amount_vnd)), 0)::bigint AS total_paid_out_vnd
 FROM studio.creator_ledger
 WHERE creator_id = $1 AND kind = 'payout';
 
+-- ------------------------------------------------------------- creator trust
 
+-- RecordApprovedCourse counts an approval and grants trust at the third one,
+-- as long as no report against this creator has been upheld. Trust means a
+-- free course of theirs publishes on the automated gate alone.
+-- name: RecordApprovedCourse :one
+UPDATE studio.creator_profiles
+SET approved_course_count = approved_course_count + 1,
+    trusted_at = CASE
+        WHEN trusted_at IS NOT NULL THEN trusted_at
+        WHEN approved_course_count + 1 >= $2 AND upheld_report_count = 0 THEN now()
+        ELSE NULL
+    END,
+    updated_at = now()
+WHERE user_id = $1
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason;
+
+-- RecordUpheldReport counts a report a moderator agreed with and revokes
+-- trust. Being wrong once puts a creator back in front of a human.
+-- name: RecordUpheldReport :one
+UPDATE studio.creator_profiles
+SET upheld_report_count = upheld_report_count + 1,
+    trusted_at = NULL,
+    updated_at = now()
+WHERE user_id = $1
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason;
+
+-- name: SuspendCreator :one
+UPDATE studio.creator_profiles
+SET suspended_at = now(),
+    suspended_reason = $2,
+    trusted_at = NULL,
+    updated_at = now()
+WHERE user_id = $1
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason;
+
+-- name: ReinstateCreator :one
+UPDATE studio.creator_profiles
+SET suspended_at = NULL,
+    suspended_reason = NULL,
+    updated_at = now()
+WHERE user_id = $1
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason;
+
+-- ---------------------------------------------------------------- takedowns
+
+-- name: CreateTakedown :one
+INSERT INTO studio.takedowns (course_id, actor_id, reason)
+VALUES ($1, $2, $3)
+RETURNING id, course_id, actor_id, reason, reinstated_at, reinstated_by, created_at;
+
+-- name: GetOpenTakedownByCourseID :one
+SELECT id, course_id, actor_id, reason, reinstated_at, reinstated_by, created_at
+FROM studio.takedowns
+WHERE course_id = $1 AND reinstated_at IS NULL
+ORDER BY created_at DESC
+LIMIT 1;
+
+-- name: ReinstateTakedown :one
+UPDATE studio.takedowns
+SET reinstated_at = now(),
+    reinstated_by = $2
+WHERE id = $1 AND reinstated_at IS NULL
+RETURNING id, course_id, actor_id, reason, reinstated_at, reinstated_by, created_at;
+
+-- name: SetListingStatus :one
+UPDATE studio.listings
+SET status = $2, updated_at = now()
+WHERE course_id = $1
+RETURNING course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at;

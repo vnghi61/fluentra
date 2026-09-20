@@ -38,6 +38,28 @@ var (
 		"Reviewers cannot approve or reject their own course submissions",
 	)
 
+	// ErrCreatorSuspended means this creator may not submit or sell.
+	ErrCreatorSuspended = apperr.New(
+		apperr.Forbidden,
+		"CREATOR_SUSPENDED",
+		"This creator account is suspended and cannot submit or sell courses",
+	)
+
+	// ErrTakedownNotFound means the course is not currently taken down.
+	ErrTakedownNotFound = apperr.New(
+		apperr.NotFound,
+		"TAKEDOWN_NOT_FOUND",
+		"No open takedown exists for this course",
+	)
+
+	// ErrReasonRequired means a moderator acted without saying why. A takedown
+	// or a suspension with no reason is one nobody can review or undo fairly.
+	ErrReasonRequired = apperr.New(
+		apperr.Validation,
+		"REASON_REQUIRED",
+		"A reason is required",
+	)
+
 	// ErrCannotSubmit means the draft is not in a state that can be submitted.
 	ErrCannotSubmit = apperr.New(
 		apperr.Conflict,
