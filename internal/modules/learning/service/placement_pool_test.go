@@ -56,7 +56,7 @@ func (p *placementAI) Complete(_ context.Context, req ai.Request) (ai.Response, 
 	defer p.mu.Unlock()
 	kind, _ := req.Vars["Kind"].(string)
 	if req.Task == ai.TaskPlacementSolve {
-		if kind == "grammar_tense_choice" {
+		if kind == kindChoice {
 			return ai.Response{Text: solveOptionA}, nil
 		}
 		return ai.Response{Text: `{"answers": {"q1": "A", "q2": "A", "q3": "A"}}`}, nil
@@ -76,7 +76,7 @@ func (p *placementAI) item(kind, level string, n int) string {
 		passage, script, minWords, seconds = bounds[0]-10, bounds[3]+10, 40, 30
 	}
 	switch kind {
-	case "vocabulary", "grammar_tense_choice":
+	case "vocabulary", kindChoice:
 		return fmt.Sprintf(`{"prompt": "Item %d: choose the word.", "options": %s, "correct_option_id": "A",
 			"explanation": %s}`, n, options, explanation)
 	case "reading_comprehension":
@@ -150,11 +150,11 @@ func TestPlacementPool_TopUpAddsFivePerSlotAndPublishesVocabularyAsATenseChoice(
 		assert.True(t, strings.HasPrefix(spec.Slug, "pool-placement-"), spec.Slug)
 		assert.Regexp(t, kebabSlug, spec.Slug)
 		if strings.Contains(spec.Slug, "-vocabulary-") {
-			assert.Equal(t, "grammar_tense_choice", spec.Kind,
+			assert.Equal(t, kindChoice, spec.Kind,
 				"vocabulary questions use the self-contained tense-choice shape and its grader")
 		}
 	}
-	assert.Equal(t, 2*25, kinds["grammar_tense_choice"], "vocabulary and grammar")
+	assert.Equal(t, 2*25, kinds[kindChoice], "vocabulary and grammar")
 	assert.Equal(t, 25, kinds["reading_comprehension"])
 	assert.Equal(t, 25, kinds["listening_comprehension"])
 	assert.Equal(t, 25, kinds["writing_prompt"])

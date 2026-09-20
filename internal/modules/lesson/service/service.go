@@ -72,7 +72,13 @@ type PrerequisiteItem = contract.PrerequisiteItem
 
 // Repository defines data access methods required by the lesson service.
 type Repository interface {
-	ListPublishedCourses(ctx context.Context, level *string, topicTaxonomyID *uuid.UUID, limit, offset int32) ([]*contract.Course, error)
+	ListPublishedCourses(
+		ctx context.Context,
+		level *string,
+		topicTaxonomyID *uuid.UUID,
+		limit,
+		offset int32,
+	) ([]*contract.Course, error)
 	CountPublishedCourses(ctx context.Context, level *string, topicTaxonomyID *uuid.UUID) (int64, error)
 	GetCourseBySlug(ctx context.Context, slug string) (*contract.Course, error)
 	GetPublishedCourseBySlug(ctx context.Context, slug string) (*contract.Course, error)
@@ -404,23 +410,13 @@ func (s *Service) ListCourses(
 		callerID = userID[0]
 	}
 
-	var topicTaxonomyID *uuid.UUID
-	if topic != nil && *topic != "" {
-		if parsed, err := uuid.Parse(*topic); err == nil {
-			topicTaxonomyID = &parsed
-		} else if s.taxonomies != nil {
-			resolved, err := s.taxonomies.ResolveTaxonomyID(ctx, "course_topic", *topic)
-			if err != nil {
-				return nil, 0, err
-			}
-			if resolved == nil {
-				// Topic not found; return empty list
-				return []CourseSummaryDTO{}, 0, nil
-			}
-			topicTaxonomyID = resolved
-		} else {
-			return nil, 0, fmt.Errorf("taxonomy resolver not configured")
-		}
+	topicTaxonomyID, known, err := s.resolveTopic(ctx, topic)
+	if err != nil {
+		return nil, 0, err
+	}
+	if !known {
+		// A topic nobody has tagged anything with: an empty page, not an error.
+		return []CourseSummaryDTO{}, 0, nil
 	}
 
 	normLimit := domain.NormaliseLimit(limit)
@@ -475,7 +471,6 @@ func (s *Service) ListCourses(
 	}
 
 	var data *CatalogueData
-	var err error
 	if s.caches.Catalogue == nil {
 		data, err = loader(ctx)
 	} else {
@@ -487,31 +482,59 @@ func (s *Service) ListCourses(
 
 	courses := make([]CourseSummaryDTO, len(data.Courses))
 	copy(courses, data.Courses)
-	if s.listingReader != nil && len(courses) > 0 {
-		courseIDs := make([]uuid.UUID, len(courses))
-		for i, c := range courses {
-			courseIDs[i] = c.ID
-		}
-		listings, _ := s.listingReader.BatchGetListings(ctx, courseIDs)
-		var ownedMap map[uuid.UUID]bool
-		if callerID != nil && *callerID != uuid.Nil {
-			ownedMap, _ = s.listingReader.BatchHasPurchased(ctx, *callerID, courseIDs)
-		}
-		for i := range courses {
-			if l, ok := listings[courses[i].ID]; ok && l != nil {
-				courses[i].PriceVND = l.PriceVND
-				courses[i].PricingModel = l.PricingModel
-			} else {
-				courses[i].PriceVND = 0
-				courses[i].PricingModel = "free"
-			}
-			if ownedMap != nil && ownedMap[courses[i].ID] {
-				courses[i].Owned = true
-			}
-		}
-	}
+	s.decoratePricing(ctx, courses, callerID)
 
 	return courses, data.Total, nil
+}
+
+// resolveTopic turns a topic — an id or a taxonomy code — into a taxonomy id.
+//
+// `known` is false when the topic resolves to nothing, which is a catalogue
+// with no results rather than a failure.
+func (s *Service) resolveTopic(ctx context.Context, topic *string) (id *uuid.UUID, known bool, err error) {
+	if topic == nil || *topic == "" {
+		return nil, true, nil
+	}
+	if parsed, parseErr := uuid.Parse(*topic); parseErr == nil {
+		return &parsed, true, nil
+	}
+	if s.taxonomies == nil {
+		return nil, false, fmt.Errorf("taxonomy resolver not configured")
+	}
+	resolved, err := s.taxonomies.ResolveTaxonomyID(ctx, "course_topic", *topic)
+	if err != nil {
+		return nil, false, err
+	}
+	if resolved == nil {
+		return nil, false, nil
+	}
+	return resolved, true, nil
+}
+
+// decoratePricing fills in what each course costs and whether the caller owns
+// it. Courses with no listing are ours, and ours are free.
+func (s *Service) decoratePricing(ctx context.Context, courses []CourseSummaryDTO, callerID *uuid.UUID) {
+	if s.listingReader == nil || len(courses) == 0 {
+		return
+	}
+	courseIDs := make([]uuid.UUID, len(courses))
+	for i, c := range courses {
+		courseIDs[i] = c.ID
+	}
+	listings, _ := s.listingReader.BatchGetListings(ctx, courseIDs)
+	var ownedMap map[uuid.UUID]bool
+	if callerID != nil && *callerID != uuid.Nil {
+		ownedMap, _ = s.listingReader.BatchHasPurchased(ctx, *callerID, courseIDs)
+	}
+	for i := range courses {
+		courses[i].PriceVND = 0
+		courses[i].PricingModel = "free"
+		if l, ok := listings[courses[i].ID]; ok && l != nil {
+			courses[i].PriceVND = l.PriceVND
+			courses[i].PricingModel = l.PricingModel
+		}
+		courses[i].Owned = ownedMap[courses[i].ID]
+	}
 }
 
 func (s *Service) catalogueGenerationKey() string {
@@ -554,29 +577,71 @@ func (s *Service) bumpCatalogueGeneration(ctx context.Context) {
 }
 
 // GetCourseDetail returns full course curriculum hierarchy with unlock evaluations.
-func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.UUID) (*CourseDetailDTO, error) {
-	treeKey := cache.Key(s.env, "lesson", "tree", slug, cacheVersion)
+// lockState is what every lesson in a course tree is judged against: whether
+// the learner may open the course at all, which lessons their prerequisites
+// have unlocked, and which they have finished.
+type lockState struct {
+	mayOpen     bool
+	unlockedMap map[uuid.UUID]bool
+	completed   map[uuid.UUID]bool
+	checkPrereq bool
+}
 
-	tree, err := s.loadCourseTree(ctx, treeKey, slug)
+// lessonSummary renders one lesson, locked or not.
+//
+// The paywall comes first: a course the learner has not bought is locked for
+// that reason, and saying "prerequisites not met" instead would send them to
+// study for a lesson they cannot open either way.
+func lessonSummary(l LessonTreeData, locks lockState) LessonSummaryDTO {
+	locked := false
+	var lockReason *string
+	switch {
+	case !locks.mayOpen:
+		locked = true
+		reason := "Purchase required to access"
+		lockReason = &reason
+	case len(l.Prereqs) > 0 && locks.checkPrereq && !locks.unlockedMap[l.ID]:
+		locked = true
+		reason := lockReasonFor(l.Prereqs)
+		lockReason = &reason
+	}
+	return LessonSummaryDTO{
+		ID:               l.ID,
+		UnitID:           l.UnitID,
+		Position:         l.Position,
+		Title:            l.Title,
+		SkillFocus:       l.SkillFocus,
+		EstimatedMinutes: l.EstimatedMinutes,
+		Status:           l.Status,
+		CEFRLevel:        l.CEFRLevel,
+		Locked:           locked,
+		LockReason:       lockReason,
+		Completed:        locks.completed[l.ID],
+	}
+}
+
+// mayOpenCourse asks studio's paywall, treating an unwired reader as open —
+// which is what it is in the worker and in tests that have no studio.
+func (s *Service) mayOpenCourse(ctx context.Context, userID, courseID uuid.UUID) (bool, error) {
+	if s.accessReader == nil {
+		return true, nil
+	}
+	var uID *uuid.UUID
+	if userID != uuid.Nil {
+		uID = &userID
+	}
+	mayOpen, err := s.accessReader.MayOpen(ctx, uID, courseID)
 	if err != nil {
-		return nil, err
+		return false, fmt.Errorf("check course access: %w", err)
 	}
+	return mayOpen, nil
+}
 
-	// Paywall check: BR-STUDIO-05
-	mayOpen := true
-	if s.accessReader != nil {
-		var uID *uuid.UUID
-		if userID != uuid.Nil {
-			uID = &userID
-		}
-		var accessErr error
-		mayOpen, accessErr = s.accessReader.MayOpen(ctx, uID, tree.Course.ID)
-		if accessErr != nil {
-			return nil, fmt.Errorf("check course access: %w", accessErr)
-		}
-	}
-
-	// Batch evaluate unlocking for all lessons with prerequisites
+// unlockedLessons evaluates prerequisites for the whole tree in one call
+// (Trap 3): a per-lesson check is an N+1 over a course.
+func (s *Service) unlockedLessons(
+	ctx context.Context, userID uuid.UUID, tree *CourseTreeData,
+) (map[uuid.UUID]bool, error) {
 	var lessonsToCheck []uuid.UUID
 	for _, u := range tree.Units {
 		for _, l := range u.Lessons {
@@ -585,51 +650,53 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 			}
 		}
 	}
+	if len(lessonsToCheck) == 0 || s.unlocker == nil || userID == uuid.Nil {
+		return nil, nil
+	}
+	unlocked, err := s.unlocker.IsUnlocked(ctx, userID, lessonsToCheck)
+	if err != nil {
+		return nil, fmt.Errorf("check unlock states: %w", err)
+	}
+	return unlocked, nil
+}
 
-	var unlockedMap map[uuid.UUID]bool
-	if len(lessonsToCheck) > 0 && s.unlocker != nil && userID != uuid.Nil {
-		var unlockErr error
-		unlockedMap, unlockErr = s.unlocker.IsUnlocked(ctx, userID, lessonsToCheck)
-		if unlockErr != nil {
-			return nil, fmt.Errorf("check unlock states: %w", unlockErr)
-		}
+// GetCourseDetail returns a course with its units and lesson summaries.
+//
+// Each lesson carries whether it is locked and why: by the paywall when the
+// learner has not bought the course, or by prerequisites they have not met.
+func (s *Service) GetCourseDetail(
+	ctx context.Context, slug string, userID uuid.UUID,
+) (*CourseDetailDTO, error) {
+	treeKey := cache.Key(s.env, "lesson", "tree", slug, cacheVersion)
+
+	tree, err := s.loadCourseTree(ctx, treeKey, slug)
+	if err != nil {
+		return nil, err
+	}
+
+	mayOpen, err := s.mayOpenCourse(ctx, userID, tree.Course.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	unlockedMap, err := s.unlockedLessons(ctx, userID, tree)
+	if err != nil {
+		return nil, err
 	}
 
 	completed := s.completedLessons(ctx, userID)
 
+	locks := lockState{
+		mayOpen:     mayOpen,
+		unlockedMap: unlockedMap,
+		completed:   completed,
+		checkPrereq: s.unlocker != nil && userID != uuid.Nil,
+	}
 	unitDTOs := make([]CourseUnitDTO, len(tree.Units))
 	for i, u := range tree.Units {
 		lessonDTOs := make([]LessonSummaryDTO, len(u.Lessons))
 		for j, l := range u.Lessons {
-			locked := false
-			var lockReason *string
-			if !mayOpen {
-				locked = true
-				reason := "Purchase required to access"
-				lockReason = &reason
-			} else if len(l.Prereqs) > 0 {
-				if s.unlocker != nil && userID != uuid.Nil {
-					unlocked := unlockedMap[l.ID]
-					if !unlocked {
-						locked = true
-						reason := lockReasonFor(l.Prereqs)
-						lockReason = &reason
-					}
-				}
-			}
-			lessonDTOs[j] = LessonSummaryDTO{
-				ID:               l.ID,
-				UnitID:           l.UnitID,
-				Position:         l.Position,
-				Title:            l.Title,
-				SkillFocus:       l.SkillFocus,
-				EstimatedMinutes: l.EstimatedMinutes,
-				Status:           l.Status,
-				CEFRLevel:        l.CEFRLevel,
-				Locked:           locked,
-				LockReason:       lockReason,
-				Completed:        completed[l.ID],
-			}
+			lessonDTOs[j] = lessonSummary(l, locks)
 		}
 		unitDTOs[i] = CourseUnitDTO{
 			ID:          u.ID,

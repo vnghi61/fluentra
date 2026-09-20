@@ -60,37 +60,76 @@ type VerificationReport struct {
 	Failures          []VerificationFailure `json:"failures"`
 }
 
+// The checks a failure is attributed to, named because they appear in the
+// report a creator reads and in the tests that assert it.
+const (
+	checkStructure = "structure"
+	checkSafety    = "safety"
+)
+
 var (
 	emailRegex = regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
+	//nolint:lll // one literal; splitting it would make it unreadable and easy to break
 	phoneRegex = regexp.MustCompile(`(?:\+?84|0)(?:\d{9}|\d{10})\b|\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b`)
 	urlRegex   = regexp.MustCompile(`https?://[^\s]+`)
 )
 
 // ValidateStructureAndSafety runs Check 1 (Structure), Check 2 (Minimum size),
 // Check 3 (Kind allowed), and Check 6 (Language and safety) on the draft.
-func ValidateStructureAndSafety(title, description string, structureRaw []byte) (*CourseStructure, []VerificationFailure, error) {
+// Course shape limits (WO 15 §7.2, checks 1 and 2).
+const (
+	minUnits              = 1
+	maxUnits              = 12
+	minLessonsPerUnit     = 1
+	maxLessonsPerUnit     = 20
+	minActivitiesPerUnit  = 3
+	maxActivitiesPerUnit  = 30
+	minLessonsPerCourse   = 3
+	minActivitiesPerCours = 20
+)
+
+const (
+	checkKindAllowed = "kind_allowed"
+	checkMinimumSize = "minimum_size"
+)
+
+// hasContactDetails reports whether text carries an email address, a phone
+// number or a URL. A course body is not a place for a creator's contact
+// details: it is how a marketplace becomes a directory of ways to pay somebody
+// outside it.
+func hasContactDetails(text string) bool {
+	return emailRegex.MatchString(text) || phoneRegex.MatchString(text) || urlRegex.MatchString(text)
+}
+
+// ValidateStructureAndSafety runs Gate 1's free checks over a draft: the shape
+// of the course, the kinds it uses, and whether any of its text carries contact
+// details.
+//
+// It reports every failure it finds rather than the first, because a creator
+// who fixes one problem per submission round-trips forever.
+func ValidateStructureAndSafety(
+	title, description string, structureRaw []byte,
+) (*CourseStructure, []VerificationFailure, error) {
 	var failures []VerificationFailure
 
-	// Safety check on title & description
-	if emailRegex.MatchString(title) || phoneRegex.MatchString(title) || urlRegex.MatchString(title) {
+	if hasContactDetails(title) {
 		failures = append(failures, VerificationFailure{
-			Check:   "safety",
+			Check:   checkSafety,
 			Message: "Course title contains contact info or URLs",
 		})
 	}
-	if emailRegex.MatchString(description) || phoneRegex.MatchString(description) || urlRegex.MatchString(description) {
+	if hasContactDetails(description) {
 		failures = append(failures, VerificationFailure{
-			Check:   "safety",
+			Check:   checkSafety,
 			Message: "Course description contains contact info or URLs",
 		})
 	}
 
 	if len(structureRaw) == 0 {
-		failures = append(failures, VerificationFailure{
-			Check:   "structure",
+		return nil, append(failures, VerificationFailure{
+			Check:   checkStructure,
 			Message: "Course structure is empty",
-		})
-		return nil, failures, nil
+		}), nil
 	}
 
 	var structure CourseStructure
@@ -98,112 +137,133 @@ func ValidateStructureAndSafety(title, description string, structureRaw []byte) 
 		return nil, nil, fmt.Errorf("unmarshal course structure: %w", err)
 	}
 
-	totalUnits := len(structure.Units)
-	if totalUnits < 1 || totalUnits > 12 {
+	if n := len(structure.Units); n < minUnits || n > maxUnits {
 		failures = append(failures, VerificationFailure{
-			Check:   "structure",
-			Message: fmt.Sprintf("Course must have 1-12 units, found %d", totalUnits),
+			Check:   checkStructure,
+			Message: fmt.Sprintf("Course must have %d-%d units, found %d", minUnits, maxUnits, n),
 		})
 	}
 
-	totalLessons := 0
-	totalActivities := 0
-
+	totalLessons, totalActivities := 0, 0
 	for uIdx, unit := range structure.Units {
-		if strings.TrimSpace(unit.Title) == "" {
-			failures = append(failures, VerificationFailure{
-				UnitIndex: uIdx,
-				Check:     "structure",
-				Message:   fmt.Sprintf("Unit %d has empty title", uIdx+1),
-			})
-		}
-		if emailRegex.MatchString(unit.Title) || phoneRegex.MatchString(unit.Title) || urlRegex.MatchString(unit.Title) {
-			failures = append(failures, VerificationFailure{
-				UnitIndex: uIdx,
-				Check:     "safety",
-				Message:   fmt.Sprintf("Unit %d title contains contact info or URLs", uIdx+1),
-			})
-		}
-
-		unitLessonCount := len(unit.Lessons)
-		if unitLessonCount < 1 || unitLessonCount > 20 {
-			failures = append(failures, VerificationFailure{
-				UnitIndex: uIdx,
-				Check:     "structure",
-				Message:   fmt.Sprintf("Unit %d must have 1-20 lessons, found %d", uIdx+1, unitLessonCount),
-			})
-		}
-		totalLessons += unitLessonCount
-
-		for lIdx, lesson := range unit.Lessons {
-			if strings.TrimSpace(lesson.Title) == "" {
-				failures = append(failures, VerificationFailure{
-					UnitIndex:   uIdx,
-					LessonIndex: lIdx,
-					Check:       "structure",
-					Message:     fmt.Sprintf("Unit %d Lesson %d has empty title", uIdx+1, lIdx+1),
-				})
-			}
-			if emailRegex.MatchString(lesson.Title) || phoneRegex.MatchString(lesson.Title) || urlRegex.MatchString(lesson.Title) {
-				failures = append(failures, VerificationFailure{
-					UnitIndex:   uIdx,
-					LessonIndex: lIdx,
-					Check:       "safety",
-					Message:     fmt.Sprintf("Unit %d Lesson %d title contains contact info or URLs", uIdx+1, lIdx+1),
-				})
-			}
-
-			actCount := len(lesson.Activities)
-			if actCount < 3 || actCount > 30 {
-				failures = append(failures, VerificationFailure{
-					UnitIndex:   uIdx,
-					LessonIndex: lIdx,
-					Check:       "structure",
-					Message:     fmt.Sprintf("Unit %d Lesson %d must have 3-30 activities, found %d", uIdx+1, lIdx+1, actCount),
-				})
-			}
-			totalActivities += actCount
-
-			for aIdx, act := range lesson.Activities {
-				if !IsAllowedActivityKind(act.Kind) {
-					failures = append(failures, VerificationFailure{
-						UnitIndex:     uIdx,
-						LessonIndex:   lIdx,
-						ActivityIndex: aIdx,
-						Kind:          act.Kind,
-						Check:         "kind_allowed",
-						Message:       fmt.Sprintf("Activity kind %q is not supported or permitted", act.Kind),
-					})
-				}
-
-				bodyStr := string(act.Body)
-				if emailRegex.MatchString(bodyStr) || phoneRegex.MatchString(bodyStr) || urlRegex.MatchString(bodyStr) {
-					failures = append(failures, VerificationFailure{
-						UnitIndex:     uIdx,
-						LessonIndex:   lIdx,
-						ActivityIndex: aIdx,
-						Kind:          act.Kind,
-						Check:         "safety",
-						Message:       "Activity body contains prohibited contact details or promotional URLs",
-					})
-				}
-			}
-		}
+		unitFailures, lessons, activities := validateUnit(uIdx, unit)
+		failures = append(failures, unitFailures...)
+		totalLessons += lessons
+		totalActivities += activities
 	}
 
-	// Check 2: Minimum size: at least 3 lessons and at least 20 activities in total
-	if totalLessons < 3 {
+	if totalLessons < minLessonsPerCourse {
 		failures = append(failures, VerificationFailure{
-			Check:   "minimum_size",
-			Message: fmt.Sprintf("Course must have at least 3 lessons in total, found %d", totalLessons),
+			Check: checkMinimumSize,
+			Message: fmt.Sprintf("Course must have at least %d lessons in total, found %d",
+				minLessonsPerCourse, totalLessons),
 		})
 	}
-	if totalActivities < 20 {
+	if totalActivities < minActivitiesPerCours {
 		failures = append(failures, VerificationFailure{
-			Check:   "minimum_size",
-			Message: fmt.Sprintf("Course must have at least 20 activities in total, found %d", totalActivities),
+			Check: checkMinimumSize,
+			Message: fmt.Sprintf("Course must have at least %d activities in total, found %d",
+				minActivitiesPerCours, totalActivities),
 		})
 	}
 
 	return &structure, failures, nil
+}
+
+// validateUnit checks one unit and its lessons, and reports how many lessons
+// and activities it holds so the course totals can be summed.
+func validateUnit(uIdx int, unit UnitDraft) (failures []VerificationFailure, lessons, activities int) {
+	if strings.TrimSpace(unit.Title) == "" {
+		failures = append(failures, VerificationFailure{
+			UnitIndex: uIdx,
+			Check:     checkStructure,
+			Message:   fmt.Sprintf("Unit %d has empty title", uIdx+1),
+		})
+	}
+	if hasContactDetails(unit.Title) {
+		failures = append(failures, VerificationFailure{
+			UnitIndex: uIdx,
+			Check:     checkSafety,
+			Message:   fmt.Sprintf("Unit %d title contains contact info or URLs", uIdx+1),
+		})
+	}
+
+	lessons = len(unit.Lessons)
+	if lessons < minLessonsPerUnit || lessons > maxLessonsPerUnit {
+		failures = append(failures, VerificationFailure{
+			UnitIndex: uIdx,
+			Check:     checkStructure,
+			Message: fmt.Sprintf("Unit %d must have %d-%d lessons, found %d",
+				uIdx+1, minLessonsPerUnit, maxLessonsPerUnit, lessons),
+		})
+	}
+
+	for lIdx, lesson := range unit.Lessons {
+		lessonFailures, count := validateLesson(uIdx, lIdx, lesson)
+		failures = append(failures, lessonFailures...)
+		activities += count
+	}
+	return failures, lessons, activities
+}
+
+// validateLesson checks one lesson and its activities.
+func validateLesson(uIdx, lIdx int, lesson LessonDraft) (failures []VerificationFailure, activities int) {
+	if strings.TrimSpace(lesson.Title) == "" {
+		failures = append(failures, VerificationFailure{
+			UnitIndex:   uIdx,
+			LessonIndex: lIdx,
+			Check:       checkStructure,
+			Message:     fmt.Sprintf("Unit %d Lesson %d has empty title", uIdx+1, lIdx+1),
+		})
+	}
+	if hasContactDetails(lesson.Title) {
+		failures = append(failures, VerificationFailure{
+			UnitIndex:   uIdx,
+			LessonIndex: lIdx,
+			Check:       checkSafety,
+			Message:     fmt.Sprintf("Unit %d Lesson %d title contains contact info or URLs", uIdx+1, lIdx+1),
+		})
+	}
+
+	activities = len(lesson.Activities)
+	if activities < minActivitiesPerUnit || activities > maxActivitiesPerUnit {
+		failures = append(failures, VerificationFailure{
+			UnitIndex:   uIdx,
+			LessonIndex: lIdx,
+			Check:       checkStructure,
+			Message: fmt.Sprintf("Unit %d Lesson %d must have %d-%d activities, found %d",
+				uIdx+1, lIdx+1, minActivitiesPerUnit, maxActivitiesPerUnit, activities),
+		})
+	}
+
+	for aIdx, act := range lesson.Activities {
+		failures = append(failures, validateActivity(uIdx, lIdx, aIdx, act)...)
+	}
+	return failures, activities
+}
+
+// validateActivity checks one activity's kind and its text.
+func validateActivity(uIdx, lIdx, aIdx int, act ActivityDraft) []VerificationFailure {
+	var failures []VerificationFailure
+	if !IsAllowedActivityKind(act.Kind) {
+		failures = append(failures, VerificationFailure{
+			UnitIndex:     uIdx,
+			LessonIndex:   lIdx,
+			ActivityIndex: aIdx,
+			Kind:          act.Kind,
+			Check:         checkKindAllowed,
+			Message:       fmt.Sprintf("Activity kind %q is not supported or permitted", act.Kind),
+		})
+	}
+	if hasContactDetails(string(act.Body)) {
+		failures = append(failures, VerificationFailure{
+			UnitIndex:     uIdx,
+			LessonIndex:   lIdx,
+			ActivityIndex: aIdx,
+			Kind:          act.Kind,
+			Check:         checkSafety,
+			Message:       "Activity body contains prohibited contact details or promotional URLs",
+		})
+	}
+	return failures
 }

@@ -339,7 +339,7 @@ type fakeTaxonomyResolver struct {
 	mapping map[string]*uuid.UUID
 }
 
-func (f *fakeTaxonomyResolver) ResolveTaxonomyID(ctx context.Context, namespace, code string) (*uuid.UUID, error) {
+func (f *fakeTaxonomyResolver) ResolveTaxonomyID(_ context.Context, namespace, code string) (*uuid.UUID, error) {
 	if f.mapping != nil {
 		if id, ok := f.mapping[namespace+":"+code]; ok {
 			return id, nil

@@ -171,7 +171,8 @@ func TestListCoursesReadsTheDocumentedParameters(t *testing.T) {
 	svc := &fakeLessonService{}
 	router := routerFor(t, svc, allowGuard{})
 
-	rec := serve(router, request(http.MethodGet, "/courses?level=B2&topic=business-english&limit=7&offset=14", nil, uuid.New()))
+	rec := serve(router, request(
+		http.MethodGet, "/courses?level=B2&topic=business-english&limit=7&offset=14", nil, uuid.New()))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200: %s", rec.Code, rec.Body.String())
 	}

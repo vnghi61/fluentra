@@ -29,7 +29,7 @@ func (g *mockGrader) Grade(_ context.Context, _ learningcontract.GradeRequest) (
 func newVerifierTestService(t *testing.T, graderPass bool) *service.Service {
 	t.Helper()
 	graders := domain.NewGraderRegistry()
-	_ = graders.Register("grammar_tense_choice", &mockGrader{pass: graderPass})
+	_ = graders.Register(kindChoice, &mockGrader{pass: graderPass})
 	_ = graders.Register("vocab_multiple_choice", &mockGrader{pass: graderPass})
 	_ = graders.Register("reading_comprehension", &mockGrader{pass: graderPass})
 
@@ -53,7 +53,7 @@ func TestVerifyItem_EmptyKindOrBody(t *testing.T) {
 	require.Contains(t, err.Error(), "check 1")
 
 	err = svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
-		Kind: "grammar_tense_choice",
+		Kind: kindChoice,
 		Body: nil,
 	})
 	require.Error(t, err)
@@ -77,7 +77,7 @@ func TestVerifyItem_GrammarTenseChoice_Pass(t *testing.T) {
 	}`)
 
 	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
-		Kind:       "grammar_tense_choice",
+		Kind:       kindChoice,
 		CEFRLevel:  "A2",
 		Body:       body,
 		BlindSolve: false,
@@ -102,7 +102,7 @@ func TestVerifyItem_GrammarTenseChoice_Check2_GraderFails(t *testing.T) {
 	}`)
 
 	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
-		Kind:       "grammar_tense_choice",
+		Kind:       kindChoice,
 		CEFRLevel:  "A2",
 		Body:       body,
 		BlindSolve: false,
@@ -130,7 +130,7 @@ func TestVerifyItem_GrammarTenseChoice_Check5_Duplicate(t *testing.T) {
 	existing := []json.RawMessage{body}
 
 	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
-		Kind:       "grammar_tense_choice",
+		Kind:       kindChoice,
 		CEFRLevel:  "A2",
 		Body:       body,
 		Existing:   existing,
@@ -144,6 +144,7 @@ func TestVerifyItem_WritingPrompt_Pass(t *testing.T) {
 	t.Parallel()
 	svc := newVerifierTestService(t, true)
 
+	//nolint:lll // a JSON fixture; the model answer is one sentence-long string
 	body := json.RawMessage(`{
 		"prompt": "Describe your favourite hobby and explain why you enjoy doing it in your free time with friends.",
 		"model_answer": "My favourite hobby is playing chess with my close friends on weekends. Chess requires deep concentration, creativity, and strategic thinking which helps me develop my problem solving skills in daily situations. Whenever I sit down to play a match, I feel completely engaged in the tactical intricacies of the game. It is a wonderful way to challenge my intellect while having meaningful conversations with companions. Furthermore, chess teaches me patience, resilience, and the humility to accept defeats gracefully. Overall, chess is not only an entertaining game but also a wonderful mental exercise that significantly enriches my personal life and friendships."
@@ -162,6 +163,7 @@ func TestVerifyItem_SpeakingTask_Pass(t *testing.T) {
 	t.Parallel()
 	svc := newVerifierTestService(t, true)
 
+	//nolint:lll // a JSON fixture, kept as one literal
 	body := json.RawMessage(`{
 		"task_type": "read_aloud",
 		"prompt": "Please read the following sentence clearly and naturally.",

@@ -1,3 +1,15 @@
+// Package http exposes the payment module over HTTP: the public SePay
+// webhook, a learner's own order, and the back-office queues for refunds,
+// payouts and transactions that matched nothing.
+// Package http exposes the payment module over HTTP: the public SePay
+// webhook, a learner's own order, and the back-office queues for refunds,
+// payouts and transactions that matched nothing.
+// Package http exposes the payment module over HTTP: the public SePay
+// webhook, a learner's own order, and the back-office queues for refunds,
+// payouts and transactions that matched nothing.
+// Package http exposes the payment module over HTTP: the public SePay
+// webhook, a learner's own order, and the back-office queues for refunds,
+// payouts and transactions that matched nothing.
 package http
 
 import (
@@ -84,6 +96,14 @@ func (h *Handler) AdminRoutes(r chi.Router) {
 
 // ---------------------------------------------------------------- Webhook
 
+// SepayWebhookResponse is the body SePay requires: it counts a delivery as
+// successful only on a 200 or 201 carrying {"success": true}.
+// SepayWebhookResponse is the body SePay requires: it counts a delivery as
+// successful only on a 200 or 201 carrying {"success": true}.
+// SepayWebhookResponse is the body SePay requires: it counts a delivery as
+// successful only on a 200 or 201 carrying {"success": true}.
+// SepayWebhookResponse is the body SePay requires: it counts a delivery as
+// successful only on a 200 or 201 carrying {"success": true}.
 type SepayWebhookResponse struct {
 	Success bool `json:"success"`
 }
@@ -127,6 +147,18 @@ func (h *Handler) handleSepayWebhook(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------- Orders
 
+// BillingOrderResponse is an order as the learner waiting to pay sees it:
+// the amount, the reference to type into the transfer, and the QR that
+// fills both in for them.
+// BillingOrderResponse is an order as the learner waiting to pay sees it:
+// the amount, the reference to type into the transfer, and the QR that
+// fills both in for them.
+// BillingOrderResponse is an order as the learner waiting to pay sees it:
+// the amount, the reference to type into the transfer, and the QR that
+// fills both in for them.
+// BillingOrderResponse is an order as the learner waiting to pay sees it:
+// the amount, the reference to type into the transfer, and the QR that
+// fills both in for them.
 type BillingOrderResponse struct {
 	ID                uuid.UUID  `json:"id"`
 	UserID            uuid.UUID  `json:"user_id"`
@@ -204,7 +236,7 @@ func (h *Handler) listUnmatchedTransactions(w http.ResponseWriter, r *http.Reque
 
 	limit, offset := paginationFrom(r)
 
-	list, err := h.svc.ListUnmatchedTransactions(ctx, int32(limit), int32(offset))
+	list, err := h.svc.ListUnmatchedTransactions(ctx, pageInt32(limit), pageInt32(offset))
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
@@ -471,6 +503,23 @@ func (h *Handler) markRefundSent(w http.ResponseWriter, r *http.Request) {
 		Reason: refund.Reason, Status: refund.Status, SentAt: refund.SentAt, CreatedAt: refund.CreatedAt,
 	})
 }
+
+// pageInt32 narrows an already-bounded page value. paginationFrom caps both,
+// so this cannot overflow; the conversion is spelled out rather than inlined
+// so that stays visible.
+func pageInt32(value int) int32 {
+	if value < 0 {
+		return 0
+	}
+	if value > maxPageValue {
+		return maxPageValue
+	}
+	return int32(value)
+}
+
+// maxPageValue bounds a page size and an offset. A limit of two billion is not
+// a page anybody wants, and an int widened to int32 unchecked wraps negative.
+const maxPageValue = 1_000_000
 
 // paginationFrom reads limit and offset, bounded.
 //

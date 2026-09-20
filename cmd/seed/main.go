@@ -69,6 +69,56 @@ func main() {
 	}
 }
 
+// seedDemoAccounts creates or refreshes the demo logins and returns the admin's
+// id, which the authored content is attributed to.
+func seedDemoAccounts(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	creator usercontract.Creator,
+	roles *rbac.Module,
+	hash string,
+	out io.Writer,
+) (uuid.UUID, error) {
+	var adminID uuid.UUID
+	for _, account := range demoAccounts {
+		id, created, err := ensureAccount(ctx, pool, creator, account)
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("seed %s: %w", account.email, err)
+		}
+		if err := ensureCredential(ctx, pool, id, hash); err != nil {
+			return uuid.Nil, fmt.Errorf("seed credential for %s: %w", account.email, err)
+		}
+		if err := ensureVerified(ctx, pool, id); err != nil {
+			return uuid.Nil, fmt.Errorf("verify %s: %w", account.email, err)
+		}
+		// Also for accounts that already existed. user.New grants the role while
+		// creating an account, and a re-run against a database seeded before this
+		// existed would otherwise leave the demo learner exactly as it was:
+		// signed in, and refused the catalogue. The grant is idempotent.
+		if err := roles.GrantBaselineRole(ctx, id); err != nil {
+			return uuid.Nil, fmt.Errorf("grant baseline role to %s: %w", account.email, err)
+		}
+		if account.admin {
+			adminID = id
+			if err := ensureAdmin(ctx, pool, id); err != nil {
+				return uuid.Nil, fmt.Errorf("grant admin to %s: %w", account.email, err)
+			}
+		}
+		if account.role != "" {
+			if err := ensureRole(ctx, pool, id, account.role); err != nil {
+				return uuid.Nil, fmt.Errorf("grant %s to %s: %w", account.role, account.email, err)
+			}
+		}
+
+		state := "already present, refreshed"
+		if created {
+			state = "created"
+		}
+		_, _ = fmt.Fprintf(out, "%-24s %s\n", account.email, state)
+	}
+	return adminID, nil
+}
+
 func run(ctx context.Context, out io.Writer) error {
 	var cfg seedConfig
 	// `app.env` has to be declared, not merely read into the struct. config.Load
@@ -112,42 +162,9 @@ func run(ctx context.Context, out io.Writer) error {
 		return fmt.Errorf("hash demo password: %w", err)
 	}
 
-	var adminID uuid.UUID
-	for _, account := range demoAccounts {
-		id, created, err := ensureAccount(ctx, pool, module.Creator(), account)
-		if err != nil {
-			return fmt.Errorf("seed %s: %w", account.email, err)
-		}
-		if err := ensureCredential(ctx, pool, id, hash); err != nil {
-			return fmt.Errorf("seed credential for %s: %w", account.email, err)
-		}
-		if err := ensureVerified(ctx, pool, id); err != nil {
-			return fmt.Errorf("verify %s: %w", account.email, err)
-		}
-		// Also for accounts that already existed. user.New grants the role while
-		// creating an account, and a re-run against a database seeded before this
-		// existed would otherwise leave the demo learner exactly as it was:
-		// signed in, and refused the catalogue. The grant is idempotent.
-		if err := roles.GrantBaselineRole(ctx, id); err != nil {
-			return fmt.Errorf("grant baseline role to %s: %w", account.email, err)
-		}
-		if account.admin {
-			adminID = id
-			if err := ensureAdmin(ctx, pool, id); err != nil {
-				return fmt.Errorf("grant admin to %s: %w", account.email, err)
-			}
-		}
-		if account.role != "" {
-			if err := ensureRole(ctx, pool, id, account.role); err != nil {
-				return fmt.Errorf("grant %s to %s: %w", account.role, account.email, err)
-			}
-		}
-
-		state := "already present, refreshed"
-		if created {
-			state = "created"
-		}
-		_, _ = fmt.Fprintf(out, "%-24s %s\n", account.email, state)
+	adminID, err := seedDemoAccounts(ctx, pool, module.Creator(), roles, hash, out)
+	if err != nil {
+		return err
 	}
 
 	// The content is owned by the admin account, so a run that produced no admin

@@ -62,11 +62,19 @@ func (m *mockRepo) UpsertCreatorProfile(
 	return p, nil
 }
 
-func (m *mockRepo) GetPayoutAccount(ctx context.Context, creatorID uuid.UUID) (*domain.PayoutAccount, error) {
+func (m *mockRepo) GetPayoutAccount(_ context.Context, creatorID uuid.UUID) (*domain.PayoutAccount, error) {
 	return m.payoutAccounts[creatorID], nil
 }
 
-func (m *mockRepo) UpsertPayoutAccount(ctx context.Context, creatorID uuid.UUID, bankCode, accountNumber, accountHolderName string, isDefault bool) (*domain.PayoutAccount, error) {
+func (
+	m *mockRepo) UpsertPayoutAccount(_ context.Context,
+	creatorID uuid.UUID,
+	bankCode,
+	accountNumber,
+	accountHolderName string,
+	isDefault bool) (*domain.PayoutAccount,
+	error,
+) {
 	acc := &domain.PayoutAccount{
 		ID:                uuid.New(),
 		CreatorID:         creatorID,
@@ -81,7 +89,7 @@ func (m *mockRepo) UpsertPayoutAccount(ctx context.Context, creatorID uuid.UUID,
 	return acc, nil
 }
 
-func (m *mockRepo) CreateCourseDraft(ctx context.Context, draft *domain.CourseDraft) (*domain.CourseDraft, error) {
+func (m *mockRepo) CreateCourseDraft(_ context.Context, draft *domain.CourseDraft) (*domain.CourseDraft, error) {
 	draft.ID = uuid.New()
 	draft.CreatedAt = time.Now()
 	draft.UpdatedAt = time.Now()
@@ -89,14 +97,16 @@ func (m *mockRepo) CreateCourseDraft(ctx context.Context, draft *domain.CourseDr
 	return draft, nil
 }
 
-func (m *mockRepo) GetCourseDraftByID(ctx context.Context, id uuid.UUID) (*domain.CourseDraft, error) {
+func (m *mockRepo) GetCourseDraftByID(_ context.Context, id uuid.UUID) (*domain.CourseDraft, error) {
 	if d, ok := m.drafts[id]; ok {
 		return d, nil
 	}
 	return nil, domain.ErrDraftNotFound
 }
 
-func (m *mockRepo) ListCourseDraftsByOwner(ctx context.Context, ownerID uuid.UUID, limit, offset int) ([]*domain.CourseDraft, int64, error) {
+func (
+	m *mockRepo,
+) ListCourseDraftsByOwner(_ context.Context, ownerID uuid.UUID, _, _ int) ([]*domain.CourseDraft, int64, error) {
 	var list []*domain.CourseDraft
 	for _, d := range m.drafts {
 		if d.OwnerID == ownerID {
@@ -106,12 +116,17 @@ func (m *mockRepo) ListCourseDraftsByOwner(ctx context.Context, ownerID uuid.UUI
 	return list, int64(len(list)), nil
 }
 
-func (m *mockRepo) UpdateCourseDraft(ctx context.Context, draft *domain.CourseDraft) (*domain.CourseDraft, error) {
+func (m *mockRepo) UpdateCourseDraft(_ context.Context, draft *domain.CourseDraft) (*domain.CourseDraft, error) {
 	m.drafts[draft.ID] = draft
 	return draft, nil
 }
 
-func (m *mockRepo) UpdateCourseDraftStatus(ctx context.Context, id uuid.UUID, status string) (*domain.CourseDraft, error) {
+func (
+	m *mockRepo) UpdateCourseDraftStatus(_ context.Context,
+	id uuid.UUID,
+	status string) (*domain.CourseDraft,
+	error,
+) {
 	if d, ok := m.drafts[id]; ok {
 		d.Status = status
 		return d, nil
@@ -119,7 +134,7 @@ func (m *mockRepo) UpdateCourseDraftStatus(ctx context.Context, id uuid.UUID, st
 	return nil, domain.ErrDraftNotFound
 }
 
-func (m *mockRepo) CreateSubmission(ctx context.Context, sub *domain.Submission) (*domain.Submission, error) {
+func (m *mockRepo) CreateSubmission(_ context.Context, sub *domain.Submission) (*domain.Submission, error) {
 	sub.ID = uuid.New()
 	sub.CreatedAt = time.Now()
 	sub.UpdatedAt = time.Now()
@@ -127,14 +142,14 @@ func (m *mockRepo) CreateSubmission(ctx context.Context, sub *domain.Submission)
 	return sub, nil
 }
 
-func (m *mockRepo) GetSubmissionByID(ctx context.Context, id uuid.UUID) (*domain.Submission, error) {
+func (m *mockRepo) GetSubmissionByID(_ context.Context, id uuid.UUID) (*domain.Submission, error) {
 	if s, ok := m.submissions[id]; ok {
 		return s, nil
 	}
 	return nil, domain.ErrSubmissionNotFound
 }
 
-func (m *mockRepo) GetLatestSubmissionByDraftID(ctx context.Context, draftID uuid.UUID) (*domain.Submission, error) {
+func (m *mockRepo) GetLatestSubmissionByDraftID(_ context.Context, draftID uuid.UUID) (*domain.Submission, error) {
 	var latest *domain.Submission
 	for _, s := range m.submissions {
 		if s.DraftID == draftID {
@@ -146,7 +161,9 @@ func (m *mockRepo) GetLatestSubmissionByDraftID(ctx context.Context, draftID uui
 	return latest, nil
 }
 
-func (m *mockRepo) ListSubmissionsByStatus(ctx context.Context, status string, limit, offset int) ([]*domain.Submission, int64, error) {
+func (
+	m *mockRepo,
+) ListSubmissionsByStatus(_ context.Context, status string, _, _ int) ([]*domain.Submission, int64, error) {
 	var list []*domain.Submission
 	for _, s := range m.submissions {
 		if s.Status == status {
@@ -156,7 +173,14 @@ func (m *mockRepo) ListSubmissionsByStatus(ctx context.Context, status string, l
 	return list, int64(len(list)), nil
 }
 
-func (m *mockRepo) UpdateSubmissionVerification(ctx context.Context, id uuid.UUID, status string, report []byte, feedback *string) (*domain.Submission, error) {
+func (
+	m *mockRepo) UpdateSubmissionVerification(_ context.Context,
+	id uuid.UUID,
+	status string,
+	report []byte,
+	feedback *string) (*domain.Submission,
+	error,
+) {
 	if s, ok := m.submissions[id]; ok {
 		s.Status = status
 		s.VerificationReport = report
@@ -166,7 +190,14 @@ func (m *mockRepo) UpdateSubmissionVerification(ctx context.Context, id uuid.UUI
 	return nil, domain.ErrSubmissionNotFound
 }
 
-func (m *mockRepo) UpdateSubmissionReview(ctx context.Context, id uuid.UUID, status string, reviewerID uuid.UUID, feedback *string) (*domain.Submission, error) {
+func (
+	m *mockRepo) UpdateSubmissionReview(_ context.Context,
+	id uuid.UUID,
+	status string,
+	reviewerID uuid.UUID,
+	feedback *string) (*domain.Submission,
+	error,
+) {
 	if s, ok := m.submissions[id]; ok {
 		s.Status = status
 		s.ReviewerID = &reviewerID
@@ -178,20 +209,20 @@ func (m *mockRepo) UpdateSubmissionReview(ctx context.Context, id uuid.UUID, sta
 	return nil, domain.ErrSubmissionNotFound
 }
 
-func (m *mockRepo) UpsertListing(ctx context.Context, l *domain.Listing) (*domain.Listing, error) {
+func (m *mockRepo) UpsertListing(_ context.Context, l *domain.Listing) (*domain.Listing, error) {
 	l.PublishedAt = time.Now()
 	m.listings[l.CourseID] = l
 	return l, nil
 }
 
-func (m *mockRepo) GetListingByCourseID(ctx context.Context, courseID uuid.UUID) (*domain.Listing, error) {
+func (m *mockRepo) GetListingByCourseID(_ context.Context, courseID uuid.UUID) (*domain.Listing, error) {
 	if l, ok := m.listings[courseID]; ok {
 		return l, nil
 	}
 	return nil, domain.ErrListingNotFound
 }
 
-func (m *mockRepo) BatchGetListings(ctx context.Context, courseIDs []uuid.UUID) (map[uuid.UUID]*domain.Listing, error) {
+func (m *mockRepo) BatchGetListings(_ context.Context, courseIDs []uuid.UUID) (map[uuid.UUID]*domain.Listing, error) {
 	out := make(map[uuid.UUID]*domain.Listing)
 	for _, id := range courseIDs {
 		if l, ok := m.listings[id]; ok {
@@ -201,21 +232,21 @@ func (m *mockRepo) BatchGetListings(ctx context.Context, courseIDs []uuid.UUID) 
 	return out, nil
 }
 
-func (m *mockRepo) CreatePurchase(ctx context.Context, p *domain.Purchase) (*domain.Purchase, error) {
+func (m *mockRepo) CreatePurchase(_ context.Context, p *domain.Purchase) (*domain.Purchase, error) {
 	p.ID = uuid.New()
 	p.GrantedAt = time.Now()
 	m.purchases[p.ID] = p
 	return p, nil
 }
 
-func (m *mockRepo) GetPurchaseByID(ctx context.Context, id uuid.UUID) (*domain.Purchase, error) {
+func (m *mockRepo) GetPurchaseByID(_ context.Context, id uuid.UUID) (*domain.Purchase, error) {
 	if p, ok := m.purchases[id]; ok {
 		return p, nil
 	}
 	return nil, domain.ErrPurchaseNotFound
 }
 
-func (m *mockRepo) GetActivePurchase(ctx context.Context, userID, courseID uuid.UUID) (*domain.Purchase, error) {
+func (m *mockRepo) GetActivePurchase(_ context.Context, userID, courseID uuid.UUID) (*domain.Purchase, error) {
 	for _, p := range m.purchases {
 		if p.UserID == userID && p.CourseID == courseID && p.RevokedAt == nil {
 			return p, nil
@@ -224,7 +255,9 @@ func (m *mockRepo) GetActivePurchase(ctx context.Context, userID, courseID uuid.
 	return nil, nil
 }
 
-func (m *mockRepo) ListPurchasesByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*domain.Purchase, int64, error) {
+func (
+	m *mockRepo,
+) ListPurchasesByUserID(_ context.Context, userID uuid.UUID, _, _ int) ([]*domain.Purchase, int64, error) {
 	var list []*domain.Purchase
 	for _, p := range m.purchases {
 		if p.UserID == userID {
@@ -234,7 +267,7 @@ func (m *mockRepo) ListPurchasesByUserID(ctx context.Context, userID uuid.UUID, 
 	return list, int64(len(list)), nil
 }
 
-func (m *mockRepo) RevokePurchase(ctx context.Context, id uuid.UUID, reason string) (*domain.Purchase, error) {
+func (m *mockRepo) RevokePurchase(_ context.Context, id uuid.UUID, reason string) (*domain.Purchase, error) {
 	if p, ok := m.purchases[id]; ok {
 		now := time.Now()
 		p.RevokedAt = &now
@@ -244,7 +277,11 @@ func (m *mockRepo) RevokePurchase(ctx context.Context, id uuid.UUID, reason stri
 	return nil, domain.ErrPurchaseNotFound
 }
 
-func (m *mockRepo) CreateLedgerEntry(ctx context.Context, e *domain.CreatorLedgerEntry) (*domain.CreatorLedgerEntry, error) {
+func (
+	m *mockRepo) CreateLedgerEntry(_ context.Context,
+	e *domain.CreatorLedgerEntry) (*domain.CreatorLedgerEntry,
+	error,
+) {
 	e.ID = uuid.New()
 	e.CreatedAt = time.Now()
 	m.ledger = append(m.ledger, e)
@@ -262,7 +299,9 @@ func (m *mockRepo) GetSaleLedgerEntryByPurchaseID(
 	return nil, domain.ErrLedgerEntryNotFound
 }
 
-func (m *mockRepo) ListLedgerEntriesByCreatorID(ctx context.Context, creatorID uuid.UUID, limit, offset int) ([]*domain.CreatorLedgerEntry, error) {
+func (
+	m *mockRepo,
+) ListLedgerEntriesByCreatorID(_ context.Context, creatorID uuid.UUID, _, _ int) ([]*domain.CreatorLedgerEntry, error) {
 	var list []*domain.CreatorLedgerEntry
 	for _, e := range m.ledger {
 		if e.CreatorID == creatorID {
@@ -311,7 +350,7 @@ func (m *mockRepo) GetCreatorTotalPaidOut(_ context.Context, creatorID uuid.UUID
 }
 
 type mockVerifier struct {
-	verifyFunc func(ctx context.Context, req learningcontract.VerifyItemRequest) error
+	verifyFunc func(_ context.Context, req learningcontract.VerifyItemRequest) error
 }
 
 func (v *mockVerifier) VerifyItem(ctx context.Context, req learningcontract.VerifyItemRequest) error {
@@ -329,7 +368,7 @@ type mockLessonAuthor struct {
 	visibilities []string
 }
 
-func (a *mockLessonAuthor) EnsureCourse(ctx context.Context, spec lessoncontract.CourseSpec) (uuid.UUID, error) {
+func (a *mockLessonAuthor) EnsureCourse(_ context.Context, spec lessoncontract.CourseSpec) (uuid.UUID, error) {
 	a.coursesCreated++
 	a.visibilities = append(a.visibilities, spec.Visibility)
 	if a.courseID == uuid.Nil {
@@ -338,19 +377,23 @@ func (a *mockLessonAuthor) EnsureCourse(ctx context.Context, spec lessoncontract
 	return a.courseID, nil
 }
 
-func (a *mockLessonAuthor) EnsureUnit(ctx context.Context, spec lessoncontract.UnitSpec) (uuid.UUID, error) {
+func (a *mockLessonAuthor) EnsureUnit(_ context.Context, _ lessoncontract.UnitSpec) (uuid.UUID, error) {
 	return uuid.New(), nil
 }
 
-func (a *mockLessonAuthor) EnsureLesson(ctx context.Context, spec lessoncontract.LessonSpec) (uuid.UUID, error) {
+func (a *mockLessonAuthor) EnsureLesson(_ context.Context, _ lessoncontract.LessonSpec) (uuid.UUID, error) {
 	return uuid.New(), nil
 }
 
-func (a *mockLessonAuthor) SyncActivities(ctx context.Context, lessonID uuid.UUID, activities []lessoncontract.ActivitySpec) error {
+func (
+	a *mockLessonAuthor,
+) SyncActivities(_ context.Context, _ uuid.UUID, _ []lessoncontract.ActivitySpec) error {
 	return nil
 }
 
-func (a *mockLessonAuthor) AppendActivity(ctx context.Context, lessonID uuid.UUID, activity lessoncontract.ActivitySpec) (uuid.UUID, error) {
+func (
+	a *mockLessonAuthor,
+) AppendActivity(_ context.Context, _ uuid.UUID, _ lessoncontract.ActivitySpec) (uuid.UUID, error) {
 	return uuid.New(), nil
 }
 
@@ -358,7 +401,7 @@ type mockContentAuthor struct {
 	contentcontract.Author
 }
 
-func (a *mockContentAuthor) EnsurePublished(ctx context.Context, spec contentcontract.AuthorSpec) (uuid.UUID, error) {
+func (a *mockContentAuthor) EnsurePublished(_ context.Context, _ contentcontract.AuthorSpec) (uuid.UUID, error) {
 	return uuid.New(), nil
 }
 
@@ -450,7 +493,7 @@ func TestDraftCreationAndGate1Verification(t *testing.T) {
 	}
 
 	// 3. Test verification failure when verifier returns error
-	verifier.verifyFunc = func(ctx context.Context, req learningcontract.VerifyItemRequest) error {
+	verifier.verifyFunc = func(_ context.Context, _ learningcontract.VerifyItemRequest) error {
 		return errors.New("invalid answer key")
 	}
 

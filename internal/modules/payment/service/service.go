@@ -1,3 +1,15 @@
+// Package service is the payment module's behaviour: creating bank transfer
+// orders, ingesting SePay webhooks, matching transactions to orders, and
+// reconciling what we recorded against what the bank says.
+// Package service is the payment module's behaviour: creating bank transfer
+// orders, ingesting SePay webhooks, matching transactions to orders, and
+// reconciling what we recorded against what the bank says.
+// Package service is the payment module's behaviour: creating bank transfer
+// orders, ingesting SePay webhooks, matching transactions to orders, and
+// reconciling what we recorded against what the bank says.
+// Package service is the payment module's behaviour: creating bank transfer
+// orders, ingesting SePay webhooks, matching transactions to orders, and
+// reconciling what we recorded against what the bank says.
 package service
 
 import (
@@ -39,7 +51,12 @@ type Config struct {
 type Service interface {
 	CreateOrder(ctx context.Context, in contract.CreateOrderInput) (*domain.Order, error)
 	GetOrder(ctx context.Context, id uuid.UUID) (*domain.Order, error)
-	HandleSepayWebhook(ctx context.Context, authHeader, clientIP string, rawBody []byte, payload *domain.SepayWebhookPayload) error
+	HandleSepayWebhook(
+		ctx context.Context,
+		authHeader, clientIP string,
+		rawBody []byte,
+		payload *domain.SepayWebhookPayload,
+	) error
 	MatchTransaction(ctx context.Context, tx *domain.SepayTransaction) error
 	SweepExpiredOrders(ctx context.Context) (int, error)
 	Reconcile(ctx context.Context) error
@@ -139,7 +156,13 @@ func (s *paymentService) GetOrder(ctx context.Context, id uuid.UUID) (*domain.Or
 	return order, nil
 }
 
-func (s *paymentService) HandleSepayWebhook(ctx context.Context, authHeader, clientIP string, rawBody []byte, payload *domain.SepayWebhookPayload) error {
+func (
+	s *paymentService) HandleSepayWebhook(ctx context.Context,
+	authHeader,
+	clientIP string,
+	rawBody []byte,
+	payload *domain.SepayWebhookPayload,
+) error {
 	// 1. Verify API Key
 	if strings.TrimSpace(s.cfg.WebhookAPIKey) == "" {
 		return domain.ErrInvalidWebhookKey
@@ -257,24 +280,8 @@ func (s *paymentService) MatchTransaction(ctx context.Context, tx *domain.SepayT
 		return err
 	}
 
-	// Rule 2: Extract reference from content
-	cleanContent := domain.StripNonAlphanumeric(tx.Content)
-	candidates := fluReferenceRegex.FindAllString(cleanContent, -1)
-	if len(candidates) == 0 {
-		candidates = fluReferenceRegex.FindAllString(strings.ToUpper(tx.Content), -1)
-	}
-
-	var matchedOrder *domain.Order
-	for _, candidate := range candidates {
-		order, err := s.repo.GetOrderByReference(ctx, strings.ToUpper(candidate))
-		if err == nil && order != nil {
-			if domain.ContentMatchesReference(tx.Content, order.Reference) {
-				matchedOrder = order
-				break
-			}
-		}
-	}
-
+	// Rule 2: find the order this transfer names.
+	matchedOrder := s.orderFromContent(ctx, tx.Content)
 	if matchedOrder == nil {
 		reason := "order_not_found"
 		_, err := s.repo.UpdateSepayTransactionMatch(ctx, tx.ID, nil, nil, &reason)
@@ -346,6 +353,28 @@ func (s *paymentService) MatchTransaction(ctx context.Context, tx *domain.SepayT
 		}
 	}
 
+	return nil
+}
+
+// orderFromContent finds the order a transfer's content names, or nil.
+//
+// Banks mangle transfer content: they strip spaces, upper-case it, and wrap it
+// in words of their own, so the reference is looked for in the stripped text
+// first and in the raw text second.
+func (s *paymentService) orderFromContent(ctx context.Context, content string) *domain.Order {
+	candidates := fluReferenceRegex.FindAllString(domain.StripNonAlphanumeric(content), -1)
+	if len(candidates) == 0 {
+		candidates = fluReferenceRegex.FindAllString(strings.ToUpper(content), -1)
+	}
+	for _, candidate := range candidates {
+		order, err := s.repo.GetOrderByReference(ctx, strings.ToUpper(candidate))
+		if err != nil || order == nil {
+			continue
+		}
+		if domain.ContentMatchesReference(content, order.Reference) {
+			return order
+		}
+	}
 	return nil
 }
 
@@ -460,45 +489,15 @@ func (s *paymentService) Reconcile(ctx context.Context) error {
 	}
 
 	for _, item := range apiResp.Transactions {
-		txDate, parseErr := time.Parse("2006-01-02 15:04:05", item.TransactionDate)
-		if parseErr != nil {
-			txDate = time.Now().UTC()
-		}
-
-		sepayID, idErr := strconv.ParseInt(strings.TrimSpace(item.ID), 10, 64)
-		if idErr != nil {
-			slog.WarnContext(ctx, "skipping sepay transaction with unparseable id", "id", item.ID, "error", idErr)
+		tx, err := sepayRowToTransaction(item)
+		if err != nil {
+			slog.WarnContext(ctx, "skipping an unreadable sepay transaction", "id", item.ID, "error", err)
 			continue
 		}
-		amountIn, inErr := parseVND(item.AmountIn)
-		amountOut, outErr := parseVND(item.AmountOut)
-		if inErr != nil || outErr != nil {
-			slog.WarnContext(ctx, "skipping sepay transaction with unparseable amount",
-				"sepay_id", sepayID, "amount_in", item.AmountIn, "amount_out", item.AmountOut)
-			continue
-		}
-
-		transferType := "in"
-		transferAmount := amountIn
-		if amountOut > 0 {
-			transferType = "out"
-			transferAmount = amountOut
-		}
-
-		tx := &domain.SepayTransaction{
-			SepayID:         sepayID,
-			Gateway:         item.BankBrandName,
-			TransactionDate: txDate,
-			AccountNumber:   item.AccountNumber,
-			SubAccount:      item.SubAccount,
-			Content:         item.TransactionContent,
-			TransferType:    transferType,
-			TransferAmount:  transferAmount,
-			ReferenceCode:   item.ReferenceNumber,
-		}
-
 		inserted, err := s.repo.InsertSepayTransaction(ctx, tx)
 		if err == nil && inserted != nil {
+			// A transaction present at SePay and absent here is a webhook we
+			// never received, which is the whole reason this job exists.
 			_ = s.MatchTransaction(ctx, inserted)
 		}
 	}
@@ -506,7 +505,50 @@ func (s *paymentService) Reconcile(ctx context.Context) error {
 	return nil
 }
 
-func (s *paymentService) ListUnmatchedTransactions(ctx context.Context, limit, offset int32) (*domain.UnmatchedTransactionsList, error) {
+// sepayRowToTransaction converts one row of the userapi listing.
+func sepayRowToTransaction(item SePayTransaction) (*domain.SepayTransaction, error) {
+	sepayID, err := strconv.ParseInt(strings.TrimSpace(item.ID), 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("parse transaction id %q: %w", item.ID, err)
+	}
+	amountIn, err := parseVND(item.AmountIn)
+	if err != nil {
+		return nil, err
+	}
+	amountOut, err := parseVND(item.AmountOut)
+	if err != nil {
+		return nil, err
+	}
+
+	txDate, err := time.Parse("2006-01-02 15:04:05", item.TransactionDate)
+	if err != nil {
+		txDate = time.Now().UTC()
+	}
+
+	transferType, transferAmount := "in", amountIn
+	if amountOut > 0 {
+		transferType, transferAmount = "out", amountOut
+	}
+
+	return &domain.SepayTransaction{
+		SepayID:         sepayID,
+		Gateway:         item.BankBrandName,
+		TransactionDate: txDate,
+		AccountNumber:   item.AccountNumber,
+		SubAccount:      item.SubAccount,
+		Content:         item.TransactionContent,
+		TransferType:    transferType,
+		TransferAmount:  transferAmount,
+		ReferenceCode:   item.ReferenceNumber,
+	}, nil
+}
+
+func (
+	s *paymentService) ListUnmatchedTransactions(ctx context.Context,
+	limit,
+	offset int32) (*domain.UnmatchedTransactionsList,
+	error,
+) {
 	if limit <= 0 {
 		limit = 50
 	}

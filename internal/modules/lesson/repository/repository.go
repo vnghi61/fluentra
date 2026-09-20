@@ -117,7 +117,12 @@ func (r *Repository) ListPublishedCourses(
 }
 
 // CountPublishedCourses returns the total number of published courses matching level.
-func (r *Repository) CountPublishedCourses(ctx context.Context, level *string, topicTaxonomyID *uuid.UUID) (int64, error) {
+func (
+	r *Repository) CountPublishedCourses(ctx context.Context,
+	level *string,
+	topicTaxonomyID *uuid.UUID) (int64,
+	error,
+) {
 	count, err := r.queries.CountPublishedCourses(ctx, sqlc.CountPublishedCoursesParams{
 		Level:           level,
 		TopicTaxonomyID: topicTaxonomyID,

@@ -20,7 +20,11 @@ type mockOrderCreator struct {
 	err   error
 }
 
-func (m *mockOrderCreator) CreateOrder(ctx context.Context, in paymentcontract.CreateOrderInput) (*paymentcontract.Order, error) {
+func (
+	m *mockOrderCreator) CreateOrder(_ context.Context,
+	in paymentcontract.CreateOrderInput) (*paymentcontract.Order,
+	error,
+) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -48,6 +52,27 @@ func (m *mockProgressReader) ProgressOf(
 	return m.progress, nil
 }
 
+// assertMayOpen checks one row of the paywall truth table: MayOpen must not
+// fail, and must answer `want`.
+func assertMayOpen(
+	ctx context.Context,
+	t *testing.T,
+	svc *service.Service,
+	scenario string,
+	userID *uuid.UUID,
+	courseID uuid.UUID,
+	want bool,
+) {
+	t.Helper()
+	got, err := svc.MayOpen(ctx, userID, courseID)
+	if err != nil {
+		t.Fatalf("%s: MayOpen returned an error: %v", scenario, err)
+	}
+	if got != want {
+		t.Fatalf("%s: MayOpen = %v, want %v", scenario, got, want)
+	}
+}
+
 func TestMayOpen_TruthTable(t *testing.T) {
 	ctx := context.Background()
 	repo := newMockRepo()
@@ -59,14 +84,8 @@ func TestMayOpen_TruthTable(t *testing.T) {
 
 	// 1. Official course: no listing in studio.listings -> true
 	officialCourseID := uuid.New()
-	mayOpen, err := svc.MayOpen(ctx, nil, officialCourseID)
-	if err != nil || !mayOpen {
-		t.Fatalf("scenario 1: official course should open for anonymous, got %v, err %v", mayOpen, err)
-	}
-	mayOpen, err = svc.MayOpen(ctx, &learnerID, officialCourseID)
-	if err != nil || !mayOpen {
-		t.Fatalf("scenario 1: official course should open for learner, got %v, err %v", mayOpen, err)
-	}
+	assertMayOpen(ctx, t, svc, "scenario 1: official course should open for anonymous", nil, officialCourseID, true)
+	assertMayOpen(ctx, t, svc, "scenario 1: official course should open for learner", &learnerID, officialCourseID, true)
 
 	// 2. Free community course: pricing_model == "free" or price_vnd == 0 -> true
 	freeCourseID := uuid.New()
@@ -78,14 +97,8 @@ func TestMayOpen_TruthTable(t *testing.T) {
 		RevenueShareBPS: 7000,
 		Status:          domain.ListingStatusActive,
 	})
-	mayOpen, err = svc.MayOpen(ctx, nil, freeCourseID)
-	if err != nil || !mayOpen {
-		t.Fatalf("scenario 2: free community course should open for anonymous, got %v, err %v", mayOpen, err)
-	}
-	mayOpen, err = svc.MayOpen(ctx, &learnerID, freeCourseID)
-	if err != nil || !mayOpen {
-		t.Fatalf("scenario 2: free community course should open for learner, got %v, err %v", mayOpen, err)
-	}
+	assertMayOpen(ctx, t, svc, "scenario 2: free community course should open for anonymous", nil, freeCourseID, true)
+	assertMayOpen(ctx, t, svc, "scenario 2: free community course should open for learner", &learnerID, freeCourseID, true)
 
 	// 3. Paid community course: unowned -> false
 	paidCourseID := uuid.New()
@@ -98,21 +111,16 @@ func TestMayOpen_TruthTable(t *testing.T) {
 		Status:          domain.ListingStatusActive,
 	})
 	// 3a. Anonymous caller (nil) -> false
-	mayOpen, err = svc.MayOpen(ctx, nil, paidCourseID)
-	if err != nil || mayOpen {
-		t.Fatalf("scenario 3a: paid unowned course should refuse anonymous caller, got %v, err %v", mayOpen, err)
-	}
+	assertMayOpen(ctx, t, svc, "scenario 3a: paid unowned course should refuse anonymous caller", nil, paidCourseID, false)
 	// 3b. Anonymous caller (uuid.Nil) -> false
 	nilUUID := uuid.Nil
-	mayOpen, err = svc.MayOpen(ctx, &nilUUID, paidCourseID)
-	if err != nil || mayOpen {
-		t.Fatalf("scenario 3b: paid unowned course should refuse uuid.Nil caller, got %v, err %v", mayOpen, err)
-	}
+	assertMayOpen(ctx, t, svc,
+		"scenario 3b: paid unowned course should refuse uuid.Nil caller",
+		&nilUUID, paidCourseID, false)
 	// 3c. Authenticated learner without purchase -> false
-	mayOpen, err = svc.MayOpen(ctx, &unownedID, paidCourseID)
-	if err != nil || mayOpen {
-		t.Fatalf("scenario 3c: paid unowned course should refuse learner without purchase, got %v, err %v", mayOpen, err)
-	}
+	assertMayOpen(ctx, t, svc,
+		"scenario 3c: paid unowned course should refuse learner without purchase",
+		&unownedID, paidCourseID, false)
 
 	// 4. Paid owned course: active purchase -> true
 	_, _ = repo.CreatePurchase(ctx, &domain.Purchase{
@@ -120,10 +128,7 @@ func TestMayOpen_TruthTable(t *testing.T) {
 		CourseID:     paidCourseID,
 		PricePaidVND: 199000,
 	})
-	mayOpen, err = svc.MayOpen(ctx, &learnerID, paidCourseID)
-	if err != nil || !mayOpen {
-		t.Fatalf("scenario 4: paid owned course should open for purchaser, got %v, err %v", mayOpen, err)
-	}
+	assertMayOpen(ctx, t, svc, "scenario 4: paid owned course should open for purchaser", &learnerID, paidCourseID, true)
 
 	// 5. Paid refunded course: purchase revoked -> false
 	refundedLearnerID := uuid.New()
@@ -133,10 +138,9 @@ func TestMayOpen_TruthTable(t *testing.T) {
 		PricePaidVND: 199000,
 	})
 	_, _ = repo.RevokePurchase(ctx, pRefunded.ID, "learner_refund")
-	mayOpen, err = svc.MayOpen(ctx, &refundedLearnerID, paidCourseID)
-	if err != nil || mayOpen {
-		t.Fatalf("scenario 5: paid refunded course must refuse learner, got %v, err %v", mayOpen, err)
-	}
+	assertMayOpen(ctx, t, svc,
+		"scenario 5: paid refunded course must refuse learner",
+		&refundedLearnerID, paidCourseID, false)
 
 	// 6. Paid course taken down (BR-STUDIO-04):
 	// Existing purchaser keeps access -> true; unowned caller -> false
@@ -154,20 +158,15 @@ func TestMayOpen_TruthTable(t *testing.T) {
 		CourseID:     takenDownCourseID,
 		PricePaidVND: 299000,
 	})
-	mayOpen, err = svc.MayOpen(ctx, &learnerID, takenDownCourseID)
-	if err != nil || !mayOpen {
-		t.Fatalf("scenario 6: existing purchaser must keep access to taken-down course, got %v, err %v", mayOpen, err)
-	}
-	mayOpen, err = svc.MayOpen(ctx, &unownedID, takenDownCourseID)
-	if err != nil || mayOpen {
-		t.Fatalf("scenario 6: unowned caller must not open taken-down course, got %v, err %v", mayOpen, err)
-	}
+	assertMayOpen(ctx, t, svc,
+		"scenario 6: existing purchaser must keep access to taken-down course",
+		&learnerID, takenDownCourseID, true)
+	assertMayOpen(ctx, t, svc,
+		"scenario 6: unowned caller must not open taken-down course",
+		&unownedID, takenDownCourseID, false)
 
 	// Extra: Creator viewing their own course -> true
-	mayOpen, err = svc.MayOpen(ctx, &creatorID, paidCourseID)
-	if err != nil || !mayOpen {
-		t.Fatalf("creator should always open their own course, got %v, err %v", mayOpen, err)
-	}
+	assertMayOpen(ctx, t, svc, "creator should always open their own course: ", &creatorID, paidCourseID, true)
 }
 
 func TestClaimCourse(t *testing.T) {
@@ -310,9 +309,8 @@ type refundFixture struct {
 	lessonIDs []uuid.UUID
 }
 
-func newRefundFixture(t *testing.T, lessons int) *refundFixture {
+func newRefundFixture(ctx context.Context, t *testing.T, lessons int) *refundFixture {
 	t.Helper()
-	ctx := context.Background()
 	repo := newMockRepo()
 	svc := service.NewService(repo, nil, nil, nil)
 	progress := &mockProgressReader{}
@@ -343,9 +341,8 @@ func newRefundFixture(t *testing.T, lessons int) *refundFixture {
 
 // buy records a purchase and the sale credit that HandlePaymentSucceeded
 // would have written for it.
-func (f *refundFixture) buy(t *testing.T, learnerID uuid.UUID) *domain.Purchase {
+func (f *refundFixture) buy(ctx context.Context, t *testing.T, learnerID uuid.UUID) *domain.Purchase {
 	t.Helper()
-	ctx := context.Background()
 	orderID := uuid.New()
 	p, err := f.repo.CreatePurchase(ctx, &domain.Purchase{
 		UserID:       learnerID,
@@ -370,7 +367,7 @@ func (f *refundFixture) buy(t *testing.T, learnerID uuid.UUID) *domain.Purchase 
 }
 
 // completeLessons marks the first n of the course's lessons done.
-func (f *refundFixture) completeLessons(userID uuid.UUID, n int) {
+func (f *refundFixture) completeLessons(_ uuid.UUID, n int) {
 	progress := make([]learningcontract.Progress, 0, n)
 	for i := 0; i < n && i < len(f.lessonIDs); i++ {
 		progress = append(progress, learningcontract.Progress{
@@ -387,9 +384,9 @@ func (f *refundFixture) completeLessons(userID uuid.UUID, n int) {
 // existed for anybody to pay.
 func TestRefundPurchase_RecordsWhatIsOwed(t *testing.T) {
 	ctx := context.Background()
-	f := newRefundFixture(t, 10)
+	f := newRefundFixture(ctx, t, 10)
 	learnerID := uuid.New()
-	p := f.buy(t, learnerID)
+	p := f.buy(ctx, t, learnerID)
 	f.completeLessons(learnerID, 1) // 10%
 
 	if err := f.svc.RefundPurchase(ctx, learnerID, p.ID); err != nil {
@@ -418,9 +415,9 @@ func TestRefundPurchase_RecordsWhatIsOwed(t *testing.T) {
 // the reversal disagree with the credit it reverses.
 func TestRefundPurchase_ReversesTheSplitTheSaleUsed(t *testing.T) {
 	ctx := context.Background()
-	f := newRefundFixture(t, 10)
+	f := newRefundFixture(ctx, t, 10)
 	learnerID := uuid.New()
-	p := f.buy(t, learnerID)
+	p := f.buy(ctx, t, learnerID)
 
 	// The platform changes its cut after the sale.
 	_, _ = f.repo.UpsertListing(ctx, &domain.Listing{
@@ -461,9 +458,9 @@ func TestRefundPurchase_MeasuresCompletionNotGrade(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("a finished course is refused however badly it was scored", func(t *testing.T) {
-		f := newRefundFixture(t, 10)
+		f := newRefundFixture(ctx, t, 10)
 		learnerID := uuid.New()
-		p := f.buy(t, learnerID)
+		p := f.buy(ctx, t, learnerID)
 		f.completeLessons(learnerID, 10) // 100% done, no grade anywhere
 
 		err := f.svc.RefundPurchase(ctx, learnerID, p.ID)
@@ -476,9 +473,9 @@ func TestRefundPurchase_MeasuresCompletionNotGrade(t *testing.T) {
 	})
 
 	t.Run("a fifth of the way through is the line", func(t *testing.T) {
-		f := newRefundFixture(t, 10)
+		f := newRefundFixture(ctx, t, 10)
 		learnerID := uuid.New()
-		p := f.buy(t, learnerID)
+		p := f.buy(ctx, t, learnerID)
 		f.completeLessons(learnerID, 2) // exactly 20%
 
 		err := f.svc.RefundPurchase(ctx, learnerID, p.ID)
@@ -490,11 +487,11 @@ func TestRefundPurchase_MeasuresCompletionNotGrade(t *testing.T) {
 
 func TestRefundPurchase_Rules(t *testing.T) {
 	ctx := context.Background()
-	f := newRefundFixture(t, 10)
+	f := newRefundFixture(ctx, t, 10)
 	learnerID := uuid.New()
 
 	// 1. Refund within 7 days and 10% progress (< 20%) -> SUCCESS
-	p := f.buy(t, learnerID)
+	p := f.buy(ctx, t, learnerID)
 	f.completeLessons(learnerID, 1)
 
 	if err := f.svc.RefundPurchase(ctx, learnerID, p.ID); err != nil {
@@ -514,7 +511,7 @@ func TestRefundPurchase_Rules(t *testing.T) {
 
 	// 3. Refund after the 7-day window fails
 	learner3 := uuid.New()
-	p3 := f.buy(t, learner3)
+	p3 := f.buy(ctx, t, learner3)
 	p3.GrantedAt = time.Now().Add(-8 * 24 * time.Hour)
 	f.progress.progress = nil
 

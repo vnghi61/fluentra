@@ -1,3 +1,6 @@
+// Package repository is the payment module's data access: orders, the SePay
+// transactions we were told about, webhooks kept raw for replay, refunds and
+// payouts.
 package repository
 
 import (
@@ -19,20 +22,43 @@ type Repository interface {
 	CreateOrder(ctx context.Context, order *domain.Order) (*domain.Order, error)
 	GetOrderByID(ctx context.Context, id uuid.UUID) (*domain.Order, error)
 	GetOrderByReference(ctx context.Context, ref string) (*domain.Order, error)
-	UpdateOrderStatus(ctx context.Context, id uuid.UUID, status domain.OrderStatus, paidAt *time.Time) (*domain.Order, error)
+	UpdateOrderStatus(
+		ctx context.Context,
+		id uuid.UUID,
+		status domain.OrderStatus,
+		paidAt *time.Time,
+	) (*domain.Order, error)
 	// MarkOrderPaid moves an order to paid only from pending or expired, and
 	// reports domain.ErrOrderNotPayable otherwise. See the query's comment.
 	MarkOrderPaid(ctx context.Context, id uuid.UUID, paidAt time.Time) (*domain.Order, error)
 	MarkOrderRefunded(ctx context.Context, id uuid.UUID) (*domain.Order, error)
-	CreateRefund(ctx context.Context, orderID uuid.UUID, amountVND int64, reason string, actorID uuid.UUID) (*domain.Refund, error)
+	CreateRefund(
+		ctx context.Context,
+		orderID uuid.UUID,
+		amountVND int64,
+		reason string,
+		actorID uuid.UUID,
+	) (*domain.Refund, error)
 	ListRefunds(ctx context.Context, status *string, limit, offset int32) ([]domain.Refund, int64, error)
 	MarkRefundSent(ctx context.Context, id uuid.UUID) (*domain.Refund, error)
 	ListExpiredPendingOrders(ctx context.Context, limit int32) ([]*domain.Order, error)
 
-	InsertPaymentWebhook(ctx context.Context, provider, providerEventID string, payload []byte, valid bool, errStr *string) error
+	InsertPaymentWebhook(
+		ctx context.Context,
+		provider, providerEventID string,
+		payload []byte,
+		valid bool,
+		errStr *string,
+	) error
 	InsertSepayTransaction(ctx context.Context, tx *domain.SepayTransaction) (*domain.SepayTransaction, error)
 	GetSepayTransactionBySepayID(ctx context.Context, sepayID int64) (*domain.SepayTransaction, error)
-	UpdateSepayTransactionMatch(ctx context.Context, id uuid.UUID, orderID *uuid.UUID, matchedAt *time.Time, unmatchedReason *string) (*domain.SepayTransaction, error)
+	UpdateSepayTransactionMatch(
+		ctx context.Context,
+		id uuid.UUID,
+		orderID *uuid.UUID,
+		matchedAt *time.Time,
+		unmatchedReason *string,
+	) (*domain.SepayTransaction, error)
 	ListUnmatchedTransactions(ctx context.Context, limit, offset int32) ([]domain.UnmatchedTransaction, int64, error)
 	GetLastSeenSepayID(ctx context.Context) (int64, error)
 
@@ -97,7 +123,13 @@ func (r *pgRepository) GetOrderByReference(ctx context.Context, ref string) (*do
 	return mapOrderRow(&row, "", "", "", ""), nil
 }
 
-func (r *pgRepository) UpdateOrderStatus(ctx context.Context, id uuid.UUID, status domain.OrderStatus, paidAt *time.Time) (*domain.Order, error) {
+func (
+	r *pgRepository) UpdateOrderStatus(ctx context.Context,
+	id uuid.UUID,
+	status domain.OrderStatus,
+	paidAt *time.Time) (*domain.Order,
+	error,
+) {
 	row, err := r.q.UpdateOrderStatus(ctx, sqlc.UpdateOrderStatusParams{
 		ID:     id,
 		Status: string(status),
@@ -124,7 +156,14 @@ func (r *pgRepository) ListExpiredPendingOrders(ctx context.Context, limit int32
 	return orders, nil
 }
 
-func (r *pgRepository) InsertPaymentWebhook(ctx context.Context, provider, providerEventID string, payload []byte, valid bool, errStr *string) error {
+func (
+	r *pgRepository) InsertPaymentWebhook(ctx context.Context,
+	provider,
+	providerEventID string,
+	payload []byte,
+	valid bool,
+	errStr *string,
+) error {
 	_, err := r.q.InsertPaymentWebhook(ctx, sqlc.InsertPaymentWebhookParams{
 		Provider:        provider,
 		ProviderEventID: providerEventID,
@@ -135,7 +174,11 @@ func (r *pgRepository) InsertPaymentWebhook(ctx context.Context, provider, provi
 	return err
 }
 
-func (r *pgRepository) InsertSepayTransaction(ctx context.Context, tx *domain.SepayTransaction) (*domain.SepayTransaction, error) {
+func (
+	r *pgRepository) InsertSepayTransaction(ctx context.Context,
+	tx *domain.SepayTransaction) (*domain.SepayTransaction,
+	error,
+) {
 	row, err := r.q.InsertSepayTransaction(ctx, sqlc.InsertSepayTransactionParams{
 		SepayID:         tx.SepayID,
 		Gateway:         tx.Gateway,
@@ -158,7 +201,11 @@ func (r *pgRepository) InsertSepayTransaction(ctx context.Context, tx *domain.Se
 	return mapSepayTransactionRow(&row), nil
 }
 
-func (r *pgRepository) GetSepayTransactionBySepayID(ctx context.Context, sepayID int64) (*domain.SepayTransaction, error) {
+func (
+	r *pgRepository) GetSepayTransactionBySepayID(ctx context.Context,
+	sepayID int64) (*domain.SepayTransaction,
+	error,
+) {
 	row, err := r.q.GetSepayTransactionBySepayID(ctx, sepayID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -169,7 +216,14 @@ func (r *pgRepository) GetSepayTransactionBySepayID(ctx context.Context, sepayID
 	return mapSepayTransactionRow(&row), nil
 }
 
-func (r *pgRepository) UpdateSepayTransactionMatch(ctx context.Context, id uuid.UUID, orderID *uuid.UUID, matchedAt *time.Time, unmatchedReason *string) (*domain.SepayTransaction, error) {
+func (
+	r *pgRepository) UpdateSepayTransactionMatch(ctx context.Context,
+	id uuid.UUID,
+	orderID *uuid.UUID,
+	matchedAt *time.Time,
+	unmatchedReason *string) (*domain.SepayTransaction,
+	error,
+) {
 	row, err := r.q.UpdateSepayTransactionMatch(ctx, sqlc.UpdateSepayTransactionMatchParams{
 		ID:              id,
 		OrderID:         orderID,
@@ -182,7 +236,13 @@ func (r *pgRepository) UpdateSepayTransactionMatch(ctx context.Context, id uuid.
 	return mapSepayTransactionRow(&row), nil
 }
 
-func (r *pgRepository) ListUnmatchedTransactions(ctx context.Context, limit, offset int32) ([]domain.UnmatchedTransaction, int64, error) {
+func (
+	r *pgRepository) ListUnmatchedTransactions(ctx context.Context,
+	limit,
+	offset int32) ([]domain.UnmatchedTransaction,
+	int64,
+	error,
+) {
 	rows, err := r.q.ListUnmatchedTransactions(ctx, sqlc.ListUnmatchedTransactionsParams{
 		Limit:  limit,
 		Offset: offset,

@@ -1,3 +1,5 @@
+// Package job holds the payment module's background work: sweeping orders
+// that expired unpaid, and the daily reconciliation against SePay.
 package job
 
 import (

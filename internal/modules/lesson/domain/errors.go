@@ -22,8 +22,11 @@ var (
 	// before completing its prerequisites (BR-LESSON-07).
 	ErrLessonLocked = apperr.New(apperr.Forbidden, "LESSON_LOCKED", "Prerequisites not met.")
 
-	// ErrCourseNotPurchased is returned when attempting to access a lesson in a course that has not been purchased (BR-STUDIO-05).
-	ErrCourseNotPurchased = apperr.New(apperr.Forbidden, "COURSE_NOT_PURCHASED", "You must purchase this course to access this lesson.")
+	// ErrCourseNotPurchased is returned when attempting to access a lesson in a course that has not been purchased
+	// (BR-STUDIO-05).
+	ErrCourseNotPurchased = apperr.New(
+		apperr.Forbidden, "COURSE_NOT_PURCHASED",
+		"You must purchase this course to access this lesson.")
 
 	// ErrPrerequisiteCycle is returned when prerequisite relationships contain a cycle (BR-LESSON-03).
 	ErrPrerequisiteCycle = apperr.New(apperr.Validation, "PREREQUISITE_CYCLE", "The proposed graph contains a cycle.")

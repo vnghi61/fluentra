@@ -202,7 +202,14 @@ type UpdateDraftRequest struct {
 	Structure       json.RawMessage `json:"structure,omitempty"`
 }
 
-func (s *Service) UpdateDraft(ctx context.Context, ownerID, draftID uuid.UUID, req UpdateDraftRequest) (*domain.CourseDraft, error) {
+// UpdateDraft replaces the fields a request set on a draft the caller owns.
+//
+// Only a draft or one that came back with changes requested may be edited: a
+// submission in review is what a moderator is looking at, and a published
+// course is edited by submitting a new version.
+func (s *Service) UpdateDraft(
+	ctx context.Context, ownerID, draftID uuid.UUID, req UpdateDraftRequest,
+) (*domain.CourseDraft, error) {
 	existing, err := s.repo.GetCourseDraftByID(ctx, draftID)
 	if err != nil {
 		return nil, err
@@ -214,40 +221,59 @@ func (s *Service) UpdateDraft(ctx context.Context, ownerID, draftID uuid.UUID, r
 		return nil, apperr.New(apperr.Conflict, "CANNOT_EDIT_DRAFT", "Draft cannot be edited while in review or published")
 	}
 
-	if req.Title != nil {
-		existing.Title = *req.Title
-	}
-	if req.Slug != nil {
-		existing.Slug = *req.Slug
-	}
-	if req.Description != nil {
-		existing.Description = *req.Description
-	}
-	if req.CEFRLevel != nil {
-		existing.CEFRLevel = *req.CEFRLevel
-	}
-	if req.TopicTaxonomyID != nil {
-		existing.TopicTaxonomyID = req.TopicTaxonomyID
-	}
+	applyDraftFields(existing, req)
 	if req.PriceVND != nil {
-		minVND := s.minPriceVND
-		if minVND <= 0 {
-			minVND = domain.DefaultMinPriceVND
-		}
-		maxVND := s.maxPriceVND
-		if maxVND <= 0 {
-			maxVND = domain.DefaultMaxPriceVND
-		}
-		if *req.PriceVND < 0 || (*req.PriceVND > 0 && (*req.PriceVND < minVND || *req.PriceVND > maxVND)) {
-			return nil, domain.ErrPriceOutOfBounds
+		if err := s.checkPrice(*req.PriceVND); err != nil {
+			return nil, err
 		}
 		existing.PriceVND = *req.PriceVND
 	}
-	if len(req.Structure) > 0 {
-		existing.Structure = req.Structure
-	}
 
 	return s.repo.UpdateCourseDraft(ctx, existing)
+}
+
+// applyDraftFields copies the fields a request actually set. A nil pointer
+// means "leave it", which is why this is a wall of small ifs rather than a
+// struct copy.
+func applyDraftFields(draft *domain.CourseDraft, req UpdateDraftRequest) {
+	if req.Title != nil {
+		draft.Title = *req.Title
+	}
+	if req.Slug != nil {
+		draft.Slug = *req.Slug
+	}
+	if req.Description != nil {
+		draft.Description = *req.Description
+	}
+	if req.CEFRLevel != nil {
+		draft.CEFRLevel = *req.CEFRLevel
+	}
+	if req.TopicTaxonomyID != nil {
+		draft.TopicTaxonomyID = req.TopicTaxonomyID
+	}
+	if len(req.Structure) > 0 {
+		draft.Structure = req.Structure
+	}
+}
+
+// checkPrice enforces BR-STUDIO-01: free, or a whole number of VND inside the
+// configured bounds.
+func (s *Service) checkPrice(priceVND int64) error {
+	if priceVND == 0 {
+		return nil
+	}
+	minVND := s.minPriceVND
+	if minVND <= 0 {
+		minVND = domain.DefaultMinPriceVND
+	}
+	maxVND := s.maxPriceVND
+	if maxVND <= 0 {
+		maxVND = domain.DefaultMaxPriceVND
+	}
+	if priceVND < minVND || priceVND > maxVND {
+		return domain.ErrPriceOutOfBounds
+	}
+	return nil
 }
 
 // GetDraft fetches an existing course draft owned by the specified user.
@@ -263,7 +289,14 @@ func (s *Service) GetDraft(ctx context.Context, ownerID, draftID uuid.UUID) (*do
 }
 
 // ListDrafts returns paginated drafts owned by the given creator.
-func (s *Service) ListDrafts(ctx context.Context, ownerID uuid.UUID, limit, offset int) ([]*domain.CourseDraft, int64, error) {
+func (
+	s *Service) ListDrafts(ctx context.Context,
+	ownerID uuid.UUID,
+	limit,
+	offset int) ([]*domain.CourseDraft,
+	int64,
+	error,
+) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -315,7 +348,112 @@ func (s *Service) SubmitDraft(ctx context.Context, ownerID, draftID uuid.UUID) (
 }
 
 // RunGate1Verification executes automated Gate 1 checks against the submitted draft.
-func (s *Service) RunGate1Verification(ctx context.Context, submissionID uuid.UUID) (*domain.Submission, error) {
+// gate1Stats counts what Gate 1 managed to check.
+type gate1Stats struct {
+	checked      int
+	blindSolved  int
+	blindRejects int
+}
+
+// verifyDraftItems runs the item checks over every activity in a draft.
+func (s *Service) verifyDraftItems(
+	ctx context.Context,
+	submissionID uuid.UUID,
+	draft *domain.CourseDraft,
+	structure *domain.CourseStructure,
+) (failures []domain.VerificationFailure, stats gate1Stats) {
+	if structure == nil || s.itemVerifier == nil {
+		return nil, stats
+	}
+	// Activity content verification via ItemVerifier.
+	//
+	// Items are checked even when the structure has complaints, so one missing
+	// title does not hide twelve broken answer keys until the next submission.
+	// Check 4, the blind solve: a model answers the redacted item and has
+	// to agree with the key. It is the only check that catches an answer
+	// key that is wrong but self-consistent — every other check asks the
+	// item about itself, and a confidently wrong key passes all of them.
+	// It was hard-coded off, which left Gate 1 unable to catch the one
+	// failure the two-gate design was built around.
+	//
+	// It costs an AI call per item, so a paid course is checked in full and
+	// a free one by sample: money is the line where being wrong is
+	// expensive enough to pay for certainty.
+	paid := draft.PriceVND > 0
+	items := collectDraftItems(structure, draft.CEFRLevel)
+	sampled := blindSolveSample(len(items), paid)
+
+	// The bodies already seen, so check 5 has something to deduplicate
+	// against. It was never populated, so every item was compared to an
+	// empty list and the same passage could be submitted four times.
+	seen := make([]json.RawMessage, 0, len(items))
+
+	for i, item := range items {
+		stats.checked++
+		blind := sampled[i]
+		req := learningcontract.VerifyItemRequest{
+			Kind:       item.Kind,
+			TaskType:   item.TaskType,
+			CEFRLevel:  item.CEFRLevel,
+			Body:       item.Body,
+			Existing:   seen,
+			BlindSolve: blind,
+		}
+		if blind {
+			stats.blindSolved++
+		}
+		if vErr := s.itemVerifier.VerifyItem(ctx, req); vErr != nil {
+			outcome := classifyBlindSolve(vErr)
+			switch {
+			case blind && outcome == blindSolveDisagreed:
+				// A single disagreement is as often the model as the item,
+				// which is why the pools retry rather than reject. Counted
+				// here and judged against the sample below.
+				stats.blindRejects++
+			case blind && outcome == blindSolveUnavailable:
+				// Not evidence about this item. Uncount the sample so the
+				// ratio below is over items we actually managed to check.
+				stats.blindSolved--
+				slog.WarnContext(ctx, "blind solve unavailable for a submitted item",
+					"submission_id", submissionID, "kind", item.Kind, "error", vErr)
+			default:
+				failures = append(failures, domain.VerificationFailure{
+					UnitIndex:     item.UnitIndex,
+					LessonIndex:   item.LessonIndex,
+					ActivityIndex: item.ActivityIndex,
+					Kind:          item.Kind,
+					Check:         "item_verifier",
+					Message:       vErr.Error(),
+				})
+				continue
+			}
+		}
+		seen = append(seen, item.Body)
+	}
+
+	// More than a tenth of the blind-solved sample disagreeing is the item
+	// set, not the model.
+	if stats.blindSolved > 0 && stats.blindRejects*10 > stats.blindSolved {
+		failures = append(failures, domain.VerificationFailure{
+			Check: "blind_solve",
+			Message: fmt.Sprintf(
+				"%d of %d checked answers did not survive an independent solve; the answer keys need review",
+				stats.blindRejects, stats.blindSolved),
+		})
+	}
+
+	return failures, stats
+}
+
+// RunGate1Verification is the automated gate (WO 15 §7).
+//
+// It checks the shape of the course, the kinds it uses, the safety of its text
+// and every activity's answer key, and moves the submission to in_review when
+// all of it passes. A submission that fails comes back to the creator with the
+// report rather than reaching a moderator (BR-STUDIO-07).
+func (s *Service) RunGate1Verification(
+	ctx context.Context, submissionID uuid.UUID,
+) (*domain.Submission, error) {
 	sub, err := s.repo.GetSubmissionByID(ctx, submissionID)
 	if err != nil {
 		return nil, err
@@ -343,95 +481,15 @@ func (s *Service) RunGate1Verification(ctx context.Context, submissionID uuid.UU
 		})
 	}
 
-	totalItemsChecked := 0
-	blindSolved := 0
-	blindSolveFailures := 0
-
-	// 2. Activity content verification via ItemVerifier.
-	//
-	// Items are checked even when the structure has complaints, so one missing
-	// title does not hide twelve broken answer keys until the next submission.
-	if structure != nil && s.itemVerifier != nil {
-		// Check 4, the blind solve: a model answers the redacted item and has
-		// to agree with the key. It is the only check that catches an answer
-		// key that is wrong but self-consistent — every other check asks the
-		// item about itself, and a confidently wrong key passes all of them.
-		// It was hard-coded off, which left Gate 1 unable to catch the one
-		// failure the two-gate design was built around.
-		//
-		// It costs an AI call per item, so a paid course is checked in full and
-		// a free one by sample: money is the line where being wrong is
-		// expensive enough to pay for certainty.
-		paid := draft.PriceVND > 0
-		items := collectDraftItems(structure, draft.CEFRLevel)
-		sampled := blindSolveSample(len(items), paid)
-
-		// The bodies already seen, so check 5 has something to deduplicate
-		// against. It was never populated, so every item was compared to an
-		// empty list and the same passage could be submitted four times.
-		seen := make([]json.RawMessage, 0, len(items))
-
-		for i, item := range items {
-			totalItemsChecked++
-			blind := sampled[i]
-			req := learningcontract.VerifyItemRequest{
-				Kind:       item.Kind,
-				TaskType:   item.TaskType,
-				CEFRLevel:  item.CEFRLevel,
-				Body:       item.Body,
-				Existing:   seen,
-				BlindSolve: blind,
-			}
-			if blind {
-				blindSolved++
-			}
-			if vErr := s.itemVerifier.VerifyItem(ctx, req); vErr != nil {
-				outcome := classifyBlindSolve(vErr)
-				switch {
-				case blind && outcome == blindSolveDisagreed:
-					// A single disagreement is as often the model as the item,
-					// which is why the pools retry rather than reject. Counted
-					// here and judged against the sample below.
-					blindSolveFailures++
-				case blind && outcome == blindSolveUnavailable:
-					// Not evidence about this item. Uncount the sample so the
-					// ratio below is over items we actually managed to check.
-					blindSolved--
-					slog.WarnContext(ctx, "blind solve unavailable for a submitted item",
-						"submission_id", sub.ID, "kind", item.Kind, "error", vErr)
-				default:
-					failures = append(failures, domain.VerificationFailure{
-						UnitIndex:     item.UnitIndex,
-						LessonIndex:   item.LessonIndex,
-						ActivityIndex: item.ActivityIndex,
-						Kind:          item.Kind,
-						Check:         "item_verifier",
-						Message:       vErr.Error(),
-					})
-					continue
-				}
-			}
-			seen = append(seen, item.Body)
-		}
-
-		// More than a tenth of the blind-solved sample disagreeing is the item
-		// set, not the model.
-		if blindSolved > 0 && blindSolveFailures*10 > blindSolved {
-			failures = append(failures, domain.VerificationFailure{
-				Check: "blind_solve",
-				Message: fmt.Sprintf(
-					"%d of %d checked answers did not survive an independent solve; the answer keys need review",
-					blindSolveFailures, blindSolved),
-			})
-		}
-	}
+	itemFailures, stats := s.verifyDraftItems(ctx, sub.ID, draft, structure)
+	failures = append(failures, itemFailures...)
 
 	passed := len(failures) == 0
 	report := domain.VerificationReport{
 		Passed:            passed,
-		ItemsChecked:      totalItemsChecked,
-		BlindSolved:       blindSolved,
-		BlindSolveRejects: blindSolveFailures,
+		ItemsChecked:      stats.checked,
+		BlindSolved:       stats.blindSolved,
+		BlindSolveRejects: stats.blindRejects,
 		Failures:          failures,
 	}
 	reportRaw, _ := json.Marshal(report)
@@ -622,7 +680,122 @@ func (s *Service) ListModerationQueue(
 	return items, total, nil
 }
 
-func (s *Service) ApproveSubmission(ctx context.Context, reviewerID, submissionID uuid.UUID) (*domain.Submission, error) {
+// publishDraft writes an approved draft into `lesson` and `content`: the
+// course, its units and lessons, and a real content version per activity.
+//
+// The course is built unlisted; ApproveSubmission makes it public once the
+// listing exists. It returns the course id and the hours the course is
+// estimated at, so the caller can ensure it again with the same numbers.
+//
+// Not transactional, and it cannot be: the writes cross into two other modules
+// through their contracts, which take no transaction. A failure part way
+// through leaves an unlisted course nobody can find, which is the safe
+// direction for that to fail in.
+func (s *Service) publishDraft(
+	ctx context.Context, draft *domain.CourseDraft,
+) (courseID uuid.UUID, estimatedHours int, err error) {
+	if s.lessonAuthor == nil || s.contentAuthor == nil {
+		return uuid.Nil, 0, nil
+	}
+
+	var structure domain.CourseStructure
+	if err := json.Unmarshal(draft.Structure, &structure); err != nil {
+		return uuid.Nil, 0, fmt.Errorf("unmarshal draft structure for publish: %w", err)
+	}
+	estimatedHours = len(structure.Units) * 5
+
+	courseSpec := lessoncontract.CourseSpec{
+		Slug:           draft.Slug,
+		Title:          draft.Title,
+		Description:    draft.Description,
+		CEFRFrom:       draft.CEFRLevel,
+		CEFRTo:         draft.CEFRLevel,
+		EstimatedHours: estimatedHours,
+		Origin:         "community",
+		OwnerID:        &draft.OwnerID,
+		// Built unlisted, made public at the end.
+		//
+		// A paid course whose listing failed to write is a free course: the
+		// paywall reads the listing, and a course with none is treated as
+		// ours. Publishing the course before its price exists left that gap
+		// open behind a discarded error. Nothing is reachable until the
+		// listing is in place.
+		Visibility:      "unlisted",
+		TopicTaxonomyID: draft.TopicTaxonomyID,
+	}
+	publishedCourseID, err := s.lessonAuthor.EnsureCourse(ctx, courseSpec)
+	if err != nil {
+		return uuid.Nil, 0, fmt.Errorf("publish course in lesson module: %w", err)
+	}
+
+	for uIdx, unit := range structure.Units {
+		unitSpec := lessoncontract.UnitSpec{
+			CourseID:    publishedCourseID,
+			Position:    uIdx + 1,
+			Title:       unit.Title,
+			Description: unit.Description,
+		}
+		unitID, err := s.lessonAuthor.EnsureUnit(ctx, unitSpec)
+		if err != nil {
+			return uuid.Nil, 0, fmt.Errorf("publish unit: %w", err)
+		}
+
+		for lIdx, lesson := range unit.Lessons {
+			level := lesson.CEFRLevel
+			if level == "" {
+				level = draft.CEFRLevel
+			}
+			lessonSpec := lessoncontract.LessonSpec{
+				UnitID:           unitID,
+				Position:         lIdx + 1,
+				Title:            lesson.Title,
+				SkillFocus:       lesson.SkillFocus,
+				EstimatedMinutes: lesson.EstimatedMinutes,
+				CEFRLevel:        &level,
+			}
+			lessonID, err := s.lessonAuthor.EnsureLesson(ctx, lessonSpec)
+			if err != nil {
+				return uuid.Nil, 0, fmt.Errorf("publish lesson: %w", err)
+			}
+
+			activitySpecs := make([]lessoncontract.ActivitySpec, len(lesson.Activities))
+			for aIdx, act := range lesson.Activities {
+				contentSlug := fmt.Sprintf("%s-u%d-l%d-a%d", draft.Slug, uIdx+1, lIdx+1, aIdx+1)
+				versionID, err := s.contentAuthor.EnsurePublished(ctx, contentcontract.AuthorSpec{
+					Slug:      contentSlug,
+					Kind:      act.Kind,
+					CEFRLevel: level,
+					Body:      act.Body,
+					AuthorID:  draft.OwnerID,
+				})
+				if err != nil {
+					return uuid.Nil, 0, fmt.Errorf("publish content version: %w", err)
+				}
+				activitySpecs[aIdx] = lessoncontract.ActivitySpec{
+					Position:         aIdx + 1,
+					Kind:             act.Kind,
+					ContentVersionID: versionID,
+					Config:           act.Config,
+					Weight:           act.Weight,
+				}
+			}
+
+			if err := s.lessonAuthor.SyncActivities(ctx, lessonID, activitySpecs); err != nil {
+				return uuid.Nil, 0, fmt.Errorf("sync lesson activities: %w", err)
+			}
+		}
+	}
+
+	return publishedCourseID, estimatedHours, nil
+}
+
+// ApproveSubmission is the human gate: it publishes the course.
+//
+// The reviewer may not be the creator (BR-STUDIO-06, and a CHECK constraint
+// says so too), and the submission must have passed Gate 1.
+func (s *Service) ApproveSubmission(
+	ctx context.Context, reviewerID, submissionID uuid.UUID,
+) (*domain.Submission, error) {
 	sub, err := s.repo.GetSubmissionByID(ctx, submissionID)
 	if err != nil {
 		return nil, err
@@ -646,98 +819,9 @@ func (s *Service) ApproveSubmission(ctx context.Context, reviewerID, submissionI
 		return nil, err
 	}
 
-	var publishedCourseID uuid.UUID
-	estimatedHours := 0
-	// Publish course hierarchy and content versions
-	if s.lessonAuthor != nil && s.contentAuthor != nil {
-		var structure domain.CourseStructure
-		if err := json.Unmarshal(draft.Structure, &structure); err != nil {
-			return nil, fmt.Errorf("unmarshal draft structure for publish: %w", err)
-		}
-		estimatedHours = len(structure.Units) * 5
-
-		courseSpec := lessoncontract.CourseSpec{
-			Slug:           draft.Slug,
-			Title:          draft.Title,
-			Description:    draft.Description,
-			CEFRFrom:       draft.CEFRLevel,
-			CEFRTo:         draft.CEFRLevel,
-			EstimatedHours: estimatedHours,
-			Origin:         "community",
-			OwnerID:        &draft.OwnerID,
-			// Built unlisted, made public at the end.
-			//
-			// A paid course whose listing failed to write is a free course: the
-			// paywall reads the listing, and a course with none is treated as
-			// ours. Publishing the course before its price exists left that gap
-			// open behind a discarded error. Nothing is reachable until the
-			// listing is in place.
-			Visibility:      "unlisted",
-			TopicTaxonomyID: draft.TopicTaxonomyID,
-		}
-		var err error
-		publishedCourseID, err = s.lessonAuthor.EnsureCourse(ctx, courseSpec)
-		if err != nil {
-			return nil, fmt.Errorf("publish course in lesson module: %w", err)
-		}
-
-		for uIdx, unit := range structure.Units {
-			unitSpec := lessoncontract.UnitSpec{
-				CourseID:    publishedCourseID,
-				Position:    uIdx + 1,
-				Title:       unit.Title,
-				Description: unit.Description,
-			}
-			unitID, err := s.lessonAuthor.EnsureUnit(ctx, unitSpec)
-			if err != nil {
-				return nil, fmt.Errorf("publish unit: %w", err)
-			}
-
-			for lIdx, lesson := range unit.Lessons {
-				level := lesson.CEFRLevel
-				if level == "" {
-					level = draft.CEFRLevel
-				}
-				lessonSpec := lessoncontract.LessonSpec{
-					UnitID:           unitID,
-					Position:         lIdx + 1,
-					Title:            lesson.Title,
-					SkillFocus:       lesson.SkillFocus,
-					EstimatedMinutes: lesson.EstimatedMinutes,
-					CEFRLevel:        &level,
-				}
-				lessonID, err := s.lessonAuthor.EnsureLesson(ctx, lessonSpec)
-				if err != nil {
-					return nil, fmt.Errorf("publish lesson: %w", err)
-				}
-
-				activitySpecs := make([]lessoncontract.ActivitySpec, len(lesson.Activities))
-				for aIdx, act := range lesson.Activities {
-					contentSlug := fmt.Sprintf("%s-u%d-l%d-a%d", draft.Slug, uIdx+1, lIdx+1, aIdx+1)
-					versionID, err := s.contentAuthor.EnsurePublished(ctx, contentcontract.AuthorSpec{
-						Slug:      contentSlug,
-						Kind:      act.Kind,
-						CEFRLevel: level,
-						Body:      act.Body,
-						AuthorID:  draft.OwnerID,
-					})
-					if err != nil {
-						return nil, fmt.Errorf("publish content version: %w", err)
-					}
-					activitySpecs[aIdx] = lessoncontract.ActivitySpec{
-						Position:         aIdx + 1,
-						Kind:             act.Kind,
-						ContentVersionID: versionID,
-						Config:           act.Config,
-						Weight:           act.Weight,
-					}
-				}
-
-				if err := s.lessonAuthor.SyncActivities(ctx, lessonID, activitySpecs); err != nil {
-					return nil, fmt.Errorf("sync lesson activities: %w", err)
-				}
-			}
-		}
+	publishedCourseID, estimatedHours, err := s.publishDraft(ctx, draft)
+	if err != nil {
+		return nil, err
 	}
 
 	// The listing, before the course can be reached and before anything is
@@ -898,7 +982,11 @@ func (s *Service) GetListing(ctx context.Context, courseID uuid.UUID) (*contract
 }
 
 // BatchGetListings retrieves listings for multiple course IDs.
-func (s *Service) BatchGetListings(ctx context.Context, courseIDs []uuid.UUID) (map[uuid.UUID]*contract.CourseListing, error) {
+func (
+	s *Service) BatchGetListings(ctx context.Context,
+	courseIDs []uuid.UUID) (map[uuid.UUID]*contract.CourseListing,
+	error,
+) {
 	if len(courseIDs) == 0 {
 		return map[uuid.UUID]*contract.CourseListing{}, nil
 	}
@@ -926,7 +1014,12 @@ func (s *Service) HasPurchased(ctx context.Context, userID, courseID uuid.UUID) 
 }
 
 // BatchHasPurchased returns purchase status for a set of courses.
-func (s *Service) BatchHasPurchased(ctx context.Context, userID uuid.UUID, courseIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+func (
+	s *Service) BatchHasPurchased(ctx context.Context,
+	userID uuid.UUID,
+	courseIDs []uuid.UUID) (map[uuid.UUID]bool,
+	error,
+) {
 	result := make(map[uuid.UUID]bool, len(courseIDs))
 	if userID == uuid.Nil || len(courseIDs) == 0 {
 		return result, nil

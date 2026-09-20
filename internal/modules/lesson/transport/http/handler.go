@@ -30,7 +30,14 @@ type Guard interface {
 
 // LessonService defines the use cases called by HTTP handlers.
 type LessonService interface {
-	ListCourses(ctx context.Context, level *string, topic *string, limit, offset int, userID ...*uuid.UUID) ([]service.CourseSummaryDTO, int64, error)
+	ListCourses(
+		ctx context.Context,
+		level *string,
+		topic *string,
+		limit,
+		offset int,
+		userID ...*uuid.UUID,
+	) ([]service.CourseSummaryDTO, int64, error)
 	GetCourseDetail(ctx context.Context, slug string, userID uuid.UUID) (*service.CourseDetailDTO, error)
 	GetLessonDetail(ctx context.Context, lessonID, userID uuid.UUID) (*service.LessonDetailDTO, error)
 	CreateCourse(ctx context.Context, actorID uuid.UUID, input service.CreateCourseInput) (*contract.Course, error)

@@ -9,6 +9,9 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/payment/domain"
 )
 
+// sampleReference is a well-formed payment reference the tests reuse.
+const sampleReference = "FLUABCDE12345"
+
 func TestGenerateReference(t *testing.T) {
 	id := uuid.MustParse("0191fa12-3456-789a-bcde-f0123456789a")
 	ref := domain.GenerateReference(id)
@@ -27,7 +30,7 @@ func TestGenerateReference(t *testing.T) {
 }
 
 func TestBuildVietQRURL(t *testing.T) {
-	url := domain.BuildVietQRURL("VCB", "1017588888", 490000, "FLUABCDE12345")
+	url := domain.BuildVietQRURL("VCB", "1017588888", 490000, sampleReference)
 	expectedParts := []string{
 		"https://vietqr.app/img?",
 		"acc=1017588888",
@@ -68,11 +71,11 @@ func TestContentMatchesReference(t *testing.T) {
 		reference string
 		expected  bool
 	}{
-		{"NGUYEN VAN A chuyen tien FLUABCDE12345 them", "FLUABCDE12345", true},
-		{"SEVN63DC8E5C fluabcde12345 chuyen khoan", "FLUABCDE12345", true},
-		{"FLU-ABCDE-12345 transfer", "FLUABCDE12345", true},
-		{"Chuyen tien hoc phi", "FLUABCDE12345", false},
-		{"", "FLUABCDE12345", false},
+		{"NGUYEN VAN A chuyen tien FLUABCDE12345 them", sampleReference, true},
+		{"SEVN63DC8E5C fluabcde12345 chuyen khoan", sampleReference, true},
+		{"FLU-ABCDE-12345 transfer", sampleReference, true},
+		{"Chuyen tien hoc phi", sampleReference, false},
+		{"", sampleReference, false},
 		{"Chuyen khoan", "", false},
 	}
 

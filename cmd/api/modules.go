@@ -677,7 +677,11 @@ func (l lazyStudioListing) GetListing(ctx context.Context, courseID uuid.UUID) (
 	return l.of.studio.ListingReader().GetListing(ctx, courseID)
 }
 
-func (l lazyStudioListing) BatchGetListings(ctx context.Context, courseIDs []uuid.UUID) (map[uuid.UUID]*studiocontract.CourseListing, error) {
+func (
+	l lazyStudioListing) BatchGetListings(ctx context.Context,
+	courseIDs []uuid.UUID) (map[uuid.UUID]*studiocontract.CourseListing,
+	error,
+) {
 	if l.of.studio == nil {
 		return map[uuid.UUID]*studiocontract.CourseListing{}, nil
 	}
@@ -691,7 +695,12 @@ func (l lazyStudioListing) HasPurchased(ctx context.Context, userID, courseID uu
 	return l.of.studio.ListingReader().HasPurchased(ctx, userID, courseID)
 }
 
-func (l lazyStudioListing) BatchHasPurchased(ctx context.Context, userID uuid.UUID, courseIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+func (
+	l lazyStudioListing) BatchHasPurchased(ctx context.Context,
+	userID uuid.UUID,
+	courseIDs []uuid.UUID) (map[uuid.UUID]bool,
+	error,
+) {
 	if l.of.studio == nil {
 		return map[uuid.UUID]bool{}, nil
 	}
@@ -703,7 +712,13 @@ type lazyPaymentAccountReader struct{ of *identity }
 
 var _ paymenthttp.PayoutAccountReader = lazyPaymentAccountReader{}
 
-func (r lazyPaymentAccountReader) GetPayoutAccount(ctx context.Context, creatorID uuid.UUID) (string, string, string, error) {
+func (
+	r lazyPaymentAccountReader) GetPayoutAccount(ctx context.Context,
+	creatorID uuid.UUID) (string,
+	string,
+	string,
+	error,
+) {
 	if r.of.studio == nil {
 		return "", "", "", nil
 	}

@@ -15,6 +15,15 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/payment/service"
 )
 
+// Fixture values the table tests share.
+const (
+	// testWebhookKey is a fixture, not a credential.
+	testWebhookKey  = "fixture-key" //nolint:gosec // test fixture
+	testBankCode    = "VCB"
+	testSubjectKind = "course"
+	testTxnDate     = "2026-09-20 12:00:00"
+)
+
 type mockRepository struct {
 	orders       map[uuid.UUID]*domain.Order
 	transactions map[int64]*domain.SepayTransaction
@@ -252,10 +261,12 @@ func (m *mockRepository) GetPendingPayoutTotalByCreatorID(_ context.Context, _ u
 
 func setupTestService() (service.Service, *mockRepository) {
 	repo := newMockRepository()
+	//nolint:gosec // fixture configuration, no real credentials
 	cfg := service.Config{
+		//nolint:gosec // a fixture webhook key, not a credential
 		WebhookAPIKey: "test-sepay-key-12345",
 		AccountNumber: "1017588888",
-		BankCode:      "VCB",
+		BankCode:      testBankCode,
 		AccountHolder: "FLUENTRA",
 		OrderTTL:      24 * time.Hour,
 	}
@@ -272,7 +283,7 @@ func TestCreateOrder(t *testing.T) {
 	// 1. Invalid amount
 	_, err := svc.CreateOrder(ctx, contract.CreateOrderInput{
 		UserID:      userID,
-		SubjectKind: "course",
+		SubjectKind: testSubjectKind,
 		SubjectID:   courseID,
 		AmountVND:   0,
 	})
@@ -283,7 +294,7 @@ func TestCreateOrder(t *testing.T) {
 	// 2. Valid order
 	order, err := svc.CreateOrder(ctx, contract.CreateOrderInput{
 		UserID:      userID,
-		SubjectKind: "course",
+		SubjectKind: testSubjectKind,
 		SubjectID:   courseID,
 		AmountVND:   490000,
 	})
@@ -327,7 +338,7 @@ func TestHandleSepayWebhook_TransferTypeOut(t *testing.T) {
 		TransferAmount:  490000,
 		TransferType:    "out",
 		Content:         "FLU1234567890 refund",
-		TransactionDate: "2026-09-20 12:00:00",
+		TransactionDate: testTxnDate,
 	}
 
 	err := svc.HandleSepayWebhook(ctx, "Apikey test-sepay-key-12345", "127.0.0.1", []byte("{}"), payload)
@@ -353,7 +364,7 @@ func TestHandleSepayWebhook_OrderNotFound(t *testing.T) {
 		TransferAmount:  490000,
 		TransferType:    "in",
 		Content:         "Chuyen tien khong co reference dung",
-		TransactionDate: "2026-09-20 12:00:00",
+		TransactionDate: testTxnDate,
 	}
 
 	err := svc.HandleSepayWebhook(ctx, "Apikey test-sepay-key-12345", "127.0.0.1", []byte("{}"), payload)
@@ -373,7 +384,7 @@ func TestHandleSepayWebhook_AmountMismatch(t *testing.T) {
 
 	order, err := svc.CreateOrder(ctx, contract.CreateOrderInput{
 		UserID:      uuid.New(),
-		SubjectKind: "course",
+		SubjectKind: testSubjectKind,
 		SubjectID:   uuid.New(),
 		AmountVND:   490000,
 	})
@@ -387,7 +398,7 @@ func TestHandleSepayWebhook_AmountMismatch(t *testing.T) {
 		TransferAmount:  49000,
 		TransferType:    "in",
 		Content:         fmt.Sprintf("Chuyen tien %s them chu", order.Reference),
-		TransactionDate: "2026-09-20 12:00:00",
+		TransactionDate: testTxnDate,
 	}
 
 	err = svc.HandleSepayWebhook(ctx, "Apikey test-sepay-key-12345", "127.0.0.1", []byte("{}"), payload)
@@ -415,7 +426,7 @@ func TestHandleSepayWebhook_Success(t *testing.T) {
 
 	order, err := svc.CreateOrder(ctx, contract.CreateOrderInput{
 		UserID:      uuid.New(),
-		SubjectKind: "course",
+		SubjectKind: testSubjectKind,
 		SubjectID:   uuid.New(),
 		AmountVND:   490000,
 	})
@@ -428,7 +439,7 @@ func TestHandleSepayWebhook_Success(t *testing.T) {
 		TransferAmount:  490000,
 		TransferType:    "in",
 		Content:         fmt.Sprintf("NGUYEN VAN A chuyen tien %s cam on", order.Reference),
-		TransactionDate: "2026-09-20 12:00:00",
+		TransactionDate: testTxnDate,
 	}
 
 	err = svc.HandleSepayWebhook(ctx, "Apikey test-sepay-key-12345", "127.0.0.1", []byte("{}"), payload)
@@ -452,7 +463,7 @@ func TestHandleSepayWebhook_ExpiredOrderMatches(t *testing.T) {
 
 	order, err := svc.CreateOrder(ctx, contract.CreateOrderInput{
 		UserID:      uuid.New(),
-		SubjectKind: "course",
+		SubjectKind: testSubjectKind,
 		SubjectID:   uuid.New(),
 		AmountVND:   490000,
 	})
@@ -470,7 +481,7 @@ func TestHandleSepayWebhook_ExpiredOrderMatches(t *testing.T) {
 		TransferAmount:  490000,
 		TransferType:    "in",
 		Content:         fmt.Sprintf("THANH TOAN %s", order.Reference),
-		TransactionDate: "2026-09-20 12:00:00",
+		TransactionDate: testTxnDate,
 	}
 
 	err = svc.HandleSepayWebhook(ctx, "Apikey test-sepay-key-12345", "127.0.0.1", []byte("{}"), payload)
@@ -530,11 +541,11 @@ func TestMatchTransaction_SecondPaymentIsNotSwallowed(t *testing.T) {
 	ctx := context.Background()
 	repo := newMockRepository()
 	svc := service.NewService(repo, service.Config{
-		WebhookAPIKey: "k", BankCode: "VCB", AccountNumber: "1", OrderTTL: time.Hour,
+		WebhookAPIKey: "k", BankCode: testBankCode, AccountNumber: "1", OrderTTL: time.Hour,
 	})
 
 	order, err := svc.CreateOrder(ctx, contract.CreateOrderInput{
-		UserID: uuid.New(), SubjectKind: "course", SubjectID: uuid.New(), AmountVND: 200000,
+		UserID: uuid.New(), SubjectKind: testSubjectKind, SubjectID: uuid.New(), AmountVND: 200000,
 	})
 	if err != nil {
 		t.Fatalf("create order: %v", err)
@@ -575,11 +586,11 @@ func TestMatchTransaction_ExpiredOrderStillHonoured(t *testing.T) {
 	ctx := context.Background()
 	repo := newMockRepository()
 	svc := service.NewService(repo, service.Config{
-		WebhookAPIKey: "k", BankCode: "VCB", AccountNumber: "1", OrderTTL: time.Hour,
+		WebhookAPIKey: "k", BankCode: testBankCode, AccountNumber: "1", OrderTTL: time.Hour,
 	})
 
 	order, err := svc.CreateOrder(ctx, contract.CreateOrderInput{
-		UserID: uuid.New(), SubjectKind: "course", SubjectID: uuid.New(), AmountVND: 50000,
+		UserID: uuid.New(), SubjectKind: testSubjectKind, SubjectID: uuid.New(), AmountVND: 50000,
 	})
 	if err != nil {
 		t.Fatalf("create order: %v", err)
@@ -642,7 +653,7 @@ func TestRecordRefund_WritesTheObligation(t *testing.T) {
 	svc := service.NewService(repo, service.Config{OrderTTL: time.Hour})
 
 	order, err := svc.CreateOrder(ctx, contract.CreateOrderInput{
-		UserID: uuid.New(), SubjectKind: "course", SubjectID: uuid.New(), AmountVND: 120000,
+		UserID: uuid.New(), SubjectKind: testSubjectKind, SubjectID: uuid.New(), AmountVND: 120000,
 	})
 	if err != nil {
 		t.Fatalf("create order: %v", err)

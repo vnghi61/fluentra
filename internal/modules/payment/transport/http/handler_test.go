@@ -30,7 +30,7 @@ func newMockService() *mockService {
 	}
 }
 
-func (m *mockService) CreateOrder(ctx context.Context, in contract.CreateOrderInput) (*domain.Order, error) {
+func (m *mockService) CreateOrder(_ context.Context, in contract.CreateOrderInput) (*domain.Order, error) {
 	o := &domain.Order{
 		ID:          uuid.New(),
 		UserID:      in.UserID,
@@ -48,7 +48,7 @@ func (m *mockService) CreateOrder(ctx context.Context, in contract.CreateOrderIn
 	return o, nil
 }
 
-func (m *mockService) GetOrder(ctx context.Context, id uuid.UUID) (*domain.Order, error) {
+func (m *mockService) GetOrder(_ context.Context, id uuid.UUID) (*domain.Order, error) {
 	o, ok := m.orders[id]
 	if !ok {
 		return nil, domain.ErrOrderNotFound
@@ -56,23 +56,27 @@ func (m *mockService) GetOrder(ctx context.Context, id uuid.UUID) (*domain.Order
 	return o, nil
 }
 
-func (m *mockService) HandleSepayWebhook(ctx context.Context, authHeader, clientIP string, rawBody []byte, payload *domain.SepayWebhookPayload) error {
+func (m *mockService) HandleSepayWebhook(
+	_ context.Context, _, _ string, _ []byte, _ *domain.SepayWebhookPayload,
+) error {
 	return m.webhookError
 }
 
-func (m *mockService) MatchTransaction(ctx context.Context, tx *domain.SepayTransaction) error {
+func (m *mockService) MatchTransaction(_ context.Context, _ *domain.SepayTransaction) error {
 	return nil
 }
 
-func (m *mockService) SweepExpiredOrders(ctx context.Context) (int, error) {
+func (m *mockService) SweepExpiredOrders(_ context.Context) (int, error) {
 	return 0, nil
 }
 
-func (m *mockService) Reconcile(ctx context.Context) error {
+func (m *mockService) Reconcile(_ context.Context) error {
 	return nil
 }
 
-func (m *mockService) ListUnmatchedTransactions(ctx context.Context, limit, offset int32) (*domain.UnmatchedTransactionsList, error) {
+func (m *mockService) ListUnmatchedTransactions(
+	_ context.Context, _, _ int32,
+) (*domain.UnmatchedTransactionsList, error) {
 	return &domain.UnmatchedTransactionsList{
 		Items: m.unmatched,
 		Total: int64(len(m.unmatched)),

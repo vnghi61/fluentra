@@ -20,12 +20,24 @@ type Repository interface {
 	SetPayoutEligible(ctx context.Context, userID uuid.UUID, eligible bool) (*domain.CreatorProfile, error)
 
 	GetPayoutAccount(ctx context.Context, creatorID uuid.UUID) (*domain.PayoutAccount, error)
-	UpsertPayoutAccount(ctx context.Context, creatorID uuid.UUID, bankCode, accountNumber, accountHolderName string, isDefault bool) (*domain.PayoutAccount, error)
+	UpsertPayoutAccount(
+		ctx context.Context,
+		creatorID uuid.UUID,
+		bankCode,
+		accountNumber,
+		accountHolderName string,
+		isDefault bool,
+	) (*domain.PayoutAccount, error)
 
 	CreateCourseDraft(ctx context.Context, draft *domain.CourseDraft) (*domain.CourseDraft, error)
 	GetCourseDraftByID(ctx context.Context, id uuid.UUID) (*domain.CourseDraft, error)
 	GetCourseDraftByOwnerAndSlug(ctx context.Context, ownerID uuid.UUID, slug string) (*domain.CourseDraft, error)
-	ListCourseDraftsByOwner(ctx context.Context, ownerID uuid.UUID, limit, offset int) ([]*domain.CourseDraft, int64, error)
+	ListCourseDraftsByOwner(
+		ctx context.Context,
+		ownerID uuid.UUID,
+		limit,
+		offset int,
+	) ([]*domain.CourseDraft, int64, error)
 	UpdateCourseDraft(ctx context.Context, draft *domain.CourseDraft) (*domain.CourseDraft, error)
 	UpdateCourseDraftStatus(ctx context.Context, id uuid.UUID, status string) (*domain.CourseDraft, error)
 
@@ -33,8 +45,20 @@ type Repository interface {
 	GetSubmissionByID(ctx context.Context, id uuid.UUID) (*domain.Submission, error)
 	GetLatestSubmissionByDraftID(ctx context.Context, draftID uuid.UUID) (*domain.Submission, error)
 	ListSubmissionsByStatus(ctx context.Context, status string, limit, offset int) ([]*domain.Submission, int64, error)
-	UpdateSubmissionVerification(ctx context.Context, id uuid.UUID, status string, report []byte, feedback *string) (*domain.Submission, error)
-	UpdateSubmissionReview(ctx context.Context, id uuid.UUID, status string, reviewerID uuid.UUID, feedback *string) (*domain.Submission, error)
+	UpdateSubmissionVerification(
+		ctx context.Context,
+		id uuid.UUID,
+		status string,
+		report []byte,
+		feedback *string,
+	) (*domain.Submission, error)
+	UpdateSubmissionReview(
+		ctx context.Context,
+		id uuid.UUID,
+		status string,
+		reviewerID uuid.UUID,
+		feedback *string,
+	) (*domain.Submission, error)
 	ListPendingVerificationSubmissions(ctx context.Context, limit int32) ([]*domain.Submission, error)
 
 	// Listings
@@ -106,7 +130,13 @@ func (r *pgRepository) GetCreatorProfile(ctx context.Context, userID uuid.UUID) 
 	}, nil
 }
 
-func (r *pgRepository) UpsertCreatorProfile(ctx context.Context, userID uuid.UUID, bio, headline string) (*domain.CreatorProfile, error) {
+func (
+	r *pgRepository) UpsertCreatorProfile(ctx context.Context,
+	userID uuid.UUID,
+	bio,
+	headline string) (*domain.CreatorProfile,
+	error,
+) {
 	row, err := r.q.UpsertCreatorProfile(ctx, sqlc.UpsertCreatorProfileParams{
 		UserID:   userID,
 		Bio:      bio,
@@ -125,7 +155,12 @@ func (r *pgRepository) UpsertCreatorProfile(ctx context.Context, userID uuid.UUI
 	}, nil
 }
 
-func (r *pgRepository) SetPayoutEligible(ctx context.Context, userID uuid.UUID, eligible bool) (*domain.CreatorProfile, error) {
+func (
+	r *pgRepository) SetPayoutEligible(ctx context.Context,
+	userID uuid.UUID,
+	eligible bool) (*domain.CreatorProfile,
+	error,
+) {
 	row, err := r.q.SetPayoutEligible(ctx, sqlc.SetPayoutEligibleParams{
 		UserID:         userID,
 		PayoutEligible: eligible,
@@ -166,7 +201,15 @@ func (r *pgRepository) GetPayoutAccount(ctx context.Context, creatorID uuid.UUID
 	}, nil
 }
 
-func (r *pgRepository) UpsertPayoutAccount(ctx context.Context, creatorID uuid.UUID, bankCode, accountNumber, accountHolderName string, isDefault bool) (*domain.PayoutAccount, error) {
+func (
+	r *pgRepository) UpsertPayoutAccount(ctx context.Context,
+	creatorID uuid.UUID,
+	bankCode,
+	accountNumber,
+	accountHolderName string,
+	isDefault bool) (*domain.PayoutAccount,
+	error,
+) {
 	row, err := r.q.UpsertPayoutAccount(ctx, sqlc.UpsertPayoutAccountParams{
 		CreatorID:         creatorID,
 		BankCode:          bankCode,
@@ -217,7 +260,12 @@ func (r *pgRepository) GetCourseDraftByID(ctx context.Context, id uuid.UUID) (*d
 	return toDomainDraft(row), nil
 }
 
-func (r *pgRepository) GetCourseDraftByOwnerAndSlug(ctx context.Context, ownerID uuid.UUID, slug string) (*domain.CourseDraft, error) {
+func (
+	r *pgRepository) GetCourseDraftByOwnerAndSlug(ctx context.Context,
+	ownerID uuid.UUID,
+	slug string) (*domain.CourseDraft,
+	error,
+) {
 	row, err := r.q.GetCourseDraftByOwnerAndSlug(ctx, sqlc.GetCourseDraftByOwnerAndSlugParams{
 		OwnerID: ownerID,
 		Slug:    slug,
@@ -231,11 +279,19 @@ func (r *pgRepository) GetCourseDraftByOwnerAndSlug(ctx context.Context, ownerID
 	return toDomainDraft(row), nil
 }
 
-func (r *pgRepository) ListCourseDraftsByOwner(ctx context.Context, ownerID uuid.UUID, limit, offset int) ([]*domain.CourseDraft, int64, error) {
+func (
+	r *pgRepository) ListCourseDraftsByOwner(ctx context.Context,
+	ownerID uuid.UUID,
+	limit,
+	offset int) ([]*domain.CourseDraft,
+	int64,
+	error,
+) {
+	boundedLimit, boundedOffset := pageBounds(limit, offset)
 	rows, err := r.q.ListCourseDraftsByOwner(ctx, sqlc.ListCourseDraftsByOwnerParams{
 		OwnerID: ownerID,
-		Limit:   int32(limit),
-		Offset:  int32(offset),
+		Limit:   boundedLimit,
+		Offset:  boundedOffset,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -272,7 +328,12 @@ func (r *pgRepository) UpdateCourseDraft(ctx context.Context, draft *domain.Cour
 	return toDomainDraft(row), nil
 }
 
-func (r *pgRepository) UpdateCourseDraftStatus(ctx context.Context, id uuid.UUID, status string) (*domain.CourseDraft, error) {
+func (
+	r *pgRepository) UpdateCourseDraftStatus(ctx context.Context,
+	id uuid.UUID,
+	status string) (*domain.CourseDraft,
+	error,
+) {
 	row, err := r.q.UpdateCourseDraftStatus(ctx, sqlc.UpdateCourseDraftStatusParams{
 		ID:     id,
 		Status: status,
@@ -289,7 +350,7 @@ func (r *pgRepository) UpdateCourseDraftStatus(ctx context.Context, id uuid.UUID
 func (r *pgRepository) CreateSubmission(ctx context.Context, sub *domain.Submission) (*domain.Submission, error) {
 	row, err := r.q.CreateSubmission(ctx, sqlc.CreateSubmissionParams{
 		DraftID:     sub.DraftID,
-		Version:     int32(sub.Version),
+		Version:     pageInt32(int32(sub.Version), 1_000_000), //nolint:gosec // a version counter
 		Status:      sub.Status,
 		SubmittedBy: sub.SubmittedBy,
 	})
@@ -310,7 +371,11 @@ func (r *pgRepository) GetSubmissionByID(ctx context.Context, id uuid.UUID) (*do
 	return toDomainSubmission(row), nil
 }
 
-func (r *pgRepository) GetLatestSubmissionByDraftID(ctx context.Context, draftID uuid.UUID) (*domain.Submission, error) {
+func (
+	r *pgRepository) GetLatestSubmissionByDraftID(ctx context.Context,
+	draftID uuid.UUID) (*domain.Submission,
+	error,
+) {
 	row, err := r.q.GetLatestSubmissionByDraftID(ctx, draftID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -321,11 +386,19 @@ func (r *pgRepository) GetLatestSubmissionByDraftID(ctx context.Context, draftID
 	return toDomainSubmission(row), nil
 }
 
-func (r *pgRepository) ListSubmissionsByStatus(ctx context.Context, status string, limit, offset int) ([]*domain.Submission, int64, error) {
+func (
+	r *pgRepository) ListSubmissionsByStatus(ctx context.Context,
+	status string,
+	limit,
+	offset int) ([]*domain.Submission,
+	int64,
+	error,
+) {
+	boundedLimit, boundedOffset := pageBounds(limit, offset)
 	rows, err := r.q.ListSubmissionsByStatus(ctx, sqlc.ListSubmissionsByStatusParams{
 		Status: status,
-		Limit:  int32(limit),
-		Offset: int32(offset),
+		Limit:  boundedLimit,
+		Offset: boundedOffset,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -342,7 +415,14 @@ func (r *pgRepository) ListSubmissionsByStatus(ctx context.Context, status strin
 	return items, total, nil
 }
 
-func (r *pgRepository) UpdateSubmissionVerification(ctx context.Context, id uuid.UUID, status string, report []byte, feedback *string) (*domain.Submission, error) {
+func (
+	r *pgRepository) UpdateSubmissionVerification(ctx context.Context,
+	id uuid.UUID,
+	status string,
+	report []byte,
+	feedback *string) (*domain.Submission,
+	error,
+) {
 	row, err := r.q.UpdateSubmissionVerification(ctx, sqlc.UpdateSubmissionVerificationParams{
 		ID:                 id,
 		Status:             status,
@@ -358,7 +438,14 @@ func (r *pgRepository) UpdateSubmissionVerification(ctx context.Context, id uuid
 	return toDomainSubmission(row), nil
 }
 
-func (r *pgRepository) UpdateSubmissionReview(ctx context.Context, id uuid.UUID, status string, reviewerID uuid.UUID, feedback *string) (*domain.Submission, error) {
+func (
+	r *pgRepository) UpdateSubmissionReview(ctx context.Context,
+	id uuid.UUID,
+	status string,
+	reviewerID uuid.UUID,
+	feedback *string) (*domain.Submission,
+	error,
+) {
 	row, err := r.q.UpdateSubmissionReview(ctx, sqlc.UpdateSubmissionReviewParams{
 		ID:         id,
 		Status:     status,
@@ -374,7 +461,11 @@ func (r *pgRepository) UpdateSubmissionReview(ctx context.Context, id uuid.UUID,
 	return toDomainSubmission(row), nil
 }
 
-func (r *pgRepository) ListPendingVerificationSubmissions(ctx context.Context, limit int32) ([]*domain.Submission, error) {
+func (
+	r *pgRepository) ListPendingVerificationSubmissions(ctx context.Context,
+	limit int32) ([]*domain.Submission,
+	error,
+) {
 	rows, err := r.q.ListPendingVerificationSubmissions(ctx, limit)
 	if err != nil {
 		return nil, err
@@ -428,7 +519,7 @@ func (r *pgRepository) UpsertListing(ctx context.Context, listing *domain.Listin
 		CreatorID:       listing.CreatorID,
 		PricingModel:    listing.PricingModel,
 		PriceVnd:        listing.PriceVND,
-		RevenueShareBps: int32(listing.RevenueShareBPS),
+		RevenueShareBps: pageInt32(int32(listing.RevenueShareBPS), 10_000), //nolint:gosec // basis points, 0-10000
 		Status:          listing.Status,
 	})
 	if err != nil {
@@ -460,7 +551,12 @@ func (r *pgRepository) ListListingsByCourseIDs(ctx context.Context, courseIDs []
 	return items, nil
 }
 
-func (r *pgRepository) UpdateListingStatus(ctx context.Context, courseID uuid.UUID, status string) (*domain.Listing, error) {
+func (
+	r *pgRepository) UpdateListingStatus(ctx context.Context,
+	courseID uuid.UUID,
+	status string) (*domain.Listing,
+	error,
+) {
 	row, err := r.q.UpdateListingStatus(ctx, sqlc.UpdateListingStatusParams{
 		CourseID: courseID,
 		Status:   status,
@@ -539,10 +635,11 @@ func (r *pgRepository) ListPurchasesByUserID(
 		return nil, 0, err
 	}
 
+	boundedLimit, boundedOffset := pageBounds(limit, offset)
 	rows, err := r.q.ListPurchasesByUserID(ctx, sqlc.ListPurchasesByUserIDParams{
 		UserID: userID,
-		Limit:  int32(limit),
-		Offset: int32(offset),
+		Limit:  boundedLimit,
+		Offset: boundedOffset,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -624,10 +721,11 @@ func (r *pgRepository) GetSaleLedgerEntryByPurchaseID(
 func (r *pgRepository) ListLedgerEntriesByCreatorID(
 	ctx context.Context, creatorID uuid.UUID, limit, offset int,
 ) ([]*domain.CreatorLedgerEntry, error) {
+	boundedLimit, boundedOffset := pageBounds(limit, offset)
 	rows, err := r.q.ListLedgerEntriesByCreatorID(ctx, sqlc.ListLedgerEntriesByCreatorIDParams{
 		CreatorID: creatorID,
-		Limit:     int32(limit),
-		Offset:    int32(offset),
+		Limit:     boundedLimit,
+		Offset:    boundedOffset,
 	})
 	if err != nil {
 		return nil, err
@@ -692,4 +790,37 @@ func toDomainLedgerEntry(row sqlc.StudioCreatorLedger) *domain.CreatorLedgerEntr
 		Note:           row.Note,
 		CreatedAt:      row.CreatedAt,
 	}
+}
+
+// pageInt32 narrows a page size or offset to the int32 the generated queries
+// take, bounded rather than wrapped.
+//
+// An unchecked int -> int32 is what gosec flags here, and it is right to: on a
+// 64-bit build a limit above two billion wraps to a negative LIMIT, which
+// Postgres rejects. Nobody wants a page that size, so it is clamped.
+func pageInt32(value, maxValue int32) int32 {
+	if value < 0 {
+		return 0
+	}
+	if int64(value) > int64(maxValue) {
+		return maxValue
+	}
+	return value
+}
+
+// pageBounds narrows a limit and an offset together.
+func pageBounds(limit, offset int) (int32, int32) {
+	const (
+		maxLimit  int32 = 500
+		maxOffset int32 = 1_000_000
+	)
+	boundedLimit := maxLimit
+	if int64(limit) < int64(maxLimit) {
+		boundedLimit = pageInt32(int32(limit), 500) //nolint:gosec // bounded by the comparison above
+	}
+	boundedOffset := maxOffset
+	if int64(offset) < int64(maxOffset) {
+		boundedOffset = pageInt32(int32(offset), 1_000_000) //nolint:gosec // bounded by the comparison above
+	}
+	return pageInt32(boundedLimit, maxLimit), pageInt32(boundedOffset, maxOffset)
 }

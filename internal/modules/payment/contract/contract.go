@@ -70,7 +70,13 @@ type Refund struct {
 // receives. `studio` calls this when it revokes a purchase; an admin pays it
 // and marks it sent.
 type RefundRecorder interface {
-	RecordRefund(ctx context.Context, orderID uuid.UUID, amountVND int64, reason string, actorID uuid.UUID) (*Refund, error)
+	RecordRefund(
+		ctx context.Context,
+		orderID uuid.UUID,
+		amountVND int64,
+		reason string,
+		actorID uuid.UUID,
+	) (*Refund, error)
 }
 
 // Payout represents a manual bank transfer payout to a creator.
