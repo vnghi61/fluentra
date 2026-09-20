@@ -172,6 +172,16 @@ const PlacementPage = lazyRouteComponent(
   "PlacementPage",
 );
 
+const StudioPage = lazyRouteComponent(
+  () => import("@/routes/StudioPage"),
+  "StudioPage",
+);
+
+const StudioEditorPage = lazyRouteComponent(
+  () => import("@/routes/StudioEditorPage"),
+  "StudioEditorPage",
+);
+
 /** Lazy: it reads /me/permissions, which nobody but an administrator needs. */
 const AdminSidebarNav = React.lazy(() =>
   import("@/features/admin/components/AdminSidebarNav").then((m) => ({
@@ -204,7 +214,7 @@ function RootApp(): React.JSX.Element {
       user={user}
       status={status}
       adminNav={
-        user?.role === "admin" ? (
+        user?.role === "admin" || user?.role === "moderator" ? (
           <React.Suspense fallback={null}>
             <AdminSidebarNav />
           </React.Suspense>
@@ -385,7 +395,7 @@ export const adminRoute = createRoute({
     if (status === "unauthenticated") {
       throw redirect({ to: "/login" });
     }
-    if (user?.role !== "admin") {
+    if (user?.role !== "admin" && user?.role !== "moderator") {
       throw redirect({ to: "/" });
     }
   },
@@ -405,11 +415,47 @@ export const adminSectionRoute = createRoute({
     if (status === "unauthenticated") {
       throw redirect({ to: "/login" });
     }
-    if (user?.role !== "admin") {
+    if (user?.role !== "admin" && user?.role !== "moderator") {
       throw redirect({ to: "/" });
     }
   },
   component: AdminPage,
+});
+
+export const studioRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/studio",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: StudioPage,
+});
+
+export const studioNewCourseRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/studio/courses/new",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: StudioEditorPage,
+});
+
+export const studioEditCourseRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/studio/courses/$draftId",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: StudioEditorPage,
 });
 
 export const loginRoute = createRoute({
@@ -534,6 +580,9 @@ export const routeTree = rootRoute.addChildren([
   examReportRoute,
   progressRoute,
   settingsRoute,
+  studioRoute,
+  studioNewCourseRoute,
+  studioEditCourseRoute,
   adminRoute,
   adminSectionRoute,
   loginRoute,

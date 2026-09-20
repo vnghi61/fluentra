@@ -4,9 +4,11 @@ import { clearAllWritingDrafts } from "@/lib/draftStorage";
 
 export type AuthSession = components["schemas"]["AuthSession"];
 
+export type Role = "admin" | "user" | "moderator";
+
 export interface User {
   userId: string;
-  role: "admin" | "user";
+  role: Role;
 }
 
 export type AuthStatus = "idle" | "authenticated" | "unauthenticated";
@@ -65,7 +67,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       accessToken: session.access_token,
       user: {
         userId: session.user_id,
-        role: session.role,
+        role: session.role as Role,
       },
       status: "authenticated",
     });

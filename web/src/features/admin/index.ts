@@ -11,3 +11,5 @@ export * from "./components/AdminContentDetailModal";
 export * from "./components/AdminReportedContentList";
 export * from "./components/AdminVocabulary";
 export * from "./components/AdminEditWordSenseModal";
+export * from "./components/AdminStudioModeration";
+export * from "./components/AdminPayoutsList";

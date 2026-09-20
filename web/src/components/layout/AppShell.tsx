@@ -8,6 +8,7 @@ import {
   LogIn,
   Settings,
   ShieldCheck,
+  Sparkles,
   Target,
   UserPlus,
 } from "lucide-react";
@@ -100,6 +101,13 @@ const destinations = [
     labelKey: "nav.progress",
     fallback: "Progress",
     Icon: LineChart,
+    exact: false,
+  },
+  {
+    to: "/studio",
+    labelKey: "nav.studio",
+    fallback: "Studio",
+    Icon: Sparkles,
     exact: false,
   },
 ] as const;

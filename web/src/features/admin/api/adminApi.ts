@@ -40,6 +40,16 @@ export type UpdateWordSenseRequest =
   components["schemas"]["UpdateWordSenseRequest"];
 export type ExampleSentence = components["schemas"]["ExampleSentence"];
 
+export type ModerationQueueList = components["schemas"]["ModerationQueueList"];
+export type ModerationQueueItem = components["schemas"]["ModerationQueueItem"];
+export type CourseSubmission = components["schemas"]["CourseSubmission"];
+export type ReviewSubmissionRequest =
+  components["schemas"]["ReviewSubmissionRequest"];
+export type AdminPayoutList = components["schemas"]["AdminPayoutList"];
+export type PayoutResponse = components["schemas"]["PayoutResponse"];
+export type FulfillPayoutRequest =
+  components["schemas"]["FulfillPayoutRequest"];
+
 /**
  * The parameters `adminSearchUsers` actually takes.
  *
@@ -302,6 +312,75 @@ export const adminApi = {
     const qs = sp.toString();
     return apiFetch<ReportedContentList>(
       `/api/v1/admin/content/reports${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /** List course submissions awaiting moderation */
+  async listModerationCourses(
+    params: { limit?: number; offset?: number } = {},
+  ): Promise<ModerationQueueList> {
+    const sp = new URLSearchParams();
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<ModerationQueueList>(
+      `/api/v1/moderation/courses${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /** Approve a course submission and publish */
+  async approveCourseSubmission(id: string): Promise<CourseSubmission> {
+    return apiFetch<CourseSubmission>(
+      `/api/v1/moderation/courses/${id}/approve`,
+      {
+        method: "POST",
+      },
+    );
+  },
+
+  /** Reject or request changes on a course submission */
+  async rejectCourseSubmission(
+    id: string,
+    req: ReviewSubmissionRequest,
+  ): Promise<CourseSubmission> {
+    return apiFetch<CourseSubmission>(
+      `/api/v1/moderation/courses/${id}/reject`,
+      {
+        method: "POST",
+        body: JSON.stringify(req),
+      },
+    );
+  },
+
+  /** List creator payouts */
+  async listBillingPayouts(
+    params: { limit?: number; offset?: number } = {},
+  ): Promise<AdminPayoutList> {
+    const sp = new URLSearchParams();
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<AdminPayoutList>(
+      `/api/v1/admin/billing/payouts${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /** Get payout detail with creator bank account */
+  async getBillingPayout(id: string): Promise<PayoutResponse> {
+    return apiFetch<PayoutResponse>(`/api/v1/admin/billing/payouts/${id}`);
+  },
+
+  /** Record manual bank transfer fulfillment */
+  async fulfillBillingPayout(
+    id: string,
+    req: FulfillPayoutRequest,
+  ): Promise<PayoutResponse> {
+    return apiFetch<PayoutResponse>(
+      `/api/v1/admin/billing/payouts/${id}/fulfill`,
+      {
+        method: "POST",
+        body: JSON.stringify(req),
+      },
     );
   },
 };
