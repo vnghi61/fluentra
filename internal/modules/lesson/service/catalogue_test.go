@@ -349,11 +349,27 @@ func (f *fakeTaxonomyResolver) ResolveTaxonomyID(_ context.Context, namespace, c
 	return nil, nil
 }
 
-func (f *fakeTaxonomyResolver) GetTaxonomyByCode(_ context.Context, _ string) (*contentcontract.TaxonomyNode, error) {
+func (f *fakeTaxonomyResolver) GetTaxonomyByCode(
+	_ context.Context, _ string,
+) (*contentcontract.TaxonomyNode, error) {
 	return nil, nil
 }
 
-func (f *fakeTaxonomyResolver) ListTaxonomiesInNamespace(_ context.Context, _ string) ([]contentcontract.TaxonomyNode, error) {
+func (f *fakeTaxonomyResolver) ListTaxonomiesInNamespace(
+	_ context.Context, _ string,
+) ([]contentcontract.TaxonomyNode, error) {
+	return nil, nil
+}
+
+func (f *fakeTaxonomyResolver) ListPrerequisites(
+	_ context.Context, _ uuid.UUID,
+) ([]contentcontract.TaxonomyNode, error) {
+	return nil, nil
+}
+
+func (f *fakeTaxonomyResolver) GetTaxonomyByID(
+	_ context.Context, _ uuid.UUID,
+) (*contentcontract.TaxonomyNode, error) {
 	return nil, nil
 }
 

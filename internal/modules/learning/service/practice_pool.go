@@ -807,6 +807,7 @@ func parseChoice(prompt string, options []candOption, correctOptionID string) er
 	return nil
 }
 
+//nolint:gocyclo // dispatch across all supported activity kinds
 func buildOwnAnswerPayload(kind string, raw []byte) (json.RawMessage, error) {
 	switch kind {
 	case kindReadingComprehension:
@@ -887,6 +888,7 @@ func buildOwnAnswerPayload(kind string, raw []byte) (json.RawMessage, error) {
 	}
 }
 
+//nolint:gocyclo // validation across all candidate kinds
 func validateStructure(kind string, raw []byte) error {
 	switch kind {
 	case kindReadingComprehension:
@@ -1165,7 +1167,27 @@ func (s *Service) drawDailySet(
 	ctx context.Context, userID uuid.UUID, level string, layout *practicePoolLayout,
 ) ([]uuid.UUID, error) {
 	var chosen []uuid.UUID
+
+	// Check if learner has a qualified weak node slot (Stage I)
+	weakActivityID, _, err := s.resolveWeakNodeActivity(ctx, userID, level, layout)
+	if err == nil && weakActivityID != uuid.Nil {
+		chosen = append(chosen, weakActivityID)
+	}
+
+	excludeIDs := make(map[uuid.UUID]struct{})
+	for _, id := range chosen {
+		excludeIDs[id] = struct{}{}
+	}
+
 	for _, part := range dailySetComposition {
+		count := part.count
+		if weakActivityID != uuid.Nil && part.slotName == slotGrammarTenseChoice {
+			count = count - 1
+			if count < 0 {
+				count = 0
+			}
+		}
+
 		activities, err := s.slotActivities(ctx, layout, level, part.slotName)
 		if err != nil {
 			return nil, err
@@ -1175,13 +1197,265 @@ func (s *Service) drawDailySet(
 			// rendered cannot be listened to, so it is not put in front of anyone.
 			activities = s.listeningWithAudio(ctx, activities)
 		}
-		picked, err := s.drawFromSlot(ctx, userID, activities, part.count)
+
+		// Prerequisite gating: filter out activities whose prerequisites have not been met
+		activities = s.filterActivitiesWithMetPrerequisites(ctx, userID, activities)
+
+		if len(excludeIDs) > 0 {
+			filtered := make([]lessoncontract.Activity, 0, len(activities))
+			for _, a := range activities {
+				if _, excluded := excludeIDs[a.ID]; !excluded {
+					filtered = append(filtered, a)
+				}
+			}
+			activities = filtered
+		}
+
+		picked, err := s.drawFromSlot(ctx, userID, activities, count)
 		if err != nil {
 			return nil, fmt.Errorf("draw from %s %s: %w", level, part.slotName, err)
+		}
+		for _, id := range picked {
+			excludeIDs[id] = struct{}{}
 		}
 		chosen = append(chosen, picked...)
 	}
 	return chosen, nil
+}
+
+// resolveWeakNodeActivity identifies the learner's lowest-scoring node with >= 3 attempts
+// whose prerequisites have been met, and draws one activity matching that node (Stage I).
+func (s *Service) resolveWeakNodeActivity(
+	ctx context.Context, userID uuid.UUID, level string, layout *practicePoolLayout,
+) (uuid.UUID, *contentcontract.TaxonomyNode, error) {
+	if s.repo == nil || s.taxonomies == nil || s.lesson == nil {
+		return uuid.Nil, nil, nil
+	}
+	weakNodes, err := s.repo.ListWeakNodesByUser(ctx, userID, domain.MinAttemptsForWeakNode)
+	if err != nil {
+		return uuid.Nil, nil, fmt.Errorf("list weak nodes: %w", err)
+	}
+	if len(weakNodes) == 0 {
+		return uuid.Nil, nil, nil
+	}
+
+	for _, w := range weakNodes {
+		if !s.isNodePrerequisitesMet(ctx, userID, w.NodeID) {
+			continue
+		}
+
+		node, err := s.taxonomies.GetTaxonomyByID(ctx, w.NodeID)
+		if err != nil || node == nil {
+			continue
+		}
+
+		matchingActivities, err := s.findPoolActivitiesForNode(ctx, layout, level, node.Code)
+		if err != nil || len(matchingActivities) == 0 {
+			continue
+		}
+
+		picked, err := s.drawFromSlot(ctx, userID, matchingActivities, 1)
+		if err != nil || len(picked) == 0 {
+			continue
+		}
+		return picked[0], node, nil
+	}
+
+	return uuid.Nil, nil, nil
+}
+
+// isNodePrerequisitesMet checks if all prerequisites of a taxonomy node have been met by the learner.
+func (s *Service) isNodePrerequisitesMet(ctx context.Context, userID, nodeID uuid.UUID) bool {
+	if s.taxonomies == nil || s.repo == nil {
+		return true
+	}
+	prereqs, err := s.taxonomies.ListPrerequisites(ctx, nodeID)
+	if err != nil || len(prereqs) == 0 {
+		return true
+	}
+	for _, p := range prereqs {
+		pm, err := s.repo.GetNodeMastery(ctx, userID, p.ID)
+		if err != nil || pm == nil || !pm.IsNodePrerequisiteMet() {
+			return false
+		}
+	}
+	return true
+}
+
+// isActivityPrerequisitesMet checks if an activity's tagged taxonomy nodes have their prerequisites met.
+func (s *Service) isActivityPrerequisitesMet(
+	ctx context.Context, userID uuid.UUID, tags []string,
+) bool {
+	for _, tag := range tags {
+		code := tag
+		if idx := strings.LastIndex(tag, "."); idx >= 0 {
+			code = tag[idx+1:]
+		}
+		node, err := s.taxonomies.GetTaxonomyByCode(ctx, code)
+		if err != nil || node == nil {
+			continue
+		}
+		if !s.isNodePrerequisitesMet(ctx, userID, node.ID) {
+			return false
+		}
+	}
+	return true
+}
+
+// filterActivitiesWithMetPrerequisites filters candidate activities so that any activity
+// tagged with a node whose prerequisites have not been met is excluded.
+func (s *Service) filterActivitiesWithMetPrerequisites(
+	ctx context.Context, userID uuid.UUID, activities []lessoncontract.Activity,
+) []lessoncontract.Activity {
+	if s.taxonomies == nil || s.repo == nil || s.content == nil || len(activities) == 0 {
+		return activities
+	}
+	versionIDs := make([]uuid.UUID, len(activities))
+	for i, a := range activities {
+		versionIDs[i] = a.ContentVersionID
+	}
+	versions := s.loadVersions(ctx, versionIDs)
+
+	eligible := make([]lessoncontract.Activity, 0, len(activities))
+	for _, a := range activities {
+		ver, ok := versions[a.ContentVersionID]
+		if !ok || ver == nil || len(ver.Tags) == 0 {
+			eligible = append(eligible, a)
+			continue
+		}
+		if s.isActivityPrerequisitesMet(ctx, userID, ver.Tags) {
+			eligible = append(eligible, a)
+		}
+	}
+	return eligible
+}
+
+// findPoolActivitiesForNode finds practice pool activities tagged with the given taxonomy node code.
+func (s *Service) findPoolActivitiesForNode(
+	ctx context.Context, layout *practicePoolLayout, level, nodeCode string,
+) ([]lessoncontract.Activity, error) {
+	var candidates []lessoncontract.Activity
+	for _, slotName := range []string{slotGrammarTenseChoice, slotGrammarTransform} {
+		acts, err := s.slotActivities(ctx, layout, level, slotName)
+		if err != nil {
+			continue
+		}
+		candidates = append(candidates, acts...)
+	}
+	if len(candidates) == 0 {
+		return nil, nil
+	}
+
+	versionIDs := make([]uuid.UUID, len(candidates))
+	for i, a := range candidates {
+		versionIDs[i] = a.ContentVersionID
+	}
+	versions := s.loadVersions(ctx, versionIDs)
+
+	var matched []lessoncontract.Activity
+	for _, a := range candidates {
+		ver, ok := versions[a.ContentVersionID]
+		if !ok || ver == nil {
+			continue
+		}
+		for _, tag := range ver.Tags {
+			code := tag
+			if idx := strings.LastIndex(tag, "."); idx >= 0 {
+				code = tag[idx+1:]
+			}
+			if strings.EqualFold(code, nodeCode) {
+				matched = append(matched, a)
+				break
+			}
+		}
+	}
+	return matched, nil
+}
+
+type weakNodeNeed struct {
+	nodeID    uuid.UUID
+	cefrLevel string
+}
+
+func (s *Service) collectWeakNodeNeeds(
+	ctx context.Context, activeUsers []uuid.UUID,
+) []weakNodeNeed {
+	needed := make(map[weakNodeNeed]struct{})
+	for _, u := range activeUsers {
+		weak, err := s.repo.ListWeakNodesByUser(ctx, u, domain.MinAttemptsForWeakNode)
+		if err != nil {
+			continue
+		}
+		for _, w := range weak {
+			if s.isNodePrerequisitesMet(ctx, u, w.NodeID) {
+				needed[weakNodeNeed{nodeID: w.NodeID, cefrLevel: defaultPracticeLevel}] = struct{}{}
+			}
+		}
+	}
+	out := make([]weakNodeNeed, 0, len(needed))
+	for k := range needed {
+		out = append(out, k)
+	}
+	return out
+}
+
+func (s *Service) generateForNeededNodes(
+	ctx context.Context, layout *practicePoolLayout, needed []weakNodeNeed,
+) {
+	const maxGenerations = 5
+	generationsCount := 0
+
+	for _, need := range needed {
+		if generationsCount >= maxGenerations {
+			break
+		}
+		node, err := s.taxonomies.GetTaxonomyByID(ctx, need.nodeID)
+		if err != nil || node == nil {
+			continue
+		}
+
+		matched, _ := s.findPoolActivitiesForNode(ctx, layout, need.cefrLevel, node.Code)
+		if len(matched) >= 3 {
+			continue
+		}
+
+		_, err = s.Generate(ctx, learningcontract.GenerateRequest{
+			Kind:      slotGrammarTenseChoice,
+			CEFRLevel: need.cefrLevel,
+			NodeCodes: []string{node.Code},
+			Count:     3,
+			Purpose:   purposePractice,
+		})
+		if err != nil {
+			slog.WarnContext(ctx, "daily generation failed for weak node", "node", node.Code, "error", err)
+			continue
+		}
+		generationsCount++
+	}
+}
+
+// DailyGeneration runs the nightly generation job for active learners' weak nodes (Stage I).
+func (s *Service) DailyGeneration(ctx context.Context) error {
+	if s.taxonomies == nil || s.repo == nil || s.ai == nil {
+		return nil
+	}
+	since := s.clock.Now().Add(-7 * 24 * time.Hour)
+	activeUsers, err := s.repo.ListActiveLearnersSince(ctx, since)
+	if err != nil {
+		return fmt.Errorf("list active learners: %w", err)
+	}
+	if len(activeUsers) == 0 {
+		return nil
+	}
+
+	layout, err := s.practicePool(ctx)
+	if err != nil {
+		return fmt.Errorf("resolve practice pool layout: %w", err)
+	}
+
+	needed := s.collectWeakNodeNeeds(ctx, activeUsers)
+	s.generateForNeededNodes(ctx, layout, needed)
+	return nil
 }
 
 // drawFromSlot picks at random among items the learner has not seen, then fills

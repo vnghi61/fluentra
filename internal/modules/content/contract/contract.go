@@ -141,5 +141,7 @@ type TaxonomyNode struct {
 type TaxonomyResolver interface {
 	ResolveTaxonomyID(ctx context.Context, namespace, code string) (*uuid.UUID, error)
 	GetTaxonomyByCode(ctx context.Context, code string) (*TaxonomyNode, error)
+	GetTaxonomyByID(ctx context.Context, id uuid.UUID) (*TaxonomyNode, error)
 	ListTaxonomiesInNamespace(ctx context.Context, namespace string) ([]TaxonomyNode, error)
+	ListPrerequisites(ctx context.Context, nodeID uuid.UUID) ([]TaxonomyNode, error)
 }

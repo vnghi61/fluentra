@@ -268,9 +268,44 @@ func (s *Service) GetTaxonomyByCode(ctx context.Context, code string) (*contract
 	}, nil
 }
 
+// GetTaxonomyByID retrieves a taxonomy node by its UUID.
+func (s *Service) GetTaxonomyByID(ctx context.Context, id uuid.UUID) (*contract.TaxonomyNode, error) {
+	tax, err := s.repo.GetTaxonomyByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, domain.ErrTaxonomyNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &contract.TaxonomyNode{
+		ID:        tax.ID,
+		Namespace: tax.Namespace,
+		Code:      tax.Code,
+		Label:     tax.Label,
+	}, nil
+}
+
 // ListTaxonomiesInNamespace lists all active taxonomy nodes in a namespace.
 func (s *Service) ListTaxonomiesInNamespace(ctx context.Context, namespace string) ([]contract.TaxonomyNode, error) {
 	items, err := s.repo.ListAllTaxonomiesInNamespace(ctx, namespace)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]contract.TaxonomyNode, len(items))
+	for i, t := range items {
+		res[i] = contract.TaxonomyNode{
+			ID:        t.ID,
+			Namespace: t.Namespace,
+			Code:      t.Code,
+			Label:     t.Label,
+		}
+	}
+	return res, nil
+}
+
+// ListPrerequisites returns the taxonomy nodes required by nodeID.
+func (s *Service) ListPrerequisites(ctx context.Context, nodeID uuid.UUID) ([]contract.TaxonomyNode, error) {
+	items, err := s.repo.ListPrerequisitesForNode(ctx, nodeID)
 	if err != nil {
 		return nil, err
 	}

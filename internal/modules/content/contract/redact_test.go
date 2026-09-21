@@ -13,6 +13,8 @@ const (
 	keyCorrectAnswer   = "correct_answer"
 	keyAcceptable      = "acceptable"
 	keyCorrectOptionID = "correct_option_id"
+	keyTranscript      = "transcript"
+	keyKey             = "key"
 )
 
 func TestRedactForLearner_RemovesTheAnswer(t *testing.T) {
@@ -175,7 +177,7 @@ func TestRedactForLearner_ReadingQuestionsArray(t *testing.T) {
 
 	redacted := string(contract.RedactForLearner(body))
 
-	for _, leaked := range []string{"correct_option_id", "correct_answer", `"answer"`} {
+	for _, leaked := range []string{keyCorrectOptionID, keyCorrectAnswer, `"answer"`} {
 		if strings.Contains(redacted, leaked) {
 			t.Errorf("%q survived redaction of reading questions array: %s", leaked, redacted)
 		}
@@ -210,7 +212,7 @@ func TestRedactForLearner_ListeningComprehension(t *testing.T) {
 
 	redacted := string(contract.RedactForLearner(body))
 
-	leakable := []string{"script", "transcript", "correct_option_id", "correct_answer", "acceptable", "London"}
+	leakable := []string{"script", keyTranscript, keyCorrectOptionID, keyCorrectAnswer, "acceptable", "London"}
 	for _, leaked := range leakable {
 		if strings.Contains(redacted, leaked) {
 			t.Errorf("%q survived redaction of listening comprehension body: %s", leaked, redacted)
@@ -266,7 +268,7 @@ func TestRedactForLearner_TOEICKinds(t *testing.T) {
 				"key": "A",
 				"correct_option_id": "A"
 			}`,
-			leaks:    []string{"key", "correct_option_id", "transcript", "She is running"},
+			leaks:    []string{keyKey, keyCorrectOptionID, keyTranscript, "She is running"},
 			survives: []string{"image_url", "https://example.com/photo1.jpg", "https://example.com/a.mp3"},
 		},
 		"question_response": {
@@ -279,7 +281,7 @@ func TestRedactForLearner_TOEICKinds(t *testing.T) {
 				],
 				"key": "A"
 			}`,
-			leaks:    []string{"key", "transcript", "Where is the meeting?", "In room 3"},
+			leaks:    []string{keyKey, keyTranscript, "Where is the meeting?", "In room 3"},
 			survives: []string{"audio_url", "https://example.com/q.mp3", "https://example.com/r1.mp3"},
 		},
 		"mcq_gap": {
@@ -292,7 +294,7 @@ func TestRedactForLearner_TOEICKinds(t *testing.T) {
 				"key": "A",
 				"correct_answer": "by"
 			}`,
-			leaks:    []string{"key", "correct_answer"},
+			leaks:    []string{keyKey, keyCorrectAnswer},
 			survives: []string{"sentence", "Friday", "options", "by", "at"},
 		},
 		"text_completion": {
@@ -303,7 +305,7 @@ func TestRedactForLearner_TOEICKinds(t *testing.T) {
 				],
 				"keys": ["A"]
 			}`,
-			leaks:    []string{"key", "keys", "correct_option_id"},
+			leaks:    []string{keyKey, "keys", keyCorrectOptionID},
 			survives: []string{"passage", "Dear team", "questions", "opt1"},
 		},
 	}

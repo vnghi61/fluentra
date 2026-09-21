@@ -1293,6 +1293,20 @@ func (r *gateTaxonomyResolver) ListTaxonomiesInNamespace(ctx context.Context, na
 	return out, nil
 }
 
+func (r *gateTaxonomyResolver) ListPrerequisites(_ context.Context, _ uuid.UUID) ([]contentcontract.TaxonomyNode, error) {
+	return nil, nil
+}
+
+func (r *gateTaxonomyResolver) GetTaxonomyByID(_ context.Context, id uuid.UUID) (*contentcontract.TaxonomyNode, error) {
+	for _, n := range r.nodes {
+		if n.ID == id {
+			cp := n
+			return &cp, nil
+		}
+	}
+	return nil, nil
+}
+
 type gateTranscriber struct {
 	text string
 	lang string

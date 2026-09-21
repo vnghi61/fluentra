@@ -645,6 +645,132 @@ func (r *Repository) UpsertSkillMastery(
 	return toDomainSkillMastery(row), nil
 }
 
+// GetNodeMastery retrieves a learner's mastery for a specific taxonomy node.
+func (r *Repository) GetNodeMastery(
+	ctx context.Context, userID, nodeID uuid.UUID,
+) (*domain.NodeMastery, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.GetNodeMastery(ctx, sqlc.GetNodeMasteryParams{
+		UserID: userID,
+		NodeID: nodeID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, mapPgError(err)
+	}
+	return toDomainNodeMastery(row), nil
+}
+
+// ListNodeMasteryByUser retrieves all node mastery records for a user.
+func (r *Repository) ListNodeMasteryByUser(
+	ctx context.Context, userID uuid.UUID,
+) ([]domain.NodeMastery, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListNodeMasteryByUser(ctx, userID)
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	out := make([]domain.NodeMastery, len(rows))
+	for i, row := range rows {
+		m := toDomainNodeMastery(row)
+		if m != nil {
+			out[i] = *m
+		}
+	}
+	return out, nil
+}
+
+// UpsertNodeMastery creates or updates a node mastery record.
+func (r *Repository) UpsertNodeMastery(
+	ctx context.Context, mastery domain.NodeMastery,
+) (*domain.NodeMastery, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	var sc pgtype.Numeric
+	if err := sc.Scan(strconv.FormatFloat(mastery.Score, 'f', 3, 64)); err != nil {
+		return nil, fmt.Errorf("encode score %v: %w", mastery.Score, err)
+	}
+
+	row, err := r.queries.UpsertNodeMastery(ctx, sqlc.UpsertNodeMasteryParams{
+		UserID:     mastery.UserID,
+		NodeID:     mastery.NodeID,
+		Attempts:   int32(mastery.Attempts), //nolint:gosec // attempt counts fit well within int32
+		Correct:    int32(mastery.Correct),  //nolint:gosec // correct counts fit well within int32
+		Score:      sc,
+		LastSeenAt: mastery.LastSeenAt,
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	return toDomainNodeMastery(row), nil
+}
+
+// ListWeakNodesByUser retrieves nodes with at least minAttempts for a user, ordered by score ASC.
+func (r *Repository) ListWeakNodesByUser(
+	ctx context.Context, userID uuid.UUID, minAttempts int,
+) ([]domain.NodeMastery, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListWeakNodesByUser(ctx, sqlc.ListWeakNodesByUserParams{
+		UserID:   userID,
+		Attempts: int32(minAttempts), //nolint:gosec // threshold is bounded small integer
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	out := make([]domain.NodeMastery, len(rows))
+	for i, row := range rows {
+		m := toDomainNodeMastery(row)
+		if m != nil {
+			out[i] = *m
+		}
+	}
+	return out, nil
+}
+
+// DeleteNodeMasteryByUser removes all node mastery records for a user (erasure).
+func (r *Repository) DeleteNodeMasteryByUser(
+	ctx context.Context, userID uuid.UUID,
+) error {
+	if r.queries == nil {
+		return nil
+	}
+	return r.queries.DeleteNodeMasteryByUser(ctx, userID)
+}
+
+// ListActiveLearnersSince retrieves distinct learner IDs with attempts since the given time.
+func (r *Repository) ListActiveLearnersSince(
+	ctx context.Context, since time.Time,
+) ([]uuid.UUID, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	return r.queries.ListActiveLearnersSince(ctx, since)
+}
+
+func toDomainNodeMastery(row sqlc.LearnNodeMastery) *domain.NodeMastery {
+	var scoreVal float64
+	if f, err := row.Score.Float64Value(); err == nil && f.Valid {
+		scoreVal = f.Float64
+	}
+	return &domain.NodeMastery{
+		UserID:     row.UserID,
+		NodeID:     row.NodeID,
+		Attempts:   int(row.Attempts),
+		Correct:    int(row.Correct),
+		Score:      scoreVal,
+		LastSeenAt: row.LastSeenAt,
+	}
+}
+
 func toDomainAttempt(row sqlc.LearnAttempt) *domain.Attempt {
 	var keyStr *string
 	if row.IdempotencyKey != nil {

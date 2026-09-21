@@ -2,6 +2,7 @@ package learning
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/clock"
+	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
 )
 
@@ -262,6 +264,9 @@ const sweepPlacementSessionsLockID int64 = 1_700_000_701
 // sweepPlacementInterval is how often sessions past their deadline are finished.
 const sweepPlacementInterval = time.Minute
 
+// Advisory lock id for daily generation job (migration 1700000880).
+const dailyGenerationLockID int64 = 1_700_000_880
+
 // CronJobs returns the scheduled partition maintenance, grading sweep, and pool jobs.
 func (m *Module) CronJobs() []job.CronJob {
 	return []job.CronJob{
@@ -301,7 +306,37 @@ func (m *Module) CronJobs() []job.CronJob {
 			Interval: sweepPlacementInterval,
 			Task:     m.SweepPlacementSessions,
 		},
+		{
+			Name:     "learning.daily_generation",
+			LockID:   dailyGenerationLockID,
+			Interval: 24 * time.Hour,
+			Task:     m.DailyGeneration,
+		},
 	}
+}
+
+// DailyGeneration generates practice pool items for weak nodes of recently active learners (Stage I).
+func (m *Module) DailyGeneration(ctx context.Context) error {
+	return m.service.DailyGeneration(ctx)
+}
+
+// Subscribe registers the module's consumers in the worker (Stage I).
+func (m *Module) Subscribe(bus eventbus.EventBus) error {
+	if err := bus.Subscribe(usercontract.EventDeleted, m.handleUserDeleted); err != nil {
+		return fmt.Errorf("subscribe learning consumer to %s: %w", usercontract.EventDeleted, err)
+	}
+	return nil
+}
+
+func (m *Module) handleUserDeleted(ctx context.Context, msg eventbus.Message) error {
+	var payload usercontract.UserDeleted
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+		return fmt.Errorf("decode %s payload: %w", usercontract.EventDeleted, err)
+	}
+	if payload.UserID == uuid.Nil {
+		return nil
+	}
+	return m.service.DeleteUserData(ctx, payload.UserID)
 }
 
 // TopUpPracticePool generates and adds verified exercises to the practice pool.

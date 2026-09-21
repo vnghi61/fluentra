@@ -94,6 +94,23 @@ func (t *generatorTestTaxonomies) ListTaxonomiesInNamespace(
 	return res, nil
 }
 
+func (t *generatorTestTaxonomies) ListPrerequisites(
+	_ context.Context, _ uuid.UUID,
+) ([]contentcontract.TaxonomyNode, error) {
+	return nil, nil
+}
+
+func (t *generatorTestTaxonomies) GetTaxonomyByID(
+	_ context.Context, id uuid.UUID,
+) (*contentcontract.TaxonomyNode, error) {
+	for _, n := range t.nodes {
+		if n.ID == id {
+			return n, nil
+		}
+	}
+	return nil, nil
+}
+
 // TestGenerator_WorkOrder19StageCGate verifies the WO-19 Stage C Gate:
 // 1. Generation call for grammar_tense_choice, PRESENT_PERFECT, B1, count 3, purpose foundation.
 // 2. Produces 3 draft versions authored via EnsureDraft.
@@ -107,7 +124,7 @@ func TestGenerator_WorkOrder19StageCGate(t *testing.T) {
 		nodes: map[string]*contentcontract.TaxonomyNode{
 			testNodeCodePresentPerfect: {
 				ID:        uuid.New(),
-				Namespace: "grammar",
+				Namespace: testSkillGrammar,
 				Code:      testNodeCodePresentPerfect,
 				Label:     "Present Perfect",
 			},

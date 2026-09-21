@@ -378,6 +378,16 @@ func (q *Queries) CreateProgress(ctx context.Context, arg CreateProgressParams) 
 	return i, err
 }
 
+const deleteNodeMasteryByUser = `-- name: DeleteNodeMasteryByUser :exec
+DELETE FROM learn.node_mastery
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteNodeMasteryByUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteNodeMasteryByUser, userID)
+	return err
+}
+
 const ensurePartitions = `-- name: EnsurePartitions :one
 SELECT learn.ensure_partitions($1::integer) AS created_count
 `
@@ -599,6 +609,31 @@ func (q *Queries) GetLearningSessionByID(ctx context.Context, id uuid.UUID) (Lea
 	return i, err
 }
 
+const getNodeMastery = `-- name: GetNodeMastery :one
+SELECT user_id, node_id, attempts, correct, score, last_seen_at
+FROM learn.node_mastery
+WHERE user_id = $1 AND node_id = $2
+`
+
+type GetNodeMasteryParams struct {
+	UserID uuid.UUID
+	NodeID uuid.UUID
+}
+
+func (q *Queries) GetNodeMastery(ctx context.Context, arg GetNodeMasteryParams) (LearnNodeMastery, error) {
+	row := q.db.QueryRow(ctx, getNodeMastery, arg.UserID, arg.NodeID)
+	var i LearnNodeMastery
+	err := row.Scan(
+		&i.UserID,
+		&i.NodeID,
+		&i.Attempts,
+		&i.Correct,
+		&i.Score,
+		&i.LastSeenAt,
+	)
+	return i, err
+}
+
 const getProgressByUserScope = `-- name: GetProgressByUserScope :one
 SELECT id, user_id, scope, scope_id, status, score, completed_at, created_at, updated_at
 FROM learn.progress
@@ -652,6 +687,32 @@ func (q *Queries) GetSkillMastery(ctx context.Context, arg GetSkillMasteryParams
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listActiveLearnersSince = `-- name: ListActiveLearnersSince :many
+SELECT DISTINCT user_id
+FROM learn.attempts
+WHERE created_at >= $1
+`
+
+func (q *Queries) ListActiveLearnersSince(ctx context.Context, createdAt time.Time) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listActiveLearnersSince, createdAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var user_id uuid.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listAttemptsByUserAndActivity = `-- name: ListAttemptsByUserAndActivity :many
@@ -733,6 +794,40 @@ func (q *Queries) ListEnrollmentsByUser(ctx context.Context, arg ListEnrollments
 			&i.CompletedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNodeMasteryByUser = `-- name: ListNodeMasteryByUser :many
+SELECT user_id, node_id, attempts, correct, score, last_seen_at
+FROM learn.node_mastery
+WHERE user_id = $1
+ORDER BY score ASC, attempts DESC
+`
+
+func (q *Queries) ListNodeMasteryByUser(ctx context.Context, userID uuid.UUID) ([]LearnNodeMastery, error) {
+	rows, err := q.db.Query(ctx, listNodeMasteryByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LearnNodeMastery
+	for rows.Next() {
+		var i LearnNodeMastery
+		if err := rows.Scan(
+			&i.UserID,
+			&i.NodeID,
+			&i.Attempts,
+			&i.Correct,
+			&i.Score,
+			&i.LastSeenAt,
 		); err != nil {
 			return nil, err
 		}
@@ -897,6 +992,45 @@ func (q *Queries) ListSkillMasteryByUser(ctx context.Context, userID uuid.UUID) 
 			&i.Confidence,
 			&i.UpdatedAt,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWeakNodesByUser = `-- name: ListWeakNodesByUser :many
+SELECT user_id, node_id, attempts, correct, score, last_seen_at
+FROM learn.node_mastery
+WHERE user_id = $1 AND attempts >= $2
+ORDER BY score ASC, attempts DESC
+`
+
+type ListWeakNodesByUserParams struct {
+	UserID   uuid.UUID
+	Attempts int32
+}
+
+func (q *Queries) ListWeakNodesByUser(ctx context.Context, arg ListWeakNodesByUserParams) ([]LearnNodeMastery, error) {
+	rows, err := q.db.Query(ctx, listWeakNodesByUser, arg.UserID, arg.Attempts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LearnNodeMastery
+	for rows.Next() {
+		var i LearnNodeMastery
+		if err := rows.Scan(
+			&i.UserID,
+			&i.NodeID,
+			&i.Attempts,
+			&i.Correct,
+			&i.Score,
+			&i.LastSeenAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1095,6 +1229,48 @@ func (q *Queries) UpsertAnswerExplanation(ctx context.Context, arg UpsertAnswerE
 		&i.ExplanationVi,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertNodeMastery = `-- name: UpsertNodeMastery :one
+INSERT INTO learn.node_mastery (user_id, node_id, attempts, correct, score, last_seen_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (user_id, node_id)
+DO UPDATE SET
+    attempts = EXCLUDED.attempts,
+    correct = EXCLUDED.correct,
+    score = EXCLUDED.score,
+    last_seen_at = EXCLUDED.last_seen_at
+RETURNING user_id, node_id, attempts, correct, score, last_seen_at
+`
+
+type UpsertNodeMasteryParams struct {
+	UserID     uuid.UUID
+	NodeID     uuid.UUID
+	Attempts   int32
+	Correct    int32
+	Score      pgtype.Numeric
+	LastSeenAt *time.Time
+}
+
+func (q *Queries) UpsertNodeMastery(ctx context.Context, arg UpsertNodeMasteryParams) (LearnNodeMastery, error) {
+	row := q.db.QueryRow(ctx, upsertNodeMastery,
+		arg.UserID,
+		arg.NodeID,
+		arg.Attempts,
+		arg.Correct,
+		arg.Score,
+		arg.LastSeenAt,
+	)
+	var i LearnNodeMastery
+	err := row.Scan(
+		&i.UserID,
+		&i.NodeID,
+		&i.Attempts,
+		&i.Correct,
+		&i.Score,
+		&i.LastSeenAt,
 	)
 	return i, err
 }

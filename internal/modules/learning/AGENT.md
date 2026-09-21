@@ -6,7 +6,7 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn
-tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets, placement_sessions, weekly_plans]
+tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets, placement_sessions, weekly_plans, node_mastery]
 depends_on: [lesson, content, srs, user, admin, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
@@ -119,6 +119,7 @@ Migrations: `db/migrations/learning/` · Queries: `db/queries/learning/`
 | `learn.daily_sets` | Daily practice set cache | `user_id`, `local_date`, `activity_ids`. Unique on (user_id, local_date). |
 | `learn.placement_sessions` | One adaptive placement test | `user_id`, `status`, `stage`, `started_at`, `deadline_at`, `estimate` jsonb, `items` jsonb (served items with their attempts), `version`, `productive_status`, `productive_deadline_at`, `result_id`, `completed_at` |
 | `learn.weekly_plans` | A learner's plan for one week | `user_id`, `week_start` (Monday, Asia/Ho_Chi_Minh), `minutes_goal`, `items` jsonb. Primary key (user_id, week_start); progress is read, not stored |
+| `learn.node_mastery` | Per-node spine taxonomy mastery estimate | `user_id`, `node_id`, `attempts`, `correct`, `score`, `last_seen_at`. Primary key (user_id, node_id). |
 
 **Indexes of note**
 
@@ -128,6 +129,7 @@ Migrations: `db/migrations/learning/` · Queries: `db/queries/learning/`
 - `uq_answer_explanations` — unique on (content_version_id, user_answer) for lazy deduplication
 - `uq_placement_sessions_one_in_progress` — partial unique on (user_id) where the session is in progress
 - `idx_placement_sessions_open_deadline` — the expiry sweep
+- `idx_node_mastery_user_score` — learner weak node lookup
 <!-- END GENERATED: schema -->
 
 ## 6. HTTP endpoints

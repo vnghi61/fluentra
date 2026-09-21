@@ -42,6 +42,7 @@ type fakeLearningRepo struct {
 	enrollments  map[string]*domain.Enrollment
 	sessions     map[uuid.UUID]*domain.LearningSession
 	mastery      map[string]*domain.SkillMastery
+	nodeMastery  map[string]*domain.NodeMastery
 	explanations map[string]*repository.AnswerExplanationDTO
 	claimErr     error
 	queryCounter atomic.Int64
@@ -59,6 +60,7 @@ func newFakeRepo() *fakeLearningRepo {
 		enrollments:  make(map[string]*domain.Enrollment),
 		sessions:     make(map[uuid.UUID]*domain.LearningSession),
 		mastery:      make(map[string]*domain.SkillMastery),
+		nodeMastery:  make(map[string]*domain.NodeMastery),
 		explanations: make(map[string]*repository.AnswerExplanationDTO),
 	}
 }
@@ -663,6 +665,103 @@ func (f *fakeLearningRepo) ListItemExposures(
 
 func (f *fakeLearningRepo) HasActiveLearnerRunningLow(_ context.Context, _ []uuid.UUID, _ int) (bool, error) {
 	return false, nil
+}
+
+func nodeMasteryKey(userID, nodeID uuid.UUID) string {
+	return userID.String() + ":" + nodeID.String()
+}
+
+func (f *fakeLearningRepo) GetNodeMastery(
+	_ context.Context, userID, nodeID uuid.UUID,
+) (*domain.NodeMastery, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.nodeMastery == nil {
+		return nil, nil
+	}
+	m, ok := f.nodeMastery[nodeMasteryKey(userID, nodeID)]
+	if !ok {
+		return nil, nil
+	}
+	cp := *m
+	return &cp, nil
+}
+
+func (f *fakeLearningRepo) ListNodeMasteryByUser(
+	_ context.Context, userID uuid.UUID,
+) ([]domain.NodeMastery, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []domain.NodeMastery
+	for _, m := range f.nodeMastery {
+		if m.UserID == userID {
+			out = append(out, *m)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeLearningRepo) UpsertNodeMastery(
+	_ context.Context, mastery domain.NodeMastery,
+) (*domain.NodeMastery, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.nodeMastery == nil {
+		f.nodeMastery = make(map[string]*domain.NodeMastery)
+	}
+	cp := mastery
+	f.nodeMastery[nodeMasteryKey(mastery.UserID, mastery.NodeID)] = &cp
+	return &cp, nil
+}
+
+func (f *fakeLearningRepo) ListWeakNodesByUser(
+	_ context.Context, userID uuid.UUID, minAttempts int,
+) ([]domain.NodeMastery, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []domain.NodeMastery
+	for _, m := range f.nodeMastery {
+		if m.UserID == userID && m.Attempts >= minAttempts && m.Score < domain.MasteryScoreThreshold {
+			out = append(out, *m)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeLearningRepo) DeleteNodeMasteryByUser(
+	_ context.Context, userID uuid.UUID,
+) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for k, m := range f.nodeMastery {
+		if m.UserID == userID {
+			delete(f.nodeMastery, k)
+		}
+	}
+	return nil
+}
+
+func (f *fakeLearningRepo) ListActiveLearnersSince(
+	_ context.Context, since time.Time,
+) ([]uuid.UUID, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	seen := make(map[uuid.UUID]struct{})
+	for _, a := range f.attempts {
+		if a.CreatedAt.After(since) || a.CreatedAt.Equal(since) {
+			seen[a.UserID] = struct{}{}
+		}
+	}
+	for _, s := range f.sessions {
+		if s.StartedAt.After(since) || s.StartedAt.Equal(since) {
+			seen[s.UserID] = struct{}{}
+		}
+	}
+	out := make([]uuid.UUID, 0, len(seen))
+	for id := range seen {
+		out = append(out, id)
+	}
+	return out, nil
 }
 
 type fakeLessonReader struct {

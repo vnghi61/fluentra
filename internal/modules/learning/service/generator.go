@@ -11,6 +11,7 @@ import (
 
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
+	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 )
@@ -293,6 +294,18 @@ func (s *Service) generateSingleItem(
 	var versionID uuid.UUID
 	if req.Purpose == purposePractice {
 		versionID, err = s.contentAuthor.EnsurePublished(ctx, spec)
+		if err == nil && s.lessonAuthor != nil {
+			if layout, errLayout := s.practicePool(ctx); errLayout == nil {
+				if lessonID, ok := layout.lessons[slotKey{level: req.CEFRLevel, slotName: req.Kind}]; ok {
+					_, _ = s.lessonAuthor.AppendActivity(ctx, lessonID, lessoncontract.ActivitySpec{
+						Kind:             req.Kind,
+						ContentVersionID: versionID,
+						Config:           bodyWithProv,
+						Weight:           1,
+					})
+				}
+			}
+		}
 	} else {
 		versionID, err = s.contentAuthor.EnsureDraft(ctx, spec)
 	}

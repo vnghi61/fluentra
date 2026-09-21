@@ -345,7 +345,8 @@
       { "name": "item_exposures", "purpose": "Learner item exposure log", "notes": "`user_id`, `activity_id`, `first_served_at`. Primary key (user_id, activity_id)." },
       { "name": "daily_sets", "purpose": "Daily practice set cache", "notes": "`user_id`, `local_date`, `activity_ids`. Unique on (user_id, local_date)." },
       { "name": "placement_sessions", "purpose": "One adaptive placement test", "notes": "`user_id`, `status`, `stage`, `started_at`, `deadline_at`, `estimate` jsonb, `items` jsonb (served items with their attempts), `version`, `productive_status`, `productive_deadline_at`, `result_id`, `completed_at`" },
-      { "name": "weekly_plans", "purpose": "A learner's plan for one week", "notes": "`user_id`, `week_start` (Monday, Asia/Ho_Chi_Minh), `minutes_goal`, `items` jsonb. Primary key (user_id, week_start); progress is read, not stored" }
+      { "name": "weekly_plans", "purpose": "A learner's plan for one week", "notes": "`user_id`, `week_start` (Monday, Asia/Ho_Chi_Minh), `minutes_goal`, `items` jsonb. Primary key (user_id, week_start); progress is read, not stored" },
+      { "name": "node_mastery", "purpose": "Per-node spine taxonomy mastery estimate", "notes": "`user_id`, `node_id`, `attempts`, `correct`, `score`, `last_seen_at`. Primary key (user_id, node_id)." }
     ],
     "indexes": [
       "`uq_progress_user_scope` — the read path for every dashboard",
@@ -353,7 +354,8 @@
       "`idx_attempts_activity_time` — item statistics for `questionbank`",
       "`uq_answer_explanations` — unique on (content_version_id, user_answer) for lazy deduplication",
       "`uq_placement_sessions_one_in_progress` — partial unique on (user_id) where the session is in progress",
-      "`idx_placement_sessions_open_deadline` — the expiry sweep"
+      "`idx_placement_sessions_open_deadline` — the expiry sweep",
+      "`idx_node_mastery_user_score` — learner weak node lookup"
     ],
     "endpoints": [
       { "method": "POST", "path": "/api/v1/courses/{id}/enroll", "permission": "self", "purpose": "Enrol", "success": "201", "errors": ["ALREADY_ENROLLED", "COURSE_NOT_FOUND"] },

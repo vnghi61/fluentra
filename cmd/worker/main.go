@@ -1071,6 +1071,9 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 		return err
 	}
 	learningRef.module = learningModule
+	if err := learningModule.Subscribe(d.bus); err != nil {
+		return err
+	}
 
 	if err := startSkills(
 		d.pool, d.bus, d.cron, d.workers, d.lesson, learningModule, writingModule, speakingModule,
