@@ -282,6 +282,14 @@ validation** (does this question match the part it claims). States are the exist
 > a content version drawn as an activity, with no separate options table. The table below is kept as the
 > map of what each step delivers.
 
+**Where the run stands (2026-09-22).** The code for P3 to P12 is built and its tests pass. The gates that
+need generated content and a person reviewing it have not been run on a real database: no Foundation
+topic is published (P5's two acceptance chains), the bank holds no questions (P7's 60 VSTEP questions), so
+no mock test can be composed from it (P9). P6 is partial: `learning.Generator` exists and the nightly
+weak-node generation uses it, but the practice, exam and placement pools still generate through their own
+paths. P9's `weak_topic` mode draws like `random`; nothing weights it by node mastery yet. P3 renders a
+video only after transcoding it, so the 10-minute limit is checked late.
+
 The brief's P1-P12, mapped to work orders. Each is independently testable and leaves the system working.
 
 | Step | Work order | Delivers | Gate |
