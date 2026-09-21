@@ -189,6 +189,14 @@ func (ns NullCoreUserStatus) Value() (driver.Value, error) {
 	return string(ns.CoreUserStatus), nil
 }
 
+type AssessBlueprint struct {
+	ID               uuid.UUID
+	VersionID        uuid.UUID
+	Name             string
+	CefrDistribution []byte
+	NodeDistribution []byte
+}
+
 type AssessExam struct {
 	ID            uuid.UUID
 	Slug          string
@@ -201,6 +209,7 @@ type AssessExam struct {
 	TotalMinutes  int32
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	VersionID     *uuid.UUID
 }
 
 type AssessExamAttempt struct {
@@ -221,6 +230,18 @@ type AssessExamAttempt struct {
 	UpdatedAt             time.Time
 }
 
+type AssessExamPart struct {
+	ID              uuid.UUID
+	VersionID       uuid.UUID
+	Section         string
+	PartNumber      int32
+	Kind            string
+	QuestionCount   int32
+	GroupSize       int32
+	DurationMinutes *int32
+	Constraints     []byte
+}
+
 type AssessExamSection struct {
 	ID                  uuid.UUID
 	ExamID              uuid.UUID
@@ -230,6 +251,19 @@ type AssessExamSection struct {
 	ItemCount           int32
 	ItemKinds           []byte
 	CreatedAt           time.Time
+}
+
+type AssessExamVersion struct {
+	ID           uuid.UUID
+	ExamFamily   string
+	Code         string
+	Title        string
+	TotalMinutes int32
+	Scoring      []byte
+	SourceUrl    string
+	VerifiedAt   pgtype.Date
+	IsCurrent    bool
+	Notes        string
 }
 
 type AssessIntegrityEvent struct {

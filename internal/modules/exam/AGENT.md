@@ -6,7 +6,7 @@ status: DONE
 phase: 3
 owner: "@learning-team"
 schema: assess
-tables: [exams, exam_sections, exam_attempts, score_reports, integrity_events]
+tables: [exams, exam_sections, exam_attempts, score_reports, integrity_events, exam_versions, exam_parts, blueprints]
 depends_on: [questionbank, job, ai, writing, speaking, learning, lesson, listening]
 depended_on_by: [learning, analytics, admin]
 spec_version: 1.0.0
@@ -95,11 +95,14 @@ Migrations: `db/migrations/exam/` · Queries: `db/queries/exam/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
-| `assess.exams` | Exam definition | Content-versioned. `format`, `total_minutes`, `scoring_model` |
+| `assess.exams` | Exam definition | Content-versioned. `format`, `total_minutes`, `scoring_model`, `version_id` |
 | `assess.exam_sections` | Timed part | `exam_id`, `position`, `skill`, `minutes`, `question_set_id`, `navigation` (linear/free) |
 | `assess.exam_attempts` | One sitting | `user_id`, `exam_id`, `mode`, `chosen_duration_minutes`, `started_at`, `deadline_at`, `status`, `section_activities`, `draft_answers`, `submitted_at`, `submitted_by` |
 | `assess.score_reports` | Learner-facing result | `attempt_id`, `overall_band`, `per_section` jsonb, `feedback`, `percentile` |
 | `assess.integrity_events` | Signals during an attempt | `attempt_id`, `kind`, `occurred_at` — informational, never punitive automatically |
+| `assess.exam_versions` | Verified exam standard specifications | `exam_family`, `code`, `title`, `total_minutes`, `scoring`, `source_url`, `verified_at`, `is_current` |
+| `assess.exam_parts` | Parts and sections of an exam version | `version_id`, `section`, `part_number`, `kind`, `question_count`, `group_size`, `duration_minutes`, `constraints` |
+| `assess.blueprints` | Test composition blueprint | `version_id`, `name`, `cefr_distribution`, `node_distribution` |
 
 <!-- END GENERATED: schema -->
 
