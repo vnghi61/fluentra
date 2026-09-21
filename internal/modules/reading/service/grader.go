@@ -40,9 +40,11 @@ type (
 type readingQuizBody struct {
 	PassageTitle    string                              `json:"passage_title,omitempty"`
 	Passage         string                              `json:"passage"`
+	Sentence        string                              `json:"sentence,omitempty"`
 	Prompt          string                              `json:"prompt,omitempty"`
 	CorrectAnswer   string                              `json:"correct_answer,omitempty"`
 	CorrectOptionID string                              `json:"correct_option_id,omitempty"`
+	Key             string                              `json:"key,omitempty"`
 	Acceptable      []string                            `json:"acceptable,omitempty"`
 	Explanation     *learningcontract.AnswerExplanation `json:"explanation,omitempty"`
 	Questions       []contentcontract.QuestionItem      `json:"questions,omitempty"`
@@ -184,7 +186,11 @@ func gradeQuestionSet(
 
 func gradeSingle(resp contentcontract.ComprehensionResponse, body readingQuizBody) (int, bool) {
 	submitted := contentcontract.SingleSubmittedAnswer(resp)
-	if contentcontract.MatchesSingleAnswer(submitted, body.CorrectOptionID, body.CorrectAnswer, body.Acceptable) {
+	key := body.CorrectOptionID
+	if key == "" {
+		key = body.Key
+	}
+	if contentcontract.MatchesSingleAnswer(submitted, key, body.CorrectAnswer, body.Acceptable) {
 		return maxReadingScore, true
 	}
 	return 0, false
@@ -208,6 +214,9 @@ func buildSingleResult(
 	}
 
 	answer := body.CorrectOptionID
+	if answer == "" {
+		answer = body.Key
+	}
 	if answer == "" {
 		answer = body.CorrectAnswer
 	}

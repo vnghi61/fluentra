@@ -512,7 +512,11 @@ const ItemRow: React.FC<{
 
   const kindLabels: Record<string, string> = {
     listening_comprehension: t("exam.report.kindListening"),
+    photo_description: t("exam.report.kindListening"),
+    question_response: t("exam.report.kindListening"),
     reading_comprehension: t("exam.report.kindReading"),
+    mcq_gap: t("exam.report.kindReading"),
+    text_completion: t("exam.report.kindReading"),
     grammar_sentence_transform: t("exam.report.kindRewrite"),
     writing_prompt: t("exam.report.kindEssay"),
     speaking_task: t("exam.report.kindSpeaking"),

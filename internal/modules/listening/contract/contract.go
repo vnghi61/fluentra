@@ -6,11 +6,19 @@ import (
 )
 
 // KindListeningComprehension is the canonical kind string for audio comprehension items.
-const KindListeningComprehension = "listening_comprehension"
+const (
+	KindListeningComprehension = "listening_comprehension"
+	KindPhotoDescription       = "photo_description"
+	KindQuestionResponse       = "question_response"
+)
 
 // GradedKinds returns the activity kinds graded by the listening module.
 func GradedKinds() []string {
-	return []string{KindListeningComprehension}
+	return []string{
+		KindListeningComprehension,
+		KindPhotoDescription,
+		KindQuestionResponse,
+	}
 }
 
 // Grader evaluates listening exercises.

@@ -714,8 +714,13 @@ export function LessonPage(): React.JSX.Element {
   // Everything else is ActivityUnavailable — there is no default question,
   // because a default question is somebody else's question.
   const canRenderMultipleChoice =
-    (kind === "vocab_multiple_choice" || kind === "grammar_tense_choice") &&
-    typeof mcConfig.prompt === "string" &&
+    (kind === "vocab_multiple_choice" ||
+      kind === "grammar_tense_choice" ||
+      kind === "mcq_gap" ||
+      kind === "foundation_quiz" ||
+      kind === "foundation_review") &&
+    (typeof mcConfig.prompt === "string" ||
+      typeof (rawConfig as Record<string, unknown>).sentence === "string") &&
     Array.isArray(mcConfig.options) &&
     mcConfig.options.length > 0;
 
@@ -771,7 +776,7 @@ export function LessonPage(): React.JSX.Element {
     contextConfig.options.length > 0;
 
   const canRenderReading =
-    kind === "reading_comprehension" &&
+    (kind === "reading_comprehension" || kind === "text_completion") &&
     typeof readingConfig.passage === "string" &&
     readingConfig.passage !== "" &&
     ((typeof readingConfig.prompt === "string" &&
@@ -880,7 +885,11 @@ export function LessonPage(): React.JSX.Element {
 
         {canRenderMultipleChoice && (
           <ExerciseMultipleChoice
-            prompt={mcConfig.prompt ?? ""}
+            prompt={
+              mcConfig.prompt ||
+              ((rawConfig as Record<string, unknown>).sentence as string) ||
+              ""
+            }
             options={mcConfig.options ?? []}
             correctOptionId={
               submissionResult?.correct

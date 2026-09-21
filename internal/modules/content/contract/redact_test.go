@@ -247,3 +247,80 @@ func TestRedactForLearner_StripsProvenance(t *testing.T) {
 		t.Fatalf("prompt was stripped: %s", redacted)
 	}
 }
+
+func TestRedactForLearner_TOEICKinds(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		body     string
+		leaks    []string
+		survives []string
+	}{
+		"photo_description": {
+			body: `{
+				"image_url": "https://example.com/photo1.jpg",
+				"statements": [
+					{"id": "A", "audio_url": "https://example.com/a.mp3", "transcript": "She is running"},
+					{"id": "B", "audio_url": "https://example.com/b.mp3", "transcript": "She is reading"}
+				],
+				"key": "A",
+				"correct_option_id": "A"
+			}`,
+			leaks:    []string{"key", "correct_option_id", "transcript", "She is running"},
+			survives: []string{"image_url", "https://example.com/photo1.jpg", "https://example.com/a.mp3"},
+		},
+		"question_response": {
+			body: `{
+				"audio_url": "https://example.com/q.mp3",
+				"transcript": "Where is the meeting?",
+				"responses": [
+					{"id": "A", "audio_url": "https://example.com/r1.mp3", "transcript": "In room 3"},
+					{"id": "B", "audio_url": "https://example.com/r2.mp3", "transcript": "At 2 PM"}
+				],
+				"key": "A"
+			}`,
+			leaks:    []string{"key", "transcript", "Where is the meeting?", "In room 3"},
+			survives: []string{"audio_url", "https://example.com/q.mp3", "https://example.com/r1.mp3"},
+		},
+		"mcq_gap": {
+			body: `{
+				"sentence": "The report must be completed _____ Friday.",
+				"options": [
+					{"id": "A", "text": "by"},
+					{"id": "B", "text": "at"}
+				],
+				"key": "A",
+				"correct_answer": "by"
+			}`,
+			leaks:    []string{"key", "correct_answer"},
+			survives: []string{"sentence", "Friday", "options", "by", "at"},
+		},
+		"text_completion": {
+			body: `{
+				"passage": "Dear team, please note that [1] ... and [2] ...",
+				"questions": [
+					{"id": "1", "options": [{"id": "A", "text": "opt1"}], "key": "A", "correct_option_id": "A"}
+				],
+				"keys": ["A"]
+			}`,
+			leaks:    []string{"key", "keys", "correct_option_id"},
+			survives: []string{"passage", "Dear team", "questions", "opt1"},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			redacted := string(contract.RedactForLearner(json.RawMessage(tc.body)))
+			for _, leak := range tc.leaks {
+				if strings.Contains(redacted, `"`+leak+`"`) {
+					t.Errorf("expected %q to be redacted from %s: %s", leak, name, redacted)
+				}
+			}
+			for _, surv := range tc.survives {
+				if !strings.Contains(redacted, surv) {
+					t.Errorf("expected %q to survive in %s: %s", surv, name, redacted)
+				}
+			}
+		})
+	}
+}

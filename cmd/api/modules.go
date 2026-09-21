@@ -35,6 +35,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/payment"
 	paymentsvc "github.com/fluentra/fluentra/internal/modules/payment/service"
 	paymenthttp "github.com/fluentra/fluentra/internal/modules/payment/transport/http"
+	"github.com/fluentra/fluentra/internal/modules/questionbank"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/reading"
@@ -85,6 +86,7 @@ type identity struct {
 	studio       *studio.Module
 	payment      *payment.Module
 	resource     *resource.Module
+	questionbank *questionbank.Module
 
 	rateLimit *httpx.RateLimiter
 }
@@ -427,6 +429,16 @@ func newIdentity(deps identityDeps) *identity {
 		Taxonomies:   assembled.content.TaxonomyResolver(),
 	})
 
+	assembled.questionbank = questionbank.New(questionbank.Deps{
+		Pool:          deps.Pool,
+		RBAC:          assembled.rbac.Authorizer(),
+		ContentReader: assembled.content.Reader(),
+		ContentAuthor: assembled.content.Author(),
+		LessonAuthor:  assembled.lesson.Author(),
+		Generator:     assembled.learning.Generator(),
+		Events:        nil,
+	})
+
 	return assembled
 }
 
@@ -631,6 +643,7 @@ func (i *identity) Routes(api chi.Router) {
 			i.lesson.AdminRoutes(admin)
 			i.vocabulary.AdminRoutes(admin)
 			i.payment.AdminRoutes(admin)
+			i.questionbank.AdminRoutes(admin)
 		})
 	})
 }

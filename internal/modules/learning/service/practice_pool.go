@@ -73,6 +73,10 @@ const (
 	kindGrammarSentenceTransform = "grammar_sentence_transform"
 	kindFoundationQuiz           = "foundation_quiz"
 	kindFoundationReview         = "foundation_review"
+	kindPhotoDescription         = "photo_description"
+	kindQuestionResponse         = "question_response"
+	kindMcqGap                   = "mcq_gap"
+	kindTextCompletion           = "text_completion"
 	statusPublished              = "published"
 )
 
@@ -547,8 +551,23 @@ type candQuestion struct {
 	Prompt          string           `json:"prompt"`
 	Options         []candOption     `json:"options,omitempty"`
 	CorrectOptionID string           `json:"correct_option_id,omitempty"`
+	Key             string           `json:"key,omitempty"`
 	CorrectAnswer   string           `json:"correct_answer,omitempty"`
 	Acceptable      []string         `json:"acceptable,omitempty"`
+	Explanation     *candExplanation `json:"explanation,omitempty"`
+}
+
+type toeicChoiceCand struct {
+	Prompt          string           `json:"prompt,omitempty"`
+	Sentence        string           `json:"sentence,omitempty"`
+	ImageURL        string           `json:"image_url,omitempty"`
+	AudioURL        string           `json:"audio_url,omitempty"`
+	Options         []candOption     `json:"options,omitempty"`
+	Statements      []candOption     `json:"statements,omitempty"`
+	Responses       []candOption     `json:"responses,omitempty"`
+	CorrectOptionID string           `json:"correct_option_id,omitempty"`
+	Key             string           `json:"key,omitempty"`
+	CorrectAnswer   string           `json:"correct_answer,omitempty"`
 	Explanation     *candExplanation `json:"explanation,omitempty"`
 }
 
@@ -576,6 +595,10 @@ func validateParse(kind string, raw []byte) error {
 	switch kind {
 	case kindReadingComprehension:
 		return parseReading(raw)
+	case kindTextCompletion:
+		return parseReadingWithMinMax(raw, 4, 4)
+	case kindPhotoDescription, kindQuestionResponse, kindMcqGap:
+		return parseToeicChoice(kind, raw)
 	case kindGrammarTenseChoice, kindFoundationQuiz, kindFoundationReview:
 		var body grammarTenseChoiceCand
 		if err := json.Unmarshal(raw, &body); err != nil {
@@ -673,11 +696,52 @@ func parseReadingWithMinMax(raw []byte, minQ, maxQ int) error {
 		return fmt.Errorf("expected %d-%d questions, got %d", minQ, maxQ, len(body.Questions))
 	}
 	for i, q := range body.Questions {
-		if err := parseChoice(q.Prompt, q.Options, q.CorrectOptionID); err != nil {
+		correctOpt := q.CorrectOptionID
+		if correctOpt == "" {
+			correctOpt = q.Key
+		}
+		if err := parseChoice(q.Prompt, q.Options, correctOpt); err != nil {
 			return fmt.Errorf("question %d: %w", i, err)
 		}
 	}
 	return nil
+}
+
+func parseToeicChoice(_ string, raw []byte) error {
+	var body toeicChoiceCand
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return err
+	}
+	prompt := body.Prompt
+	if prompt == "" {
+		prompt = body.Sentence
+	}
+	if prompt == "" {
+		prompt = body.ImageURL
+	}
+	if prompt == "" {
+		prompt = body.AudioURL
+	}
+	opts := body.Options
+	if len(opts) == 0 && len(body.Statements) > 0 {
+		opts = body.Statements
+	}
+	if len(opts) == 0 && len(body.Responses) > 0 {
+		opts = body.Responses
+	}
+	key := body.CorrectOptionID
+	if key == "" {
+		key = body.Key
+	}
+	if key == "" {
+		key = body.CorrectAnswer
+	}
+	for i := range opts {
+		if strings.TrimSpace(opts[i].Text) == "" && strings.TrimSpace(opts[i].ID) != "" {
+			opts[i].Text = opts[i].ID
+		}
+	}
+	return parseChoice(prompt, opts, key)
 }
 
 func (s *Service) checkReadingCandidateWithMin(
@@ -755,6 +819,33 @@ func buildOwnAnswerPayload(kind string, raw []byte) (json.RawMessage, error) {
 			answers[q.ID] = q.CorrectOptionID
 		}
 		return json.Marshal(map[string]any{keyAnswers: answers})
+	case kindTextCompletion:
+		var body readingComprehensionCand
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return nil, err
+		}
+		answers := make(map[string]string, len(body.Questions))
+		for _, q := range body.Questions {
+			ans := q.CorrectOptionID
+			if ans == "" {
+				ans = q.Key
+			}
+			answers[q.ID] = ans
+		}
+		return json.Marshal(map[string]any{keyAnswers: answers})
+	case kindPhotoDescription, kindQuestionResponse, kindMcqGap:
+		var body toeicChoiceCand
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return nil, err
+		}
+		ans := body.CorrectOptionID
+		if ans == "" {
+			ans = body.Key
+		}
+		if ans == "" {
+			ans = body.CorrectAnswer
+		}
+		return json.Marshal(map[string]any{keySelectedOptionID: ans})
 	case kindGrammarTenseChoice, kindFoundationQuiz, kindFoundationReview:
 		var body grammarTenseChoiceCand
 		if err := json.Unmarshal(raw, &body); err != nil {
@@ -812,6 +903,46 @@ func validateStructure(kind string, raw []byte) error {
 			}
 		}
 		return nil
+	case kindTextCompletion:
+		var body readingComprehensionCand
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return err
+		}
+		for i, q := range body.Questions {
+			key := q.CorrectOptionID
+			if key == "" {
+				key = q.Key
+			}
+			if err := checkOptions(q.Options, key); err != nil {
+				return fmt.Errorf("question %d: %w", i, err)
+			}
+		}
+		return nil
+	case kindPhotoDescription, kindQuestionResponse, kindMcqGap:
+		var body toeicChoiceCand
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return err
+		}
+		opts := body.Options
+		if len(opts) == 0 && len(body.Statements) > 0 {
+			opts = body.Statements
+		}
+		if len(opts) == 0 && len(body.Responses) > 0 {
+			opts = body.Responses
+		}
+		key := body.CorrectOptionID
+		if key == "" {
+			key = body.Key
+		}
+		if key == "" {
+			key = body.CorrectAnswer
+		}
+		for i := range opts {
+			if strings.TrimSpace(opts[i].Text) == "" && strings.TrimSpace(opts[i].ID) != "" {
+				opts[i].Text = opts[i].ID
+			}
+		}
+		return checkOptions(opts, key)
 	case kindGrammarTenseChoice, kindFoundationQuiz, kindFoundationReview:
 		var body grammarTenseChoiceCand
 		if err := json.Unmarshal(raw, &body); err != nil {
@@ -877,7 +1008,7 @@ func checkOptions(options []candOption, correctOptionID string) error {
 
 func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 	switch kind {
-	case kindReadingComprehension:
+	case kindReadingComprehension, kindTextCompletion:
 		var resp struct {
 			Answers map[string]string `json:"answers"`
 		}
@@ -888,7 +1019,8 @@ func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 			return nil, errors.New("empty blind solve answers")
 		}
 		return json.Marshal(map[string]any{keyAnswers: resp.Answers})
-	case kindGrammarTenseChoice, kindFoundationQuiz, kindFoundationReview:
+	case kindGrammarTenseChoice, kindFoundationQuiz, kindFoundationReview,
+		kindPhotoDescription, kindQuestionResponse, kindMcqGap:
 		var resp struct {
 			SelectedOptionID string `json:"selected_option_id"`
 			Answer           string `json:"answer"`
@@ -937,7 +1069,7 @@ func extractComparisonText(kind string, raw []byte) string {
 	if len(raw) == 0 {
 		return ""
 	}
-	if kind == kindReadingComprehension {
+	if kind == kindReadingComprehension || kind == kindTextCompletion {
 		var body struct {
 			Passage string `json:"passage"`
 		}
@@ -948,6 +1080,7 @@ func extractComparisonText(kind string, raw []byte) string {
 		Prompt    string `json:"prompt"`
 		Sentence  string `json:"sentence"`
 		AudioText string `json:"audio_text"`
+		ImageURL  string `json:"image_url"`
 	}
 	_ = json.Unmarshal(raw, &body)
 	if body.Prompt != "" {
@@ -956,13 +1089,16 @@ func extractComparisonText(kind string, raw []byte) string {
 	if body.Sentence != "" {
 		return normaliseText(body.Sentence)
 	}
+	if body.ImageURL != "" {
+		return normaliseText(body.ImageURL)
+	}
 	return normaliseText(body.AudioText)
 }
 
 func verifyRedaction(redacted []byte) error {
 	serialized := string(redacted)
 	for _, key := range []string{
-		`"correct_option_id"`, `"correct_answer"`, `"acceptable"`, `"answers"`, `"answer"`, `"solution"`,
+		`"correct_option_id"`, `"correct_answer"`, `"acceptable"`, `"answers"`, `"answer"`, `"solution"`, `"key"`, `"keys"`,
 	} {
 		if strings.Contains(serialized, key) {
 			return fmt.Errorf("redacted JSON contains forbidden key: %s", key)

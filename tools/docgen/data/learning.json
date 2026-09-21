@@ -1439,10 +1439,7 @@
     ],
     "notResponsibilities": ["Delivering an exam — that is `exam`", "Grading a learner's whole attempt — that is the exercise engine"],
     "tables": [
-      { "name": "questions", "purpose": "One item", "notes": "Content-versioned. `type`, `stem`, `explanation`, `cefr_level`, `skill`, `status`" },
-      { "name": "question_options", "purpose": "Choices and answers", "notes": "`question_id`, `position`, `text`, `is_correct`, `feedback`" },
-      { "name": "question_sets", "purpose": "Reusable group", "notes": "`name`, `purpose`, `shuffle_policy`" },
-      { "name": "question_set_items", "purpose": "Membership", "notes": "`set_id`, `question_id`, `position`" },
+      { "name": "questions", "purpose": "One item", "notes": "Content-versioned. `content_item_id`, `activity_id`, `exam_part_id`, `kind`, `skill`, `cefr_level`, `difficulty`, `question_count`, `fingerprint`, `provenance`, `status`" },
       { "name": "question_stats", "purpose": "Empirical difficulty", "notes": "`question_id`, `attempts`, `p_value`, `discrimination`, `avg_time_ms`, `last_computed_at`" }
     ],
     "endpoints": [

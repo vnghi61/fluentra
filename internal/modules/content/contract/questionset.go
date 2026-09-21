@@ -22,6 +22,7 @@ type QuestionItem struct {
 	Answer          string           `json:"answer,omitempty"`
 	CorrectAnswer   string           `json:"correct_answer,omitempty"`
 	CorrectOptionID string           `json:"correct_option_id,omitempty"`
+	Key             string           `json:"key,omitempty"`
 	Acceptable      []string         `json:"acceptable,omitempty"`
 	// Explanation is authored per question, in either spelling; graders pass it
 	// back with the verdict. Raw, because its type belongs to learning.
@@ -186,6 +187,9 @@ func QuestionCanonicalAnswer(q QuestionItem) string {
 	if q.CorrectOptionID != "" {
 		return q.CorrectOptionID
 	}
+	if q.Key != "" {
+		return q.Key
+	}
 	if q.Answer != "" {
 		return q.Answer
 	}
@@ -207,6 +211,9 @@ func MatchQuestion(submitted string, q QuestionItem) bool {
 	normSubmitted := NormaliseText(submitted)
 
 	if q.CorrectOptionID != "" && normSubmitted == NormaliseText(q.CorrectOptionID) {
+		return true
+	}
+	if q.Key != "" && normSubmitted == NormaliseText(q.Key) {
 		return true
 	}
 	if q.Answer != "" &&

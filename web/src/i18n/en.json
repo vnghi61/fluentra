@@ -1191,6 +1191,8 @@
     },
     "listening": {
       "audioClip": "Audio clip",
+      "photoDescription": "Photo Description",
+      "questionResponse": "Question-Response",
       "instructions": "Listen, then answer the questions.",
       "playsLeft": "Plays left: {{count}}",
       "play": "Play",
@@ -1200,7 +1202,8 @@
       "loadFailed": "The clip could not be played."
     },
     "reading": {
-      "passage": "Reading passage"
+      "passage": "Reading passage",
+      "mcqGap": "Incomplete Sentences"
     },
     "writing": {
       "essay": "Essay",

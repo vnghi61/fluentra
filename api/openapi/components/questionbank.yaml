@@ -1,0 +1,167 @@
+Question:
+  type: object
+  description: An item in the assessment question bank.
+  required:
+    - id
+    - content_item_id
+    - kind
+    - skill
+    - cefr_level
+    - question_count
+    - fingerprint
+    - provenance
+    - status
+    - created_at
+    - updated_at
+  properties:
+    id:
+      type: string
+      format: uuid
+      example: 0199a1c2-3d4e-7f80-9abc-def01234567a
+    content_item_id:
+      type: string
+      format: uuid
+      example: 0199a1c2-3d4e-7f80-9abc-def01234567b
+    activity_id:
+      type: [string, "null"]
+      format: uuid
+      example: 0199a1c2-3d4e-7f80-9abc-def01234567c
+    exam_part_id:
+      type: [string, "null"]
+      format: uuid
+      example: null
+    kind:
+      type: string
+      example: photo_description
+    skill:
+      type: string
+      example: listening
+    cefr_level:
+      type: string
+      example: B1
+    difficulty:
+      type: [number, "null"]
+      format: float
+      example: 0.55
+    question_count:
+      type: integer
+      example: 1
+    fingerprint:
+      type: string
+      example: 7d2b45f1e8a931...
+    provenance:
+      type: object
+      additionalProperties: true
+      example:
+        prompt_version: item_generate.v1
+        model: gpt-4o-mini
+        ai_request_id: 0199a1c2-3d4e-7f80-9abc-def01234567d
+    status:
+      type: string
+      enum: [draft, in_review, published, retired]
+      example: draft
+    created_at:
+      type: string
+      format: date-time
+      example: '2026-09-20T10:00:00Z'
+    updated_at:
+      type: string
+      format: date-time
+      example: '2026-09-20T10:00:00Z'
+
+QuestionPage:
+  type: object
+  description: A paginated list of question bank items.
+  required:
+    - items
+    - total
+    - limit
+    - offset
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Question'
+    total:
+      type: integer
+      example: 60
+    limit:
+      type: integer
+      example: 20
+    offset:
+      type: integer
+      example: 0
+
+GenerateQuestionsRequest:
+  type: object
+  description: Request payload to generate new draft items for review.
+  required:
+    - kind
+    - cefr_level
+    - node_codes
+    - count
+  properties:
+    kind:
+      type: string
+      example: mcq_gap
+    cefr_level:
+      type: string
+      example: B1
+    node_codes:
+      type: array
+      items:
+        type: string
+      minItems: 1
+      example: ["grammar.PRESENT_PERFECT"]
+    count:
+      type: integer
+      minimum: 1
+      maximum: 100
+      example: 5
+    exam_part_id:
+      type: [string, "null"]
+      format: uuid
+      example: null
+
+GeneratedQuestionsResponse:
+  type: object
+  description: Generated question bank items resulting from the generation request.
+  required:
+    - questions
+  properties:
+    questions:
+      type: array
+      items:
+        $ref: '#/Question'
+
+QuestionStats:
+  type: object
+  description: Empirical difficulty and discrimination statistics for a question.
+  required:
+    - question_id
+    - attempts
+    - avg_time_ms
+    - last_computed_at
+  properties:
+    question_id:
+      type: string
+      format: uuid
+      example: 0199a1c2-3d4e-7f80-9abc-def01234567a
+    attempts:
+      type: integer
+      example: 42
+    p_value:
+      type: [number, "null"]
+      format: float
+      example: 0.68
+    discrimination:
+      type: [number, "null"]
+      format: float
+      example: 0.45
+    avg_time_ms:
+      type: integer
+      example: 15400
+    last_computed_at:
+      type: string
+      format: date-time
+      example: '2026-09-20T10:00:00Z'

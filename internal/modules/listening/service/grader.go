@@ -145,7 +145,11 @@ func gradeListeningQuestionSet(
 
 func gradeListeningSingle(resp contentcontract.ComprehensionResponse, body listeningBody) (int, bool) {
 	submitted := contentcontract.SingleSubmittedAnswer(resp)
-	if contentcontract.MatchesSingleAnswer(submitted, body.CorrectOptionID, body.CorrectAnswer, body.Acceptable) {
+	key := body.CorrectOptionID
+	if key == "" {
+		key = body.Key
+	}
+	if contentcontract.MatchesSingleAnswer(submitted, key, body.CorrectAnswer, body.Acceptable) {
 		return maxListeningScore, true
 	}
 	return 0, false
@@ -175,12 +179,20 @@ func buildListeningSingleResult(
 		}
 	}
 
+	ans := body.CorrectAnswer
+	if ans == "" {
+		ans = body.CorrectOptionID
+	}
+	if ans == "" {
+		ans = body.Key
+	}
+
 	return learningcontract.GradeResult{
 		Score:         score,
 		MaxScore:      maxListeningScore,
 		Correct:       correct,
 		Feedback:      feedback,
-		CorrectAnswer: body.CorrectAnswer,
+		CorrectAnswer: ans,
 		Async:         false,
 		ReviewItems:   items,
 		Explanation:   body.Explanation,

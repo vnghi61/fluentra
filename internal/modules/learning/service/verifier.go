@@ -81,7 +81,10 @@ func (s *Service) dispatchItemVerification(
 			minQ = req.ExamConstraints.QuestionsPerGroup
 		}
 		return s.checkReadingCandidateWithMin(ctx, req.CEFRLevel, req.Body, existing, req.BlindSolve, minQ)
-	case kindGrammarTenseChoice, kindGrammarSentenceTransform, kindFoundationQuiz, kindFoundationReview:
+	case kindTextCompletion:
+		return s.checkReadingCandidateWithMin(ctx, req.CEFRLevel, req.Body, existing, req.BlindSolve, 4)
+	case kindPhotoDescription, kindQuestionResponse, kindMcqGap,
+		kindGrammarTenseChoice, kindGrammarSentenceTransform, kindFoundationQuiz, kindFoundationReview:
 		return s.checkCandidateWithBlindSolve(ctx, req.CEFRLevel, req.Kind, req.Body, existing, req.BlindSolve)
 	case kindFoundationTopic:
 		return validateFoundationTopic(req.Body)

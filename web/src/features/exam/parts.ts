@@ -81,8 +81,12 @@ export function partOf(
 ): PartKey | undefined {
   switch (kind) {
     case "listening_comprehension":
+    case "photo_description":
+    case "question_response":
       return "listening";
     case "reading_comprehension":
+    case "mcq_gap":
+    case "text_completion":
       return "reading";
     case "writing_prompt":
       return "essay";

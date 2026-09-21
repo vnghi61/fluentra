@@ -1026,6 +1026,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search and filter question bank items.
+         * @description Returns paginated question bank items filtered by criteria.
+         */
+        get: operations["listQuestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/questions/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * AI-generate draft items for review.
+         * @description Generates N draft items for a part and nodes, through Generator.
+         */
+        post: operations["generateQuestions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/questions/{id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Empirical difficulty and discrimination statistics.
+         * @description Returns empirical statistics from real learner attempts.
+         */
+        get: operations["getQuestionStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/audit-logs": {
         parameters: {
             query?: never;
@@ -7059,6 +7119,130 @@ export interface components {
              */
             status: "uploaded";
         };
+        /** @description An item in the assessment question bank. */
+        Question: {
+            /**
+             * Format: uuid
+             * @example 0199a1c2-3d4e-7f80-9abc-def01234567a
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @example 0199a1c2-3d4e-7f80-9abc-def01234567b
+             */
+            content_item_id: string;
+            /**
+             * Format: uuid
+             * @example 0199a1c2-3d4e-7f80-9abc-def01234567c
+             */
+            activity_id?: string | null;
+            /**
+             * Format: uuid
+             * @example null
+             */
+            exam_part_id?: string | null;
+            /** @example photo_description */
+            kind: string;
+            /** @example listening */
+            skill: string;
+            /** @example B1 */
+            cefr_level: string;
+            /**
+             * Format: float
+             * @example 0.55
+             */
+            difficulty?: number | null;
+            /** @example 1 */
+            question_count: number;
+            /** @example 7d2b45f1e8a931... */
+            fingerprint: string;
+            /**
+             * @example {
+             *       "prompt_version": "item_generate.v1",
+             *       "model": "gpt-4o-mini",
+             *       "ai_request_id": "0199a1c2-3d4e-7f80-9abc-def01234567d"
+             *     }
+             */
+            provenance: {
+                [key: string]: unknown;
+            };
+            /**
+             * @example draft
+             * @enum {string}
+             */
+            status: "draft" | "in_review" | "published" | "retired";
+            /**
+             * Format: date-time
+             * @example 2026-09-20T10:00:00Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-20T10:00:00Z
+             */
+            updated_at: string;
+        };
+        /** @description A paginated list of question bank items. */
+        QuestionPage: {
+            items: components["schemas"]["Question"][];
+            /** @example 60 */
+            total: number;
+            /** @example 20 */
+            limit: number;
+            /** @example 0 */
+            offset: number;
+        };
+        /** @description Request payload to generate new draft items for review. */
+        GenerateQuestionsRequest: {
+            /** @example mcq_gap */
+            kind: string;
+            /** @example B1 */
+            cefr_level: string;
+            /**
+             * @example [
+             *       "grammar.PRESENT_PERFECT"
+             *     ]
+             */
+            node_codes: string[];
+            /** @example 5 */
+            count: number;
+            /**
+             * Format: uuid
+             * @example null
+             */
+            exam_part_id?: string | null;
+        };
+        /** @description Generated question bank items resulting from the generation request. */
+        GeneratedQuestionsResponse: {
+            questions: components["schemas"]["Question"][];
+        };
+        /** @description Empirical difficulty and discrimination statistics for a question. */
+        QuestionStats: {
+            /**
+             * Format: uuid
+             * @example 0199a1c2-3d4e-7f80-9abc-def01234567a
+             */
+            question_id: string;
+            /** @example 42 */
+            attempts: number;
+            /**
+             * Format: float
+             * @example 0.68
+             */
+            p_value?: number | null;
+            /**
+             * Format: float
+             * @example 0.45
+             */
+            discrimination?: number | null;
+            /** @example 15400 */
+            avg_time_ms: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-20T10:00:00Z
+             */
+            last_computed_at: string;
+        };
         /** @description A derived visual, audio, or video rendition of a validated file resource. */
         ResourceRendition: {
             /**
@@ -9380,6 +9564,162 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    listQuestions: {
+        parameters: {
+            query?: {
+                exam_version?: string;
+                exam_part_id?: string;
+                kind?: string;
+                cefr_level?: string;
+                node_code?: string;
+                status?: "draft" | "in_review" | "published" | "retired";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated question bank items. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "content_item_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "activity_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "exam_part_id": null,
+                     *           "kind": "photo_description",
+                     *           "skill": "listening",
+                     *           "cefr_level": "B1",
+                     *           "difficulty": 0.55,
+                     *           "question_count": 1,
+                     *           "fingerprint": "7d2b45f1e8a93102efb132a0c49876543210fedcba9876543210fedcba987654",
+                     *           "provenance": {
+                     *             "prompt_version": "item_generate.v1",
+                     *             "model": "gpt-4o-mini",
+                     *             "ai_request_id": "0199a1c2-3d4e-7f80-9abc-def01234567d"
+                     *           },
+                     *           "status": "draft",
+                     *           "created_at": "2026-09-20T10:00:00Z",
+                     *           "updated_at": "2026-09-20T10:00:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "limit": 20,
+                     *       "offset": 0
+                     *     }
+                     */
+                    "application/json": components["schemas"]["QuestionPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    generateQuestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateQuestionsRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft questions generated and awaiting review. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "questions": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "content_item_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "activity_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "exam_part_id": null,
+                     *           "kind": "mcq_gap",
+                     *           "skill": "reading",
+                     *           "cefr_level": "B1",
+                     *           "difficulty": null,
+                     *           "question_count": 1,
+                     *           "fingerprint": "a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0",
+                     *           "provenance": {
+                     *             "prompt_version": "item_generate.v1",
+                     *             "model": "gpt-4o-mini",
+                     *             "ai_request_id": "0199a1c2-3d4e-7f80-9abc-def01234567d"
+                     *           },
+                     *           "status": "draft",
+                     *           "created_at": "2026-09-20T10:00:00Z",
+                     *           "updated_at": "2026-09-20T10:00:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["GeneratedQuestionsResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getQuestionStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of the question bank item. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Empirical statistics for the question. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "question_id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *       "attempts": 42,
+                     *       "p_value": 0.68,
+                     *       "discrimination": 0.45,
+                     *       "avg_time_ms": 15400,
+                     *       "last_computed_at": "2026-09-20T10:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["QuestionStats"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
         };
     };
     auditSearchLogs: {

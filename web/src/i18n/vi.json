@@ -1191,6 +1191,8 @@
     },
     "listening": {
       "audioClip": "Đoạn nghe",
+      "photoDescription": "Mô tả hình ảnh",
+      "questionResponse": "Hỏi - Đáp",
       "instructions": "Nghe rồi trả lời các câu hỏi.",
       "playsLeft": "Còn {{count}} lượt nghe",
       "play": "Phát",
@@ -1200,7 +1202,8 @@
       "loadFailed": "Không phát được đoạn nghe."
     },
     "reading": {
-      "passage": "Bài đọc"
+      "passage": "Bài đọc",
+      "mcqGap": "Điền vào chỗ trống"
     },
     "writing": {
       "essay": "Bài luận",
