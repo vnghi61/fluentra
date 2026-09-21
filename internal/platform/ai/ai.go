@@ -57,6 +57,10 @@ const (
 	TaskPlacementSolve Task = "placement_solve"
 	// TaskResourceClassify classifies extracted text to estimate CEFR level, skill, and spine nodes.
 	TaskResourceClassify Task = "resource_classify"
+	// TaskItemGenerate generates unified learning, foundation, bank, or resource items.
+	TaskItemGenerate Task = "item_generate"
+	// TaskItemSolve blind-solves an item to verify consensus answer key.
+	TaskItemSolve Task = "item_solve"
 )
 
 // Request is one unit of work.

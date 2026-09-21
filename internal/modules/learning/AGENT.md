@@ -84,6 +84,7 @@ Other modules may import **only** `internal/modules/learning/contract`.
 | interface | `learning.UnlockChecker` | `IsUnlocked(ctx, userID, lessonIDs)` — used by `lesson` (batched to prevent N+1 queries). A prerequisite below the learner's placed level is met without being done |
 | interface | `learning.PlacementListeningPolicy` | `PlacementListeningPlays(ctx, userID, sessionID, versionID)` — used by `listening`: one play, only for the current item of the caller's open session |
 | interface | `learning.ItemVerifier` | `VerifyItem(ctx, req)` — six checks for community/generated items before learners can access them |
+| interface | `learning.Generator` | `Generate(ctx, req)` — produces verified, spine-tagged educational content items |
 
 ### Events
 

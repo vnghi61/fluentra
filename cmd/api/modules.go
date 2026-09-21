@@ -367,6 +367,7 @@ func newIdentity(deps identityDeps) *identity {
 		LessonAuthor:  assembled.lesson.Author(),
 		Content:       assembled.content.Reader(),
 		ContentAuthor: assembled.content.Author(),
+		Taxonomies:    assembled.content.TaxonomyResolver(),
 		SRSDue:        assembled.srs.QueueReader(),
 
 		SRSCards: assembled.srs.CardWriter(),

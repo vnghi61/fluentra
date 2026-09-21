@@ -48,6 +48,8 @@ var answerKeys = map[string]struct{}{
 	"transcript": {},
 	// Writing prompt: the model answer must not leak to the learner before submission.
 	"model_answer": {},
+	// Machine-generated item provenance: prompt version, model, AI request ID.
+	"_provenance": {},
 }
 
 // RedactForLearner strips the answer from a content body.

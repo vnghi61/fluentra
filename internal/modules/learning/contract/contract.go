@@ -349,3 +349,28 @@ type VerifyItemRequest struct {
 	Existing   []json.RawMessage // for the duplicate check
 	BlindSolve bool
 }
+
+// GenerateRequest specifies parameters for the unified item generator.
+type GenerateRequest struct {
+	Kind       string
+	CEFRLevel  string
+	NodeCodes  []string // spine codes the item must exercise; at least one
+	Count      int
+	Purpose    string     // "practice" | "foundation" | "bank" | "resource"
+	OwnerID    *uuid.UUID // set only for Purpose "resource": private to that learner
+	SourceText string     // Purpose "resource" only: the extraction to generate from
+}
+
+// GeneratedItem represents a single authored and verified item.
+type GeneratedItem struct {
+	ContentVersionID uuid.UUID
+	Body             json.RawMessage
+	PromptVersion    string
+	Model            string
+	AIRequestID      uuid.UUID
+}
+
+// Generator produces verified, spine-tagged educational content items.
+type Generator interface {
+	Generate(ctx context.Context, req GenerateRequest) ([]GeneratedItem, error)
+}

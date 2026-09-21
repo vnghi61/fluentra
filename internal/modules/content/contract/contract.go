@@ -63,6 +63,12 @@ func TempVersionFromContext(ctx context.Context, id uuid.UUID) (*Version, bool) 
 	return nil, false
 }
 
+// TagRef identifies a taxonomy node by namespace and code.
+type TagRef struct {
+	Namespace string
+	Code      string
+}
+
 // AuthorSpec describes one piece of machine-authored content.
 //
 // Addressed by slug, not by id: a generator runs on a schedule and has to be
@@ -79,6 +85,8 @@ type AuthorSpec struct {
 	// nobody approved is a state the authoring API has never emitted, and the
 	// first person to meet it would read it as a bug in the workflow.
 	AuthorID uuid.UUID
+	// Tags are spine taxonomy nodes associated with this content.
+	Tags []TagRef
 }
 
 // Author is the narrow authoring surface a content generator needs.
@@ -93,6 +101,10 @@ type Author interface {
 	// id of its published version. A spec whose body already matches the
 	// current version writes nothing and returns that version.
 	EnsurePublished(ctx context.Context, spec AuthorSpec) (uuid.UUID, error)
+
+	// EnsureDraft creates or updates the item at this slug and returns the
+	// id of its draft version, without marking it published or approved.
+	EnsureDraft(ctx context.Context, spec AuthorSpec) (uuid.UUID, error)
 }
 
 // Published is emitted when a content version transitions to published.

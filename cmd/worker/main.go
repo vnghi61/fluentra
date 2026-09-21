@@ -587,6 +587,7 @@ func startLearning(
 		LessonAuthor:  lessonModule.Author(),
 		Content:       contentModule.Reader(),
 		ContentAuthor: contentModule.Author(),
+		Taxonomies:    contentModule.TaxonomyResolver(),
 		Graders:       graders,
 		AI:            aiClient,
 

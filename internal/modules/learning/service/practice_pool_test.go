@@ -405,6 +405,19 @@ func (f *fakeContentAuthor) EnsurePublished(_ context.Context, spec contentcontr
 	return uuid.New(), nil
 }
 
+func (f *fakeContentAuthor) EnsureDraft(_ context.Context, spec contentcontract.AuthorSpec) (uuid.UUID, error) {
+	if spec.AuthorID == uuid.Nil {
+		return uuid.Nil, errors.New("authored content needs an author")
+	}
+	if !kebabSlug.MatchString(spec.Slug) {
+		return uuid.Nil, fmt.Errorf("slug %q violates ck_content_items_slug_format", spec.Slug)
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.specs = append(f.specs, spec)
+	return uuid.New(), nil
+}
+
 func (f *fakeContentAuthor) published() []contentcontract.AuthorSpec {
 	f.mu.Lock()
 	defer f.mu.Unlock()

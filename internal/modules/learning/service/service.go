@@ -257,6 +257,8 @@ type Deps struct {
 	SRSPace srscontract.ReviewPaceReader
 	// StudioAccess evaluates whether a learner may open/enroll in a course (BR-STUDIO-05).
 	StudioAccess studiocontract.AccessReader
+	// Taxonomies resolves spine taxonomy node codes and labels for item generation.
+	Taxonomies contentcontract.TaxonomyResolver
 }
 
 // AudioSynthesiser produces pre-rendered audio for listening exercises.
@@ -287,6 +289,7 @@ type Service struct {
 	courses       lessoncontract.CourseCatalog
 	srsPace       srscontract.ReviewPaceReader
 	studioAccess  studiocontract.AccessReader
+	taxonomies    contentcontract.TaxonomyResolver
 
 	generatorAuthor uuid.UUID
 	authorResolver  contract.AuthorResolver
@@ -342,6 +345,7 @@ func New(deps Deps) *Service {
 		courses:       deps.Courses,
 		srsPace:       deps.SRSPace,
 		studioAccess:  deps.StudioAccess,
+		taxonomies:    deps.Taxonomies,
 
 		generatorAuthor: deps.GeneratorAuthorID,
 		authorResolver:  deps.AuthorResolver,

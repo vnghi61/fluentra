@@ -49,6 +49,7 @@ type Deps struct {
 	LessonAuthor  lessoncontract.Author
 	Content       contentcontract.Reader
 	ContentAuthor contentcontract.Author
+	Taxonomies    contentcontract.TaxonomyResolver
 	SRSDue        srscontract.QueueReader
 	SRSCards      srscontract.CardWriter
 	SRSPace       srscontract.ReviewPaceReader
@@ -156,6 +157,7 @@ func New(deps Deps) *Module {
 		Courses:           deps.Courses,
 		SRSPace:           deps.SRSPace,
 		StudioAccess:      deps.StudioAccess,
+		Taxonomies:        deps.Taxonomies,
 	})
 
 	var handler *learninghttp.Handler
@@ -226,6 +228,11 @@ func (m *Module) ItemExposureRecorder() contract.ItemExposureRecorder {
 
 // ItemVerifier returns the public ItemVerifier contract implementation.
 func (m *Module) ItemVerifier() contract.ItemVerifier {
+	return m.service
+}
+
+// Generator returns the public Generator contract implementation.
+func (m *Module) Generator() contract.Generator {
 	return m.service
 }
 

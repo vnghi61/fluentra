@@ -55,11 +55,74 @@ func (s *Service) EnsurePublished(ctx context.Context, spec contract.AuthorSpec)
 		case err == nil:
 			// Cases 2 and 3.
 			versionID, err = s.republish(txCtx, repo, item, spec)
-			return err
+			if err != nil {
+				return err
+			}
+			return s.attachTags(txCtx, repo, item.ID, spec.Tags)
 		case errors.Is(err, domain.ErrItemNotFound), errors.Is(err, pgx.ErrNoRows):
 			// Case 1.
 			versionID, err = s.authorFirstVersion(txCtx, repo, spec)
 			return err
+		default:
+			return err
+		}
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return versionID, nil
+}
+
+// EnsureDraft implements contract.Author for draft content.
+//
+// The door Stages D and F use: content that a person must review enters as a
+// draft. Idempotent on the slug: an existing draft with the same body writes
+// nothing and returns it. An existing published item with a different body gets
+// a new draft version rather than altering published content (rule BR-CONTENT-01).
+func (s *Service) EnsureDraft(ctx context.Context, spec contract.AuthorSpec) (uuid.UUID, error) {
+	if err := validateAuthorSpec(spec); err != nil {
+		return uuid.Nil, err
+	}
+
+	var versionID uuid.UUID
+	err := dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+		repo := s.repo.WithTx(tx)
+
+		item, err := repo.GetItemBySlug(txCtx, spec.Slug)
+		switch {
+		case err == nil:
+			// Check if current version is already a draft with the same body.
+			if item.CurrentVersionID != nil && *item.CurrentVersionID != uuid.Nil {
+				current, err := repo.GetVersionByID(txCtx, *item.CurrentVersionID)
+				if err == nil && sameDraftBody(current, spec) {
+					versionID = current.ID
+					return s.attachTags(txCtx, repo, item.ID, spec.Tags)
+				}
+			}
+
+			latest, err := repo.GetLatestVersionNumberByItemID(txCtx, item.ID)
+			if err != nil {
+				return err
+			}
+			versionID, err = s.draftVersion(txCtx, repo, item.ID, latest+1, spec)
+			if err != nil {
+				return err
+			}
+			return s.attachTags(txCtx, repo, item.ID, spec.Tags)
+
+		case errors.Is(err, domain.ErrItemNotFound), errors.Is(err, pgx.ErrNoRows):
+			item, err := repo.CreateItem(
+				txCtx, s.newID(), spec.Kind, spec.Slug, domain.StatusDraft, spec.AuthorID,
+			)
+			if err != nil {
+				return err
+			}
+			versionID, err = s.draftVersion(txCtx, repo, item.ID, 1, spec)
+			if err != nil {
+				return err
+			}
+			return s.attachTags(txCtx, repo, item.ID, spec.Tags)
+
 		default:
 			return err
 		}
@@ -78,6 +141,9 @@ func (s *Service) authorFirstVersion(
 		ctx, s.newID(), spec.Kind, spec.Slug, domain.StatusPublished, spec.AuthorID,
 	)
 	if err != nil {
+		return uuid.Nil, err
+	}
+	if err := s.attachTags(ctx, repo, item.ID, spec.Tags); err != nil {
 		return uuid.Nil, err
 	}
 	return s.publishVersion(ctx, repo, item.ID, 1, spec)
@@ -132,6 +198,42 @@ func (s *Service) publishVersion(
 	return version.ID, nil
 }
 
+// draftVersion writes one draft version and updates the item's current version pointer.
+func (s *Service) draftVersion(
+	ctx context.Context, repo Repository, itemID uuid.UUID, number int, spec contract.AuthorSpec,
+) (uuid.UUID, error) {
+	version, err := repo.CreateVersion(
+		ctx, s.newID(), itemID, number, spec.Kind, spec.Body,
+		spec.CEFRLevel, domain.StatusDraft, nil, nil,
+	)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	if _, err := repo.UpdateItemCurrentVersion(ctx, itemID, &version.ID); err != nil {
+		return uuid.Nil, err
+	}
+	return version.ID, nil
+}
+
+// attachTags resolves tags against content.taxonomies and links them to the item.
+func (s *Service) attachTags(ctx context.Context, repo Repository, itemID uuid.UUID, tags []contract.TagRef) error {
+	for _, tag := range tags {
+		tax, err := repo.GetTaxonomyByNamespaceCode(ctx, tag.Namespace, tag.Code)
+		if err != nil {
+			if errors.Is(err, domain.ErrTaxonomyNotFound) {
+				return apperr.New(apperr.Validation, "CONTENT_TAG_NOT_FOUND",
+					fmt.Sprintf("Taxonomy tag %s:%s not found.", tag.Namespace, tag.Code))
+			}
+			return fmt.Errorf("resolve tag %s:%s: %w", tag.Namespace, tag.Code, err)
+		}
+		if err := repo.AddContentTag(ctx, itemID, tax.ID); err != nil {
+			return fmt.Errorf("add content tag %s:%s: %w", tag.Namespace, tag.Code, err)
+		}
+	}
+	return nil
+}
+
 // sameBody reports whether a stored version already says what the spec says.
 //
 // Compared as decoded JSON, not as bytes: the stored copy has been through
@@ -145,12 +247,25 @@ func sameBody(version domain.Version, spec contract.AuthorSpec) bool {
 	if version.Status != domain.StatusPublished {
 		return false
 	}
+	return jsonEqual(version.Body, spec.Body)
+}
 
-	var stored, wanted any
-	if err := json.Unmarshal(version.Body, &stored); err != nil {
+func sameDraftBody(version domain.Version, spec contract.AuthorSpec) bool {
+	if version.Kind != spec.Kind || version.CEFRLevel != spec.CEFRLevel {
 		return false
 	}
-	if err := json.Unmarshal(spec.Body, &wanted); err != nil {
+	if version.Status != domain.StatusDraft {
+		return false
+	}
+	return jsonEqual(version.Body, spec.Body)
+}
+
+func jsonEqual(a, b json.RawMessage) bool {
+	var stored, wanted any
+	if err := json.Unmarshal(a, &stored); err != nil {
+		return false
+	}
+	if err := json.Unmarshal(b, &wanted); err != nil {
 		return false
 	}
 	// Re-encoding both through the same marshaller gives them the same key

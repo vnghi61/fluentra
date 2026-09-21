@@ -224,3 +224,26 @@ func TestRedactForLearner_ListeningComprehension(t *testing.T) {
 		t.Errorf("audio_key or prompt did not survive: %s", redacted)
 	}
 }
+
+func TestRedactForLearner_StripsProvenance(t *testing.T) {
+	t.Parallel()
+
+	body := json.RawMessage(`{
+		"prompt": "Choose the correct tense.",
+		"options": [{"id": "A", "text": "have gone"}],
+		"correct_option_id": "A",
+		"_provenance": {
+			"prompt_version": "item_generate.v1",
+			"model": "gpt-4o-mini",
+			"ai_request_id": "0199a1c2-3d4e-7f80-9abc-def01234567a"
+		}
+	}`)
+
+	redacted := string(contract.RedactForLearner(body))
+	if strings.Contains(redacted, "_provenance") || strings.Contains(redacted, "gpt-4o-mini") {
+		t.Fatalf("_provenance survived redaction: %s", redacted)
+	}
+	if !strings.Contains(redacted, "Choose the correct tense.") {
+		t.Fatalf("prompt was stripped: %s", redacted)
+	}
+}
