@@ -56,6 +56,7 @@ modules:
   - { name: questionbank, tier: learning, phase: 4, schema: assess,     owner: "@learning-team", depends_on: [content, ai, audit, search] }
   - { name: exam,         tier: learning, phase: 4, schema: assess,     owner: "@learning-team", depends_on: [questionbank, job, ai, writing, speaking, learning] }
   - { name: gamification, tier: learning, phase: 3, schema: learn,      owner: "@learning-team", depends_on: [learning, srs, user, cache, job, notification] }
+  - { name: resource,     tier: learning, phase: 4, schema: resource,   owner: "@learning-team", depends_on: [storage, job] }
 
   # ------------------------------------------------------------- commerce
   - { name: analytics,    tier: commerce, phase: 4, schema: analytics,  owner: "@data-team",     depends_on: [job, cache] }
@@ -75,3 +76,4 @@ schemas:
   ai:        [ai]
   ops:       [job]
   analytics: [analytics]
+  resource:  [resource]

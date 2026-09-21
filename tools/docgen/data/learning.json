@@ -1796,5 +1796,130 @@
       "Do not put a learner on a leaderboard without opt-in."
     ],
     "runtimePrompts": []
+  },
+  {
+    "name": "resource",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "resource",
+    "phase": 4,
+    "status": "IMPLEMENTED",
+    "owner": "@learning-team",
+    "hasJobs": true,
+    "purpose": "Intake and lifecycle management for uploaded documents, media and web URLs that serve as the foundation for learning items, extraction and generation.",
+    "context": "Resource acts as the single entry point for external content (PDFs, audio, URLs) into the Fluentra learning engine. It enforces ownership isolation, validates byte streams against MIME spoofing, secures external URL fetching against SSRF, and schedules async validation via River jobs.",
+    "businessPurpose": "Learners and educators bring external materials to study. Intake must accept files and links safely, securely and reliably before downstream extraction and exercise generation can begin.",
+    "responsibilities": [
+      "Presigned upload intent generation for direct MinIO/S3 file uploads with 15-minute TTL",
+      "Intake confirmation for uploaded files and web URL submissions with async validation dispatch",
+      "Resource lifecycle state machine: pending -> validating -> validated | rejected",
+      "File validation: MIME type sniffing and magic bytes verification (audio/mpeg, audio/wav, video/mp4, text/plain, text/markdown, application/pdf)",
+      "SSRF-safe URL metadata extraction (title, description, canonical link) without storing external page bodies",
+      "Per-user storage quota enforcement (100MB active upload limit)",
+      "Presigned GET download URL generation for validated file resources",
+      "Resource deletion with complete object cleanup from object storage",
+      "Cron sweep of expired pending upload intents older than 15 minutes"
+    ],
+    "notResponsibilities": [
+      "Text extraction and document parsing — that is Phase 4 extraction",
+      "Topic classification and CEFR difficulty estimation — that is Phase 4 classification",
+      "Exercise and quiz generation — that is Phase 6 generation",
+      "Physical file storage and byte serving — that is platform/storage"
+    ],
+    "tables": [
+      { "name": "resources", "purpose": "Intake record for files and web URLs", "notes": "`user_id`, `kind`, `source`, `storage_bucket`, `storage_key`, `original_name`, `url`, `mime_type`, `byte_size`, `status`, `rejection_reason`, `metadata`" }
+    ],
+    "indexes": [
+      "`idx_resources_user_status` — user's resource listing and quota calculation",
+      "`idx_resources_pending_expired` — cron sweep of expired pending upload intents"
+    ],
+    "endpoints": [
+      { "method": "POST", "path": "/api/v1/me/resources/upload-intent", "permission": "self", "purpose": "Issue a presigned PUT URL and storage key for file upload", "success": "200", "errors": ["QUOTA_EXCEEDED", "RESOURCE_TYPE_NOT_SUPPORTED"] },
+      { "method": "POST", "path": "/api/v1/me/resources", "permission": "self", "purpose": "Confirm uploaded file or submit web URL for asynchronous validation", "success": "202", "errors": ["RESOURCE_TYPE_NOT_SUPPORTED", "RESOURCE_URL_NOT_ALLOWED", "CONFLICT"] },
+      { "method": "GET", "path": "/api/v1/me/resources", "permission": "self", "purpose": "List current user's resources with pagination and status/kind filters", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/resources/{id}", "permission": "self", "purpose": "Get resource details, including presigned GET URL for validated files", "success": "200", "errors": ["NOT_FOUND"] },
+      { "method": "DELETE", "path": "/api/v1/me/resources/{id}", "permission": "self", "purpose": "Delete resource metadata and associated storage object", "success": "204", "errors": ["NOT_FOUND"] }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "resource.Reader", "purpose": "`GetResource(ctx, id)` — read validated resource details for downstream modules" },
+      { "kind": "struct", "name": "resource.Resource", "purpose": "`{ID, UserID, Kind, Source, StorageBucket, StorageKey, OriginalName, URL, MimeType, ByteSize, Status, RejectionReason, Metadata, CreatedAt, UpdatedAt}`" }
+    ],
+    "events": {
+      "publishes": [
+        { "name": "resource.validated", "payload": "`{resource_id, user_id, kind, source}`" },
+        { "name": "resource.rejected", "payload": "`{resource_id, user_id, kind, reason}`" }
+      ],
+      "consumes": [
+        { "name": "user.deleted", "reason": "Purge user resources and remove objects from storage" }
+      ]
+    },
+    "dependsOn": ["storage", "job"],
+    "dependsWhy": {
+      "storage": "Presigned PUT/GET URLs, object metadata stat, and deletion from fluentra-uploads bucket",
+      "job": "River background validation queue and cron intent sweeper"
+    },
+    "dependedOnBy": ["admin", "learning"],
+    "rules": [
+      "Ownership isolation: an unowned resource ID returns 404 Not Found, never 403 Forbidden (D17-7).",
+      "Storage cleanup: deleting a file resource deletes its object from storage within the same operation (BR-RESOURCE-06).",
+      "Zero body storage for URLs: only extracted metadata (title, description, canonical link) is retained; external page bodies are discarded (D17-2).",
+      "SSRF prevention: URL host IP is checked against private, loopback, link-local and multicast ranges before request and on every redirect hop (D17-3).",
+      "Quota enforcement: users are restricted to 100MB total size across active uploads; intents exceeding quota are rejected with 422 QUOTA_EXCEEDED.",
+      "MIME validation: uploaded byte streams are sniffed for magic bytes and MIME headers; mismatches transition resource to rejected status (BR-RESOURCE-03).",
+      "Intent expiration: pending upload intents expire after 15 minutes and are purged by the background sweeper job (BR-RESOURCE-02)."
+    ],
+    "cache": [],
+    "errors": [
+      { "code": "RESOURCE_NOT_FOUND", "status": "404", "meaning": "Resource does not exist or belongs to another user" },
+      { "code": "RESOURCE_TYPE_NOT_SUPPORTED", "status": "422", "meaning": "File MIME type or kind is not supported" },
+      { "code": "RESOURCE_URL_NOT_ALLOWED", "status": "422", "meaning": "Submitted URL points to private/internal IP or invalid scheme" },
+      { "code": "QUOTA_EXCEEDED", "status": "422", "meaning": "User storage quota (100MB) exceeded" },
+      { "code": "INVALID_PAYLOAD", "status": "400", "meaning": "Malformed JSON request body" },
+      { "code": "STORAGE_UNAVAILABLE", "status": "503", "meaning": "Underlying storage service unreachable" }
+    ],
+    "flows": [
+      {
+        "title": "File upload and validation",
+        "description": "Two-phase upload flow: client requests upload intent, uploads direct to MinIO/S3, then confirms to trigger async River validation worker.",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as Learner\n    participant R as resource\n    participant S as storage\n    participant DB as PostgreSQL\n    participant J as River worker\n\n    U->>R: POST /me/resources/upload-intent\n    R->>DB: Check active size quota (100MB)\n    R->>S: PresignPut(bucket=fluentra-uploads, 15m)\n    R->>DB: INSERT resources (status=pending)\n    R-->>U: 200 { id, upload_url, key, expires_at }\n    U->>S: PUT file directly to storage\n    U->>R: POST /me/resources { id }\n    R->>DB: UPDATE status=validating\n    R->>J: Enqueue(ValidateArgs{ID})\n    R-->>U: 202 Accepted\n    J->>S: Stat + Read first 512B\n    J->>J: Sniff MIME & magic bytes\n    alt valid\n        J->>DB: UPDATE status=validated, byte_size\n    else invalid\n        J->>DB: UPDATE status=rejected, reason\n    end"
+      },
+      {
+        "title": "URL submission and SSRF check",
+        "description": "Safe URL submission: host is resolved and checked against private IP ranges on initial request and every redirect hop before extracting metadata.",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as Learner\n    participant R as resource\n    participant DB as PostgreSQL\n    participant J as River worker\n    participant EXT as External Web\n\n    U->>R: POST /me/resources { kind: url, url: https://... }\n    R->>DB: INSERT resources (status=validating)\n    R->>J: Enqueue(ValidateArgs{ID})\n    R-->>U: 202 Accepted\n    J->>J: SSRF Check (DNS resolve, block private CIDRs)\n    J->>EXT: GET URL (safe client, check redirect hops)\n    J->>J: Parse title, OG metadata (discard body)\n    J->>DB: UPDATE status=validated, metadata\n"
+      }
+    ],
+    "decisions": [
+      { "question": "One table or two-table split? (D17-1)", "choice": "One table, resource.resources", "why": "One upload is one file; there is no per-item work until Phase 4 extraction." },
+      { "question": "Should external URL response bodies be stored? (D17-2)", "choice": "No, extract metadata only", "why": "Plan D8: Storing only title and OG metadata avoids copyright issues and storage bloat." },
+      { "question": "Can original stored objects be modified? (D17-3)", "choice": "No, original object is never modified or replaced", "why": "Plan D9: Renditions are written to fluentra-derived; fluentra-uploads is append-only in practice." },
+      { "question": "Is declared MIME trusted? (D17-4)", "choice": "No, sniff stored bytes for magic bytes", "why": "Declared Content-Type is a client claim; byte sniffing prevents executable/spoofing attacks." },
+      { "question": "Where do size ceilings and MIME allow-list live? (D17-5)", "choice": "Go constants in resource/domain", "why": "Follows AvatarMaxBytes convention rather than unread config keys." },
+      { "question": "Does resource deletion clean up storage? (D17-6)", "choice": "Yes, deletes storage object in same operation", "why": "BR-RESOURCE-06: Prevents unbounded storage growth and orphaned objects." },
+      { "question": "How to isolate resource ownership? (D17-7)", "choice": "Private to owner, return 404 for unowned IDs", "why": "Returning 403 leaks the existence of IDs belonging to other users; 404 provides strict isolation." }
+    ],
+    "todo": [
+      { "title": "Phase 3 (Work Order 17)", "items": [
+        "Upload intent and presigned PUT generation with 15m TTL",
+        "Resource confirmation and async River validation dispatch",
+        "Content-Type and magic bytes verification for file uploads",
+        "SSRF-safe URL metadata extraction",
+        "List, get and delete resource endpoints with 404 ownership isolation",
+        "Storage object deletion on resource removal",
+        "Expired intent background sweeper"
+      ]}
+    ],
+    "future": [
+      "Phase 4 text extraction and parsing pipeline",
+      "Phase 4 topic classification and CEFR levelling",
+      "Multi-part chunked upload for large video files"
+    ],
+    "doNot": [
+      "Do not return 403 when a resource belongs to another user — return 404.",
+      "Do not store downloaded external URL bodies in DB or storage.",
+      "Do not allow SSRF bypass via redirects to internal/private IP addresses.",
+      "Do not delete a file resource without deleting its underlying storage object."
+    ],
+    "runtimePrompts": []
   }
 ]

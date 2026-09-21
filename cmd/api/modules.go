@@ -39,6 +39,7 @@ import (
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/reading"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
+	"github.com/fluentra/fluentra/internal/modules/resource"
 	"github.com/fluentra/fluentra/internal/modules/speaking"
 	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
@@ -83,6 +84,7 @@ type identity struct {
 	gamification *gamification.Module
 	studio       *studio.Module
 	payment      *payment.Module
+	resource     *resource.Module
 
 	rateLimit *httpx.RateLimiter
 }
@@ -416,6 +418,13 @@ func newIdentity(deps identityDeps) *identity {
 	}
 	assembled.studio = studioMod
 
+	assembled.resource = resource.New(resource.Deps{
+		Pool:         deps.Pool,
+		Storage:      deps.Storage,
+		Enqueuer:     deps.Enqueuer,
+		WorkerNudger: deps.WorkerNudger,
+	})
+
 	return assembled
 }
 
@@ -606,6 +615,7 @@ func (i *identity) Routes(api chi.Router) {
 		i.studio.Routes(authenticated)
 		i.studio.ModerationRoutes(authenticated)
 		i.payment.AuthenticatedRoutes(authenticated)
+		i.resource.Routes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())

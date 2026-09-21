@@ -104,6 +104,8 @@ tags:
     description: Course and content moderation queues and approval actions.
   - name: payment
     description: SePay bank transfer orders, webhooks, and payment reconciliation.
+  - name: resource
+    description: Document, media and web URL intake and validation lifecycle.
 security:
   - BearerAuth: []
 paths:
@@ -7664,10 +7666,237 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UnmatchedTransactionsList'
-              example: {"items": [], "total": 1}
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalServerError' }
+              example:
+                items: []
+                total: 0
+                limit: 50
+                offset: 0
+  /me/resources/upload-intent:
+    post:
+      tags: [resource]
+      operationId: createResourceUploadIntent
+      summary: Request a presigned upload intent for a file resource.
+      description: >-
+        Creates a resource in pending status and issues a presigned S3 PUT URL
+        for uploading into fluentra-uploads.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceUploadIntentRequest'
+            example:
+              filename: grammar_lesson.pdf
+              content_type: application/pdf
+      responses:
+        '200':
+          description: Upload intent generated.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceUploadIntentResponse'
+              example:
+                id: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+                upload_url: https://storage.example.com/fluentra-uploads/users/018f3a5e-7b82-7d2c-80a2-bf3d6118d531/2026/09/asset.pdf
+                object_key: users/018f3a5e-7b82-7d2c-80a2-bf3d6118d531/2026/09/asset.pdf
+                expires_at: '2026-09-21T00:05:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /me/resources:
+    post:
+      tags: [resource]
+      operationId: submitResource
+      summary: Confirm an uploaded file resource or submit a URL resource.
+      description: >-
+        Confirms that a file has been uploaded to storage, or submits an external URL.
+        Transitions the resource to uploaded and queues validation.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitResourceRequest'
+            example:
+              resource_id: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+      responses:
+        '202':
+          description: Resource accepted for validation.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceSubmitResponse'
+              example:
+                id: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+                status: uploaded
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [resource]
+      operationId: listMyResources
+      summary: List resources owned by the caller.
+      description: >-
+        Returns a paginated list of resources owned by the caller, newest first.
+        Optionally filterable by status and kind.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: page_size
+          in: query
+          required: false
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [pending, uploaded, validated, rejected, failed] }
+        - name: kind
+          in: query
+          required: false
+          schema: { type: string, enum: [file, url] }
+      responses:
+        '200':
+          description: List of caller's resources.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceList'
+              example:
+                items:
+                  - id: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+                    kind: file
+                    title: Advanced Grammar Guide.pdf
+                    status: validated
+                    failure_reason: ""
+                    original_filename: Advanced Grammar Guide.pdf
+                    declared_mime: application/pdf
+                    detected_mime: application/pdf
+                    byte_size: 2458120
+                    checksum: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+                    source_url: null
+                    download_url: https://storage.example.com/fluentra-uploads/...
+                    created_at: '2026-09-21T00:00:00Z'
+                    updated_at: '2026-09-21T00:01:00Z'
+                    validated_at: '2026-09-21T00:01:00Z'
+                total: 1
+                page: 1
+                page_size: 20
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /me/resources/{id}:
+    get:
+      tags: [resource]
+      operationId: getMyResource
+      summary: Get details of a resource by ID.
+      description: >-
+        Returns resource details including status, failure reason if rejected,
+        and a presigned download URL for validated files. Unowned resources answer 404.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource UUID.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Resource details.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+              example:
+                id: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+                kind: file
+                title: Advanced Grammar Guide.pdf
+                status: validated
+                failure_reason: ""
+                original_filename: Advanced Grammar Guide.pdf
+                declared_mime: application/pdf
+                detected_mime: application/pdf
+                byte_size: 2458120
+                checksum: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+                source_url: null
+                download_url: https://storage.example.com/fluentra-uploads/...
+                created_at: '2026-09-21T00:00:00Z'
+                updated_at: '2026-09-21T00:01:00Z'
+                validated_at: '2026-09-21T00:01:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [resource]
+      operationId: deleteMyResource
+      summary: Delete a resource and its storage object.
+      description: >-
+        Deletes the resource row and its associated object in storage.
+        Unowned resources answer 404.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource UUID.
+          schema: { type: string, format: uuid }
+      responses:
+        '204':
+          description: Resource deleted successfully.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 components:
   securitySchemes:
     BearerAuth:
@@ -8159,6 +8388,18 @@ components:
       $ref: ./components/payment.yaml#/Refund
     RefundList:
       $ref: ./components/payment.yaml#/RefundList
+    Resource:
+      $ref: ./components/resource.yaml#/Resource
+    ResourceList:
+      $ref: ./components/resource.yaml#/ResourceList
+    ResourceUploadIntentRequest:
+      $ref: ./components/resource.yaml#/ResourceUploadIntentRequest
+    ResourceUploadIntentResponse:
+      $ref: ./components/resource.yaml#/ResourceUploadIntentResponse
+    SubmitResourceRequest:
+      $ref: ./components/resource.yaml#/SubmitResourceRequest
+    ResourceSubmitResponse:
+      $ref: ./components/resource.yaml#/ResourceSubmitResponse
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

@@ -1528,6 +1528,63 @@ type ClientInterface interface {
 	// Corresponds with POST /me/purchases/{id}/refund (the `StudioRefundPurchase` operationId).
 	StudioRefundPurchase(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListMyResources List resources owned by the caller.
+	//
+	// Returns a paginated list of resources owned by the caller, newest first. Optionally filterable by status and kind.
+	//
+	// Corresponds with GET /me/resources (the `ListMyResources` operationId).
+	ListMyResources(ctx context.Context, params *ListMyResourcesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SubmitResourceWithBody Confirm an uploaded file resource or submit a URL resource.
+	//
+	// Confirms that a file has been uploaded to storage, or submits an external URL. Transitions the resource to uploaded and queues validation.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /me/resources (the `SubmitResource` operationId).
+	SubmitResourceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SubmitResource Confirm an uploaded file resource or submit a URL resource.
+	//
+	// Confirms that a file has been uploaded to storage, or submits an external URL. Transitions the resource to uploaded and queues validation.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /me/resources (the `SubmitResource` operationId).
+	SubmitResource(ctx context.Context, body SubmitResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateResourceUploadIntentWithBody Request a presigned upload intent for a file resource.
+	//
+	// Creates a resource in pending status and issues a presigned S3 PUT URL for uploading into fluentra-uploads.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /me/resources/upload-intent (the `CreateResourceUploadIntent` operationId).
+	CreateResourceUploadIntentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateResourceUploadIntent Request a presigned upload intent for a file resource.
+	//
+	// Creates a resource in pending status and issues a presigned S3 PUT URL for uploading into fluentra-uploads.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /me/resources/upload-intent (the `CreateResourceUploadIntent` operationId).
+	CreateResourceUploadIntent(ctx context.Context, body CreateResourceUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteMyResource Delete a resource and its storage object.
+	//
+	// Deletes the resource row and its associated object in storage. Unowned resources answer 404.
+	//
+	// Corresponds with DELETE /me/resources/{id} (the `DeleteMyResource` operationId).
+	DeleteMyResource(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMyResource Get details of a resource by ID.
+	//
+	// Returns resource details including status, failure reason if rejected, and a presigned download URL for validated files. Unowned resources answer 404.
+	//
+	// Corresponds with GET /me/resources/{id} (the `GetMyResource` operationId).
+	GetMyResource(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// StartLearningSessionWithBody Start a study session.
 	//
 	// Records the beginning of an active learner study session.
@@ -5144,6 +5201,133 @@ func (c *Client) StudioListPurchases(ctx context.Context, params *StudioListPurc
 // Corresponds with POST /me/purchases/{id}/refund (the `StudioRefundPurchase` operationId).
 func (c *Client) StudioRefundPurchase(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStudioRefundPurchaseRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListMyResources List resources owned by the caller.
+//
+// Returns a paginated list of resources owned by the caller, newest first. Optionally filterable by status and kind.
+//
+// Corresponds with GET /me/resources (the `ListMyResources` operationId).
+func (c *Client) ListMyResources(ctx context.Context, params *ListMyResourcesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListMyResourcesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SubmitResourceWithBody Confirm an uploaded file resource or submit a URL resource.
+//
+// Confirms that a file has been uploaded to storage, or submits an external URL. Transitions the resource to uploaded and queues validation.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /me/resources (the `SubmitResource` operationId).
+func (c *Client) SubmitResourceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSubmitResourceRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SubmitResource Confirm an uploaded file resource or submit a URL resource.
+//
+// Confirms that a file has been uploaded to storage, or submits an external URL. Transitions the resource to uploaded and queues validation.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /me/resources (the `SubmitResource` operationId).
+func (c *Client) SubmitResource(ctx context.Context, body SubmitResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSubmitResourceRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateResourceUploadIntentWithBody Request a presigned upload intent for a file resource.
+//
+// Creates a resource in pending status and issues a presigned S3 PUT URL for uploading into fluentra-uploads.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /me/resources/upload-intent (the `CreateResourceUploadIntent` operationId).
+func (c *Client) CreateResourceUploadIntentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateResourceUploadIntentRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateResourceUploadIntent Request a presigned upload intent for a file resource.
+//
+// Creates a resource in pending status and issues a presigned S3 PUT URL for uploading into fluentra-uploads.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /me/resources/upload-intent (the `CreateResourceUploadIntent` operationId).
+func (c *Client) CreateResourceUploadIntent(ctx context.Context, body CreateResourceUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateResourceUploadIntentRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteMyResource Delete a resource and its storage object.
+//
+// Deletes the resource row and its associated object in storage. Unowned resources answer 404.
+//
+// Corresponds with DELETE /me/resources/{id} (the `DeleteMyResource` operationId).
+func (c *Client) DeleteMyResource(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteMyResourceRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetMyResource Get details of a resource by ID.
+//
+// Returns resource details including status, failure reason if rejected, and a presigned download URL for validated files. Unowned resources answer 404.
+//
+// Corresponds with GET /me/resources/{id} (the `GetMyResource` operationId).
+func (c *Client) GetMyResource(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetMyResourceRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -11726,6 +11910,244 @@ func NewStudioRefundPurchaseRequest(server string, id openapi_types.UUID) (*http
 	return req, nil
 }
 
+// NewListMyResourcesRequest constructs an http.Request for the ListMyResources method
+func NewListMyResourcesRequest(server string, params *ListMyResourcesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/resources")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PageSize != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page_size", *params.PageSize, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Kind != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "kind", *params.Kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSubmitResourceRequest calls the generic SubmitResource builder with application/json body
+func NewSubmitResourceRequest(server string, body SubmitResourceJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSubmitResourceRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSubmitResourceRequestWithBody constructs an http.Request for the SubmitResource method, with any body, and a specified content type
+func NewSubmitResourceRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/resources")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateResourceUploadIntentRequest calls the generic CreateResourceUploadIntent builder with application/json body
+func NewCreateResourceUploadIntentRequest(server string, body CreateResourceUploadIntentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateResourceUploadIntentRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateResourceUploadIntentRequestWithBody constructs an http.Request for the CreateResourceUploadIntent method, with any body, and a specified content type
+func NewCreateResourceUploadIntentRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/resources/upload-intent")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteMyResourceRequest constructs an http.Request for the DeleteMyResource method
+func NewDeleteMyResourceRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/resources/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetMyResourceRequest constructs an http.Request for the GetMyResource method
+func NewGetMyResourceRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/resources/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewStartLearningSessionRequest calls the generic StartLearningSession builder with application/json body
 func NewStartLearningSessionRequest(server string, body StartLearningSessionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -15595,6 +16017,69 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /me/purchases/{id}/refund (the `StudioRefundPurchase` operationId).
 	StudioRefundPurchaseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StudioRefundPurchaseResponse, error)
 
+	// ListMyResourcesWithResponse List resources owned by the caller.
+	//
+	// Returns a paginated list of resources owned by the caller, newest first. Optionally filterable by status and kind.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/resources (the `ListMyResources` operationId).
+	ListMyResourcesWithResponse(ctx context.Context, params *ListMyResourcesParams, reqEditors ...RequestEditorFn) (*ListMyResourcesResponse, error)
+
+	// SubmitResourceWithBodyWithResponse Confirm an uploaded file resource or submit a URL resource.
+	//
+	// Confirms that a file has been uploaded to storage, or submits an external URL. Transitions the resource to uploaded and queues validation.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/resources (the `SubmitResource` operationId).
+	SubmitResourceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SubmitResourceResponse, error)
+
+	// SubmitResourceWithResponse Confirm an uploaded file resource or submit a URL resource.
+	//
+	// Confirms that a file has been uploaded to storage, or submits an external URL. Transitions the resource to uploaded and queues validation.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/resources (the `SubmitResource` operationId).
+	SubmitResourceWithResponse(ctx context.Context, body SubmitResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*SubmitResourceResponse, error)
+
+	// CreateResourceUploadIntentWithBodyWithResponse Request a presigned upload intent for a file resource.
+	//
+	// Creates a resource in pending status and issues a presigned S3 PUT URL for uploading into fluentra-uploads.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/resources/upload-intent (the `CreateResourceUploadIntent` operationId).
+	CreateResourceUploadIntentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateResourceUploadIntentResponse, error)
+
+	// CreateResourceUploadIntentWithResponse Request a presigned upload intent for a file resource.
+	//
+	// Creates a resource in pending status and issues a presigned S3 PUT URL for uploading into fluentra-uploads.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/resources/upload-intent (the `CreateResourceUploadIntent` operationId).
+	CreateResourceUploadIntentWithResponse(ctx context.Context, body CreateResourceUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateResourceUploadIntentResponse, error)
+
+	// DeleteMyResourceWithResponse Delete a resource and its storage object.
+	//
+	// Deletes the resource row and its associated object in storage. Unowned resources answer 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /me/resources/{id} (the `DeleteMyResource` operationId).
+	DeleteMyResourceWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteMyResourceResponse, error)
+
+	// GetMyResourceWithResponse Get details of a resource by ID.
+	//
+	// Returns resource details including status, failure reason if rejected, and a presigned download URL for validated files. Unowned resources answer 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/resources/{id} (the `GetMyResource` operationId).
+	GetMyResourceWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetMyResourceResponse, error)
+
 	// StartLearningSessionWithBodyWithResponse Start a study session.
 	//
 	// Records the beginning of an active learner study session.
@@ -18308,32 +18793,11 @@ type PaymentListUnmatchedTransactionsResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *UnmatchedTransactionsList
-	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
-	ApplicationproblemJSON401 *Unauthorized
-	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
-	ApplicationproblemJSON403 *Forbidden
-	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
-	ApplicationproblemJSON500 *InternalServerError
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r PaymentListUnmatchedTransactionsResponse) GetJSON200() *UnmatchedTransactionsList {
 	return r.JSON200
-}
-
-// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
-func (r PaymentListUnmatchedTransactionsResponse) GetApplicationproblemJSON401() *Unauthorized {
-	return r.ApplicationproblemJSON401
-}
-
-// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
-func (r PaymentListUnmatchedTransactionsResponse) GetApplicationproblemJSON403() *Forbidden {
-	return r.ApplicationproblemJSON403
-}
-
-// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
-func (r PaymentListUnmatchedTransactionsResponse) GetApplicationproblemJSON500() *InternalServerError {
-	return r.ApplicationproblemJSON500
 }
 
 // GetBody returns the raw response body bytes
@@ -24862,6 +25326,392 @@ func (r StudioRefundPurchaseResponse) ContentType() string {
 	return ""
 }
 
+// ListMyResourcesResponse200Headers the declared response headers of an HTTP 200 response for ListMyResources
+type ListMyResourcesResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListMyResourcesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ResourceList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListMyResourcesResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListMyResourcesResponse) GetJSON200() *ResourceList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListMyResourcesResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ListMyResourcesResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListMyResourcesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListMyResourcesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListMyResourcesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListMyResourcesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SubmitResourceResponse202Headers the declared response headers of an HTTP 202 response for SubmitResource
+type SubmitResourceResponse202Headers struct {
+	XRequestId *string
+}
+
+// SubmitResourceResponse429Headers the declared response headers of an HTTP 429 response for SubmitResource
+type SubmitResourceResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+type SubmitResourceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *ResourceSubmitResponse
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers202 the parsed response headers for an HTTP 202 response
+	Headers202 *SubmitResourceResponse202Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SubmitResourceResponse429Headers
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r SubmitResourceResponse) GetJSON202() *ResourceSubmitResponse {
+	return r.JSON202
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r SubmitResourceResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r SubmitResourceResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r SubmitResourceResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r SubmitResourceResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r SubmitResourceResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SubmitResourceResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r SubmitResourceResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SubmitResourceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SubmitResourceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SubmitResourceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SubmitResourceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CreateResourceUploadIntentResponse200Headers the declared response headers of an HTTP 200 response for CreateResourceUploadIntent
+type CreateResourceUploadIntentResponse200Headers struct {
+	XRequestId *string
+}
+
+// CreateResourceUploadIntentResponse429Headers the declared response headers of an HTTP 429 response for CreateResourceUploadIntent
+type CreateResourceUploadIntentResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+type CreateResourceUploadIntentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ResourceUploadIntentResponse
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *CreateResourceUploadIntentResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *CreateResourceUploadIntentResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateResourceUploadIntentResponse) GetJSON200() *ResourceUploadIntentResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CreateResourceUploadIntentResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CreateResourceUploadIntentResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r CreateResourceUploadIntentResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r CreateResourceUploadIntentResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r CreateResourceUploadIntentResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateResourceUploadIntentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateResourceUploadIntentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateResourceUploadIntentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateResourceUploadIntentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteMyResourceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r DeleteMyResourceResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r DeleteMyResourceResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r DeleteMyResourceResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteMyResourceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteMyResourceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteMyResourceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteMyResourceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetMyResourceResponse200Headers the declared response headers of an HTTP 200 response for GetMyResource
+type GetMyResourceResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetMyResourceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Resource
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetMyResourceResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetMyResourceResponse) GetJSON200() *Resource {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetMyResourceResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetMyResourceResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetMyResourceResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetMyResourceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMyResourceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMyResourceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyResourceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StartLearningSessionResponse201Headers the declared response headers of an HTTP 201 response for StartLearningSession
 type StartLearningSessionResponse201Headers struct {
 	XRequestId *string
@@ -31137,6 +31987,111 @@ func (c *ClientWithResponses) StudioRefundPurchaseWithResponse(ctx context.Conte
 	return ParseStudioRefundPurchaseResponse(rsp)
 }
 
+// ListMyResourcesWithResponse List resources owned by the caller.
+//
+// Returns a paginated list of resources owned by the caller, newest first. Optionally filterable by status and kind.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/resources (the `ListMyResources` operationId).
+func (c *ClientWithResponses) ListMyResourcesWithResponse(ctx context.Context, params *ListMyResourcesParams, reqEditors ...RequestEditorFn) (*ListMyResourcesResponse, error) {
+	rsp, err := c.ListMyResources(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListMyResourcesResponse(rsp)
+}
+
+// SubmitResourceWithBodyWithResponse Confirm an uploaded file resource or submit a URL resource.
+//
+// Confirms that a file has been uploaded to storage, or submits an external URL. Transitions the resource to uploaded and queues validation.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/resources (the `SubmitResource` operationId).
+func (c *ClientWithResponses) SubmitResourceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SubmitResourceResponse, error) {
+	rsp, err := c.SubmitResourceWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSubmitResourceResponse(rsp)
+}
+
+// SubmitResourceWithResponse Confirm an uploaded file resource or submit a URL resource.
+//
+// Confirms that a file has been uploaded to storage, or submits an external URL. Transitions the resource to uploaded and queues validation.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/resources (the `SubmitResource` operationId).
+func (c *ClientWithResponses) SubmitResourceWithResponse(ctx context.Context, body SubmitResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*SubmitResourceResponse, error) {
+	rsp, err := c.SubmitResource(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSubmitResourceResponse(rsp)
+}
+
+// CreateResourceUploadIntentWithBodyWithResponse Request a presigned upload intent for a file resource.
+//
+// Creates a resource in pending status and issues a presigned S3 PUT URL for uploading into fluentra-uploads.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/resources/upload-intent (the `CreateResourceUploadIntent` operationId).
+func (c *ClientWithResponses) CreateResourceUploadIntentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateResourceUploadIntentResponse, error) {
+	rsp, err := c.CreateResourceUploadIntentWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateResourceUploadIntentResponse(rsp)
+}
+
+// CreateResourceUploadIntentWithResponse Request a presigned upload intent for a file resource.
+//
+// Creates a resource in pending status and issues a presigned S3 PUT URL for uploading into fluentra-uploads.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/resources/upload-intent (the `CreateResourceUploadIntent` operationId).
+func (c *ClientWithResponses) CreateResourceUploadIntentWithResponse(ctx context.Context, body CreateResourceUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateResourceUploadIntentResponse, error) {
+	rsp, err := c.CreateResourceUploadIntent(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateResourceUploadIntentResponse(rsp)
+}
+
+// DeleteMyResourceWithResponse Delete a resource and its storage object.
+//
+// Deletes the resource row and its associated object in storage. Unowned resources answer 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /me/resources/{id} (the `DeleteMyResource` operationId).
+func (c *ClientWithResponses) DeleteMyResourceWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteMyResourceResponse, error) {
+	rsp, err := c.DeleteMyResource(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteMyResourceResponse(rsp)
+}
+
+// GetMyResourceWithResponse Get details of a resource by ID.
+//
+// Returns resource details including status, failure reason if rejected, and a presigned download URL for validated files. Unowned resources answer 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/resources/{id} (the `GetMyResource` operationId).
+func (c *ClientWithResponses) GetMyResourceWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetMyResourceResponse, error) {
+	rsp, err := c.GetMyResource(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMyResourceResponse(rsp)
+}
+
 // StartLearningSessionWithBodyWithResponse Start a study session.
 //
 // Records the beginning of an active learner study session.
@@ -34029,27 +34984,6 @@ func ParsePaymentListUnmatchedTransactionsResponse(rsp *http.Response) (*Payment
 			return nil, err
 		}
 		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
 
 	}
 
@@ -40126,6 +41060,386 @@ func ParseStudioRefundPurchaseResponse(rsp *http.Response) (*StudioRefundPurchas
 		}
 		response.ApplicationproblemJSON500 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseListMyResourcesResponse parses an HTTP response from a ListMyResourcesWithResponse call
+func ParseListMyResourcesResponse(rsp *http.Response) (*ListMyResourcesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListMyResourcesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResourceList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListMyResourcesResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSubmitResourceResponse parses an HTTP response from a SubmitResourceWithResponse call
+func ParseSubmitResourceResponse(rsp *http.Response) (*SubmitResourceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SubmitResourceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest ResourceSubmitResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 202:
+		var headers SubmitResourceResponse202Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers202 = &headers
+	case rsp.StatusCode == 429:
+		var headers SubmitResourceResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseCreateResourceUploadIntentResponse parses an HTTP response from a CreateResourceUploadIntentWithResponse call
+func ParseCreateResourceUploadIntentResponse(rsp *http.Response) (*CreateResourceUploadIntentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateResourceUploadIntentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResourceUploadIntentResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers CreateResourceUploadIntentResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers CreateResourceUploadIntentResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseDeleteMyResourceResponse parses an HTTP response from a DeleteMyResourceWithResponse call
+func ParseDeleteMyResourceResponse(rsp *http.Response) (*DeleteMyResourceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteMyResourceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetMyResourceResponse parses an HTTP response from a GetMyResourceWithResponse call
+func ParseGetMyResourceResponse(rsp *http.Response) (*GetMyResourceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMyResourceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Resource
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetMyResourceResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil

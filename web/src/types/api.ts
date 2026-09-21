@@ -3287,6 +3287,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/resources/upload-intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a presigned upload intent for a file resource.
+         * @description Creates a resource in pending status and issues a presigned S3 PUT URL for uploading into fluentra-uploads.
+         */
+        post: operations["createResourceUploadIntent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List resources owned by the caller.
+         * @description Returns a paginated list of resources owned by the caller, newest first. Optionally filterable by status and kind.
+         */
+        get: operations["listMyResources"];
+        put?: never;
+        /**
+         * Confirm an uploaded file resource or submit a URL resource.
+         * @description Confirms that a file has been uploaded to storage, or submits an external URL. Transitions the resource to uploaded and queues validation.
+         */
+        post: operations["submitResource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/resources/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get details of a resource by ID.
+         * @description Returns resource details including status, failure reason if rejected, and a presigned download URL for validated files. Unowned resources answer 404.
+         */
+        get: operations["getMyResource"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a resource and its storage object.
+         * @description Deletes the resource row and its associated object in storage. Unowned resources answer 404.
+         */
+        delete: operations["deleteMyResource"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -6789,6 +6857,138 @@ export interface components {
         RefundList: {
             items: components["schemas"]["Refund"][];
             total: number;
+        };
+        /** @description A learner's uploaded file or submitted URL resource. */
+        Resource: {
+            /**
+             * Format: uuid
+             * @example 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+             */
+            id: string;
+            /**
+             * @example file
+             * @enum {string}
+             */
+            kind: "file" | "url";
+            /** @example Advanced Grammar Guide.pdf */
+            title: string;
+            /**
+             * @example validated
+             * @enum {string}
+             */
+            status: "pending" | "uploaded" | "validated" | "rejected" | "failed";
+            /** @example  */
+            failure_reason: string;
+            /** @example Advanced Grammar Guide.pdf */
+            original_filename: string;
+            /** @example application/pdf */
+            declared_mime: string;
+            /** @example application/pdf */
+            detected_mime: string;
+            /**
+             * Format: int64
+             * @example 2458120
+             */
+            byte_size?: number | null;
+            /** @example e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 */
+            checksum?: string | null;
+            /** @example null */
+            source_url?: string | null;
+            /**
+             * @description Presigned download URL for validated file resources.
+             * @example https://storage.example.com/fluentra-uploads/...
+             */
+            download_url?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-21T00:00:00Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-21T00:01:00Z
+             */
+            updated_at: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-21T00:01:00Z
+             */
+            validated_at?: string | null;
+        };
+        ResourceList: {
+            items: components["schemas"]["Resource"][];
+            /** @example 1 */
+            total: number;
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            page_size: number;
+        };
+        ResourceUploadIntentRequest: {
+            /**
+             * @description Original name of the file to be uploaded.
+             * @example grammar_lesson.pdf
+             */
+            filename: string;
+            /**
+             * @description MIME type declared by the client.
+             * @example application/pdf
+             */
+            content_type: string;
+        };
+        ResourceUploadIntentResponse: {
+            /**
+             * Format: uuid
+             * @description Created resource ID in pending status.
+             * @example 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+             */
+            id: string;
+            /**
+             * @description Presigned S3 PUT URL to upload bytes into fluentra-uploads.
+             * @example https://storage.example.com/fluentra-uploads/users/...
+             */
+            upload_url: string;
+            /**
+             * @description Storage object key in fluentra-uploads.
+             * @example user/018f3a5e-7b82-7d2c-80a2-bf3d6118d531/2026/09/resource-id.pdf
+             */
+            object_key: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-21T00:05:00Z
+             */
+            expires_at: string;
+        };
+        /** @description Confirmation of an uploaded file by resource_id OR submission of a new URL. */
+        SubmitResourceRequest: {
+            /**
+             * Format: uuid
+             * @description ID of a pending file resource to confirm after S3 upload.
+             * @example 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+             */
+            resource_id?: string;
+            /**
+             * @description Public HTTP/HTTPS URL to import as a resource.
+             * @example https://en.wikipedia.org/wiki/English_grammar
+             */
+            url?: string;
+            /**
+             * @description Optional title for URL resources.
+             * @example English Grammar Guide
+             */
+            title?: string;
+        };
+        ResourceSubmitResponse: {
+            /**
+             * Format: uuid
+             * @example 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+             */
+            id: string;
+            /**
+             * @example uploaded
+             * @enum {string}
+             */
+            status: "uploaded";
         };
     };
     responses: {
@@ -14619,14 +14819,224 @@ export interface operations {
                     /**
                      * @example {
                      *       "items": [],
-                     *       "total": 1
+                     *       "total": 0,
+                     *       "limit": 50,
+                     *       "offset": 0
                      *     }
                      */
                     "application/json": components["schemas"]["UnmatchedTransactionsList"];
                 };
             };
+        };
+    };
+    createResourceUploadIntent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "filename": "grammar_lesson.pdf",
+                 *       "content_type": "application/pdf"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ResourceUploadIntentRequest"];
+            };
+        };
+        responses: {
+            /** @description Upload intent generated. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531",
+                     *       "upload_url": "https://storage.example.com/fluentra-uploads/users/018f3a5e-7b82-7d2c-80a2-bf3d6118d531/2026/09/asset.pdf",
+                     *       "object_key": "users/018f3a5e-7b82-7d2c-80a2-bf3d6118d531/2026/09/asset.pdf",
+                     *       "expires_at": "2026-09-21T00:05:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResourceUploadIntentResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listMyResources: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                status?: "pending" | "uploaded" | "validated" | "rejected" | "failed";
+                kind?: "file" | "url";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of caller's resources. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531",
+                     *           "kind": "file",
+                     *           "title": "Advanced Grammar Guide.pdf",
+                     *           "status": "validated",
+                     *           "failure_reason": "",
+                     *           "original_filename": "Advanced Grammar Guide.pdf",
+                     *           "declared_mime": "application/pdf",
+                     *           "detected_mime": "application/pdf",
+                     *           "byte_size": 2458120,
+                     *           "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                     *           "source_url": null,
+                     *           "download_url": "https://storage.example.com/fluentra-uploads/...",
+                     *           "created_at": "2026-09-21T00:00:00Z",
+                     *           "updated_at": "2026-09-21T00:01:00Z",
+                     *           "validated_at": "2026-09-21T00:01:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "page": 1,
+                     *       "page_size": 20
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResourceList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    submitResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "resource_id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531"
+                 *     }
+                 */
+                "application/json": components["schemas"]["SubmitResourceRequest"];
+            };
+        };
+        responses: {
+            /** @description Resource accepted for validation. */
+            202: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531",
+                     *       "status": "uploaded"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResourceSubmitResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getMyResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resource details. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531",
+                     *       "kind": "file",
+                     *       "title": "Advanced Grammar Guide.pdf",
+                     *       "status": "validated",
+                     *       "failure_reason": "",
+                     *       "original_filename": "Advanced Grammar Guide.pdf",
+                     *       "declared_mime": "application/pdf",
+                     *       "detected_mime": "application/pdf",
+                     *       "byte_size": 2458120,
+                     *       "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                     *       "source_url": null,
+                     *       "download_url": "https://storage.example.com/fluentra-uploads/...",
+                     *       "created_at": "2026-09-21T00:00:00Z",
+                     *       "updated_at": "2026-09-21T00:01:00Z",
+                     *       "validated_at": "2026-09-21T00:01:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Resource"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    deleteMyResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resource deleted successfully. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
         };
     };

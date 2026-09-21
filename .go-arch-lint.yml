@@ -133,6 +133,7 @@ components:
   g_exam:        { in: generated/exam/sqlc }
   g_studio:      { in: generated/studio/sqlc }
   g_payment:     { in: generated/payment/sqlc }
+  g_resource:    { in: generated/resource/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -176,6 +177,7 @@ components:
   c_subscription:  { in: modules/subscription/contract }
   c_payment:       { in: modules/payment/contract }
   c_studio:        { in: modules/studio/contract }
+  c_resource:      { in: modules/resource/contract }
 
   # module internals — never importable from outside the module itself
   #
@@ -297,6 +299,12 @@ components:
   m_studio_service:    { in: modules/studio/service }
   m_studio_job:        { in: modules/studio/job }
   m_studio_http:       { in: modules/studio/transport/http }
+  m_resource:            { in: modules/resource }
+  m_resource_domain:     { in: modules/resource/domain }
+  m_resource_repository: { in: modules/resource/repository }
+  m_resource_service:    { in: modules/resource/service }
+  m_resource_job:        { in: modules/resource/job }
+  m_resource_http:       { in: modules/resource/transport/http }
 
 # ------------------------------------------------------------------- rules
 # `mayDependOn` lists are deliberately minimal. Adding an entry here is a
@@ -344,6 +352,7 @@ deps:
   g_listening:  { anyVendorDeps: true }
   g_studio:     { anyVendorDeps: true }
   g_payment:    { anyVendorDeps: true }
+  g_resource:   { anyVendorDeps: true }
 
   # A platform capability exists to wrap a vendor SDK, so each may import one.
   # Business modules deliberately may not: they reach external systems through
@@ -551,3 +560,12 @@ deps:
   m_studio_job:        { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, c_studio, p_job] }
   m_studio_http:       { mayDependOn: [m_studio_domain, m_studio_service, c_studio, c_payment] }
   m_studio:            { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, m_studio_job, m_studio_http, c_studio, c_learning, c_lesson, c_content, p_job, c_payment] }
+
+  # resource
+  m_resource_domain:     { mayDependOn: [c_resource] }
+  m_resource_repository: { mayDependOn: [m_resource_domain, c_resource, g_resource] }
+  m_resource_service:    { mayDependOn: [m_resource_domain, m_resource_repository, m_resource_job, c_resource, p_storage, p_job, p_telemetry], anyVendorDeps: true }
+  m_resource_job:        { mayDependOn: [m_resource_domain, m_resource_service, c_resource, p_job, p_telemetry], anyVendorDeps: true }
+  m_resource_http:       { mayDependOn: [m_resource_domain, m_resource_service, c_resource] }
+  m_resource:            { mayDependOn: [m_resource_domain, m_resource_repository, m_resource_service, m_resource_job, m_resource_http, c_resource, g_resource, p_storage, p_job, p_telemetry] }
+

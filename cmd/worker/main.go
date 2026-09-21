@@ -42,6 +42,7 @@ import (
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/reading"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
+	"github.com/fluentra/fluentra/internal/modules/resource"
 	"github.com/fluentra/fluentra/internal/modules/speaking"
 	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
@@ -770,6 +771,13 @@ func startModules(
 		cron.Register(scheduled)
 	}
 
+	resourceModule := resource.New(resource.Deps{
+		Pool:    pool,
+		Storage: storageStore,
+	})
+	river.AddWorker(workers, resourceModule.ValidateWorker())
+	cron.Register(resourceModule.SweepJob())
+
 	return nil
 }
 
@@ -834,7 +842,7 @@ func startRiverWorker(
 
 // registerJobKinds is where a module's job handlers are counted.
 func registerJobKinds(_ *river.Workers) int {
-	return 5
+	return 6
 }
 
 // newStorageStore validates the storage configuration and builds the facade.
