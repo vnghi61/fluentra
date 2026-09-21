@@ -340,14 +340,26 @@ type ItemVerifier interface {
 	VerifyItem(ctx context.Context, req VerifyItemRequest) error
 }
 
+// ExamPartConstraints defines structural constraints for an exam part item (Stage E/G).
+type ExamPartConstraints struct {
+	OptionCount       int  `json:"option_count,omitempty"`
+	QuestionsPerGroup int  `json:"questions_per_group,omitempty"`
+	MinWords          int  `json:"min_words,omitempty"`
+	MaxWords          int  `json:"max_words,omitempty"`
+	AudioRequired     bool `json:"audio_required,omitempty"`
+}
+
 // VerifyItemRequest specifies an item to verify through ItemVerifier.
 type VerifyItemRequest struct {
-	Kind       string
-	TaskType   string // read_aloud / respond, for speaking_task
-	CEFRLevel  string
-	Body       json.RawMessage
-	Existing   []json.RawMessage // for the duplicate check
-	BlindSolve bool
+	Kind            string
+	TaskType        string // read_aloud / respond, for speaking_task
+	CEFRLevel       string
+	Body            json.RawMessage
+	Existing        []json.RawMessage // for the duplicate check
+	BlindSolve      bool
+	CheckCEFR       bool                 // evaluates CEFR calibration through item_level task
+	ExamConstraints *ExamPartConstraints // evaluates exam part structural shape
+	CheckProvenance bool                 // verifies _provenance presence and completeness
 }
 
 // GenerateRequest specifies parameters for the unified item generator.

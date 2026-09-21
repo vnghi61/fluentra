@@ -61,6 +61,8 @@ const (
 	TaskItemGenerate Task = "item_generate"
 	// TaskItemSolve blind-solves an item to verify consensus answer key.
 	TaskItemSolve Task = "item_solve"
+	// TaskItemLevel estimates the CEFR level of an item with reasoning.
+	TaskItemLevel Task = "item_level"
 )
 
 // Request is one unit of work.

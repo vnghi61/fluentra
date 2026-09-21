@@ -3353,6 +3353,93 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /admin/review-queue:
+    get:
+      tags: [content]
+      operationId: adminListReviewQueue
+      summary: List machine-generated drafts awaiting review.
+      description: Returns drafts produced by the generator, oldest first, with blind solve answers, CEFR reasoning, and provenance.
+      x-permission: content.review
+      parameters:
+        - name: purpose
+          in: query
+          description: Filter by generation purpose (bank, foundation, resource).
+          schema:
+            type: string
+        - name: kind
+          in: query
+          description: Filter by content kind.
+          schema:
+            type: string
+        - name: node
+          in: query
+          description: Filter by spine node code.
+          schema:
+            type: string
+        - name: cefr
+          in: query
+          description: Filter by CEFR level.
+          schema:
+            $ref: '#/components/schemas/CEFRLevel'
+        - name: limit
+          in: query
+          description: Maximum items to return.
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          description: Items to skip before returning.
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of items awaiting review.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminReviewQueueResponse'
+              example:
+                items:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def012345602
+                    item_id: 0199a1c2-3d4e-7f80-9abc-def012345601
+                    slug: foundation-b1-grammar-tense-choice-a1b2c3d4
+                    kind: grammar_tense_choice
+                    cefr_level: B1
+                    status: draft
+                    body:
+                      prompt: She ___ lived here for three years.
+                      options:
+                        - id: A
+                          text: has
+                        - id: B
+                          text: have
+                        - id: C
+                          text: had
+                        - id: D
+                          text: having
+                      correct_option_id: A
+                    blind_solve_answer:
+                      selected_option_id: A
+                    cefr_reasoning: Present perfect tense corresponds to B1.
+                    provenance:
+                      prompt_version: item_generate.v1
+                      model: mock-model
+                      ai_request_id: 0199a1c2-3d4e-7f80-9abc-def012345603
+                    node_codes:
+                      - PRESENT_PERFECT
+                    created_at: '2026-09-21T10:00:00Z'
+                total: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /admin/content:
     get:
       tags: [content]
@@ -8104,6 +8191,10 @@ components:
       $ref: ./components/content.yaml#/UpdateFoundationTopicRequest
     ReplacePrerequisitesRequest:
       $ref: ./components/content.yaml#/ReplacePrerequisitesRequest
+    AdminReviewQueueItem:
+      $ref: ./components/content.yaml#/AdminReviewQueueItem
+    AdminReviewQueueResponse:
+      $ref: ./components/content.yaml#/AdminReviewQueueResponse
     CourseSummary:
       $ref: ./components/lesson.yaml#/CourseSummary
     CourseList:

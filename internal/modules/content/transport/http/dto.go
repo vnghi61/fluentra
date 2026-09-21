@@ -326,3 +326,62 @@ func toFoundationTopicDetailResponse(detail service.FoundationTopicDetail) Found
 		ReviewCount:   detail.ReviewCount,
 	}
 }
+
+// AdminReviewQueueItemResponse represents a review queue item for backoffice staff.
+type AdminReviewQueueItemResponse struct {
+	ID               uuid.UUID       `json:"id"`
+	ItemID           uuid.UUID       `json:"item_id"`
+	Slug             string          `json:"slug"`
+	Kind             string          `json:"kind"`
+	CEFRLevel        string          `json:"cefr_level"`
+	Status           string          `json:"status"`
+	Body             json.RawMessage `json:"body"`
+	BlindSolveAnswer any             `json:"blind_solve_answer,omitempty"`
+	CEFRReasoning    string          `json:"cefr_reasoning,omitempty"`
+	Provenance       any             `json:"provenance,omitempty"`
+	NodeCodes        []string        `json:"node_codes"`
+	CreatedAt        time.Time       `json:"created_at"`
+}
+
+// AdminReviewQueueResponse is the paginated response for GET /admin/review-queue.
+type AdminReviewQueueResponse struct {
+	Items []AdminReviewQueueItemResponse `json:"items"`
+	Total int64                          `json:"total"`
+}
+
+func toAdminReviewQueueItemResponse(item domain.ReviewQueueItem) AdminReviewQueueItemResponse {
+	resp := AdminReviewQueueItemResponse{
+		ID:        item.ID,
+		ItemID:    item.ItemID,
+		Slug:      item.Slug,
+		Kind:      item.Kind,
+		CEFRLevel: item.CEFRLevel,
+		Status:    string(item.Status),
+		Body:      item.Body,
+		NodeCodes: item.NodeCodes,
+		CreatedAt: item.CreatedAt,
+	}
+	if resp.NodeCodes == nil {
+		resp.NodeCodes = []string{}
+	}
+
+	var decoded map[string]any
+	if err := json.Unmarshal(item.Body, &decoded); err == nil {
+		if prov, ok := decoded["_provenance"].(map[string]any); ok {
+			resp.Provenance = prov
+			if bsa, ok := prov["blind_solve_answer"]; ok && bsa != nil {
+				switch v := bsa.(type) {
+				case map[string]any:
+					resp.BlindSolveAnswer = v
+				default:
+					resp.BlindSolveAnswer = map[string]any{"answer": v}
+				}
+			}
+			if cr, ok := prov["cefr_reasoning"].(string); ok {
+				resp.CEFRReasoning = cr
+			}
+		}
+	}
+
+	return resp
+}

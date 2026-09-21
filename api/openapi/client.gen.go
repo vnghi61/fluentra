@@ -441,6 +441,13 @@ type ClientInterface interface {
 	// Corresponds with GET /admin/payments/unmatched (the `PaymentListUnmatchedTransactions` operationId).
 	PaymentListUnmatchedTransactions(ctx context.Context, params *PaymentListUnmatchedTransactionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminListReviewQueue List machine-generated drafts awaiting review.
+	//
+	// Returns drafts produced by the generator, oldest first, with blind solve answers, CEFR reasoning, and provenance.
+	//
+	// Corresponds with GET /admin/review-queue (the `AdminListReviewQueue` operationId).
+	AdminListReviewQueue(ctx context.Context, params *AdminListReviewQueueParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RbacListRoles List roles and the permissions they grant.
 	//
 	// The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -2924,6 +2931,23 @@ func (c *Client) AdminPublishLesson(ctx context.Context, id openapi_types.UUID, 
 // Corresponds with GET /admin/payments/unmatched (the `PaymentListUnmatchedTransactions` operationId).
 func (c *Client) PaymentListUnmatchedTransactions(ctx context.Context, params *PaymentListUnmatchedTransactionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPaymentListUnmatchedTransactionsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminListReviewQueue List machine-generated drafts awaiting review.
+//
+// Returns drafts produced by the generator, oldest first, with blind solve answers, CEFR reasoning, and provenance.
+//
+// Corresponds with GET /admin/review-queue (the `AdminListReviewQueue` operationId).
+func (c *Client) AdminListReviewQueue(ctx context.Context, params *AdminListReviewQueueParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminListReviewQueueRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -8042,6 +8066,120 @@ func NewPaymentListUnmatchedTransactionsRequest(server string, params *PaymentLi
 		// styled parameters, preserving literal commas as delimiters
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminListReviewQueueRequest constructs an http.Request for the AdminListReviewQueue method
+func NewAdminListReviewQueueRequest(server string, params *AdminListReviewQueueParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/review-queue")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Purpose != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "purpose", *params.Purpose, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Kind != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "kind", *params.Kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Node != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "node", *params.Node, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cefr != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cefr", *params.Cefr, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
 
 		if params.Limit != nil {
 
@@ -14812,6 +14950,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /admin/payments/unmatched (the `PaymentListUnmatchedTransactions` operationId).
 	PaymentListUnmatchedTransactionsWithResponse(ctx context.Context, params *PaymentListUnmatchedTransactionsParams, reqEditors ...RequestEditorFn) (*PaymentListUnmatchedTransactionsResponse, error)
 
+	// AdminListReviewQueueWithResponse List machine-generated drafts awaiting review.
+	//
+	// Returns drafts produced by the generator, oldest first, with blind solve answers, CEFR reasoning, and provenance.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/review-queue (the `AdminListReviewQueue` operationId).
+	AdminListReviewQueueWithResponse(ctx context.Context, params *AdminListReviewQueueParams, reqEditors ...RequestEditorFn) (*AdminListReviewQueueResponse, error)
+
 	// RbacListRolesWithResponse List roles and the permissions they grant.
 	//
 	// The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -18823,6 +18970,75 @@ func (r PaymentListUnmatchedTransactionsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PaymentListUnmatchedTransactionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminListReviewQueueResponse200Headers the declared response headers of an HTTP 200 response for AdminListReviewQueue
+type AdminListReviewQueueResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminListReviewQueueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminReviewQueueResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminListReviewQueueResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminListReviewQueueResponse) GetJSON200() *AdminReviewQueueResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminListReviewQueueResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminListReviewQueueResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminListReviewQueueResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminListReviewQueueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminListReviewQueueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminListReviewQueueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminListReviewQueueResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -30068,6 +30284,21 @@ func (c *ClientWithResponses) PaymentListUnmatchedTransactionsWithResponse(ctx c
 	return ParsePaymentListUnmatchedTransactionsResponse(rsp)
 }
 
+// AdminListReviewQueueWithResponse List machine-generated drafts awaiting review.
+//
+// Returns drafts produced by the generator, oldest first, with blind solve answers, CEFR reasoning, and provenance.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/review-queue (the `AdminListReviewQueue` operationId).
+func (c *ClientWithResponses) AdminListReviewQueueWithResponse(ctx context.Context, params *AdminListReviewQueueParams, reqEditors ...RequestEditorFn) (*AdminListReviewQueueResponse, error) {
+	rsp, err := c.AdminListReviewQueue(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminListReviewQueueResponse(rsp)
+}
+
 // RbacListRolesWithResponse List roles and the permissions they grant.
 //
 // The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -34985,6 +35216,66 @@ func ParsePaymentListUnmatchedTransactionsResponse(rsp *http.Response) (*Payment
 		}
 		response.JSON200 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseAdminListReviewQueueResponse parses an HTTP response from a AdminListReviewQueueWithResponse call
+func ParseAdminListReviewQueueResponse(rsp *http.Response) (*AdminListReviewQueueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminListReviewQueueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminReviewQueueResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminListReviewQueueResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil

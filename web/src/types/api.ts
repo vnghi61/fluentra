@@ -1393,6 +1393,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/review-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List machine-generated drafts awaiting review.
+         * @description Returns drafts produced by the generator, oldest first, with blind solve answers, CEFR reasoning, and provenance.
+         */
+        get: operations["adminListReviewQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/content": {
         parameters: {
             query?: never;
@@ -4686,6 +4706,52 @@ export interface components {
         ReplacePrerequisitesRequest: {
             /** @description Complete set of prerequisite topic codes within the same namespace. */
             requires_codes: string[];
+        };
+        /** @description A machine-generated draft version awaiting human editorial review. */
+        AdminReviewQueueItem: {
+            /**
+             * Format: uuid
+             * @description Content version ID.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Content item ID.
+             */
+            item_id: string;
+            /** @example foundation-b1-grammar-tense-choice-a1b2c3d4 */
+            slug: string;
+            /** @example grammar_tense_choice */
+            kind: string;
+            cefr_level: components["schemas"]["CEFRLevel"];
+            status: components["schemas"]["AuthoringStatus"];
+            /** @description Unredacted version payload including exercise structure and answer keys. */
+            body: {
+                [key: string]: unknown;
+            };
+            /** @description Answer predicted by blind solver next to the key. */
+            blind_solve_answer?: {
+                [key: string]: unknown;
+            };
+            /** @example Present perfect with clear time markers corresponding to B1 level. */
+            cefr_reasoning?: string;
+            /** @description Machine author provenance (prompt version, model, ai request ID). */
+            provenance?: {
+                [key: string]: unknown;
+            };
+            /**
+             * @example [
+             *       "PRESENT_PERFECT"
+             *     ]
+             */
+            node_codes?: string[];
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminReviewQueueResponse: {
+            items: components["schemas"]["AdminReviewQueueItem"][];
+            /** @example 1 */
+            total: number;
         };
         CourseSummary: {
             /** Format: uuid */
@@ -10263,6 +10329,93 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationFailed"];
+        };
+    };
+    adminListReviewQueue: {
+        parameters: {
+            query?: {
+                /** @description Filter by generation purpose (bank, foundation, resource). */
+                purpose?: string;
+                /** @description Filter by content kind. */
+                kind?: string;
+                /** @description Filter by spine node code. */
+                node?: string;
+                /** @description Filter by CEFR level. */
+                cefr?: components["schemas"]["CEFRLevel"];
+                /** @description Maximum items to return. */
+                limit?: number;
+                /** @description Items to skip before returning. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of items awaiting review. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345602",
+                     *           "item_id": "0199a1c2-3d4e-7f80-9abc-def012345601",
+                     *           "slug": "foundation-b1-grammar-tense-choice-a1b2c3d4",
+                     *           "kind": "grammar_tense_choice",
+                     *           "cefr_level": "B1",
+                     *           "status": "draft",
+                     *           "body": {
+                     *             "prompt": "She ___ lived here for three years.",
+                     *             "options": [
+                     *               {
+                     *                 "id": "A",
+                     *                 "text": "has"
+                     *               },
+                     *               {
+                     *                 "id": "B",
+                     *                 "text": "have"
+                     *               },
+                     *               {
+                     *                 "id": "C",
+                     *                 "text": "had"
+                     *               },
+                     *               {
+                     *                 "id": "D",
+                     *                 "text": "having"
+                     *               }
+                     *             ],
+                     *             "correct_option_id": "A"
+                     *           },
+                     *           "blind_solve_answer": {
+                     *             "selected_option_id": "A"
+                     *           },
+                     *           "cefr_reasoning": "Present perfect tense corresponds to B1.",
+                     *           "provenance": {
+                     *             "prompt_version": "item_generate.v1",
+                     *             "model": "mock-model",
+                     *             "ai_request_id": "0199a1c2-3d4e-7f80-9abc-def012345603"
+                     *           },
+                     *           "node_codes": [
+                     *             "PRESENT_PERFECT"
+                     *           ],
+                     *           "created_at": "2026-09-21T10:00:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminReviewQueueResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
         };
     };
     adminListContent: {

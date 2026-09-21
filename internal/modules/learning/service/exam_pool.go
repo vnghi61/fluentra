@@ -463,7 +463,14 @@ type listeningCand struct {
 func (s *Service) verifyListeningCandidate(
 	ctx context.Context, level string, raw json.RawMessage, existing []lessoncontract.Activity, blindSolve bool,
 ) (listeningCand, error) {
-	cand, err := parseListeningCandidate(raw)
+	return s.verifyListeningCandidateWithMin(ctx, level, raw, existing, blindSolve, 4)
+}
+
+func (s *Service) verifyListeningCandidateWithMin(
+	ctx context.Context, level string, raw json.RawMessage,
+	existing []lessoncontract.Activity, blindSolve bool, minQuestions int,
+) (listeningCand, error) {
+	cand, err := parseListeningCandidateWithMin(raw, minQuestions)
 	if err != nil {
 		return cand, err
 	}
@@ -475,7 +482,7 @@ func (s *Service) verifyListeningCandidate(
 
 	versionID := uuid.New()
 	gradeCtx := contentcontract.ContextWithTempVersion(ctx, &contentcontract.Version{
-		ID: versionID, Kind: kindListeningComprehension, Body: raw, CEFRLevel: level, Status: "published",
+		ID: versionID, Kind: kindListeningComprehension, Body: raw, CEFRLevel: level, Status: statusPublished,
 	})
 
 	// Checks 2 and 3: the item's own answers score full marks, and its questions are well formed.
@@ -524,6 +531,10 @@ func (s *Service) checkAndPrepareListening(
 
 // parseListeningCandidate is check 1: the reply parses and has a title, a script and at least four questions.
 func parseListeningCandidate(raw json.RawMessage) (listeningCand, error) {
+	return parseListeningCandidateWithMin(raw, 4)
+}
+
+func parseListeningCandidateWithMin(raw json.RawMessage, minQuestions int) (listeningCand, error) {
 	var cand listeningCand
 	if err := json.Unmarshal(raw, &cand); err != nil {
 		return cand, fmt.Errorf("check 1 (parse) failed: %w", err)
@@ -534,8 +545,14 @@ func parseListeningCandidate(raw json.RawMessage) (listeningCand, error) {
 	if strings.TrimSpace(cand.Script) == "" {
 		return cand, errors.New("check 1 failed: listening script is empty")
 	}
-	if len(cand.Questions) < 4 {
-		return cand, fmt.Errorf("check 1 failed: listening must have at least 4 questions, got %d", len(cand.Questions))
+	if minQuestions <= 0 {
+		minQuestions = 4
+	}
+	if len(cand.Questions) < minQuestions {
+		return cand, fmt.Errorf(
+			"check 1 failed: listening must have at least %d questions, got %d",
+			minQuestions, len(cand.Questions),
+		)
 	}
 	// The voice is configuration (media.ConfiguredVoice), not the model's to pick.
 	// The default written here was a cloud provider's voice name that no engine
@@ -629,7 +646,7 @@ func (s *Service) blindSolveListening(
 	var reply json.RawMessage
 	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{
 		Task: ai.TaskPracticeSolve,
-		Vars: map[string]any{"Kind": kindListeningComprehension, varRedactedBody: string(redactedBody)},
+		Vars: map[string]any{varKind: kindListeningComprehension, varRedactedBody: string(redactedBody)},
 	}, &reply); err != nil {
 		return fmt.Errorf("ai blind solve call failed: %w", err)
 	}

@@ -72,6 +72,8 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 		return p.placementGenerate(req)
 	case TaskPlacementSolve:
 		return p.placementSolve(req)
+	case TaskItemLevel:
+		return p.itemLevel(req)
 	default:
 		return Response{}, fmt.Errorf("ai: mock provider has no answer for task %q", req.Task)
 	}
@@ -632,4 +634,30 @@ func (p *MockProvider) placementSolve(req Request) (Response, error) {
 		return Response{}, fmt.Errorf("ai: encode mock placement solve: %w", err)
 	}
 	return Response{Text: string(payload), Model: MockModelName}, nil
+}
+
+func (p *MockProvider) itemLevel(req Request) (Response, error) {
+	requested := stringVar(req.Vars, "RequestedLevel")
+	body := stringVar(req.Vars, "RedactedBody")
+	level := requested
+	if level == "" {
+		level = "B1"
+	}
+	// Support deliberate mislevelling in tests
+	if strings.Contains(body, "FORCE_LEVEL_C1") || strings.Contains(body, "C1 passage") {
+		level = "C1"
+	} else if strings.Contains(body, "FORCE_LEVEL_A1") {
+		level = "A1"
+	} else if strings.Contains(body, "FORCE_LEVEL_A2") {
+		level = "A2"
+	}
+	payload, err := json.Marshal(map[string]any{
+		"cefr_level": level,
+		"reasoning":  fmt.Sprintf("Evaluated item grammar and lexical density corresponding to %s descriptors.", level),
+		"confidence": 0.95,
+	})
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock item level: %w", err)
+	}
+	return Response{Text: string(payload), Model: "mock-level-judge"}, nil
 }

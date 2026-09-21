@@ -736,6 +736,14 @@ func (f *fakeRepo) GetPublishedTopicBodyByTaxonomyID(_ context.Context, _ uuid.U
 	return nil, false, nil
 }
 
+func (f *fakeRepo) ListReviewQueue(_ context.Context, _ domain.ReviewQueueFilter) ([]domain.ReviewQueueItem, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) CountReviewQueue(_ context.Context, _ domain.ReviewQueueFilter) (int64, error) {
+	return 0, nil
+}
+
 type fakeEvents struct {
 	events []struct {
 		Aggregate string

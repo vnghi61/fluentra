@@ -156,6 +156,9 @@ type Repository interface {
 	CountTaggedContentByKindForTaxonomy(ctx context.Context, taxonomyID uuid.UUID) (map[string]int, error)
 	GetPublishedTopicBodyByTaxonomyID(ctx context.Context, taxonomyID uuid.UUID) ([]byte, bool, error)
 
+	ListReviewQueue(ctx context.Context, filter domain.ReviewQueueFilter) ([]domain.ReviewQueueItem, error)
+	CountReviewQueue(ctx context.Context, filter domain.ReviewQueueFilter) (int64, error)
+
 	WithTx(tx pgx.Tx) Repository
 }
 
@@ -1110,4 +1113,22 @@ func (s *Service) Get(ctx context.Context, textHash, voice string) (string, bool
 // Put implements contract.TTSCache.
 func (s *Service) Put(ctx context.Context, textHash, voice, engine, engineVersion, objectKey string) error {
 	return s.repo.UpsertTTSCache(ctx, textHash, voice, engine, engineVersion, objectKey)
+}
+
+// ReviewQueue returns drafts produced by the generator awaiting editorial review.
+func (s *Service) ReviewQueue(
+	ctx context.Context,
+	filter domain.ReviewQueueFilter,
+) ([]domain.ReviewQueueItem, int64, error) {
+	items, err := s.repo.ListReviewQueue(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	count, err := s.repo.CountReviewQueue(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return items, count, nil
 }

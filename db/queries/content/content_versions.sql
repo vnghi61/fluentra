@@ -86,3 +86,51 @@ WHERE item_id = $1 AND status IN ('draft', 'in_review', 'approved')
 ORDER BY version DESC
 LIMIT 1;
 
+-- name: ListReviewQueue :many
+SELECT
+    v.id,
+    v.item_id,
+    i.slug,
+    v.kind,
+    v.cefr_level,
+    v.status,
+    v.body,
+    v.created_at,
+    COALESCE(
+        (SELECT array_agg(t.code::text ORDER BY t.code)
+         FROM content.content_tags ct
+         JOIN content.taxonomies t ON t.id = ct.taxonomy_id
+         WHERE ct.item_id = v.item_id),
+        '{}'::text[]
+    ) AS node_codes
+FROM content.content_versions v
+JOIN content.content_items i ON i.id = v.item_id
+WHERE v.status IN ('draft', 'in_review')
+  AND (sqlc.narg('purpose')::text IS NULL OR (v.body->'_provenance'->>'purpose' = sqlc.narg('purpose') OR i.slug ILIKE sqlc.narg('purpose') || '-%'))
+  AND (sqlc.narg('kind')::text IS NULL OR v.kind = sqlc.narg('kind'))
+  AND (sqlc.narg('cefr_level')::text IS NULL OR v.cefr_level = sqlc.narg('cefr_level'))
+  AND (sqlc.narg('node_code')::text IS NULL OR EXISTS (
+      SELECT 1
+      FROM content.content_tags ct
+      JOIN content.taxonomies t ON t.id = ct.taxonomy_id
+      WHERE ct.item_id = v.item_id AND t.code = sqlc.narg('node_code')
+  ))
+ORDER BY v.created_at ASC, v.id ASC
+LIMIT @result_limit OFFSET @result_offset;
+
+-- name: CountReviewQueue :one
+SELECT COUNT(*)::bigint
+FROM content.content_versions v
+JOIN content.content_items i ON i.id = v.item_id
+WHERE v.status IN ('draft', 'in_review')
+  AND (sqlc.narg('purpose')::text IS NULL OR (v.body->'_provenance'->>'purpose' = sqlc.narg('purpose') OR i.slug ILIKE sqlc.narg('purpose') || '-%'))
+  AND (sqlc.narg('kind')::text IS NULL OR v.kind = sqlc.narg('kind'))
+  AND (sqlc.narg('cefr_level')::text IS NULL OR v.cefr_level = sqlc.narg('cefr_level'))
+  AND (sqlc.narg('node_code')::text IS NULL OR EXISTS (
+      SELECT 1
+      FROM content.content_tags ct
+      JOIN content.taxonomies t ON t.id = ct.taxonomy_id
+      WHERE ct.item_id = v.item_id AND t.code = sqlc.narg('node_code')
+  ));
+
+

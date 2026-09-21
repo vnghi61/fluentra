@@ -71,6 +71,7 @@ const (
 	kindReadingComprehension     = "reading_comprehension"
 	kindGrammarTenseChoice       = "grammar_tense_choice"
 	kindGrammarSentenceTransform = "grammar_sentence_transform"
+	statusPublished              = "published"
 )
 
 var practiceLevels = []string{"A2", "B1", "B2"}
@@ -411,7 +412,7 @@ func (s *Service) checkCandidateWithBlindSolve(
 	}
 	versionID := uuid.New()
 	gradeCtx := contentcontract.ContextWithTempVersion(ctx, &contentcontract.Version{
-		ID: versionID, Kind: kind, Body: body, CEFRLevel: level, Status: "published",
+		ID: versionID, Kind: kind, Body: body, CEFRLevel: level, Status: statusPublished,
 	})
 
 	ownAnswer, err := buildOwnAnswerPayload(kind, body)
@@ -649,6 +650,10 @@ func validateParseVocab(kind string, raw []byte) error {
 }
 
 func parseReading(raw []byte) error {
+	return parseReadingWithMinMax(raw, 4, 6)
+}
+
+func parseReadingWithMinMax(raw []byte, minQ, maxQ int) error {
 	var body readingComprehensionCand
 	if err := json.Unmarshal(raw, &body); err != nil {
 		return err
@@ -656,13 +661,69 @@ func parseReading(raw []byte) error {
 	if strings.TrimSpace(body.Passage) == "" {
 		return errors.New("passage is empty")
 	}
-	if len(body.Questions) < 4 || len(body.Questions) > 6 {
-		return fmt.Errorf("expected 4-6 questions, got %d", len(body.Questions))
+	if minQ <= 0 {
+		minQ = 4
+	}
+	if maxQ <= 0 {
+		maxQ = 6
+	}
+	if len(body.Questions) < minQ || len(body.Questions) > maxQ {
+		return fmt.Errorf("expected %d-%d questions, got %d", minQ, maxQ, len(body.Questions))
 	}
 	for i, q := range body.Questions {
 		if err := parseChoice(q.Prompt, q.Options, q.CorrectOptionID); err != nil {
 			return fmt.Errorf("question %d: %w", i, err)
 		}
+	}
+	return nil
+}
+
+func (s *Service) checkReadingCandidateWithMin(
+	ctx context.Context, level string, body json.RawMessage, existing []lessoncontract.Activity,
+	blindSolve bool, minQuestions int,
+) error {
+	minQ, maxQ := 4, 6
+	if minQuestions > 0 {
+		minQ, maxQ = minQuestions, minQuestions
+	}
+	if err := parseReadingWithMinMax(body, minQ, maxQ); err != nil {
+		return fmt.Errorf("check 1 (parse) failed: %w", err)
+	}
+
+	grader, ok := s.graders.Get(kindReadingComprehension)
+	if !ok || grader == nil {
+		return fmt.Errorf("grader not registered for kind: %s", kindReadingComprehension)
+	}
+	versionID := uuid.New()
+	gradeCtx := contentcontract.ContextWithTempVersion(ctx, &contentcontract.Version{
+		ID: versionID, Kind: kindReadingComprehension, Body: body, CEFRLevel: level, Status: "published",
+	})
+
+	ownAnswer, err := buildOwnAnswerPayload(kindReadingComprehension, body)
+	if err != nil {
+		return fmt.Errorf("build own answer payload: %w", err)
+	}
+	if err := gradesFullMarks(gradeCtx, grader, versionID, ownAnswer); err != nil {
+		return fmt.Errorf("check 2 (own answer scores full marks) failed: %w", err)
+	}
+
+	if err := validateStructure(kindReadingComprehension, body); err != nil {
+		return fmt.Errorf("check 3 (structure) failed: %w", err)
+	}
+
+	redacted := contentcontract.RedactForLearner(body)
+	if blindSolve {
+		if err := s.blindSolve(gradeCtx, grader, versionID, kindReadingComprehension, redacted); err != nil {
+			return fmt.Errorf("check 4 (blind solve) failed: %w", err)
+		}
+	}
+
+	if isDuplicate(kindReadingComprehension, body, existing) {
+		return errors.New("check 5 (deduplication) failed: item matches an item already in the slot")
+	}
+
+	if err := verifyRedaction(redacted); err != nil {
+		return fmt.Errorf("check 6 (redaction verification) failed: %w", err)
 	}
 	return nil
 }

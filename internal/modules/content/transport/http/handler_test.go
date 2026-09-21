@@ -74,6 +74,9 @@ type mockContentService struct {
 	) ([]domain.Taxonomy, int64, error)
 	getFoundationTopicFn func(ctx context.Context, code string) (service.FoundationTopicDetail, error)
 	getFoundationPathFn  func(ctx context.Context, targetCode *string, namespace *string) ([]domain.Taxonomy, error)
+	reviewQueueFn        func(
+		ctx context.Context, filter domain.ReviewQueueFilter,
+	) ([]domain.ReviewQueueItem, int64, error)
 }
 
 func (m *mockContentService) GetPublishedVersionBySlug(ctx context.Context, slug string) (*contract.Version, error) {
@@ -242,6 +245,15 @@ func (m *mockContentService) GetFoundationPath(
 		return m.getFoundationPathFn(ctx, targetCode, namespace)
 	}
 	return []domain.Taxonomy{}, nil
+}
+
+func (m *mockContentService) ReviewQueue(
+	ctx context.Context, filter domain.ReviewQueueFilter,
+) ([]domain.ReviewQueueItem, int64, error) {
+	if m.reviewQueueFn != nil {
+		return m.reviewQueueFn(ctx, filter)
+	}
+	return []domain.ReviewQueueItem{}, 0, nil
 }
 
 type mockGuard struct {

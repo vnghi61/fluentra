@@ -152,6 +152,76 @@ func (s *Service) retryGenerateSingleItem(
 	return nil, lastErr
 }
 
+func buildGenerateVars(req learningcontract.GenerateRequest, spineNodes []string) map[string]any {
+	vars := map[string]any{
+		varKind:      req.Kind,
+		"CEFRLevel":  req.CEFRLevel,
+		"SpineNodes": strings.Join(spineNodes, ", "),
+	}
+	if req.Purpose == purposeResource && req.SourceText != "" {
+		vars["SourceText"] = req.SourceText
+	}
+	if req.Kind == kindSpeakingTask {
+		vars["TaskType"] = subTypeRespond
+	}
+	return vars
+}
+
+func (s *Service) attachProvenanceAndVerify(
+	ctx context.Context,
+	req learningcontract.GenerateRequest,
+	preparedBody json.RawMessage,
+	model string,
+	blindSolve bool,
+) (json.RawMessage, string, uuid.UUID, error) {
+	aiRequestID := uuid.New()
+	promptVersion := "item_generate.v1"
+
+	var blindSolvePayload json.RawMessage
+	if blindSolve {
+		var err error
+		blindSolvePayload, err = s.blindSolveItem(ctx, req.Kind, preparedBody)
+		if err != nil {
+			return nil, "", uuid.Nil, fmt.Errorf("blind solve item: %w", err)
+		}
+	}
+
+	var judgedCEFR, cefrReasoning string
+	checkCEFR := (req.Purpose == purposeBank || req.Purpose == purposeFoundation)
+	if checkCEFR && s.ai != nil {
+		var err error
+		judgedCEFR, cefrReasoning, err = s.evaluateCEFR(ctx, req.Kind, req.CEFRLevel, preparedBody)
+		if err != nil {
+			return nil, "", uuid.Nil, fmt.Errorf("cefr evaluation failed: %w", err)
+		}
+	}
+
+	bodyWithProv, err := injectProvenance(
+		preparedBody, promptVersion, model, aiRequestID,
+		req.Purpose, blindSolvePayload, judgedCEFR, cefrReasoning,
+	)
+	if err != nil {
+		bodyWithProv = preparedBody
+	}
+
+	vReq := learningcontract.VerifyItemRequest{
+		Kind:            req.Kind,
+		CEFRLevel:       req.CEFRLevel,
+		Body:            bodyWithProv,
+		BlindSolve:      blindSolve,
+		CheckCEFR:       checkCEFR,
+		CheckProvenance: true,
+	}
+	if req.Kind == kindSpeakingTask {
+		vReq.TaskType = subTypeRespond
+	}
+	if err := s.VerifyItem(ctx, vReq); err != nil {
+		return nil, "", uuid.Nil, fmt.Errorf("verify item: %w", err)
+	}
+
+	return bodyWithProv, promptVersion, aiRequestID, nil
+}
+
 func (s *Service) generateSingleItem(
 	ctx context.Context,
 	req learningcontract.GenerateRequest,
@@ -160,17 +230,7 @@ func (s *Service) generateSingleItem(
 	authorID uuid.UUID,
 	blindSolve bool,
 ) (*learningcontract.GeneratedItem, error) {
-	vars := map[string]any{
-		"Kind":       req.Kind,
-		"CEFRLevel":  req.CEFRLevel,
-		"SpineNodes": strings.Join(spineNodeStrings, ", "),
-	}
-	if req.Purpose == purposeResource && req.SourceText != "" {
-		vars["SourceText"] = req.SourceText
-	}
-	if req.Kind == kindSpeakingTask {
-		vars["TaskType"] = subTypeRespond
-	}
+	vars := buildGenerateVars(req, spineNodeStrings)
 
 	var candidateBody json.RawMessage
 	resp, err := ai.CompleteJSONWithResponse(ctx, s.ai, ai.Request{
@@ -186,29 +246,16 @@ func (s *Service) generateSingleItem(
 		return nil, fmt.Errorf("prepare candidate body: %w", err)
 	}
 
-	vReq := learningcontract.VerifyItemRequest{
-		Kind:       req.Kind,
-		CEFRLevel:  req.CEFRLevel,
-		Body:       preparedBody,
-		BlindSolve: blindSolve,
-	}
-	if req.Kind == kindSpeakingTask {
-		vReq.TaskType = subTypeRespond
-	}
-	if err := s.VerifyItem(ctx, vReq); err != nil {
-		return nil, fmt.Errorf("verify item: %w", err)
-	}
-
-	aiRequestID := uuid.New()
-	promptVersion := "item_generate.v1"
 	model := resp.Model
 	if model == "" {
 		model = "mock"
 	}
 
-	bodyWithProv, err := injectProvenance(preparedBody, promptVersion, model, aiRequestID)
+	bodyWithProv, promptVersion, aiRequestID, err := s.attachProvenanceAndVerify(
+		ctx, req, preparedBody, model, blindSolve,
+	)
 	if err != nil {
-		bodyWithProv = preparedBody
+		return nil, err
 	}
 
 	slugPrefix := fmt.Sprintf("%s-%s-%s",
@@ -282,18 +329,60 @@ func (s *Service) prepareCandidateBody(
 }
 
 func injectProvenance(
-	body json.RawMessage, promptVersion, model string, aiRequestID uuid.UUID,
+	body json.RawMessage,
+	promptVersion, model string,
+	aiRequestID uuid.UUID,
+	purpose string,
+	blindSolveAnswer json.RawMessage,
+	cefrEstimate, cefrReasoning string,
 ) (json.RawMessage, error) {
 	var decoded map[string]any
 	if err := json.Unmarshal(body, &decoded); err != nil {
 		return nil, err
 	}
-	decoded["_provenance"] = map[string]any{
+	prov := map[string]any{
 		"prompt_version": promptVersion,
 		"model":          model,
 		"ai_request_id":  aiRequestID.String(),
 	}
+	if purpose != "" {
+		prov["purpose"] = purpose
+	}
+	if len(blindSolveAnswer) > 0 {
+		var ans any
+		if err := json.Unmarshal(blindSolveAnswer, &ans); err == nil {
+			prov["blind_solve_answer"] = ans
+		} else {
+			prov["blind_solve_answer"] = string(blindSolveAnswer)
+		}
+	}
+	if cefrEstimate != "" {
+		prov["cefr_estimate"] = cefrEstimate
+	}
+	if cefrReasoning != "" {
+		prov["cefr_reasoning"] = cefrReasoning
+	}
+	decoded["_provenance"] = prov
 	return json.Marshal(decoded)
+}
+
+func (s *Service) blindSolveItem(ctx context.Context, kind string, body json.RawMessage) (json.RawMessage, error) {
+	if s.ai == nil {
+		return nil, nil
+	}
+	redacted := contentcontract.RedactForLearner(body)
+	var reply json.RawMessage
+	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{
+		Task: ai.TaskItemSolve,
+		Vars: map[string]any{varKind: kind, varRedactedBody: string(redacted)},
+	}, &reply); err != nil {
+		return nil, fmt.Errorf("ai blind solve call failed: %w", err)
+	}
+	payload, err := parseBlindSolvePayload(kind, reply)
+	if err != nil {
+		return nil, fmt.Errorf("parse blind solve response: %w", err)
+	}
+	return payload, nil
 }
 
 var _ learningcontract.Generator = (*Service)(nil)

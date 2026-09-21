@@ -83,6 +83,7 @@ func TestRoutesMountTheDocumentedPaths(t *testing.T) {
 		"POST /admin/content/{id}/publish":                  false,
 		"POST /admin/content/{id}/archive":                  false,
 		"GET /admin/content/reports":                        false,
+		"GET /admin/review-queue":                           false,
 		"POST /admin/foundation/topics":                     false,
 		"PATCH /admin/foundation/topics/{code}":             false,
 		"PUT /admin/foundation/topics/{code}/prerequisites": false,
