@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -518,7 +519,7 @@ func (r *Repository) GetTaxonomyByNamespaceCode(ctx context.Context, namespace, 
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.Taxonomy{}, fmt.Errorf("taxonomy %s:%s not found", namespace, code)
+			return domain.Taxonomy{}, domain.ErrTaxonomyNotFound
 		}
 		return domain.Taxonomy{}, fmt.Errorf("get taxonomy: %w", err)
 	}
@@ -677,4 +678,271 @@ func (r *Repository) UpsertTTSCache(
 		return fmt.Errorf("upsert tts cache: %w", err)
 	}
 	return nil
+}
+
+// CreateTaxonomy inserts a new taxonomy node.
+func (r *Repository) CreateTaxonomy(
+	ctx context.Context,
+	id uuid.UUID,
+	namespace, code, label string,
+	parentID *uuid.UUID,
+	description string,
+	cefrLevel *string,
+	position int,
+	deprecatedAt *time.Time,
+) (domain.Taxonomy, error) {
+	row, err := r.queries.CreateTaxonomy(ctx, sqlccontent.CreateTaxonomyParams{
+		ID:           id,
+		Namespace:    namespace,
+		Code:         code,
+		Label:        label,
+		ParentID:     parentID,
+		Description:  description,
+		CefrLevel:    cefrLevel,
+		Position:     boundedPosition(position),
+		DeprecatedAt: deprecatedAt,
+	})
+	if err != nil {
+		return domain.Taxonomy{}, fmt.Errorf("create taxonomy: %w", err)
+	}
+	return toDomainTaxonomy(row), nil
+}
+
+// GetTaxonomyByID retrieves a taxonomy node by ID.
+func (r *Repository) GetTaxonomyByID(ctx context.Context, id uuid.UUID) (domain.Taxonomy, error) {
+	row, err := r.queries.GetTaxonomyByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Taxonomy{}, domain.ErrTaxonomyNodeNotFound
+		}
+		return domain.Taxonomy{}, fmt.Errorf("get taxonomy by id: %w", err)
+	}
+	return toDomainTaxonomy(row), nil
+}
+
+// GetTaxonomyByCode retrieves the one taxonomy node carrying this code.
+//
+// A code is unique per namespace, not globally: nothing stops `skill.LISTENING`
+// and `pattern.LISTENING` both existing, and the spine is designed so that is a
+// natural thing to add. This used to answer whichever row Postgres reached
+// first, which made every read of an ambiguous code silently wrong and not even
+// consistently so. It now says which namespaces claim the code and asks the
+// caller to pick one.
+func (r *Repository) GetTaxonomyByCode(ctx context.Context, code string) (domain.Taxonomy, error) {
+	rows, err := r.queries.ListTaxonomiesByCode(ctx, code)
+	if err != nil {
+		return domain.Taxonomy{}, fmt.Errorf("get taxonomy by code: %w", err)
+	}
+	switch len(rows) {
+	case 0:
+		return domain.Taxonomy{}, domain.ErrTaxonomyNodeNotFound
+	case 1:
+		return toDomainTaxonomy(rows[0]), nil
+	default:
+		return domain.Taxonomy{}, domain.AmbiguousTaxonomyCode(code, rows[0].Namespace, rows[1].Namespace)
+	}
+}
+
+// ListTaxonomiesFiltered retrieves a paginated slice of taxonomy nodes matching filters.
+func (r *Repository) ListTaxonomiesFiltered(
+	ctx context.Context,
+	namespace, cefrLevel *string,
+	parentID *uuid.UUID,
+	query *string,
+	includeDeprecated bool,
+	limit, offset int32,
+) ([]domain.Taxonomy, int64, error) {
+	count, err := r.queries.CountTaxonomiesFiltered(ctx, sqlccontent.CountTaxonomiesFilteredParams{
+		Namespace:         namespace,
+		CefrLevel:         cefrLevel,
+		ParentID:          parentID,
+		Query:             query,
+		IncludeDeprecated: includeDeprecated,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("count taxonomies filtered: %w", err)
+	}
+
+	rows, err := r.queries.ListTaxonomiesFiltered(ctx, sqlccontent.ListTaxonomiesFilteredParams{
+		Namespace:         namespace,
+		CefrLevel:         cefrLevel,
+		ParentID:          parentID,
+		Query:             query,
+		IncludeDeprecated: includeDeprecated,
+		ResultLimit:       limit,
+		ResultOffset:      offset,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list taxonomies filtered: %w", err)
+	}
+
+	items := make([]domain.Taxonomy, len(rows))
+	for i, row := range rows {
+		items[i] = toDomainTaxonomy(row)
+	}
+	return items, count, nil
+}
+
+// UpdateTaxonomy updates mutable fields of a taxonomy node.
+func (r *Repository) UpdateTaxonomy(
+	ctx context.Context,
+	id uuid.UUID,
+	label, description *string,
+	cefrLevel *string, setCEFR bool,
+	parentID *uuid.UUID, setParent bool,
+	position *int,
+	deprecatedAt *time.Time, setDeprecated bool,
+) (domain.Taxonomy, error) {
+	var pos32 *int32
+	if position != nil {
+		v := boundedPosition(*position)
+		pos32 = &v
+	}
+	row, err := r.queries.UpdateTaxonomy(ctx, sqlccontent.UpdateTaxonomyParams{
+		ID:              id,
+		Label:           label,
+		Description:     description,
+		CefrLevel:       cefrLevel,
+		SetCefrLevel:    setCEFR,
+		ParentID:        parentID,
+		SetParentID:     setParent,
+		Position:        pos32,
+		DeprecatedAt:    deprecatedAt,
+		SetDeprecatedAt: setDeprecated,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Taxonomy{}, domain.ErrTaxonomyNodeNotFound
+		}
+		return domain.Taxonomy{}, fmt.Errorf("update taxonomy: %w", err)
+	}
+	return toDomainTaxonomy(row), nil
+}
+
+// DeleteTaxonomy deletes a taxonomy node.
+func (r *Repository) DeleteTaxonomy(ctx context.Context, id uuid.UUID) error {
+	err := r.queries.DeleteTaxonomy(ctx, id)
+	if err != nil {
+		return fmt.Errorf("delete taxonomy: %w", err)
+	}
+	return nil
+}
+
+// ListPrerequisitesForNode returns nodes that nodeID requires.
+func (r *Repository) ListPrerequisitesForNode(ctx context.Context, nodeID uuid.UUID) ([]domain.Taxonomy, error) {
+	rows, err := r.queries.ListPrerequisitesForNode(ctx, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("list prerequisites: %w", err)
+	}
+	items := make([]domain.Taxonomy, len(rows))
+	for i, row := range rows {
+		items[i] = toDomainTaxonomy(row)
+	}
+	return items, nil
+}
+
+// ListDependantsForNode returns nodes that require nodeID.
+func (r *Repository) ListDependantsForNode(ctx context.Context, nodeID uuid.UUID) ([]domain.Taxonomy, error) {
+	rows, err := r.queries.ListDependantsForNode(ctx, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("list dependants: %w", err)
+	}
+	items := make([]domain.Taxonomy, len(rows))
+	for i, row := range rows {
+		items[i] = toDomainTaxonomy(row)
+	}
+	return items, nil
+}
+
+// ListAllPrerequisiteEdgesInNamespace returns all prerequisite edges between nodes in a namespace.
+func (r *Repository) ListAllPrerequisiteEdgesInNamespace(
+	ctx context.Context, namespace string,
+) ([]domain.PrerequisiteEdge, error) {
+	rows, err := r.queries.ListAllPrerequisiteEdgesInNamespace(ctx, namespace)
+	if err != nil {
+		return nil, fmt.Errorf("list prerequisite edges in namespace: %w", err)
+	}
+	edges := make([]domain.PrerequisiteEdge, len(rows))
+	for i, row := range rows {
+		edges[i] = domain.PrerequisiteEdge{
+			NodeID:         row.NodeID,
+			RequiresNodeID: row.RequiresNodeID,
+		}
+	}
+	return edges, nil
+}
+
+// ListAllTaxonomiesInNamespace returns all non-deprecated taxonomy nodes in a namespace.
+func (r *Repository) ListAllTaxonomiesInNamespace(ctx context.Context, namespace string) ([]domain.Taxonomy, error) {
+	rows, err := r.queries.ListAllTaxonomiesInNamespace(ctx, namespace)
+	if err != nil {
+		return nil, fmt.Errorf("list all taxonomies in namespace: %w", err)
+	}
+	items := make([]domain.Taxonomy, len(rows))
+	for i, row := range rows {
+		items[i] = toDomainTaxonomy(row)
+	}
+	return items, nil
+}
+
+// ReplacePrerequisites deletes old prerequisites for nodeID and inserts the new ones.
+func (r *Repository) ReplacePrerequisites(ctx context.Context, nodeID uuid.UUID, requiresNodeIDs []uuid.UUID) error {
+	if err := r.queries.DeletePrerequisitesForNode(ctx, nodeID); err != nil {
+		return fmt.Errorf("delete prerequisites: %w", err)
+	}
+	for _, reqID := range requiresNodeIDs {
+		if err := r.queries.InsertPrerequisiteEdge(ctx, sqlccontent.InsertPrerequisiteEdgeParams{
+			NodeID:         nodeID,
+			RequiresNodeID: reqID,
+		}); err != nil {
+			return fmt.Errorf("insert prerequisite edge: %w", err)
+		}
+	}
+	return nil
+}
+
+// CountTaggedContentByKindForTaxonomy returns item counts grouped by kind tagged to taxonomyID.
+func (r *Repository) CountTaggedContentByKindForTaxonomy(
+	ctx context.Context, taxonomyID uuid.UUID,
+) (map[string]int, error) {
+	rows, err := r.queries.CountTaggedContentByKindForTaxonomy(ctx, taxonomyID)
+	if err != nil {
+		return nil, fmt.Errorf("count tagged content by kind: %w", err)
+	}
+	counts := make(map[string]int, len(rows))
+	for _, row := range rows {
+		counts[row.Kind] = int(row.ItemCount)
+	}
+	return counts, nil
+}
+
+// GetPublishedTopicBodyByTaxonomyID returns the body of a published foundation_topic tagged to taxonomyID.
+func (r *Repository) GetPublishedTopicBodyByTaxonomyID(
+	ctx context.Context, taxonomyID uuid.UUID,
+) ([]byte, bool, error) {
+	body, err := r.queries.GetPublishedTopicBodyByTaxonomyID(ctx, taxonomyID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("get published topic body: %w", err)
+	}
+	return body, true, nil
+}
+
+// boundedPosition narrows a position to the width of the column that stores it.
+//
+// content.taxonomies.position is an `integer`, and an unchecked int -> int32
+// conversion wraps: a position past MaxInt32 would land as a negative number and
+// sort the node to the front of its strand. The service rejects such a value
+// first; this is the conversion refusing to be the place it goes wrong.
+func boundedPosition(v int) int32 {
+	switch {
+	case v > math.MaxInt32:
+		return math.MaxInt32
+	case v < math.MinInt32:
+		return math.MinInt32
+	default:
+		return int32(v)
+	}
 }

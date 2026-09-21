@@ -20,6 +20,7 @@ import {
   useCourses,
 } from "@/features/lesson";
 import { GuestNotice, learningApi } from "@/features/learning";
+import { CheckoutModal, useUserPurchases } from "@/features/studio";
 
 export function LearnPage(): React.JSX.Element {
   const { t } = useTranslation();
@@ -62,6 +63,16 @@ export function LearnPage(): React.JSX.Element {
     error: activeCourseErr,
     refetch: refetchActiveCourse,
   } = useCourse(activeCourseSlug);
+
+  const { data: purchasesData, refetch: refetchPurchases } = useUserPurchases();
+  const [checkoutOpen, setCheckoutOpen] = React.useState(false);
+
+  const isCourseOwned = Boolean(
+    activeCourse &&
+      purchasesData?.items?.some(
+        (p) => p.course_id === activeCourse.id && !p.revoked_at,
+      ),
+  );
 
   // Enrolment is the learner's half of `StartAttempt`'s precondition, and this
   // is the only screen that holds the course id it needs. Doing it here rather
@@ -182,10 +193,36 @@ export function LearnPage(): React.JSX.Element {
         course={activeCourse}
         totalLessons={totalLessons}
         completedLessons={0}
+        isOwned={isCourseOwned}
+        priceVnd={(activeCourse as unknown as { price_vnd?: number })?.price_vnd}
+        onBuyOrClaim={() => {
+          if (!signedIn) {
+            void navigate({ to: "/login" });
+            return;
+          }
+          setCheckoutOpen(true);
+        }}
       />
 
       {/* Syllabus Unit & Lesson List */}
       <UnitList units={activeCourse.units} onStartLesson={startLesson} />
+
+      {/* Course Checkout / Claim Modal */}
+      {activeCourse && (
+        <CheckoutModal
+          courseId={activeCourse.id}
+          courseTitle={activeCourse.title}
+          priceVnd={
+            (activeCourse as unknown as { price_vnd?: number })?.price_vnd ?? 0
+          }
+          isOpen={checkoutOpen}
+          onClose={() => setCheckoutOpen(false)}
+          onSuccess={() => {
+            void refetchPurchases();
+            void refetchActiveCourse();
+          }}
+        />
+      )}
     </div>
   );
 }

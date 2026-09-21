@@ -9,6 +9,7 @@ import (
 
 	"github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/content/domain"
+	"github.com/fluentra/fluentra/internal/modules/content/service"
 )
 
 // TaxonomyTagResponse describes a taxonomy tag attached to content.
@@ -186,4 +187,142 @@ type ReportedContentListResponse struct {
 	Total  int                              `json:"total"`
 	Limit  int                              `json:"limit"`
 	Offset int                              `json:"offset"`
+}
+
+// FoundationTopicResponse serializes a knowledge spine taxonomy entry.
+type FoundationTopicResponse struct {
+	ID           uuid.UUID  `json:"id"`
+	Namespace    string     `json:"namespace"`
+	Code         string     `json:"code"`
+	Label        string     `json:"label"`
+	Description  string     `json:"description"`
+	CEFRLevel    *string    `json:"cefr_level"`
+	ParentID     *uuid.UUID `json:"parent_id"`
+	Position     int        `json:"position"`
+	DeprecatedAt *time.Time `json:"deprecated_at"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+}
+
+// FoundationTopicDetailResponse serializes detailed topic information.
+type FoundationTopicDetailResponse struct {
+	ID            uuid.UUID                 `json:"id"`
+	Namespace     string                    `json:"namespace"`
+	Code          string                    `json:"code"`
+	Label         string                    `json:"label"`
+	Description   string                    `json:"description"`
+	CEFRLevel     *string                   `json:"cefr_level"`
+	ParentID      *uuid.UUID                `json:"parent_id"`
+	Position      int                       `json:"position"`
+	DeprecatedAt  *time.Time                `json:"deprecated_at"`
+	CreatedAt     time.Time                 `json:"created_at"`
+	UpdatedAt     time.Time                 `json:"updated_at"`
+	Body          json.RawMessage           `json:"body"`
+	Prerequisites []FoundationTopicResponse `json:"prerequisites"`
+	Dependants    []FoundationTopicResponse `json:"dependants"`
+	Related       []string                  `json:"related"`
+	ExerciseCount int                       `json:"exercise_count"`
+	QuizCount     int                       `json:"quiz_count"`
+	ReviewCount   int                       `json:"review_count"`
+}
+
+// FoundationTopicListResponse is the paginated response for GET /foundation/topics.
+type FoundationTopicListResponse struct {
+	Items  []FoundationTopicResponse `json:"items"`
+	Total  int                       `json:"total"`
+	Limit  int                       `json:"limit"`
+	Offset int                       `json:"offset"`
+}
+
+// FoundationPathResponse is the response for GET /foundation/path.
+type FoundationPathResponse struct {
+	Target    *string                   `json:"target"`
+	Namespace string                    `json:"namespace"`
+	Items     []FoundationTopicResponse `json:"items"`
+}
+
+// CreateFoundationTopicRequest payload for creating a spine node.
+type CreateFoundationTopicRequest struct {
+	Namespace   string     `json:"namespace"`
+	Code        string     `json:"code"`
+	Label       string     `json:"label"`
+	Description string     `json:"description"`
+	CEFRLevel   *string    `json:"cefr_level"`
+	ParentID    *uuid.UUID `json:"parent_id"`
+	Position    int        `json:"position"`
+}
+
+// UpdateFoundationTopicRequest payload for updating topic metadata.
+type UpdateFoundationTopicRequest struct {
+	Label       *string    `json:"label"`
+	Description *string    `json:"description"`
+	CEFRLevel   *string    `json:"cefr_level"`
+	ParentID    *uuid.UUID `json:"parent_id"`
+	Position    *int       `json:"position"`
+	Deprecated  *bool      `json:"deprecated"`
+}
+
+// ReplacePrerequisitesRequest payload for replacing prerequisite edges.
+type ReplacePrerequisitesRequest struct {
+	RequiresCodes []string `json:"requires_codes"`
+}
+
+func toFoundationTopicResponse(t domain.Taxonomy) FoundationTopicResponse {
+	return FoundationTopicResponse{
+		ID:           t.ID,
+		Namespace:    t.Namespace,
+		Code:         t.Code,
+		Label:        t.Label,
+		Description:  t.Description,
+		CEFRLevel:    t.CEFRLevel,
+		ParentID:     t.ParentID,
+		Position:     t.Position,
+		DeprecatedAt: t.DeprecatedAt,
+		CreatedAt:    t.CreatedAt,
+		UpdatedAt:    t.UpdatedAt,
+	}
+}
+
+func toFoundationTopicResponses(list []domain.Taxonomy) []FoundationTopicResponse {
+	if list == nil {
+		return []FoundationTopicResponse{}
+	}
+	res := make([]FoundationTopicResponse, len(list))
+	for i, t := range list {
+		res[i] = toFoundationTopicResponse(t)
+	}
+	return res
+}
+
+func toFoundationTopicDetailResponse(detail service.FoundationTopicDetail) FoundationTopicDetailResponse {
+	var body json.RawMessage
+	if len(detail.Body) > 0 {
+		body = detail.Body
+	}
+	prereqs := toFoundationTopicResponses(detail.Prerequisites)
+	dependants := toFoundationTopicResponses(detail.Dependants)
+	related := detail.Related
+	if related == nil {
+		related = []string{}
+	}
+	return FoundationTopicDetailResponse{
+		ID:            detail.Topic.ID,
+		Namespace:     detail.Topic.Namespace,
+		Code:          detail.Topic.Code,
+		Label:         detail.Topic.Label,
+		Description:   detail.Topic.Description,
+		CEFRLevel:     detail.Topic.CEFRLevel,
+		ParentID:      detail.Topic.ParentID,
+		Position:      detail.Topic.Position,
+		DeprecatedAt:  detail.Topic.DeprecatedAt,
+		CreatedAt:     detail.Topic.CreatedAt,
+		UpdatedAt:     detail.Topic.UpdatedAt,
+		Body:          body,
+		Prerequisites: prereqs,
+		Dependants:    dependants,
+		Related:       related,
+		ExerciseCount: detail.ExerciseCount,
+		QuizCount:     detail.QuizCount,
+		ReviewCount:   detail.ReviewCount,
+	}
 }

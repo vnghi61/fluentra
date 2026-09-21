@@ -4,7 +4,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import { useLearningProfile, useUpdateLearningProfile } from "@/features/account";
+import {
+  useLearningProfile,
+  useUpdateLearningProfile,
+} from "@/features/account";
 import {
   learningKeys,
   placementApi,
@@ -70,7 +73,10 @@ export function WelcomePage(): React.JSX.Element {
     try {
       try {
         const session = await placementApi.start();
-        queryClient.setQueryData(learningKeys.placementSession(session.id), session);
+        queryClient.setQueryData(
+          learningKeys.placementSession(session.id),
+          session,
+        );
       } catch (err: unknown) {
         if (placementProblemCode(err) !== "PLACEMENT_IN_PROGRESS") throw err;
       }
@@ -106,10 +112,18 @@ export function WelcomePage(): React.JSX.Element {
 
         {step === 1 && (
           <section className="space-y-5">
-            <h1 className="text-2xl font-extrabold text-text">{t("welcome.goalTitle")}</h1>
+            <h1 className="text-2xl font-extrabold text-text">
+              {t("welcome.goalTitle")}
+            </h1>
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-text">{t("welcome.examLabel")}</p>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label={t("welcome.examLabel")}>
+              <p className="text-sm font-semibold text-text">
+                {t("welcome.examLabel")}
+              </p>
+              <div
+                className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+                role="group"
+                aria-label={t("welcome.examLabel")}
+              >
                 {EXAMS.map((value) => (
                   <button
                     key={value}
@@ -128,8 +142,14 @@ export function WelcomePage(): React.JSX.Element {
               </div>
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-text">{t("welcome.targetLabel")}</p>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6" role="group" aria-label={t("welcome.targetLabel")}>
+              <p className="text-sm font-semibold text-text">
+                {t("welcome.targetLabel")}
+              </p>
+              <div
+                className="grid grid-cols-3 gap-2 sm:grid-cols-6"
+                role="group"
+                aria-label={t("welcome.targetLabel")}
+              >
                 {TARGET_LEVELS.map((level) => (
                   <button
                     key={level}
@@ -143,7 +163,11 @@ export function WelcomePage(): React.JSX.Element {
                 ))}
               </div>
             </div>
-            <Button type="button" onClick={() => setStep(2)} className="min-h-[44px] w-full text-base">
+            <Button
+              type="button"
+              onClick={() => setStep(2)}
+              className="min-h-[44px] w-full text-base"
+            >
               {t("welcome.continue")}
             </Button>
           </section>
@@ -151,9 +175,17 @@ export function WelcomePage(): React.JSX.Element {
 
         {step === 2 && (
           <section className="space-y-5">
-            <h1 className="text-2xl font-extrabold text-text">{t("welcome.minutesTitle")}</h1>
-            <p className="text-base text-text-muted">{t("welcome.minutesSubtitle")}</p>
-            <div className="grid grid-cols-2 gap-2" role="group" aria-label={t("welcome.minutesTitle")}>
+            <h1 className="text-2xl font-extrabold text-text">
+              {t("welcome.minutesTitle")}
+            </h1>
+            <p className="text-base text-text-muted">
+              {t("welcome.minutesSubtitle")}
+            </p>
+            <div
+              className="grid grid-cols-2 gap-2"
+              role="group"
+              aria-label={t("welcome.minutesTitle")}
+            >
               {WEEKLY_MINUTES.map((value) => (
                 <button
                   key={value}
@@ -167,10 +199,19 @@ export function WelcomePage(): React.JSX.Element {
               ))}
             </div>
             <div className="flex gap-3">
-              <Button type="button" variant="outline" onClick={() => setStep(1)} className="min-h-[44px] text-base">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep(1)}
+                className="min-h-[44px] text-base"
+              >
                 {t("welcome.back")}
               </Button>
-              <Button type="button" onClick={() => setStep(3)} className="min-h-[44px] flex-1 text-base">
+              <Button
+                type="button"
+                onClick={() => setStep(3)}
+                className="min-h-[44px] flex-1 text-base"
+              >
                 {t("welcome.continue")}
               </Button>
             </div>
@@ -179,10 +220,14 @@ export function WelcomePage(): React.JSX.Element {
 
         {step === 3 && (
           <section className="space-y-5">
-            <h1 className="text-2xl font-extrabold text-text">{t("welcome.placementTitle")}</h1>
+            <h1 className="text-2xl font-extrabold text-text">
+              {t("welcome.placementTitle")}
+            </h1>
             {inviteAvailable && !choosing ? (
               <>
-                <p className="text-base text-text-muted">{t("welcome.placementSubtitle")}</p>
+                <p className="text-base text-text-muted">
+                  {t("welcome.placementSubtitle")}
+                </p>
                 <Button
                   type="button"
                   onClick={() => void takeTest()}
@@ -203,9 +248,15 @@ export function WelcomePage(): React.JSX.Element {
             ) : (
               <>
                 <p className="text-base text-text-muted">
-                  {inviteAvailable ? t("welcome.chooseSubtitle") : t("welcome.notOpen")}
+                  {inviteAvailable
+                    ? t("welcome.chooseSubtitle")
+                    : t("welcome.notOpen")}
                 </p>
-                <div className="grid grid-cols-5 gap-2" role="group" aria-label={t("welcome.chooseTitle")}>
+                <div
+                  className="grid grid-cols-5 gap-2"
+                  role="group"
+                  aria-label={t("welcome.chooseTitle")}
+                >
                   {STARTING_LEVELS.map((level) => (
                     <button
                       key={level}
@@ -229,11 +280,19 @@ export function WelcomePage(): React.JSX.Element {
               </>
             )}
             {error && (
-              <p role="alert" className="rounded-lg bg-danger/10 p-3 text-sm text-danger">
+              <p
+                role="alert"
+                className="rounded-lg bg-danger/10 p-3 text-sm text-danger"
+              >
                 {error}
               </p>
             )}
-            <Button type="button" variant="outline" onClick={() => setStep(2)} className="min-h-[44px] text-base">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStep(2)}
+              className="min-h-[44px] text-base"
+            >
               {t("welcome.back")}
             </Button>
           </section>

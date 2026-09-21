@@ -206,7 +206,7 @@ and fails `go-arch-lint` in CI.
 
 <!-- BEGIN GENERATED: rules -->
 1. **BR-RBAC-01** — Deny by default: an operation with no declared permission is refused, not allowed.
-2. **BR-RBAC-02** — Exactly two roles exist. Introducing a third requires an ADR — it changes the product's shape, not just its data.
+2. **BR-RBAC-02** — Exactly three roles exist — `admin`, `user`, `moderator` (ADR-0026). Introducing a fourth requires an ADR — it changes the product's shape, not just its data.
 3. **BR-RBAC-03** — Permissions are named `<resource>.<action>[.<qualifier>]` and are additive; there are no negative permissions.
 4. **BR-RBAC-04** — A user cannot grant themselves a role they do not already have, and cannot remove their own admin role.
 5. **BR-RBAC-05** — The last remaining admin cannot be demoted or suspended — the system must never become unadministrable.

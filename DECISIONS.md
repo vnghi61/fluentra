@@ -43,6 +43,7 @@ process.
 | [0022](docs/adr/ADR-0022-persistent-sessions.md) | Persistent sign-in: sliding window with an absolute cap | Accepted | 2026-08-07 | — |
 | [0023](docs/adr/ADR-0023-google-oauth-linking.md) | Google OAuth and the account-linking policy | Accepted | 2026-08-07 | — |
 | [0024](docs/adr/ADR-0024-mobile-first-responsive.md) | Mobile-first responsive UI as a baseline requirement | Accepted | 2026-08-07 | — |
+| [0026](docs/adr/ADR-0026-moderator-role.md) | A third role: moderator | Accepted | 2026-09-21 | — |
 
 ## 2. Decisions deliberately deferred
 

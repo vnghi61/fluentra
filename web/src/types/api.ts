@@ -1273,6 +1273,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/foundation/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Browse foundation topics with taxonomy filters.
+         * @description Returns canonical knowledge spine topics with optional namespace, level, and parent filters. Public read per ADR-0025.
+         */
+        get: operations["listFoundationTopics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/foundation/topics/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a foundation topic by code.
+         * @description Returns a single topic by its canonical code, including prerequisites, dependants, related topics, attached content counts, and published body. Public read per ADR-0025.
+         */
+        get: operations["getFoundationTopic"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/foundation/path": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get topologically sorted foundation learning path.
+         * @description Returns an ordered sequence of topics respecting prerequisite DAG constraints. Supports targeting a specific topic (?target=CODE) or ordering an entire namespace (?namespace=NAME). Public read per ADR-0025.
+         */
+        get: operations["getFoundationPath"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/foundation/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a new foundation taxonomy topic.
+         * @description Creates a new canonical spine topic. Code must be in SCREAMING_SNAKE format and is permanently immutable.
+         */
+        post: operations["createFoundationTopic"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/foundation/topics/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update foundation topic metadata.
+         * @description Updates label, description, CEFR level, parent, position, or deprecation status. The code is immutable and cannot be modified (TAXONOMY_CODE_IMMUTABLE).
+         */
+        patch: operations["updateFoundationTopic"];
+        trace?: never;
+    };
+    "/admin/foundation/topics/{code}/prerequisites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace prerequisites for a foundation topic.
+         * @description Replaces the prerequisite edge set for a topic within the same namespace. An in-memory cycle check runs on the proposed graph before database modification. Refuses any cycle with 422 TAXONOMY_CYCLE.
+         */
+        put: operations["replaceFoundationPrerequisites"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/content": {
         parameters: {
             query?: never;
@@ -2631,6 +2751,610 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/studio/creator/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get creator profile for current user.
+         * @description The caller's creator profile, or 404 if they have not opened the studio yet.
+         */
+        get: operations["studioGetCreatorProfile"];
+        put?: never;
+        /**
+         * Register or update creator profile for current user.
+         * @description Opens the studio for the caller, or updates the profile they already have.
+         */
+        post: operations["studioUpsertCreatorProfile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/studio/creator/payout-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get default payout account for current user.
+         * @description The bank account this creator is paid into. Returned to its owner, and to an admin holding billing.manage for one payout at a time (BR-STUDIO-09).
+         */
+        get: operations["studioGetPayoutAccount"];
+        put?: never;
+        /**
+         * Add or update default payout account for current user.
+         * @description Records where to send this creator's share. A paid course cannot be listed without one: selling a course nobody can be paid for is a support ticket, not a sale.
+         */
+        post: operations["studioUpsertPayoutAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/studio/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List creator drafts.
+         * @description The caller's own course drafts, newest first, with the status of each.
+         */
+        get: operations["studioListCourses"];
+        put?: never;
+        /**
+         * Create a course draft.
+         * @description Starts a course draft owned by the caller. The draft holds the whole unit, lesson and activity tree; nothing is published until it has passed both gates.
+         */
+        post: operations["studioCreateCourseDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/studio/courses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get course draft by ID.
+         * @description One of the caller's drafts, with its structure and its last verification report. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
+         */
+        get: operations["studioGetCourseDraft"];
+        /**
+         * Update course draft.
+         * @description Replaces the fields the request sets. Only a draft, or one that came back with changes requested, may be edited: a submission in review is what a moderator is reading.
+         */
+        put: operations["studioUpdateCourseDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/studio/courses/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit course draft for review.
+         * @description Submits a draft for review. Returns immediately, because Gate 1 checks every activity answer key and a creator submitting forty of them should not watch a request time out.
+         */
+        post: operations["studioSubmitCourseDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Claim a free community course.
+         * @description Takes a free community course, creating the access record without an order.
+         */
+        post: operations["studioClaimCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{id}/purchase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Initiate purchase of a paid course via VietQR.
+         * @description Creates a bank transfer order for a paid course and returns what the learner needs to pay it: the amount, the reference to put in the transfer, and a VietQR image carrying both. The price comes from the listing, never from the request.
+         */
+        post: operations["studioPurchaseCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/purchases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List owned community courses for the calling learner.
+         * @description The courses the caller owns, newest first.
+         */
+        get: operations["studioListPurchases"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/purchases/{id}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request self-service refund for a purchased course within window.
+         * @description Refunds a purchase within seven days and under a fifth of the course completed. Records what is owed against the order and reverses the creator credit; the transfer itself is made by an admin, because SePay receives money and does not send it.
+         */
+        post: operations["studioRefundPurchase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/studio/earnings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get creator earnings, balance, and recent ledger entries.
+         * @description What the caller has earned, what has been paid out, and what is still owed.
+         */
+        get: operations["studioGetEarnings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/studio/payouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a payout of creator earnings.
+         * @description Asks to be paid the balance. Pending until an admin makes the bank transfer and records its reference.
+         */
+        post: operations["studioRequestPayout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/billing/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Refunds owed to learners.
+         * @description The queue of money to send back. SePay receives money and does not send it, so every refund is a bank transfer somebody makes by hand; this is the list of the ones still to make.
+         */
+        get: operations["paymentListRefunds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/billing/refunds/{id}/sent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record that a refund has been transferred.
+         * @description Marks a requested refund as sent, after the admin has made the bank transfer. A refund already marked sent is a 409 rather than a second transfer.
+         */
+        post: operations["paymentMarkRefundSent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/billing/payouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List creator payout requests.
+         * @description Payouts owed to creators, newest first. Bank details are not in this response; they are on the single payout (BR-STUDIO-09).
+         */
+        get: operations["paymentListPayouts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/billing/payouts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get payout details including creator bank details.
+         * @description One payout with the creator's bank account, so an admin can make the transfer. The only route that returns those details.
+         */
+        get: operations["paymentGetPayout"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/billing/payouts/{id}/fulfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record manual bank transfer fulfillment for a payout.
+         * @description Records that the bank transfer for a payout has been made, with its reference.
+         */
+        post: operations["paymentFulfillPayout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/courses/{id}/takedown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remove a community course from sale.
+         * @description Takes a published community course down. Learners who already bought it keep it (BR-STUDIO-04): a takedown is not a refund, and revoking what somebody paid for because somebody else complained is a different decision with a different owner. It counts against the creator, who loses trust and is reviewed again.
+         */
+        post: operations["moderationTakedownCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/courses/{id}/reinstate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Put a taken-down course back on sale.
+         * @description Lifts an open takedown and returns the listing to active. Reinstating a course that is not down is a 404 rather than a silent success.
+         */
+        post: operations["moderationReinstateCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/creators/{id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop a creator submitting or selling.
+         * @description Suspends a creator. Their published courses stay readable for the learners who bought them, and their trust is cleared: reinstating them later does not restore it, so they go back through review.
+         */
+        post: operations["moderationSuspendCreator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/creators/{id}/reinstate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lift a creator suspension.
+         * @description Lets a suspended creator submit and sell again. Trust is not restored with it: a creator who was suspended goes back through review.
+         */
+        post: operations["moderationReinstateCreator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List course submissions in review queue.
+         * @description Submissions waiting for a human decision. Every one has already passed Gate 1, so the queue holds only what the machine could not judge.
+         */
+        get: operations["moderationListCoursesQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/courses/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve submission and publish course.
+         * @description Approves a submission and publishes the course. The reviewer may not be its creator (BR-STUDIO-06), and the submission must have passed Gate 1 (BR-STUDIO-07).
+         */
+        post: operations["moderationApproveCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/courses/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject or request changes on course submission.
+         * @description Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
+         */
+        post: operations["moderationRejectCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/payment/sepay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingest SePay incoming bank transfer webhook.
+         * @description SePay calls this when a transaction posts to our bank account. The body is stored raw and matching runs as a job. SePay counts a delivery as successful only on a 200 or 201 carrying {"success": true} within 30 seconds, and otherwise retries seven times over five hours; duplicates are dropped on its own transaction id.
+         */
+        post: operations["paymentHandleSepayWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get status and details of an order.
+         * @description One of the caller's own orders. The purchase page polls this while the learner makes the transfer, because the webhook is what moves it to paid.
+         */
+        get: operations["paymentGetOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/payments/unmatched": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List unmatched incoming transactions for operator resolution.
+         * @description Bank transactions that matched no order, or matched one with the wrong amount. A human decides what to do with each: an amount that does not match exactly is never partially credited (BR-PAYMENT-12).
+         */
+        get: operations["paymentListUnmatchedTransactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/resources/upload-intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a presigned upload intent for a file resource.
+         * @description Creates a resource in pending status and issues a presigned S3 PUT URL for uploading into fluentra-uploads.
+         */
+        post: operations["createResourceUploadIntent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List resources owned by the caller.
+         * @description Returns a paginated list of resources owned by the caller, newest first. Optionally filterable by status and kind.
+         */
+        get: operations["listMyResources"];
+        put?: never;
+        /**
+         * Confirm an uploaded file resource or submit a URL resource.
+         * @description Confirms that a file has been uploaded to storage, or submits an external URL. Transitions the resource to uploaded and queues validation.
+         */
+        post: operations["submitResource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/resources/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get details of a resource by ID.
+         * @description Returns resource details including status, failure reason if rejected, and a presigned download URL for validated files. Unowned resources answer 404.
+         */
+        get: operations["getMyResource"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a resource and its storage object.
+         * @description Deletes the resource row and its associated object in storage. Unowned resources answer 404.
+         */
+        delete: operations["deleteMyResource"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3335,10 +4059,10 @@ export interface components {
             permissions: string[];
         };
         /**
-         * @description Exactly two roles exist (BR-RBAC-02). A third is an ADR, not a row: it changes the shape of the product rather than its data.
+         * @description Exactly three roles exist (BR-RBAC-02, ADR-0026). A fourth is an ADR, not a row: it changes the shape of the product rather than its data.
          * @enum {string}
          */
-        RoleName: "admin" | "user";
+        RoleName: "admin" | "user" | "moderator";
         /** @description A role and the permissions it grants. */
         Role: {
             name: components["schemas"]["RoleName"];
@@ -3858,6 +4582,111 @@ export interface components {
             limit: number;
             offset: number;
         };
+        /**
+         * @description Canonical namespace for a taxonomy node.
+         * @enum {string}
+         */
+        TaxonomyNamespace: "course_topic" | "grammar" | "vocabulary" | "pattern" | "pronunciation" | "skill";
+        /** @description A canonical knowledge spine taxonomy entry. */
+        FoundationTopic: {
+            /** Format: uuid */
+            id: string;
+            namespace: components["schemas"]["TaxonomyNamespace"];
+            /** @example PRESENT_PERFECT */
+            code: string;
+            /** @example Present Perfect */
+            label: string;
+            /** @example Express experience and unfinished actions. */
+            description: string;
+            cefr_level?: components["schemas"]["CEFRLevel"];
+            /** Format: uuid */
+            parent_id?: string | null;
+            /** @example 10 */
+            position: number;
+            /** Format: date-time */
+            deprecated_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description Detailed view of a foundation topic including graph relations and content counts. */
+        FoundationTopicDetail: {
+            /** Format: uuid */
+            id: string;
+            namespace: components["schemas"]["TaxonomyNamespace"];
+            /** @example PRESENT_PERFECT */
+            code: string;
+            /** @example Present Perfect */
+            label: string;
+            description: string;
+            cefr_level?: components["schemas"]["CEFRLevel"];
+            /** Format: uuid */
+            parent_id?: string | null;
+            position: number;
+            /** Format: date-time */
+            deprecated_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** @description Published foundation topic body payload, if published. */
+            body?: Record<string, never> | null;
+            prerequisites: components["schemas"]["FoundationTopic"][];
+            dependants: components["schemas"]["FoundationTopic"][];
+            related: string[];
+            /** @description Number of exercise items attached to this topic. */
+            exercise_count: number;
+            /** @description Number of quiz items attached to this topic. */
+            quiz_count: number;
+            /** @description Number of review question items attached to this topic. */
+            review_count: number;
+        };
+        FoundationTopicList: {
+            items: components["schemas"]["FoundationTopic"][];
+            total: number;
+            limit: number;
+            offset: number;
+        };
+        /** @description Topologically sorted learning path of foundation topics. */
+        FoundationPath: {
+            /**
+             * @description Target topic code, if requested with ?target.
+             * @example PRESENT_PERFECT
+             */
+            target?: string | null;
+            namespace: components["schemas"]["TaxonomyNamespace"];
+            items: components["schemas"]["FoundationTopic"][];
+        };
+        CreateFoundationTopicRequest: {
+            namespace: components["schemas"]["TaxonomyNamespace"];
+            /** @example PRESENT_PERFECT */
+            code: string;
+            /** @example Present Perfect */
+            label: string;
+            /** @example Express experience and unfinished actions. */
+            description?: string;
+            cefr_level?: components["schemas"]["CEFRLevel"];
+            /** Format: uuid */
+            parent_id?: string | null;
+            /** @default 0 */
+            position: number;
+        };
+        /** @description Update topic metadata. Code is immutable and cannot be updated. */
+        UpdateFoundationTopicRequest: {
+            label?: string;
+            description?: string;
+            cefr_level?: components["schemas"]["CEFRLevel"];
+            /** Format: uuid */
+            parent_id?: string | null;
+            position?: number;
+            /** @description Set to true to deprecate this topic, or false to restore it. */
+            deprecated?: boolean;
+        };
+        ReplacePrerequisitesRequest: {
+            /** @description Complete set of prerequisite topic codes within the same namespace. */
+            requires_codes: string[];
+        };
         CourseSummary: {
             /** Format: uuid */
             id: string;
@@ -3878,6 +4707,36 @@ export interface components {
             status: "draft" | "published" | "archived";
             /** @example 40 */
             estimated_hours: number;
+            /**
+             * @example official
+             * @enum {string}
+             */
+            origin?: "curriculum" | "generated" | "official" | "community";
+            /** Format: uuid */
+            owner_id?: string | null;
+            /**
+             * @example public
+             * @enum {string}
+             */
+            visibility?: "public" | "unlisted";
+            /** Format: uuid */
+            topic_taxonomy_id?: string | null;
+            /**
+             * Format: int64
+             * @description Course price in VND (0 = free).
+             * @example 0
+             */
+            price_vnd?: number;
+            /**
+             * @example free
+             * @enum {string}
+             */
+            pricing_model?: "free" | "one_time";
+            /**
+             * @description Whether the calling learner has purchased or claimed this course.
+             * @example false
+             */
+            owned?: boolean;
         };
         CourseList: {
             courses: components["schemas"]["CourseSummary"][];
@@ -3957,6 +4816,36 @@ export interface components {
             status: string;
             /** @example 40 */
             estimated_hours: number;
+            /**
+             * @example official
+             * @enum {string}
+             */
+            origin?: "curriculum" | "generated" | "official" | "community";
+            /** Format: uuid */
+            owner_id?: string | null;
+            /**
+             * @example public
+             * @enum {string}
+             */
+            visibility?: "public" | "unlisted";
+            /** Format: uuid */
+            topic_taxonomy_id?: string | null;
+            /**
+             * Format: int64
+             * @description Course price in VND (0 = free).
+             * @example 0
+             */
+            price_vnd?: number;
+            /**
+             * @example free
+             * @enum {string}
+             */
+            pricing_model?: "free" | "one_time";
+            /**
+             * @description Whether the calling learner has purchased or claimed this course.
+             * @example false
+             */
+            owned?: boolean;
             units: components["schemas"]["CourseUnit"][];
         };
         LessonDetail: {
@@ -5503,6 +6392,603 @@ export interface components {
             minutes_goal: number;
             items: components["schemas"]["WeeklyPlanItem"][];
             progress: components["schemas"]["WeeklyPlanProgress"];
+        };
+        CreatorProfile: {
+            /** Format: uuid */
+            user_id: string;
+            /** @example Experienced IELTS instructor and curriculum designer. */
+            bio: string;
+            /** @example Senior English Language Coach */
+            headline: string;
+            payout_eligible: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        UpsertCreatorProfileRequest: {
+            /** @example Experienced IELTS instructor and curriculum designer. */
+            bio: string;
+            /** @example Senior English Language Coach */
+            headline: string;
+        };
+        PayoutAccount: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            creator_id: string;
+            /** @example MB */
+            bank_code: string;
+            /** @example 0987654321 */
+            account_number: string;
+            /** @example NGUYEN VAN A */
+            account_holder_name: string;
+            is_default: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CreatePayoutAccountRequest: {
+            /** @example MB */
+            bank_code: string;
+            /** @example 0987654321 */
+            account_number: string;
+            /** @example NGUYEN VAN A */
+            account_holder_name: string;
+            /** @default true */
+            is_default: boolean;
+        };
+        CourseDraft: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            owner_id: string;
+            /** @example Business English for Tech Professionals */
+            title: string;
+            /** @example business-english-tech */
+            slug: string;
+            /** @example Master technical communication and presentation in English. */
+            description: string;
+            /** @example B2 */
+            cefr_level: string;
+            /** Format: uuid */
+            topic_taxonomy_id?: string | null;
+            /**
+             * Format: int64
+             * @description Course price in VND (0 = free).
+             * @example 0
+             */
+            price_vnd: number;
+            /** @enum {string} */
+            status: "draft" | "submitted" | "verifying" | "in_review" | "published" | "rejected" | "changes_requested";
+            /** @description Course structure containing units, lessons, and activities. */
+            structure: Record<string, never>;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CreateCourseDraftRequest: {
+            /** @example Business English for Tech Professionals */
+            title: string;
+            /** @example business-english-tech */
+            slug: string;
+            /** @example Master technical communication and presentation in English. */
+            description?: string;
+            /** @example B2 */
+            cefr_level: string;
+            /** Format: uuid */
+            topic_taxonomy_id?: string;
+            /**
+             * Format: int64
+             * @default 0
+             */
+            price_vnd: number;
+            structure?: Record<string, never>;
+        };
+        UpdateCourseDraftRequest: {
+            title?: string;
+            slug?: string;
+            description?: string;
+            cefr_level?: string;
+            /** Format: uuid */
+            topic_taxonomy_id?: string;
+            /** Format: int64 */
+            price_vnd?: number;
+            structure?: Record<string, never>;
+        };
+        CourseDraftList: {
+            items: components["schemas"]["CourseDraft"][];
+            total: number;
+        };
+        CourseSubmission: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            draft_id: string;
+            version: number;
+            /** @enum {string} */
+            status: "submitted" | "verifying" | "in_review" | "approved" | "rejected" | "changes_requested";
+            /** Format: uuid */
+            submitted_by: string;
+            /** Format: uuid */
+            reviewer_id?: string | null;
+            feedback?: string | null;
+            verification_report?: Record<string, never> | null;
+            /** Format: date-time */
+            submitted_at: string;
+            /** Format: date-time */
+            reviewed_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        ModerationQueueItem: {
+            submission: components["schemas"]["CourseSubmission"];
+            draft: components["schemas"]["CourseDraft"];
+        };
+        ModerationQueueList: {
+            items: components["schemas"]["ModerationQueueItem"][];
+            total: number;
+        };
+        ReviewSubmissionRequest: {
+            /** @example Please fix grammar in quiz question 2. */
+            feedback?: string;
+            /** @enum {string} */
+            status?: "approved" | "rejected" | "changes_requested";
+        };
+        CoursePurchase: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            user_id: string;
+            /** Format: uuid */
+            course_id: string;
+            /** @example Business English for Tech Professionals */
+            course_title?: string;
+            /** @example business-english-tech */
+            course_slug?: string;
+            /** Format: uuid */
+            order_id?: string | null;
+            /**
+             * Format: int64
+             * @example 49000
+             */
+            price_paid_vnd: number;
+            /** Format: date-time */
+            granted_at: string;
+            /** Format: date-time */
+            revoked_at?: string | null;
+            revoke_reason?: string | null;
+        };
+        UserPurchaseList: {
+            items: components["schemas"]["CoursePurchase"][];
+            total: number;
+        };
+        PurchaseOrderResponse: {
+            /** Format: uuid */
+            order_id: string;
+            /** @example FLU4KL9A1B2C3 */
+            reference: string;
+            /**
+             * Format: int64
+             * @example 49000
+             */
+            amount_vnd: number;
+            /** @example https://vietqr.app/img?acc=1017588888&bank=VCB&amount=49000&des=FLU4KL9A1B2C3&template=compact */
+            qr_url: string;
+            /** @example VCB */
+            bank_code: string;
+            /** @example 1017588888 */
+            account_number: string;
+            /** @example FLUENTRA */
+            account_holder_name: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        RefundPurchaseResponse: {
+            /** @example true */
+            success: boolean;
+            /** @example Refund requested successfully */
+            message: string;
+        };
+        CreatorLedgerEntry: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @example sale
+             * @enum {string}
+             */
+            kind: "sale" | "refund" | "payout" | "adjustment" | "platform_share";
+            /**
+             * Format: int64
+             * @example 34300
+             */
+            amount_vnd: number;
+            /**
+             * Format: int64
+             * @example 49000
+             */
+            gross_amount_vnd: number;
+            /**
+             * Format: int64
+             * @example 14700
+             */
+            fee_amount_vnd: number;
+            /** @example 70% creator share */
+            note: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        CreatorEarningsSummary: {
+            /**
+             * Format: int64
+             * @example 3500000
+             */
+            available_balance_vnd: number;
+            /**
+             * Format: int64
+             * @example 5000000
+             */
+            lifetime_earnings_vnd: number;
+            /**
+             * Format: int64
+             * @example 0
+             */
+            pending_payout_vnd: number;
+            /**
+             * Format: int64
+             * @example 1500000
+             */
+            total_paid_out_vnd: number;
+            /**
+             * Format: int64
+             * @example 500000
+             */
+            payout_threshold_vnd: number;
+            /** @example true */
+            can_request_payout: boolean;
+            /** @example true */
+            payout_account_configured: boolean;
+            /** @example VCB */
+            payout_bank_code?: string | null;
+            /** @example NGUYEN VAN A */
+            payout_account_holder?: string | null;
+            /** @example ******8888 */
+            payout_masked_account?: string | null;
+            recent_ledger: components["schemas"]["CreatorLedgerEntry"][];
+        };
+        RequestPayoutRequest: {
+            /**
+             * Format: int64
+             * @example 1000000
+             */
+            amount_vnd?: number | null;
+        };
+        PayoutResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            creator_id: string;
+            /**
+             * Format: int64
+             * @example 1000000
+             */
+            amount_vnd: number;
+            /**
+             * @example pending
+             * @enum {string}
+             */
+            status: "pending" | "sent" | "failed";
+            /** @example VCB-TRF-123456 */
+            bank_reference?: string | null;
+            /** Format: date-time */
+            sent_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** @example VCB */
+            bank_code?: string | null;
+            /** @example 1017588888 */
+            account_number?: string | null;
+            /** @example NGUYEN VAN A */
+            account_holder_name?: string | null;
+        };
+        AdminPayoutList: {
+            items: components["schemas"]["PayoutResponse"][];
+            total: number;
+        };
+        /** @description A community course removed from sale, and why. Learners who already bought it keep it (BR-STUDIO-04): a takedown is not a refund. */
+        Takedown: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            course_id: string;
+            reason: string;
+            /** Format: date-time */
+            reinstated_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        /** @description A creator's standing after a moderator acted on them. */
+        CreatorModeration: {
+            /** Format: uuid */
+            user_id: string;
+            /** Format: date-time */
+            suspended_at?: string | null;
+            suspended_reason?: string | null;
+            /** @description Whether this creator's free courses publish on the automated gate alone. Cleared by a suspension or an upheld report. */
+            trusted: boolean;
+        };
+        ModerationReasonRequest: {
+            /** @description Why the moderator acted. Required: an action nobody explained is one nobody can review or undo fairly. */
+            reason: string;
+        };
+        FulfillPayoutRequest: {
+            /** @example VCB-TRF-123456 */
+            bank_reference: string;
+            /** @example Transferred from corporate Vietcombank */
+            note?: string | null;
+        };
+        BillingOrder: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            user_id: string;
+            /** @example FLU789ABCDE */
+            reference: string;
+            /**
+             * Format: int64
+             * @example 490000
+             */
+            amount_vnd: number;
+            /**
+             * @example pending
+             * @enum {string}
+             */
+            status: "pending" | "paid" | "expired" | "cancelled" | "refunded";
+            /** @example course */
+            subject_kind: string;
+            /** Format: uuid */
+            subject_id: string;
+            /**
+             * Format: uri
+             * @example https://vietqr.app/img?acc=1017588888&bank=VCB&amount=490000&des=FLU789ABCDE&template=compact
+             */
+            qr_url?: string;
+            /** @example VCB */
+            bank_code?: string;
+            /** @example 1017588888 */
+            account_number?: string;
+            /** @example FLUENTRA */
+            account_holder_name?: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: date-time */
+            paid_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        SepayWebhookPayload: {
+            /**
+             * Format: int64
+             * @example 92704
+             */
+            id: number;
+            /** @example Vietcombank */
+            gateway: string;
+            /** @example 2024-07-02 11:08:33 */
+            transactionDate: string;
+            /** @example 1017588888 */
+            accountNumber: string;
+            /** @example  */
+            subAccount?: string;
+            /** @example SEVN63DC8E5C */
+            code?: string;
+            /** @example FLU789ABCDE chuyen tien */
+            content?: string;
+            /**
+             * @example in
+             * @enum {string}
+             */
+            transferType: "in" | "out";
+            /** @example NGUYEN VAN A chuyen tien */
+            description?: string;
+            /**
+             * Format: int64
+             * @example 490000
+             */
+            transferAmount: number;
+            /**
+             * Format: int64
+             * @example 105000000
+             */
+            accumulated?: number;
+            /** @example FT24012345678 */
+            referenceCode?: string;
+        };
+        SepayWebhookResponse: {
+            /** @example true */
+            success: boolean;
+        };
+        UnmatchedTransaction: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            sepay_id: number;
+            gateway: string;
+            /** Format: date-time */
+            transaction_date: string;
+            account_number: string;
+            content: string;
+            transfer_type: string;
+            /** Format: int64 */
+            transfer_amount: number;
+            unmatched_reason?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        UnmatchedTransactionsList: {
+            items: components["schemas"]["UnmatchedTransaction"][];
+            total: number;
+        };
+        /** @description Money owed back to a learner. A record of an obligation rather than a transfer: SePay receives money and does not send it, so the refund is paid by an admin making a bank transfer and then marking this row sent. */
+        Refund: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            order_id: string;
+            /**
+             * Format: int64
+             * @description Whole VND. The currency has no subunit.
+             */
+            amount_vnd: number;
+            reason: string;
+            /** @enum {string} */
+            status: "requested" | "sent" | "failed";
+            /** Format: date-time */
+            sent_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        RefundList: {
+            items: components["schemas"]["Refund"][];
+            total: number;
+        };
+        /** @description A learner's uploaded file or submitted URL resource. */
+        Resource: {
+            /**
+             * Format: uuid
+             * @example 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+             */
+            id: string;
+            /**
+             * @example file
+             * @enum {string}
+             */
+            kind: "file" | "url";
+            /** @example Advanced Grammar Guide.pdf */
+            title: string;
+            /**
+             * @example validated
+             * @enum {string}
+             */
+            status: "pending" | "uploaded" | "validated" | "rejected" | "failed";
+            /** @example  */
+            failure_reason: string;
+            /** @example Advanced Grammar Guide.pdf */
+            original_filename: string;
+            /** @example application/pdf */
+            declared_mime: string;
+            /** @example application/pdf */
+            detected_mime: string;
+            /**
+             * Format: int64
+             * @example 2458120
+             */
+            byte_size?: number | null;
+            /** @example e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 */
+            checksum?: string | null;
+            /** @example null */
+            source_url?: string | null;
+            /**
+             * @description Presigned download URL for validated file resources.
+             * @example https://storage.example.com/fluentra-uploads/...
+             */
+            download_url?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-21T00:00:00Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-21T00:01:00Z
+             */
+            updated_at: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-21T00:01:00Z
+             */
+            validated_at?: string | null;
+        };
+        ResourceList: {
+            items: components["schemas"]["Resource"][];
+            /** @example 1 */
+            total: number;
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            page_size: number;
+        };
+        ResourceUploadIntentRequest: {
+            /**
+             * @description Original name of the file to be uploaded.
+             * @example grammar_lesson.pdf
+             */
+            filename: string;
+            /**
+             * @description MIME type declared by the client.
+             * @example application/pdf
+             */
+            content_type: string;
+        };
+        ResourceUploadIntentResponse: {
+            /**
+             * Format: uuid
+             * @description Created resource ID in pending status.
+             * @example 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+             */
+            id: string;
+            /**
+             * @description Presigned S3 PUT URL to upload bytes into fluentra-uploads.
+             * @example https://storage.example.com/fluentra-uploads/users/...
+             */
+            upload_url: string;
+            /**
+             * @description Storage object key in fluentra-uploads.
+             * @example user/018f3a5e-7b82-7d2c-80a2-bf3d6118d531/2026/09/resource-id.pdf
+             */
+            object_key: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-21T00:05:00Z
+             */
+            expires_at: string;
+        };
+        /** @description Confirmation of an uploaded file by resource_id OR submission of a new URL. */
+        SubmitResourceRequest: {
+            /**
+             * Format: uuid
+             * @description ID of a pending file resource to confirm after S3 upload.
+             * @example 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+             */
+            resource_id?: string;
+            /**
+             * @description Public HTTP/HTTPS URL to import as a resource.
+             * @example https://en.wikipedia.org/wiki/English_grammar
+             */
+            url?: string;
+            /**
+             * @description Optional title for URL resources.
+             * @example English Grammar Guide
+             */
+            title?: string;
+        };
+        ResourceSubmitResponse: {
+            /**
+             * Format: uuid
+             * @example 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+             */
+            id: string;
+            /**
+             * @example uploaded
+             * @enum {string}
+             */
+            status: "uploaded";
         };
     };
     responses: {
@@ -7962,6 +9448,8 @@ export interface operations {
             query?: {
                 /** @description Return only courses whose CEFR range covers this level. */
                 level?: components["schemas"]["CEFRLevel"];
+                /** @description Return only courses matching this topic taxonomy ID or code. */
+                topic?: string;
                 /** @description Maximum courses to return. */
                 limit?: number;
                 /** @description Courses to skip before the page starts. */
@@ -8385,6 +9873,331 @@ export interface operations {
             404: components["responses"]["NotFound"];
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalServerError"];
+        };
+    };
+    listFoundationTopics: {
+        parameters: {
+            query?: {
+                /** @description Filter topics by taxonomy namespace. */
+                namespace?: components["schemas"]["TaxonomyNamespace"];
+                /** @description Filter topics by CEFR level. */
+                cefr_level?: components["schemas"]["CEFRLevel"];
+                /** @description Filter topics by parent taxonomy ID. */
+                parent_id?: string;
+                /** @description Search topics by code or label. */
+                q?: string;
+                /** @description Maximum topics to return. */
+                limit?: number;
+                /** @description Topics to skip before the page starts. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of foundation topics matching filters. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *           "namespace": "grammar",
+                     *           "code": "PRESENT_PERFECT",
+                     *           "label": "Present Perfect",
+                     *           "description": "Express experience and unfinished actions.",
+                     *           "cefr_level": "B1",
+                     *           "parent_id": null,
+                     *           "position": 10,
+                     *           "deprecated_at": null,
+                     *           "created_at": "2026-09-20T12:00:00Z",
+                     *           "updated_at": "2026-09-20T12:00:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "limit": 20,
+                     *       "offset": 0
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationTopicList"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getFoundationTopic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Canonical topic code. */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Detailed topic view. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "namespace": "grammar",
+                     *       "code": "PRESENT_PERFECT",
+                     *       "label": "Present Perfect",
+                     *       "description": "Express experience and unfinished actions.",
+                     *       "cefr_level": "B1",
+                     *       "parent_id": null,
+                     *       "position": 10,
+                     *       "deprecated_at": null,
+                     *       "created_at": "2026-09-20T12:00:00Z",
+                     *       "updated_at": "2026-09-20T12:00:00Z",
+                     *       "body": null,
+                     *       "prerequisites": [],
+                     *       "dependants": [],
+                     *       "related": [
+                     *         "PAST_SIMPLE"
+                     *       ],
+                     *       "exercise_count": 3,
+                     *       "quiz_count": 1,
+                     *       "review_count": 2
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationTopicDetail"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getFoundationPath: {
+        parameters: {
+            query?: {
+                /** @description Target topic code whose prerequisite chain should be calculated. */
+                target?: string;
+                /** @description Namespace to sort (defaults to grammar if target is omitted). */
+                namespace?: components["schemas"]["TaxonomyNamespace"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ordered learning path. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "target": "PRESENT_PERFECT",
+                     *       "namespace": "grammar",
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "namespace": "grammar",
+                     *           "code": "SENTENCE_STRUCTURE",
+                     *           "label": "Sentence Structure",
+                     *           "description": "Basic sentence construction.",
+                     *           "cefr_level": "A1",
+                     *           "parent_id": null,
+                     *           "position": 1,
+                     *           "deprecated_at": null,
+                     *           "created_at": "2026-09-20T12:00:00Z",
+                     *           "updated_at": "2026-09-20T12:00:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationPath"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createFoundationTopic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "namespace": "grammar",
+                 *       "code": "PRESENT_PERFECT",
+                 *       "label": "Present Perfect",
+                 *       "description": "Express experience and unfinished actions.",
+                 *       "cefr_level": "B1",
+                 *       "position": 10
+                 *     }
+                 */
+                "application/json": components["schemas"]["CreateFoundationTopicRequest"];
+            };
+        };
+        responses: {
+            /** @description Foundation topic created. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "namespace": "grammar",
+                     *       "code": "PRESENT_PERFECT",
+                     *       "label": "Present Perfect",
+                     *       "description": "Express experience and unfinished actions.",
+                     *       "cefr_level": "B1",
+                     *       "parent_id": null,
+                     *       "position": 10,
+                     *       "deprecated_at": null,
+                     *       "created_at": "2026-09-20T12:00:00Z",
+                     *       "updated_at": "2026-09-20T12:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationTopic"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    updateFoundationTopic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Topic code to update. */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "label": "Present Perfect Tense",
+                 *       "description": "Updated description for present perfect.",
+                 *       "cefr_level": "B1"
+                 *     }
+                 */
+                "application/json": components["schemas"]["UpdateFoundationTopicRequest"];
+            };
+        };
+        responses: {
+            /** @description Topic updated. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "namespace": "grammar",
+                     *       "code": "PRESENT_PERFECT",
+                     *       "label": "Present Perfect Tense",
+                     *       "description": "Updated description for present perfect.",
+                     *       "cefr_level": "B1",
+                     *       "parent_id": null,
+                     *       "position": 10,
+                     *       "deprecated_at": null,
+                     *       "created_at": "2026-09-20T12:00:00Z",
+                     *       "updated_at": "2026-09-20T12:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationTopic"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    replaceFoundationPrerequisites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Topic code whose prerequisites are being replaced. */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "requires_codes": [
+                 *         "PAST_SIMPLE",
+                 *         "PRESENT_SIMPLE"
+                 *       ]
+                 *     }
+                 */
+                "application/json": components["schemas"]["ReplacePrerequisitesRequest"];
+            };
+        };
+        responses: {
+            /** @description Prerequisites replaced successfully. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "namespace": "grammar",
+                     *       "code": "PRESENT_PERFECT",
+                     *       "label": "Present Perfect",
+                     *       "description": "Express experience and unfinished actions.",
+                     *       "cefr_level": "B1",
+                     *       "parent_id": null,
+                     *       "position": 10,
+                     *       "deprecated_at": null,
+                     *       "created_at": "2026-09-20T12:00:00Z",
+                     *       "updated_at": "2026-09-20T12:00:00Z",
+                     *       "body": null,
+                     *       "prerequisites": [],
+                     *       "dependants": [],
+                     *       "related": [],
+                     *       "exercise_count": 0,
+                     *       "quiz_count": 0,
+                     *       "review_count": 0
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationTopicDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     adminListContent: {
@@ -11873,6 +13686,1354 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["ExamScoreReport"];
                 };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioGetCreatorProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Creator profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "bio": "Experienced IELTS instructor and curriculum designer.",
+                     *       "headline": "Senior English Language Coach",
+                     *       "payout_eligible": true,
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CreatorProfile"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioUpsertCreatorProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertCreatorProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated creator profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "bio": "Experienced IELTS instructor and curriculum designer.",
+                     *       "headline": "Senior English Language Coach",
+                     *       "payout_eligible": true,
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CreatorProfile"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioGetPayoutAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Payout account. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "bank_code": "MB",
+                     *       "account_number": "0987654321",
+                     *       "account_holder_name": "NGUYEN VAN A",
+                     *       "is_default": true,
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PayoutAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioUpsertPayoutAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePayoutAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Payout account set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "bank_code": "MB",
+                     *       "account_number": "0987654321",
+                     *       "account_holder_name": "NGUYEN VAN A",
+                     *       "is_default": true,
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PayoutAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioListCourses: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of course drafts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [],
+                     *       "total": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CourseDraftList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioCreateCourseDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCourseDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Course draft created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "owner_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "title": "Business English for Tech Professionals",
+                     *       "slug": "business-english-tech",
+                     *       "description": "Master technical communication and presentation in English.",
+                     *       "cefr_level": "B2",
+                     *       "price_vnd": 0,
+                     *       "status": "draft",
+                     *       "structure": {},
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CourseDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioGetCourseDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Course draft details. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "owner_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "title": "Business English for Tech Professionals",
+                     *       "slug": "business-english-tech",
+                     *       "description": "Master technical communication and presentation in English.",
+                     *       "cefr_level": "B2",
+                     *       "price_vnd": 0,
+                     *       "status": "draft",
+                     *       "structure": {},
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CourseDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioUpdateCourseDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCourseDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Course draft updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "owner_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "title": "Business English for Tech Professionals",
+                     *       "slug": "business-english-tech",
+                     *       "description": "Master technical communication and presentation in English.",
+                     *       "cefr_level": "B2",
+                     *       "price_vnd": 0,
+                     *       "status": "draft",
+                     *       "structure": {},
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CourseDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioSubmitCourseDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Course submitted for verification. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "draft_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "version": 1,
+                     *       "status": "submitted",
+                     *       "submitted_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "submitted_at": "2026-09-20T09:00:00Z",
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CourseSubmission"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioClaimCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course ID to claim. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Course successfully claimed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "course_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "price_paid_vnd": 49000,
+                     *       "granted_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CoursePurchase"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioPurchaseCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course ID to purchase. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Purchase order created with VietQR payment instructions. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "order_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "reference": "FLU4KL9A1B2C3",
+                     *       "amount_vnd": 49000,
+                     *       "qr_url": "https://vietqr.app/img?acc=1017588888&bank=VCB&amount=49000&des=FLU4KL9A1B2C3&template=compact",
+                     *       "bank_code": "VCB",
+                     *       "account_number": "1017588888",
+                     *       "account_holder_name": "FLUENTRA",
+                     *       "expires_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PurchaseOrderResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioListPurchases: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of purchases and claims. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [],
+                     *       "total": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["UserPurchaseList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioRefundPurchase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Purchase ID to refund. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Refund processed or requested. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "message": "Refund requested successfully"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["RefundPurchaseResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioGetEarnings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Creator earnings summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "available_balance_vnd": 3500000,
+                     *       "lifetime_earnings_vnd": 5000000,
+                     *       "pending_payout_vnd": 0,
+                     *       "total_paid_out_vnd": 1500000,
+                     *       "payout_threshold_vnd": 500000,
+                     *       "can_request_payout": true,
+                     *       "payout_account_configured": true,
+                     *       "recent_ledger": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CreatorEarningsSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioRequestPayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RequestPayoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Payout request created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "amount_vnd": 1000000,
+                     *       "status": "pending",
+                     *       "created_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PayoutResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentListRefunds: {
+        parameters: {
+            query?: {
+                /** @description Filter by refund status. */
+                status?: "requested" | "sent" | "failed";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Refunds owed, newest first. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "order_id": "0199a1c2-3d4e-7f80-9abc-def012345650",
+                     *           "amount_vnd": 199000,
+                     *           "reason": "learner_refund",
+                     *           "status": "requested",
+                     *           "sent_at": null,
+                     *           "created_at": "2026-09-20T09:00:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["RefundList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentMarkRefundSent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Refund ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The refund, now sent. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "order_id": "0199a1c2-3d4e-7f80-9abc-def012345650",
+                     *       "amount_vnd": 199000,
+                     *       "reason": "learner_refund",
+                     *       "status": "sent",
+                     *       "sent_at": "2026-09-20T10:00:00Z",
+                     *       "created_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Refund"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentListPayouts: {
+        parameters: {
+            query?: {
+                status?: "pending" | "sent" | "failed";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of payouts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [],
+                     *       "total": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminPayoutList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentGetPayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Payout details. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "amount_vnd": 1000000,
+                     *       "status": "pending",
+                     *       "created_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PayoutResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentFulfillPayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FulfillPayoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Payout fulfilled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "amount_vnd": 1000000,
+                     *       "status": "pending",
+                     *       "created_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PayoutResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationTakedownCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "reason": "plagiarised from a textbook"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ModerationReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description The course is down. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345680",
+                     *       "course_id": "0199a1c2-3d4e-7f80-9abc-def012345640",
+                     *       "reason": "plagiarised from a textbook",
+                     *       "reinstated_at": null,
+                     *       "created_at": "2026-09-20T12:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Takedown"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationReinstateCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The course is back on sale. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345680",
+                     *       "course_id": "0199a1c2-3d4e-7f80-9abc-def012345640",
+                     *       "reason": "plagiarised from a textbook",
+                     *       "reinstated_at": "2026-09-21T09:00:00Z",
+                     *       "created_at": "2026-09-20T12:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Takedown"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationSuspendCreator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Creator user ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "reason": "repeated plagiarism across three courses"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ModerationReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description The creator is suspended. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345601",
+                     *       "suspended_at": "2026-09-20T12:00:00Z",
+                     *       "suspended_reason": "repeated plagiarism across three courses",
+                     *       "trusted": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CreatorModeration"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationReinstateCreator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Creator user ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The suspension is lifted. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345601",
+                     *       "suspended_at": null,
+                     *       "suspended_reason": null,
+                     *       "trusted": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CreatorModeration"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationListCoursesQueue: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of submissions in review. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [],
+                     *       "total": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ModerationQueueList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationApproveCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Submission ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Submission approved and course published. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "draft_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "version": 1,
+                     *       "status": "submitted",
+                     *       "submitted_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "submitted_at": "2026-09-20T09:00:00Z",
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CourseSubmission"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationRejectCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Submission ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReviewSubmissionRequest"];
+            };
+        };
+        responses: {
+            /** @description Submission rejected or changes requested. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "draft_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "version": 1,
+                     *       "status": "submitted",
+                     *       "submitted_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "submitted_at": "2026-09-20T09:00:00Z",
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CourseSubmission"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentHandleSepayWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SepayWebhookPayload"];
+            };
+        };
+        responses: {
+            /** @description Webhook acknowledged. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SepayWebhookResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentGetOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Order ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Order details. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "reference": "FLU789ABCDE",
+                     *       "amount_vnd": 490000,
+                     *       "status": "pending",
+                     *       "subject_kind": "course",
+                     *       "subject_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "expires_at": "2026-09-20T09:00:00Z",
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BillingOrder"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentListUnmatchedTransactions: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of unmatched transactions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [],
+                     *       "total": 0,
+                     *       "limit": 50,
+                     *       "offset": 0
+                     *     }
+                     */
+                    "application/json": components["schemas"]["UnmatchedTransactionsList"];
+                };
+            };
+        };
+    };
+    createResourceUploadIntent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "filename": "grammar_lesson.pdf",
+                 *       "content_type": "application/pdf"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ResourceUploadIntentRequest"];
+            };
+        };
+        responses: {
+            /** @description Upload intent generated. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531",
+                     *       "upload_url": "https://storage.example.com/fluentra-uploads/users/018f3a5e-7b82-7d2c-80a2-bf3d6118d531/2026/09/asset.pdf",
+                     *       "object_key": "users/018f3a5e-7b82-7d2c-80a2-bf3d6118d531/2026/09/asset.pdf",
+                     *       "expires_at": "2026-09-21T00:05:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResourceUploadIntentResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listMyResources: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                status?: "pending" | "uploaded" | "validated" | "rejected" | "failed";
+                kind?: "file" | "url";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of caller's resources. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531",
+                     *           "kind": "file",
+                     *           "title": "Advanced Grammar Guide.pdf",
+                     *           "status": "validated",
+                     *           "failure_reason": "",
+                     *           "original_filename": "Advanced Grammar Guide.pdf",
+                     *           "declared_mime": "application/pdf",
+                     *           "detected_mime": "application/pdf",
+                     *           "byte_size": 2458120,
+                     *           "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                     *           "source_url": null,
+                     *           "download_url": "https://storage.example.com/fluentra-uploads/...",
+                     *           "created_at": "2026-09-21T00:00:00Z",
+                     *           "updated_at": "2026-09-21T00:01:00Z",
+                     *           "validated_at": "2026-09-21T00:01:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "page": 1,
+                     *       "page_size": 20
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResourceList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    submitResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "resource_id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531"
+                 *     }
+                 */
+                "application/json": components["schemas"]["SubmitResourceRequest"];
+            };
+        };
+        responses: {
+            /** @description Resource accepted for validation. */
+            202: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531",
+                     *       "status": "uploaded"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResourceSubmitResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getMyResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resource details. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531",
+                     *       "kind": "file",
+                     *       "title": "Advanced Grammar Guide.pdf",
+                     *       "status": "validated",
+                     *       "failure_reason": "",
+                     *       "original_filename": "Advanced Grammar Guide.pdf",
+                     *       "declared_mime": "application/pdf",
+                     *       "detected_mime": "application/pdf",
+                     *       "byte_size": 2458120,
+                     *       "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                     *       "source_url": null,
+                     *       "download_url": "https://storage.example.com/fluentra-uploads/...",
+                     *       "created_at": "2026-09-21T00:00:00Z",
+                     *       "updated_at": "2026-09-21T00:01:00Z",
+                     *       "validated_at": "2026-09-21T00:01:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Resource"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    deleteMyResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resource deleted successfully. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];

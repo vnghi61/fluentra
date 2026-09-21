@@ -328,3 +328,24 @@ type PlacementListeningPolicy interface {
 type AudioLocator interface {
 	AudioKey(ctx context.Context, script, voice string) (objectKey string, found bool, err error)
 }
+
+// ItemVerifier runs the six checks that stand between a generated item and a
+// learner. A community submission is checked by exactly the same machine, for
+// exactly the same reason: a wrong answer key is invisible to a reader and
+// wrong for everyone who meets it.
+type ItemVerifier interface {
+	// VerifyItem returns nil when the item passes, or an error naming the
+	// check that failed. `blindSolve` is optional because check 4 costs an AI
+	// call per item.
+	VerifyItem(ctx context.Context, req VerifyItemRequest) error
+}
+
+// VerifyItemRequest specifies an item to verify through ItemVerifier.
+type VerifyItemRequest struct {
+	Kind       string
+	TaskType   string // read_aloud / respond, for speaking_task
+	CEFRLevel  string
+	Body       json.RawMessage
+	Existing   []json.RawMessage // for the duplicate check
+	BlindSolve bool
+}

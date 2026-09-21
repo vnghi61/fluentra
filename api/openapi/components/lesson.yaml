@@ -27,6 +27,35 @@ CourseSummary:
     estimated_hours:
       type: integer
       example: 40
+    origin:
+      type: string
+      enum: [curriculum, generated, official, community]
+      example: official
+    owner_id:
+      type: string
+      format: uuid
+      nullable: true
+    visibility:
+      type: string
+      enum: [public, unlisted]
+      example: public
+    topic_taxonomy_id:
+      type: string
+      format: uuid
+      nullable: true
+    price_vnd:
+      type: integer
+      format: int64
+      description: Course price in VND (0 = free).
+      example: 0
+    pricing_model:
+      type: string
+      enum: [free, one_time]
+      example: free
+    owned:
+      type: boolean
+      description: Whether the calling learner has purchased or claimed this course.
+      example: false
 
 CourseList:
   type: object
@@ -157,6 +186,35 @@ CourseDetail:
     estimated_hours:
       type: integer
       example: 40
+    origin:
+      type: string
+      enum: [curriculum, generated, official, community]
+      example: official
+    owner_id:
+      type: string
+      format: uuid
+      nullable: true
+    visibility:
+      type: string
+      enum: [public, unlisted]
+      example: public
+    topic_taxonomy_id:
+      type: string
+      format: uuid
+      nullable: true
+    price_vnd:
+      type: integer
+      format: int64
+      description: Course price in VND (0 = free).
+      example: 0
+    pricing_model:
+      type: string
+      enum: [free, one_time]
+      example: free
+    owned:
+      type: boolean
+      description: Whether the calling learner has purchased or claimed this course.
+      example: false
     units:
       type: array
       items:

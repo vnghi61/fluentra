@@ -171,12 +171,16 @@ func TestListCoursesReadsTheDocumentedParameters(t *testing.T) {
 	svc := &fakeLessonService{}
 	router := routerFor(t, svc, allowGuard{})
 
-	rec := serve(router, request(http.MethodGet, "/courses?level=B2&limit=7&offset=14", nil, uuid.New()))
+	rec := serve(router, request(
+		http.MethodGet, "/courses?level=B2&topic=business-english&limit=7&offset=14", nil, uuid.New()))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200: %s", rec.Code, rec.Body.String())
 	}
 	if svc.seenLevel == nil || *svc.seenLevel != "B2" {
 		t.Errorf("service received level %v, want B2", svc.seenLevel)
+	}
+	if svc.seenTopic == nil || *svc.seenTopic != "business-english" {
+		t.Errorf("service received topic %v, want business-english", svc.seenTopic)
 	}
 	if svc.seenLimit != 7 || svc.seenOffset != 14 {
 		t.Errorf("service received limit %d offset %d, want 7 and 14", svc.seenLimit, svc.seenOffset)

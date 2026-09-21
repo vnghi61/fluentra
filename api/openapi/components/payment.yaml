@@ -1,0 +1,187 @@
+BillingOrder:
+  type: object
+  required: [id, user_id, reference, amount_vnd, status, subject_kind, subject_id, expires_at, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    reference:
+      type: string
+      example: FLU789ABCDE
+    amount_vnd:
+      type: integer
+      format: int64
+      example: 490000
+    status:
+      type: string
+      enum: [pending, paid, expired, cancelled, refunded]
+      example: pending
+    subject_kind:
+      type: string
+      example: course
+    subject_id:
+      type: string
+      format: uuid
+    qr_url:
+      type: string
+      format: uri
+      example: https://vietqr.app/img?acc=1017588888&bank=VCB&amount=490000&des=FLU789ABCDE&template=compact
+    bank_code:
+      type: string
+      example: VCB
+    account_number:
+      type: string
+      example: '1017588888'
+    account_holder_name:
+      type: string
+      example: FLUENTRA
+    expires_at:
+      type: string
+      format: date-time
+    paid_at:
+      type: [string, 'null']
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+SepayWebhookPayload:
+  type: object
+  required: [id, gateway, transactionDate, accountNumber, transferType, transferAmount]
+  properties:
+    id:
+      type: integer
+      format: int64
+      example: 92704
+    gateway:
+      type: string
+      example: Vietcombank
+    transactionDate:
+      type: string
+      example: '2024-07-02 11:08:33'
+    accountNumber:
+      type: string
+      example: '1017588888'
+    subAccount:
+      type: string
+      example: ''
+    code:
+      type: string
+      example: SEVN63DC8E5C
+    content:
+      type: string
+      example: FLU789ABCDE chuyen tien
+    transferType:
+      type: string
+      enum: [in, out]
+      example: in
+    description:
+      type: string
+      example: NGUYEN VAN A chuyen tien
+    transferAmount:
+      type: integer
+      format: int64
+      example: 490000
+    accumulated:
+      type: integer
+      format: int64
+      example: 105000000
+    referenceCode:
+      type: string
+      example: FT24012345678
+
+SepayWebhookResponse:
+  type: object
+  required: [success]
+  properties:
+    success:
+      type: boolean
+      example: true
+
+UnmatchedTransaction:
+  type: object
+  required: [id, sepay_id, gateway, transaction_date, account_number, content, transfer_type, transfer_amount, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    sepay_id:
+      type: integer
+      format: int64
+    gateway:
+      type: string
+    transaction_date:
+      type: string
+      format: date-time
+    account_number:
+      type: string
+    content:
+      type: string
+    transfer_type:
+      type: string
+    transfer_amount:
+      type: integer
+      format: int64
+    unmatched_reason:
+      type: [string, 'null']
+    created_at:
+      type: string
+      format: date-time
+
+UnmatchedTransactionsList:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/UnmatchedTransaction'
+    total:
+      type: integer
+
+Refund:
+  type: object
+  description: >-
+    Money owed back to a learner. A record of an obligation rather than a
+    transfer: SePay receives money and does not send it, so the refund is paid
+    by an admin making a bank transfer and then marking this row sent.
+  required: [id, order_id, amount_vnd, reason, status, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    order_id:
+      type: string
+      format: uuid
+    amount_vnd:
+      type: integer
+      format: int64
+      description: Whole VND. The currency has no subunit.
+    reason:
+      type: string
+    status:
+      type: string
+      enum: [requested, sent, failed]
+    sent_at:
+      type: [string, 'null']
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+
+RefundList:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Refund'
+    total:
+      type: integer

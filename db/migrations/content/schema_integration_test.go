@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -21,6 +22,8 @@ import (
 )
 
 const bootstrapVersion = 1700000000
+
+const ckTaxonomiesCodeFormat = "ck_taxonomies_code_format"
 const contentSchemaVersion = 1700000190
 
 const schemaDatabase = "fluentra_content_schema_test"
@@ -417,6 +420,7 @@ func TestContentSchema_CheckConstraintsRejectInvalidRows(t *testing.T) {
 		statement  string
 		args       []any
 		constraint string
+		anyOf      []string
 	}{
 		{
 			name:       "item slug with uppercase letters",
@@ -476,10 +480,38 @@ func TestContentSchema_CheckConstraintsRejectInvalidRows(t *testing.T) {
 			constraint: "ck_media_assets_byte_size",
 		},
 		{
-			name:       "taxonomy empty namespace",
-			statement:  `INSERT INTO content.taxonomies (namespace, code, label) VALUES ('', 'code1', 'Label 1')`,
+			// An empty namespace now breaks three constraints at once: its
+			// length, the allow-list, and — because '' is not one of the
+			// kebab-case namespaces — the code format. Postgres does not
+			// promise which one it reports, so the case names all three
+			// rather than pinning an order the schema never guaranteed.
+			name:      "taxonomy empty namespace",
+			statement: `INSERT INTO content.taxonomies (namespace, code, label) VALUES ('', 'code1', 'Label 1')`,
+			args:      nil,
+			anyOf: []string{
+				"ck_taxonomies_namespace_length",
+				"ck_taxonomies_namespace",
+				ckTaxonomiesCodeFormat,
+			},
+		},
+		{
+			name:       "taxonomy unknown namespace",
+			statement:  `INSERT INTO content.taxonomies (namespace, code, label) VALUES ('made_up', 'MADE_UP', 'Made up')`,
 			args:       nil,
-			constraint: "ck_taxonomies_namespace_length",
+			constraint: "ck_taxonomies_namespace",
+		},
+		{
+			name: "spine code must be SCREAMING_SNAKE",
+			statement: `INSERT INTO content.taxonomies (namespace, code, label)
+				VALUES ('grammar', 'present-perfect', 'Present Perfect')`,
+			args:       nil,
+			constraint: ckTaxonomiesCodeFormat,
+		},
+		{
+			name:       "content tag code must be kebab-case",
+			statement:  `INSERT INTO content.taxonomies (namespace, code, label) VALUES ('topic', 'SCIENCE', 'Science')`,
+			args:       nil,
+			constraint: ckTaxonomiesCodeFormat,
 		},
 	}
 
@@ -492,6 +524,12 @@ func TestContentSchema_CheckConstraintsRejectInvalidRows(t *testing.T) {
 			var pgErr *pgconn.PgError
 			if !errors.As(err, &pgErr) {
 				t.Fatalf("error = %v, want a PostgreSQL error", err)
+			}
+			if len(tc.anyOf) > 0 {
+				if !slices.Contains(tc.anyOf, pgErr.ConstraintName) {
+					t.Fatalf("violated constraint = %q, want one of %v", pgErr.ConstraintName, tc.anyOf)
+				}
+				return
 			}
 			if pgErr.ConstraintName != tc.constraint {
 				t.Fatalf("violated constraint = %q, want %q", pgErr.ConstraintName, tc.constraint)
@@ -598,6 +636,65 @@ func TestTaxonomies_NamespaceCodeIsUnique(t *testing.T) {
 	}
 }
 
+// TestFoundationSpine_SchemaAndSeed verifies the 1700000780 and 1700000781 migrations.
+func TestFoundationSpine_SchemaAndSeed(t *testing.T) {
+	pool := migratedPool(t)
+	ctx := context.Background()
+
+	// Verify table exists
+	var tableExists bool
+	const existsSQL = "SELECT to_regclass('content.taxonomy_prerequisites') IS NOT NULL"
+	if err := pool.QueryRow(ctx, existsSQL).Scan(&tableExists); err != nil {
+		t.Fatalf("check content.taxonomy_prerequisites: %v", err)
+	}
+	if !tableExists {
+		t.Fatal("content.taxonomy_prerequisites does not exist")
+	}
+
+	// Verify self-prerequisite check constraint
+	var presentSimpleID, sentenceStructureID string
+	const idSQL = "SELECT id FROM content.taxonomies WHERE namespace = 'grammar' AND code = $1"
+	err := pool.QueryRow(ctx, idSQL, "PRESENT_SIMPLE").Scan(&presentSimpleID)
+	if err != nil {
+		t.Fatalf("find PRESENT_SIMPLE: %v", err)
+	}
+	err = pool.QueryRow(ctx, idSQL, "SENTENCE_STRUCTURE").Scan(&sentenceStructureID)
+	if err != nil {
+		t.Fatalf("find SENTENCE_STRUCTURE: %v", err)
+	}
+
+	// Self-prerequisite must fail
+	const selfEdgeSQL = "INSERT INTO content.taxonomy_prerequisites (node_id, requires_node_id) VALUES ($1, $1)"
+	_, err = pool.Exec(ctx, selfEdgeSQL, presentSimpleID)
+	if err == nil {
+		t.Fatal("self-prerequisite accepted; ck_prerequisite_not_self did not fire")
+	}
+
+	// Verify seed nodes count
+	var topicCount int
+	const countSQL = `SELECT COUNT(*) FROM content.taxonomies
+		WHERE namespace IN ('grammar', 'vocabulary', 'pattern', 'pronunciation', 'skill')`
+	err = pool.QueryRow(ctx, countSQL).Scan(&topicCount)
+	if err != nil {
+		t.Fatalf("count spine topics: %v", err)
+	}
+	if topicCount < 60 {
+		t.Errorf("expected at least 60 foundation topics, got %d", topicCount)
+	}
+
+	// Verify prerequisite edge exists: PRESENT_SIMPLE requires SENTENCE_STRUCTURE
+	var edgeExists bool
+	const edgeSQL = `SELECT EXISTS(
+		SELECT 1 FROM content.taxonomy_prerequisites WHERE node_id = $1 AND requires_node_id = $2)`
+	err = pool.QueryRow(ctx, edgeSQL, presentSimpleID, sentenceStructureID).Scan(&edgeExists)
+	if err != nil {
+		t.Fatalf("check prerequisite edge: %v", err)
+	}
+	if !edgeExists {
+		t.Errorf("expected prerequisite edge PRESENT_SIMPLE -> SENTENCE_STRUCTURE to exist")
+	}
+}
+
 // TestContentMigration_DownRemovesEverythingItCreated tests migration reversibility.
 func TestContentMigration_DownRemovesEverythingItCreated(t *testing.T) {
 	pool, provider := privateDatabase(t, downDatabase)
@@ -636,6 +733,7 @@ func assertContentObjectsExist(t *testing.T, pool *pgxpool.Pool, want bool) {
 		"taxonomies",
 		"content_tags",
 		"content_reviews",
+		"taxonomy_prerequisites",
 	}
 	for _, table := range tables {
 		var exists bool

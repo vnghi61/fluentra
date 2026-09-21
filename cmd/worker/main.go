@@ -33,22 +33,25 @@ import (
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	learningjob "github.com/fluentra/fluentra/internal/modules/learning/job"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
+	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/listening"
 	listeningcontract "github.com/fluentra/fluentra/internal/modules/listening/contract"
-	"github.com/fluentra/fluentra/internal/modules/reading"
-	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
-	"github.com/fluentra/fluentra/internal/modules/speaking"
-	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
-	writingcontract "github.com/fluentra/fluentra/internal/modules/writing/contract"
-
-	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
+	"github.com/fluentra/fluentra/internal/modules/payment"
+	paymentsvc "github.com/fluentra/fluentra/internal/modules/payment/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
+	"github.com/fluentra/fluentra/internal/modules/reading"
+	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
+	"github.com/fluentra/fluentra/internal/modules/resource"
+	"github.com/fluentra/fluentra/internal/modules/speaking"
+	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
+	"github.com/fluentra/fluentra/internal/modules/studio"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary"
 	vocabularyrepo "github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
 	"github.com/fluentra/fluentra/internal/modules/writing"
+	writingcontract "github.com/fluentra/fluentra/internal/modules/writing/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
@@ -184,6 +187,20 @@ type workerConfig struct {
 	Exam struct {
 		DailySittingsLimit int `koanf:"daily_sittings_limit"`
 	} `koanf:"exam"`
+	SePay struct {
+		WebhookAPIKey string        `koanf:"webhook_api_key"`
+		APIToken      string        `koanf:"api_token"`
+		AccountNumber string        `koanf:"account_number"`
+		BankCode      string        `koanf:"bank_code"`
+		AccountHolder string        `koanf:"account_holder"`
+		AllowedIPs    string        `koanf:"allowed_ips"`
+		OrderTTL      time.Duration `koanf:"order_ttl"`
+	} `koanf:"sepay"`
+	Studio struct {
+		MinPriceVND     int64 `koanf:"min_price_vnd"`
+		MaxPriceVND     int64 `koanf:"max_price_vnd"`
+		RevenueShareBps int   `koanf:"revenue_share_bps"`
+	} `koanf:"studio"`
 }
 
 func (cfg workerConfig) aiProviders() []ai.ProviderConfig {
@@ -284,8 +301,18 @@ func configOptions() config.Options {
 			"speech.tts_dispatch_ref":        "main",
 			"speech.tts_dispatch_token":      "",
 			"exam.daily_sittings_limit":      5,
+			"sepay.webhook_api_key":          "",
+			"sepay.api_token":                "",
+			"sepay.account_number":           "",
+			"sepay.bank_code":                "",
+			"sepay.account_holder":           "",
+			"sepay.allowed_ips":              "",
+			"sepay.order_ttl":                "24h",
+			"studio.min_price_vnd":           int64(49000),
+			"studio.max_price_vnd":           int64(5000000),
+			"studio.revenue_share_bps":       7000,
 		},
-		EnvSections: []string{"SPEECH", "EXAM"},
+		EnvSections: []string{"SPEECH", "EXAM", "SEPAY", "STUDIO"},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
 			{Name: "redis.url", DocSection: "docs/deployment/configuration.md#redis"},
@@ -583,6 +610,7 @@ func startLearning(
 		slog.ErrorContext(ctx, "could not compute retention at start-up; the scheduled job will retry",
 			"error", err)
 	}
+
 	return learningModule, nil
 }
 
@@ -743,6 +771,13 @@ func startModules(
 		cron.Register(scheduled)
 	}
 
+	resourceModule := resource.New(resource.Deps{
+		Pool:    pool,
+		Storage: storageStore,
+	})
+	river.AddWorker(workers, resourceModule.ValidateWorker())
+	cron.Register(resourceModule.SweepJob())
+
 	return nil
 }
 
@@ -807,7 +842,7 @@ func startRiverWorker(
 
 // registerJobKinds is where a module's job handlers are counted.
 func registerJobKinds(_ *river.Workers) int {
-	return 5
+	return 6
 }
 
 // newStorageStore validates the storage configuration and builds the facade.
@@ -1021,6 +1056,48 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 	); err != nil {
 		return err
 	}
+
+	paymentModule, err := payment.NewModule(payment.Dependencies{
+		Pool: d.pool,
+		Bus:  d.bus,
+		Cfg: paymentsvc.Config{
+			WebhookAPIKey: d.cfg.SePay.WebhookAPIKey,
+			APIToken:      d.cfg.SePay.APIToken,
+			AccountNumber: d.cfg.SePay.AccountNumber,
+			BankCode:      d.cfg.SePay.BankCode,
+			AccountHolder: d.cfg.SePay.AccountHolder,
+			AllowedIPs:    d.cfg.SePay.AllowedIPs,
+			OrderTTL:      d.cfg.SePay.OrderTTL,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("assemble payment module: %w", err)
+	}
+	for _, scheduled := range paymentModule.CronJobs() {
+		d.cron.Register(scheduled)
+	}
+
+	studioModule, err := studio.NewModule(studio.Dependencies{
+		Pool:            d.pool,
+		ItemVerifier:    learningModule.ItemVerifier(),
+		LessonAuthor:    d.lesson.Author(),
+		ContentAuthor:   d.content.Author(),
+		OrderCreator:    paymentModule.OrderCreator(),
+		ProgressReader:  learningModule.ProgressReader(),
+		MinPriceVND:     d.cfg.Studio.MinPriceVND,
+		MaxPriceVND:     d.cfg.Studio.MaxPriceVND,
+		RevenueShareBPS: d.cfg.Studio.RevenueShareBps,
+	})
+	if err != nil {
+		return fmt.Errorf("assemble studio module: %w", err)
+	}
+	for _, scheduled := range studioModule.CronJobs() {
+		d.cron.Register(scheduled)
+	}
+	if err := studioModule.Subscribe(d.bus); err != nil {
+		return fmt.Errorf("subscribe studio module: %w", err)
+	}
+
 	return nil
 }
 

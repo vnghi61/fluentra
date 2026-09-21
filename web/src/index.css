@@ -175,3 +175,17 @@ body {
   font-family: var(--font-sans);
   @apply antialiased;
 }
+
+/*
+ * Native <select> on Windows Chromium inherits text color but renders light
+ * popup menus unless options explicitly define background and text colors.
+ */
+select {
+  color-scheme: inherit;
+}
+
+select option,
+select optgroup {
+  background-color: var(--surface-card);
+  color: var(--text);
+}

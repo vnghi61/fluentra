@@ -38,8 +38,9 @@ func TestRun_RefusesProduction(t *testing.T) {
 // with, and a rename here without a rename there is how a guide starts lying.
 func TestDemoAccounts_MatchTheGuide(t *testing.T) {
 	want := map[string]bool{
-		"learner@fluentra.dev": false,
-		"admin@fluentra.dev":   true,
+		"learner@fluentra.dev":   false,
+		"admin@fluentra.dev":     true,
+		"moderator@fluentra.dev": false,
 	}
 
 	if len(demoAccounts) != len(want) {

@@ -130,6 +130,54 @@ func TestEnrollment_SuccessAndConflict(t *testing.T) {
 	}
 }
 
+type fakeStudioAccessReader struct {
+	allowed bool
+	err     error
+}
+
+func (f *fakeStudioAccessReader) MayOpen(_ context.Context, _ *uuid.UUID, _ uuid.UUID) (bool, error) {
+	if f.err != nil {
+		return false, f.err
+	}
+	return f.allowed, nil
+}
+
+func TestEnrollment_PaywallGating(t *testing.T) {
+	clk := clock.NewFake(time.Date(2026, 8, 24, 9, 0, 0, 0, time.UTC))
+	ctx := context.Background()
+	userID := uuid.New()
+	courseID := uuid.New()
+
+	t.Run("denied when paywall returns false", func(t *testing.T) {
+		repo := newFakeRepo()
+		svc := service.New(service.Deps{
+			Repo:         repo,
+			Clock:        clk,
+			StudioAccess: &fakeStudioAccessReader{allowed: false},
+		})
+		_, err := svc.Enroll(ctx, userID, courseID)
+		if !errors.Is(err, domain.ErrCourseNotPurchased) {
+			t.Fatalf("expected ErrCourseNotPurchased, got %v", err)
+		}
+	})
+
+	t.Run("allowed when paywall returns true", func(t *testing.T) {
+		repo := newFakeRepo()
+		svc := service.New(service.Deps{
+			Repo:         repo,
+			Clock:        clk,
+			StudioAccess: &fakeStudioAccessReader{allowed: true},
+		})
+		enrollment, err := svc.Enroll(ctx, userID, courseID)
+		if err != nil {
+			t.Fatalf("Enroll failed: %v", err)
+		}
+		if enrollment.CourseID != courseID {
+			t.Errorf("course ID mismatch")
+		}
+	})
+}
+
 func TestProgressOf_ReaderContract(t *testing.T) {
 	svc, repo, _, _ := setupTestService()
 	ctx := context.Background()

@@ -6,7 +6,7 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: content
-tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews, item_reports, tts_cache]
+tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews, item_reports, tts_cache, taxonomy_prerequisites]
 depends_on: [storage, search, audit, ai, media]
 depended_on_by: [lesson, learning, vocabulary, grammar, reading, listening, speaking, writing, questionbank]
 spec_version: 1.0.0
@@ -29,6 +29,12 @@ contract belongs in a repository-level ADR instead — see [`/DECISIONS.md`](../
 | Who may read published content, and who may change it? | Any signed-in learner reads; only an administrator writes | Published material is the first thing a learner reads that is not their own data, so `self` cannot express it and it needs a named permission — `content.read.published`, held by the `user` role. Leaving the reads anonymous would hand a whole course to anyone with the URL and remove the surface Phase 4 attaches entitlements to. Create, edit, review, publish and archive stay with `admin` (migration 1700000180) |
 | Where does `archived` live — on the item or on the version? | On the item | A version is an immutable snapshot, and `trg_content_versions_immutable` refuses every UPDATE once it is published — including a status change — so `content_versions.status` can never become `archived`. Archiving sets `content_items.status`. The consequence the reads must honour: a published version stays `published` forever, so filtering only on the version status returns archived material; every learner-facing query joins `content_items` and filters there as well (P7.2) |
 | What happens to a learner mid-session when the item is archived? | Version stays readable by direct ID, hidden from discovery only | A learner who opened a lesson holds a version ID. Archiving must not 404 that learner's session; GetVersion by ID has no status filter and remains readable (P7.3 integration test step 12). Discovery queries (Browse, GetPublishedVersionBySlug, Count) join content_items and filter status='published', so archived material disappears from lists. Recorded in P7.3 per its trap. |
+| How to associate exercises, quizzes and reviews with a topic? (D16-1) | Tag content items to taxonomy rather than nesting | Exercises belong to each skill module and already have rich schemas; nesting would duplicate kinds and schemas. BR-FOUNDATION-05 enforces completeness at the publish gate. |
+| Where do CEFR level and prerequisites live? (D16-2) | On taxonomy nodes and content.taxonomy_prerequisites | The taxonomy spine represents the curriculum DAG independent of any specific content version. |
+| How to prevent cycles in the prerequisite graph? (D16-3) | In-memory 3-color DFS check before DB write | Validating before write provides informative error messages naming the offending cycle chain without rolling back transactions. |
+| Can a taxonomy code be renamed? (D16-4) | No, codes are permanently immutable | External references and question bank rely on canonical codes; typos are fixed by deprecating and creating a new node. |
+| Cross-namespace prerequisite edges? (D16-5) | Forbidden; use related topics instead | Ordering across distinct strands is pedantically indefensible and leads to graph tangling. |
+| Anonymous access for foundation spine reads? (D16-6) | Allowed per ADR-0025 | Published curriculum taxonomy and learning paths are public read surfaces. |
 <!-- END GENERATED: decisions -->
 
 ## Related repository ADRs

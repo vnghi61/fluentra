@@ -382,13 +382,23 @@ type ContentMediaAsset struct {
 }
 
 type ContentTaxonomy struct {
-	ID        uuid.UUID
-	Namespace string
-	Code      string
-	Label     string
-	ParentID  *uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID           uuid.UUID
+	Namespace    string
+	Code         string
+	Label        string
+	ParentID     *uuid.UUID
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	Description  string
+	CefrLevel    *string
+	Position     int32
+	DeprecatedAt *time.Time
+}
+
+type ContentTaxonomyPrerequisite struct {
+	NodeID         uuid.UUID
+	RequiresNodeID uuid.UUID
+	CreatedAt      time.Time
 }
 
 type ContentTtsCache struct {
@@ -527,17 +537,20 @@ type LearnAttempt struct {
 }
 
 type LearnCourse struct {
-	ID             uuid.UUID
-	Slug           string
-	Title          string
-	Description    string
-	CefrFrom       string
-	CefrTo         string
-	Status         string
-	EstimatedHours int32
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	Origin         string
+	ID              uuid.UUID
+	Slug            string
+	Title           string
+	Description     string
+	CefrFrom        string
+	CefrTo          string
+	Status          string
+	EstimatedHours  int32
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Origin          string
+	OwnerID         *uuid.UUID
+	Visibility      string
+	TopicTaxonomyID *uuid.UUID
 }
 
 type LearnCourseUnit struct {

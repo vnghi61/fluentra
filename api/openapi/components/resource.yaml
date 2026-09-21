@@ -1,0 +1,169 @@
+Resource:
+  type: object
+  description: A learner's uploaded file or submitted URL resource.
+  required:
+    - id
+    - kind
+    - title
+    - status
+    - failure_reason
+    - original_filename
+    - declared_mime
+    - detected_mime
+    - created_at
+    - updated_at
+  properties:
+    id:
+      type: string
+      format: uuid
+      example: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+    kind:
+      type: string
+      enum: [file, url]
+      example: file
+    title:
+      type: string
+      example: Advanced Grammar Guide.pdf
+    status:
+      type: string
+      enum: [pending, uploaded, validated, rejected, failed]
+      example: validated
+    failure_reason:
+      type: string
+      example: ""
+    original_filename:
+      type: string
+      example: Advanced Grammar Guide.pdf
+    declared_mime:
+      type: string
+      example: application/pdf
+    detected_mime:
+      type: string
+      example: application/pdf
+    byte_size:
+      type: integer
+      format: int64
+      nullable: true
+      example: 2458120
+    checksum:
+      type: string
+      nullable: true
+      example: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    source_url:
+      type: string
+      nullable: true
+      example: null
+    download_url:
+      type: string
+      nullable: true
+      description: Presigned download URL for validated file resources.
+      example: https://storage.example.com/fluentra-uploads/...
+    created_at:
+      type: string
+      format: date-time
+      example: '2026-09-21T00:00:00Z'
+    updated_at:
+      type: string
+      format: date-time
+      example: '2026-09-21T00:01:00Z'
+    validated_at:
+      type: string
+      format: date-time
+      nullable: true
+      example: '2026-09-21T00:01:00Z'
+
+ResourceList:
+  type: object
+  required:
+    - items
+    - total
+    - page
+    - page_size
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Resource'
+    total:
+      type: integer
+      example: 1
+    page:
+      type: integer
+      example: 1
+    page_size:
+      type: integer
+      example: 20
+
+ResourceUploadIntentRequest:
+  type: object
+  required:
+    - filename
+    - content_type
+  properties:
+    filename:
+      type: string
+      description: Original name of the file to be uploaded.
+      example: grammar_lesson.pdf
+    content_type:
+      type: string
+      description: MIME type declared by the client.
+      example: application/pdf
+
+ResourceUploadIntentResponse:
+  type: object
+  required:
+    - id
+    - upload_url
+    - object_key
+    - expires_at
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Created resource ID in pending status.
+      example: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+    upload_url:
+      type: string
+      description: Presigned S3 PUT URL to upload bytes into fluentra-uploads.
+      example: https://storage.example.com/fluentra-uploads/users/...
+    object_key:
+      type: string
+      description: Storage object key in fluentra-uploads.
+      example: user/018f3a5e-7b82-7d2c-80a2-bf3d6118d531/2026/09/resource-id.pdf
+    expires_at:
+      type: string
+      format: date-time
+      example: '2026-09-21T00:05:00Z'
+
+SubmitResourceRequest:
+  type: object
+  description: Confirmation of an uploaded file by resource_id OR submission of a new URL.
+  properties:
+    resource_id:
+      type: string
+      format: uuid
+      description: ID of a pending file resource to confirm after S3 upload.
+      example: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+    url:
+      type: string
+      description: Public HTTP/HTTPS URL to import as a resource.
+      example: https://en.wikipedia.org/wiki/English_grammar
+    title:
+      type: string
+      description: Optional title for URL resources.
+      example: English Grammar Guide
+
+ResourceSubmitResponse:
+  type: object
+  required:
+    - id
+    - status
+  properties:
+    id:
+      type: string
+      format: uuid
+      example: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+    status:
+      type: string
+      enum: [uploaded]
+      example: uploaded

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -31,14 +32,20 @@ import (
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/listening"
 	listeningcontract "github.com/fluentra/fluentra/internal/modules/listening/contract"
+	"github.com/fluentra/fluentra/internal/modules/payment"
+	paymentsvc "github.com/fluentra/fluentra/internal/modules/payment/service"
+	paymenthttp "github.com/fluentra/fluentra/internal/modules/payment/transport/http"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/reading"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
+	"github.com/fluentra/fluentra/internal/modules/resource"
 	"github.com/fluentra/fluentra/internal/modules/speaking"
 	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
 	srsservice "github.com/fluentra/fluentra/internal/modules/srs/service"
+	"github.com/fluentra/fluentra/internal/modules/studio"
+	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary"
 	vocabularycontract "github.com/fluentra/fluentra/internal/modules/vocabulary/contract"
@@ -75,6 +82,9 @@ type identity struct {
 	exam       *exam.Module
 	//nolint:unused // read through Routes and by the dashboard's Reader.
 	gamification *gamification.Module
+	studio       *studio.Module
+	payment      *payment.Module
+	resource     *resource.Module
 
 	rateLimit *httpx.RateLimiter
 }
@@ -160,6 +170,9 @@ type identityDeps struct {
 
 	// ExamDailyLimit is the number of exam sittings a learner may start per day.
 	ExamDailyLimit int
+
+	// PaymentCfg holds SePay configuration for payments.
+	PaymentCfg paymentsvc.Config
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -248,13 +261,16 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.lesson = lesson.New(lesson.Deps{
-		Pool:      deps.Pool,
-		Caches:    newLessonCaches(deps.Redis),
-		Guard:     lazyGuard{of: assembled},
-		Content:   assembled.content.Reader(),
-		Unlocker:  lazyUnlocker{of: assembled},
-		Completed: lazyLessonProgress{of: assembled},
-		Env:       deps.Env,
+		Pool:          deps.Pool,
+		Caches:        newLessonCaches(deps.Redis),
+		Guard:         lazyGuard{of: assembled},
+		Content:       assembled.content.Reader(),
+		Taxonomies:    assembled.content.TaxonomyResolver(),
+		Unlocker:      lazyUnlocker{of: assembled},
+		Completed:     lazyLessonProgress{of: assembled},
+		Env:           deps.Env,
+		AccessReader:  lazyStudioAccess{of: assembled},
+		ListingReader: lazyStudioListing{of: assembled},
 	})
 
 	assembled.srs = srs.New(srs.Deps{
@@ -371,6 +387,42 @@ func newIdentity(deps identityDeps) *identity {
 		Flags:         assembled.admin.FlagReader(),
 		Courses:       assembled.lesson.Catalog(),
 		SRSPace:       assembled.srs.ReviewPace(),
+		StudioAccess:  lazyStudioAccess{of: assembled},
+	})
+
+	paymentMod, err := payment.NewModule(payment.Dependencies{
+		Pool:  deps.Pool,
+		Guard: lazyGuard{of: assembled},
+		Cfg:   deps.PaymentCfg,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("assemble payment module: %v", err))
+	}
+	paymentMod.SetPayoutAccountReader(lazyPaymentAccountReader{of: assembled})
+	assembled.payment = paymentMod
+
+	studioMod, err := studio.NewModule(studio.Dependencies{
+		Pool:           deps.Pool,
+		Guard:          lazyGuard{of: assembled},
+		ItemVerifier:   assembled.learning.ItemVerifier(),
+		LessonAuthor:   assembled.lesson.Author(),
+		ContentAuthor:  assembled.content.Author(),
+		OrderCreator:   assembled.payment.OrderCreator(),
+		ProgressReader: assembled.learning.ProgressReader(),
+		LessonReader:   assembled.lesson.Reader(),
+		RefundRecorder: assembled.payment.RefundRecorder(),
+		PayoutManager:  assembled.payment.PayoutManager(),
+	})
+	if err != nil {
+		panic(fmt.Sprintf("assemble studio module: %v", err))
+	}
+	assembled.studio = studioMod
+
+	assembled.resource = resource.New(resource.Deps{
+		Pool:         deps.Pool,
+		Storage:      deps.Storage,
+		Enqueuer:     deps.Enqueuer,
+		WorkerNudger: deps.WorkerNudger,
 	})
 
 	return assembled
@@ -527,6 +579,9 @@ func newLessonCaches(client redis.Cmdable) lessonservice.LessonCaches {
 // infrastructure endpoints, which must answer whether or not a caller has a
 // token, so leaving them outside is correct as well as necessary.
 func (i *identity) Routes(api chi.Router) {
+	// Mount public webhook route outside the Bearer Authenticate middleware
+	i.payment.PublicRoutes(api)
+
 	api.Group(func(authenticated chi.Router) {
 		authenticated.Use(i.auth.Authenticate())
 
@@ -557,6 +612,10 @@ func (i *identity) Routes(api chi.Router) {
 		i.listening.Routes(authenticated)
 		i.speaking.Routes(authenticated)
 		i.exam.Routes(authenticated)
+		i.studio.Routes(authenticated)
+		i.studio.ModerationRoutes(authenticated)
+		i.payment.AuthenticatedRoutes(authenticated)
+		i.resource.Routes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
@@ -565,6 +624,7 @@ func (i *identity) Routes(api chi.Router) {
 			i.content.AdminRoutes(admin)
 			i.lesson.AdminRoutes(admin)
 			i.vocabulary.AdminRoutes(admin)
+			i.payment.AdminRoutes(admin)
 		})
 	})
 }
@@ -586,12 +646,98 @@ var _ learning.Guard = lazyGuard{}
 var _ srs.Guard = lazyGuard{}
 var _ gamification.Guard = lazyGuard{}
 var _ vocabulary.Guard = lazyGuard{}
+var _ paymenthttp.Guard = lazyGuard{}
 
 func (g lazyGuard) Require(ctx context.Context, permission string) error {
 	return g.authorizer().Require(ctx, rbaccontract.Permission(permission))
 }
 
 func (g lazyGuard) authorizer() rbaccontract.Authorizer { return g.of.rbac.Authorizer() }
+
+// lazyStudioAccess adapts studio's AccessReader to lesson and learning's paywall check (BR-STUDIO-05).
+type lazyStudioAccess struct{ of *identity }
+
+var _ studiocontract.AccessReader = lazyStudioAccess{}
+
+func (a lazyStudioAccess) MayOpen(ctx context.Context, userID *uuid.UUID, courseID uuid.UUID) (bool, error) {
+	if a.of.studio == nil {
+		// Not "yes".
+		//
+		// This answered true, which meant that if studio were ever absent —
+		// reordered assembly, a build that made it optional — every paid course
+		// in the catalogue would open for everybody, and nothing would say so.
+		// An error is the honest answer to "we cannot tell": the request fails
+		// loudly instead of giving away what somebody paid for. Assembly panics
+		// on a studio that will not build, so this is unreachable in a running
+		// API and exists to stay that way.
+		return false, errors.New("studio module is not assembled, so course access cannot be evaluated")
+	}
+	return a.of.studio.AccessReader().MayOpen(ctx, userID, courseID)
+}
+
+// lazyStudioListing adapts studio's ListingReader to lesson's catalogue pricing and ownership.
+type lazyStudioListing struct{ of *identity }
+
+var _ studiocontract.ListingReader = lazyStudioListing{}
+
+func (l lazyStudioListing) GetListing(ctx context.Context, courseID uuid.UUID) (*studiocontract.CourseListing, error) {
+	if l.of.studio == nil {
+		return nil, nil
+	}
+	return l.of.studio.ListingReader().GetListing(ctx, courseID)
+}
+
+func (
+	l lazyStudioListing) BatchGetListings(ctx context.Context,
+	courseIDs []uuid.UUID) (map[uuid.UUID]*studiocontract.CourseListing,
+	error,
+) {
+	if l.of.studio == nil {
+		return map[uuid.UUID]*studiocontract.CourseListing{}, nil
+	}
+	return l.of.studio.ListingReader().BatchGetListings(ctx, courseIDs)
+}
+
+func (l lazyStudioListing) HasPurchased(ctx context.Context, userID, courseID uuid.UUID) (bool, error) {
+	if l.of.studio == nil {
+		return false, nil
+	}
+	return l.of.studio.ListingReader().HasPurchased(ctx, userID, courseID)
+}
+
+func (
+	l lazyStudioListing) BatchHasPurchased(ctx context.Context,
+	userID uuid.UUID,
+	courseIDs []uuid.UUID) (map[uuid.UUID]bool,
+	error,
+) {
+	if l.of.studio == nil {
+		return map[uuid.UUID]bool{}, nil
+	}
+	return l.of.studio.ListingReader().BatchHasPurchased(ctx, userID, courseIDs)
+}
+
+// lazyPaymentAccountReader adapts studio's PayoutAccountReader to payment's single payout inspect view.
+type lazyPaymentAccountReader struct{ of *identity }
+
+var _ paymenthttp.PayoutAccountReader = lazyPaymentAccountReader{}
+
+func (
+	r lazyPaymentAccountReader) GetPayoutAccount(ctx context.Context,
+	creatorID uuid.UUID) (string,
+	string,
+	string,
+	error,
+) {
+	if r.of.studio == nil {
+		return "", "", "", nil
+	}
+	acc, err := r.of.studio.PayoutAccountReader().GetPayoutAccount(ctx, creatorID)
+	if err != nil || acc == nil {
+		return "", "", "", err
+	}
+	return acc.BankCode, acc.AccountNumber, acc.AccountHolderName, nil
+}
 
 // lazyUnlocker adapts learning's batched UnlockChecker to lesson's consumer interface,
 // resolving it when unlock checks run rather than on construction (P8.4 Trap 1).

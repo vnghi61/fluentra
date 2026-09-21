@@ -35,7 +35,14 @@ const MAX_WEEKLY_MINUTES = 10080;
 type Exam = (typeof EXAMS)[number];
 type Level = (typeof LEVELS)[number];
 
-const MEASURED = ["vocabulary", "grammar", "reading", "listening", "writing", "speaking"] as const;
+const MEASURED = [
+  "vocabulary",
+  "grammar",
+  "reading",
+  "listening",
+  "writing",
+  "speaking",
+] as const;
 
 const linkClass =
   "inline-flex min-h-[44px] items-center justify-center rounded-lg bg-primary px-6 text-base font-medium text-primary-fg hover:bg-primary-hover";
@@ -75,7 +82,9 @@ const PlacementSummary: React.FC<{
         <CardDescription className="text-sm text-text-muted">
           {result
             ? t("placement.settings.placedOn", {
-                date: new Date(result.taken_at).toLocaleDateString(i18n.language),
+                date: new Date(result.taken_at).toLocaleDateString(
+                  i18n.language,
+                ),
               })
             : t("placement.settings.noResult")}
         </CardDescription>
@@ -84,10 +93,16 @@ const PlacementSummary: React.FC<{
         {result ? (
           <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {MEASURED.map((skill) => (
-              <div key={skill} className="rounded-lg border border-border-subtle px-3 py-2">
-                <dt className="text-xs text-text-muted">{t(`skills.${skill}`)}</dt>
+              <div
+                key={skill}
+                className="rounded-lg border border-border-subtle px-3 py-2"
+              >
+                <dt className="text-xs text-text-muted">
+                  {t(`skills.${skill}`)}
+                </dt>
                 <dd className="text-base font-bold text-text">
-                  {result.per_skill[skill]?.band ?? t("placement.result.notMeasured")}
+                  {result.per_skill[skill]?.band ??
+                    t("placement.result.notMeasured")}
                 </dd>
               </div>
             ))}
@@ -138,11 +153,15 @@ const LearningProfileForm: React.FC<{ initial: LearningProfile | null }> = ({
 }) => {
   const { t } = useTranslation();
   const saveProfile = useUpdateLearningProfile();
-  const [exam, setExam] = useState<Exam>(isExam(initial?.target_exam) ? initial.target_exam : "none");
+  const [exam, setExam] = useState<Exam>(
+    isExam(initial?.target_exam) ? initial.target_exam : "none",
+  );
   const [target, setTarget] = useState<Level | null>(
     isLevel(initial?.target_level) ? initial.target_level : null,
   );
-  const [minutes, setMinutes] = useState<number>(initial?.weekly_minutes_goal ?? 90);
+  const [minutes, setMinutes] = useState<number>(
+    initial?.weekly_minutes_goal ?? 90,
+  );
   const [status, setStatus] = useState<"idle" | "saved" | "failed">("idle");
 
   const save = async (event: React.FormEvent) => {
@@ -150,10 +169,15 @@ const LearningProfileForm: React.FC<{ initial: LearningProfile | null }> = ({
     setStatus("idle");
     try {
       await saveProfile.mutateAsync({
-        declared_level: isLevel(initial?.declared_level) ? initial.declared_level : null,
+        declared_level: isLevel(initial?.declared_level)
+          ? initial.declared_level
+          : null,
         target_level: target,
         target_exam: exam,
-        weekly_minutes_goal: Math.min(MAX_WEEKLY_MINUTES, Math.max(MIN_WEEKLY_MINUTES, minutes)),
+        weekly_minutes_goal: Math.min(
+          MAX_WEEKLY_MINUTES,
+          Math.max(MIN_WEEKLY_MINUTES, minutes),
+        ),
         motivations: initial?.motivations ?? [],
       });
       setStatus("saved");
@@ -168,14 +192,24 @@ const LearningProfileForm: React.FC<{ initial: LearningProfile | null }> = ({
         <CardHeader className="space-y-1">
           <div className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" aria-hidden="true" />
-            <CardTitle className="text-lg font-bold text-text">{t("profile.title")}</CardTitle>
+            <CardTitle className="text-lg font-bold text-text">
+              {t("profile.title")}
+            </CardTitle>
           </div>
-          <CardDescription className="text-sm text-text-muted">{t("profile.subtitle")}</CardDescription>
+          <CardDescription className="text-sm text-text-muted">
+            {t("profile.subtitle")}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-text">{t("profile.examLabel")}</p>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label={t("profile.examLabel")}>
+            <p className="text-sm font-semibold text-text">
+              {t("profile.examLabel")}
+            </p>
+            <div
+              className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+              role="group"
+              aria-label={t("profile.examLabel")}
+            >
               {EXAMS.map((value) => (
                 <button
                   key={value}
@@ -194,8 +228,14 @@ const LearningProfileForm: React.FC<{ initial: LearningProfile | null }> = ({
             </div>
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-text">{t("profile.targetLabel")}</p>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6" role="group" aria-label={t("profile.targetLabel")}>
+            <p className="text-sm font-semibold text-text">
+              {t("profile.targetLabel")}
+            </p>
+            <div
+              className="grid grid-cols-3 gap-2 sm:grid-cols-6"
+              role="group"
+              aria-label={t("profile.targetLabel")}
+            >
               {LEVELS.map((level) => (
                 <button
                   key={level}
@@ -210,7 +250,10 @@ const LearningProfileForm: React.FC<{ initial: LearningProfile | null }> = ({
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="weekly-minutes" className="text-sm font-semibold text-text">
+            <Label
+              htmlFor="weekly-minutes"
+              className="text-sm font-semibold text-text"
+            >
               {t("profile.minutesLabel")}
             </Label>
             <div className="flex flex-wrap items-center gap-2">
@@ -221,7 +264,12 @@ const LearningProfileForm: React.FC<{ initial: LearningProfile | null }> = ({
                 min={MIN_WEEKLY_MINUTES}
                 max={MAX_WEEKLY_MINUTES}
                 value={minutes}
-                onChange={(event) => setMinutes(Number.parseInt(event.target.value, 10) || MIN_WEEKLY_MINUTES)}
+                onChange={(event) =>
+                  setMinutes(
+                    Number.parseInt(event.target.value, 10) ||
+                      MIN_WEEKLY_MINUTES,
+                  )
+                }
                 className="min-h-[44px] w-32 text-base"
               />
               {MINUTE_PRESETS.map((preset) => (
@@ -240,14 +288,23 @@ const LearningProfileForm: React.FC<{ initial: LearningProfile | null }> = ({
           {status !== "idle" && (
             <p
               role={status === "failed" ? "alert" : "status"}
-              className={cn("text-sm", status === "failed" ? "text-danger" : "text-success")}
+              className={cn(
+                "text-sm",
+                status === "failed" ? "text-danger" : "text-success",
+              )}
             >
-              {status === "saved" ? t("profile.saved") : t("profile.saveFailed")}
+              {status === "saved"
+                ? t("profile.saved")
+                : t("profile.saveFailed")}
             </p>
           )}
         </CardContent>
         <CardFooter>
-          <Button type="submit" disabled={saveProfile.isPending} className="min-h-[44px] text-base">
+          <Button
+            type="submit"
+            disabled={saveProfile.isPending}
+            className="min-h-[44px] text-base"
+          >
             {saveProfile.isPending ? t("profile.saving") : t("profile.save")}
           </Button>
         </CardFooter>
@@ -264,7 +321,10 @@ export const LearningProfileSettings: React.FC = () => {
   if (profile.isLoading || overview.isLoading) {
     return (
       <div className="flex min-h-[200px] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+        <Loader2
+          className="h-6 w-6 animate-spin text-primary"
+          aria-hidden="true"
+        />
       </div>
     );
   }

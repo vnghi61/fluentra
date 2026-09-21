@@ -6,7 +6,7 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: content
-tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews, item_reports, tts_cache]
+tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews, item_reports, tts_cache, taxonomy_prerequisites]
 depends_on: [storage, search, audit, ai, media]
 depended_on_by: [lesson, learning, vocabulary, grammar, reading, listening, speaking, writing, questionbank]
 spec_version: 1.0.0
@@ -28,6 +28,15 @@ agent knows what is already handled and what is deliberately deferred.
 - [ ] Admin authoring UI
 - [ ] AI level estimation as a suggestion
 - [ ] Seed content: one course, eight lessons, two hundred words
+
+## Phase 4 - Knowledge Spine (Work Order 16)
+
+- [ ] Extend content.taxonomies with description, cefr_level, position, deprecated_at
+- [ ] content.taxonomy_prerequisites DAG edge table
+- [ ] In-memory cycle detection and stable topological ordering
+- [ ] Foundation topic JSON schema validation and BR-FOUNDATION-05 publish gate
+- [ ] Public and admin endpoints for foundation topics, prerequisites and path
+- [ ] Seed 69 canonical foundation topics and prerequisite DAG edges
 <!-- END GENERATED: todo -->
 
 ## Progress

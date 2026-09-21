@@ -9,6 +9,8 @@ import {
   AdminContentList,
   AdminReportedContentList,
   AdminVocabulary,
+  AdminStudioModeration,
+  AdminPayoutsList,
 } from "@/features/admin";
 import {
   type AdminSectionKey,
@@ -88,6 +90,8 @@ export function AdminPage(): React.JSX.Element {
             {visible === "vocabulary" && <AdminVocabulary />}
             {visible === "flags" && <AdminFeatureFlags />}
             {visible === "ai" && <AdminAIUsage />}
+            {visible === "moderation" && <AdminStudioModeration />}
+            {visible === "payouts" && <AdminPayoutsList />}
           </>
         )}
       </div>

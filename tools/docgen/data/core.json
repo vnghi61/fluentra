@@ -600,7 +600,7 @@
     "dependedOnBy": ["auth", "admin", "content", "questionbank", "exam", "user"],
     "rules": [
       "Deny by default: an operation with no declared permission is refused, not allowed.",
-      "Exactly two roles exist. Introducing a third requires an ADR — it changes the product's shape, not just its data.",
+      "Exactly three roles exist — `admin`, `user`, `moderator` (ADR-0026). Introducing a fourth requires an ADR — it changes the product's shape, not just its data.",
       "Permissions are named `<resource>.<action>[.<qualifier>]` and are additive; there are no negative permissions.",
       "A user cannot grant themselves a role they do not already have, and cannot remove their own admin role.",
       "The last remaining admin cannot be demoted or suspended — the system must never become unadministrable.",

@@ -48,6 +48,18 @@ type ContentService interface {
 		ctx context.Context, userID, versionID uuid.UUID, reason domain.ReportReason, note *string,
 	) (domain.ItemReport, error)
 	ListReportedContent(ctx context.Context, limit, offset int) ([]domain.ReportedVersionSummary, int, error)
+
+	// Foundation Knowledge Spine
+	CreateFoundationTopic(
+		ctx context.Context, actorID uuid.UUID, req service.CreateFoundationTopicRequest,
+	) (domain.Taxonomy, error)
+	UpdateFoundationTopic(
+		ctx context.Context, actorID uuid.UUID, code string, req service.UpdateFoundationTopicRequest,
+	) (domain.Taxonomy, error)
+	ReplacePrerequisites(ctx context.Context, actorID uuid.UUID, code string, requiresCodes []string) error
+	ListFoundationTopics(ctx context.Context, filter service.FoundationTopicFilter) ([]domain.Taxonomy, int64, error)
+	GetFoundationTopicByCode(ctx context.Context, code string) (service.FoundationTopicDetail, error)
+	GetFoundationPath(ctx context.Context, targetCode *string, namespace *string) ([]domain.Taxonomy, error)
 }
 
 // Handler serves HTTP endpoints for the content module.
@@ -73,6 +85,11 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Get("/content", h.browse)
 	router.Get("/content/{slug}", h.getBySlug)
 	router.Post("/content/versions/{id}/reports", h.reportItem)
+
+	// Foundation Knowledge Spine (Public read per ADR-0025)
+	router.Get("/foundation/topics", h.listFoundationTopics)
+	router.Get("/foundation/topics/{code}", h.getFoundationTopic)
+	router.Get("/foundation/path", h.getFoundationPath)
 }
 
 // AdminRoutes mounts staff/authoring content endpoints under the admin router.
@@ -86,6 +103,11 @@ func (h *Handler) AdminRoutes(router chi.Router) {
 	router.Post("/admin/content/{id}/review", h.review)
 	router.Post("/admin/content/{id}/publish", h.publish)
 	router.Post("/admin/content/{id}/archive", h.archive)
+
+	// Foundation Knowledge Spine authoring
+	router.Post("/admin/foundation/topics", h.createFoundationTopic)
+	router.Patch("/admin/foundation/topics/{code}", h.updateFoundationTopic)
+	router.Put("/admin/foundation/topics/{code}/prerequisites", h.replaceFoundationPrerequisites)
 }
 
 func (h *Handler) browse(w http.ResponseWriter, r *http.Request) {
@@ -539,4 +561,215 @@ func (h *Handler) adminListReports(w http.ResponseWriter, r *http.Request) {
 		Limit:  limit,
 		Offset: offset,
 	})
+}
+
+func (h *Handler) listFoundationTopics(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	// Public read per ADR-0025
+
+	filter := service.FoundationTopicFilter{
+		Limit:  20,
+		Offset: 0,
+	}
+
+	if ns := r.URL.Query().Get("namespace"); ns != "" {
+		filter.Namespace = &ns
+	}
+	if level := r.URL.Query().Get("cefr_level"); level != "" {
+		filter.CEFRLevel = &level
+	}
+	if pID := r.URL.Query().Get("parent_id"); pID != "" {
+		if parsed, err := uuid.Parse(pID); err == nil {
+			filter.ParentID = &parsed
+		} else {
+			httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_PARENT_ID", "parent_id must be a valid UUID"))
+			return
+		}
+	}
+	if q := r.URL.Query().Get("q"); q != "" {
+		filter.Query = &q
+	}
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil {
+			filter.Limit = limit
+		}
+	}
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if offset, err := strconv.Atoi(offsetStr); err == nil {
+			filter.Offset = offset
+		}
+	}
+	if r.URL.Query().Get("include_deprecated") == "true" {
+		filter.IncludeDeprecated = true
+	}
+
+	topics, total, err := h.service.ListFoundationTopics(ctx, filter)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, FoundationTopicListResponse{
+		Items:  toFoundationTopicResponses(topics),
+		Total:  int(total),
+		Limit:  filter.Limit,
+		Offset: filter.Offset,
+	})
+}
+
+func (h *Handler) getFoundationTopic(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	// Public read per ADR-0025
+
+	code := chi.URLParam(r, "code")
+	detail, err := h.service.GetFoundationTopicByCode(ctx, code)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, toFoundationTopicDetailResponse(detail))
+}
+
+func (h *Handler) getFoundationPath(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	// Public read per ADR-0025
+
+	var targetCode *string
+	if t := r.URL.Query().Get("target"); t != "" {
+		targetCode = &t
+	}
+	var namespace *string
+	if ns := r.URL.Query().Get("namespace"); ns != "" {
+		namespace = &ns
+	}
+
+	items, err := h.service.GetFoundationPath(ctx, targetCode, namespace)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	respNs := domain.NamespaceGrammar
+	if namespace != nil && *namespace != "" {
+		respNs = *namespace
+	} else if len(items) > 0 {
+		respNs = items[0].Namespace
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, FoundationPathResponse{
+		Target:    targetCode,
+		Namespace: respNs,
+		Items:     toFoundationTopicResponses(items),
+	})
+}
+
+func (h *Handler) createFoundationTopic(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentCreate); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required."))
+		return
+	}
+
+	var req CreateFoundationTopicRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	topic, err := h.service.CreateFoundationTopic(ctx, actor.UserID, service.CreateFoundationTopicRequest{
+		Namespace:   req.Namespace,
+		Code:        req.Code,
+		Label:       req.Label,
+		Description: req.Description,
+		CEFRLevel:   req.CEFRLevel,
+		ParentID:    req.ParentID,
+		Position:    req.Position,
+	})
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusCreated, toFoundationTopicResponse(topic))
+}
+
+func (h *Handler) updateFoundationTopic(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentEdit); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required."))
+		return
+	}
+
+	code := chi.URLParam(r, "code")
+
+	var req UpdateFoundationTopicRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	topic, err := h.service.UpdateFoundationTopic(ctx, actor.UserID, code, service.UpdateFoundationTopicRequest{
+		Label:       req.Label,
+		Description: req.Description,
+		CEFRLevel:   req.CEFRLevel,
+		SetCEFR:     req.CEFRLevel != nil,
+		ParentID:    req.ParentID,
+		SetParent:   req.ParentID != nil,
+		Position:    req.Position,
+		Deprecated:  req.Deprecated,
+	})
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, toFoundationTopicResponse(topic))
+}
+
+func (h *Handler) replaceFoundationPrerequisites(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentEdit); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required."))
+		return
+	}
+
+	code := chi.URLParam(r, "code")
+
+	var req ReplacePrerequisitesRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	if err := h.service.ReplacePrerequisites(ctx, actor.UserID, code, req.RequiresCodes); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	detail, err := h.service.GetFoundationTopicByCode(ctx, code)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, toFoundationTopicDetailResponse(detail))
 }

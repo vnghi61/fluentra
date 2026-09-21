@@ -1,0 +1,527 @@
+CreatorProfile:
+  type: object
+  required: [user_id, bio, headline, payout_eligible, created_at, updated_at]
+  properties:
+    user_id:
+      type: string
+      format: uuid
+    bio:
+      type: string
+      example: Experienced IELTS instructor and curriculum designer.
+    headline:
+      type: string
+      example: Senior English Language Coach
+    payout_eligible:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+UpsertCreatorProfileRequest:
+  type: object
+  required: [bio, headline]
+  properties:
+    bio:
+      type: string
+      example: Experienced IELTS instructor and curriculum designer.
+    headline:
+      type: string
+      example: Senior English Language Coach
+
+PayoutAccount:
+  type: object
+  required: [id, creator_id, bank_code, account_number, account_holder_name, is_default, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    creator_id:
+      type: string
+      format: uuid
+    bank_code:
+      type: string
+      example: MB
+    account_number:
+      type: string
+      example: '0987654321'
+    account_holder_name:
+      type: string
+      example: NGUYEN VAN A
+    is_default:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+CreatePayoutAccountRequest:
+  type: object
+  required: [bank_code, account_number, account_holder_name]
+  properties:
+    bank_code:
+      type: string
+      example: MB
+    account_number:
+      type: string
+      example: '0987654321'
+    account_holder_name:
+      type: string
+      example: NGUYEN VAN A
+    is_default:
+      type: boolean
+      default: true
+
+CourseDraft:
+  type: object
+  required: [id, owner_id, title, slug, description, cefr_level, price_vnd, status, structure, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    owner_id:
+      type: string
+      format: uuid
+    title:
+      type: string
+      example: Business English for Tech Professionals
+    slug:
+      type: string
+      example: business-english-tech
+    description:
+      type: string
+      example: Master technical communication and presentation in English.
+    cefr_level:
+      type: string
+      example: B2
+    topic_taxonomy_id:
+      type: [string, 'null']
+      format: uuid
+    price_vnd:
+      type: integer
+      format: int64
+      description: Course price in VND (0 = free).
+      example: 0
+    status:
+      type: string
+      enum: [draft, submitted, verifying, in_review, published, rejected, changes_requested]
+    structure:
+      type: object
+      description: Course structure containing units, lessons, and activities.
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+CreateCourseDraftRequest:
+  type: object
+  required: [title, slug, cefr_level]
+  properties:
+    title:
+      type: string
+      example: Business English for Tech Professionals
+    slug:
+      type: string
+      example: business-english-tech
+    description:
+      type: string
+      example: Master technical communication and presentation in English.
+    cefr_level:
+      type: string
+      example: B2
+    topic_taxonomy_id:
+      type: string
+      format: uuid
+    price_vnd:
+      type: integer
+      format: int64
+      minimum: 0
+      default: 0
+    structure:
+      type: object
+
+UpdateCourseDraftRequest:
+  type: object
+  properties:
+    title:
+      type: string
+    slug:
+      type: string
+    description:
+      type: string
+    cefr_level:
+      type: string
+    topic_taxonomy_id:
+      type: string
+      format: uuid
+    price_vnd:
+      type: integer
+      format: int64
+      minimum: 0
+    structure:
+      type: object
+
+CourseDraftList:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/CourseDraft'
+    total:
+      type: integer
+
+CourseSubmission:
+  type: object
+  required: [id, draft_id, version, status, submitted_by, submitted_at, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    draft_id:
+      type: string
+      format: uuid
+    version:
+      type: integer
+    status:
+      type: string
+      enum: [submitted, verifying, in_review, approved, rejected, changes_requested]
+    submitted_by:
+      type: string
+      format: uuid
+    reviewer_id:
+      type: [string, 'null']
+      format: uuid
+    feedback:
+      type: [string, 'null']
+    verification_report:
+      type: [object, 'null']
+    submitted_at:
+      type: string
+      format: date-time
+    reviewed_at:
+      type: [string, 'null']
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+ModerationQueueItem:
+  type: object
+  required: [submission, draft]
+  properties:
+    submission:
+      $ref: '#/CourseSubmission'
+    draft:
+      $ref: '#/CourseDraft'
+
+ModerationQueueList:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ModerationQueueItem'
+    total:
+      type: integer
+
+ReviewSubmissionRequest:
+  type: object
+  properties:
+    feedback:
+      type: string
+      example: Please fix grammar in quiz question 2.
+    status:
+      type: string
+      enum: [approved, rejected, changes_requested]
+
+CoursePurchase:
+  type: object
+  required: [id, user_id, course_id, price_paid_vnd, granted_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    course_id:
+      type: string
+      format: uuid
+    course_title:
+      type: string
+      example: Business English for Tech Professionals
+    course_slug:
+      type: string
+      example: business-english-tech
+    order_id:
+      type: [string, 'null']
+      format: uuid
+    price_paid_vnd:
+      type: integer
+      format: int64
+      example: 49000
+    granted_at:
+      type: string
+      format: date-time
+    revoked_at:
+      type: [string, 'null']
+      format: date-time
+    revoke_reason:
+      type: [string, 'null']
+
+UserPurchaseList:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/CoursePurchase'
+    total:
+      type: integer
+
+PurchaseOrderResponse:
+  type: object
+  required: [order_id, reference, amount_vnd, qr_url, bank_code, account_number, account_holder_name, expires_at]
+  properties:
+    order_id:
+      type: string
+      format: uuid
+    reference:
+      type: string
+      example: FLU4KL9A1B2C3
+    amount_vnd:
+      type: integer
+      format: int64
+      example: 49000
+    qr_url:
+      type: string
+      example: https://vietqr.app/img?acc=1017588888&bank=VCB&amount=49000&des=FLU4KL9A1B2C3&template=compact
+    bank_code:
+      type: string
+      example: VCB
+    account_number:
+      type: string
+      example: '1017588888'
+    account_holder_name:
+      type: string
+      example: FLUENTRA
+    expires_at:
+      type: string
+      format: date-time
+
+RefundPurchaseResponse:
+  type: object
+  required: [success, message]
+  properties:
+    success:
+      type: boolean
+      example: true
+    message:
+      type: string
+      example: Refund requested successfully
+
+CreatorLedgerEntry:
+  type: object
+  required: [id, kind, amount_vnd, gross_amount_vnd, fee_amount_vnd, note, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    kind:
+      type: string
+      enum: [sale, refund, payout, adjustment, platform_share]
+      example: sale
+    amount_vnd:
+      type: integer
+      format: int64
+      example: 34300
+    gross_amount_vnd:
+      type: integer
+      format: int64
+      example: 49000
+    fee_amount_vnd:
+      type: integer
+      format: int64
+      example: 14700
+    note:
+      type: string
+      example: 70% creator share
+    created_at:
+      type: string
+      format: date-time
+
+CreatorEarningsSummary:
+  type: object
+  required: [available_balance_vnd, lifetime_earnings_vnd, pending_payout_vnd, total_paid_out_vnd, payout_threshold_vnd, can_request_payout, payout_account_configured, recent_ledger]
+  properties:
+    available_balance_vnd:
+      type: integer
+      format: int64
+      example: 3500000
+    lifetime_earnings_vnd:
+      type: integer
+      format: int64
+      example: 5000000
+    pending_payout_vnd:
+      type: integer
+      format: int64
+      example: 0
+    total_paid_out_vnd:
+      type: integer
+      format: int64
+      example: 1500000
+    payout_threshold_vnd:
+      type: integer
+      format: int64
+      example: 500000
+    can_request_payout:
+      type: boolean
+      example: true
+    payout_account_configured:
+      type: boolean
+      example: true
+    payout_bank_code:
+      type: [string, 'null']
+      example: VCB
+    payout_account_holder:
+      type: [string, 'null']
+      example: NGUYEN VAN A
+    payout_masked_account:
+      type: [string, 'null']
+      example: '******8888'
+    recent_ledger:
+      type: array
+      items:
+        $ref: '#/CreatorLedgerEntry'
+
+RequestPayoutRequest:
+  type: object
+  properties:
+    amount_vnd:
+      type: [integer, 'null']
+      format: int64
+      example: 1000000
+
+PayoutResponse:
+  type: object
+  required: [id, creator_id, amount_vnd, status, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    creator_id:
+      type: string
+      format: uuid
+    amount_vnd:
+      type: integer
+      format: int64
+      example: 1000000
+    status:
+      type: string
+      enum: [pending, sent, failed]
+      example: pending
+    bank_reference:
+      type: [string, 'null']
+      example: VCB-TRF-123456
+    sent_at:
+      type: [string, 'null']
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+    bank_code:
+      type: [string, 'null']
+      example: VCB
+    account_number:
+      type: [string, 'null']
+      example: '1017588888'
+    account_holder_name:
+      type: [string, 'null']
+      example: NGUYEN VAN A
+
+AdminPayoutList:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/PayoutResponse'
+    total:
+      type: integer
+
+FulfillPayoutRequest:
+  type: object
+  required: [bank_reference]
+  properties:
+    bank_reference:
+      type: string
+      example: VCB-TRF-123456
+    note:
+      type: [string, 'null']
+      example: Transferred from corporate Vietcombank
+
+Takedown:
+  type: object
+  description: >-
+    A community course removed from sale, and why. Learners who already bought
+    it keep it (BR-STUDIO-04): a takedown is not a refund.
+  required: [id, course_id, reason, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    course_id:
+      type: string
+      format: uuid
+    reason:
+      type: string
+    reinstated_at:
+      type: [string, 'null']
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+
+CreatorModeration:
+  type: object
+  description: A creator's standing after a moderator acted on them.
+  required: [user_id, trusted]
+  properties:
+    user_id:
+      type: string
+      format: uuid
+    suspended_at:
+      type: [string, 'null']
+      format: date-time
+    suspended_reason:
+      type: [string, 'null']
+    trusted:
+      type: boolean
+      description: >-
+        Whether this creator's free courses publish on the automated gate
+        alone. Cleared by a suspension or an upheld report.
+
+ModerationReasonRequest:
+  type: object
+  required: [reason]
+  properties:
+    reason:
+      type: string
+      minLength: 1
+      description: >-
+        Why the moderator acted. Required: an action nobody explained is one
+        nobody can review or undo fairly.

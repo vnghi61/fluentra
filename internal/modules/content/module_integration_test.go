@@ -140,6 +140,7 @@ const roleAdmin = "admin"
 const (
 	kindVocabWord   = "vocab_word"
 	statusPublished = "published"
+	statusDraft     = "draft"
 )
 
 // call drives one request through the module's router. actor is uuid.Nil for a
@@ -299,12 +300,12 @@ func (f *authoringFixture) createDraft(ctx context.Context, t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &item); err != nil {
 		t.Fatalf("unmarshal create item response: %v", err)
 	}
-	if item.Status != "draft" {
+	if item.Status != statusDraft {
 		t.Errorf("status = %q, want draft", item.Status)
 	}
 	f.itemID = item.ID
 
-	rec = call(ctx, t, f.router, http.MethodPut, f.path("draft"), map[string]any{
+	rec = call(ctx, t, f.router, http.MethodPut, f.path(statusDraft), map[string]any{
 		"cefr_level": "C1",
 		"body":       map[string]any{"word": "photosynthesis", "def": "updated definition"},
 	}, f.authorID)
@@ -522,7 +523,7 @@ func TestAdminListContentFiltered_Integration(t *testing.T) {
 	}{
 		{"filter-published-one", kindVocabWord, statusPublished},
 		{"filter-published-two", kindVocabWord, statusPublished},
-		{"filter-draft-one", "grammar_note", "draft"},
+		{"filter-draft-one", "grammar_note", statusDraft},
 	}
 	for _, item := range seeded {
 		mustExec(ctx, t, `
@@ -591,5 +592,70 @@ func TestAdminListContentFiltered_Integration(t *testing.T) {
 	wantStatus(t, rec, http.StatusOK, "admin content list filtered by slug prefix")
 	if got := decode(rec).Total; got != 2 {
 		t.Errorf("q=filter-published total = %d, want 2", got)
+	}
+}
+
+// TestFoundationCounts_CountPublishedOnly_Integration is BR-FOUNDATION-05's
+// premise at the only layer that can prove it.
+//
+// The gate on publishing a spine topic, and the counts the public topic response
+// reports, both come from one query. That query used to count every tagged item
+// whatever its status, so a topic satisfied "has exercises" against exercises
+// that were still unwritten drafts — which is precisely what the gate exists to
+// prevent. A mocked count cannot catch that; the WHERE clause is the behaviour.
+func TestFoundationCounts_CountPublishedOnly_Integration(t *testing.T) {
+	ctx := context.Background()
+	resetTables(ctx, t)
+
+	fixture := newAuthoringFixture(ctx, t)
+
+	nodeID := uuid.New()
+	mustExec(ctx, t,
+		`INSERT INTO content.taxonomies (id, namespace, code, label, position)
+		 VALUES ($1, 'grammar', 'PRESENT_PERFECT', 'Present Perfect', 107)`, nodeID)
+
+	// Four items on the same node: one of each required kind published, plus a
+	// second exercise still in draft.
+	tagged := []struct {
+		slug   string
+		kind   string
+		status string
+	}{
+		{"pp-exercise-published", "grammar_tense_choice", statusPublished},
+		{"pp-exercise-draft", "grammar_tense_choice", statusDraft},
+		{"pp-quiz", "foundation_quiz", statusPublished},
+		{"pp-review", "foundation_review", statusPublished},
+	}
+	for _, it := range tagged {
+		itemID := uuid.New()
+		mustExec(ctx, t,
+			`INSERT INTO content.content_items (id, kind, slug, status, owner_id)
+			 VALUES ($1, $2, $3, $4, $5)`,
+			itemID, it.kind, it.slug, it.status, fixture.authorID)
+		mustExec(ctx, t,
+			`INSERT INTO content.content_tags (item_id, taxonomy_id) VALUES ($1, $2)`,
+			itemID, nodeID)
+	}
+
+	rec := call(ctx, t, fixture.router, http.MethodGet, "/foundation/topics/PRESENT_PERFECT", nil, uuid.Nil)
+	wantStatus(t, rec, http.StatusOK, "get foundation topic")
+
+	var got struct {
+		ExerciseCount int `json:"exercise_count"`
+		QuizCount     int `json:"quiz_count"`
+		ReviewCount   int `json:"review_count"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode topic response: %v", err)
+	}
+
+	if got.ExerciseCount != 1 {
+		t.Errorf("exercise_count = %d, want 1: the draft exercise must not count", got.ExerciseCount)
+	}
+	if got.QuizCount != 1 {
+		t.Errorf("quiz_count = %d, want 1", got.QuizCount)
+	}
+	if got.ReviewCount != 1 {
+		t.Errorf("review_count = %d, want 1", got.ReviewCount)
 	}
 }

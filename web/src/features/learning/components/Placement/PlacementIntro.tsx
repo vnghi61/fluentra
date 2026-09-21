@@ -70,7 +70,10 @@ export const PlacementIntro: React.FC<PlacementIntroProps> = ({
     <div className="flex min-h-screen items-center justify-center bg-surface-base px-4 py-10">
       <div className="w-full max-w-xl space-y-6 rounded-2xl border border-border bg-surface-card p-6 shadow-lg md:p-8">
         <div className="space-y-3 text-center">
-          <Compass className="mx-auto h-10 w-10 text-primary" aria-hidden="true" />
+          <Compass
+            className="mx-auto h-10 w-10 text-primary"
+            aria-hidden="true"
+          />
           <h1 className="text-2xl font-extrabold text-text md:text-3xl">
             {t("placement.intro.title")}
           </h1>
@@ -81,18 +84,29 @@ export const PlacementIntro: React.FC<PlacementIntroProps> = ({
 
         <ul className="space-y-3 rounded-xl border border-border-subtle bg-surface-base p-4">
           {facts.map((fact) => (
-            <li key={fact.text} className="flex items-start gap-3 text-sm text-text">
-              <fact.icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+            <li
+              key={fact.text}
+              className="flex items-start gap-3 text-sm text-text"
+            >
+              <fact.icon
+                className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+                aria-hidden="true"
+              />
               <span>{fact.text}</span>
             </li>
           ))}
         </ul>
 
         {notice && (
-          <p className="rounded-lg bg-warning/10 p-3 text-sm text-text">{notice}</p>
+          <p className="rounded-lg bg-warning/10 p-3 text-sm text-text">
+            {notice}
+          </p>
         )}
         {error && (
-          <p role="alert" className="rounded-lg bg-danger/10 p-3 text-sm text-danger">
+          <p
+            role="alert"
+            className="rounded-lg bg-danger/10 p-3 text-sm text-danger"
+          >
             {error}
           </p>
         )}
@@ -104,7 +118,9 @@ export const PlacementIntro: React.FC<PlacementIntroProps> = ({
             disabled={pending}
             className="min-h-[44px] w-full text-base"
           >
-            {pending ? t("placement.intro.starting") : t("placement.intro.start")}
+            {pending
+              ? t("placement.intro.starting")
+              : t("placement.intro.start")}
           </Button>
           <Link
             to="/"

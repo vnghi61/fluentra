@@ -118,9 +118,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   }, []);
 
   const canRecord =
-    !disabled &&
-    !isUploading &&
-    (mode === "practice" || !recordingKey);
+    !disabled && !isUploading && (mode === "practice" || !recordingKey);
 
   const upload = async (blob: Blob) => {
     setIsUploading(true);
@@ -273,14 +271,15 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {typeof dailyRecordingsLimit === "number" && dailyRecordingsLimit > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {t("speaking.quotaBadge", "{{used}} / {{limit}} takes today", {
-                used: dailyRecordingsUsed ?? 0,
-                limit: dailyRecordingsLimit,
-              })}
-            </Badge>
-          )}
+          {typeof dailyRecordingsLimit === "number" &&
+            dailyRecordingsLimit > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {t("speaking.quotaBadge", "{{used}} / {{limit}} takes today", {
+                  used: dailyRecordingsUsed ?? 0,
+                  limit: dailyRecordingsLimit,
+                })}
+              </Badge>
+            )}
           <Badge variant="outline">
             {t("speaking.timeLimit", "{{seconds}}s", {
               seconds: speakingTimeSeconds,
@@ -352,7 +351,10 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
 
         {isUploading && (
           <p className="flex items-center gap-2 text-xs font-medium text-primary">
-            <UploadCloud className="h-4 w-4 animate-bounce" aria-hidden="true" />
+            <UploadCloud
+              className="h-4 w-4 animate-bounce"
+              aria-hidden="true"
+            />
             {t("speaking.uploading", "Uploading recording...")}
           </p>
         )}

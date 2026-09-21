@@ -107,6 +107,9 @@ func (m *Module) Author() contract.Author { return m.service }
 // TTSCache provides caching and retrieval of synthesised speech audio.
 func (m *Module) TTSCache() contract.TTSCache { return m.service }
 
+// TaxonomyResolver resolves taxonomy codes to identifiers.
+func (m *Module) TaxonomyResolver() contract.TaxonomyResolver { return m.service }
+
 // Service returns the underlying service instance.
 func (m *Module) Service() *service.Service {
 	return m.service

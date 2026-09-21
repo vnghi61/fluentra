@@ -55,7 +55,7 @@ func TestListCoursesClampsPaging(t *testing.T) {
 			repo := &fakeLessonRepo{courses: []*contract.Course{publishedCourse(slugIELTSCore)}}
 			svc := service.New(service.Deps{Repo: repo})
 
-			if _, _, err := svc.ListCourses(context.Background(), nil, testCase.limit, testCase.offset); err != nil {
+			if _, _, err := svc.ListCourses(context.Background(), nil, nil, testCase.limit, testCase.offset); err != nil {
 				t.Fatalf("ListCourses: %v", err)
 			}
 			if repo.lastLimit != testCase.wantLimit {
@@ -77,7 +77,7 @@ func TestListCoursesPassesTheLevelFilterDown(t *testing.T) {
 	svc := service.New(service.Deps{Repo: repo})
 
 	level := "B1"
-	if _, _, err := svc.ListCourses(context.Background(), &level, 0, 0); err != nil {
+	if _, _, err := svc.ListCourses(context.Background(), &level, nil, 0, 0); err != nil {
 		t.Fatalf("ListCourses: %v", err)
 	}
 	if repo.lastLevel == nil || *repo.lastLevel != "B1" {
@@ -85,7 +85,7 @@ func TestListCoursesPassesTheLevelFilterDown(t *testing.T) {
 	}
 
 	repo.lastLevel = &level
-	if _, _, err := svc.ListCourses(context.Background(), nil, 0, 0); err != nil {
+	if _, _, err := svc.ListCourses(context.Background(), nil, nil, 0, 0); err != nil {
 		t.Fatalf("ListCourses without level: %v", err)
 	}
 	if repo.lastLevel != nil {
@@ -100,7 +100,7 @@ func TestListCoursesRejectsAnUnknownLevel(t *testing.T) {
 	svc := service.New(service.Deps{Repo: repo})
 
 	level := "Z9"
-	_, _, err := svc.ListCourses(context.Background(), &level, 0, 0)
+	_, _, err := svc.ListCourses(context.Background(), &level, nil, 0, 0)
 
 	var appErr *apperr.Error
 	if !errors.As(err, &appErr) {
@@ -122,7 +122,7 @@ func TestListCoursesReturnsPublishedOnly(t *testing.T) {
 	}}
 	svc := service.New(service.Deps{Repo: repo})
 
-	courses, total, err := svc.ListCourses(context.Background(), nil, 0, 0)
+	courses, total, err := svc.ListCourses(context.Background(), nil, nil, 0, 0)
 	if err != nil {
 		t.Fatalf("ListCourses: %v", err)
 	}
@@ -332,5 +332,59 @@ func TestLockReasonNamesEveryPrerequisite(t *testing.T) {
 				t.Errorf("lock_reason = %v, want %q", summary.LockReason, testCase.want)
 			}
 		})
+	}
+}
+
+type fakeTaxonomyResolver struct {
+	mapping map[string]*uuid.UUID
+}
+
+func (f *fakeTaxonomyResolver) ResolveTaxonomyID(_ context.Context, namespace, code string) (*uuid.UUID, error) {
+	if f.mapping != nil {
+		if id, ok := f.mapping[namespace+":"+code]; ok {
+			return id, nil
+		}
+	}
+	return nil, nil
+}
+
+func TestListCoursesPassesTopicFilter(t *testing.T) {
+	t.Parallel()
+
+	topicID := uuid.New()
+	resolver := &fakeTaxonomyResolver{
+		mapping: map[string]*uuid.UUID{
+			"course_topic:business-english": &topicID,
+		},
+	}
+	repo := &fakeLessonRepo{courses: []*contract.Course{publishedCourse("biz-eng")}}
+	svc := service.New(service.Deps{Repo: repo, Taxonomies: resolver})
+
+	// 1. By slug
+	slugTopic := "business-english"
+	if _, _, err := svc.ListCourses(context.Background(), nil, &slugTopic, 0, 0); err != nil {
+		t.Fatalf("ListCourses with slug topic: %v", err)
+	}
+	if repo.lastTopicTaxonomyID == nil || *repo.lastTopicTaxonomyID != topicID {
+		t.Fatalf("repository got topicTaxonomyID %v, want %v", repo.lastTopicTaxonomyID, topicID)
+	}
+
+	// 2. By UUID string directly
+	rawUUID := topicID.String()
+	if _, _, err := svc.ListCourses(context.Background(), nil, &rawUUID, 0, 0); err != nil {
+		t.Fatalf("ListCourses with UUID topic: %v", err)
+	}
+	if repo.lastTopicTaxonomyID == nil || *repo.lastTopicTaxonomyID != topicID {
+		t.Fatalf("repository got topicTaxonomyID %v, want %v", repo.lastTopicTaxonomyID, topicID)
+	}
+
+	// 3. Unknown topic -> empty list, no DB query
+	unknown := "unknown-topic"
+	courses, total, err := svc.ListCourses(context.Background(), nil, &unknown, 0, 0)
+	if err != nil {
+		t.Fatalf("ListCourses with unknown topic: %v", err)
+	}
+	if len(courses) != 0 || total != 0 {
+		t.Fatalf("expected 0 courses for unknown topic, got %d (total %d)", len(courses), total)
 	}
 }

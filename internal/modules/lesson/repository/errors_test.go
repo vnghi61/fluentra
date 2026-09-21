@@ -184,7 +184,7 @@ func TestListQueriesPropagateTheirError(t *testing.T) {
 	ctx := context.Background()
 	level := "B1"
 
-	if _, err := repo.ListPublishedCourses(ctx, &level, 20, 0); !errors.Is(err, boom) {
+	if _, err := repo.ListPublishedCourses(ctx, &level, nil, 20, 0); !errors.Is(err, boom) {
 		t.Errorf("ListPublishedCourses error = %v, want the underlying failure", err)
 	}
 	if _, err := repo.ListUnitsByCourseID(ctx, uuid.New()); !errors.Is(err, boom) {
@@ -224,7 +224,7 @@ func TestSingleRowAndExecQueriesPropagateTheirError(t *testing.T) {
 	repo := repoFailingWith(boom)
 	ctx := context.Background()
 
-	if _, err := repo.CountPublishedCourses(ctx, nil); !errors.Is(err, boom) {
+	if _, err := repo.CountPublishedCourses(ctx, nil, nil); !errors.Is(err, boom) {
 		t.Errorf("CountPublishedCourses error = %v, want the underlying failure", err)
 	}
 	if _, err := repo.CreateUnit(ctx, repository.CreateUnitParams{Position: 1, Title: "Unit"}); !errors.Is(err, boom) {

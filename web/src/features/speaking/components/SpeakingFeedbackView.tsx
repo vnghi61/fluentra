@@ -245,10 +245,10 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
               role="status"
               className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-text"
             >
-              <p className="font-semibold">
-                {t("speaking.mockAsrTitle")}
+              <p className="font-semibold">{t("speaking.mockAsrTitle")}</p>
+              <p className="mt-1 text-text-muted">
+                {t("speaking.mockAsrBody")}
               </p>
-              <p className="mt-1 text-text-muted">{t("speaking.mockAsrBody")}</p>
             </div>
           )}
 
@@ -257,7 +257,10 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">
                 {isReadAloud && referenceText
-                  ? t("speaking.transcriptDiffTitle", "Transcript & Word Alignment")
+                  ? t(
+                      "speaking.transcriptDiffTitle",
+                      "Transcript & Word Alignment",
+                    )
                   : t("speaking.transcriptTitle", "Speech Transcript")}
               </h3>
               {isReadAloud && referenceText && (
@@ -312,7 +315,10 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                           className="inline-flex min-h-11 items-center gap-1 rounded bg-rose-500/10 px-1.5 py-0.5 font-medium text-rose-500 underline decoration-dotted underline-offset-4"
                         >
                           <span className="line-through">{token.text}</span>
-                          <Volume2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+                          <Volume2
+                            className="h-3 w-3 shrink-0"
+                            aria-hidden="true"
+                          />
                         </button>
                       );
                     }
@@ -355,7 +361,10 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                           <span className="text-text-muted line-through">
                             {token.received}
                           </span>
-                          <Volume2 className="h-3 w-3 shrink-0 text-primary" aria-hidden="true" />
+                          <Volume2
+                            className="h-3 w-3 shrink-0 text-primary"
+                            aria-hidden="true"
+                          />
                         </button>
                       );
                     }
@@ -492,7 +501,10 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
 
           {/* Block 4: Plain statement that pronunciation was not assessed (BR-SPEAKING-09) */}
           <div className="p-4 rounded-xl border border-border/80 bg-surface-muted/60 space-y-1.5 flex items-start gap-3">
-            <Info className="h-4 w-4 text-text-muted shrink-0 mt-0.5" aria-hidden="true" />
+            <Info
+              className="h-4 w-4 text-text-muted shrink-0 mt-0.5"
+              aria-hidden="true"
+            />
             <div className="space-y-1 text-xs text-text-muted leading-relaxed">
               <p className="font-semibold text-text">
                 {t(

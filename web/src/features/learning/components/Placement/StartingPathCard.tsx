@@ -39,12 +39,17 @@ export const StartingPathCard: React.FC = () => {
             {t("placement.path.title")}
           </CardTitle>
         </div>
-        <CardDescription className="text-sm text-text-muted">{source}</CardDescription>
+        <CardDescription className="text-sm text-text-muted">
+          {source}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-1">
         <p className="text-base font-semibold text-text">{course.title}</p>
         <p className="text-sm text-text-muted">
-          {t("placement.path.range", { from: course.cefr_from, to: course.cefr_to })}
+          {t("placement.path.range", {
+            from: course.cefr_from,
+            to: course.cefr_to,
+          })}
         </p>
         {course.start_lesson && (
           <p className="text-sm text-text">

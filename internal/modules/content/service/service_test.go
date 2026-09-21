@@ -23,6 +23,21 @@ import (
 
 const testKindWord = "word"
 
+// Foundation fixture values shared by the service tests, spelled once.
+const (
+	codeSentenceStructure = "SENTENCE_STRUCTURE"
+	codePresentSimple     = "PRESENT_SIMPLE"
+	codePresentContinuous = "PRESENT_CONTINUOUS"
+	codePastSimple        = "PAST_SIMPLE"
+	codePresentPerfect    = "PRESENT_PERFECT"
+	codeFutureSimple      = "FUTURE_SIMPLE"
+	labelPresentSimple    = "Present Simple"
+	nsGrammar             = "grammar"
+	kindFoundationTopic   = "foundation_topic"
+	kindFoundationQuiz    = "foundation_quiz"
+	kindExercise          = "exercise"
+)
+
 // fakeRepo is an in-memory mock repository implementing service.Repository.
 type fakeRepo struct {
 	items       map[uuid.UUID]domain.Item
@@ -613,6 +628,112 @@ func (f *fakeRepo) UpsertTTSCache(_ context.Context, textHash, voice, _, _, obje
 	key := textHash + ":" + voice
 	f.ttsCache[key] = objectKey
 	return nil
+}
+
+func (f *fakeRepo) CreateTaxonomy(
+	_ context.Context,
+	id uuid.UUID,
+	namespace, code, label string,
+	parentID *uuid.UUID,
+	description string,
+	cefrLevel *string,
+	position int,
+	deprecatedAt *time.Time,
+) (domain.Taxonomy, error) {
+	t := domain.Taxonomy{
+		ID:           id,
+		Namespace:    namespace,
+		Code:         code,
+		Label:        label,
+		ParentID:     parentID,
+		Description:  description,
+		CEFRLevel:    cefrLevel,
+		Position:     position,
+		DeprecatedAt: deprecatedAt,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+	return t, nil
+}
+
+func (f *fakeRepo) GetTaxonomyByID(_ context.Context, id uuid.UUID) (domain.Taxonomy, error) {
+	return domain.Taxonomy{ID: id, Code: "TOPIC"}, nil
+}
+
+func (f *fakeRepo) GetTaxonomyByCode(_ context.Context, code string) (domain.Taxonomy, error) {
+	return domain.Taxonomy{ID: uuid.New(), Code: code, Namespace: domain.NamespaceGrammar}, nil
+}
+
+func (f *fakeRepo) ListTaxonomiesFiltered(
+	_ context.Context,
+	_, _ *string,
+	_ *uuid.UUID,
+	_ *string,
+	_ bool,
+	_, _ int32,
+) ([]domain.Taxonomy, int64, error) {
+	return nil, 0, nil
+}
+
+func (f *fakeRepo) UpdateTaxonomy(
+	_ context.Context,
+	id uuid.UUID,
+	label, description *string,
+	cefrLevel *string, _ bool,
+	parentID *uuid.UUID, _ bool,
+	position *int,
+	deprecatedAt *time.Time, _ bool,
+) (domain.Taxonomy, error) {
+	t := domain.Taxonomy{ID: id}
+	if label != nil {
+		t.Label = *label
+	}
+	if description != nil {
+		t.Description = *description
+	}
+	t.CEFRLevel = cefrLevel
+	t.ParentID = parentID
+	if position != nil {
+		t.Position = *position
+	}
+	t.DeprecatedAt = deprecatedAt
+	return t, nil
+}
+
+func (f *fakeRepo) DeleteTaxonomy(_ context.Context, _ uuid.UUID) error {
+	return nil
+}
+
+func (f *fakeRepo) ListPrerequisitesForNode(_ context.Context, _ uuid.UUID) ([]domain.Taxonomy, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) ListDependantsForNode(_ context.Context, _ uuid.UUID) ([]domain.Taxonomy, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) ListAllPrerequisiteEdgesInNamespace(_ context.Context, _ string) ([]domain.PrerequisiteEdge, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) ListAllTaxonomiesInNamespace(_ context.Context, _ string) ([]domain.Taxonomy, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) ReplacePrerequisites(_ context.Context, _ uuid.UUID, _ []uuid.UUID) error {
+	return nil
+}
+
+func (f *fakeRepo) CountTaggedContentByKindForTaxonomy(_ context.Context, _ uuid.UUID) (map[string]int, error) {
+	return map[string]int{
+		kindExercise:        1,
+		kindFoundationQuiz:  1,
+		"foundation_review": 1,
+	}, nil
+}
+
+func (f *fakeRepo) GetPublishedTopicBodyByTaxonomyID(_ context.Context, _ uuid.UUID) ([]byte, bool, error) {
+	return nil, false, nil
 }
 
 type fakeEvents struct {

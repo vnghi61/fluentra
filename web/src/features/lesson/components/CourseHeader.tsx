@@ -3,26 +3,40 @@ import { BookMarked, Clock, GraduationCap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CheckCircle2, ShoppingBag } from "lucide-react";
 import type { CourseDetail } from "../api/lessonApi";
 
 export interface CourseHeaderProps {
   course: CourseDetail;
-  totalLessons?: number;
-  completedLessons?: number;
+  totalLessons?: number | undefined;
+  completedLessons?: number | undefined;
+  isOwned?: boolean | undefined;
+  priceVnd?: number | undefined;
+  onBuyOrClaim?: (() => void) | undefined;
 }
 
 export const CourseHeader: React.FC<CourseHeaderProps> = ({
   course,
   totalLessons = 0,
   completedLessons = 0,
+  isOwned = false,
+  priceVnd,
+  onBuyOrClaim,
 }) => {
   const { t } = useTranslation();
+
+  // Price from prop or course object
+  const courseAny = course as unknown as { price_vnd?: number; origin?: string };
+  const effectivePrice = priceVnd ?? courseAny.price_vnd ?? 0;
+  const isPaid = effectivePrice > 0;
+  const isCommunity = courseAny.origin === "community";
 
   return (
     <Card className="border-primary/30 bg-gradient-to-r from-surface-card via-surface-card to-primary/5 shadow-sm">
@@ -72,6 +86,53 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
                 defaultValue: `${completedLessons} of ${totalLessons} lessons completed`,
               })}
             </span>
+          </div>
+        )}
+
+        {/* Purchase / Enrolment Bar for community or paid courses */}
+        {(isPaid || isCommunity) && (
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border-subtle/60">
+            <div className="flex items-center gap-2">
+              {isPaid ? (
+                <span className="text-base font-extrabold text-primary-accent font-mono">
+                  ₫{effectivePrice.toLocaleString("vi-VN")}
+                </span>
+              ) : (
+                <Badge variant="outline" className="text-xs">
+                  {t("studio.courses.freeBadge", "Free Community Course")}
+                </Badge>
+              )}
+              {isOwned && (
+                <Badge variant="success" className="gap-1 text-xs">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  {t("learn.courseOwned", "Enrolled")}
+                </Badge>
+              )}
+            </div>
+
+            {!isOwned && onBuyOrClaim && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={onBuyOrClaim}
+                className="gap-1.5 text-xs font-bold"
+              >
+                {isPaid ? (
+                  <>
+                    <ShoppingBag className="h-3.5 w-3.5" />
+                    {t("learn.buyCourseBtn", {
+                      price: effectivePrice.toLocaleString("vi-VN"),
+                      defaultValue: `Buy Course • ₫${effectivePrice.toLocaleString("vi-VN")}`,
+                    })}
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {t("learn.claimCourseBtn", "Enroll for Free")}
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         )}
       </CardHeader>

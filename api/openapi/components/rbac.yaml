@@ -30,10 +30,10 @@ MyPermissions:
 
 RoleName:
   type: string
-  enum: [admin, user]
+  enum: [admin, user, moderator]
   description: >-
-    Exactly two roles exist (BR-RBAC-02). A third is an ADR, not a row: it
-    changes the shape of the product rather than its data.
+    Exactly three roles exist (BR-RBAC-02, ADR-0026). A fourth is an ADR, not a
+    row: it changes the shape of the product rather than its data.
 
 Role:
   type: object

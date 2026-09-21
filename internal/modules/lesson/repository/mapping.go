@@ -13,14 +13,18 @@ import (
 // ToContractCourse maps an sqlc LearnCourse row to a contract.Course domain object.
 func ToContractCourse(c sqlc.LearnCourse) *contract.Course {
 	return &contract.Course{
-		ID:             c.ID,
-		Slug:           c.Slug,
-		Title:          c.Title,
-		Description:    c.Description,
-		CEFRFrom:       c.CefrFrom,
-		CEFRTo:         c.CefrTo,
-		Status:         c.Status,
-		EstimatedHours: int(c.EstimatedHours),
+		ID:              c.ID,
+		Slug:            c.Slug,
+		Title:           c.Title,
+		Description:     c.Description,
+		CEFRFrom:        c.CefrFrom,
+		CEFRTo:          c.CefrTo,
+		Status:          c.Status,
+		EstimatedHours:  int(c.EstimatedHours),
+		Origin:          c.Origin,
+		OwnerID:         c.OwnerID,
+		Visibility:      c.Visibility,
+		TopicTaxonomyID: c.TopicTaxonomyID,
 	}
 }
 

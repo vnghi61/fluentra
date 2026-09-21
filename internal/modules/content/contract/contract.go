@@ -116,3 +116,8 @@ type TTSCache interface {
 	Get(ctx context.Context, textHash, voice string) (objectKey string, found bool, err error)
 	Put(ctx context.Context, textHash, voice, engine, engineVersion, objectKey string) error
 }
+
+// TaxonomyResolver resolves taxonomy codes to identifiers.
+type TaxonomyResolver interface {
+	ResolveTaxonomyID(ctx context.Context, namespace, code string) (*uuid.UUID, error)
+}

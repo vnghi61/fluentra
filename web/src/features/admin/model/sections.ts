@@ -2,6 +2,8 @@ import {
   AlertTriangle,
   BookA,
   BookOpen,
+  DollarSign,
+  FileCheck,
   Flag,
   Gauge,
   Users,
@@ -27,7 +29,9 @@ export type AdminSectionKey =
   | "reports"
   | "vocabulary"
   | "flags"
-  | "ai";
+  | "ai"
+  | "moderation"
+  | "payouts";
 
 export interface AdminSection {
   key: AdminSectionKey;
@@ -98,6 +102,27 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     labelKey: "page.aiUsage",
     labelFallback: "AI Usage",
     Icon: Gauge,
+    anyOf: [PERMISSIONS.adminDashboard],
+  },
+  {
+    key: "moderation",
+    path: "/admin/moderation",
+    labelKey: "adminModeration.tabLabel",
+    labelFallback: "Course Moderation",
+    Icon: FileCheck,
+    anyOf: [
+      PERMISSIONS.moderationRead,
+      PERMISSIONS.moderationAct,
+      PERMISSIONS.contentReview,
+      PERMISSIONS.contentPublish,
+    ],
+  },
+  {
+    key: "payouts",
+    path: "/admin/payouts",
+    labelKey: "adminPayouts.tabLabel",
+    labelFallback: "Creator Payouts",
+    Icon: DollarSign,
     anyOf: [PERMISSIONS.adminDashboard],
   },
 ] as const;

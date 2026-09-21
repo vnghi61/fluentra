@@ -431,7 +431,8 @@ describe("LessonPage Runner (P10.3)", () => {
           content_version_id: "0199a1c2-3d4e-7f80-9abc-def01234567e",
           weight: 1,
           config: {
-            prompt: "Rewrite beginning with 'Although': He was tired, but he finished the report.",
+            prompt:
+              "Rewrite beginning with 'Although': He was tired, but he finished the report.",
           } as unknown as Record<string, never>,
         },
       ],
@@ -455,10 +456,7 @@ describe("LessonPage Runner (P10.3)", () => {
 
     // Type the rewritten sentence
     const input = screen.getByLabelText("Your rewritten sentence");
-    await user.type(
-      input,
-      "Although he was tired, he finished the report.",
-    );
+    await user.type(input, "Although he was tired, he finished the report.");
 
     // Submit the answer
     const checkBtn = screen.getByRole("button", { name: /Check Answer/i });

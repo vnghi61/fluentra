@@ -145,7 +145,10 @@ export const PlacementRunner: React.FC<PlacementRunnerProps> = ({
           />
         )}
         {error && (
-          <p role="alert" className="rounded-lg bg-danger/10 p-3 text-sm text-danger">
+          <p
+            role="alert"
+            className="rounded-lg bg-danger/10 p-3 text-sm text-danger"
+          >
             {error}
           </p>
         )}

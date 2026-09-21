@@ -73,15 +73,25 @@ WHERE ct.item_id = $1
 ORDER BY t.namespace, t.code
 `
 
-func (q *Queries) ListTagsForContentItem(ctx context.Context, itemID uuid.UUID) ([]ContentTaxonomy, error) {
+type ListTagsForContentItemRow struct {
+	ID        uuid.UUID
+	Namespace string
+	Code      string
+	Label     string
+	ParentID  *uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) ListTagsForContentItem(ctx context.Context, itemID uuid.UUID) ([]ListTagsForContentItemRow, error) {
 	rows, err := q.db.Query(ctx, listTagsForContentItem, itemID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ContentTaxonomy
+	var items []ListTagsForContentItemRow
 	for rows.Next() {
-		var i ContentTaxonomy
+		var i ListTagsForContentItemRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Namespace,

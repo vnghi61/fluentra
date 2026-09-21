@@ -1,7 +1,4 @@
-import type {
-  PlacementItem,
-  PlacementResponse,
-} from "../../api/placement";
+import type { PlacementItem, PlacementResponse } from "../../api/placement";
 
 export interface ChoiceOption {
   id: string;

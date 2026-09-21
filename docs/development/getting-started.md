@@ -79,7 +79,7 @@ make migrate-up
 make seed
 ```
 
-Demo accounts: `learner@fluentra.dev` / `admin@fluentra.dev`, password `Password123!demo`.
+Demo accounts: `learner@fluentra.dev` / `admin@fluentra.dev` / `moderator@fluentra.dev`, password `Password123!demo`.
 These exist only in the development seed; there is no default password anywhere else.
 
 ## 5. The 15-minute exercise — follow one request

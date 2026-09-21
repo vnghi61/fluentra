@@ -98,6 +98,14 @@ tags:
   - name: exam
     description: >-
       Timed mock exams, section navigation, auto-submit on expiry, integrity signals, and score reports.
+  - name: studio
+    description: Creator Studio authoring, course drafting, and submission workflows.
+  - name: moderation
+    description: Course and content moderation queues and approval actions.
+  - name: payment
+    description: SePay bank transfer orders, webhooks, and payment reconciliation.
+  - name: resource
+    description: Document, media and web URL intake and validation lifecycle.
 security:
   - BearerAuth: []
 paths:
@@ -2531,6 +2539,12 @@ paths:
           description: Return only courses whose CEFR range covers this level.
           schema:
             $ref: '#/components/schemas/CEFRLevel'
+        - name: topic
+          in: query
+          required: false
+          description: Return only courses matching this topic taxonomy ID or code.
+          schema:
+            type: string
         - name: limit
           in: query
           required: false
@@ -2985,6 +2999,360 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /foundation/topics:
+    get:
+      tags: [content]
+      operationId: listFoundationTopics
+      summary: Browse foundation topics with taxonomy filters.
+      description: >-
+        Returns canonical knowledge spine topics with optional namespace, level, and
+        parent filters. Public read per ADR-0025.
+      security: []
+      parameters:
+        - name: namespace
+          in: query
+          required: false
+          description: Filter topics by taxonomy namespace.
+          schema:
+            $ref: '#/components/schemas/TaxonomyNamespace'
+        - name: cefr_level
+          in: query
+          required: false
+          description: Filter topics by CEFR level.
+          schema:
+            $ref: '#/components/schemas/CEFRLevel'
+        - name: parent_id
+          in: query
+          required: false
+          description: Filter topics by parent taxonomy ID.
+          schema:
+            type: string
+            format: uuid
+        - name: q
+          in: query
+          required: false
+          description: Search topics by code or label.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum topics to return.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          description: Topics to skip before the page starts.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of foundation topics matching filters.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoundationTopicList'
+              example:
+                items:
+                  - id: "0199a1c2-3d4e-7f80-9abc-def01234567e"
+                    namespace: "grammar"
+                    code: "PRESENT_PERFECT"
+                    label: "Present Perfect"
+                    description: "Express experience and unfinished actions."
+                    cefr_level: "B1"
+                    parent_id: null
+                    position: 10
+                    deprecated_at: null
+                    created_at: "2026-09-20T12:00:00Z"
+                    updated_at: "2026-09-20T12:00:00Z"
+                total: 1
+                limit: 20
+                offset: 0
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /foundation/topics/{code}:
+    get:
+      tags: [content]
+      operationId: getFoundationTopic
+      summary: Get a foundation topic by code.
+      description: >-
+        Returns a single topic by its canonical code, including prerequisites,
+        dependants, related topics, attached content counts, and published body.
+        Public read per ADR-0025.
+      security: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          description: Canonical topic code.
+          schema:
+            type: string
+            example: PRESENT_PERFECT
+      responses:
+        '200':
+          description: Detailed topic view.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoundationTopicDetail'
+              example:
+                id: "0199a1c2-3d4e-7f80-9abc-def01234567e"
+                namespace: "grammar"
+                code: "PRESENT_PERFECT"
+                label: "Present Perfect"
+                description: "Express experience and unfinished actions."
+                cefr_level: "B1"
+                parent_id: null
+                position: 10
+                deprecated_at: null
+                created_at: "2026-09-20T12:00:00Z"
+                updated_at: "2026-09-20T12:00:00Z"
+                body: null
+                prerequisites: []
+                dependants: []
+                related: ["PAST_SIMPLE"]
+                exercise_count: 3
+                quiz_count: 1
+                review_count: 2
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /foundation/path:
+    get:
+      tags: [content]
+      operationId: getFoundationPath
+      summary: Get topologically sorted foundation learning path.
+      description: >-
+        Returns an ordered sequence of topics respecting prerequisite DAG constraints.
+        Supports targeting a specific topic (?target=CODE) or ordering an entire namespace (?namespace=NAME).
+        Public read per ADR-0025.
+      security: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          description: Target topic code whose prerequisite chain should be calculated.
+          schema:
+            type: string
+            example: PRESENT_PERFECT
+        - name: namespace
+          in: query
+          required: false
+          description: Namespace to sort (defaults to grammar if target is omitted).
+          schema:
+            $ref: '#/components/schemas/TaxonomyNamespace'
+      responses:
+        '200':
+          description: Ordered learning path.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoundationPath'
+              example:
+                target: "PRESENT_PERFECT"
+                namespace: "grammar"
+                items:
+                  - id: "0199a1c2-3d4e-7f80-9abc-def01234567a"
+                    namespace: "grammar"
+                    code: "SENTENCE_STRUCTURE"
+                    label: "Sentence Structure"
+                    description: "Basic sentence construction."
+                    cefr_level: "A1"
+                    parent_id: null
+                    position: 1
+                    deprecated_at: null
+                    created_at: "2026-09-20T12:00:00Z"
+                    updated_at: "2026-09-20T12:00:00Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/foundation/topics:
+    post:
+      tags: [content]
+      operationId: createFoundationTopic
+      summary: Create a new foundation taxonomy topic.
+      description: >-
+        Creates a new canonical spine topic. Code must be in SCREAMING_SNAKE format
+        and is permanently immutable.
+      x-permission: content.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFoundationTopicRequest'
+            example:
+              namespace: "grammar"
+              code: "PRESENT_PERFECT"
+              label: "Present Perfect"
+              description: "Express experience and unfinished actions."
+              cefr_level: "B1"
+              position: 10
+      responses:
+        '201':
+          description: Foundation topic created.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoundationTopic'
+              example:
+                id: "0199a1c2-3d4e-7f80-9abc-def01234567e"
+                namespace: "grammar"
+                code: "PRESENT_PERFECT"
+                label: "Present Perfect"
+                description: "Express experience and unfinished actions."
+                cefr_level: "B1"
+                parent_id: null
+                position: 10
+                deprecated_at: null
+                created_at: "2026-09-20T12:00:00Z"
+                updated_at: "2026-09-20T12:00:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/foundation/topics/{code}:
+    patch:
+      tags: [content]
+      operationId: updateFoundationTopic
+      summary: Update foundation topic metadata.
+      description: >-
+        Updates label, description, CEFR level, parent, position, or deprecation status.
+        The code is immutable and cannot be modified (TAXONOMY_CODE_IMMUTABLE).
+      x-permission: content.edit
+      parameters:
+        - name: code
+          in: path
+          required: true
+          description: Topic code to update.
+          schema:
+            type: string
+            example: PRESENT_PERFECT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFoundationTopicRequest'
+            example:
+              label: "Present Perfect Tense"
+              description: "Updated description for present perfect."
+              cefr_level: "B1"
+      responses:
+        '200':
+          description: Topic updated.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoundationTopic'
+              example:
+                id: "0199a1c2-3d4e-7f80-9abc-def01234567e"
+                namespace: "grammar"
+                code: "PRESENT_PERFECT"
+                label: "Present Perfect Tense"
+                description: "Updated description for present perfect."
+                cefr_level: "B1"
+                parent_id: null
+                position: 10
+                deprecated_at: null
+                created_at: "2026-09-20T12:00:00Z"
+                updated_at: "2026-09-20T12:00:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/foundation/topics/{code}/prerequisites:
+    put:
+      tags: [content]
+      operationId: replaceFoundationPrerequisites
+      summary: Replace prerequisites for a foundation topic.
+      description: >-
+        Replaces the prerequisite edge set for a topic within the same namespace.
+        An in-memory cycle check runs on the proposed graph before database modification.
+        Refuses any cycle with 422 TAXONOMY_CYCLE.
+      x-permission: content.edit
+      parameters:
+        - name: code
+          in: path
+          required: true
+          description: Topic code whose prerequisites are being replaced.
+          schema:
+            type: string
+            example: PRESENT_PERFECT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplacePrerequisitesRequest'
+            example:
+              requires_codes: ["PAST_SIMPLE", "PRESENT_SIMPLE"]
+      responses:
+        '200':
+          description: Prerequisites replaced successfully.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoundationTopicDetail'
+              example:
+                id: "0199a1c2-3d4e-7f80-9abc-def01234567e"
+                namespace: "grammar"
+                code: "PRESENT_PERFECT"
+                label: "Present Perfect"
+                description: "Express experience and unfinished actions."
+                cefr_level: "B1"
+                parent_id: null
+                position: 10
+                deprecated_at: null
+                created_at: "2026-09-20T12:00:00Z"
+                updated_at: "2026-09-20T12:00:00Z"
+                body: null
+                prerequisites: []
+                dependants: []
+                related: []
+                exercise_count: 0
+                quiz_count: 0
+                review_count: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /admin/content:
     get:
       tags: [content]
@@ -6398,6 +6766,1137 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /studio/creator/profile:
+    get:
+      tags: [studio]
+      operationId: studioGetCreatorProfile
+      summary: Get creator profile for current user.
+      description: >-
+        The caller's creator profile, or 404 if they have not opened the studio yet.
+      x-permission: self
+      responses:
+        '200':
+          description: Creator profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatorProfile'
+              example: {"user_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "bio": "Experienced IELTS instructor and curriculum designer.", "headline": "Senior English Language Coach", "payout_eligible": true, "created_at": "2026-09-20T09:00:00Z", "updated_at": "2026-09-20T09:00:00Z"}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+    post:
+      tags: [studio]
+      operationId: studioUpsertCreatorProfile
+      summary: Register or update creator profile for current user.
+      description: >-
+        Opens the studio for the caller, or updates the profile they already have.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertCreatorProfileRequest'
+      responses:
+        '200':
+          description: Updated creator profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatorProfile'
+              example: {"user_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "bio": "Experienced IELTS instructor and curriculum designer.", "headline": "Senior English Language Coach", "payout_eligible": true, "created_at": "2026-09-20T09:00:00Z", "updated_at": "2026-09-20T09:00:00Z"}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /studio/creator/payout-account:
+    get:
+      tags: [studio]
+      operationId: studioGetPayoutAccount
+      summary: Get default payout account for current user.
+      description: >-
+        The bank account this creator is paid into. Returned to its owner, and to an admin holding
+        billing.manage for one payout at a time (BR-STUDIO-09).
+      x-permission: self
+      responses:
+        '200':
+          description: Payout account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutAccount'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "bank_code": "MB", "account_number": "0987654321", "account_holder_name": "NGUYEN VAN A", "is_default": true, "created_at": "2026-09-20T09:00:00Z", "updated_at": "2026-09-20T09:00:00Z"}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+    post:
+      tags: [studio]
+      operationId: studioUpsertPayoutAccount
+      summary: Add or update default payout account for current user.
+      description: >-
+        Records where to send this creator's share. A paid course cannot be listed without one: selling
+        a course nobody can be paid for is a support ticket, not a sale.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePayoutAccountRequest'
+      responses:
+        '200':
+          description: Payout account set.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutAccount'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "bank_code": "MB", "account_number": "0987654321", "account_holder_name": "NGUYEN VAN A", "is_default": true, "created_at": "2026-09-20T09:00:00Z", "updated_at": "2026-09-20T09:00:00Z"}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /studio/courses:
+    get:
+      tags: [studio]
+      operationId: studioListCourses
+      summary: List creator drafts.
+      description: >-
+        The caller's own course drafts, newest first, with the status of each.
+      x-permission: self
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: List of course drafts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDraftList'
+              example: {"items": [], "total": 1}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+    post:
+      tags: [studio]
+      operationId: studioCreateCourseDraft
+      summary: Create a course draft.
+      description: >-
+        Starts a course draft owned by the caller. The draft holds the whole unit, lesson and activity
+        tree; nothing is published until it has passed both gates.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCourseDraftRequest'
+      responses:
+        '201':
+          description: Course draft created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDraft'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "owner_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "title": "Business English for Tech Professionals", "slug": "business-english-tech", "description": "Master technical communication and presentation in English.", "cefr_level": "B2", "price_vnd": 0, "status": "draft", "structure": {}, "created_at": "2026-09-20T09:00:00Z", "updated_at": "2026-09-20T09:00:00Z"}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /studio/courses/{id}:
+    get:
+      tags: [studio]
+      operationId: studioGetCourseDraft
+      summary: Get course draft by ID.
+      description: >-
+        One of the caller's drafts, with its structure and its last verification report. Another
+        creator's id is a 404 rather than a 403, because they should not learn it exists.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Course draft details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDraft'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "owner_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "title": "Business English for Tech Professionals", "slug": "business-english-tech", "description": "Master technical communication and presentation in English.", "cefr_level": "B2", "price_vnd": 0, "status": "draft", "structure": {}, "created_at": "2026-09-20T09:00:00Z", "updated_at": "2026-09-20T09:00:00Z"}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+    put:
+      tags: [studio]
+      operationId: studioUpdateCourseDraft
+      summary: Update course draft.
+      description: >-
+        Replaces the fields the request sets. Only a draft, or one that came back with changes
+        requested, may be edited: a submission in review is what a moderator is reading.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCourseDraftRequest'
+      responses:
+        '200':
+          description: Course draft updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDraft'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "owner_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "title": "Business English for Tech Professionals", "slug": "business-english-tech", "description": "Master technical communication and presentation in English.", "cefr_level": "B2", "price_vnd": 0, "status": "draft", "structure": {}, "created_at": "2026-09-20T09:00:00Z", "updated_at": "2026-09-20T09:00:00Z"}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /studio/courses/{id}/submit:
+    post:
+      tags: [studio]
+      operationId: studioSubmitCourseDraft
+      summary: Submit course draft for review.
+      description: >-
+        Submits a draft for review. Returns immediately, because Gate 1 checks every activity answer
+        key and a creator submitting forty of them should not watch a request time out.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Course submitted for verification.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseSubmission'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "draft_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "version": 1, "status": "submitted", "submitted_by": "0199a1c2-3d4e-7f80-9abc-def012345678", "submitted_at": "2026-09-20T09:00:00Z", "created_at": "2026-09-20T09:00:00Z", "updated_at": "2026-09-20T09:00:00Z"}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /courses/{id}/claim:
+    post:
+      tags: [studio]
+      operationId: studioClaimCourse
+      summary: Claim a free community course.
+      description: >-
+        Takes a free community course, creating the access record without an order.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Course ID to claim.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Course successfully claimed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoursePurchase'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "course_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "price_paid_vnd": 49000, "granted_at": "2026-09-20T09:00:00Z"}
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /courses/{id}/purchase:
+    post:
+      tags: [studio]
+      operationId: studioPurchaseCourse
+      summary: Initiate purchase of a paid course via VietQR.
+      description: >-
+        Creates a bank transfer order for a paid course and returns what the learner needs to pay it:
+        the amount, the reference to put in the transfer, and a VietQR image carrying both. The price
+        comes from the listing, never from the request.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Course ID to purchase.
+          schema: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Purchase order created with VietQR payment instructions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseOrderResponse'
+              example: {"order_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "reference": "FLU4KL9A1B2C3", "amount_vnd": 49000, "qr_url": "https://vietqr.app/img?acc=1017588888&bank=VCB&amount=49000&des=FLU4KL9A1B2C3&template=compact", "bank_code": "VCB", "account_number": "1017588888", "account_holder_name": "FLUENTRA", "expires_at": "2026-09-20T09:00:00Z"}
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /me/purchases:
+    get:
+      tags: [studio]
+      operationId: studioListPurchases
+      summary: List owned community courses for the calling learner.
+      description: >-
+        The courses the caller owns, newest first.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: List of purchases and claims.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPurchaseList'
+              example: {"items": [], "total": 1}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /me/purchases/{id}/refund:
+    post:
+      tags: [studio]
+      operationId: studioRefundPurchase
+      summary: Request self-service refund for a purchased course within window.
+      description: >-
+        Refunds a purchase within seven days and under a fifth of the course completed. Records what is
+        owed against the order and reverses the creator credit; the transfer itself is made by an
+        admin, because SePay receives money and does not send it.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Purchase ID to refund.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Refund processed or requested.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundPurchaseResponse'
+              example: {"success": true, "message": "Refund requested successfully"}
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /me/studio/earnings:
+    get:
+      tags: [studio]
+      operationId: studioGetEarnings
+      summary: Get creator earnings, balance, and recent ledger entries.
+      description: >-
+        What the caller has earned, what has been paid out, and what is still owed.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Creator earnings summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatorEarningsSummary'
+              example: {"available_balance_vnd": 3500000, "lifetime_earnings_vnd": 5000000, "pending_payout_vnd": 0, "total_paid_out_vnd": 1500000, "payout_threshold_vnd": 500000, "can_request_payout": true, "payout_account_configured": true, "recent_ledger": []}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /me/studio/payouts:
+    post:
+      tags: [studio]
+      operationId: studioRequestPayout
+      summary: Request a payout of creator earnings.
+      description: >-
+        Asks to be paid the balance. Pending until an admin makes the bank transfer and records its
+        reference.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPayoutRequest'
+      responses:
+        '201':
+          description: Payout request created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutResponse'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "amount_vnd": 1000000, "status": "pending", "created_at": "2026-09-20T09:00:00Z"}
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /admin/billing/refunds:
+    get:
+      tags: [payment]
+      operationId: paymentListRefunds
+      summary: Refunds owed to learners.
+      description: >-
+        The queue of money to send back. SePay receives money and does not send it, so every
+        refund is a bank transfer somebody makes by hand; this is the list of the ones still
+        to make.
+      x-permission: billing.read
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter by refund status.
+          schema: { type: string, enum: [requested, sent, failed] }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200, default: 20 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: Refunds owed, newest first.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundList'
+              example: {"items": [{"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "order_id": "0199a1c2-3d4e-7f80-9abc-def012345650", "amount_vnd": 199000, "reason": "learner_refund", "status": "requested", "sent_at": null, "created_at": "2026-09-20T09:00:00Z"}], "total": 1}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/billing/refunds/{id}/sent:
+    post:
+      tags: [payment]
+      operationId: paymentMarkRefundSent
+      summary: Record that a refund has been transferred.
+      description: >-
+        Marks a requested refund as sent, after the admin has made the bank transfer. A refund
+        already marked sent is a 409 rather than a second transfer.
+      x-permission: billing.manage
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Refund ID.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The refund, now sent.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refund'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "order_id": "0199a1c2-3d4e-7f80-9abc-def012345650", "amount_vnd": 199000, "reason": "learner_refund", "status": "sent", "sent_at": "2026-09-20T10:00:00Z", "created_at": "2026-09-20T09:00:00Z"}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/billing/payouts:
+    get:
+      tags: [payment]
+      operationId: paymentListPayouts
+      summary: List creator payout requests.
+      description: >-
+        Payouts owed to creators, newest first. Bank details are not in this response; they are on the
+        single payout (BR-STUDIO-09).
+      x-permission: admin.dashboard
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, sent, failed]
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: List of payouts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPayoutList'
+              example: {"items": [], "total": 1}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /admin/billing/payouts/{id}:
+    get:
+      tags: [payment]
+      operationId: paymentGetPayout
+      summary: Get payout details including creator bank details.
+      description: >-
+        One payout with the creator's bank account, so an admin can make the transfer. The only route
+        that returns those details.
+      x-permission: admin.dashboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Payout details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutResponse'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "amount_vnd": 1000000, "status": "pending", "created_at": "2026-09-20T09:00:00Z"}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /admin/billing/payouts/{id}/fulfill:
+    post:
+      tags: [payment]
+      operationId: paymentFulfillPayout
+      summary: Record manual bank transfer fulfillment for a payout.
+      description: >-
+        Records that the bank transfer for a payout has been made, with its reference.
+      x-permission: admin.dashboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FulfillPayoutRequest'
+      responses:
+        '200':
+          description: Payout fulfilled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutResponse'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "amount_vnd": 1000000, "status": "pending", "created_at": "2026-09-20T09:00:00Z"}
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /moderation/courses/{id}/takedown:
+    post:
+      tags: [moderation]
+      operationId: moderationTakedownCourse
+      summary: Remove a community course from sale.
+      description: >-
+        Takes a published community course down. Learners who already bought it keep it
+        (BR-STUDIO-04): a takedown is not a refund, and revoking what somebody paid for because
+        somebody else complained is a different decision with a different owner. It counts
+        against the creator, who loses trust and is reviewed again.
+      x-permission: moderation.act
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Course ID.
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModerationReasonRequest'
+            example: {"reason": "plagiarised from a textbook"}
+      responses:
+        '200':
+          description: The course is down.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Takedown'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345680", "course_id": "0199a1c2-3d4e-7f80-9abc-def012345640", "reason": "plagiarised from a textbook", "reinstated_at": null, "created_at": "2026-09-20T12:00:00Z"}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /moderation/courses/{id}/reinstate:
+    post:
+      tags: [moderation]
+      operationId: moderationReinstateCourse
+      summary: Put a taken-down course back on sale.
+      description: >-
+        Lifts an open takedown and returns the listing to active. Reinstating a course that is
+        not down is a 404 rather than a silent success.
+      x-permission: moderation.act
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Course ID.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The course is back on sale.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Takedown'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345680", "course_id": "0199a1c2-3d4e-7f80-9abc-def012345640", "reason": "plagiarised from a textbook", "reinstated_at": "2026-09-21T09:00:00Z", "created_at": "2026-09-20T12:00:00Z"}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /moderation/creators/{id}/suspend:
+    post:
+      tags: [moderation]
+      operationId: moderationSuspendCreator
+      summary: Stop a creator submitting or selling.
+      description: >-
+        Suspends a creator. Their published courses stay readable for the learners who bought
+        them, and their trust is cleared: reinstating them later does not restore it, so they
+        go back through review.
+      x-permission: moderation.act
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Creator user ID.
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModerationReasonRequest'
+            example: {"reason": "repeated plagiarism across three courses"}
+      responses:
+        '200':
+          description: The creator is suspended.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatorModeration'
+              example: {"user_id": "0199a1c2-3d4e-7f80-9abc-def012345601", "suspended_at": "2026-09-20T12:00:00Z", "suspended_reason": "repeated plagiarism across three courses", "trusted": false}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /moderation/creators/{id}/reinstate:
+    post:
+      tags: [moderation]
+      operationId: moderationReinstateCreator
+      summary: Lift a creator suspension.
+      description: >-
+        Lets a suspended creator submit and sell again. Trust is not restored with it: a creator
+        who was suspended goes back through review.
+      x-permission: moderation.act
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Creator user ID.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The suspension is lifted.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatorModeration'
+              example: {"user_id": "0199a1c2-3d4e-7f80-9abc-def012345601", "suspended_at": null, "suspended_reason": null, "trusted": false}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /moderation/courses:
+    get:
+      tags: [moderation]
+      operationId: moderationListCoursesQueue
+      summary: List course submissions in review queue.
+      description: >-
+        Submissions waiting for a human decision. Every one has already passed Gate 1, so the queue
+        holds only what the machine could not judge.
+      x-permission: moderation.read
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: List of submissions in review.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModerationQueueList'
+              example: {"items": [], "total": 1}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /moderation/courses/{id}/approve:
+    post:
+      tags: [moderation]
+      operationId: moderationApproveCourse
+      summary: Approve submission and publish course.
+      description: >-
+        Approves a submission and publishes the course. The reviewer may not be its creator
+        (BR-STUDIO-06), and the submission must have passed Gate 1 (BR-STUDIO-07).
+      x-permission: content.publish
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Submission ID.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Submission approved and course published.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseSubmission'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "draft_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "version": 1, "status": "submitted", "submitted_by": "0199a1c2-3d4e-7f80-9abc-def012345678", "submitted_at": "2026-09-20T09:00:00Z", "created_at": "2026-09-20T09:00:00Z", "updated_at": "2026-09-20T09:00:00Z"}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /moderation/courses/{id}/reject:
+    post:
+      tags: [moderation]
+      operationId: moderationRejectCourse
+      summary: Reject or request changes on course submission.
+      description: >-
+        Rejects a submission or asks for changes. Notes are required: "changes requested" naming no
+        change is how a review queue stops being useful.
+      x-permission: content.review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Submission ID.
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewSubmissionRequest'
+      responses:
+        '200':
+          description: Submission rejected or changes requested.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseSubmission'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "draft_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "version": 1, "status": "submitted", "submitted_by": "0199a1c2-3d4e-7f80-9abc-def012345678", "submitted_at": "2026-09-20T09:00:00Z", "created_at": "2026-09-20T09:00:00Z", "updated_at": "2026-09-20T09:00:00Z"}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /webhooks/payment/sepay:
+    post:
+      tags: [payment]
+      operationId: paymentHandleSepayWebhook
+      summary: Ingest SePay incoming bank transfer webhook.
+      description: >-
+        SePay calls this when a transaction posts to our bank account. The body is stored raw and
+        matching runs as a job. SePay counts a delivery as successful only on a 200 or 201 carrying
+        {"success": true} within 30 seconds, and otherwise retries seven times over five hours;
+        duplicates are dropped on its own transaction id.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SepayWebhookPayload'
+      responses:
+        '200':
+          description: Webhook acknowledged.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SepayWebhookResponse'
+              example: {"success": true}
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /me/orders/{id}:
+    get:
+      tags: [payment]
+      operationId: paymentGetOrder
+      summary: Get status and details of an order.
+      description: >-
+        One of the caller's own orders. The purchase page polls this while the learner makes the
+        transfer, because the webhook is what moves it to paid.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Order ID.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Order details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingOrder'
+              example: {"id": "0199a1c2-3d4e-7f80-9abc-def012345678", "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "reference": "FLU789ABCDE", "amount_vnd": 490000, "status": "pending", "subject_kind": "course", "subject_id": "0199a1c2-3d4e-7f80-9abc-def012345678", "expires_at": "2026-09-20T09:00:00Z", "created_at": "2026-09-20T09:00:00Z", "updated_at": "2026-09-20T09:00:00Z"}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /admin/payments/unmatched:
+    get:
+      tags: [payment]
+      operationId: paymentListUnmatchedTransactions
+      summary: List unmatched incoming transactions for operator resolution.
+      description: >-
+        Bank transactions that matched no order, or matched one with the wrong amount. A human decides
+        what to do with each: an amount that does not match exactly is never partially credited
+        (BR-PAYMENT-12).
+      security:
+        - BearerAuth: []
+      x-permission: admin.dashboard
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 50, minimum: 1, maximum: 100 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, default: 0, minimum: 0 }
+      responses:
+        '200':
+          description: List of unmatched transactions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnmatchedTransactionsList'
+              example:
+                items: []
+                total: 0
+                limit: 50
+                offset: 0
+  /me/resources/upload-intent:
+    post:
+      tags: [resource]
+      operationId: createResourceUploadIntent
+      summary: Request a presigned upload intent for a file resource.
+      description: >-
+        Creates a resource in pending status and issues a presigned S3 PUT URL
+        for uploading into fluentra-uploads.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceUploadIntentRequest'
+            example:
+              filename: grammar_lesson.pdf
+              content_type: application/pdf
+      responses:
+        '200':
+          description: Upload intent generated.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceUploadIntentResponse'
+              example:
+                id: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+                upload_url: https://storage.example.com/fluentra-uploads/users/018f3a5e-7b82-7d2c-80a2-bf3d6118d531/2026/09/asset.pdf
+                object_key: users/018f3a5e-7b82-7d2c-80a2-bf3d6118d531/2026/09/asset.pdf
+                expires_at: '2026-09-21T00:05:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /me/resources:
+    post:
+      tags: [resource]
+      operationId: submitResource
+      summary: Confirm an uploaded file resource or submit a URL resource.
+      description: >-
+        Confirms that a file has been uploaded to storage, or submits an external URL.
+        Transitions the resource to uploaded and queues validation.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitResourceRequest'
+            example:
+              resource_id: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+      responses:
+        '202':
+          description: Resource accepted for validation.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceSubmitResponse'
+              example:
+                id: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+                status: uploaded
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [resource]
+      operationId: listMyResources
+      summary: List resources owned by the caller.
+      description: >-
+        Returns a paginated list of resources owned by the caller, newest first.
+        Optionally filterable by status and kind.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: page_size
+          in: query
+          required: false
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [pending, uploaded, validated, rejected, failed] }
+        - name: kind
+          in: query
+          required: false
+          schema: { type: string, enum: [file, url] }
+      responses:
+        '200':
+          description: List of caller's resources.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceList'
+              example:
+                items:
+                  - id: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+                    kind: file
+                    title: Advanced Grammar Guide.pdf
+                    status: validated
+                    failure_reason: ""
+                    original_filename: Advanced Grammar Guide.pdf
+                    declared_mime: application/pdf
+                    detected_mime: application/pdf
+                    byte_size: 2458120
+                    checksum: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+                    source_url: null
+                    download_url: https://storage.example.com/fluentra-uploads/...
+                    created_at: '2026-09-21T00:00:00Z'
+                    updated_at: '2026-09-21T00:01:00Z'
+                    validated_at: '2026-09-21T00:01:00Z'
+                total: 1
+                page: 1
+                page_size: 20
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /me/resources/{id}:
+    get:
+      tags: [resource]
+      operationId: getMyResource
+      summary: Get details of a resource by ID.
+      description: >-
+        Returns resource details including status, failure reason if rejected,
+        and a presigned download URL for validated files. Unowned resources answer 404.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource UUID.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Resource details.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+              example:
+                id: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+                kind: file
+                title: Advanced Grammar Guide.pdf
+                status: validated
+                failure_reason: ""
+                original_filename: Advanced Grammar Guide.pdf
+                declared_mime: application/pdf
+                detected_mime: application/pdf
+                byte_size: 2458120
+                checksum: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+                source_url: null
+                download_url: https://storage.example.com/fluentra-uploads/...
+                created_at: '2026-09-21T00:00:00Z'
+                updated_at: '2026-09-21T00:01:00Z'
+                validated_at: '2026-09-21T00:01:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [resource]
+      operationId: deleteMyResource
+      summary: Delete a resource and its storage object.
+      description: >-
+        Deletes the resource row and its associated object in storage.
+        Unowned resources answer 404.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource UUID.
+          schema: { type: string, format: uuid }
+      responses:
+        '204':
+          description: Resource deleted successfully.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 components:
   securitySchemes:
     BearerAuth:
@@ -6589,6 +8088,22 @@ components:
       $ref: ./components/content.yaml#/ReportedContentVersion
     ReportedContentList:
       $ref: ./components/content.yaml#/ReportedContentList
+    TaxonomyNamespace:
+      $ref: ./components/content.yaml#/TaxonomyNamespace
+    FoundationTopic:
+      $ref: ./components/content.yaml#/FoundationTopic
+    FoundationTopicDetail:
+      $ref: ./components/content.yaml#/FoundationTopicDetail
+    FoundationTopicList:
+      $ref: ./components/content.yaml#/FoundationTopicList
+    FoundationPath:
+      $ref: ./components/content.yaml#/FoundationPath
+    CreateFoundationTopicRequest:
+      $ref: ./components/content.yaml#/CreateFoundationTopicRequest
+    UpdateFoundationTopicRequest:
+      $ref: ./components/content.yaml#/UpdateFoundationTopicRequest
+    ReplacePrerequisitesRequest:
+      $ref: ./components/content.yaml#/ReplacePrerequisitesRequest
     CourseSummary:
       $ref: ./components/lesson.yaml#/CourseSummary
     CourseList:
@@ -6809,6 +8324,82 @@ components:
       $ref: ./components/learning.yaml#/WeeklyPlanProgress
     WeeklyPlan:
       $ref: ./components/learning.yaml#/WeeklyPlan
+    CreatorProfile:
+      $ref: ./components/studio.yaml#/CreatorProfile
+    UpsertCreatorProfileRequest:
+      $ref: ./components/studio.yaml#/UpsertCreatorProfileRequest
+    PayoutAccount:
+      $ref: ./components/studio.yaml#/PayoutAccount
+    CreatePayoutAccountRequest:
+      $ref: ./components/studio.yaml#/CreatePayoutAccountRequest
+    CourseDraft:
+      $ref: ./components/studio.yaml#/CourseDraft
+    CreateCourseDraftRequest:
+      $ref: ./components/studio.yaml#/CreateCourseDraftRequest
+    UpdateCourseDraftRequest:
+      $ref: ./components/studio.yaml#/UpdateCourseDraftRequest
+    CourseDraftList:
+      $ref: ./components/studio.yaml#/CourseDraftList
+    CourseSubmission:
+      $ref: ./components/studio.yaml#/CourseSubmission
+    ModerationQueueItem:
+      $ref: ./components/studio.yaml#/ModerationQueueItem
+    ModerationQueueList:
+      $ref: ./components/studio.yaml#/ModerationQueueList
+    ReviewSubmissionRequest:
+      $ref: ./components/studio.yaml#/ReviewSubmissionRequest
+    CoursePurchase:
+      $ref: ./components/studio.yaml#/CoursePurchase
+    UserPurchaseList:
+      $ref: ./components/studio.yaml#/UserPurchaseList
+    PurchaseOrderResponse:
+      $ref: ./components/studio.yaml#/PurchaseOrderResponse
+    RefundPurchaseResponse:
+      $ref: ./components/studio.yaml#/RefundPurchaseResponse
+    CreatorLedgerEntry:
+      $ref: ./components/studio.yaml#/CreatorLedgerEntry
+    CreatorEarningsSummary:
+      $ref: ./components/studio.yaml#/CreatorEarningsSummary
+    RequestPayoutRequest:
+      $ref: ./components/studio.yaml#/RequestPayoutRequest
+    PayoutResponse:
+      $ref: ./components/studio.yaml#/PayoutResponse
+    AdminPayoutList:
+      $ref: ./components/studio.yaml#/AdminPayoutList
+    Takedown:
+      $ref: ./components/studio.yaml#/Takedown
+    CreatorModeration:
+      $ref: ./components/studio.yaml#/CreatorModeration
+    ModerationReasonRequest:
+      $ref: ./components/studio.yaml#/ModerationReasonRequest
+    FulfillPayoutRequest:
+      $ref: ./components/studio.yaml#/FulfillPayoutRequest
+    BillingOrder:
+      $ref: ./components/payment.yaml#/BillingOrder
+    SepayWebhookPayload:
+      $ref: ./components/payment.yaml#/SepayWebhookPayload
+    SepayWebhookResponse:
+      $ref: ./components/payment.yaml#/SepayWebhookResponse
+    UnmatchedTransaction:
+      $ref: ./components/payment.yaml#/UnmatchedTransaction
+    UnmatchedTransactionsList:
+      $ref: ./components/payment.yaml#/UnmatchedTransactionsList
+    Refund:
+      $ref: ./components/payment.yaml#/Refund
+    RefundList:
+      $ref: ./components/payment.yaml#/RefundList
+    Resource:
+      $ref: ./components/resource.yaml#/Resource
+    ResourceList:
+      $ref: ./components/resource.yaml#/ResourceList
+    ResourceUploadIntentRequest:
+      $ref: ./components/resource.yaml#/ResourceUploadIntentRequest
+    ResourceUploadIntentResponse:
+      $ref: ./components/resource.yaml#/ResourceUploadIntentResponse
+    SubmitResourceRequest:
+      $ref: ./components/resource.yaml#/SubmitResourceRequest
+    ResourceSubmitResponse:
+      $ref: ./components/resource.yaml#/ResourceSubmitResponse
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

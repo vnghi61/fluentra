@@ -54,6 +54,20 @@ const (
 	hoChiMinhTimeZone    = "Asia/Ho_Chi_Minh"
 	defaultPracticeLevel = "B1"
 
+	// The vocabulary kinds the runner renders. Named here because
+	// validateParse and buildOwnAnswerPayload both switch on them.
+	kindVocabListenType     = "vocab_listen_type"
+	kindVocabReorder        = "vocab_reorder"
+	kindVocabMultipleChoice = "vocab_multiple_choice"
+	kindVocabGapFill        = "vocab_gap_fill"
+	kindVocabContextChoice  = "vocab_context_choice"
+	kindVocabFlashcard      = "vocab_flashcard"
+	kindVocabMatch          = "vocab_match"
+
+	// The response keys a graded answer arrives under.
+	keySelectedOptionID = "selected_option_id"
+	keyAnswer           = "answer"
+
 	kindReadingComprehension     = "reading_comprehension"
 	kindGrammarTenseChoice       = "grammar_tense_choice"
 	kindGrammarSentenceTransform = "grammar_sentence_transform"
@@ -380,6 +394,13 @@ func (s *Service) tryGenerateAndVerify(
 func (s *Service) checkCandidate(
 	ctx context.Context, level, kind string, body json.RawMessage, existing []lessoncontract.Activity,
 ) error {
+	return s.checkCandidateWithBlindSolve(ctx, level, kind, body, existing, true)
+}
+
+func (s *Service) checkCandidateWithBlindSolve(
+	ctx context.Context, level, kind string, body json.RawMessage, existing []lessoncontract.Activity,
+	blindSolve bool,
+) error {
 	if err := validateParse(kind, body); err != nil {
 		return fmt.Errorf("check 1 (parse) failed: %w", err)
 	}
@@ -406,8 +427,10 @@ func (s *Service) checkCandidate(
 	}
 
 	redacted := contentcontract.RedactForLearner(body)
-	if err := s.blindSolve(gradeCtx, grader, versionID, kind, redacted); err != nil {
-		return fmt.Errorf("check 4 (blind solve) failed: %w", err)
+	if blindSolve {
+		if err := s.blindSolve(gradeCtx, grader, versionID, kind, redacted); err != nil {
+			return fmt.Errorf("check 4 (blind solve) failed: %w", err)
+		}
 	}
 
 	if isDuplicate(kind, body, existing) {
@@ -569,6 +592,58 @@ func validateParse(kind string, raw []byte) error {
 		}
 		return nil
 	default:
+		return validateParseVocab(kind, raw)
+	}
+}
+
+// validateParseVocab is check 1 for the vocabulary kinds, which fall into three
+// shapes: a choice, a typed answer, and the matching pairs.
+func validateParseVocab(kind string, raw []byte) error {
+	switch kind {
+	case kindVocabMultipleChoice, kindVocabContextChoice:
+		var body struct {
+			Prompt          string       `json:"prompt"`
+			Sentence        string       `json:"sentence"`
+			Options         []candOption `json:"options"`
+			CorrectOptionID string       `json:"correct_option_id"`
+		}
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return err
+		}
+		prompt := body.Prompt
+		if prompt == "" {
+			// A context choice asks about a word inside a sentence, and the
+			// sentence is the prompt.
+			prompt = body.Sentence
+		}
+		return parseChoice(prompt, body.Options, body.CorrectOptionID)
+
+	case kindVocabGapFill, kindVocabFlashcard, kindVocabListenType, kindVocabReorder:
+		var body struct {
+			Prompt        string `json:"prompt"`
+			CorrectAnswer string `json:"correct_answer"`
+		}
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return err
+		}
+		if strings.TrimSpace(body.CorrectAnswer) == "" {
+			return errors.New("correct_answer is empty")
+		}
+		return nil
+
+	case kindVocabMatch:
+		var body struct {
+			CorrectPairs map[string]string `json:"correct_pairs"`
+		}
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return err
+		}
+		if len(body.CorrectPairs) == 0 {
+			return errors.New("correct_pairs is empty")
+		}
+		return nil
+
+	default:
 		return fmt.Errorf("unsupported kind: %s", kind)
 	}
 }
@@ -622,13 +697,37 @@ func buildOwnAnswerPayload(kind string, raw []byte) (json.RawMessage, error) {
 		if err := json.Unmarshal(raw, &body); err != nil {
 			return nil, err
 		}
-		return json.Marshal(map[string]any{"selected_option_id": body.CorrectOptionID})
+		return json.Marshal(map[string]any{keySelectedOptionID: body.CorrectOptionID})
 	case kindGrammarSentenceTransform:
 		var body grammarSentenceTransformCand
 		if err := json.Unmarshal(raw, &body); err != nil {
 			return nil, err
 		}
-		return json.Marshal(map[string]any{"answer": body.CorrectAnswer})
+		return json.Marshal(map[string]any{keyAnswer: body.CorrectAnswer})
+	case kindVocabMultipleChoice, kindVocabContextChoice:
+		var body struct {
+			CorrectOptionID string `json:"correct_option_id"`
+		}
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return nil, err
+		}
+		return json.Marshal(map[string]any{keySelectedOptionID: body.CorrectOptionID})
+	case kindVocabGapFill, kindVocabFlashcard, kindVocabListenType, kindVocabReorder:
+		var body struct {
+			CorrectAnswer string `json:"correct_answer"`
+		}
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return nil, err
+		}
+		return json.Marshal(map[string]any{keyAnswer: body.CorrectAnswer})
+	case kindVocabMatch:
+		var body struct {
+			CorrectPairs map[string]string `json:"correct_pairs"`
+		}
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return nil, err
+		}
+		return json.Marshal(map[string]any{"pairs": body.CorrectPairs})
 	default:
 		return nil, fmt.Errorf("unsupported kind: %s", kind)
 	}
@@ -661,6 +760,17 @@ func validateStructure(kind string, raw []byte) error {
 		return checkOptions(body.Options, body.CorrectOptionID)
 	case kindGrammarSentenceTransform:
 		return structureSentenceTransform(raw)
+	case kindVocabMultipleChoice, kindVocabContextChoice:
+		var body struct {
+			Options         []candOption `json:"options"`
+			CorrectOptionID string       `json:"correct_option_id"`
+		}
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return err
+		}
+		return checkOptions(body.Options, body.CorrectOptionID)
+	case kindVocabGapFill, kindVocabFlashcard, kindVocabListenType, kindVocabReorder, kindVocabMatch:
+		return nil
 	default:
 		return fmt.Errorf("unsupported kind: %s", kind)
 	}
@@ -730,7 +840,7 @@ func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 		if answer == "" {
 			return nil, errors.New("empty blind solve option ID")
 		}
-		return json.Marshal(map[string]any{"selected_option_id": answer})
+		return json.Marshal(map[string]any{keySelectedOptionID: answer})
 	case kindGrammarSentenceTransform:
 		var resp struct {
 			Answer string `json:"answer"`
@@ -741,7 +851,7 @@ func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 		if strings.TrimSpace(resp.Answer) == "" {
 			return nil, errors.New("empty blind solve sentence transform answer")
 		}
-		return json.Marshal(map[string]any{"answer": resp.Answer})
+		return json.Marshal(map[string]any{keyAnswer: resp.Answer})
 	default:
 		return nil, fmt.Errorf("unsupported kind: %s", kind)
 	}
@@ -772,10 +882,18 @@ func extractComparisonText(kind string, raw []byte) string {
 		return normaliseText(body.Passage)
 	}
 	var body struct {
-		Prompt string `json:"prompt"`
+		Prompt    string `json:"prompt"`
+		Sentence  string `json:"sentence"`
+		AudioText string `json:"audio_text"`
 	}
 	_ = json.Unmarshal(raw, &body)
-	return normaliseText(body.Prompt)
+	if body.Prompt != "" {
+		return normaliseText(body.Prompt)
+	}
+	if body.Sentence != "" {
+		return normaliseText(body.Sentence)
+	}
+	return normaliseText(body.AudioText)
 }
 
 func verifyRedaction(redacted []byte) error {

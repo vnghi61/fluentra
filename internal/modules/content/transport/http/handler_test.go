@@ -27,6 +27,8 @@ const (
 	statusPublished   = "published"
 )
 
+const codePresentPerfect = "PRESENT_PERFECT"
+
 type mockContentService struct {
 	getPublishedSlugFn func(ctx context.Context, slug string) (*contract.Version, error)
 	browseFn           func(ctx context.Context, filter contract.BrowseFilter) ([]*contract.Version, int, error)
@@ -60,6 +62,18 @@ type mockContentService struct {
 	listReportedContentFn func(
 		ctx context.Context, limit, offset int,
 	) ([]domain.ReportedVersionSummary, int, error)
+	createFoundationTopicFn func(
+		ctx context.Context, actorID uuid.UUID, req service.CreateFoundationTopicRequest,
+	) (domain.Taxonomy, error)
+	updateFoundationTopicFn func(
+		ctx context.Context, actorID uuid.UUID, code string, req service.UpdateFoundationTopicRequest,
+	) (domain.Taxonomy, error)
+	replacePrerequisitesFn func(ctx context.Context, actorID uuid.UUID, code string, requiresCodes []string) error
+	listFoundationTopicsFn func(
+		ctx context.Context, filter service.FoundationTopicFilter,
+	) ([]domain.Taxonomy, int64, error)
+	getFoundationTopicFn func(ctx context.Context, code string) (service.FoundationTopicDetail, error)
+	getFoundationPathFn  func(ctx context.Context, targetCode *string, namespace *string) ([]domain.Taxonomy, error)
 }
 
 func (m *mockContentService) GetPublishedVersionBySlug(ctx context.Context, slug string) (*contract.Version, error) {
@@ -174,6 +188,60 @@ func (m *mockContentService) GetAdminItemDetail(
 		return m.getAdminItemDetailFn(ctx, id)
 	}
 	return domain.Item{}, []domain.Version{}, nil
+}
+
+func (m *mockContentService) CreateFoundationTopic(
+	ctx context.Context, actorID uuid.UUID, req service.CreateFoundationTopicRequest,
+) (domain.Taxonomy, error) {
+	if m.createFoundationTopicFn != nil {
+		return m.createFoundationTopicFn(ctx, actorID, req)
+	}
+	return domain.Taxonomy{}, nil
+}
+
+func (m *mockContentService) UpdateFoundationTopic(
+	ctx context.Context, actorID uuid.UUID, code string, req service.UpdateFoundationTopicRequest,
+) (domain.Taxonomy, error) {
+	if m.updateFoundationTopicFn != nil {
+		return m.updateFoundationTopicFn(ctx, actorID, code, req)
+	}
+	return domain.Taxonomy{}, nil
+}
+
+func (m *mockContentService) ReplacePrerequisites(
+	ctx context.Context, actorID uuid.UUID, code string, requiresCodes []string,
+) error {
+	if m.replacePrerequisitesFn != nil {
+		return m.replacePrerequisitesFn(ctx, actorID, code, requiresCodes)
+	}
+	return nil
+}
+
+func (m *mockContentService) ListFoundationTopics(
+	ctx context.Context, filter service.FoundationTopicFilter,
+) ([]domain.Taxonomy, int64, error) {
+	if m.listFoundationTopicsFn != nil {
+		return m.listFoundationTopicsFn(ctx, filter)
+	}
+	return []domain.Taxonomy{}, 0, nil
+}
+
+func (m *mockContentService) GetFoundationTopicByCode(
+	ctx context.Context, code string,
+) (service.FoundationTopicDetail, error) {
+	if m.getFoundationTopicFn != nil {
+		return m.getFoundationTopicFn(ctx, code)
+	}
+	return service.FoundationTopicDetail{}, nil
+}
+
+func (m *mockContentService) GetFoundationPath(
+	ctx context.Context, targetCode *string, namespace *string,
+) ([]domain.Taxonomy, error) {
+	if m.getFoundationPathFn != nil {
+		return m.getFoundationPathFn(ctx, targetCode, namespace)
+	}
+	return []domain.Taxonomy{}, nil
 }
 
 type mockGuard struct {

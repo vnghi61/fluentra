@@ -69,17 +69,23 @@ func TestRoutesMountTheDocumentedPaths(t *testing.T) {
 		"GET /content":                        false,
 		"GET /content/{slug}":                 false,
 		"POST /content/versions/{id}/reports": false,
+		"GET /foundation/topics":              false,
+		"GET /foundation/topics/{code}":       false,
+		"GET /foundation/path":                false,
 	}
 	wantAdmin := map[string]bool{
-		"GET /admin/content":               false,
-		"GET /admin/content/{id}":          false,
-		"POST /admin/content":              false,
-		"PUT /admin/content/{id}/draft":    false,
-		"POST /admin/content/{id}/submit":  false,
-		"POST /admin/content/{id}/review":  false,
-		"POST /admin/content/{id}/publish": false,
-		"POST /admin/content/{id}/archive": false,
-		"GET /admin/content/reports":       false,
+		"GET /admin/content":                                false,
+		"GET /admin/content/{id}":                           false,
+		"POST /admin/content":                               false,
+		"PUT /admin/content/{id}/draft":                     false,
+		"POST /admin/content/{id}/submit":                   false,
+		"POST /admin/content/{id}/review":                   false,
+		"POST /admin/content/{id}/publish":                  false,
+		"POST /admin/content/{id}/archive":                  false,
+		"GET /admin/content/reports":                        false,
+		"POST /admin/foundation/topics":                     false,
+		"PATCH /admin/foundation/topics/{code}":             false,
+		"PUT /admin/foundation/topics/{code}/prerequisites": false,
 	}
 
 	collect := func(router chi.Router, into map[string]bool, label string) {

@@ -33,9 +33,15 @@ export function PlacementPage(): React.JSX.Element {
     queryClient.setQueryData(learningKeys.placementSession(next.id), next);
     setChosenId(next.id);
     if (next.status !== "in_progress") {
-      void queryClient.invalidateQueries({ queryKey: learningKeys.placement() });
-      void queryClient.invalidateQueries({ queryKey: learningKeys.startingPath() });
-      void queryClient.invalidateQueries({ queryKey: learningKeys.weeklyPlan() });
+      void queryClient.invalidateQueries({
+        queryKey: learningKeys.placement(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: learningKeys.startingPath(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: learningKeys.weeklyPlan(),
+      });
     }
   };
 
@@ -76,7 +82,11 @@ export function PlacementPage(): React.JSX.Element {
   const current = session.data;
   if (current?.status === "in_progress") {
     return (
-      <PlacementRunner session={current} onSession={showSession} onReload={reload} />
+      <PlacementRunner
+        session={current}
+        onSession={showSession}
+        onReload={reload}
+      />
     );
   }
   if (current?.result) {
@@ -92,7 +102,9 @@ export function PlacementPage(): React.JSX.Element {
   return (
     <PlacementIntro
       notice={
-        current?.status === "expired" ? t("placement.intro.tooFewAnswers") : undefined
+        current?.status === "expired"
+          ? t("placement.intro.tooFewAnswers")
+          : undefined
       }
       retakeAvailableAt={overview.data?.retake_available_at}
       onStarted={showSession}

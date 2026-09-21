@@ -16,6 +16,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/lesson/repository"
 	"github.com/fluentra/fluentra/internal/modules/lesson/service"
 	lessonhttp "github.com/fluentra/fluentra/internal/modules/lesson/transport/http"
+	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
@@ -26,14 +27,18 @@ type Guard = lessonhttp.Guard
 
 // Deps are the dependencies supplied by the composition root.
 type Deps struct {
-	Pool      *pgxpool.Pool
-	Caches    service.LessonCaches
-	Clock     clock.Clock
-	Guard     Guard
-	Content   contentcontract.Reader
-	Unlocker  service.UnlockChecker
-	Completed service.CompletedLessons
-	Env       string
+	Pool       *pgxpool.Pool
+	Caches     service.LessonCaches
+	Clock      clock.Clock
+	Guard      Guard
+	Content    contentcontract.Reader
+	Taxonomies contentcontract.TaxonomyResolver
+	Unlocker   service.UnlockChecker
+	Completed  service.CompletedLessons
+	Env        string
+
+	AccessReader  studiocontract.AccessReader
+	ListingReader studiocontract.ListingReader
 }
 
 // Module is the lesson module, assembled. It is the only symbol cmd/ imports.
@@ -55,16 +60,19 @@ func New(deps Deps) *Module {
 	events := outboxWriter{Writer: outbox.NewWriter()}
 
 	svc := service.New(service.Deps{
-		Pool:      deps.Pool,
-		Repo:      repoAdapter,
-		Content:   deps.Content,
-		Unlocker:  deps.Unlocker,
-		Completed: deps.Completed,
-		Events:    events,
-		Caches:    deps.Caches,
-		Clock:     timekeeper,
-		NewID:     func() uuid.UUID { return uuid.Must(uuid.NewV7()) },
-		Env:       deps.Env,
+		Pool:          deps.Pool,
+		Repo:          repoAdapter,
+		Content:       deps.Content,
+		Taxonomies:    deps.Taxonomies,
+		Unlocker:      deps.Unlocker,
+		Completed:     deps.Completed,
+		Events:        events,
+		Caches:        deps.Caches,
+		Clock:         timekeeper,
+		NewID:         func() uuid.UUID { return uuid.Must(uuid.NewV7()) },
+		Env:           deps.Env,
+		AccessReader:  deps.AccessReader,
+		ListingReader: deps.ListingReader,
 	})
 
 	handler, err := lessonhttp.NewHandler(svc, deps.Guard)

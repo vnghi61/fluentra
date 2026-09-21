@@ -177,6 +177,85 @@ func TestService_UnlockedLessonAllowsAccess(t *testing.T) {
 	})
 }
 
+type fakeStudioAccess struct {
+	allowed bool
+	err     error
+}
+
+func (f *fakeStudioAccess) MayOpen(_ context.Context, _ *uuid.UUID, _ uuid.UUID) (bool, error) {
+	if f.err != nil {
+		return false, f.err
+	}
+	return f.allowed, nil
+}
+
+func TestService_PaywallGating(t *testing.T) {
+	lessonID, reqLessonID, courseID, unitID, userID := lockFixtureIDs()
+	lesson, unit, course := lockFixture(lessonID, unitID, courseID)
+	unit.CourseID = courseID
+	repo := &fakeLessonRepo{
+		lesson:  lesson,
+		units:   []*contract.Unit{unit},
+		courses: []*contract.Course{course},
+		prereqs: lockFixturePrereqs(lessonID, reqLessonID),
+	}
+	ctx := context.Background()
+
+	t.Run("denied access locks lessons in course detail and rejects lesson detail", func(t *testing.T) {
+		svc := service.New(service.Deps{
+			Repo:         repo,
+			AccessReader: &fakeStudioAccess{allowed: false},
+		})
+
+		// Call site 2: GetCourseDetail returns locked = true, lock_reason = "Purchase required to access"
+		detail, err := svc.GetCourseDetail(ctx, slugIELTSCore, userID)
+		if err != nil {
+			t.Fatalf("GetCourseDetail: %v", err)
+		}
+		if len(detail.Units) == 0 || len(detail.Units[0].Lessons) == 0 {
+			t.Fatalf("expected units and lessons in course detail")
+		}
+		lSummary := detail.Units[0].Lessons[0]
+		if !lSummary.Locked {
+			t.Errorf("expected lesson to be locked when unpurchased")
+		}
+		if lSummary.LockReason == nil || *lSummary.LockReason != "Purchase required to access" {
+			t.Errorf("expected 'Purchase required to access', got %v", lSummary.LockReason)
+		}
+
+		// Call site 3: GetLessonDetail returns 403 COURSE_NOT_PURCHASED
+		_, err = svc.GetLessonDetail(ctx, lessonID, userID)
+		if !errors.Is(err, domain.ErrCourseNotPurchased) {
+			t.Fatalf("expected ErrCourseNotPurchased, got %v", err)
+		}
+	})
+
+	t.Run("granted access allows lesson in course detail and lesson detail", func(t *testing.T) {
+		svc := service.New(service.Deps{
+			Repo:         repo,
+			AccessReader: &fakeStudioAccess{allowed: true},
+			Unlocker:     staticUnlocker{unlocked: true},
+		})
+
+		detail, err := svc.GetCourseDetail(ctx, slugIELTSCore, userID)
+		if err != nil {
+			t.Fatalf("GetCourseDetail: %v", err)
+		}
+		lSummary := detail.Units[0].Lessons[0]
+		if lSummary.Locked {
+			t.Errorf("expected lesson to not be paywall-locked")
+		}
+
+		res, err := svc.GetLessonDetail(ctx, lessonID, userID)
+		if err != nil {
+			t.Fatalf("unexpected error getting purchased lesson: %v", err)
+		}
+		if res.ID != lessonID {
+			t.Errorf("expected lesson ID %v, got %v", lessonID, res.ID)
+		}
+	})
+}
+
 func TestService_PublishLesson_BR_LESSON_02(t *testing.T) {
 	lessonID := uuid.New()
 	unitID := uuid.New()

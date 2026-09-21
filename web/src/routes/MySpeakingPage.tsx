@@ -248,7 +248,10 @@ export function MySpeakingPage(): React.JSX.Element {
                       {sub.has_recording ? (
                         <span
                           className="flex items-center gap-1 text-xs text-emerald-500"
-                          title={t("speaking.audioAvailable", "Audio recording available")}
+                          title={t(
+                            "speaking.audioAvailable",
+                            "Audio recording available",
+                          )}
                         >
                           <Volume2 className="h-3.5 w-3.5" />
                           <span>{t("speaking.hasAudio", "Audio")}</span>
@@ -256,7 +259,10 @@ export function MySpeakingPage(): React.JSX.Element {
                       ) : (
                         <span
                           className="flex items-center gap-1 text-xs text-text-muted"
-                          title={t("speaking.audioPurged", "Audio purged after 90 days")}
+                          title={t(
+                            "speaking.audioPurged",
+                            "Audio purged after 90 days",
+                          )}
                         >
                           <VolumeX className="h-3.5 w-3.5" />
                           <span>{t("speaking.purged", "Purged")}</span>
@@ -278,7 +284,9 @@ export function MySpeakingPage(): React.JSX.Element {
                     className="shrink-0 gap-1.5 min-h-[44px]"
                   >
                     <Eye className="h-3.5 w-3.5" />
-                    <span>{t("speaking.viewFeedbackBtn", "View Feedback")}</span>
+                    <span>
+                      {t("speaking.viewFeedbackBtn", "View Feedback")}
+                    </span>
                   </Button>
                 </div>
               </Card>

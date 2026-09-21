@@ -128,21 +128,23 @@ export const ExerciseSpeaking: React.FC<ExerciseSpeakingProps> = ({
       {/* Guest Notice or Audio Recorder */}
       {isGuest ? (
         <GuestNotice />
-      ) : !isSubmitted && (
-        <div className="space-y-4">
-          <AudioRecorder
-            taskType={taskType}
-            promptText={prompt}
-            referenceText={referenceText}
-            speakingTimeSeconds={speakingTimeSeconds}
-            mode="practice"
-            currentRecordingKey={recordedKey}
-            onRecordingComplete={(key) => setRecordedKey(key)}
-            dailyRecordingsUsed={dailyUsed}
-            dailyRecordingsLimit={dailyLimit}
-            disabled={isMarking || isLoading}
-          />
-        </div>
+      ) : (
+        !isSubmitted && (
+          <div className="space-y-4">
+            <AudioRecorder
+              taskType={taskType}
+              promptText={prompt}
+              referenceText={referenceText}
+              speakingTimeSeconds={speakingTimeSeconds}
+              mode="practice"
+              currentRecordingKey={recordedKey}
+              onRecordingComplete={(key) => setRecordedKey(key)}
+              dailyRecordingsUsed={dailyUsed}
+              dailyRecordingsLimit={dailyLimit}
+              disabled={isMarking || isLoading}
+            />
+          </div>
+        )
       )}
 
       {/* Marking Progress UI */}
@@ -259,7 +261,8 @@ export const ExerciseSpeaking: React.FC<ExerciseSpeakingProps> = ({
                 {t("runner.explanationLabel", "Explanation")}
               </div>
               <p className="text-sm text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
-                {Boolean(i18n?.language?.startsWith("vi")) && explanation.text_vi
+                {Boolean(i18n?.language?.startsWith("vi")) &&
+                explanation.text_vi
                   ? explanation.text_vi
                   : explanation.text}
               </p>

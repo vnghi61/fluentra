@@ -294,3 +294,203 @@ ReportedContentList:
     offset:
       type: integer
 
+TaxonomyNamespace:
+  type: string
+  enum: [course_topic, grammar, vocabulary, pattern, pronunciation, skill]
+  description: Canonical namespace for a taxonomy node.
+
+FoundationTopic:
+  type: object
+  description: A canonical knowledge spine taxonomy entry.
+  required: [id, namespace, code, label, description, position, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    namespace:
+      $ref: '#/TaxonomyNamespace'
+    code:
+      type: string
+      example: PRESENT_PERFECT
+    label:
+      type: string
+      example: Present Perfect
+    description:
+      type: string
+      example: Express experience and unfinished actions.
+    cefr_level:
+      $ref: '#/CEFRLevel'
+      nullable: true
+    parent_id:
+      type: string
+      format: uuid
+      nullable: true
+    position:
+      type: integer
+      example: 10
+    deprecated_at:
+      type: string
+      format: date-time
+      nullable: true
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+FoundationTopicDetail:
+  type: object
+  description: Detailed view of a foundation topic including graph relations and content counts.
+  required: [id, namespace, code, label, description, position, created_at, updated_at, prerequisites, dependants, related, exercise_count, quiz_count, review_count]
+  properties:
+    id:
+      type: string
+      format: uuid
+    namespace:
+      $ref: '#/TaxonomyNamespace'
+    code:
+      type: string
+      example: PRESENT_PERFECT
+    label:
+      type: string
+      example: Present Perfect
+    description:
+      type: string
+    cefr_level:
+      $ref: '#/CEFRLevel'
+      nullable: true
+    parent_id:
+      type: string
+      format: uuid
+      nullable: true
+    position:
+      type: integer
+    deprecated_at:
+      type: string
+      format: date-time
+      nullable: true
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    body:
+      type: object
+      nullable: true
+      description: Published foundation topic body payload, if published.
+    prerequisites:
+      type: array
+      items:
+        $ref: '#/FoundationTopic'
+    dependants:
+      type: array
+      items:
+        $ref: '#/FoundationTopic'
+    related:
+      type: array
+      items:
+        type: string
+    exercise_count:
+      type: integer
+      description: Number of exercise items attached to this topic.
+    quiz_count:
+      type: integer
+      description: Number of quiz items attached to this topic.
+    review_count:
+      type: integer
+      description: Number of review question items attached to this topic.
+
+FoundationTopicList:
+  type: object
+  required: [items, total, limit, offset]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/FoundationTopic'
+    total:
+      type: integer
+    limit:
+      type: integer
+    offset:
+      type: integer
+
+FoundationPath:
+  type: object
+  description: Topologically sorted learning path of foundation topics.
+  required: [namespace, items]
+  properties:
+    target:
+      type: string
+      nullable: true
+      description: Target topic code, if requested with ?target.
+      example: PRESENT_PERFECT
+    namespace:
+      $ref: '#/TaxonomyNamespace'
+    items:
+      type: array
+      items:
+        $ref: '#/FoundationTopic'
+
+CreateFoundationTopicRequest:
+  type: object
+  required: [namespace, code, label]
+  properties:
+    namespace:
+      $ref: '#/TaxonomyNamespace'
+    code:
+      type: string
+      pattern: '^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$'
+      example: PRESENT_PERFECT
+    label:
+      type: string
+      example: Present Perfect
+    description:
+      type: string
+      example: Express experience and unfinished actions.
+    cefr_level:
+      $ref: '#/CEFRLevel'
+      nullable: true
+    parent_id:
+      type: string
+      format: uuid
+      nullable: true
+    position:
+      type: integer
+      default: 0
+
+UpdateFoundationTopicRequest:
+  type: object
+  description: Update topic metadata. Code is immutable and cannot be updated.
+  properties:
+    label:
+      type: string
+    description:
+      type: string
+    cefr_level:
+      $ref: '#/CEFRLevel'
+      nullable: true
+    parent_id:
+      type: string
+      format: uuid
+      nullable: true
+    position:
+      type: integer
+    deprecated:
+      type: boolean
+      description: Set to true to deprecate this topic, or false to restore it.
+
+ReplacePrerequisitesRequest:
+  type: object
+  required: [requires_codes]
+  properties:
+    requires_codes:
+      type: array
+      description: Complete set of prerequisite topic codes within the same namespace.
+      items:
+        type: string
+        example: PAST_SIMPLE
+
+

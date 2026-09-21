@@ -131,6 +131,9 @@ components:
   g_listening:   { in: generated/listening/sqlc }
   g_speaking:    { in: generated/speaking/sqlc }
   g_exam:        { in: generated/exam/sqlc }
+  g_studio:      { in: generated/studio/sqlc }
+  g_payment:     { in: generated/payment/sqlc }
+  g_resource:    { in: generated/resource/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -173,6 +176,8 @@ components:
   c_analytics:     { in: modules/analytics/contract }
   c_subscription:  { in: modules/subscription/contract }
   c_payment:       { in: modules/payment/contract }
+  c_studio:        { in: modules/studio/contract }
+  c_resource:      { in: modules/resource/contract }
 
   # module internals — never importable from outside the module itself
   #
@@ -282,7 +287,24 @@ components:
   m_gamification_http:       { in: modules/gamification/transport/http }
   m_analytics:     { in: modules/analytics/** }
   m_subscription:  { in: modules/subscription/** }
-  m_payment:       { in: modules/payment/** }
+  m_payment:            { in: modules/payment }
+  m_payment_domain:     { in: modules/payment/domain }
+  m_payment_repository: { in: modules/payment/repository }
+  m_payment_service:    { in: modules/payment/service }
+  m_payment_job:        { in: modules/payment/job }
+  m_payment_http:       { in: modules/payment/transport/http }
+  m_studio:            { in: modules/studio }
+  m_studio_domain:     { in: modules/studio/domain }
+  m_studio_repository: { in: modules/studio/repository }
+  m_studio_service:    { in: modules/studio/service }
+  m_studio_job:        { in: modules/studio/job }
+  m_studio_http:       { in: modules/studio/transport/http }
+  m_resource:            { in: modules/resource }
+  m_resource_domain:     { in: modules/resource/domain }
+  m_resource_repository: { in: modules/resource/repository }
+  m_resource_service:    { in: modules/resource/service }
+  m_resource_job:        { in: modules/resource/job }
+  m_resource_http:       { in: modules/resource/transport/http }
 
 # ------------------------------------------------------------------- rules
 # `mayDependOn` lists are deliberately minimal. Adding an entry here is a
@@ -328,6 +350,9 @@ deps:
   g_vocabulary: { anyVendorDeps: true }
   g_writing:    { anyVendorDeps: true }
   g_listening:  { anyVendorDeps: true }
+  g_studio:     { anyVendorDeps: true }
+  g_payment:    { anyVendorDeps: true }
+  g_resource:   { anyVendorDeps: true }
 
   # A platform capability exists to wrap a vendor SDK, so each may import one.
   # Business modules deliberately may not: they reach external systems through
@@ -433,9 +458,9 @@ deps:
   m_content:            { mayDependOn: [m_content_domain, m_content_repository, m_content_service, m_content_http, c_content] }
   # lesson, by layer
   m_lesson_repository: { mayDependOn: [m_lesson_domain, c_lesson, g_lesson] }
-  m_lesson_service:    { mayDependOn: [m_lesson_domain, c_lesson, c_content, p_cache] }
+  m_lesson_service:    { mayDependOn: [m_lesson_domain, c_lesson, c_content, c_studio, p_cache] }
   m_lesson_http:       { mayDependOn: [m_lesson_domain, m_lesson_service, c_lesson, c_content] }
-  m_lesson:            { mayDependOn: [m_lesson_domain, m_lesson_repository, m_lesson_service, m_lesson_http, c_lesson, c_content] }
+  m_lesson:            { mayDependOn: [m_lesson_domain, m_lesson_repository, m_lesson_service, m_lesson_http, c_lesson, c_content, c_studio] }
   # learning, split by layer once it grew layers. P8.3's brief says the module is
   # one component and to inherit that; it stopped being possible the moment the
   # module had more than one package, because `modules/learning/**` makes every
@@ -443,10 +468,10 @@ deps:
   # mayDependOn. Every other module here with real code is split the same way.
   m_learning_domain:     { mayDependOn: [c_learning] }
   m_learning_repository: { mayDependOn: [m_learning_domain, c_learning, g_learning] }
-  m_learning_service:    { mayDependOn: [m_learning_domain, m_learning_repository, c_learning, c_lesson, c_content, c_srs, c_user, c_admin, p_cache, p_job, p_telemetry, p_ai] }
+  m_learning_service:    { mayDependOn: [m_learning_domain, m_learning_repository, c_learning, c_lesson, c_content, c_srs, c_user, c_admin, c_studio, p_cache, p_job, p_telemetry, p_ai] }
   m_learning_http:       { mayDependOn: [m_learning_domain, m_learning_service, c_learning, c_lesson] }
   m_learning_job:        { mayDependOn: [m_learning_domain, p_job, p_telemetry] }
-  m_learning:            { mayDependOn: [m_learning_domain, m_learning_repository, m_learning_service, m_learning_http, m_learning_job, c_learning, c_lesson, c_content, c_srs, c_user, c_admin, g_learning, p_cache, p_job, p_telemetry, p_ai] }
+  m_learning:            { mayDependOn: [m_learning_domain, m_learning_repository, m_learning_service, m_learning_http, m_learning_job, c_learning, c_lesson, c_content, c_srs, c_user, c_admin, c_studio, g_learning, p_cache, p_job, p_telemetry, p_ai] }
   c_srs:           { mayDependOn: [c_learning] }
   c_vocabulary:    { mayDependOn: [c_learning] }
   c_grammar:       { mayDependOn: [c_learning] }
@@ -524,4 +549,23 @@ deps:
   # commerce
   m_analytics:    { mayDependOn: [p_job, p_cache, p_telemetry] }
   m_subscription: { mayDependOn: [p_cache, p_job, p_telemetry, c_payment, c_user, c_notification, c_audit] }
-  m_payment:      { mayDependOn: [p_job, p_mailer, p_storage, p_telemetry, c_subscription, c_audit] }
+  m_payment_domain:     { mayDependOn: [c_payment] }
+  m_payment_repository: { mayDependOn: [m_payment_domain, c_payment, g_payment] }
+  m_payment_service:    { mayDependOn: [m_payment_domain, m_payment_repository, c_payment, p_job, p_telemetry] }
+  m_payment_job:        { mayDependOn: [m_payment_domain, m_payment_repository, m_payment_service, c_payment, p_job] }
+  m_payment_http:       { mayDependOn: [m_payment_domain, m_payment_service, c_payment] }
+  m_payment:            { mayDependOn: [m_payment_domain, m_payment_repository, m_payment_service, m_payment_job, m_payment_http, c_payment, p_job, p_telemetry] }
+  m_studio_repository: { mayDependOn: [m_studio_domain, c_studio, g_studio] }
+  m_studio_service:    { mayDependOn: [m_studio_domain, m_studio_repository, c_studio, c_learning, c_lesson, c_content, c_payment] }
+  m_studio_job:        { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, c_studio, p_job] }
+  m_studio_http:       { mayDependOn: [m_studio_domain, m_studio_service, c_studio, c_payment] }
+  m_studio:            { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, m_studio_job, m_studio_http, c_studio, c_learning, c_lesson, c_content, p_job, c_payment] }
+
+  # resource
+  m_resource_domain:     { mayDependOn: [c_resource] }
+  m_resource_repository: { mayDependOn: [m_resource_domain, c_resource, g_resource] }
+  m_resource_service:    { mayDependOn: [m_resource_domain, m_resource_repository, m_resource_job, c_resource, p_storage, p_job, p_telemetry], anyVendorDeps: true }
+  m_resource_job:        { mayDependOn: [m_resource_domain, m_resource_service, c_resource, p_job, p_telemetry], anyVendorDeps: true }
+  m_resource_http:       { mayDependOn: [m_resource_domain, m_resource_service, c_resource] }
+  m_resource:            { mayDependOn: [m_resource_domain, m_resource_repository, m_resource_service, m_resource_job, m_resource_http, c_resource, g_resource, p_storage, p_job, p_telemetry] }
+

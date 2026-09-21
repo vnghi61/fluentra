@@ -30,7 +30,14 @@ type Guard interface {
 
 // LessonService defines the use cases called by HTTP handlers.
 type LessonService interface {
-	ListCourses(ctx context.Context, level *string, limit, offset int) ([]service.CourseSummaryDTO, int64, error)
+	ListCourses(
+		ctx context.Context,
+		level *string,
+		topic *string,
+		limit,
+		offset int,
+		userID ...*uuid.UUID,
+	) ([]service.CourseSummaryDTO, int64, error)
 	GetCourseDetail(ctx context.Context, slug string, userID uuid.UUID) (*service.CourseDetailDTO, error)
 	GetLessonDetail(ctx context.Context, lessonID, userID uuid.UUID) (*service.LessonDetailDTO, error)
 	CreateCourse(ctx context.Context, actorID uuid.UUID, input service.CreateCourseInput) (*contract.Course, error)
@@ -94,6 +101,11 @@ func (h *Handler) listCourses(w http.ResponseWriter, r *http.Request) {
 		level = &raw
 	}
 
+	var topic *string
+	if raw := r.URL.Query().Get("topic"); raw != "" {
+		topic = &raw
+	}
+
 	limit := 0
 	if raw := r.URL.Query().Get("limit"); raw != "" {
 		if parsed, err := strconv.Atoi(raw); err == nil {
@@ -108,7 +120,12 @@ func (h *Handler) listCourses(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	courses, _, err := h.service.ListCourses(ctx, level, limit, offset)
+	var callerID *uuid.UUID
+	if actor, ok := httpx.ActorFrom(ctx); ok {
+		callerID = &actor.UserID
+	}
+
+	courses, _, err := h.service.ListCourses(ctx, level, topic, limit, offset, callerID)
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
@@ -215,12 +232,15 @@ func (h *Handler) createCourse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	created, err := h.service.CreateCourse(ctx, actor.UserID, service.CreateCourseInput{
-		Slug:           req.Slug,
-		Title:          req.Title,
-		Description:    req.Description,
-		CEFRFrom:       req.CEFRFrom,
-		CEFRTo:         req.CEFRTo,
-		EstimatedHours: req.EstimatedHours,
+		Slug:            req.Slug,
+		Title:           req.Title,
+		Description:     req.Description,
+		CEFRFrom:        req.CEFRFrom,
+		CEFRTo:          req.CEFRTo,
+		EstimatedHours:  req.EstimatedHours,
+		Origin:          req.Origin,
+		Visibility:      req.Visibility,
+		TopicTaxonomyID: req.TopicTaxonomyID,
 	})
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
@@ -228,14 +248,18 @@ func (h *Handler) createCourse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, r, http.StatusCreated, CourseSummaryResponse{
-		ID:             created.ID,
-		Slug:           created.Slug,
-		Title:          created.Title,
-		Description:    created.Description,
-		CEFRFrom:       created.CEFRFrom,
-		CEFRTo:         created.CEFRTo,
-		Status:         created.Status,
-		EstimatedHours: created.EstimatedHours,
+		ID:              created.ID,
+		Slug:            created.Slug,
+		Title:           created.Title,
+		Description:     created.Description,
+		CEFRFrom:        created.CEFRFrom,
+		CEFRTo:          created.CEFRTo,
+		Status:          created.Status,
+		EstimatedHours:  created.EstimatedHours,
+		Origin:          created.Origin,
+		OwnerID:         created.OwnerID,
+		Visibility:      created.Visibility,
+		TopicTaxonomyID: created.TopicTaxonomyID,
 	})
 }
 
