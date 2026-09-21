@@ -55,6 +55,8 @@ const (
 	TaskPlacementGenerate Task = "placement_generate"
 	// TaskPlacementSolve blind-solves a placement exercise item without answers.
 	TaskPlacementSolve Task = "placement_solve"
+	// TaskResourceClassify classifies extracted text to estimate CEFR level, skill, and spine nodes.
+	TaskResourceClassify Task = "resource_classify"
 )
 
 // Request is one unit of work.

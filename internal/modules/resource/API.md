@@ -6,7 +6,7 @@ status: IMPLEMENTED
 phase: 4
 owner: "@learning-team"
 schema: resource
-tables: [resources, renditions]
+tables: [resources, renditions, extractions, classifications]
 depends_on: [storage, job, user]
 depended_on_by: []
 spec_version: 1.0.0

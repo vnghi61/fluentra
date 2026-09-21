@@ -32,22 +32,42 @@ type submitResourceResponse struct {
 }
 
 type resourceResponse struct {
-	ID               uuid.UUID  `json:"id"`
-	Kind             string     `json:"kind"`
-	Title            string     `json:"title"`
-	Status           string     `json:"status"`
-	FailureReason    string     `json:"failure_reason"`
-	OriginalFilename string     `json:"original_filename"`
-	DeclaredMIME     string     `json:"declared_mime"`
-	DetectedMIME     string     `json:"detected_mime"`
-	ByteSize         *int64     `json:"byte_size"`
-	Checksum         *string    `json:"checksum"`
-	SourceURL        *string    `json:"source_url"`
-	DownloadURL      *string    `json:"download_url"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	ValidatedAt      *time.Time                  `json:"validated_at"`
-	Renditions       []resourceRenditionResponse `json:"renditions,omitempty"`
+	ID               uuid.UUID                       `json:"id"`
+	Kind             string                          `json:"kind"`
+	Title            string                          `json:"title"`
+	Status           string                          `json:"status"`
+	FailureReason    string                          `json:"failure_reason"`
+	OriginalFilename string                          `json:"original_filename"`
+	DeclaredMIME     string                          `json:"declared_mime"`
+	DetectedMIME     string                          `json:"detected_mime"`
+	ByteSize         *int64                          `json:"byte_size"`
+	Checksum         *string                         `json:"checksum"`
+	SourceURL        *string                         `json:"source_url"`
+	DownloadURL      *string                         `json:"download_url"`
+	CreatedAt        time.Time                       `json:"created_at"`
+	UpdatedAt        time.Time                       `json:"updated_at"`
+	ValidatedAt      *time.Time                      `json:"validated_at"`
+	Renditions       []resourceRenditionResponse     `json:"renditions,omitempty"`
+	Extraction       *resourceExtractionResponse     `json:"extraction,omitempty"`
+	Classification   *resourceClassificationResponse `json:"classification,omitempty"`
+}
+
+type resourceExtractionResponse struct {
+	Source    string `json:"source"`
+	CharCount int    `json:"char_count"`
+	Truncated bool   `json:"truncated"`
+	Excerpt   string `json:"excerpt"`
+}
+
+type resourceClassificationResponse struct {
+	CEFREstimate *string                      `json:"cefr_estimate,omitempty"`
+	Skill        *string                      `json:"skill,omitempty"`
+	Nodes        []classificationNodeResponse `json:"nodes,omitempty"`
+}
+
+type classificationNodeResponse struct {
+	Code  string `json:"code"`
+	Label string `json:"label"`
 }
 
 type resourceRenditionResponse struct {
@@ -88,6 +108,37 @@ func toResourceResponse(r contract.Resource) resourceResponse {
 		}
 	}
 
+	var extraction *resourceExtractionResponse
+	if r.Extraction != nil {
+		excerpt := r.Extraction.Text
+		runes := []rune(excerpt)
+		if len(runes) > 2000 {
+			excerpt = string(runes[:2000])
+		}
+		extraction = &resourceExtractionResponse{
+			Source:    r.Extraction.Source,
+			CharCount: int(r.Extraction.CharCount),
+			Truncated: r.Extraction.Truncated,
+			Excerpt:   excerpt,
+		}
+	}
+
+	var classification *resourceClassificationResponse
+	if r.Classification != nil {
+		nodes := make([]classificationNodeResponse, 0, len(r.Classification.Nodes))
+		for _, n := range r.Classification.Nodes {
+			nodes = append(nodes, classificationNodeResponse{
+				Code:  n.Code,
+				Label: n.Label,
+			})
+		}
+		classification = &resourceClassificationResponse{
+			CEFREstimate: r.Classification.CEFR_Estimate,
+			Skill:        r.Classification.Skill,
+			Nodes:        nodes,
+		}
+	}
+
 	return resourceResponse{
 		ID:               r.ID,
 		Kind:             r.Kind,
@@ -102,6 +153,8 @@ func toResourceResponse(r contract.Resource) resourceResponse {
 		SourceURL:        r.SourceURL,
 		DownloadURL:      r.DownloadURL,
 		Renditions:       renditions,
+		Extraction:       extraction,
+		Classification:   classification,
 		CreatedAt:        r.CreatedAt,
 		UpdatedAt:        r.UpdatedAt,
 		ValidatedAt:      r.ValidatedAt,

@@ -19,11 +19,12 @@ const (
 
 // RenderRequest contains all inputs needed to render one rendition.
 type RenderRequest struct {
-	ResourceID  uuid.UUID
-	Kind        string
-	SourcePath  string
-	SourceMIME  string
-	TempDir     string
+	ResourceID   uuid.UUID
+	Kind         string
+	SourcePath   string
+	SourceMIME   string
+	TempDir      string
+	PDFToTextBin string
 }
 
 // RenderResult contains the outcome and measurements of a render operation.
@@ -37,6 +38,11 @@ type RenderResult struct {
 	ToolVersion string
 	Skipped     bool
 	SkipReason  string
+
+	// Text extraction (Stage B)
+	ExtractedText   *string
+	TextTruncated   bool
+	TextToolVersion string
 }
 
 // Renderer performs rendering for specific media formats.

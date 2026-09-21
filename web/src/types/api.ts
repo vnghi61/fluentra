@@ -6915,6 +6915,8 @@ export interface components {
              */
             validated_at?: string | null;
             renditions?: components["schemas"]["ResourceRendition"][];
+            extraction?: components["schemas"]["ResourceExtraction"];
+            classification?: components["schemas"]["ResourceClassification"];
         };
         ResourceList: {
             items: components["schemas"]["Resource"][];
@@ -7022,6 +7024,37 @@ export interface components {
              */
             expires_at?: string | null;
         };
+        /** @description Extracted textual content and metadata from the resource. */
+        ResourceExtraction: {
+            /**
+             * @example pdf_text
+             * @enum {string}
+             */
+            source: "pdf_text" | "ocr" | "transcript";
+            /** @example 1540 */
+            char_count: number;
+            /** @example false */
+            truncated: boolean;
+            /**
+             * @description The first 2,000 characters of the extracted text.
+             * @example Unit 1: Present Perfect Tense...
+             */
+            excerpt: string;
+        } | null;
+        ClassificationNode: {
+            /** @example PRESENT_PERFECT */
+            code: string;
+            /** @example Present Perfect */
+            label: string;
+        };
+        /** @description Grounded spine taxonomy classification and CEFR estimate. */
+        ResourceClassification: {
+            /** @example B1 */
+            cefr_estimate?: string | null;
+            /** @example grammar */
+            skill?: string | null;
+            nodes?: components["schemas"]["ClassificationNode"][];
+        } | null;
     };
     responses: {
         /** @description The request is malformed or has an invalid cursor. */

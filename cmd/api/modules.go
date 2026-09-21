@@ -423,6 +423,7 @@ func newIdentity(deps identityDeps) *identity {
 		Storage:      deps.Storage,
 		Enqueuer:     deps.Enqueuer,
 		WorkerNudger: deps.WorkerNudger,
+		Taxonomies:   assembled.content.TaxonomyResolver(),
 	})
 
 	return assembled

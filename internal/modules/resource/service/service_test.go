@@ -21,10 +21,12 @@ import (
 )
 
 type mockRepo struct {
-	resources  map[uuid.UUID]*contract.Resource
-	renditions map[uuid.UUID]*contract.Rendition
-	usageCount int64
-	usageBytes int64
+	resources       map[uuid.UUID]*contract.Resource
+	renditions      map[uuid.UUID]*contract.Rendition
+	extractions     map[uuid.UUID]*contract.Extraction
+	classifications map[uuid.UUID]*contract.Classification
+	usageCount      int64
+	usageBytes      int64
 	// staleExpired, when set, is what ListExpiredPendingResources returns: the
 	// snapshot a sweeper read before the learner confirmed.
 	staleExpired []contract.Resource
@@ -32,8 +34,10 @@ type mockRepo struct {
 
 func newMockRepo() *mockRepo {
 	return &mockRepo{
-		resources:  make(map[uuid.UUID]*contract.Resource),
-		renditions: make(map[uuid.UUID]*contract.Rendition),
+		resources:       make(map[uuid.UUID]*contract.Resource),
+		renditions:      make(map[uuid.UUID]*contract.Rendition),
+		extractions:     make(map[uuid.UUID]*contract.Extraction),
+		classifications: make(map[uuid.UUID]*contract.Classification),
 	}
 }
 
@@ -374,7 +378,57 @@ func (m *mockRepo) ListValidatedFileResourcesForRenditions(
 	return list, nil
 }
 
+func (m *mockRepo) UpsertExtraction(
+	_ context.Context, resourceID uuid.UUID, source, text string, charCount int32,
+	truncated bool, language, toolVersion string,
+) (*contract.Extraction, error) {
+	e := &contract.Extraction{
+		ResourceID:  resourceID,
+		Source:      source,
+		Text:        text,
+		CharCount:   int(charCount),
+		Truncated:   truncated,
+		Language:    language,
+		ToolVersion: toolVersion,
+		CreatedAt:   time.Now(),
+	}
+	m.extractions[resourceID] = e
+	return e, nil
+}
 
+func (m *mockRepo) GetExtractionByResourceID(_ context.Context, resourceID uuid.UUID) (*contract.Extraction, error) {
+	e, ok := m.extractions[resourceID]
+	if !ok {
+		return nil, nil
+	}
+	return e, nil
+}
+
+func (m *mockRepo) UpsertClassification(
+	_ context.Context, resourceID uuid.UUID, cefrEstimate, skill *string,
+	nodeCodes []string, promptVersion, model string, aiRequestID *uuid.UUID,
+) (*contract.Classification, error) {
+	c := &contract.Classification{
+		ResourceID:    resourceID,
+		CEFR_Estimate: cefrEstimate,
+		Skill:         skill,
+		NodeCodes:     nodeCodes,
+		PromptVersion: promptVersion,
+		Model:         model,
+		AIRequestID:   aiRequestID,
+		CreatedAt:     time.Now(),
+	}
+	m.classifications[resourceID] = c
+	return c, nil
+}
+
+func (m *mockRepo) GetClassificationByResourceID(_ context.Context, resourceID uuid.UUID) (*contract.Classification, error) {
+	c, ok := m.classifications[resourceID]
+	if !ok {
+		return nil, nil
+	}
+	return c, nil
+}
 
 type mockStorage struct {
 	objects   map[string][]byte
@@ -999,4 +1053,3 @@ func TestService_DeleteResource_DeletesDerivedRenditions(t *testing.T) {
 		t.Error("expected rendition object to be deleted from storage")
 	}
 }
-

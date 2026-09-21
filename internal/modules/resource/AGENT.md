@@ -6,7 +6,7 @@ status: IMPLEMENTED
 phase: 4
 owner: "@learning-team"
 schema: resource
-tables: [resources, renditions]
+tables: [resources, renditions, extractions, classifications]
 depends_on: [storage, job, user]
 depended_on_by: []
 spec_version: 1.0.0
@@ -51,12 +51,14 @@ Intake for material a learner brings: an uploaded file or a submitted URL become
 - Per-user quotas: 50 resources and 250 MB, counting everything not rejected or failed
 - Presigned GET for a validated file its owner requests
 - Derived visual, audio, and video renditions in fluentra-derived for validated file resources
-- Deleting a resource together with its stored object and derived renditions
+- Extracting text from PDF and Office document resources
+- Transcribing audio and video resources via media.HTTPTranscriber
+- Grounding and classifying extracted text into CEFR levels, skills, and spine taxonomy nodes
+- Deleting a resource together with its stored object, derived renditions, extraction and classification
 - A cron sweep that fails abandoned intents and deletes their objects, and fails uploads whose validation never finished
 
 **This module does NOT own:**
 
-- Text extraction, transcription and classification (P4, work order 19)
 - Generating exercises from a resource (P6)
 - Byte storage and serving (platform/storage)
 <!-- END GENERATED: responsibilities -->
@@ -99,6 +101,8 @@ Migrations: `db/migrations/resource/` · Queries: `db/queries/resource/`
 |---|---|---|
 | `resource.resources` | One uploaded file or submitted URL | `user_id`, `kind` (file or url), `title`, `object_key`, `original_filename`, `declared_mime`, `detected_mime`, `byte_size`, `checksum`, `source_url`, `status`, `failure_reason`, `validated_at`. `ck_resources_shape`: a file has an object and no URL, a URL the reverse. `ck_resources_rejected_has_reason`. |
 | `resource.renditions` | Derived visual, audio, and video renditions of validated file resources | `resource_id`, `kind`, `status`, `object_key`, `mime_type`, `width`, `height`, `duration_ms`, `byte_size`, `tool_version`, `attempts`, `failure_reason`. `uq_renditions_resource_kind`, `uq_renditions_object_key`. |
+| `resource.extractions` | Extracted text from validated documents and audio/video transcripts | `resource_id`, `source` ('pdf_text', 'ocr', 'transcript'), `text`, `char_count` (max 400,000), `truncated`, `language`, `tool_version`. |
+| `resource.classifications` | CEFR estimate, targeted skill, and grounded spine taxonomy node codes | `resource_id`, `cefr_estimate`, `skill`, `node_codes`, `prompt_version`, `model`, `ai_request_id`. |
 
 **Indexes of note**
 

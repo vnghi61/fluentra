@@ -524,4 +524,109 @@ func (r *Repository) ListValidatedFileResourcesForRenditions(
 	return items, nil
 }
 
+// UpsertExtraction inserts or updates an extraction row for a resource.
+func (r *Repository) UpsertExtraction(
+	ctx context.Context,
+	resourceID uuid.UUID,
+	source, text string,
+	charCount int32,
+	truncated bool,
+	language, toolVersion string,
+) (*contract.Extraction, error) {
+	row, err := r.queries.UpsertExtraction(ctx, sqlc.UpsertExtractionParams{
+		ResourceID:  resourceID,
+		Source:      source,
+		Text:        text,
+		CharCount:   charCount,
+		Truncated:   truncated,
+		Language:    language,
+		ToolVersion: toolVersion,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("upsert extraction: %w", err)
+	}
+	return extractionToContract(row), nil
+}
 
+// GetExtractionByResourceID retrieves the extraction row for a resource.
+func (r *Repository) GetExtractionByResourceID(
+	ctx context.Context, resourceID uuid.UUID,
+) (*contract.Extraction, error) {
+	row, err := r.queries.GetExtractionByResourceID(ctx, resourceID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get extraction: %w", err)
+	}
+	return extractionToContract(row), nil
+}
+
+// UpsertClassification inserts or updates a classification row for a resource.
+func (r *Repository) UpsertClassification(
+	ctx context.Context,
+	resourceID uuid.UUID,
+	cefrEstimate, skill *string,
+	nodeCodes []string,
+	promptVersion, model string,
+	aiRequestID *uuid.UUID,
+) (*contract.Classification, error) {
+	row, err := r.queries.UpsertClassification(ctx, sqlc.UpsertClassificationParams{
+		ResourceID:    resourceID,
+		CefrEstimate:  cefrEstimate,
+		Skill:         skill,
+		NodeCodes:     nodeCodes,
+		PromptVersion: promptVersion,
+		Model:         model,
+		AiRequestID:   aiRequestID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("upsert classification: %w", err)
+	}
+	return classificationToContract(row), nil
+}
+
+// GetClassificationByResourceID retrieves the classification row for a resource.
+func (r *Repository) GetClassificationByResourceID(
+	ctx context.Context, resourceID uuid.UUID,
+) (*contract.Classification, error) {
+	row, err := r.queries.GetClassificationByResourceID(ctx, resourceID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get classification: %w", err)
+	}
+	return classificationToContract(row), nil
+}
+
+func extractionToContract(row sqlc.ResourceExtraction) *contract.Extraction {
+	excerpt := row.Text
+	if len(excerpt) > 2000 {
+		excerpt = excerpt[:2000]
+	}
+	return &contract.Extraction{
+		ResourceID:  row.ResourceID,
+		Source:      row.Source,
+		Text:        row.Text,
+		CharCount:   int(row.CharCount),
+		Truncated:   row.Truncated,
+		Language:    row.Language,
+		ToolVersion: row.ToolVersion,
+		Excerpt:     excerpt,
+		CreatedAt:   row.CreatedAt,
+	}
+}
+
+func classificationToContract(row sqlc.ResourceClassification) *contract.Classification {
+	return &contract.Classification{
+		ResourceID:    row.ResourceID,
+		CEFR_Estimate: row.CefrEstimate,
+		Skill:         row.Skill,
+		NodeCodes:     row.NodeCodes,
+		PromptVersion: row.PromptVersion,
+		Model:         row.Model,
+		AIRequestID:   row.AiRequestID,
+		CreatedAt:     row.CreatedAt,
+	}
+}

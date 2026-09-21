@@ -16,10 +16,13 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/modules/resource/domain"
 	"github.com/fluentra/fluentra/internal/modules/resource/job"
+	"github.com/fluentra/fluentra/internal/platform/ai"
 	platformjob "github.com/fluentra/fluentra/internal/platform/job"
+	"github.com/fluentra/fluentra/internal/platform/media"
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
 )
@@ -63,6 +66,16 @@ type Repository interface {
 	ListRenditionsByResourceID(ctx context.Context, resourceID uuid.UUID) ([]contract.Rendition, error)
 	ListRenditionKeysByUserID(ctx context.Context, userID uuid.UUID) ([]string, error)
 	ListValidatedFileResourcesForRenditions(ctx context.Context, limit int32) ([]contract.Resource, error)
+	UpsertExtraction(
+		ctx context.Context, resourceID uuid.UUID, source, text string, charCount int32,
+		truncated bool, language, toolVersion string,
+	) (*contract.Extraction, error)
+	GetExtractionByResourceID(ctx context.Context, resourceID uuid.UUID) (*contract.Extraction, error)
+	UpsertClassification(
+		ctx context.Context, resourceID uuid.UUID, cefrEstimate, skill *string,
+		nodeCodes []string, promptVersion, model string, aiRequestID *uuid.UUID,
+	) (*contract.Classification, error)
+	GetClassificationByResourceID(ctx context.Context, resourceID uuid.UUID) (*contract.Classification, error)
 
 	// The two writes that share a transaction with a job enqueue.
 	ConfirmFileResourceTx(ctx context.Context, tx pgx.Tx, id, userID uuid.UUID) (*contract.Resource, error)
@@ -90,6 +103,9 @@ type Service struct {
 	fetcher     URLFetcher
 	nudger      WorkerNudger
 	mediaRender MediaRenderRequester
+	transcriber media.Transcriber
+	aiClient    ai.Client
+	taxonomies  contentcontract.TaxonomyResolver
 }
 
 // New constructs a new resource Service.
@@ -117,6 +133,21 @@ func New(
 // SetMediaRender configures an optional dispatcher for rendering media renditions.
 func (s *Service) SetMediaRender(r MediaRenderRequester) {
 	s.mediaRender = r
+}
+
+// SetTranscriber configures the speech-to-text transcriber.
+func (s *Service) SetTranscriber(t media.Transcriber) {
+	s.transcriber = t
+}
+
+// SetAIClient configures the AI client used for classification.
+func (s *Service) SetAIClient(c ai.Client) {
+	s.aiClient = c
+}
+
+// SetTaxonomies configures the taxonomy resolver for spine grounding.
+func (s *Service) SetTaxonomies(tax contentcontract.TaxonomyResolver) {
+	s.taxonomies = tax
 }
 
 // CreateUploadIntent issues a presigned S3 PUT instruction and stores a pending file resource.
@@ -352,6 +383,31 @@ func (s *Service) GetResource(ctx context.Context, id, userID uuid.UUID) (*contr
 		}
 	}
 
+	if ext, err := s.repo.GetExtractionByResourceID(ctx, id); err == nil && ext != nil {
+		res.Extraction = ext
+	}
+
+	if cls, err := s.repo.GetClassificationByResourceID(ctx, id); err == nil && cls != nil {
+		if s.taxonomies != nil && len(cls.NodeCodes) > 0 {
+			cls.Nodes = make([]contract.ClassificationNode, 0, len(cls.NodeCodes))
+			for _, code := range cls.NodeCodes {
+				node, err := s.taxonomies.GetTaxonomyByCode(ctx, code)
+				if err == nil && node != nil {
+					cls.Nodes = append(cls.Nodes, contract.ClassificationNode{
+						Code:  code,
+						Label: node.Label,
+					})
+				} else {
+					cls.Nodes = append(cls.Nodes, contract.ClassificationNode{
+						Code:  code,
+						Label: code,
+					})
+				}
+			}
+		}
+		res.Classification = cls
+	}
+
 	return res, nil
 }
 
@@ -368,17 +424,18 @@ func (s *Service) DeleteResource(ctx context.Context, id, userID uuid.UUID) erro
 		}
 	}
 
+	// Also delete any derived renditions
 	renditions, err := s.repo.ListRenditionsByResourceID(ctx, id)
 	if err == nil {
-		for _, rend := range renditions {
-			if rend.ObjectKey != nil && *rend.ObjectKey != "" {
-				_ = s.deleteStorageObject(ctx, storage.BucketDerived, *rend.ObjectKey)
+		for _, r := range renditions {
+			if r.ObjectKey != nil && *r.ObjectKey != "" {
+				_ = s.deleteStorageObject(ctx, storage.BucketDerived, *r.ObjectKey)
 			}
 		}
 	}
 
 	if _, _, err := s.repo.DeleteResource(ctx, id, userID); err != nil {
-		return fmt.Errorf("delete resource record: %w", err)
+		return fmt.Errorf("delete resource row: %w", err)
 	}
 
 	return nil
@@ -447,16 +504,50 @@ func (s *Service) RecordRenditionReady(
 	ctx context.Context, id uuid.UUID, objectKey, mimeType string,
 	width, height, durationMS *int, byteSize *int64, toolVersion string,
 ) (*contract.Rendition, error) {
-	return s.repo.UpdateRenditionReady(
+	updated, err := s.repo.UpdateRenditionReady(
 		ctx, id, objectKey, mimeType, width, height, durationMS, byteSize, toolVersion,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	// When audio_web is ready, enqueue transcription if enqueuer is configured
+	if updated.Kind == "audio_web" && s.enqueuer != nil && s.pool != nil {
+		tx, txErr := s.pool.Begin(ctx)
+		if txErr == nil {
+			_, _ = s.enqueuer.EnqueueTx(ctx, tx, job.TranscribeResourceArgs{ResourceID: updated.ResourceID}, nil)
+			_ = tx.Commit(ctx)
+			if s.nudger != nil {
+				s.nudger.Nudge(ctx)
+			}
+		}
+	}
+
+	return updated, nil
 }
 
 // RecordRenditionSkipped marks a rendition as skipped with a reason.
 func (s *Service) RecordRenditionSkipped(
 	ctx context.Context, id uuid.UUID, reason string,
 ) (*contract.Rendition, error) {
-	return s.repo.UpdateRenditionSkipped(ctx, id, reason)
+	updated, err := s.repo.UpdateRenditionSkipped(ctx, id, reason)
+	if err != nil {
+		return nil, err
+	}
+
+	// When audio_web is skipped (e.g. source was already suitable), enqueue transcription
+	if updated.Kind == "audio_web" && s.enqueuer != nil && s.pool != nil {
+		tx, txErr := s.pool.Begin(ctx)
+		if txErr == nil {
+			_, _ = s.enqueuer.EnqueueTx(ctx, tx, job.TranscribeResourceArgs{ResourceID: updated.ResourceID}, nil)
+			_ = tx.Commit(ctx)
+			if s.nudger != nil {
+				s.nudger.Nudge(ctx)
+			}
+		}
+	}
+
+	return updated, nil
 }
 
 // RecordRenditionFailed marks a rendition failure.
@@ -466,6 +557,216 @@ func (s *Service) RecordRenditionFailed(
 	return s.repo.UpdateRenditionFailed(ctx, id, reason)
 }
 
+// RecordExtraction persists extracted text for a resource and enqueues classification.
+func (s *Service) RecordExtraction(
+	ctx context.Context, resourceID uuid.UUID, source, text string, charCount int, truncated bool, language, toolVersion string,
+) error {
+	_, err := s.repo.UpsertExtraction(ctx, resourceID, source, text, int32(charCount), truncated, language, toolVersion)
+	if err != nil {
+		return fmt.Errorf("record extraction: %w", err)
+	}
+
+	if text != "" && s.enqueuer != nil && s.pool != nil {
+		tx, txErr := s.pool.Begin(ctx)
+		if txErr == nil {
+			_, _ = s.enqueuer.EnqueueTx(ctx, tx, job.ClassifyResourceArgs{ResourceID: resourceID}, nil)
+			_ = tx.Commit(ctx)
+			if s.nudger != nil {
+				s.nudger.Nudge(ctx)
+			}
+		}
+	}
+	return nil
+}
+
+// TranscribeResource transcribes audio or video media and stores the transcript extraction.
+func (s *Service) TranscribeResource(ctx context.Context, resourceID uuid.UUID) error {
+	// Idempotency (Trap 3): skip if extraction already exists
+	existing, err := s.repo.GetExtractionByResourceID(ctx, resourceID)
+	if err == nil && existing != nil {
+		return nil
+	}
+
+	res, err := s.repo.GetResourceByID(ctx, resourceID)
+	if err != nil {
+		if errors.Is(err, domain.ErrResourceNotFound) {
+			return nil
+		}
+		return err
+	}
+	if res.Kind != domain.KindFile || res.Status != domain.StatusValidated {
+		return nil
+	}
+
+	if s.transcriber == nil {
+		return nil
+	}
+
+	// 1. Determine audio bucket and object key
+	bucket := storage.BucketDerived
+	var objectKey string
+
+	renditions, err := s.repo.ListReadyRenditionsByResourceID(ctx, resourceID)
+	if err == nil {
+		for _, r := range renditions {
+			if r.Kind == "audio_web" && r.ObjectKey != nil && *r.ObjectKey != "" {
+				objectKey = *r.ObjectKey
+				break
+			}
+		}
+	}
+
+	if objectKey == "" {
+		if domain.IsAudioMIME(res.DetectedMIME) && res.ObjectKey != nil && *res.ObjectKey != "" {
+			bucket = storage.BucketUploads
+			objectKey = *res.ObjectKey
+		} else {
+			return nil // No audio to transcribe
+		}
+	}
+
+	stat, err := s.storage.Stat(ctx, bucket, objectKey)
+	if err != nil {
+		return fmt.Errorf("stat audio object: %w", err)
+	}
+
+	truncated := false
+	const maxAudioBytes = 25 * 1024 * 1024 // 25 MB limit
+	readLimit := stat.Size
+	if readLimit > maxAudioBytes {
+		readLimit = maxAudioBytes
+		truncated = true
+	}
+
+	rc, err := s.storage.Get(ctx, bucket, objectKey)
+	if err != nil {
+		return fmt.Errorf("get audio stream: %w", err)
+	}
+	defer func() { _ = rc.Close() }()
+
+	limitedReader := io.LimitReader(rc, readLimit)
+	result, err := s.transcriber.Transcribe(ctx, limitedReader, "audio.aac")
+	if err != nil {
+		return fmt.Errorf("transcribe audio: %w", err)
+	}
+
+	text := result.Text
+	if len(text) > 400000 {
+		text = text[:400000]
+		truncated = true
+	}
+
+	toolVersion := "whisper-1"
+	if t, ok := s.transcriber.(interface{ Model() string }); ok {
+		toolVersion = t.Model()
+	}
+
+	return s.RecordExtraction(ctx, resourceID, "transcript", text, len(text), truncated, result.Language, toolVersion)
+}
+
+// ClassifyResource classifies extracted resource text to estimate CEFR and map spine nodes.
+func (s *Service) ClassifyResource(ctx context.Context, resourceID uuid.UUID) error {
+	// Idempotency: skip if classification already exists
+	existing, err := s.repo.GetClassificationByResourceID(ctx, resourceID)
+	if err == nil && existing != nil {
+		return nil
+	}
+
+	ext, err := s.repo.GetExtractionByResourceID(ctx, resourceID)
+	if err != nil || ext == nil || ext.CharCount == 0 || strings.TrimSpace(ext.Text) == "" {
+		return nil
+	}
+
+	if s.aiClient == nil {
+		return nil
+	}
+
+	// 1. Read first 8,000 characters
+	content := ext.Text
+	if len(content) > 8000 {
+		content = content[:8000]
+	}
+
+	// 2. Fetch allowed spine taxonomy nodes
+	allowedNodes := make([]string, 0)
+	allowedMap := make(map[string]bool)
+	if s.taxonomies != nil {
+		for _, ns := range []string{"grammar", "topic", "skill"} {
+			nodes, err := s.taxonomies.ListTaxonomiesInNamespace(ctx, ns)
+			if err == nil {
+				for _, n := range nodes {
+					if !allowedMap[n.Code] {
+						allowedMap[n.Code] = true
+						allowedNodes = append(allowedNodes, n.Code)
+					}
+				}
+			}
+		}
+	}
+
+	// 3. Call AI task resource_classify
+	aiReq := ai.Request{
+		Task: ai.TaskResourceClassify,
+		Vars: map[string]any{
+			"Content":      content,
+			"AllowedNodes": strings.Join(allowedNodes, ", "),
+		},
+	}
+
+	var parsed struct {
+		CEFR_Estimate string   `json:"cefr_estimate"`
+		Skill         string   `json:"skill"`
+		NodeCodes     []string `json:"node_codes"`
+	}
+
+	aiResp, err := ai.CompleteJSONWithResponse(ctx, s.aiClient, aiReq, &parsed)
+	if err != nil {
+		return fmt.Errorf("generate classification: %w", err)
+	}
+
+	// Grounding: drop any code not in allowedNodes
+	groundedCodes := make([]string, 0, len(parsed.NodeCodes))
+	for _, code := range parsed.NodeCodes {
+		trimmed := strings.TrimSpace(code)
+		if allowedMap[trimmed] {
+			groundedCodes = append(groundedCodes, trimmed)
+		}
+	}
+
+	var cefr *string
+	parsedCEFR := strings.ToUpper(strings.TrimSpace(parsed.CEFR_Estimate))
+	switch parsedCEFR {
+	case "A1", "A2", "B1", "B2", "C1", "C2":
+		cefr = &parsedCEFR
+	}
+
+	var skill *string
+	if parsed.Skill != "" {
+		sk := strings.ToLower(strings.TrimSpace(parsed.Skill))
+		skill = &sk
+	}
+
+	model := aiResp.Model
+	if model == "" {
+		model = "ai"
+	}
+
+	_, err = s.repo.UpsertClassification(
+		ctx,
+		resourceID,
+		cefr,
+		skill,
+		groundedCodes,
+		"v1",
+		model,
+		nil,
+	)
+	if err != nil {
+		return fmt.Errorf("save classification: %w", err)
+	}
+
+	return nil
+}
 
 func (s *Service) deleteStorageObject(ctx context.Context, bucket, key string) error {
 	if err := s.storage.Delete(ctx, bucket, key); err != nil && !errors.Is(err, storage.ErrObjectNotFound) {
@@ -473,7 +774,6 @@ func (s *Service) deleteStorageObject(ctx context.Context, bucket, key string) e
 	}
 	return nil
 }
-
 
 // ValidateResource executes the validation pipeline for a file or URL resource.
 //
@@ -575,6 +875,16 @@ func (s *Service) validateFileResource(ctx context.Context, res *contract.Resour
 	if s.mediaRender != nil {
 		if err := s.mediaRender.RequestRender(ctx); err != nil {
 			slog.WarnContext(ctx, "could not request media render dispatch", "resource_id", res.ID, "error", err)
+		}
+	} else if domain.IsAudioMIME(detectedMIME) && s.enqueuer != nil && s.pool != nil {
+		// When offline media renderer is not attached (e.g. tests / direct audio), enqueue transcription directly
+		tx, txErr := s.pool.Begin(ctx)
+		if txErr == nil {
+			_, _ = s.enqueuer.EnqueueTx(ctx, tx, job.TranscribeResourceArgs{ResourceID: res.ID}, nil)
+			_ = tx.Commit(ctx)
+			if s.nudger != nil {
+				s.nudger.Nudge(ctx)
+			}
 		}
 	}
 

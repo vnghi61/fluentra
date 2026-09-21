@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	OfficeTimeout    = 120 * time.Second
-	ToolLibreOffice  = "libreoffice:soffice"
+	OfficeTimeout   = 120 * time.Second
+	ToolLibreOffice = "libreoffice:soffice"
 )
 
 // RenderOffice converts Office documents (DOCX, PPTX, etc.) to PDF via headless LibreOffice,
@@ -74,13 +74,14 @@ func RenderOffice(ctx context.Context, sofficeBin, pdftoppmBin string, req Rende
 		convertedPDF = matches[0]
 	}
 
-	// 4. Delegate to RenderPDF for thumbnail / preview extraction
+	// 4. Delegate to RenderPDF for thumbnail / preview extraction and text extraction
 	pdfReq := RenderRequest{
-		ResourceID: req.ResourceID,
-		Kind:       req.Kind,
-		SourcePath: convertedPDF,
-		SourceMIME: "application/pdf",
-		TempDir:    req.TempDir,
+		ResourceID:   req.ResourceID,
+		Kind:         req.Kind,
+		SourcePath:   convertedPDF,
+		SourceMIME:   "application/pdf",
+		TempDir:      req.TempDir,
+		PDFToTextBin: req.PDFToTextBin,
 	}
 
 	return RenderPDF(ctx, pdftoppmBin, pdfReq)

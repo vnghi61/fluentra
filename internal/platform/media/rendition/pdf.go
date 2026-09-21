@@ -75,27 +75,71 @@ func RenderPDF(ctx context.Context, pdftoppmBin string, req RenderRequest) (*Ren
 			finalOut = firstPagePNG
 		}
 
-		return &RenderResult{
+		res := &RenderResult{
 			OutputPath:  finalOut,
 			MIMEType:    "image/png",
 			Width:       &w,
 			Height:      &h,
 			ByteSize:    &sz,
 			ToolVersion: ToolPopplerPPM,
-		}, nil
+		}
+
+		if text, truncated, err := ExtractPDFText(ctx, req.PDFToTextBin, req.SourcePath); err == nil {
+			res.ExtractedText = &text
+			res.TextTruncated = truncated
+			res.TextToolVersion = ToolPopplerText
+		}
+
+		return res, nil
 	}
 
 	// If kind is thumbnail, scale down the first page PNG to thumbnail
 	if req.Kind == KindThumbnail {
 		thumbReq := RenderRequest{
-			ResourceID: req.ResourceID,
-			Kind:       KindThumbnail,
-			SourcePath: firstPagePNG,
-			SourceMIME: "image/png",
-			TempDir:    req.TempDir,
+			ResourceID:   req.ResourceID,
+			Kind:         KindThumbnail,
+			SourcePath:   firstPagePNG,
+			SourceMIME:   "image/png",
+			TempDir:      req.TempDir,
+			PDFToTextBin: req.PDFToTextBin,
 		}
 		return RenderImage(ctx, thumbReq)
 	}
 
 	return nil, fmt.Errorf("%w: %s for pdf", ErrUnsupportedKind, req.Kind)
+}
+
+const ToolPopplerText = "poppler:pdftotext"
+
+// ExtractPDFText extracts text from a PDF file using pdftotext -layout.
+// The extracted text is capped at 400,000 characters and marked truncated if longer.
+// Returns extracted text, whether it was truncated, and any execution error.
+func ExtractPDFText(ctx context.Context, pdftotextBin, pdfPath string) (string, bool, error) {
+	if pdftotextBin == "" {
+		p, err := exec.LookPath("pdftotext")
+		if err != nil {
+			return "", false, nil // pdftotext not available; empty text is a result, not an error
+		}
+		pdftotextBin = p
+	}
+
+	execCtx, cancel := context.WithTimeout(ctx, PDFTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(execCtx, pdftotextBin, "-layout", pdfPath, "-")
+	outBytes, err := cmd.Output()
+	if err != nil {
+		// Scanned PDF or unreadable text returns empty text without error (Trap 1)
+		return "", false, nil
+	}
+
+	runes := []rune(string(outBytes))
+	truncated := false
+	const maxChars = 400000
+	if len(runes) > maxChars {
+		runes = runes[:maxChars]
+		truncated = true
+	}
+
+	return string(runes), truncated, nil
 }

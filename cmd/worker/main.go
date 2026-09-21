@@ -783,8 +783,13 @@ func startModules(
 		Pool:        pool,
 		Storage:     storageStore,
 		MediaRender: newMediaRenderDispatcher(ctx, cfg),
+		Taxonomies:  contentModule.TaxonomyResolver(),
+		Transcriber: newWorkerTranscriber(cfg),
+		AIClient:    aiClient,
 	})
 	river.AddWorker(workers, resourceModule.ValidateWorker())
+	river.AddWorker(workers, resourceModule.TranscribeWorker())
+	river.AddWorker(workers, resourceModule.ClassifyWorker())
 	cron.Register(resourceModule.SweepJob())
 	if err := resourceModule.Subscribe(bus); err != nil {
 		return err

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	"github.com/fluentra/fluentra/internal/modules/lesson/domain"
 	"github.com/fluentra/fluentra/internal/modules/lesson/service"
@@ -345,6 +346,14 @@ func (f *fakeTaxonomyResolver) ResolveTaxonomyID(_ context.Context, namespace, c
 			return id, nil
 		}
 	}
+	return nil, nil
+}
+
+func (f *fakeTaxonomyResolver) GetTaxonomyByCode(_ context.Context, _ string) (*contentcontract.TaxonomyNode, error) {
+	return nil, nil
+}
+
+func (f *fakeTaxonomyResolver) ListTaxonomiesInNamespace(_ context.Context, _ string) ([]contentcontract.TaxonomyNode, error) {
 	return nil, nil
 }
 

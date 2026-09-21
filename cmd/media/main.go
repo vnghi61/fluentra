@@ -18,9 +18,12 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
 	sqlc "github.com/fluentra/fluentra/internal/generated/resource/sqlc"
+	resourcejob "github.com/fluentra/fluentra/internal/modules/resource/job"
+	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/media/rendition"
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/shared/config"
+	"github.com/fluentra/fluentra/internal/shared/dbx"
 )
 
 type mediaCLIConfig struct {
@@ -56,6 +59,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	ffmpegFlag := flags.String("ffmpeg", "", "Path to the ffmpeg binary (defaults to PATH)")
 	pdftoppmFlag := flags.String("pdftoppm", "", "Path to the pdftoppm binary (defaults to PATH)")
 	sofficeFlag := flags.String("soffice", "", "Path to the soffice (LibreOffice) binary (defaults to PATH)")
+	pdftotextFlag := flags.String("pdftotext", "", "Path to the pdftotext binary (defaults to PATH)")
 
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -82,6 +86,10 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	}
 
 	queries := sqlc.New(pool)
+	jobClient, err := job.NewClientFromPool(pool)
+	if err != nil {
+		slog.WarnContext(ctx, "could not initialize job client; classification jobs will not be queued", "error", err)
+	}
 
 	_, _ = fmt.Fprintf(out, "Running media renderer into %s; storage %s (limit: %d, dry-run: %v)\n",
 		describeDatabase(cfg.Database.DSN), cfg.Storage.Endpoint, *limitFlag, *dryRunFlag)
@@ -140,7 +148,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		}
 
 		processed++
-		result, rerr := processRendition(ctx, store, item, res, *ffmpegFlag, *pdftoppmFlag, *sofficeFlag)
+		result, rerr := processRendition(ctx, store, item, res, *ffmpegFlag, *pdftoppmFlag, *sofficeFlag, *pdftotextFlag)
 		if rerr != nil {
 			slog.WarnContext(ctx, "rendition failed", "resource_id", item.ResourceID, "kind", item.Kind, "error", rerr)
 			_, _ = queries.UpdateRenditionFailed(ctx, sqlc.UpdateRenditionFailedParams{
@@ -149,6 +157,41 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 			})
 			failedCount++
 			continue
+		}
+
+		// Record extracted text if present (Stage B: PDF / Office documents)
+		if result != nil && result.ExtractedText != nil && !*dryRunFlag {
+			text := *result.ExtractedText
+			charCount := int32(len([]rune(text)))
+			toolVer := result.TextToolVersion
+			if toolVer == "" {
+				toolVer = "poppler:pdftotext"
+			}
+			err = dbx.InTx(ctx, pool, func(txCtx context.Context, tx pgx.Tx) error {
+				txQueries := queries.WithTx(tx)
+				_, err := txQueries.UpsertExtraction(txCtx, sqlc.UpsertExtractionParams{
+					ResourceID:  item.ResourceID,
+					Source:      "pdf_text",
+					Text:        text,
+					CharCount:   charCount,
+					Truncated:   result.TextTruncated,
+					Language:    "",
+					ToolVersion: toolVer,
+				})
+				if err != nil {
+					return err
+				}
+				if text != "" && jobClient != nil {
+					_, err = jobClient.EnqueueTx(txCtx, tx, resourcejob.ClassifyResourceArgs{ResourceID: item.ResourceID}, nil)
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			})
+			if err != nil {
+				slog.ErrorContext(ctx, "failed to record extraction and enqueue classify job", "error", err, "resource_id", item.ResourceID)
+			}
 		}
 
 		if result.Skipped {
@@ -242,7 +285,7 @@ func processRendition(
 	store storage.Store,
 	item sqlc.ResourceRendition,
 	res sqlc.ResourceResource,
-	ffmpegBin, pdftoppmBin, sofficeBin string,
+	ffmpegBin, pdftoppmBin, sofficeBin, pdftotextBin string,
 ) (*rendition.RenderResult, error) {
 	// Create temp directory for downloading and processing
 	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("rendition-%s-%s-*", item.ResourceID, item.Kind))
@@ -274,11 +317,12 @@ func processRendition(
 	_ = dstFile.Close()
 
 	req := rendition.RenderRequest{
-		ResourceID: item.ResourceID,
-		Kind:       item.Kind,
-		SourcePath: srcLocalPath,
-		SourceMIME: res.DetectedMime,
-		TempDir:    tmpDir,
+		ResourceID:   item.ResourceID,
+		Kind:         item.Kind,
+		SourcePath:   srcLocalPath,
+		SourceMIME:   res.DetectedMime,
+		TempDir:      tmpDir,
+		PDFToTextBin: pdftotextBin,
 	}
 
 	mimeLower := strings.ToLower(res.DetectedMime)

@@ -248,6 +248,41 @@ func (s *Service) ResolveTaxonomyID(ctx context.Context, namespace, code string)
 	return &tax.ID, nil
 }
 
+// GetTaxonomyByCode retrieves a taxonomy node carrying this code.
+func (s *Service) GetTaxonomyByCode(ctx context.Context, code string) (*contract.TaxonomyNode, error) {
+	tax, err := s.repo.GetTaxonomyByCode(ctx, code)
+	if err != nil {
+		if errors.Is(err, domain.ErrTaxonomyNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &contract.TaxonomyNode{
+		ID:        tax.ID,
+		Namespace: tax.Namespace,
+		Code:      tax.Code,
+		Label:     tax.Label,
+	}, nil
+}
+
+// ListTaxonomiesInNamespace lists all active taxonomy nodes in a namespace.
+func (s *Service) ListTaxonomiesInNamespace(ctx context.Context, namespace string) ([]contract.TaxonomyNode, error) {
+	items, err := s.repo.ListAllTaxonomiesInNamespace(ctx, namespace)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]contract.TaxonomyNode, len(items))
+	for i, t := range items {
+		res[i] = contract.TaxonomyNode{
+			ID:        t.ID,
+			Namespace: t.Namespace,
+			Code:      t.Code,
+			Label:     t.Label,
+		}
+	}
+	return res, nil
+}
+
 // GetManyVersions retrieves multiple content versions in ONE single query,
 // avoiding N+1 queries during lesson rendering.
 func (s *Service) GetManyVersions(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*contract.Version, error) {

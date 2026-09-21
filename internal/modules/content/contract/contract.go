@@ -117,7 +117,17 @@ type TTSCache interface {
 	Put(ctx context.Context, textHash, voice, engine, engineVersion, objectKey string) error
 }
 
-// TaxonomyResolver resolves taxonomy codes to identifiers.
+// TaxonomyNode represents a controlled classification entry.
+type TaxonomyNode struct {
+	ID        uuid.UUID `json:"id"`
+	Namespace string    `json:"namespace"`
+	Code      string    `json:"code"`
+	Label     string    `json:"label"`
+}
+
+// TaxonomyResolver resolves taxonomy codes to identifiers and metadata.
 type TaxonomyResolver interface {
 	ResolveTaxonomyID(ctx context.Context, namespace, code string) (*uuid.UUID, error)
+	GetTaxonomyByCode(ctx context.Context, code string) (*TaxonomyNode, error)
+	ListTaxonomiesInNamespace(ctx context.Context, namespace string) ([]TaxonomyNode, error)
 }

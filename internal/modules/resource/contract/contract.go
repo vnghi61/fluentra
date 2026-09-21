@@ -9,24 +9,58 @@ import (
 
 // Resource represents a stored intake asset (file or URL) belonging to a learner.
 type Resource struct {
-	ID               uuid.UUID  `json:"id"`
-	UserID           uuid.UUID  `json:"user_id"`
-	Kind             string     `json:"kind"`
-	Title            string     `json:"title"`
-	ObjectKey        *string    `json:"object_key,omitempty"`
-	OriginalFilename string     `json:"original_filename"`
-	DeclaredMIME     string     `json:"declared_mime"`
-	DetectedMIME     string     `json:"detected_mime"`
-	ByteSize         *int64     `json:"byte_size,omitempty"`
-	Checksum         *string    `json:"checksum,omitempty"`
-	SourceURL        *string    `json:"source_url,omitempty"`
-	Status           string     `json:"status"`
-	FailureReason    string     `json:"failure_reason"`
-	DownloadURL      *string    `json:"download_url,omitempty"`
-	Renditions       []Rendition `json:"renditions,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	ValidatedAt      *time.Time `json:"validated_at,omitempty"`
+	ID               uuid.UUID       `json:"id"`
+	UserID           uuid.UUID       `json:"user_id"`
+	Kind             string          `json:"kind"`
+	Title            string          `json:"title"`
+	ObjectKey        *string         `json:"object_key,omitempty"`
+	OriginalFilename string          `json:"original_filename"`
+	DeclaredMIME     string          `json:"declared_mime"`
+	DetectedMIME     string          `json:"detected_mime"`
+	ByteSize         *int64          `json:"byte_size,omitempty"`
+	Checksum         *string         `json:"checksum,omitempty"`
+	SourceURL        *string         `json:"source_url,omitempty"`
+	Status           string          `json:"status"`
+	FailureReason    string          `json:"failure_reason"`
+	DownloadURL      *string         `json:"download_url,omitempty"`
+	Renditions       []Rendition     `json:"renditions,omitempty"`
+	Extraction       *Extraction     `json:"extraction,omitempty"`
+	Classification   *Classification `json:"classification,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	ValidatedAt      *time.Time      `json:"validated_at,omitempty"`
+}
+
+// Extraction represents extracted text from a document or audio/video transcription.
+type Extraction struct {
+	ResourceID  uuid.UUID `json:"resource_id"`
+	Source      string    `json:"source"`
+	Text        string    `json:"text,omitempty"`
+	CharCount   int       `json:"char_count"`
+	Truncated   bool      `json:"truncated"`
+	Language    string    `json:"language"`
+	ToolVersion string    `json:"tool_version"`
+	Excerpt     string    `json:"excerpt,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+// ClassificationNode represents an attached spine taxonomy node.
+type ClassificationNode struct {
+	Code  string `json:"code"`
+	Label string `json:"label"`
+}
+
+// Classification represents pedagogical tagging of extracted resource text.
+type Classification struct {
+	ResourceID    uuid.UUID            `json:"resource_id"`
+	CEFR_Estimate *string              `json:"cefr_estimate,omitempty"`
+	Skill         *string              `json:"skill,omitempty"`
+	NodeCodes     []string             `json:"node_codes"`
+	Nodes         []ClassificationNode `json:"nodes,omitempty"`
+	PromptVersion string               `json:"prompt_version"`
+	Model         string               `json:"model"`
+	AIRequestID   *uuid.UUID           `json:"ai_request_id,omitempty"`
+	CreatedAt     time.Time            `json:"created_at"`
 }
 
 // Rendition represents a processed thumbnail, display image, preview, or web media.

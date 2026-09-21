@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	MaxVideoSizeBytes   = 200 * 1024 * 1024  // 200 MB per D18-6
-	MaxVideoDurationSec = 10 * 60            // 10 minutes per D18-6
+	MaxVideoSizeBytes   = 200 * 1024 * 1024 // 200 MB per D18-6
+	MaxVideoDurationSec = 10 * 60           // 10 minutes per D18-6
 	PosterTimeout       = 30 * time.Second
 	VideoTimeout        = 20 * time.Minute
 )

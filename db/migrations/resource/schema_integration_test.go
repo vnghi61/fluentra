@@ -385,11 +385,20 @@ func TestResourceSchema_AppRoleCanUseIt(t *testing.T) {
 		has_table_privilege('fluentra_app', 'resource.renditions', 'SELECT'),
 		has_table_privilege('fluentra_app', 'resource.renditions', 'INSERT'),
 		has_table_privilege('fluentra_app', 'resource.renditions', 'UPDATE'),
-		has_table_privilege('fluentra_app', 'resource.renditions', 'DELETE')`
+		has_table_privilege('fluentra_app', 'resource.renditions', 'DELETE'),
+		has_table_privilege('fluentra_app', 'resource.extractions', 'SELECT'),
+		has_table_privilege('fluentra_app', 'resource.extractions', 'INSERT'),
+		has_table_privilege('fluentra_app', 'resource.extractions', 'UPDATE'),
+		has_table_privilege('fluentra_app', 'resource.extractions', 'DELETE'),
+		has_table_privilege('fluentra_app', 'resource.classifications', 'SELECT'),
+		has_table_privilege('fluentra_app', 'resource.classifications', 'INSERT'),
+		has_table_privilege('fluentra_app', 'resource.classifications', 'UPDATE'),
+		has_table_privilege('fluentra_app', 'resource.classifications', 'DELETE')`
 
-	var usage, sel, ins, upd, del, rSel, rIns, rUpd, rDel bool
+	var usage, sel, ins, upd, del, rSel, rIns, rUpd, rDel, eSel, eIns, eUpd, eDel, cSel, cIns, cUpd, cDel bool
 	if err := pool.QueryRow(ctx, privilegeSQL).Scan(
 		&usage, &sel, &ins, &upd, &del, &rSel, &rIns, &rUpd, &rDel,
+		&eSel, &eIns, &eUpd, &eDel, &cSel, &cIns, &cUpd, &cDel,
 	); err != nil {
 		t.Fatalf("query privileges: %v", err)
 	}
@@ -403,6 +412,14 @@ func TestResourceSchema_AppRoleCanUseIt(t *testing.T) {
 	if !rSel || !rIns || !rUpd || !rDel {
 		t.Errorf("fluentra_app privileges on resource.renditions: select=%v insert=%v update=%v delete=%v",
 			rSel, rIns, rUpd, rDel)
+	}
+	if !eSel || !eIns || !eUpd || !eDel {
+		t.Errorf("fluentra_app privileges on resource.extractions: select=%v insert=%v update=%v delete=%v",
+			eSel, eIns, eUpd, eDel)
+	}
+	if !cSel || !cIns || !cUpd || !cDel {
+		t.Errorf("fluentra_app privileges on resource.classifications: select=%v insert=%v update=%v delete=%v",
+			cSel, cIns, cUpd, cDel)
 	}
 }
 
@@ -483,3 +500,90 @@ func TestSchema_RenditionsConstraints(t *testing.T) {
 	}
 }
 
+func TestSchema_ExtractionsAndClassificationsConstraints(t *testing.T) {
+	pool := migratedPool(t)
+	ctx := context.Background()
+	userID := insertUser(t, pool, "stage_b_ck@example.com")
+
+	var resID uuid.UUID
+	err := pool.QueryRow(ctx, `
+		INSERT INTO resource.resources (user_id, kind, title, object_key)
+		VALUES ($1, 'file', 'File For Stage B', 'stage-b-key')
+		RETURNING id
+	`, userID).Scan(&resID)
+	if err != nil {
+		t.Fatalf("insert resource: %v", err)
+	}
+
+	// 1. Extractions: Invalid source is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.extractions (resource_id, source, text, char_count)
+		VALUES ($1, 'invalid_source', 'hello', 5)
+	`, resID)
+	assertCheckViolation(t, err, "ck_extractions_source")
+
+	// 2. Extractions: Negative char_count is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.extractions (resource_id, source, text, char_count)
+		VALUES ($1, 'pdf_text', 'hello', -1)
+	`, resID)
+	assertCheckViolation(t, err, "ck_extractions_size")
+
+	// 3. Extractions: char_count > 400,000 is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.extractions (resource_id, source, text, char_count)
+		VALUES ($1, 'pdf_text', 'huge', 400001)
+	`, resID)
+	assertCheckViolation(t, err, "ck_extractions_size")
+
+	// 4. Extractions: valid insert
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.extractions (resource_id, source, text, char_count, language, tool_version)
+		VALUES ($1, 'pdf_text', 'Valid extracted text from PDF', 29, 'en', 'pdftotext 24.02.0')
+	`, resID)
+	if err != nil {
+		t.Fatalf("insert valid extraction: %v", err)
+	}
+
+	// 5. Classifications: Invalid CEFR level is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.classifications (resource_id, cefr_estimate, skill, prompt_version, model)
+		VALUES ($1, 'INVALID', 'reading', '1', 'model')
+	`, resID)
+	assertCheckViolation(t, err, "ck_classifications_cefr")
+
+	// 6. Classifications: valid insert
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.classifications (resource_id, cefr_estimate, skill, node_codes, prompt_version, model)
+		VALUES ($1, 'B1', 'reading', ARRAY['TENSES', 'MODALS'], '1', 'gpt-4o')
+	`, resID)
+	if err != nil {
+		t.Fatalf("insert valid classification: %v", err)
+	}
+
+	// 7. Verify ai.ai_budgets has rows for resource_classify
+	var budgetCount int
+	err = pool.QueryRow(ctx, `SELECT count(*) FROM ai.ai_budgets WHERE task = 'resource_classify'`).Scan(&budgetCount)
+	if err != nil {
+		t.Fatalf("count resource_classify budgets: %v", err)
+	}
+	if budgetCount == 0 {
+		t.Fatalf("expected ai_budgets rows for resource_classify, got 0")
+	}
+
+	// 8. Cascade delete from resource to extractions and classifications
+	_, err = pool.Exec(ctx, `DELETE FROM resource.resources WHERE id = $1`, resID)
+	if err != nil {
+		t.Fatalf("delete resource: %v", err)
+	}
+
+	var extCount, clsCount int
+	_ = pool.QueryRow(ctx, `SELECT count(*) FROM resource.extractions WHERE resource_id = $1`, resID).Scan(&extCount)
+	_ = pool.QueryRow(ctx, `SELECT count(*) FROM resource.classifications WHERE resource_id = $1`, resID).Scan(&clsCount)
+	if extCount != 0 {
+		t.Fatalf("expected 0 extractions after resource delete, got %d", extCount)
+	}
+	if clsCount != 0 {
+		t.Fatalf("expected 0 classifications after resource delete, got %d", clsCount)
+	}
+}
