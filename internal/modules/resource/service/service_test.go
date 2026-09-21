@@ -260,7 +260,7 @@ func (m *mockRepo) ClaimPendingRenditions(
 	var claimed []contract.Rendition
 	now := time.Now()
 	for _, r := range m.renditions {
-		if int32(len(claimed)) >= limit {
+		if len(claimed) >= int(limit) {
 			break
 		}
 		if r.Status == domain.RenditionStatusPending && r.Attempts < 3 {
@@ -368,7 +368,7 @@ func (m *mockRepo) ListValidatedFileResourcesForRenditions(
 ) ([]contract.Resource, error) {
 	var list []contract.Resource
 	for _, r := range m.resources {
-		if int32(len(list)) >= limit {
+		if len(list) >= int(limit) {
 			break
 		}
 		if r.Kind == domain.KindFile && r.Status == domain.StatusValidated {
@@ -376,6 +376,13 @@ func (m *mockRepo) ListValidatedFileResourcesForRenditions(
 		}
 	}
 	return list, nil
+}
+
+func (m *mockRepo) UpsertExtractionTx(
+	ctx context.Context, _ pgx.Tx, resourceID uuid.UUID, source, text string, charCount int32,
+	truncated bool, language, toolVersion string,
+) (*contract.Extraction, error) {
+	return m.UpsertExtraction(ctx, resourceID, source, text, charCount, truncated, language, toolVersion)
 }
 
 func (m *mockRepo) UpsertExtraction(
@@ -410,7 +417,7 @@ func (m *mockRepo) UpsertClassification(
 ) (*contract.Classification, error) {
 	c := &contract.Classification{
 		ResourceID:    resourceID,
-		CEFR_Estimate: cefrEstimate,
+		CEFREstimate:  cefrEstimate,
 		Skill:         skill,
 		NodeCodes:     nodeCodes,
 		PromptVersion: promptVersion,
@@ -422,7 +429,9 @@ func (m *mockRepo) UpsertClassification(
 	return c, nil
 }
 
-func (m *mockRepo) GetClassificationByResourceID(_ context.Context, resourceID uuid.UUID) (*contract.Classification, error) {
+func (m *mockRepo) GetClassificationByResourceID(
+	_ context.Context, resourceID uuid.UUID,
+) (*contract.Classification, error) {
 	c, ok := m.classifications[resourceID]
 	if !ok {
 		return nil, nil
@@ -902,10 +911,10 @@ func TestService_PlanRenditions(t *testing.T) {
 	// image: thumbnail, display (2)
 	// audio: audio_web (1)
 	// pdf: thumbnail, preview (2)
-	// video: poster, video_360p, video_720p (3)
-	// total = 8
-	if plannedCount != 8 {
-		t.Errorf("expected 8 planned renditions, got %d", plannedCount)
+	// video: poster, audio_web (its transcript's source, WO 19 B.1), video_360p, video_720p (4)
+	// total = 9
+	if plannedCount != 9 {
+		t.Errorf("expected 9 planned renditions, got %d", plannedCount)
 	}
 
 	rList, _ := repo.ListRenditionsByResourceID(ctx, imgID)

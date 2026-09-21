@@ -12,7 +12,9 @@ import (
 	"github.com/google/uuid"
 )
 
+// Office conversion limit and tool label.
 const (
+	// OfficeTimeout bounds one headless LibreOffice conversion.
 	OfficeTimeout   = 120 * time.Second
 	ToolLibreOffice = "libreoffice:soffice"
 )
@@ -42,10 +44,10 @@ func RenderOffice(ctx context.Context, sofficeBin, pdftoppmBin string, req Rende
 	}
 	defer func() { _ = os.RemoveAll(profileDir) }()
 
-	// Convert profile path to file:/// URL format
-	profileURI := "file:///" + filepath.ToSlash(filepath.Clean(profileDir))
+	profileURI := fileURI(profileDir)
 
 	// 2. Convert to PDF: soffice --headless --convert-to pdf --outdir <tmpDir> -env:UserInstallation=... <sourcePath>
+	//nolint:gosec // G204: LookPath'd soffice; every argument is ours or our temp file
 	cmd := exec.CommandContext(execCtx, sofficeBin,
 		"--headless",
 		"--convert-to", "pdf",
@@ -85,4 +87,14 @@ func RenderOffice(ctx context.Context, sofficeBin, pdftoppmBin string, req Rende
 	}
 
 	return RenderPDF(ctx, pdftoppmBin, pdfReq)
+}
+
+// fileURI is path as a file URL: file:///tmp/x on Linux, file:///C:/x on
+// Windows. Prefixing "file:///" to an absolute Unix path gave file:////tmp/x.
+func fileURI(path string) string {
+	p := filepath.ToSlash(filepath.Clean(path))
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return "file://" + p
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"image"
-	_ "image/png"
+	_ "image/png" // registers the PNG decoder image.DecodeConfig reads pdftoppm's page with
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +12,9 @@ import (
 	"time"
 )
 
+// PDF rendering limits and tool labels.
 const (
+	// PDFTimeout bounds each poppler invocation.
 	PDFTimeout     = 60 * time.Second
 	ToolPopplerPPM = "poppler:pdftoppm"
 )
@@ -36,7 +38,9 @@ func RenderPDF(ctx context.Context, pdftoppmBin string, req RenderRequest) (*Ren
 
 	outPrefix := filepath.Join(req.TempDir, fmt.Sprintf("%s_page", req.ResourceID.String()))
 	// pdftoppm -f 1 -l 1 -png -scale-to 1600 in.pdf outPrefix
-	cmd := exec.CommandContext(execCtx, pdftoppmBin, "-f", "1", "-l", "1", "-png", "-scale-to", "1600", req.SourcePath, outPrefix)
+	//nolint:gosec // G204: the binary is resolved by LookPath or the operator's flag; the paths are our temp files
+	cmd := exec.CommandContext(execCtx, pdftoppmBin,
+		"-f", "1", "-l", "1", "-png", "-scale-to", "1600", req.SourcePath, outPrefix)
 	outBytes, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("pdftoppm execution failed: %w (output: %s)", err, strings.TrimSpace(string(outBytes)))
@@ -51,7 +55,7 @@ func RenderPDF(ctx context.Context, pdftoppmBin string, req RenderRequest) (*Ren
 
 	// If kind is preview, the 1600px rendered page is our preview image
 	if req.Kind == KindPreview {
-		f, err := os.Open(firstPagePNG)
+		f, err := os.Open(firstPagePNG) //nolint:gosec // G304: pdftoppm's output inside our temp dir
 		if err != nil {
 			return nil, fmt.Errorf("open rendered pdf page image: %w", err)
 		}
@@ -77,7 +81,7 @@ func RenderPDF(ctx context.Context, pdftoppmBin string, req RenderRequest) (*Ren
 
 		res := &RenderResult{
 			OutputPath:  finalOut,
-			MIMEType:    "image/png",
+			MIMEType:    mimePNG,
 			Width:       &w,
 			Height:      &h,
 			ByteSize:    &sz,
@@ -99,7 +103,7 @@ func RenderPDF(ctx context.Context, pdftoppmBin string, req RenderRequest) (*Ren
 			ResourceID:   req.ResourceID,
 			Kind:         KindThumbnail,
 			SourcePath:   firstPagePNG,
-			SourceMIME:   "image/png",
+			SourceMIME:   mimePNG,
 			TempDir:      req.TempDir,
 			PDFToTextBin: req.PDFToTextBin,
 		}
@@ -109,6 +113,7 @@ func RenderPDF(ctx context.Context, pdftoppmBin string, req RenderRequest) (*Ren
 	return nil, fmt.Errorf("%w: %s for pdf", ErrUnsupportedKind, req.Kind)
 }
 
+// ToolPopplerText labels text extracted by pdftotext.
 const ToolPopplerText = "poppler:pdftotext"
 
 // ExtractPDFText extracts text from a PDF file using pdftotext -layout.
@@ -126,6 +131,7 @@ func ExtractPDFText(ctx context.Context, pdftotextBin, pdfPath string) (string, 
 	execCtx, cancel := context.WithTimeout(ctx, PDFTimeout)
 	defer cancel()
 
+	//nolint:gosec // G204: the binary is resolved by LookPath or the operator's flag; the path is our temp file
 	cmd := exec.CommandContext(execCtx, pdftotextBin, "-layout", pdfPath, "-")
 	outBytes, err := cmd.Output()
 	if err != nil {

@@ -170,6 +170,8 @@ and fails `go-arch-lint` in CI.
 11. **BR-RESOURCE-11** — **BR-RESOURCE-10**: The URL fetcher checks the address it is connecting to, in the dialer, on every hop, and never uses a proxy. Checking DNS first and connecting later is not a check.
 12. **BR-RESOURCE-12** — Extracted text and anything generated from it is private to the resource's owner.
 13. **BR-RESOURCE-13** — Classification stores only spine codes that exist; the rest are dropped.
+14. **BR-RESOURCE-14** — A transcript is queued by cmd/media in the transaction that settles the audio_web rendition, ready or skipped. Video gets an audio_web rendition for its soundtrack.
+15. **BR-RESOURCE-15** — An extraction and its classification job are written in one transaction.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

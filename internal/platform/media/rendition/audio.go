@@ -12,7 +12,9 @@ import (
 	"time"
 )
 
+// Audio rendering limits and tool label.
 const (
+	// AudioTimeout bounds one ffmpeg transcode.
 	AudioTimeout = 120 * time.Second
 	ToolFFmpeg   = "ffmpeg"
 )
@@ -54,6 +56,7 @@ func RenderAudio(ctx context.Context, ffmpegBin string, req RenderRequest) (*Ren
 		return nil, err
 	}
 
+	//nolint:gosec // G204: LookPath'd ffmpeg; ValidateFFmpegArgs has just checked the protocol whitelist
 	cmd := exec.CommandContext(execCtx, ffmpegBin, rawArgs...)
 	outBytes, err := cmd.CombinedOutput()
 	outputStr := string(outBytes)

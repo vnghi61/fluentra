@@ -656,9 +656,7 @@ func startModules(
 		return err
 	}
 
-	for _, scheduled := range trail.CronJobs() {
-		cron.Register(scheduled)
-	}
+	registerCronJobs(cron, trail.CronJobs())
 
 	if err := trail.RotatePartitions(ctx); err != nil {
 		slog.ErrorContext(ctx, "could not rotate audit partitions at start-up; the scheduled job will retry",
@@ -708,9 +706,7 @@ func startModules(
 		Pool: pool,
 	})
 
-	for _, scheduled := range srsModule.CronJobs() {
-		cron.Register(scheduled)
-	}
+	registerCronJobs(cron, srsModule.CronJobs())
 
 	if err := srsModule.RotatePartitions(ctx); err != nil {
 		slog.ErrorContext(ctx, "could not rotate srs partitions at start-up; the scheduled job will retry",
@@ -766,23 +762,17 @@ func startModules(
 
 	river.AddWorker(workers, userModule.ExportWorker())
 
-	for _, scheduled := range userModule.CronJobs() {
-		cron.Register(scheduled)
-	}
+	registerCronJobs(cron, userModule.CronJobs())
 
 	if err := authModule.Subscribe(bus); err != nil {
 		return err
 	}
-	for _, scheduled := range authModule.CronJobs() {
-		cron.Register(scheduled)
-	}
+	registerCronJobs(cron, authModule.CronJobs())
 
 	adminModule := admin.New(admin.Deps{
 		Pool: pool,
 	})
-	for _, scheduled := range adminModule.CronJobs() {
-		cron.Register(scheduled)
-	}
+	registerCronJobs(cron, adminModule.CronJobs())
 
 	resourceModule := resource.New(resource.Deps{
 		Pool:        pool,
@@ -792,15 +782,30 @@ func startModules(
 		Transcriber: newWorkerTranscriber(cfg),
 		AIClient:    aiClient,
 	})
-	river.AddWorker(workers, resourceModule.ValidateWorker())
-	river.AddWorker(workers, resourceModule.TranscribeWorker())
-	river.AddWorker(workers, resourceModule.ClassifyWorker())
-	cron.Register(resourceModule.SweepJob())
-	if err := resourceModule.Subscribe(bus); err != nil {
+	if err := startResource(resourceModule, bus, cron, workers); err != nil {
 		return err
 	}
 
 	return subscribeQuestionbank(bus, pool, contentModule, lessonModule)
+}
+
+// registerCronJobs schedules a module's cron jobs.
+func registerCronJobs(cron *job.CronScheduler, jobs []job.CronJob) {
+	for _, scheduled := range jobs {
+		cron.Register(scheduled)
+	}
+}
+
+// startResource registers resource's validation, transcription and
+// classification workers, its sweep, and its erasure consumer.
+func startResource(
+	resourceModule *resource.Module, bus eventbus.EventBus, cron *job.CronScheduler, workers *river.Workers,
+) error {
+	river.AddWorker(workers, resourceModule.ValidateWorker())
+	river.AddWorker(workers, resourceModule.TranscribeWorker())
+	river.AddWorker(workers, resourceModule.ClassifyWorker())
+	cron.Register(resourceModule.SweepJob())
+	return resourceModule.Subscribe(bus)
 }
 
 // subscribeQuestionbank registers the consumer that makes an approved bank

@@ -1,3 +1,7 @@
+// Package rendition turns an uploaded resource into the web renditions WO 18
+// describes — thumbnails, previews, web audio and video — and extracts the text
+// Stage B classifies. Every external tool is invoked with a timeout, and ffmpeg
+// only ever with -protocol_whitelist file.
 package rendition
 
 import (

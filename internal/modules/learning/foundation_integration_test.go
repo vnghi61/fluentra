@@ -66,7 +66,7 @@ func TestModule_WorkOrder19StageDGate(t *testing.T) {
 	lessonMod := lesson.New(lesson.Deps{
 		Pool:  attemptPool,
 		Guard: allowAll{},
-		Env:   "test",
+		Env:   envTest,
 	})
 	grammarMod := grammar.New(grammar.Deps{
 		Content: contentMod.Reader(),
@@ -104,14 +104,14 @@ func TestModule_WorkOrder19StageDGate(t *testing.T) {
 		namespace string
 		cefr      string
 	}{
-		{"SENTENCE_STRUCTURE", "grammar", "A1"},
-		{"PRESENT_SIMPLE", "grammar", "A1"},
-		{"PRESENT_CONTINUOUS", "grammar", "A1"},
-		{"PAST_SIMPLE", "grammar", "A2"},
-		{"PRESENT_PERFECT", "grammar", "B1"},
-		{"RELATIVE_CLAUSES", "grammar", "B1"},
-		{"NOUN_CLAUSES", "grammar", "B2"},
-		{"ADVERBIAL_CLAUSES", "grammar", "B2"},
+		{"SENTENCE_STRUCTURE", nsGrammar, "A1"},
+		{"PRESENT_SIMPLE", nsGrammar, "A1"},
+		{"PRESENT_CONTINUOUS", nsGrammar, "A1"},
+		{nodePastSimple, nsGrammar, "A2"},
+		{nodePresentPerf, nsGrammar, "B1"},
+		{"RELATIVE_CLAUSES", nsGrammar, "B1"},
+		{"NOUN_CLAUSES", nsGrammar, "B2"},
+		{"ADVERBIAL_CLAUSES", nsGrammar, "B2"},
 	}
 
 	type nodeDrafts struct {
@@ -137,7 +137,7 @@ func TestModule_WorkOrder19StageDGate(t *testing.T) {
 			Kind:       learningcontract.KindFoundationTopic,
 			CEFRLevel:  n.cefr,
 			NodeCodes:  []string{n.code},
-			Purpose:    "foundation",
+			Purpose:    purposeFound,
 			Count:      1,
 			OwnerID:    &authorID,
 			SlugPrefix: fmt.Sprintf("test-fd-topic-%s", strings.ToLower(strings.ReplaceAll(n.code, "_", "-"))),
@@ -147,9 +147,9 @@ func TestModule_WorkOrder19StageDGate(t *testing.T) {
 
 		// B. 3x exercises
 		exKinds := []string{
-			"grammar_tense_choice",
+			kindTenseChoice,
 			"grammar_sentence_transform",
-			"grammar_tense_choice",
+			kindTenseChoice,
 		}
 		var exItemIDs []uuid.UUID
 		for idx, ek := range exKinds {
@@ -157,7 +157,7 @@ func TestModule_WorkOrder19StageDGate(t *testing.T) {
 				Kind:       ek,
 				CEFRLevel:  n.cefr,
 				NodeCodes:  []string{n.code},
-				Purpose:    "foundation",
+				Purpose:    purposeFound,
 				Count:      1,
 				OwnerID:    &authorID,
 				SlugPrefix: fmt.Sprintf("test-fd-ex-%s-%d", strings.ToLower(strings.ReplaceAll(n.code, "_", "-")), idx+1),
@@ -172,7 +172,7 @@ func TestModule_WorkOrder19StageDGate(t *testing.T) {
 			Kind:       learningcontract.KindFoundationQuiz,
 			CEFRLevel:  n.cefr,
 			NodeCodes:  []string{n.code},
-			Purpose:    "foundation",
+			Purpose:    purposeFound,
 			Count:      1,
 			OwnerID:    &authorID,
 			SlugPrefix: fmt.Sprintf("test-fd-quiz-%s", strings.ToLower(strings.ReplaceAll(n.code, "_", "-"))),
@@ -185,7 +185,7 @@ func TestModule_WorkOrder19StageDGate(t *testing.T) {
 			Kind:       learningcontract.KindFoundationReview,
 			CEFRLevel:  n.cefr,
 			NodeCodes:  []string{n.code},
-			Purpose:    "foundation",
+			Purpose:    purposeFound,
 			Count:      1,
 			OwnerID:    &authorID,
 			SlugPrefix: fmt.Sprintf("test-fd-rev-%s", strings.ToLower(strings.ReplaceAll(n.code, "_", "-"))),
@@ -204,7 +204,7 @@ func TestModule_WorkOrder19StageDGate(t *testing.T) {
 	contentSvc := contentMod.Service()
 
 	// 2. Negative Gate: Publishing PRESENT_PERFECT topic without published exercises must fail
-	ppDrafts := generatedDrafts["PRESENT_PERFECT"]
+	ppDrafts := generatedDrafts[nodePresentPerf]
 	_, err := contentSvc.SubmitForReview(ctx, authorID, ppDrafts.topicItemID)
 	require.NoError(t, err)
 
@@ -245,7 +245,7 @@ func TestModule_WorkOrder19StageDGate(t *testing.T) {
 		publishItem(drafts.review)
 
 		// Now publish topic
-		if n.code == "PRESENT_PERFECT" {
+		if n.code == nodePresentPerf {
 			// Already submitted and reviewed above, just publish
 			ver, err := contentSvc.Publish(ctx, reviewerID, drafts.topicItemID)
 			require.NoError(t, err)
@@ -264,7 +264,7 @@ func TestModule_WorkOrder19StageDGate(t *testing.T) {
 	}
 
 	// 5. Verify GetFoundationTopicByCode for PRESENT_PERFECT
-	topicDetail, err := contentSvc.GetFoundationTopicByCode(ctx, "PRESENT_PERFECT")
+	topicDetail, err := contentSvc.GetFoundationTopicByCode(ctx, nodePresentPerf)
 	require.NoError(t, err)
 	assert.NotEmpty(t, topicDetail.Body)
 	assert.GreaterOrEqual(t, topicDetail.ExerciseCount, 3)
@@ -274,7 +274,7 @@ func TestModule_WorkOrder19StageDGate(t *testing.T) {
 	// Prerequisites must contain PAST_SIMPLE
 	foundPrereq := false
 	for _, pr := range topicDetail.Prerequisites {
-		if pr.Code == "PAST_SIMPLE" {
+		if pr.Code == nodePastSimple {
 			foundPrereq = true
 			break
 		}
@@ -310,7 +310,7 @@ func TestModule_WorkOrder19StageDGate(t *testing.T) {
 		} `json:"body"`
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &httpResp))
-	assert.Equal(t, "PRESENT_PERFECT", httpResp.Code)
+	assert.Equal(t, nodePresentPerf, httpResp.Code)
 	assert.Equal(t, "B1", httpResp.CEFRLevel)
 	assert.GreaterOrEqual(t, httpResp.ExerciseCount, 3)
 	assert.GreaterOrEqual(t, httpResp.QuizCount, 1)
@@ -318,7 +318,7 @@ func TestModule_WorkOrder19StageDGate(t *testing.T) {
 
 	foundHTTPPrereq := false
 	for _, pr := range httpResp.Prerequisites {
-		if pr.Code == "PAST_SIMPLE" {
+		if pr.Code == nodePastSimple {
 			foundHTTPPrereq = true
 			break
 		}

@@ -909,11 +909,8 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
       onChange({ selected_option_id: optionId });
 
 
-    const rawOpts =
-      (config.options as ChoiceOption[] | undefined) ||
-      (config.statements as ChoiceOption[] | undefined) ||
-      (config.responses as ChoiceOption[] | undefined) ||
-      [];
+    const rawOpts: ChoiceOption[] =
+      config.options || config.statements || config.responses || [];
     const options: ChoiceOption[] = rawOpts.map((o) => ({
       id: o.id || "",
       text: o.text || o.id || "",

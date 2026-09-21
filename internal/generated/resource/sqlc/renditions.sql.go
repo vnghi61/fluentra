@@ -18,8 +18,11 @@ WITH candidate AS (
     WHERE status = 'pending'
       AND attempts < 3
       AND (attempts = 0 OR updated_at < now() - interval '5 minutes')
+      -- A -kinds filter narrows the claim itself: claiming a rendition and then
+      -- skipping it spends one of its three attempts for nothing.
+      AND ($1::text[] IS NULL OR kind = ANY($1::text[]))
     ORDER BY created_at ASC
-    LIMIT $1
+    LIMIT $2
     FOR UPDATE SKIP LOCKED
 )
 UPDATE resource.renditions r
@@ -30,8 +33,13 @@ WHERE r.id = candidate.id
 RETURNING r.id, r.resource_id, r.kind, r.status, r.object_key, r.mime_type, r.width, r.height, r.duration_ms, r.byte_size, r.tool_version, r.attempts, r.failure_reason, r.created_at, r.updated_at
 `
 
-func (q *Queries) ClaimPendingRenditions(ctx context.Context, limit int32) ([]ResourceRendition, error) {
-	rows, err := q.db.Query(ctx, claimPendingRenditions, limit)
+type ClaimPendingRenditionsParams struct {
+	Kinds      []string
+	LimitCount int32
+}
+
+func (q *Queries) ClaimPendingRenditions(ctx context.Context, arg ClaimPendingRenditionsParams) ([]ResourceRendition, error) {
+	rows, err := q.db.Query(ctx, claimPendingRenditions, arg.Kinds, arg.LimitCount)
 	if err != nil {
 		return nil, err
 	}
@@ -263,6 +271,18 @@ func (q *Queries) ListValidatedFileResourcesForRenditions(ctx context.Context, l
 		return nil, err
 	}
 	return items, nil
+}
+
+const releaseRenditionClaim = `-- name: ReleaseRenditionClaim :exec
+UPDATE resource.renditions
+SET attempts = GREATEST(attempts - 1, 0)
+WHERE id = $1 AND status = 'pending'
+`
+
+// Gives back the attempt a claim spent, for a dry run that rendered nothing.
+func (q *Queries) ReleaseRenditionClaim(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, releaseRenditionClaim, id)
+	return err
 }
 
 const updateRenditionFailed = `-- name: UpdateRenditionFailed :one

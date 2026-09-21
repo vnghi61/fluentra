@@ -133,7 +133,7 @@ func toResourceResponse(r contract.Resource) resourceResponse {
 			})
 		}
 		classification = &resourceClassificationResponse{
-			CEFREstimate: r.Classification.CEFR_Estimate,
+			CEFREstimate: r.Classification.CEFREstimate,
 			Skill:        r.Classification.Skill,
 			Nodes:        nodes,
 		}

@@ -137,6 +137,8 @@ func (allowAllGuard) Require(_ context.Context, _ string) error { return nil }
 
 const roleAdmin = "admin"
 
+const kindTenseChoice = "grammar_tense_choice"
+
 // Fixture values used across several tests, spelled once.
 const (
 	kindVocabWord   = "vocab_word"
@@ -624,8 +626,8 @@ func TestFoundationCounts_CountPublishedOnly_Integration(t *testing.T) {
 		kind   string
 		status string
 	}{
-		{"pp-exercise-published", "grammar_tense_choice", statusPublished},
-		{"pp-exercise-draft", "grammar_tense_choice", statusDraft},
+		{"pp-exercise-published", kindTenseChoice, statusPublished},
+		{"pp-exercise-draft", kindTenseChoice, statusDraft},
 		{"pp-quiz", "foundation_quiz", statusPublished},
 		{"pp-review", "foundation_review", statusPublished},
 	}
@@ -690,7 +692,7 @@ func TestReviewQueue_Lifecycle_Integration(t *testing.T) {
 
 	verID, err := fixture.mod.Author().EnsureDraft(ctx, contract.AuthorSpec{
 		Slug:      "foundation-b1-grammar-tense-choice-test001",
-		Kind:      "grammar_tense_choice",
+		Kind:      kindTenseChoice,
 		CEFRLevel: "B1",
 		Body:      bodyBytes,
 		AuthorID:  fixture.authorID,

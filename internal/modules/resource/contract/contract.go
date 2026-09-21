@@ -53,7 +53,7 @@ type ClassificationNode struct {
 // Classification represents pedagogical tagging of extracted resource text.
 type Classification struct {
 	ResourceID    uuid.UUID            `json:"resource_id"`
-	CEFR_Estimate *string              `json:"cefr_estimate,omitempty"`
+	CEFREstimate  *string              `json:"cefr_estimate,omitempty"`
 	Skill         *string              `json:"skill,omitempty"`
 	NodeCodes     []string             `json:"node_codes"`
 	Nodes         []ClassificationNode `json:"nodes,omitempty"`

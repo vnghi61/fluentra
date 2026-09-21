@@ -376,50 +376,28 @@ func TestResourceSchema_AppRoleCanUseIt(t *testing.T) {
 	pool := migratedPool(t)
 	ctx := context.Background()
 
-	const privilegeSQL = `SELECT
-		has_schema_privilege('fluentra_app', 'resource', 'USAGE'),
-		has_table_privilege('fluentra_app', 'resource.resources', 'SELECT'),
-		has_table_privilege('fluentra_app', 'resource.resources', 'INSERT'),
-		has_table_privilege('fluentra_app', 'resource.resources', 'UPDATE'),
-		has_table_privilege('fluentra_app', 'resource.resources', 'DELETE'),
-		has_table_privilege('fluentra_app', 'resource.renditions', 'SELECT'),
-		has_table_privilege('fluentra_app', 'resource.renditions', 'INSERT'),
-		has_table_privilege('fluentra_app', 'resource.renditions', 'UPDATE'),
-		has_table_privilege('fluentra_app', 'resource.renditions', 'DELETE'),
-		has_table_privilege('fluentra_app', 'resource.extractions', 'SELECT'),
-		has_table_privilege('fluentra_app', 'resource.extractions', 'INSERT'),
-		has_table_privilege('fluentra_app', 'resource.extractions', 'UPDATE'),
-		has_table_privilege('fluentra_app', 'resource.extractions', 'DELETE'),
-		has_table_privilege('fluentra_app', 'resource.classifications', 'SELECT'),
-		has_table_privilege('fluentra_app', 'resource.classifications', 'INSERT'),
-		has_table_privilege('fluentra_app', 'resource.classifications', 'UPDATE'),
-		has_table_privilege('fluentra_app', 'resource.classifications', 'DELETE')`
-
-	var usage, sel, ins, upd, del, rSel, rIns, rUpd, rDel, eSel, eIns, eUpd, eDel, cSel, cIns, cUpd, cDel bool
-	if err := pool.QueryRow(ctx, privilegeSQL).Scan(
-		&usage, &sel, &ins, &upd, &del, &rSel, &rIns, &rUpd, &rDel,
-		&eSel, &eIns, &eUpd, &eDel, &cSel, &cIns, &cUpd, &cDel,
-	); err != nil {
-		t.Fatalf("query privileges: %v", err)
+	var usage bool
+	if err := pool.QueryRow(ctx,
+		`SELECT has_schema_privilege('fluentra_app', 'resource', 'USAGE')`).Scan(&usage); err != nil {
+		t.Fatalf("query schema privilege: %v", err)
 	}
 	if !usage {
 		t.Error("fluentra_app has no USAGE on schema resource")
 	}
-	if !sel || !ins || !upd || !del {
-		t.Errorf("fluentra_app privileges on resource.resources: select=%v insert=%v update=%v delete=%v",
-			sel, ins, upd, del)
-	}
-	if !rSel || !rIns || !rUpd || !rDel {
-		t.Errorf("fluentra_app privileges on resource.renditions: select=%v insert=%v update=%v delete=%v",
-			rSel, rIns, rUpd, rDel)
-	}
-	if !eSel || !eIns || !eUpd || !eDel {
-		t.Errorf("fluentra_app privileges on resource.extractions: select=%v insert=%v update=%v delete=%v",
-			eSel, eIns, eUpd, eDel)
-	}
-	if !cSel || !cIns || !cUpd || !cDel {
-		t.Errorf("fluentra_app privileges on resource.classifications: select=%v insert=%v update=%v delete=%v",
-			cSel, cIns, cUpd, cDel)
+
+	tables := []string{"resource.resources", "resource.renditions", "resource.extractions", "resource.classifications"}
+	for _, table := range tables {
+		for _, privilege := range []string{"SELECT", "INSERT", "UPDATE", "DELETE"} {
+			var granted bool
+			if err := pool.QueryRow(ctx,
+				`SELECT has_table_privilege('fluentra_app', $1, $2)`, table, privilege,
+			).Scan(&granted); err != nil {
+				t.Fatalf("query %s on %s: %v", privilege, table, err)
+			}
+			if !granted {
+				t.Errorf("fluentra_app has no %s on %s", privilege, table)
+			}
+		}
 	}
 }
 

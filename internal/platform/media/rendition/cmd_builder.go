@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// The arguments every ffmpeg and ffprobe call carries.
 const (
 	ProtocolWhitelistArg = "-protocol_whitelist"
 	ProtocolWhitelistVal = "file"
@@ -44,7 +45,8 @@ func ValidateFFmpegArgs(args []string) error {
 		}
 	}
 	if !foundWhitelist {
-		return fmt.Errorf("security violation: %s %s is missing from ffmpeg arguments", ProtocolWhitelistArg, ProtocolWhitelistVal)
+		return fmt.Errorf("security violation: %s %s is missing from ffmpeg arguments",
+			ProtocolWhitelistArg, ProtocolWhitelistVal)
 	}
 	return nil
 }

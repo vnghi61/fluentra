@@ -77,10 +77,10 @@ func TestModule_WorkOrder19StageCGate(t *testing.T) {
 	}
 
 	contentModule := content.NewAuthoring(content.Deps{Pool: attemptPool})
-	lessonModule := lesson.New(lesson.Deps{Pool: attemptPool, Guard: allowAll{}, Env: "test"})
+	lessonModule := lesson.New(lesson.Deps{Pool: attemptPool, Guard: allowAll{}, Env: envTest})
 
 	graders := domain.NewGraderRegistry()
-	_ = graders.Register("grammar_tense_choice", &integrationGrader{})
+	_ = graders.Register(kindTenseChoice, &integrationGrader{})
 
 	svc := service.New(service.Deps{
 		Pool:              attemptPool,
@@ -97,11 +97,11 @@ func TestModule_WorkOrder19StageCGate(t *testing.T) {
 	})
 
 	req := learningcontract.GenerateRequest{
-		Kind:      "grammar_tense_choice",
+		Kind:      kindTenseChoice,
 		CEFRLevel: "B1",
-		NodeCodes: []string{"PRESENT_PERFECT"},
+		NodeCodes: []string{nodePresentPerf},
 		Count:     3,
-		Purpose:   "foundation",
+		Purpose:   purposeFound,
 	}
 
 	items, err := svc.Generate(ctx, req)
@@ -151,7 +151,7 @@ func TestModule_WorkOrder19StageCGate(t *testing.T) {
 		_, provInRedacted := redactedMap["_provenance"]
 		assert.False(t, provInRedacted, "_provenance must be stripped by RedactForLearner")
 
-		kindFilter := "grammar_tense_choice"
+		kindFilter := kindTenseChoice
 		publishedList, _, err := contentModule.Reader().Browse(ctx, contentcontract.BrowseFilter{
 			Kind:  &kindFilter,
 			Limit: 100,

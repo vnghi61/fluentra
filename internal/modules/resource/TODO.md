@@ -21,10 +21,11 @@ agent knows what is already handled and what is deliberately deferred.
 <!-- BEGIN GENERATED: todo -->
 ## Next, in order
 
-- [ ] Purge an erased user's resources. Erasure anonymises the user row instead of deleting it, so the FK cascade never runs and both the rows and the files survive; subscribe to user.deleted as speaking does (work order 18, step 1). Done when erasure leaves no row and no object in either bucket
-- [ ] Renditions into fluentra-derived by cmd/media in GitHub Actions (P3, work order 18); done when a validated image has a thumbnail and the original is byte-identical
-- [ ] Extraction and transcription of validated resources (P4, work order 19); done when a validated PDF yields text tagged to spine nodes
-- [ ] Publish resource.validated and resource.rejected through the outbox once P4 exists to consume them
+- [ ] audio_web is transcoded for every audio upload; WO 18 asks for it only when the source is WAV or over 256 kbit/s. Needs an ffprobe bitrate check before the transcode
+- [ ] Video renditions are measured against the 10-minute limit after the transcode, not before it: a long video spends the whole encode budget and is then skipped
+- [ ] classifications.ai_request_id stays null until platform/ai returns the ai_requests row id
+- [ ] OCR for text-heavy images (WO 19 B.1, optional; the first thing cut)
+- [ ] Publish resource.validated and resource.rejected through the outbox once something consumes them
 <!-- END GENERATED: todo -->
 
 ## Deferred (deliberately not doing yet)

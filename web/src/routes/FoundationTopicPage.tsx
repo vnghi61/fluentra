@@ -18,8 +18,10 @@ import { FoundationPathView } from "@/features/learning/components/Foundation/Fo
 export function FoundationTopicPage(): React.JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const params = useParams({ strict: false });
-  const code = (params["code"] as string) || "";
+  const params: Record<string, string | undefined> = useParams({
+    strict: false,
+  });
+  const code = params["code"] ?? "";
   const signedIn = useAuthStore((state) => state.status === "authenticated");
 
   const {

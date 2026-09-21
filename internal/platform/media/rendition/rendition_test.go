@@ -86,7 +86,7 @@ func TestImage_DecompressionBombRefused(t *testing.T) {
 		ResourceID: uuid.New(),
 		Kind:       rendition.KindThumbnail,
 		SourcePath: bombPath,
-		SourceMIME: "image/png",
+		SourceMIME: mimePNG,
 		TempDir:    tmpDir,
 	}
 
@@ -113,7 +113,7 @@ func TestImage_Resizing_NoUpscale(t *testing.T) {
 		ResourceID: uuid.New(),
 		Kind:       rendition.KindThumbnail,
 		SourcePath: largePNGPath,
-		SourceMIME: "image/png",
+		SourceMIME: mimePNG,
 		TempDir:    tmpDir,
 	}
 	thumbRes, err := rendition.RenderImage(context.Background(), thumbReq)
@@ -123,7 +123,7 @@ func TestImage_Resizing_NoUpscale(t *testing.T) {
 	if *thumbRes.Width != 320 || *thumbRes.Height != 240 {
 		t.Errorf("thumbnail dimensions = %dx%d, want 320x240", *thumbRes.Width, *thumbRes.Height)
 	}
-	if thumbRes.MIMEType != "image/png" {
+	if thumbRes.MIMEType != mimePNG {
 		t.Errorf("mime = %s, want image/png", thumbRes.MIMEType)
 	}
 
@@ -132,7 +132,7 @@ func TestImage_Resizing_NoUpscale(t *testing.T) {
 		ResourceID: uuid.New(),
 		Kind:       rendition.KindDisplay,
 		SourcePath: largePNGPath,
-		SourceMIME: "image/png",
+		SourceMIME: mimePNG,
 		TempDir:    tmpDir,
 	}
 	dispRes, err := rendition.RenderImage(context.Background(), dispReq)
@@ -142,7 +142,7 @@ func TestImage_Resizing_NoUpscale(t *testing.T) {
 	if *dispRes.Width != 2048 || *dispRes.Height != 1536 {
 		t.Errorf("display dimensions = %dx%d, want 2048x1536", *dispRes.Width, *dispRes.Height)
 	}
-	if dispRes.MIMEType != "image/png" {
+	if dispRes.MIMEType != mimePNG {
 		t.Errorf("mime = %s, want image/png", dispRes.MIMEType)
 	}
 
@@ -183,6 +183,8 @@ func TestImage_Resizing_NoUpscale(t *testing.T) {
 	}
 }
 
+const mimePNG = "image/png"
+
 func createSolidPNG(t *testing.T, path string, w, h int, c color.Color) {
 	t.Helper()
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
@@ -191,11 +193,11 @@ func createSolidPNG(t *testing.T, path string, w, h int, c color.Color) {
 			img.Set(x, y, c)
 		}
 	}
-	f, err := os.Create(path)
+	f, err := os.Create(path) //nolint:gosec // G304: the test's own temp file
 	if err != nil {
 		t.Fatalf("create solid png: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if err := png.Encode(f, img); err != nil {
 		t.Fatalf("encode solid png: %v", err)
 	}
@@ -204,11 +206,11 @@ func createSolidPNG(t *testing.T, path string, w, h int, c color.Color) {
 func createSolidJPEG(t *testing.T, path string, w, h int) {
 	t.Helper()
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
-	f, err := os.Create(path)
+	f, err := os.Create(path) //nolint:gosec // G304: the test's own temp file
 	if err != nil {
 		t.Fatalf("create solid jpeg: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if err := jpeg.Encode(f, img, &jpeg.Options{Quality: 85}); err != nil {
 		t.Fatalf("encode solid jpeg: %v", err)
 	}

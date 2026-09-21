@@ -29,7 +29,8 @@ func PlannedRenditionsForMIME(mime string) []string {
 	case KindAudio:
 		return []string{RenditionKindAudioWeb}
 	case KindVideo:
-		return []string{RenditionKindPoster, RenditionKindVideo360p, RenditionKindVideo720p}
+		// audio_web is the soundtrack a video's transcript is made from (WO 19 B.1).
+		return []string{RenditionKindPoster, RenditionKindAudioWeb, RenditionKindVideo360p, RenditionKindVideo720p}
 	default:
 		return nil
 	}

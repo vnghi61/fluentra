@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -386,7 +387,7 @@ func (r *Repository) InsertRenditionPending(
 func (r *Repository) ClaimPendingRenditions(
 	ctx context.Context, limit int32,
 ) ([]contract.Rendition, error) {
-	rows, err := r.queries.ClaimPendingRenditions(ctx, limit)
+	rows, err := r.queries.ClaimPendingRenditions(ctx, sqlc.ClaimPendingRenditionsParams{LimitCount: limit})
 	if err != nil {
 		return nil, fmt.Errorf("claim pending renditions: %w", err)
 	}
@@ -402,19 +403,7 @@ func (r *Repository) UpdateRenditionReady(
 	ctx context.Context, id uuid.UUID, objectKey, mimeType string,
 	width, height, durationMS *int, byteSize *int64, toolVersion string,
 ) (*contract.Rendition, error) {
-	var w, h, d *int32
-	if width != nil {
-		v := int32(*width)
-		w = &v
-	}
-	if height != nil {
-		v := int32(*height)
-		h = &v
-	}
-	if durationMS != nil {
-		v := int32(*durationMS)
-		d = &v
-	}
+	w, h, d := int32Ptr(width), int32Ptr(height), int32Ptr(durationMS)
 	row, err := r.queries.UpdateRenditionReady(ctx, sqlc.UpdateRenditionReadyParams{
 		ID:          id,
 		ObjectKey:   &objectKey,
@@ -524,6 +513,16 @@ func (r *Repository) ListValidatedFileResourcesForRenditions(
 	return items, nil
 }
 
+// UpsertExtractionTx is UpsertExtraction inside the caller's transaction, so
+// the extraction and the classification job it queues are written together.
+func (r *Repository) UpsertExtractionTx(
+	ctx context.Context, tx pgx.Tx, resourceID uuid.UUID, source, text string, charCount int32,
+	truncated bool, language, toolVersion string,
+) (*contract.Extraction, error) {
+	return (&Repository{pool: r.pool, queries: r.queries.WithTx(tx)}).UpsertExtraction(
+		ctx, resourceID, source, text, charCount, truncated, language, toolVersion)
+}
+
 // UpsertExtraction inserts or updates an extraction row for a resource.
 func (r *Repository) UpsertExtraction(
 	ctx context.Context,
@@ -621,7 +620,7 @@ func extractionToContract(row sqlc.ResourceExtraction) *contract.Extraction {
 func classificationToContract(row sqlc.ResourceClassification) *contract.Classification {
 	return &contract.Classification{
 		ResourceID:    row.ResourceID,
-		CEFR_Estimate: row.CefrEstimate,
+		CEFREstimate:  row.CefrEstimate,
 		Skill:         row.Skill,
 		NodeCodes:     row.NodeCodes,
 		PromptVersion: row.PromptVersion,
@@ -629,4 +628,15 @@ func classificationToContract(row sqlc.ResourceClassification) *contract.Classif
 		AIRequestID:   row.AiRequestID,
 		CreatedAt:     row.CreatedAt,
 	}
+}
+
+// int32Ptr narrows a measured dimension or duration for an int4 column. Values
+// come from ffmpeg and image headers and are far below the bound; clamping
+// keeps a corrupt header from wrapping into a negative number.
+func int32Ptr(v *int) *int32 {
+	if v == nil {
+		return nil
+	}
+	c := int32(min(max(*v, math.MinInt32), math.MaxInt32)) //nolint:gosec // G115: clamped on this line
+	return &c
 }

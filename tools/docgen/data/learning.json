@@ -2051,7 +2051,9 @@
       "**BR-RESOURCE-09**: rejected is a verdict on the resource; failed is ours and retryable. A timeout or a 5xx never rejects a link.",
       "**BR-RESOURCE-10**: The URL fetcher checks the address it is connecting to, in the dialer, on every hop, and never uses a proxy. Checking DNS first and connecting later is not a check.",
       "Extracted text and anything generated from it is private to the resource's owner.",
-      "Classification stores only spine codes that exist; the rest are dropped."
+      "Classification stores only spine codes that exist; the rest are dropped.",
+      "A transcript is queued by cmd/media in the transaction that settles the audio_web rendition, ready or skipped. Video gets an audio_web rendition for its soundtrack.",
+      "An extraction and its classification job are written in one transaction."
     ],
     "cache": [],
     "errors": [
@@ -2159,10 +2161,11 @@
       {
         "title": "Next, in order",
         "items": [
-          "Purge an erased user's resources. Erasure anonymises the user row instead of deleting it, so the FK cascade never runs and both the rows and the files survive; subscribe to user.deleted as speaking does (work order 18, step 1). Done when erasure leaves no row and no object in either bucket",
-          "Renditions into fluentra-derived by cmd/media in GitHub Actions (P3, work order 18); done when a validated image has a thumbnail and the original is byte-identical",
-          "Extraction and transcription of validated resources (P4, work order 19); done when a validated PDF yields text tagged to spine nodes",
-          "Publish resource.validated and resource.rejected through the outbox once P4 exists to consume them"
+          "audio_web is transcoded for every audio upload; WO 18 asks for it only when the source is WAV or over 256 kbit/s. Needs an ffprobe bitrate check before the transcode",
+          "Video renditions are measured against the 10-minute limit after the transcode, not before it: a long video spends the whole encode budget and is then skipped",
+          "classifications.ai_request_id stays null until platform/ai returns the ai_requests row id",
+          "OCR for text-heavy images (WO 19 B.1, optional; the first thing cut)",
+          "Publish resource.validated and resource.rejected through the outbox once something consumes them"
         ]
       }
     ],

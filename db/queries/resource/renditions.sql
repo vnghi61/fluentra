@@ -16,8 +16,11 @@ WITH candidate AS (
     WHERE status = 'pending'
       AND attempts < 3
       AND (attempts = 0 OR updated_at < now() - interval '5 minutes')
+      -- A -kinds filter narrows the claim itself: claiming a rendition and then
+      -- skipping it spends one of its three attempts for nothing.
+      AND (sqlc.narg('kinds')::text[] IS NULL OR kind = ANY(sqlc.narg('kinds')::text[]))
     ORDER BY created_at ASC
-    LIMIT $1
+    LIMIT sqlc.arg('limit_count')
     FOR UPDATE SKIP LOCKED
 )
 UPDATE resource.renditions r
@@ -83,3 +86,9 @@ FROM resource.resources
 WHERE status = 'validated' AND kind = 'file' AND object_key IS NOT NULL
 ORDER BY validated_at ASC NULLS LAST
 LIMIT $1;
+
+-- name: ReleaseRenditionClaim :exec
+-- Gives back the attempt a claim spent, for a dry run that rendered nothing.
+UPDATE resource.renditions
+SET attempts = GREATEST(attempts - 1, 0)
+WHERE id = $1 AND status = 'pending';
