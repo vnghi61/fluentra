@@ -7,7 +7,7 @@ Do not duplicate content here.
 
 ## Minimum you must know before editing anything
 
-1. This is a Go modular monolith + React SPA. Two roles: `admin`, `user`. Not multi-tenant.
+1. This is a Go modular monolith + React SPA. Three roles: `admin`, `user`, `moderator`. Not multi-tenant.
 2. Start at `AGENT.md`, then `MODULE_INDEX.md`, then the one module's `AGENT.md`. Do not scan the repo.
 3. A module may import only another module's `contract/` package. Never its internals, never its tables.
 4. API changes start in `api/openapi/openapi.yaml`. Schema changes start in `db/migrations/<module>/`.

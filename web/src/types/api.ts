@@ -4059,10 +4059,10 @@ export interface components {
             permissions: string[];
         };
         /**
-         * @description Exactly two roles exist (BR-RBAC-02). A third is an ADR, not a row: it changes the shape of the product rather than its data.
+         * @description Exactly three roles exist (BR-RBAC-02, ADR-0026). A fourth is an ADR, not a row: it changes the shape of the product rather than its data.
          * @enum {string}
          */
-        RoleName: "admin" | "user";
+        RoleName: "admin" | "user" | "moderator";
         /** @description A role and the permissions it grants. */
         Role: {
             name: components["schemas"]["RoleName"];

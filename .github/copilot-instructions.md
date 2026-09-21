@@ -1,6 +1,6 @@
 # Copilot instructions — Fluentra
 
-Go modular monolith + React SPA. English learning platform. Two roles only: `admin`, `user`.
+Go modular monolith + React SPA. English learning platform. Three roles only: `admin`, `user`, `moderator`.
 Not multi-tenant — never add tenant/organization concepts.
 
 Rules:

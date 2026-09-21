@@ -236,16 +236,16 @@ func TestSeededCatalogueMatchesTheConstants(t *testing.T) {
 	}
 }
 
-// TestSeededRolesAreExactlyTwo is BR-RBAC-02 against the real seed.
-func TestSeededRolesAreExactlyTwo(t *testing.T) {
+// TestSeededRolesAreExactlyThree is BR-RBAC-02 against the real seed.
+func TestSeededRolesAreExactlyThree(t *testing.T) {
 	newModule(t)
 
 	var count int
 	if err := pool.QueryRow(context.Background(), `SELECT count(*) FROM core.roles`).Scan(&count); err != nil {
 		t.Fatalf("count roles: %v", err)
 	}
-	if count != 2 {
-		t.Errorf("core.roles has %d rows, want exactly 2", count)
+	if count != 3 {
+		t.Errorf("core.roles has %d rows, want exactly 3", count)
 	}
 }
 

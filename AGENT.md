@@ -20,7 +20,7 @@ Fluentra is an **English Learning Platform** built as a **Modular Monolith** in 
 React + TypeScript SPA. It teaches the six English competencies (vocabulary, grammar, reading,
 listening, speaking, writing) through lessons, spaced repetition, and AI-graded practice.
 
-**There are exactly two roles: `admin` and `user`.**
+**There are exactly three roles: `admin`, `user` and `moderator` (ADR-0026).**
 This is **not** a SaaS product. There is **no multi-tenancy**. Never introduce
 `tenant_id`, `organization_id`, or workspace concepts.
 
