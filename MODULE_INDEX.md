@@ -96,6 +96,7 @@ Legend — **Status**: `PLANNED` (spec only) · `IN_PROGRESS` · `DONE` · `DEPR
 | L11 | `questionbank` | Item authoring, item types, tagging, difficulty (IRT-lite), review workflow, AI generation | `assess` | `questions`, `question_options`, `question_sets`, `question_stats` | content, ai, audit | 3 | PLANNED |
 | L12 | `exam` | Mock exams (IELTS/TOEIC), sections, timing, auto-submit, scoring, score reports | `assess` | `exams`, `exam_sections`, `exam_attempts`, `score_reports`, `integrity_events` | questionbank, job, ai, writing, speaking, learning, lesson, listening | 3 | IMPLEMENTED |
 | L13 | `gamification` | XP, levels, streaks, badges, quests, leaderboards | `learn` | `xp_events`, `streaks`, `badges`, `badges_earned`, `quests`, `user_quests`, `leaderboard_snapshots` | learning, srs, user, cache, job, notification | 3 | DONE |
+| L14 | `resource` | Learner-provided files and URLs: storage, validation, ownership, intake | `resource` | `resources` | storage, job | 4 | IMPLEMENTED |
 
 ### 2.4 Commerce & insight tier — `internal/modules/`
 
@@ -129,7 +130,7 @@ graph BT
         CNT[content]; LSN[lesson]; LRN[learning]; SRS[srs]
         VOC[vocabulary]; GRM[grammar]; RDG[reading]
         LIS[listening]; SPK[speaking]; WRT[writing]
-        QB[questionbank]; EXM[exam]; GAM[gamification]
+        QB[questionbank]; EXM[exam]; GAM[gamification]; RSC[resource]
     end
 
     subgraph commerce
