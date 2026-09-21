@@ -373,6 +373,12 @@ func (f *fakeTaxonomyResolver) GetTaxonomyByID(
 	return nil, nil
 }
 
+func (f *fakeTaxonomyResolver) GetTaxonomyPath(
+	_ context.Context, _ *string, _ *string,
+) ([]contentcontract.TaxonomyNode, error) {
+	return nil, nil
+}
+
 func TestListCoursesPassesTopicFilter(t *testing.T) {
 	t.Parallel()
 

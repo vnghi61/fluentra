@@ -702,3 +702,56 @@ WeeklyPlan:
         $ref: '#/WeeklyPlanItem'
     progress:
       $ref: '#/WeeklyPlanProgress'
+
+FoundationPathNode:
+  type: object
+  required: [id, namespace, code, label, attempts, score, mastered, next]
+  properties:
+    id:
+      type: string
+      format: uuid
+    namespace:
+      type: string
+      example: grammar
+    code:
+      type: string
+      example: PRESENT_PERFECT
+    label:
+      type: string
+      example: Present Perfect
+    cefr_level:
+      type: string
+      nullable: true
+      example: B1
+    attempts:
+      type: integer
+      minimum: 0
+      example: 5
+    score:
+      type: number
+      format: float
+      minimum: 0
+      maximum: 1
+      example: 0.85
+    mastered:
+      type: boolean
+      example: true
+    next:
+      type: boolean
+      example: false
+
+LearnerFoundationPath:
+  type: object
+  required: [target, namespace, items]
+  properties:
+    target:
+      type: string
+      example: PRESENT_PERFECT
+    namespace:
+      type: string
+      example: grammar
+    items:
+      type: array
+      items:
+        $ref: '#/FoundationPathNode'
+

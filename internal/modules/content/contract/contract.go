@@ -131,10 +131,12 @@ type TTSCache interface {
 
 // TaxonomyNode represents a controlled classification entry.
 type TaxonomyNode struct {
-	ID        uuid.UUID `json:"id"`
-	Namespace string    `json:"namespace"`
-	Code      string    `json:"code"`
-	Label     string    `json:"label"`
+	ID           uuid.UUID  `json:"id"`
+	Namespace    string     `json:"namespace"`
+	Code         string     `json:"code"`
+	Label        string     `json:"label"`
+	CEFRLevel    *string    `json:"cefr_level,omitempty"`
+	DeprecatedAt *time.Time `json:"deprecated_at,omitempty"`
 }
 
 // TaxonomyResolver resolves taxonomy codes to identifiers and metadata.
@@ -144,4 +146,5 @@ type TaxonomyResolver interface {
 	GetTaxonomyByID(ctx context.Context, id uuid.UUID) (*TaxonomyNode, error)
 	ListTaxonomiesInNamespace(ctx context.Context, namespace string) ([]TaxonomyNode, error)
 	ListPrerequisites(ctx context.Context, nodeID uuid.UUID) ([]TaxonomyNode, error)
+	GetTaxonomyPath(ctx context.Context, targetCode *string, namespace *string) ([]TaxonomyNode, error)
 }

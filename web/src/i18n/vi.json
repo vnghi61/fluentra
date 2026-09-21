@@ -1677,5 +1677,26 @@
       "errOrderFailed": "Không thể khởi tạo đơn hàng.",
       "errClaimFailed": "Không thể đăng ký khóa học miễn phí."
     }
+  },
+  "foundation": {
+    "path": {
+      "empty": "Chưa có lộ trình điều kiện tiên quyết cho chủ đề này.",
+      "title": "Lộ trình học điều kiện tiên quyết",
+      "description": "Học theo trình tự các chủ đề nền tảng này để nắm vững kiến thức một cách hiệu quả nhất."
+    },
+    "mastered": "Đã thành thạo",
+    "nextToLearn": "Bài tiếp theo",
+    "target": "Mục tiêu",
+    "attempts": "Lượt làm",
+    "score": "Điểm số",
+    "topicNotFound": "Không tìm thấy chủ đề nền tảng",
+    "topicNotFoundDesc": "Không thể tải chủ đề nền tảng được yêu cầu.",
+    "backToLearn": "Quay lại trang học",
+    "backToCatalogue": "Danh mục bài học",
+    "exercises": "Bài tập",
+    "quizzes": "Câu đố",
+    "reviews": "Ôn tập",
+    "pathSection": "Lộ trình học nền tảng"
   }
 }
+

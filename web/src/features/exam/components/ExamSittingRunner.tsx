@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { examApi, problemCode } from "../api/examApi";
 import { partOf, questionSlots, slotAnchor, type QuestionSlot } from "../parts";
 import type {
+  ChoiceOption,
   ChoiceQuestion,
   DraftAnswers,
   ExamAttempt,
@@ -37,6 +38,7 @@ import type {
   SittingActivity,
   SittingAnswer,
 } from "../types";
+
 import { ListeningPlayer } from "./ListeningPlayer";
 import { SpeakingRecorder } from "./SpeakingRecorder";
 
@@ -60,10 +62,13 @@ export interface ExamSittingRunnerProps {
 export function isAnswered(answer: SittingAnswer | undefined): boolean {
   if (!answer) return false;
   if ("answers" in answer) return Object.keys(answer.answers).length > 0;
+  if ("selected_option_id" in answer) return answer.selected_option_id.trim() !== "";
   if ("text_answer" in answer) return answer.text_answer.trim() !== "";
   if ("answer" in answer) return answer.answer.trim() !== "";
-  return answer.audio_object_key !== "";
+  if ("audio_object_key" in answer) return answer.audio_object_key !== "";
+  return false;
 }
+
 
 export function formatClock(totalSeconds: number): string {
   const safe = Math.max(0, Math.floor(totalSeconds));
@@ -895,13 +900,14 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
     activity.kind === "mcq_gap"
   ) {
     const selectedOpt =
-      answer && typeof (answer as Record<string, unknown>).selected_option_id === "string"
-        ? ((answer as Record<string, unknown>).selected_option_id as string)
-        : answer && "answers" in answer && typeof (answer as { answers: Record<string, string> }).answers === "object"
-          ? Object.values((answer as { answers: Record<string, string> }).answers)[0] ?? ""
+      answer && "selected_option_id" in answer && typeof answer.selected_option_id === "string"
+        ? answer.selected_option_id
+        : answer && "answers" in answer && typeof answer.answers === "object"
+          ? Object.values(answer.answers)[0] ?? ""
           : "";
     const select = (optionId: string) =>
       onChange({ selected_option_id: optionId });
+
 
     const rawOpts =
       (config.options as ChoiceOption[] | undefined) ||

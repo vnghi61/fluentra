@@ -1677,5 +1677,26 @@
       "errOrderFailed": "Failed to initiate payment.",
       "errClaimFailed": "Failed to claim free course."
     }
+  },
+  "foundation": {
+    "path": {
+      "empty": "No prerequisite path recorded for this topic.",
+      "title": "Prerequisite Learning Path",
+      "description": "Follow this sequence of foundation topics to master this subject effectively."
+    },
+    "mastered": "Mastered",
+    "nextToLearn": "Next to Learn",
+    "target": "Target",
+    "attempts": "Attempts",
+    "score": "Score",
+    "topicNotFound": "Foundation Topic Not Found",
+    "topicNotFoundDesc": "Could not load the requested foundation topic.",
+    "backToLearn": "Back to Learn",
+    "backToCatalogue": "Learning Catalogue",
+    "exercises": "Exercises",
+    "quizzes": "Quizzes",
+    "reviews": "Reviews",
+    "pathSection": "Foundation Learning Path"
   }
 }
+

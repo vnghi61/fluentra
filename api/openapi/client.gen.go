@@ -1407,6 +1407,20 @@ type ClientInterface interface {
 	// Corresponds with GET /me/export/{id} (the `UserGetExport` operationId).
 	UserGetExport(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetMyFoundationNext Next foundation topic to learn across strands.
+	//
+	// Returns the next unmastered topic across foundation strands, preferring the learner's stated goal and nodes matching their current placement level.
+	//
+	// Corresponds with GET /me/foundation/next (the `GetMyFoundationNext` operationId).
+	GetMyFoundationNext(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMyFoundationPath Learning path to a target foundation topic with user mastery.
+	//
+	// Returns the prerequisite chain leading to the target topic in topological order, including attempts, scores, and mastery status for the caller, marking the first unmastered node as next.
+	//
+	// Corresponds with GET /me/foundation/path (the `GetMyFoundationPath` operationId).
+	GetMyFoundationPath(ctx context.Context, params *GetMyFoundationPathParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetGamificationSummary The caller's XP, level, streak, badges and open quests.
 	//
 	// One read rather than several, because the dashboard needs all of it at once. `xp_today` and the streak are computed against the caller's own timezone.
@@ -5008,6 +5022,40 @@ func (c *Client) UserRequestExport(ctx context.Context, reqEditors ...RequestEdi
 // Corresponds with GET /me/export/{id} (the `UserGetExport` operationId).
 func (c *Client) UserGetExport(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUserGetExportRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetMyFoundationNext Next foundation topic to learn across strands.
+//
+// Returns the next unmastered topic across foundation strands, preferring the learner's stated goal and nodes matching their current placement level.
+//
+// Corresponds with GET /me/foundation/next (the `GetMyFoundationNext` operationId).
+func (c *Client) GetMyFoundationNext(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetMyFoundationNextRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetMyFoundationPath Learning path to a target foundation topic with user mastery.
+//
+// Returns the prerequisite chain leading to the target topic in topological order, including attempts, scores, and mastery status for the caller, marking the first unmastered node as next.
+//
+// Corresponds with GET /me/foundation/path (the `GetMyFoundationPath` operationId).
+func (c *Client) GetMyFoundationPath(ctx context.Context, params *GetMyFoundationPathParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetMyFoundationPathRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -11942,6 +11990,83 @@ func NewUserGetExportRequest(server string, id openapi_types.UUID) (*http.Reques
 	return req, nil
 }
 
+// NewGetMyFoundationNextRequest constructs an http.Request for the GetMyFoundationNext method
+func NewGetMyFoundationNextRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/foundation/next")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetMyFoundationPathRequest constructs an http.Request for the GetMyFoundationPath method
+func NewGetMyFoundationPathRequest(server string, params *GetMyFoundationPathParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/foundation/path")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "target", params.Target, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetGamificationSummaryRequest constructs an http.Request for the GetGamificationSummary method
 func NewGetGamificationSummaryRequest(server string) (*http.Request, error) {
 	var err error
@@ -16598,6 +16723,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /me/export/{id} (the `UserGetExport` operationId).
 	UserGetExportWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*UserGetExportResponse, error)
+
+	// GetMyFoundationNextWithResponse Next foundation topic to learn across strands.
+	//
+	// Returns the next unmastered topic across foundation strands, preferring the learner's stated goal and nodes matching their current placement level.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/foundation/next (the `GetMyFoundationNext` operationId).
+	GetMyFoundationNextWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyFoundationNextResponse, error)
+
+	// GetMyFoundationPathWithResponse Learning path to a target foundation topic with user mastery.
+	//
+	// Returns the prerequisite chain leading to the target topic in topological order, including attempts, scores, and mastery status for the caller, marking the first unmastered node as next.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/foundation/path (the `GetMyFoundationPath` operationId).
+	GetMyFoundationPathWithResponse(ctx context.Context, params *GetMyFoundationPathParams, reqEditors ...RequestEditorFn) (*GetMyFoundationPathResponse, error)
 
 	// GetGamificationSummaryWithResponse The caller's XP, level, streak, badges and open quests.
 	//
@@ -25472,6 +25615,137 @@ func (r UserGetExportResponse) ContentType() string {
 	return ""
 }
 
+// GetMyFoundationNextResponse200Headers the declared response headers of an HTTP 200 response for GetMyFoundationNext
+type GetMyFoundationNextResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetMyFoundationNextResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FoundationPathNode
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetMyFoundationNextResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetMyFoundationNextResponse) GetJSON200() *FoundationPathNode {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetMyFoundationNextResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetMyFoundationNextResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetMyFoundationNextResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMyFoundationNextResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMyFoundationNextResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyFoundationNextResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetMyFoundationPathResponse200Headers the declared response headers of an HTTP 200 response for GetMyFoundationPath
+type GetMyFoundationPathResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetMyFoundationPathResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LearnerFoundationPath
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetMyFoundationPathResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetMyFoundationPathResponse) GetJSON200() *LearnerFoundationPath {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetMyFoundationPathResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetMyFoundationPathResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r GetMyFoundationPathResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r GetMyFoundationPathResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMyFoundationPathResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMyFoundationPathResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyFoundationPathResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetGamificationSummaryResponse200Headers the declared response headers of an HTTP 200 response for GetGamificationSummary
 type GetGamificationSummaryResponse200Headers struct {
 	XRequestId *string
@@ -33164,6 +33438,36 @@ func (c *ClientWithResponses) UserGetExportWithResponse(ctx context.Context, id 
 		return nil, err
 	}
 	return ParseUserGetExportResponse(rsp)
+}
+
+// GetMyFoundationNextWithResponse Next foundation topic to learn across strands.
+//
+// Returns the next unmastered topic across foundation strands, preferring the learner's stated goal and nodes matching their current placement level.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/foundation/next (the `GetMyFoundationNext` operationId).
+func (c *ClientWithResponses) GetMyFoundationNextWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyFoundationNextResponse, error) {
+	rsp, err := c.GetMyFoundationNext(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMyFoundationNextResponse(rsp)
+}
+
+// GetMyFoundationPathWithResponse Learning path to a target foundation topic with user mastery.
+//
+// Returns the prerequisite chain leading to the target topic in topological order, including attempts, scores, and mastery status for the caller, marking the first unmastered node as next.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/foundation/path (the `GetMyFoundationPath` operationId).
+func (c *ClientWithResponses) GetMyFoundationPathWithResponse(ctx context.Context, params *GetMyFoundationPathParams, reqEditors ...RequestEditorFn) (*GetMyFoundationPathResponse, error) {
+	rsp, err := c.GetMyFoundationPath(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMyFoundationPathResponse(rsp)
 }
 
 // GetGamificationSummaryWithResponse The caller's XP, level, streak, badges and open quests.
@@ -42059,6 +42363,119 @@ func ParseUserGetExportResponse(rsp *http.Response) (*UserGetExportResponse, err
 	switch {
 	case rsp.StatusCode == 200:
 		var headers UserGetExportResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetMyFoundationNextResponse parses an HTTP response from a GetMyFoundationNextWithResponse call
+func ParseGetMyFoundationNextResponse(rsp *http.Response) (*GetMyFoundationNextResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMyFoundationNextResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FoundationPathNode
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetMyFoundationNextResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetMyFoundationPathResponse parses an HTTP response from a GetMyFoundationPathWithResponse call
+func ParseGetMyFoundationPathResponse(rsp *http.Response) (*GetMyFoundationPathResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMyFoundationPathResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LearnerFoundationPath
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetMyFoundationPathResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

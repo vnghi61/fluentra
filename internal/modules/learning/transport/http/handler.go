@@ -38,6 +38,10 @@ type LearningService interface {
 		ctx context.Context, activityID uuid.UUID, response json.RawMessage,
 	) (*service.PreviewGradeResultDTO, error)
 	GetDailySet(ctx context.Context, userID uuid.UUID, levelOverride string) (*domain.DailySetDTO, error)
+	GetLearnerFoundationPath(
+		ctx context.Context, userID uuid.UUID, targetCode string,
+	) (*domain.LearnerFoundationPath, error)
+	GetLearnerFoundationNext(ctx context.Context, userID uuid.UUID) (*domain.FoundationPathNode, error)
 	PlacementService
 }
 
@@ -80,6 +84,8 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Get("/practice/daily", h.getDailyPractice)
 	router.Get("/me/path", h.getStartingPath)
 	router.Get("/me/weekly-plan", h.getWeeklyPlan)
+	router.Get("/me/foundation/path", h.getMyFoundationPath)
+	router.Get("/me/foundation/next", h.getMyFoundationNext)
 	router.Get("/me/placement", h.getPlacement)
 	router.Post("/me/placement", h.startPlacement)
 	router.Get("/me/placement/sessions/{id}", h.getPlacementSession)
@@ -93,6 +99,49 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Get("/attempts/{id}", h.getAttempt)
 	router.Post("/me/sessions", h.startSession)
 	router.Post("/me/sessions/{id}/complete", h.completeSession)
+}
+
+func (h *Handler) getMyFoundationPath(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+	if err := h.guard.Require(ctx, "self"); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	target := r.URL.Query().Get("target")
+	path, err := h.service.GetLearnerFoundationPath(ctx, actor.UserID, target)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, path)
+}
+
+func (h *Handler) getMyFoundationNext(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+	if err := h.guard.Require(ctx, "self"); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	next, err := h.service.GetLearnerFoundationNext(ctx, actor.UserID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, next)
 }
 
 func (h *Handler) getDailyPractice(w http.ResponseWriter, r *http.Request) {

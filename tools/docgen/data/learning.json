@@ -374,8 +374,11 @@
       { "method": "POST", "path": "/api/v1/me/placement/sessions/{id}/answers", "permission": "self", "purpose": "Answer the current item; returns the next item or the result", "success": "200", "errors": ["PLACEMENT_SESSION_EXPIRED", "PLACEMENT_NOT_CURRENT_ITEM", "PLACEMENT_SESSION_CHANGED"], "notes": "Requires an `Idempotency-Key`. Every answer is a `learn.attempts` row. After the result the same route answers the writing and speaking items." },
       { "method": "POST", "path": "/api/v1/me/placement/sessions/{id}/productive", "permission": "self", "purpose": "Start or skip the writing and speaking part", "success": "200", "errors": ["PLACEMENT_PRODUCTIVE_UNAVAILABLE"] },
       { "method": "GET", "path": "/api/v1/me/path", "permission": "self", "purpose": "Recommended courses for the learner's level and the lesson to start at in each", "success": "200" },
-      { "method": "GET", "path": "/api/v1/me/weekly-plan", "permission": "self", "purpose": "This week's plan, built on the first request of the week, with progress read now", "success": "200" }
+      { "method": "GET", "path": "/api/v1/me/weekly-plan", "permission": "self", "purpose": "This week's plan, built on the first request of the week, with progress read now", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/foundation/path", "permission": "self", "purpose": "Learning path to a target foundation topic with user mastery", "success": "200", "errors": ["NOT_FOUND", "VALIDATION_FAILED"] },
+      { "method": "GET", "path": "/api/v1/me/foundation/next", "permission": "self", "purpose": "Next foundation topic to learn across strands", "success": "200", "errors": ["NOT_FOUND"] }
     ],
+
     "contract": [
       { "kind": "interface", "name": "learning.ExerciseGrader", "purpose": "`Grade(ctx, GradeRequest) (GradeResult, error)` — **implemented by every skill module**, registered by activity kind" },
       { "kind": "struct", "name": "learning.GradeResult", "purpose": "`{Score, MaxScore, Correct, Feedback, Async, ReviewItems}` — `ReviewItem` is a `learning` type, not an `srs` one, so a grader in any skill module can return it" },
@@ -421,8 +424,10 @@
       "Attempts older than the activity's time limit are expired by a job and cannot be submitted.",
       "Skill mastery is an exponentially weighted estimate over recent attempts, not a raw average — recent performance must dominate.",
       "The placement test adapts: item difficulty follows the running estimate, and it stops when the confidence interval is narrow enough or the item budget is exhausted.",
-      "Placement completes nothing: no progress row, no `activity.completed`, no review card. A placement opens lessons below the placed level; a declared level opens nothing."
+      "Placement completes nothing: no progress row, no `activity.completed`, no review card. A placement opens lessons below the placed level; a declared level opens nothing.",
+      "A node is weak only after three attempts, and mastered only after five (score >= 0.8)."
     ],
+
     "cache": [
       { "key": "fluentra:{env}:learning:dashboard:{user_id}:v1", "ttl": "2 min", "invalidation": "Any completion event" },
       { "key": "fluentra:{env}:learning:progress:{user_id}:v1", "ttl": "5 min", "invalidation": "`activity.completed`" }

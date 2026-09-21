@@ -95,6 +95,16 @@ func (r *gateTaxonomyResolver) ListPrerequisites(
 	return r.prereqs[nodeID], nil
 }
 
+func (r *gateTaxonomyResolver) GetTaxonomyPath(
+	_ context.Context, _ *string, _ *string,
+) ([]contentcontract.TaxonomyNode, error) {
+	var out []contentcontract.TaxonomyNode
+	for _, n := range r.nodes {
+		out = append(out, *n)
+	}
+	return out, nil
+}
+
 // TestGateI_TrapI1_MinimumAttempts verifies Trap I.1:
 // A node with two attempts is not "weak", it is unknown. Minimum 3 attempts is required.
 func TestGateI_TrapI1_MinimumAttempts(t *testing.T) {

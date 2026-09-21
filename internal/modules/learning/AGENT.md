@@ -157,6 +157,8 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/me/placement/sessions/{id}/productive` | `self` | Start or skip the writing and speaking part |
 | `GET` | `/api/v1/me/path` | `self` | Recommended courses for the learner's level and the lesson to start at in each |
 | `GET` | `/api/v1/me/weekly-plan` | `self` | This week's plan, built on the first request of the week, with progress read now |
+| `GET` | `/api/v1/me/foundation/path` | `self` | Learning path to a target foundation topic with user mastery |
+| `GET` | `/api/v1/me/foundation/next` | `self` | Next foundation topic to learn across strands |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map
@@ -215,6 +217,7 @@ and fails `go-arch-lint` in CI.
 9. **BR-LEARNING-09** — Skill mastery is an exponentially weighted estimate over recent attempts, not a raw average — recent performance must dominate.
 10. **BR-LEARNING-10** — The placement test adapts: item difficulty follows the running estimate, and it stops when the confidence interval is narrow enough or the item budget is exhausted.
 11. **BR-LEARNING-11** — Placement completes nothing: no progress row, no `activity.completed`, no review card. A placement opens lessons below the placed level; a declared level opens nothing.
+12. **BR-LEARNING-12** — A node is weak only after three attempts, and mastered only after five (score >= 0.8).
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

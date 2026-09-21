@@ -13,14 +13,37 @@ const (
 	MinAttemptsForWeakNode = 3
 
 	// MinAttemptsForMastery is the minimum number of attempts required before a node can be marked mastered (Stage J).
+	// This threshold is a first guess to be tuned from data.
 	MinAttemptsForMastery = 5
 
 	// MasteryScoreThreshold is the threshold (0.8) at or above which a node is considered mastered (Stage J).
+	// This threshold is a first guess to be tuned from data.
 	MasteryScoreThreshold = 0.8
 
 	// NodeMasteryAlpha is the exponentially weighted factor for updating node mastery (same as skill mastery).
 	NodeMasteryAlpha = 0.35
 )
+
+// FoundationPathNode is one topic in a learner's foundation learning path,
+// annotated with their mastery and indicating whether it is the next topic to study.
+type FoundationPathNode struct {
+	ID        uuid.UUID `json:"id"`
+	Namespace string    `json:"namespace"`
+	Code      string    `json:"code"`
+	Label     string    `json:"label"`
+	CEFRLevel *string   `json:"cefr_level,omitempty"`
+	Attempts  int       `json:"attempts"`
+	Score     float64   `json:"score"`
+	Mastered  bool      `json:"mastered"`
+	Next      bool      `json:"next"`
+}
+
+// LearnerFoundationPath is the response for GET /me/foundation/path?target=CODE.
+type LearnerFoundationPath struct {
+	Target    string               `json:"target"`
+	Namespace string               `json:"namespace"`
+	Items     []FoundationPathNode `json:"items"`
+}
 
 // NodeMastery tracks a learner's performance on a specific spine taxonomy node.
 type NodeMastery struct {

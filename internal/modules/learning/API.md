@@ -44,6 +44,8 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `POST` | `/api/v1/me/placement/sessions/{id}/productive` | `self` | Start or skip the writing and speaking part |
 | `GET` | `/api/v1/me/path` | `self` | Recommended courses for the learner's level and the lesson to start at in each |
 | `GET` | `/api/v1/me/weekly-plan` | `self` | This week's plan, built on the first request of the week, with progress read now |
+| `GET` | `/api/v1/me/foundation/path` | `self` | Learning path to a target foundation topic with user mastery |
+| `GET` | `/api/v1/me/foundation/next` | `self` | Next foundation topic to learn across strands |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -222,6 +224,26 @@ This week's plan, built on the first request of the week, with progress read now
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
+
+### `GET /api/v1/me/foundation/path`
+
+Learning path to a target foundation topic with user mastery
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `NOT_FOUND`, `VALIDATION_FAILED` |
+
+### `GET /api/v1/me/foundation/next`
+
+Next foundation topic to learn across strands
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `NOT_FOUND` |
 
 <!-- END GENERATED: api-detail -->
 

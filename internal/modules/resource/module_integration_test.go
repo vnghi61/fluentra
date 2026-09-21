@@ -1307,6 +1307,14 @@ func (r *gateTaxonomyResolver) GetTaxonomyByID(_ context.Context, id uuid.UUID) 
 	return nil, nil
 }
 
+func (r *gateTaxonomyResolver) GetTaxonomyPath(_ context.Context, _ *string, _ *string) ([]contentcontract.TaxonomyNode, error) {
+	var out []contentcontract.TaxonomyNode
+	for _, n := range r.nodes {
+		out = append(out, n)
+	}
+	return out, nil
+}
+
 type gateTranscriber struct {
 	text string
 	lang string

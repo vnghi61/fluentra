@@ -58,6 +58,11 @@ export interface SittingActivityConfig {
   task_type?: "read_aloud" | "respond";
   reference_text?: string;
   speaking_time_seconds?: number;
+  options?: ChoiceOption[];
+  statements?: ChoiceOption[];
+  responses?: ChoiceOption[];
+  sentence?: string;
+  image_url?: string;
 }
 
 export interface SittingActivity {
@@ -78,6 +83,9 @@ export interface SectionActivities {
 export interface ChoiceAnswer {
   answers: Record<string, string>;
 }
+export interface SingleChoiceAnswer {
+  selected_option_id: string;
+}
 export interface EssayAnswer {
   text_answer: string;
 }
@@ -88,8 +96,13 @@ export interface RecordingAnswer {
   audio_object_key: string;
 }
 export type SittingAnswer =
-  ChoiceAnswer | EssayAnswer | RewriteAnswer | RecordingAnswer;
+  | ChoiceAnswer
+  | SingleChoiceAnswer
+  | EssayAnswer
+  | RewriteAnswer
+  | RecordingAnswer;
 export type DraftAnswers = Record<string, SittingAnswer>;
+
 
 export interface ExamAttempt {
   id: string;

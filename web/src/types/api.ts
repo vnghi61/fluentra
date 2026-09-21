@@ -1965,6 +1965,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/foundation/path": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Learning path to a target foundation topic with user mastery.
+         * @description Returns the prerequisite chain leading to the target topic in topological order, including attempts, scores, and mastery status for the caller, marking the first unmastered node as next.
+         */
+        get: operations["getMyFoundationPath"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/foundation/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Next foundation topic to learn across strands.
+         * @description Returns the next unmastered topic across foundation strands, preferring the learner's stated goal and nodes matching their current placement level.
+         */
+        get: operations["getMyFoundationNext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reviews/session": {
         parameters: {
             query?: never;
@@ -6715,6 +6755,36 @@ export interface components {
             minutes_goal: number;
             items: components["schemas"]["WeeklyPlanItem"][];
             progress: components["schemas"]["WeeklyPlanProgress"];
+        };
+        FoundationPathNode: {
+            /** Format: uuid */
+            id: string;
+            /** @example grammar */
+            namespace: string;
+            /** @example PRESENT_PERFECT */
+            code: string;
+            /** @example Present Perfect */
+            label: string;
+            /** @example B1 */
+            cefr_level?: string | null;
+            /** @example 5 */
+            attempts: number;
+            /**
+             * Format: float
+             * @example 0.85
+             */
+            score: number;
+            /** @example true */
+            mastered: boolean;
+            /** @example false */
+            next: boolean;
+        };
+        LearnerFoundationPath: {
+            /** @example PRESENT_PERFECT */
+            target: string;
+            /** @example grammar */
+            namespace: string;
+            items: components["schemas"]["FoundationPathNode"][];
         };
         CreatorProfile: {
             /** Format: uuid */
@@ -12214,6 +12284,121 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    getMyFoundationPath: {
+        parameters: {
+            query: {
+                /** @description Target topic code (e.g. PRESENT_PERFECT). */
+                target: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The learner foundation path. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "target": "PRESENT_PERFECT",
+                     *       "namespace": "grammar",
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "namespace": "grammar",
+                     *           "code": "SENTENCE_STRUCTURE",
+                     *           "label": "Sentence Structure",
+                     *           "cefr_level": "A1",
+                     *           "attempts": 6,
+                     *           "score": 0.85,
+                     *           "mastered": true,
+                     *           "next": false
+                     *         },
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "namespace": "grammar",
+                     *           "code": "PRESENT_SIMPLE",
+                     *           "label": "Present Simple",
+                     *           "cefr_level": "A1",
+                     *           "attempts": 5,
+                     *           "score": 0.9,
+                     *           "mastered": true,
+                     *           "next": false
+                     *         },
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "namespace": "grammar",
+                     *           "code": "PRESENT_CONTINUOUS",
+                     *           "label": "Present Continuous",
+                     *           "cefr_level": "A1",
+                     *           "attempts": 0,
+                     *           "score": 0,
+                     *           "mastered": false,
+                     *           "next": true
+                     *         },
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567d",
+                     *           "namespace": "grammar",
+                     *           "code": "PRESENT_PERFECT",
+                     *           "label": "Present Perfect",
+                     *           "cefr_level": "B1",
+                     *           "attempts": 0,
+                     *           "score": 0,
+                     *           "mastered": false,
+                     *           "next": false
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["LearnerFoundationPath"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getMyFoundationNext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The next foundation topic to study. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *       "namespace": "grammar",
+                     *       "code": "PRESENT_CONTINUOUS",
+                     *       "label": "Present Continuous",
+                     *       "cefr_level": "A1",
+                     *       "attempts": 0,
+                     *       "score": 0,
+                     *       "mastered": false,
+                     *       "next": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationPathNode"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     getReviewSession: {

@@ -4903,7 +4903,115 @@ paths:
                   items_total: 4
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /me/foundation/path:
+    get:
+      tags: [learning]
+      operationId: getMyFoundationPath
+      summary: Learning path to a target foundation topic with user mastery.
+      description: >-
+        Returns the prerequisite chain leading to the target topic in topological order,
+        including attempts, scores, and mastery status for the caller, marking the first
+        unmastered node as next.
+      x-permission: self
+      parameters:
+        - name: target
+          in: query
+          required: true
+          description: Target topic code (e.g. PRESENT_PERFECT).
+          schema:
+            type: string
+            example: PRESENT_PERFECT
+      responses:
+        '200':
+          description: The learner foundation path.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearnerFoundationPath'
+              example:
+                target: PRESENT_PERFECT
+                namespace: grammar
+                items:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                    namespace: grammar
+                    code: SENTENCE_STRUCTURE
+                    label: Sentence Structure
+                    cefr_level: A1
+                    attempts: 6
+                    score: 0.85
+                    mastered: true
+                    next: false
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                    namespace: grammar
+                    code: PRESENT_SIMPLE
+                    label: Present Simple
+                    cefr_level: A1
+                    attempts: 5
+                    score: 0.9
+                    mastered: true
+                    next: false
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                    namespace: grammar
+                    code: PRESENT_CONTINUOUS
+                    label: Present Continuous
+                    cefr_level: A1
+                    attempts: 0
+                    score: 0.0
+                    mastered: false
+                    next: true
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567d
+                    namespace: grammar
+                    code: PRESENT_PERFECT
+                    label: Present Perfect
+                    cefr_level: B1
+                    attempts: 0
+                    score: 0.0
+                    mastered: false
+                    next: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /me/foundation/next:
+    get:
+      tags: [learning]
+      operationId: getMyFoundationNext
+      summary: Next foundation topic to learn across strands.
+      description: >-
+        Returns the next unmastered topic across foundation strands, preferring the learner's
+        stated goal and nodes matching their current placement level.
+      x-permission: self
+      responses:
+        '200':
+          description: The next foundation topic to study.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoundationPathNode'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                namespace: grammar
+                code: PRESENT_CONTINUOUS
+                label: Present Continuous
+                cefr_level: A1
+                attempts: 0
+                score: 0.0
+                mastered: false
+                next: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /reviews/session:
+
     get:
       tags: [srs]
       operationId: getReviewSession
@@ -8796,7 +8904,12 @@ components:
       $ref: ./components/learning.yaml#/WeeklyPlanProgress
     WeeklyPlan:
       $ref: ./components/learning.yaml#/WeeklyPlan
+    FoundationPathNode:
+      $ref: ./components/learning.yaml#/FoundationPathNode
+    LearnerFoundationPath:
+      $ref: ./components/learning.yaml#/LearnerFoundationPath
     CreatorProfile:
+
       $ref: ./components/studio.yaml#/CreatorProfile
     UpsertCreatorProfileRequest:
       $ref: ./components/studio.yaml#/UpsertCreatorProfileRequest

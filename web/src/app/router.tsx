@@ -198,7 +198,13 @@ const StudioEditorPage = lazyRouteComponent(
   "StudioEditorPage",
 );
 
+const FoundationTopicPage = lazyRouteComponent(
+  () => import("@/routes/FoundationTopicPage"),
+  "FoundationTopicPage",
+);
+
 /** Lazy: it reads /me/permissions, which nobody but an administrator needs. */
+
 const AdminSidebarNav = React.lazy(() =>
   import("@/features/admin/components/AdminSidebarNav").then((m) => ({
     default: m.AdminSidebarNav,
@@ -580,12 +586,21 @@ export const placementRoute = createRoute({
   component: PlacementPage,
 });
 
+export const foundationTopicRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/foundation/topics/$code",
+  // Open to a visitor with no account (ADR-0025). Shows personalized mastery if signed in.
+  component: FoundationTopicPage,
+});
+
 export const routeTree = rootRoute.addChildren([
   homeRoute,
   welcomeRoute,
   placementRoute,
+  foundationTopicRoute,
   learnRoute,
   lessonRoute,
+
   practiceRoute,
   dailyPracticeRoute,
   reviewRoute,

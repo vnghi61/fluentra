@@ -1,6 +1,8 @@
 export * from "./api/keys";
 export * from "./api/learningApi";
 export * from "./api/placement";
+export * from "./api/foundation";
+
 export * from "./components/Dashboard/ContinueLearningCard";
 export * from "./components/Dashboard/DailyPracticeCard";
 export * from "./components/Dashboard/PlacementInviteCard";

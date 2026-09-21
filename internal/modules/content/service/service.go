@@ -261,10 +261,12 @@ func (s *Service) GetTaxonomyByCode(ctx context.Context, code string) (*contract
 		return nil, err
 	}
 	return &contract.TaxonomyNode{
-		ID:        tax.ID,
-		Namespace: tax.Namespace,
-		Code:      tax.Code,
-		Label:     tax.Label,
+		ID:           tax.ID,
+		Namespace:    tax.Namespace,
+		Code:         tax.Code,
+		Label:        tax.Label,
+		CEFRLevel:    tax.CEFRLevel,
+		DeprecatedAt: tax.DeprecatedAt,
 	}, nil
 }
 
@@ -278,10 +280,12 @@ func (s *Service) GetTaxonomyByID(ctx context.Context, id uuid.UUID) (*contract.
 		return nil, err
 	}
 	return &contract.TaxonomyNode{
-		ID:        tax.ID,
-		Namespace: tax.Namespace,
-		Code:      tax.Code,
-		Label:     tax.Label,
+		ID:           tax.ID,
+		Namespace:    tax.Namespace,
+		Code:         tax.Code,
+		Label:        tax.Label,
+		CEFRLevel:    tax.CEFRLevel,
+		DeprecatedAt: tax.DeprecatedAt,
 	}, nil
 }
 
@@ -294,10 +298,12 @@ func (s *Service) ListTaxonomiesInNamespace(ctx context.Context, namespace strin
 	res := make([]contract.TaxonomyNode, len(items))
 	for i, t := range items {
 		res[i] = contract.TaxonomyNode{
-			ID:        t.ID,
-			Namespace: t.Namespace,
-			Code:      t.Code,
-			Label:     t.Label,
+			ID:           t.ID,
+			Namespace:    t.Namespace,
+			Code:         t.Code,
+			Label:        t.Label,
+			CEFRLevel:    t.CEFRLevel,
+			DeprecatedAt: t.DeprecatedAt,
 		}
 	}
 	return res, nil
@@ -312,10 +318,35 @@ func (s *Service) ListPrerequisites(ctx context.Context, nodeID uuid.UUID) ([]co
 	res := make([]contract.TaxonomyNode, len(items))
 	for i, t := range items {
 		res[i] = contract.TaxonomyNode{
-			ID:        t.ID,
-			Namespace: t.Namespace,
-			Code:      t.Code,
-			Label:     t.Label,
+			ID:           t.ID,
+			Namespace:    t.Namespace,
+			Code:         t.Code,
+			Label:        t.Label,
+			CEFRLevel:    t.CEFRLevel,
+			DeprecatedAt: t.DeprecatedAt,
+		}
+	}
+	return res, nil
+}
+
+// GetTaxonomyPath returns the topologically sorted path of taxonomy nodes leading to targetCode (or across namespace),
+// skipping deprecated nodes per BR-FOUNDATION-07.
+func (s *Service) GetTaxonomyPath(
+	ctx context.Context, targetCode *string, namespace *string,
+) ([]contract.TaxonomyNode, error) {
+	items, err := s.GetFoundationPath(ctx, targetCode, namespace)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]contract.TaxonomyNode, len(items))
+	for i, t := range items {
+		res[i] = contract.TaxonomyNode{
+			ID:           t.ID,
+			Namespace:    t.Namespace,
+			Code:         t.Code,
+			Label:        t.Label,
+			CEFRLevel:    t.CEFRLevel,
+			DeprecatedAt: t.DeprecatedAt,
 		}
 	}
 	return res, nil
