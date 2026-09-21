@@ -1,9 +1,13 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Building2, CheckCircle2, ShieldCheck, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  SearchableSelect,
+  type SearchableSelectOption,
+} from "@/components/ui/searchable-select";
 import {
   usePayoutAccount,
   useUpsertPayoutAccount,
@@ -16,15 +20,23 @@ interface PayoutAccountModalProps {
 
 const COMMON_BANKS = [
   { code: "VCB", name: "Vietcombank (Ngân hàng Ngoại thương)" },
+  { code: "CTG", name: "VietinBank (Ngân hàng Công Thương)" },
+  { code: "BIDV", name: "BIDV (Ngân hàng Đầu tư và Phát triển)" },
+  { code: "VBA", name: "Agribank (Ngân hàng Nông nghiệp)" },
   { code: "MB", name: "MB Bank (Ngân hàng Quân Đội)" },
   { code: "TCB", name: "Techcombank (Ngân hàng Kỹ Thương)" },
   { code: "ACB", name: "ACB (Ngân hàng Á Châu)" },
-  { code: "BIDV", name: "BIDV (Ngân hàng Đầu tư và Phát triển)" },
-  { code: "CTG", name: "VietinBank (Ngân hàng Công Thương)" },
-  { code: "TPB", name: "TPBank (Ngân hàng Tiên Phong)" },
   { code: "VPB", name: "VPBank (Ngân hàng Việt Nam Thịnh Vượng)" },
+  { code: "TPB", name: "TPBank (Ngân hàng Tiên Phong)" },
   { code: "STB", name: "Sacombank (Ngân hàng Sài Gòn Thương Tín)" },
   { code: "HDB", name: "HDBank (Ngân hàng Phát triển TP.HCM)" },
+  { code: "VIB", name: "VIB (Ngân hàng Quốc tế)" },
+  { code: "SHB", name: "SHB (Ngân hàng Sài Gòn - Hà Nội)" },
+  { code: "MSB", name: "MSB (Ngân hàng Hàng Hải)" },
+  { code: "OCB", name: "OCB (Ngân hàng Phương Đông)" },
+  { code: "LPB", name: "LPBank (Ngân hàng Lộc Phát Việt Nam)" },
+  { code: "SSB", name: "SeABank (Ngân hàng Đông Nam Á)" },
+  { code: "EIB", name: "Eximbank (Ngân hàng Xuất Nhập Khẩu)" },
 ];
 
 export function PayoutAccountModal({
@@ -40,6 +52,22 @@ export function PayoutAccountModal({
   const [accountHolder, setAccountHolder] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  const bankOptions = useMemo<SearchableSelectOption[]>(() => {
+    const list: SearchableSelectOption[] = COMMON_BANKS.map((bank) => ({
+      value: bank.code,
+      label: `${bank.code} - ${bank.name}`,
+      searchTerms: `${bank.code} ${bank.name}`,
+    }));
+    if (bankCode && !list.some((b) => b.value === bankCode)) {
+      list.unshift({
+        value: bankCode,
+        label: bankCode,
+        searchTerms: bankCode,
+      });
+    }
+    return list;
+  }, [bankCode]);
 
   // Seed existing account data during render rather than from an effect
   const [seededAccountId, setSeededAccountId] = useState<string | null>(null);
@@ -161,18 +189,19 @@ export function PayoutAccountModal({
             >
               {t("studio.payout.bankLabel", "Bank")}
             </label>
-            <select
+            <input type="hidden" name="bank_code" value={bankCode} />
+            <SearchableSelect
               id="bank-code-select"
               value={bankCode}
-              onChange={(e) => setBankCode(e.target.value)}
-              className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-base sm:text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              {COMMON_BANKS.map((bank) => (
-                <option key={bank.code} value={bank.code}>
-                  {bank.code} - {bank.name}
-                </option>
-              ))}
-            </select>
+              options={bankOptions}
+              onChange={(next) => setBankCode(next)}
+              placeholder={t("studio.payout.selectBank", "Select a bank...")}
+              searchPlaceholder={t(
+                "studio.payout.searchBank",
+                "Search bank by name or code...",
+              )}
+              emptyText={t("studio.payout.noBankFound", "No bank found")}
+            />
           </div>
 
           <div>
