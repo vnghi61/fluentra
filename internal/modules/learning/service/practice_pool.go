@@ -71,6 +71,8 @@ const (
 	kindReadingComprehension     = "reading_comprehension"
 	kindGrammarTenseChoice       = "grammar_tense_choice"
 	kindGrammarSentenceTransform = "grammar_sentence_transform"
+	kindFoundationQuiz           = "foundation_quiz"
+	kindFoundationReview         = "foundation_review"
 	statusPublished              = "published"
 )
 
@@ -574,7 +576,7 @@ func validateParse(kind string, raw []byte) error {
 	switch kind {
 	case kindReadingComprehension:
 		return parseReading(raw)
-	case kindGrammarTenseChoice:
+	case kindGrammarTenseChoice, kindFoundationQuiz, kindFoundationReview:
 		var body grammarTenseChoiceCand
 		if err := json.Unmarshal(raw, &body); err != nil {
 			return err
@@ -753,7 +755,7 @@ func buildOwnAnswerPayload(kind string, raw []byte) (json.RawMessage, error) {
 			answers[q.ID] = q.CorrectOptionID
 		}
 		return json.Marshal(map[string]any{keyAnswers: answers})
-	case kindGrammarTenseChoice:
+	case kindGrammarTenseChoice, kindFoundationQuiz, kindFoundationReview:
 		var body grammarTenseChoiceCand
 		if err := json.Unmarshal(raw, &body); err != nil {
 			return nil, err
@@ -810,7 +812,7 @@ func validateStructure(kind string, raw []byte) error {
 			}
 		}
 		return nil
-	case kindGrammarTenseChoice:
+	case kindGrammarTenseChoice, kindFoundationQuiz, kindFoundationReview:
 		var body grammarTenseChoiceCand
 		if err := json.Unmarshal(raw, &body); err != nil {
 			return err
@@ -886,7 +888,7 @@ func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 			return nil, errors.New("empty blind solve answers")
 		}
 		return json.Marshal(map[string]any{keyAnswers: resp.Answers})
-	case kindGrammarTenseChoice:
+	case kindGrammarTenseChoice, kindFoundationQuiz, kindFoundationReview:
 		var resp struct {
 			SelectedOptionID string `json:"selected_option_id"`
 			Answer           string `json:"answer"`

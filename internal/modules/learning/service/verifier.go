@@ -81,8 +81,10 @@ func (s *Service) dispatchItemVerification(
 			minQ = req.ExamConstraints.QuestionsPerGroup
 		}
 		return s.checkReadingCandidateWithMin(ctx, req.CEFRLevel, req.Body, existing, req.BlindSolve, minQ)
-	case kindGrammarTenseChoice, kindGrammarSentenceTransform:
+	case kindGrammarTenseChoice, kindGrammarSentenceTransform, kindFoundationQuiz, kindFoundationReview:
 		return s.checkCandidateWithBlindSolve(ctx, req.CEFRLevel, req.Kind, req.Body, existing, req.BlindSolve)
+	case kindFoundationTopic:
+		return validateFoundationTopic(req.Body)
 	case kindWritingPrompt:
 		_, err := s.checkWritingPrompt(ctx, req.Body, existing)
 		return err
@@ -274,4 +276,52 @@ func cefrBandIndex(level string) (int, bool) {
 	default:
 		return 0, false
 	}
+}
+
+const kindFoundationTopic = "foundation_topic"
+
+func validateFoundationTopic(raw []byte) error {
+	var body struct {
+		SchemaVersion int    `json:"schema_version"`
+		Objective     string `json:"objective"`
+		Explanation   struct {
+			EN string `json:"en"`
+			VI string `json:"vi"`
+		} `json:"explanation"`
+		Examples []struct {
+			Text string `json:"text"`
+			Note string `json:"note"`
+		} `json:"examples"`
+		CommonMistakes []struct {
+			Wrong string `json:"wrong"`
+			Right string `json:"right"`
+			Why   string `json:"why"`
+		} `json:"common_mistakes"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return fmt.Errorf("check 1 (parse) failed: invalid foundation topic json: %w", err)
+	}
+	if body.SchemaVersion != 1 {
+		return fmt.Errorf("check 1 (parse) failed: unsupported schema_version %d", body.SchemaVersion)
+	}
+	if strings.TrimSpace(body.Objective) == "" {
+		return errors.New("check 3 (structure) failed: learning objective is required")
+	}
+	if strings.TrimSpace(body.Explanation.EN) == "" || strings.TrimSpace(body.Explanation.VI) == "" {
+		return errors.New("check 3 (structure) failed: explanations in both en and vi are required")
+	}
+	if len(body.Examples) == 0 {
+		return errors.New("check 3 (structure) failed: at least one example is required")
+	}
+	for i, ex := range body.Examples {
+		if strings.TrimSpace(ex.Text) == "" {
+			return fmt.Errorf("check 3 (structure) failed: example %d text cannot be empty", i+1)
+		}
+	}
+	for i, cm := range body.CommonMistakes {
+		if strings.TrimSpace(cm.Wrong) == "" || strings.TrimSpace(cm.Right) == "" || strings.TrimSpace(cm.Why) == "" {
+			return fmt.Errorf("check 3 (structure) failed: common mistake %d must specify wrong, right, and why", i+1)
+		}
+	}
+	return nil
 }

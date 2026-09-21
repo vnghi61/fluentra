@@ -548,6 +548,9 @@ func startLearning(
 		for _, kind := range grammarcontract.GradedKinds() {
 			graders[kind] = grammarModule.Grader()
 		}
+		// Stage D: Register multiple-choice grader aliases for foundation_quiz and foundation_review
+		graders["foundation_quiz"] = grammarModule.Grader()
+		graders["foundation_review"] = grammarModule.Grader()
 	}
 	if listeningModule != nil {
 		for _, kind := range listeningcontract.GradedKinds() {

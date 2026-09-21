@@ -47,7 +47,7 @@ func (s *Service) Generate(
 	results := make([]learningcontract.GeneratedItem, 0, req.Count)
 
 	for i := 0; i < req.Count; i++ {
-		authoredItem, err := s.retryGenerateSingleItem(ctx, req, spineNodeStrings, tagRefs, authorID, blindSolve)
+		authoredItem, err := s.retryGenerateSingleItem(ctx, req, spineNodeStrings, tagRefs, authorID, blindSolve, i)
 		if err != nil {
 			return nil, fmt.Errorf("generate item %d of %d failed after %d attempts: %w",
 				i+1, req.Count, maxRetriesPerItem+1, err)
@@ -137,10 +137,11 @@ func (s *Service) retryGenerateSingleItem(
 	tagRefs []contentcontract.TagRef,
 	authorID uuid.UUID,
 	blindSolve bool,
+	itemIndex int,
 ) (*learningcontract.GeneratedItem, error) {
 	var lastErr error
 	for attempt := 0; attempt <= maxRetriesPerItem; attempt++ {
-		item, err := s.generateSingleItem(ctx, req, spineNodeStrings, tagRefs, authorID, blindSolve)
+		item, err := s.generateSingleItem(ctx, req, spineNodeStrings, tagRefs, authorID, blindSolve, itemIndex)
 		if err == nil {
 			return item, nil
 		}
@@ -176,9 +177,13 @@ func (s *Service) attachProvenanceAndVerify(
 ) (json.RawMessage, string, uuid.UUID, error) {
 	aiRequestID := uuid.New()
 	promptVersion := "item_generate.v1"
+	isTopic := (req.Kind == kindFoundationTopic)
+	if isTopic {
+		promptVersion = "foundation_topic_generate.v1"
+	}
 
 	var blindSolvePayload json.RawMessage
-	if blindSolve {
+	if blindSolve && !isTopic {
 		var err error
 		blindSolvePayload, err = s.blindSolveItem(ctx, req.Kind, preparedBody)
 		if err != nil {
@@ -187,7 +192,7 @@ func (s *Service) attachProvenanceAndVerify(
 	}
 
 	var judgedCEFR, cefrReasoning string
-	checkCEFR := (req.Purpose == purposeBank || req.Purpose == purposeFoundation)
+	checkCEFR := (req.Purpose == purposeBank || req.Purpose == purposeFoundation) && !isTopic
 	if checkCEFR && s.ai != nil {
 		var err error
 		judgedCEFR, cefrReasoning, err = s.evaluateCEFR(ctx, req.Kind, req.CEFRLevel, preparedBody)
@@ -208,7 +213,7 @@ func (s *Service) attachProvenanceAndVerify(
 		Kind:            req.Kind,
 		CEFRLevel:       req.CEFRLevel,
 		Body:            bodyWithProv,
-		BlindSolve:      blindSolve,
+		BlindSolve:      blindSolve && !isTopic,
 		CheckCEFR:       checkCEFR,
 		CheckProvenance: true,
 	}
@@ -229,12 +234,17 @@ func (s *Service) generateSingleItem(
 	tagRefs []contentcontract.TagRef,
 	authorID uuid.UUID,
 	blindSolve bool,
+	itemIndex int,
 ) (*learningcontract.GeneratedItem, error) {
 	vars := buildGenerateVars(req, spineNodeStrings)
 
 	var candidateBody json.RawMessage
+	task := ai.TaskItemGenerate
+	if req.Kind == kindFoundationTopic {
+		task = ai.TaskFoundationTopicGenerate
+	}
 	resp, err := ai.CompleteJSONWithResponse(ctx, s.ai, ai.Request{
-		Task: ai.TaskItemGenerate,
+		Task: task,
 		Vars: vars,
 	}, &candidateBody)
 	if err != nil {
@@ -258,12 +268,18 @@ func (s *Service) generateSingleItem(
 		return nil, err
 	}
 
-	slugPrefix := fmt.Sprintf("%s-%s-%s",
-		strings.ToLower(req.Purpose),
-		strings.ToLower(req.CEFRLevel),
-		strings.ToLower(strings.ReplaceAll(req.Kind, "_", "-")),
-	)
-	slug := fmt.Sprintf("%s-%s", slugPrefix, uuid.New().String()[:8])
+	slug := req.SlugPrefix
+	if slug == "" {
+		slugPrefix := fmt.Sprintf("%s-%s-%s",
+			strings.ToLower(req.Purpose),
+			strings.ToLower(req.CEFRLevel),
+			strings.ToLower(strings.ReplaceAll(req.Kind, "_", "-")),
+		)
+		slug = fmt.Sprintf("%s-%s", slugPrefix, uuid.New().String()[:8])
+	} else if itemIndex > 0 {
+		slug = fmt.Sprintf("%s-%d", req.SlugPrefix, itemIndex+1)
+	}
+	slug = strings.ToLower(strings.ReplaceAll(slug, "_", "-"))
 
 	spec := contentcontract.AuthorSpec{
 		Slug:      slug,

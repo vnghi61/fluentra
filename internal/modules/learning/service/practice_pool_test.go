@@ -636,6 +636,8 @@ func passingGraders() *domain.GraderRegistry {
 	for _, slot := range poolSlots {
 		_ = graders.Register(slot.kind, &testPracticeGrader{shouldPass: true})
 	}
+	_ = graders.Register("foundation_quiz", &testPracticeGrader{shouldPass: true})
+	_ = graders.Register("foundation_review", &testPracticeGrader{shouldPass: true})
 	return graders
 }
 

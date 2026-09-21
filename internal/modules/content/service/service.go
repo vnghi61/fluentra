@@ -774,6 +774,14 @@ func (s *Service) Review(
 			return err
 		}
 
+		// Stage D: Each node's cefr_level in content.taxonomies is set when its topic is approved,
+		// from the approved topic's level (BR-FOUNDATION-05, WO 16 §14).
+		if item.Kind == KindFoundationTopic && nextStatus == domain.StatusApproved {
+			if err := updateSpineNodeCEFRFromTopic(ctx, txRepo, itemID, draftVersion.CEFRLevel); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 
@@ -782,6 +790,33 @@ func (s *Service) Review(
 	}
 
 	return version, nil
+}
+
+func updateSpineNodeCEFRFromTopic(
+	ctx context.Context,
+	txRepo Repository,
+	itemID uuid.UUID,
+	cefrLevel string,
+) error {
+	tags, err := txRepo.ListTagsForContentItem(ctx, itemID)
+	if err != nil {
+		return err
+	}
+	for _, tag := range tags {
+		_, err = txRepo.UpdateTaxonomy(
+			ctx,
+			tag.ID,
+			nil, nil,
+			&cefrLevel, true,
+			nil, false,
+			nil,
+			nil, false,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) verifyMediaAssetsReady(

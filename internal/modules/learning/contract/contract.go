@@ -362,6 +362,15 @@ type VerifyItemRequest struct {
 	CheckProvenance bool                 // verifies _provenance presence and completeness
 }
 
+const (
+	// KindFoundationTopic is the content kind holding a spine topic's body.
+	KindFoundationTopic = "foundation_topic"
+	// KindFoundationQuiz is a quiz item tagged to a spine node.
+	KindFoundationQuiz = "foundation_quiz"
+	// KindFoundationReview is a review question tagged to a spine node.
+	KindFoundationReview = "foundation_review"
+)
+
 // GenerateRequest specifies parameters for the unified item generator.
 type GenerateRequest struct {
 	Kind       string
@@ -371,6 +380,7 @@ type GenerateRequest struct {
 	Purpose    string     // "practice" | "foundation" | "bank" | "resource"
 	OwnerID    *uuid.UUID // set only for Purpose "resource": private to that learner
 	SourceText string     // Purpose "resource" only: the extraction to generate from
+	SlugPrefix string     // optional deterministic slug prefix for idempotent generation
 }
 
 // GeneratedItem represents a single authored and verified item.

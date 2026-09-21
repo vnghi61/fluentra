@@ -445,6 +445,7 @@ func buildDeclaredKinds() []string {
 	kinds = append(kinds, writingcontract.GradedKinds()...)
 	kinds = append(kinds, listeningcontract.GradedKinds()...)
 	kinds = append(kinds, speakingcontract.GradedKinds()...)
+	kinds = append(kinds, "foundation_quiz", "foundation_review")
 	return kinds
 }
 
@@ -477,10 +478,13 @@ func vocabularyGraders(grader learningcontract.ExerciseGrader) map[string]learni
 }
 
 func grammarGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
-	graders := make(map[string]learningcontract.ExerciseGrader, len(grammarcontract.GradedKinds()))
+	graders := make(map[string]learningcontract.ExerciseGrader, len(grammarcontract.GradedKinds())+2)
 	for _, kind := range grammarcontract.GradedKinds() {
 		graders[kind] = grader
 	}
+	// Stage D: Register multiple-choice grader aliases for foundation_quiz and foundation_review
+	graders["foundation_quiz"] = grader
+	graders["foundation_review"] = grader
 	return graders
 }
 

@@ -63,6 +63,8 @@ const (
 	TaskItemSolve Task = "item_solve"
 	// TaskItemLevel estimates the CEFR level of an item with reasoning.
 	TaskItemLevel Task = "item_level"
+	// TaskFoundationTopicGenerate generates comprehensive foundation topic bodies.
+	TaskFoundationTopicGenerate Task = "foundation_topic_generate"
 )
 
 // Request is one unit of work.

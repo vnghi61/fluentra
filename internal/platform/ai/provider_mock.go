@@ -74,6 +74,8 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 		return p.placementSolve(req)
 	case TaskItemLevel:
 		return p.itemLevel(req)
+	case TaskFoundationTopicGenerate:
+		return p.foundationTopicGenerate(req)
 	default:
 		return Response{}, fmt.Errorf("ai: mock provider has no answer for task %q", req.Task)
 	}
@@ -384,6 +386,21 @@ func (p *MockProvider) practiceGenerate(req Request) (Response, error) {
 				},
 			})
 		}
+	case "foundation_quiz", "foundation_review", "vocab_multiple_choice":
+		payload, err = json.Marshal(map[string]any{
+			"prompt": "She has worked at this hospital ___ 2018.",
+			"options": []map[string]any{
+				{"id": "A", "text": "for"},
+				{"id": "B", "text": "since"},
+				{"id": "C", "text": "in"},
+				{"id": "D", "text": "during"},
+			},
+			"correct_option_id": "B",
+			"explanation": map[string]string{
+				"explanation_en": "Use 'since' with a specific point in past time.",
+				"explanation_vi": "Dùng 'since' với mốc thời gian trong quá khứ.",
+			},
+		})
 	default:
 		return Response{}, fmt.Errorf("ai: mock practiceGenerate has no mock for kind %q", kind)
 	}
@@ -414,6 +431,10 @@ func (p *MockProvider) practiceSolve(req Request) (Response, error) {
 		payload, err = json.Marshal(map[string]any{
 			"selected_option_id": "A",
 		})
+	case "foundation_quiz", "foundation_review", "vocab_multiple_choice":
+		payload, err = json.Marshal(map[string]any{
+			"selected_option_id": "B",
+		})
 	case "grammar_sentence_transform":
 		payload, err = json.Marshal(map[string]any{
 			"answer": "Although he was exhausted, he completed the project.",
@@ -426,6 +447,43 @@ func (p *MockProvider) practiceSolve(req Request) (Response, error) {
 
 	if err != nil {
 		return Response{}, fmt.Errorf("ai: encode mock solve answer: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
+}
+
+func (p *MockProvider) foundationTopicGenerate(req Request) (Response, error) {
+	spineNode := stringVar(req.Vars, "SpineNodes")
+	if spineNode == "" {
+		spineNode = "Sentence Structure"
+	}
+	payload, err := json.Marshal(map[string]any{
+		"schema_version": 1,
+		"objective":      fmt.Sprintf("Understand and master %s", spineNode),
+		"explanation": map[string]string{
+			"en": fmt.Sprintf("Detailed explanation of %s and its usage rules.", spineNode),
+			"vi": fmt.Sprintf("Giải thích chi tiết về %s và các quy tắc sử dụng trong tiếng Anh.", spineNode),
+		},
+		"examples": []map[string]string{
+			{
+				"text": "She has lived here for three years.",
+				"note": "Indicates an action continuing into the present.",
+			},
+			{
+				"text": "They have finished their assignment.",
+				"note": "Indicates completion before the current moment.",
+			},
+		},
+		"related": []string{},
+		"common_mistakes": []map[string]string{
+			{
+				"wrong": "I lived here since 2020.",
+				"right": "I have lived here since 2020.",
+				"why":   "Use present perfect with 'since' to connect the past to the present.",
+			},
+		},
+	})
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock foundation topic: %w", err)
 	}
 	return Response{Text: string(payload), Model: MockModelName}, nil
 }

@@ -24,6 +24,7 @@ import (
 const (
 	testNodeCodePresentPerfect = "PRESENT_PERFECT"
 	testKindTenseChoice        = "grammar_tense_choice"
+	testPurposeFoundation      = "foundation"
 )
 
 type generatorTestAuthor struct {
@@ -135,7 +136,7 @@ func TestGenerator_WorkOrder19StageCGate(t *testing.T) {
 		CEFRLevel: "B1",
 		NodeCodes: []string{testNodeCodePresentPerfect},
 		Count:     3,
-		Purpose:   "foundation",
+		Purpose:   testPurposeFoundation,
 	}
 
 	items, err := svc.Generate(ctx, req)
@@ -204,4 +205,79 @@ func TestGenerator_WorkOrder19StageCGate(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, practiceItems, 1)
 	assert.Len(t, author.published, 1, "practice items must be published directly")
+}
+
+// TestGenerator_FoundationContentKinds verifies that foundation_topic, foundation_quiz,
+// and foundation_review can all be generated with purpose foundation, landing as drafts tagged to the node.
+func TestGenerator_FoundationContentKinds(t *testing.T) {
+	ctx := context.Background()
+	author := &generatorTestAuthor{}
+	taxonomies := &generatorTestTaxonomies{
+		nodes: map[string]*contentcontract.TaxonomyNode{
+			testNodeCodePresentPerfect: {
+				ID:        uuid.New(),
+				Namespace: "grammar",
+				Code:      testNodeCodePresentPerfect,
+				Label:     "Present Perfect",
+			},
+		},
+	}
+
+	lessons := newFakePoolLessons()
+	mockAI := ai.NewMockProvider(nil)
+	adminID := uuid.New()
+
+	svc := service.New(service.Deps{
+		Lesson:            lessons,
+		LessonAuthor:      lessons,
+		Content:           newFakeContentReader(),
+		ContentAuthor:     author,
+		Taxonomies:        taxonomies,
+		Graders:           passingGraders(),
+		AI:                mockAI,
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: adminID,
+		Synthesiser:       &fakeAudioSynthesiser{},
+	})
+
+	kinds := []string{
+		learningcontract.KindFoundationTopic,
+		learningcontract.KindFoundationQuiz,
+		learningcontract.KindFoundationReview,
+	}
+
+	for _, kind := range kinds {
+		t.Run("generate_"+kind, func(t *testing.T) {
+			items, err := svc.Generate(ctx, learningcontract.GenerateRequest{
+				Kind:       kind,
+				CEFRLevel:  "B1",
+				NodeCodes:  []string{testNodeCodePresentPerfect},
+				Count:      1,
+				Purpose:    testPurposeFoundation,
+				SlugPrefix: "foundation-" + kind + "-present-perfect",
+			})
+			require.NoError(t, err)
+			require.Len(t, items, 1)
+			item := items[0]
+			assert.NotEqual(t, uuid.Nil, item.ContentVersionID)
+
+			if kind == learningcontract.KindFoundationTopic {
+				assert.Equal(t, "foundation_topic_generate.v1", item.PromptVersion)
+			} else {
+				assert.Equal(t, "item_generate.v1", item.PromptVersion)
+			}
+
+			// Verify provenance
+			var bodyMap map[string]any
+			err = json.Unmarshal(item.Body, &bodyMap)
+			require.NoError(t, err)
+			provRaw, exists := bodyMap["_provenance"]
+			require.True(t, exists, "item must contain _provenance")
+			prov := provRaw.(map[string]any)
+			assert.Equal(t, testPurposeFoundation, prov["purpose"])
+		})
+	}
+
+	// All 3 items must have landed as drafts
+	assert.Len(t, author.drafts, 3)
 }
