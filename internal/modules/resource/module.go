@@ -2,6 +2,8 @@ package resource
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -12,8 +14,10 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/resource/repository"
 	"github.com/fluentra/fluentra/internal/modules/resource/service"
 	resourcehttp "github.com/fluentra/fluentra/internal/modules/resource/transport/http"
+	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	platformjob "github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/storage"
+	"github.com/fluentra/fluentra/internal/shared/eventbus"
 )
 
 // Deps defines the infrastructure dependencies for the resource module.
@@ -79,3 +83,26 @@ type readerAdapter struct {
 func (r *readerAdapter) GetResource(ctx context.Context, id, userID uuid.UUID) (*contract.Resource, error) {
 	return r.service.GetResource(ctx, id, userID)
 }
+
+// Subscribe registers the module's consumers in the worker.
+//
+// Account erasure anonymises the user row, so ON DELETE CASCADE never runs;
+// nothing but this consumer removes the resource rows, uploads and renditions.
+func (m *Module) Subscribe(bus eventbus.EventBus) error {
+	if err := bus.Subscribe(usercontract.EventDeleted, m.handleUserDeleted); err != nil {
+		return fmt.Errorf("subscribe resource consumer to %s: %w", usercontract.EventDeleted, err)
+	}
+	return nil
+}
+
+func (m *Module) handleUserDeleted(ctx context.Context, msg eventbus.Message) error {
+	var payload usercontract.UserDeleted
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+		return fmt.Errorf("decode %s payload: %w", usercontract.EventDeleted, err)
+	}
+	if payload.UserID == uuid.Nil {
+		return nil
+	}
+	return m.service.DeleteUserResources(ctx, payload.UserID)
+}
+

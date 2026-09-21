@@ -7,7 +7,7 @@ phase: 4
 owner: "@learning-team"
 schema: resource
 tables: [resources]
-depends_on: [storage, job]
+depends_on: [storage, job, user]
 depended_on_by: []
 spec_version: 1.0.0
 last_verified: 2026-09-21

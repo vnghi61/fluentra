@@ -1906,15 +1906,23 @@
     ],
     "events": {
       "publishes": [],
-      "consumes": []
+      "consumes": [
+        {
+          "name": "user.deleted",
+          "from": "user",
+          "purpose": "Account erasure: delete all resources, uploads in fluentra-uploads and renditions in fluentra-derived for the user"
+        }
+      ]
     },
     "dependsOn": [
       "storage",
-      "job"
+      "job",
+      "user"
     ],
     "dependsWhy": {
       "storage": "Presigned PUT and GET, stat, read and delete in fluentra-uploads",
-      "job": "The resource.validate River worker and the resource.sweep_pending cron"
+      "job": "The resource.validate River worker and the resource.sweep_pending cron",
+      "user": "Account erasure event user.deleted to purge user resources"
     },
     "dependedOnBy": [],
     "rules": [
@@ -1923,6 +1931,7 @@
       "**BR-RESOURCE-03**: A URL resource keeps its title and metadata, never the fetched body.",
       "**BR-RESOURCE-04**: A file is classified by its bytes. A declared kind that disagrees with the detected kind is a rejection.",
       "**BR-RESOURCE-05**: rejected always carries a reason, and the database enforces it. Reasons are fixed learner-facing sentences; the detail goes to the log.",
+      "**BR-RESOURCE-15**: Erasing an account deletes that user's resources, originals and renditions.",
       "**BR-RESOURCE-06**: Deleting a resource deletes its object. If storage cannot be reached the delete fails and the row stays.",
       "**BR-RESOURCE-07**: An intent never confirmed within 15 minutes is swept to failed and its object removed. The sweeper marks the row before deleting, so a row confirmed meanwhile is left alone.",
       "**BR-RESOURCE-08**: Quotas bound each user to 50 resources and 250 MB, counting everything not rejected or failed.",

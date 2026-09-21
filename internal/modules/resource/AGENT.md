@@ -7,7 +7,7 @@ phase: 4
 owner: "@learning-team"
 schema: resource
 tables: [resources]
-depends_on: [storage, job]
+depends_on: [storage, job, user]
 depended_on_by: []
 spec_version: 1.0.0
 last_verified: 2026-09-21
@@ -84,7 +84,9 @@ Other modules may import **only** `internal/modules/resource/contract`.
 
 ### Events
 
-_None yet._
+| Event | Direction | Payload summary |
+|---|---|---|
+| `user.deleted` | consumes |  |
 <!-- END GENERATED: contract -->
 
 ## 5. Database schema
@@ -140,6 +142,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 |---|---|---|
 | [`storage`](../../platform/storage/AGENT.md) | → depends on | Presigned PUT and GET, stat, read and delete in fluentra-uploads |
 | [`job`](../../platform/job/AGENT.md) | → depends on | The resource.validate River worker and the resource.sweep_pending cron |
+| [`user`](../../modules/user/AGENT.md) | → depends on | Account erasure event user.deleted to purge user resources |
 <!-- END GENERATED: related -->
 
 **Boundary reminder:** you may call these through their `contract` package only.
@@ -154,11 +157,12 @@ and fails `go-arch-lint` in CI.
 3. **BR-RESOURCE-03** — **BR-RESOURCE-03**: A URL resource keeps its title and metadata, never the fetched body.
 4. **BR-RESOURCE-04** — **BR-RESOURCE-04**: A file is classified by its bytes. A declared kind that disagrees with the detected kind is a rejection.
 5. **BR-RESOURCE-05** — **BR-RESOURCE-05**: rejected always carries a reason, and the database enforces it. Reasons are fixed learner-facing sentences; the detail goes to the log.
-6. **BR-RESOURCE-06** — **BR-RESOURCE-06**: Deleting a resource deletes its object. If storage cannot be reached the delete fails and the row stays.
-7. **BR-RESOURCE-07** — **BR-RESOURCE-07**: An intent never confirmed within 15 minutes is swept to failed and its object removed. The sweeper marks the row before deleting, so a row confirmed meanwhile is left alone.
-8. **BR-RESOURCE-08** — **BR-RESOURCE-08**: Quotas bound each user to 50 resources and 250 MB, counting everything not rejected or failed.
-9. **BR-RESOURCE-09** — **BR-RESOURCE-09**: rejected is a verdict on the resource; failed is ours and retryable. A timeout or a 5xx never rejects a link.
-10. **BR-RESOURCE-10** — **BR-RESOURCE-10**: The URL fetcher checks the address it is connecting to, in the dialer, on every hop, and never uses a proxy. Checking DNS first and connecting later is not a check.
+6. **BR-RESOURCE-06** — **BR-RESOURCE-15**: Erasing an account deletes that user's resources, originals and renditions.
+7. **BR-RESOURCE-07** — **BR-RESOURCE-06**: Deleting a resource deletes its object. If storage cannot be reached the delete fails and the row stays.
+8. **BR-RESOURCE-08** — **BR-RESOURCE-07**: An intent never confirmed within 15 minutes is swept to failed and its object removed. The sweeper marks the row before deleting, so a row confirmed meanwhile is left alone.
+9. **BR-RESOURCE-09** — **BR-RESOURCE-08**: Quotas bound each user to 50 resources and 250 MB, counting everything not rejected or failed.
+10. **BR-RESOURCE-10** — **BR-RESOURCE-09**: rejected is a verdict on the resource; failed is ours and retryable. A timeout or a 5xx never rejects a link.
+11. **BR-RESOURCE-11** — **BR-RESOURCE-10**: The URL fetcher checks the address it is connecting to, in the dialer, on every hop, and never uses a proxy. Checking DNS first and connecting later is not a check.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

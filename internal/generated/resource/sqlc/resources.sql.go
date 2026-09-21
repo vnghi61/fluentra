@@ -180,6 +180,38 @@ func (q *Queries) CreateURLResource(ctx context.Context, arg CreateURLResourcePa
 	return i, err
 }
 
+const deleteAllResourcesByUser = `-- name: DeleteAllResourcesByUser :many
+DELETE FROM resource.resources
+WHERE user_id = $1
+RETURNING id, object_key, kind
+`
+
+type DeleteAllResourcesByUserRow struct {
+	ID        uuid.UUID
+	ObjectKey *string
+	Kind      string
+}
+
+func (q *Queries) DeleteAllResourcesByUser(ctx context.Context, userID uuid.UUID) ([]DeleteAllResourcesByUserRow, error) {
+	rows, err := q.db.Query(ctx, deleteAllResourcesByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DeleteAllResourcesByUserRow
+	for rows.Next() {
+		var i DeleteAllResourcesByUserRow
+		if err := rows.Scan(&i.ID, &i.ObjectKey, &i.Kind); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteResource = `-- name: DeleteResource :one
 DELETE FROM resource.resources
 WHERE id = $1 AND user_id = $2
@@ -374,6 +406,51 @@ func (q *Queries) ListResourcesByUser(ctx context.Context, arg ListResourcesByUs
 		arg.Status,
 		arg.Kind,
 	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ResourceResource
+	for rows.Next() {
+		var i ResourceResource
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Kind,
+			&i.Title,
+			&i.ObjectKey,
+			&i.OriginalFilename,
+			&i.DeclaredMime,
+			&i.DetectedMime,
+			&i.ByteSize,
+			&i.Checksum,
+			&i.SourceUrl,
+			&i.Status,
+			&i.FailureReason,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ValidatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listResourcesByUserID = `-- name: ListResourcesByUserID :many
+SELECT
+    id, user_id, kind, title, object_key, original_filename, declared_mime, detected_mime,
+    byte_size, checksum, source_url, status, failure_reason, created_at, updated_at, validated_at
+FROM resource.resources
+WHERE user_id = $1
+`
+
+func (q *Queries) ListResourcesByUserID(ctx context.Context, userID uuid.UUID) ([]ResourceResource, error) {
+	rows, err := q.db.Query(ctx, listResourcesByUserID, userID)
 	if err != nil {
 		return nil, err
 	}

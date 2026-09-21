@@ -49,6 +49,8 @@ type Repository interface {
 	DeleteResource(ctx context.Context, id, userID uuid.UUID) (*string, string, error)
 	ListExpiredPendingResources(ctx context.Context, before time.Time, limit int32) ([]contract.Resource, error)
 	ListStuckUploadedResources(ctx context.Context, before time.Time, limit int32) ([]contract.Resource, error)
+	ListResourcesByUserID(ctx context.Context, userID uuid.UUID) ([]contract.Resource, error)
+	DeleteAllResourcesByUser(ctx context.Context, userID uuid.UUID) error
 
 	// The two writes that share a transaction with a job enqueue.
 	ConfirmFileResourceTx(ctx context.Context, tx pgx.Tx, id, userID uuid.UUID) (*contract.Resource, error)
@@ -320,7 +322,7 @@ func (s *Service) DeleteResource(ctx context.Context, id, userID uuid.UUID) erro
 	}
 
 	if res.Kind == domain.KindFile && res.ObjectKey != nil && *res.ObjectKey != "" {
-		if err := s.storage.Delete(ctx, storage.BucketUploads, *res.ObjectKey); err != nil {
+		if err := s.deleteStorageObject(ctx, storage.BucketUploads, *res.ObjectKey); err != nil {
 			return fmt.Errorf("delete object from storage: %w", err)
 		}
 	}
@@ -331,6 +333,37 @@ func (s *Service) DeleteResource(ctx context.Context, id, userID uuid.UUID) erro
 
 	return nil
 }
+
+// DeleteUserResources purges all resources, original upload files, and derived renditions
+// for a user upon account erasure (BR-RESOURCE-15).
+func (s *Service) DeleteUserResources(ctx context.Context, userID uuid.UUID) error {
+	resources, err := s.repo.ListResourcesByUserID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("list resources for user erasure: %w", err)
+	}
+
+	for _, res := range resources {
+		if res.ObjectKey != nil && *res.ObjectKey != "" {
+			if err := s.deleteStorageObject(ctx, storage.BucketUploads, *res.ObjectKey); err != nil {
+				return fmt.Errorf("delete upload object %s: %w", *res.ObjectKey, err)
+			}
+		}
+	}
+
+	if err := s.repo.DeleteAllResourcesByUser(ctx, userID); err != nil {
+		return fmt.Errorf("delete user resource rows: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) deleteStorageObject(ctx context.Context, bucket, key string) error {
+	if err := s.storage.Delete(ctx, bucket, key); err != nil && !errors.Is(err, storage.ErrObjectNotFound) {
+		return err
+	}
+	return nil
+}
+
 
 // ValidateResource executes the validation pipeline for a file or URL resource.
 //

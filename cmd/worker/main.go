@@ -1053,6 +1053,7 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 
 	if err := startSkills(
 		d.pool, d.bus, d.cron, d.workers, d.lesson, learningModule, writingModule, speakingModule,
+		d.storage, jobClient,
 	); err != nil {
 		return err
 	}
@@ -1179,11 +1180,23 @@ func startSkills(
 	pool *pgxpool.Pool, bus *eventbus.InProcessBus, cron *job.CronScheduler, workers *river.Workers,
 	lessonModule *lesson.Module, learningModule *learning.Module,
 	writingModule *writing.Module, speakingModule *speaking.Module,
+	store storage.Store, enqueuer job.Enqueuer,
 ) error {
 	river.AddWorker(workers, writingModule.GradeSubmissionWorker())
 	river.AddWorker(workers, speakingModule.GradeRecordingWorker())
 	cron.Register(speakingModule.PurgeJob())
 	if err := speakingModule.Subscribe(bus); err != nil {
+		return err
+	}
+
+	resourceModule := resource.New(resource.Deps{
+		Pool:     pool,
+		Storage:  store,
+		Enqueuer: enqueuer,
+	})
+	river.AddWorker(workers, resourceModule.ValidateWorker())
+	cron.Register(resourceModule.SweepJob())
+	if err := resourceModule.Subscribe(bus); err != nil {
 		return err
 	}
 

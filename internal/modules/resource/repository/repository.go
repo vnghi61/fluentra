@@ -306,3 +306,28 @@ func (r *Repository) ListStuckUploadedResources(
 	}
 	return items, nil
 }
+
+// ListResourcesByUserID returns all resources belonging to a user.
+func (r *Repository) ListResourcesByUserID(ctx context.Context, userID uuid.UUID) ([]contract.Resource, error) {
+	rows, err := r.queries.ListResourcesByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list resources by user: %w", err)
+	}
+	items := make([]contract.Resource, len(rows))
+	for i, row := range rows {
+		items[i] = toContract(row)
+	}
+	return items, nil
+}
+
+// DeleteAllResourcesByUser removes all resources belonging to a user.
+func (r *Repository) DeleteAllResourcesByUser(
+	ctx context.Context, userID uuid.UUID,
+) error {
+	_, err := r.queries.DeleteAllResourcesByUser(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("delete all resources by user: %w", err)
+	}
+	return nil
+}
+

@@ -153,7 +153,7 @@ graph BT
     LRN --> LSN & SRS & USR & ADM & STD
     SRS --> CNT
     SRS --> USR
-    SPK --> USR
+    SPK & RSC --> USR
     SRS --> LRN
     VOC & GRM --> SRS
     VOC --> LSN

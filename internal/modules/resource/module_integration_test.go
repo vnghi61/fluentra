@@ -29,7 +29,9 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/resource/domain"
 	resourcejob "github.com/fluentra/fluentra/internal/modules/resource/job"
 	"github.com/fluentra/fluentra/internal/modules/resource/service"
+	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/platform/storage"
+	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
@@ -755,3 +757,126 @@ func TestModule_URLIntakeAndValidation(t *testing.T) {
 		t.Fatalf("expected source_url https://example.com/article, got %v", res.SourceURL)
 	}
 }
+
+// TestModule_UserErasurePurge verifies BR-RESOURCE-15 and WO-18 §4:
+// An account erasure event purges the user's resources from the database and deletes all stored objects.
+func TestModule_UserErasurePurge(t *testing.T) {
+	if pool == nil {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	userA := insertUser(t, pool, "erasure_purge@example.com")
+	store := newInMemoryStore()
+
+	mod := resource.New(resource.Deps{
+		Pool:    pool,
+		Storage: store,
+	})
+
+	router := chi.NewRouter()
+	router.Route("/api/v1", func(r chi.Router) {
+		mod.Routes(r)
+	})
+
+	// Create resource 1
+	rec1 := doRequest(
+		router,
+		http.MethodPost,
+		"/api/v1/me/resources/upload-intent",
+		`{"filename":"doc1.pdf","content_type":"application/pdf"}`,
+		userA,
+	)
+	if rec1.Code != http.StatusOK {
+		t.Fatalf("create intent 1: %d", rec1.Code)
+	}
+	var intent1 struct {
+		ID        uuid.UUID `json:"id"`
+		ObjectKey string    `json:"object_key"`
+	}
+	_ = json.Unmarshal(rec1.Body.Bytes(), &intent1)
+
+	pdf1 := []byte("%PDF-1.4\nresource one")
+	_ = store.Put(
+		context.Background(),
+		storage.BucketUploads,
+		intent1.ObjectKey,
+		bytes.NewReader(pdf1),
+		int64(len(pdf1)),
+		"application/pdf",
+	)
+
+	// Create resource 2
+	rec2 := doRequest(
+		router,
+		http.MethodPost,
+		"/api/v1/me/resources/upload-intent",
+		`{"filename":"doc2.pdf","content_type":"application/pdf"}`,
+		userA,
+	)
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("create intent 2: %d", rec2.Code)
+	}
+	var intent2 struct {
+		ID        uuid.UUID `json:"id"`
+		ObjectKey string    `json:"object_key"`
+	}
+	_ = json.Unmarshal(rec2.Body.Bytes(), &intent2)
+
+	pdf2 := []byte("%PDF-1.4\nresource two")
+	_ = store.Put(
+		context.Background(),
+		storage.BucketUploads,
+		intent2.ObjectKey,
+		bytes.NewReader(pdf2),
+		int64(len(pdf2)),
+		"application/pdf",
+	)
+
+	if !store.hasObject(intent1.ObjectKey) || !store.hasObject(intent2.ObjectKey) {
+		t.Fatalf("expected both objects in storage before erasure")
+	}
+
+	// Subscribe to eventbus
+	bus := eventbus.NewInProcessBus(eventbus.NewRegistry())
+	if err := mod.Subscribe(bus); err != nil {
+		t.Fatalf("subscribe resource module: %v", err)
+	}
+
+	// Publish user.deleted event
+	payload, err := json.Marshal(usercontract.UserDeleted{UserID: userA})
+	if err != nil {
+		t.Fatalf("marshal UserDeleted: %v", err)
+	}
+
+	err = bus.Publish(context.Background(), eventbus.Message{
+		ID:      uuid.New(),
+		Topic:   usercontract.EventDeleted,
+		Payload: payload,
+	})
+	if err != nil {
+		t.Fatalf("publish user.deleted: %v", err)
+	}
+
+	// Verify both objects are deleted from storage
+	if store.hasObject(intent1.ObjectKey) {
+		t.Fatalf("storage object 1 %s was not deleted by erasure purge", intent1.ObjectKey)
+	}
+	if store.hasObject(intent2.ObjectKey) {
+		t.Fatalf("storage object 2 %s was not deleted by erasure purge", intent2.ObjectKey)
+	}
+
+	// Verify rows are deleted from database
+	var count int
+	queryErr := pool.QueryRow(
+		context.Background(),
+		`SELECT count(*) FROM resource.resources WHERE user_id = $1`,
+		userA,
+	).Scan(&count)
+	if queryErr != nil {
+		t.Fatalf("count user resources: %v", queryErr)
+	}
+	if count != 0 {
+		t.Fatalf("expected 0 resources remaining for erased user, got %d", count)
+	}
+}
+

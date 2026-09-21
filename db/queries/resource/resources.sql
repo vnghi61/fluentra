@@ -142,3 +142,16 @@ WHERE status = 'uploaded'
   AND updated_at < $1
 ORDER BY updated_at ASC
 LIMIT $2;
+
+-- name: ListResourcesByUserID :many
+SELECT
+    id, user_id, kind, title, object_key, original_filename, declared_mime, detected_mime,
+    byte_size, checksum, source_url, status, failure_reason, created_at, updated_at, validated_at
+FROM resource.resources
+WHERE user_id = $1;
+
+-- name: DeleteAllResourcesByUser :many
+DELETE FROM resource.resources
+WHERE user_id = $1
+RETURNING id, object_key, kind;
+

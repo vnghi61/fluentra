@@ -567,5 +567,5 @@ deps:
   m_resource_service:    { mayDependOn: [m_resource_domain, m_resource_repository, m_resource_job, c_resource, p_storage, p_job, p_telemetry], anyVendorDeps: true }
   m_resource_job:        { mayDependOn: [m_resource_domain, m_resource_service, c_resource, p_job, p_telemetry], anyVendorDeps: true }
   m_resource_http:       { mayDependOn: [m_resource_domain, m_resource_service, c_resource] }
-  m_resource:            { mayDependOn: [m_resource_domain, m_resource_repository, m_resource_service, m_resource_job, m_resource_http, c_resource, g_resource, p_storage, p_job, p_telemetry] }
+  m_resource:            { mayDependOn: [m_resource_domain, m_resource_repository, m_resource_service, m_resource_job, m_resource_http, c_resource, c_user, g_resource, p_storage, p_job, p_telemetry] }
 

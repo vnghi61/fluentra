@@ -202,6 +202,30 @@ func (m *mockRepo) CreateURLResourceTx(
 	return m.CreateURLResource(ctx, id, userID, title, sourceURL)
 }
 
+func (m *mockRepo) ListResourcesByUserID(
+	_ context.Context, userID uuid.UUID,
+) ([]contract.Resource, error) {
+	var list []contract.Resource
+	for _, r := range m.resources {
+		if r.UserID == userID {
+			list = append(list, *r)
+		}
+	}
+	return list, nil
+}
+
+func (m *mockRepo) DeleteAllResourcesByUser(
+	_ context.Context, userID uuid.UUID,
+) error {
+	for id, r := range m.resources {
+		if r.UserID == userID {
+			delete(m.resources, id)
+		}
+	}
+	return nil
+}
+
+
 type mockStorage struct {
 	objects   map[string][]byte
 	deleteErr error
