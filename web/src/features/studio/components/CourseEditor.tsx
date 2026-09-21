@@ -771,11 +771,11 @@ export function CourseEditor({
                                       key={activity.id}
                                       className="rounded-md border border-border-subtle bg-surface-card p-2.5 space-y-2 text-xs"
                                     >
-                                      <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2">
+                                      <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div className="flex flex-1 min-w-0 items-center gap-2">
                                           <Badge
                                             variant="secondary"
-                                            className="text-[10px] uppercase font-mono"
+                                            className="text-[10px] uppercase font-mono shrink-0"
                                           >
                                             {activity.kind.replace("_", " ")}
                                           </Badge>
@@ -794,11 +794,11 @@ export function CourseEditor({
                                               });
                                             }}
                                             placeholder="Activity title..."
-                                            className="font-semibold text-text bg-transparent border-0 focus:outline-none focus:ring-0 text-base sm:text-xs w-48"
+                                            className="font-semibold text-text bg-transparent border-0 focus:outline-none focus:ring-0 text-base sm:text-xs min-w-11 flex-1 sm:flex-none sm:w-48"
                                           />
                                         </div>
 
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
                                           <select
                                             value={activity.kind}
                                             onChange={(e) => {
@@ -812,7 +812,7 @@ export function CourseEditor({
                                                 return c;
                                               });
                                             }}
-                                            className="rounded border border-border-subtle bg-surface-base px-2 py-0.5 text-base sm:text-[11px] text-text"
+                                            className="rounded border border-border-subtle bg-surface-base px-2 py-0.5 text-base sm:text-[11px] text-text min-h-11 sm:min-h-0 flex-1 min-w-11 sm:flex-none"
                                           >
                                             {ACTIVITY_KINDS.map((k) => (
                                               <option

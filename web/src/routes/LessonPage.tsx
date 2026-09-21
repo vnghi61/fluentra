@@ -805,7 +805,7 @@ export function LessonPage(): React.JSX.Element {
       : undefined;
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col justify-between">
+    <div className="min-h-full bg-surface flex flex-col justify-between">
       {/* Runner Header */}
       <RunnerHeader
         lessonTitle={
