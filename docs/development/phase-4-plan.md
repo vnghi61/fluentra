@@ -277,6 +277,11 @@ validation** (does this question match the part it claims). States are the exist
 
 ## 9. Ordering
 
+> **Superseded for execution by [work order 19](phase-3-work-order-19.md),** which builds P3 to P12 in one
+> staged run, in dependency order (P6 and P11 move ahead of P5 and P7), and corrects D3: a bank question is
+> a content version drawn as an activity, with no separate options table. The table below is kept as the
+> map of what each step delivers.
+
 The brief's P1-P12, mapped to work orders. Each is independently testable and leaves the system working.
 
 | Step | Work order | Delivers | Gate |

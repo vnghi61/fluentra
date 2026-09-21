@@ -7,6 +7,9 @@ last_verified: 2026-09-21
 
 # Phase 3 — work order 18
 
+> **This is Stage A of [work order 19](phase-3-work-order-19.md),** which builds the rest of phase 4 in one
+> staged run. Build it exactly as written here, then continue with Stage B there.
+
 **Purpose.** Turn a validated resource into something a learner can comfortably open: a thumbnail, a
 screen-sized image that keeps its text readable, a first-page preview of a document, a web-playable audio
 file, and a small set of video sizes. The original is never touched. This is step P3 of
