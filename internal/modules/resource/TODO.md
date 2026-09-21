@@ -21,8 +21,8 @@ agent knows what is already handled and what is deliberately deferred.
 <!-- BEGIN GENERATED: todo -->
 ## Next, in order
 
-- [ ] Purge a deleted user's objects from fluentra-uploads. The FK cascades the rows away and leaves the files; done when account deletion leaves no object under that user's prefix
-- [ ] Renditions into fluentra-derived (P3, work order 18); done when a validated image has a thumbnail and the original is byte-identical
+- [ ] Purge an erased user's resources. Erasure anonymises the user row instead of deleting it, so the FK cascade never runs and both the rows and the files survive; subscribe to user.deleted as speaking does (work order 18, step 1). Done when erasure leaves no row and no object in either bucket
+- [ ] Renditions into fluentra-derived by cmd/media in GitHub Actions (P3, work order 18); done when a validated image has a thumbnail and the original is byte-identical
 - [ ] Extraction and transcription of validated resources (P4, work order 19); done when a validated PDF yields text tagged to spine nodes
 - [ ] Publish resource.validated and resource.rejected through the outbox once P4 exists to consume them
 <!-- END GENERATED: todo -->

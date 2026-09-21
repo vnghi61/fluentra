@@ -282,8 +282,8 @@ The brief's P1-P12, mapped to work orders. Each is independently testable and le
 | Step | Work order | Delivers | Gate |
 |---|---|---|---|
 | P1 | **WO 16 — landed** | The spine: namespaces, prerequisite DAG, cycle refusal, Foundation body schemas, read API, seeded topic codes | Both of the brief's example chains resolve in prerequisite order |
-| P2 | **WO 17** | `resource` module: upload and import, validate, status lifecycle | A PDF upload reaches `validated` and its owner can see it. **Not** `extracted` — extraction is P4 |
-| P3 | WO 18 | Image, document and video renditions, originals preserved | A 4K video plays at 3 bitrates; original byte-identical |
+| P2 | **WO 17 — landed** | `resource` module: upload and import, validate, status lifecycle | A PDF upload reaches `validated` and its owner can see it. **Not** `extracted` — extraction is P4 |
+| P3 | **WO 18** | Image, document and video renditions, originals preserved. Rendered in GitHub Actions, not on the worker | A 4K video plays at 3 bitrates; original byte-identical |
 | P4 | WO 19 | Extraction, transcription and classification onto spine nodes | An uploaded PDF yields tagged text at a CEFR level |
 | P5 | WO 20 | Foundation content across all five strands | Every seeded node has objective, explanation, examples, exercises, quiz, review questions |
 | P6 | WO 21 | Generation service, lifted and callable | `learning`'s pools call the shared service; behaviour unchanged |
