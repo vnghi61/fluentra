@@ -192,4 +192,3 @@ func TestContract_AdminReviewQueueMatchesTheSpec(t *testing.T) {
 		responseSchema(t, spec, "/admin/review-queue", http.MethodGet, http.StatusOK),
 		recorder.Body.Bytes())
 }
-

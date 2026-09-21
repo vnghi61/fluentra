@@ -2,13 +2,13 @@
 module: questionbank
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 4
 owner: "@learning-team"
 schema: assess
 tables: [questions, question_stats]
-depends_on: [content, ai, audit, search]
-depended_on_by: [exam, reading, listening, grammar, learning]
+depends_on: [content, lesson, learning, rbac]
+depended_on_by: [exam]
 spec_version: 1.0.0
 last_verified: 2026-08-06
 ---

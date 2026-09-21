@@ -275,6 +275,7 @@ func setupTestRouter(svc contenthttp.ContentService, guard contenthttp.Guard) ht
 	}
 	h.Routes(r)
 	h.AdminRoutes(r)
+	h.ReviewRoutes(r)
 	return r
 }
 

@@ -91,7 +91,8 @@
       "CEFR level is required before review; an AI suggestion is a starting point, never the final value.",
       "`body` is validated against a JSON schema chosen by `kind`, so a skill module's payload cannot be malformed.",
       "Publishing invalidates the content cache, enqueues TTS generation, and triggers reindexing — all through the outbox so a failure in one does not roll back the publish.",
-      "Slugs are immutable after first publication; a changed slug would break external links and bookmarks."
+      "Slugs are immutable after first publication; a changed slug would break external links and bookmarks.",
+      "Machine-authored exam and curriculum content enters as a draft (`Author.EnsureDraft`); only practice content may be published without review (`EnsurePublished`)."
     ],
     "cache": [
       { "key": "fluentra:{env}:content:version:{version_id}:v1", "ttl": "24 h", "invalidation": "`content.published` / `content.archived`" },
@@ -1432,58 +1433,116 @@
     "group": "modules",
     "schema": "assess",
     "phase": 4,
-    "status": "PLANNED",
+    "status": "IMPLEMENTED",
     "owner": "@learning-team",
-    "purpose": "The reusable item bank: authoring, typing, tagging, difficulty statistics, review workflow, and AI-assisted generation. One item, many uses — in a lesson, in a drill, in an exam.",
+    "purpose": "The exam item bank: generated questions tagged to the spine and to an exam part, each a content version drawn as an activity, with provenance, a fingerprint and empirical statistics.",
     "responsibilities": [
-      "Question items across all supported types",
-      "Options, correct answers and per-option feedback",
-      "Question sets: reusable ordered groups",
-      "Tagging by skill, level, topic and exam relevance",
-      "Difficulty and discrimination statistics from real attempts",
-      "Authoring and review workflow",
-      "AI-assisted item generation for admin review",
-      "Item exposure control so the same items are not overused"
+      "Bank metadata for exam questions: kind, skill, CEFR level, exam part, questions per group, provenance",
+      "Generating draft questions for a part and spine nodes through `learning.Generator`",
+      "A normalised fingerprint per question, unique in the database",
+      "Moving an approved question into the bank course (`pool-bank`) once its content is published",
+      "Answering which published questions an exam can draw for a part",
+      "Holding `question_stats` for empirical difficulty"
     ],
-    "notResponsibilities": ["Delivering an exam — that is `exam`", "Grading a learner's whole attempt — that is the exercise engine"],
+    "notResponsibilities": [
+      "The question's body, options and answer key — that is a `content` version, graded by the existing graders",
+      "Reviewing a question — that is `content`'s review queue (`/admin/review-queue`)",
+      "Composing or delivering a test — that is `exam`",
+      "Question sets — a set is a mock test composition, which `exam` stores"
+    ],
     "tables": [
-      { "name": "questions", "purpose": "One item", "notes": "Content-versioned. `content_item_id`, `activity_id`, `exam_part_id`, `kind`, `skill`, `cefr_level`, `difficulty`, `question_count`, `fingerprint`, `provenance`, `status`" },
-      { "name": "question_stats", "purpose": "Empirical difficulty", "notes": "`question_id`, `attempts`, `p_value`, `discrimination`, `avg_time_ms`, `last_computed_at`" }
+      {
+        "name": "questions",
+        "purpose": "One item",
+        "notes": "Content-versioned. `content_item_id`, `activity_id`, `exam_part_id`, `kind`, `skill`, `cefr_level`, `difficulty`, `question_count`, `fingerprint`, `provenance`, `status`"
+      },
+      {
+        "name": "question_stats",
+        "purpose": "Empirical difficulty",
+        "notes": "`question_id`, `attempts`, `p_value`, `discrimination`, `avg_time_ms`, `last_computed_at`"
+      }
     ],
     "endpoints": [
-      { "method": "GET", "path": "/api/v1/admin/questions", "permission": "questionbank.read", "purpose": "Search and filter items", "success": "200" },
-      { "method": "POST", "path": "/api/v1/admin/questions", "permission": "questionbank.create", "purpose": "Create an item", "success": "201" },
-      { "method": "POST", "path": "/api/v1/admin/questions/{id}/review", "permission": "questionbank.review", "purpose": "Approve or reject", "success": "200", "errors": ["SELF_APPROVAL_FORBIDDEN"] },
-      { "method": "POST", "path": "/api/v1/admin/questions/generate", "permission": "questionbank.create", "purpose": "AI-generate draft items for review", "success": "202" },
-      { "method": "GET", "path": "/api/v1/admin/questions/{id}/stats", "permission": "questionbank.read", "purpose": "Empirical difficulty and discrimination", "success": "200" }
+      {
+        "method": "GET",
+        "path": "/api/v1/admin/questions",
+        "permission": "questionbank.read",
+        "purpose": "Filter by exam part, kind, CEFR, spine node, status. Reachable by moderators",
+        "success": "200"
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/admin/questions/generate",
+        "permission": "questionbank.create",
+        "purpose": "Generate draft questions for a part and nodes; they wait in the review queue",
+        "success": "200"
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/admin/questions/{id}/stats",
+        "permission": "questionbank.read",
+        "purpose": "Empirical difficulty and discrimination. Reachable by moderators",
+        "success": "200"
+      }
     ],
     "contract": [
-      { "kind": "interface", "name": "questionbank.Reader", "purpose": "`GetSet`, `SampleItems(criteria)` — used by `exam` and by skill modules" },
-      { "kind": "struct", "name": "questionbank.Item", "purpose": "`{ID, Type, Stem, Options, CorrectAnswer, Explanation}` — correct answers stripped for learner-facing calls" }
+      {
+        "kind": "interface",
+        "name": "questionbank.Reader",
+        "purpose": "`ListQuestions` (permission-checked) and `DrawableForPart` (system read for `exam`: published questions with an activity, stable order)"
+      },
+      {
+        "kind": "interface",
+        "name": "questionbank.Author",
+        "purpose": "`GenerateQuestions`, `PublishQuestion` (refuses unreviewed content), `RetireQuestion`"
+      },
+      {
+        "kind": "struct",
+        "name": "questionbank.Question",
+        "purpose": "Bank metadata only; the body is the content version it points at"
+      }
     ],
     "events": {
-      "publishes": [{ "name": "questionbank.item_published", "payload": "`{question_id, skill, level}`" }],
-      "consumes": [{ "name": "activity.completed", "reason": "Accumulate attempt statistics for difficulty estimation" }]
+      "publishes": [],
+      "consumes": [
+        {
+          "name": "content.published",
+          "reason": "Approving a bank question's content in the review queue appends it to the bank course and marks it published"
+        }
+      ]
     },
-    "dependsOn": ["content", "ai", "audit", "search"],
-    "dependedOnBy": ["exam", "reading", "listening", "grammar", "learning"],
+    "dependsOn": [
+      "content",
+      "lesson",
+      "learning",
+      "rbac"
+    ],
+    "dependedOnBy": [
+      "exam"
+    ],
     "rules": [
-      "The correct answer is **never** included in a learner-facing payload. The DTO used by learner endpoints does not contain the field at all — it cannot be leaked by an oversight.",
-      "AI-generated items always enter as drafts. They are never published without human review.",
-      "An author cannot approve their own item.",
-      "Difficulty is empirical (p-value from real attempts), with the authored estimate used only until enough attempts exist.",
-      "An item with fewer than 30 attempts has provisional statistics, clearly marked.",
-      "An item with discrimination below a threshold is flagged for review — it is not distinguishing strong from weak learners.",
-      "Exposure control caps how often an item can appear for the same learner within a window.",
-      "Editing a published item creates a new version; statistics do not carry over, because it is effectively a different item.",
-      "Every item states which skill and CEFR level it targets — an untagged item cannot be sampled."
+      "A bank question's body is a content version and it is drawn as an activity. There is no second copy of its answer (no `question_options`).",
+      "The fingerprint is unique; a duplicate is refused by the database.",
+      "Every bank question carries provenance; an item without it is refused.",
+      "A question enters the bank only after its content version is published through the review queue. `PublishQuestion` on unreviewed content fails with `QUESTION_NOT_REVIEWED`.",
+      "Spine tags are `content.content_tags` on the question's content item, resolved through `content.TagIndex` — never joined from this module's SQL.",
+      "The correct answer never reaches a learner: sittings are served through the existing redaction."
     ],
     "errors": [
-      { "code": "SELF_APPROVAL_FORBIDDEN", "status": "403", "meaning": "Author reviewing their own item" },
-      { "code": "INSUFFICIENT_ITEMS", "status": "409", "meaning": "Not enough approved items matching the sampling criteria" },
-      { "code": "ITEM_IN_USE", "status": "409", "meaning": "Cannot archive an item used by a published exam" }
+      {
+        "code": "QUESTION_NOT_FOUND",
+        "status": "404",
+        "meaning": "No such question"
+      },
+      {
+        "code": "QUESTION_NOT_REVIEWED",
+        "status": "409",
+        "meaning": "Its content version is not published yet; approve it in the review queue"
+      }
     ],
-    "security": ["Correct answers are excluded at the DTO level, not filtered at the handler — a leak must be structurally impossible, not merely unlikely."],
+    "security": [
+      "Correct answers are excluded at the DTO level, not filtered at the handler — a leak must be structurally impossible, not merely unlikely."
+    ],
     "flows": [
       {
         "title": "AI-assisted authoring",
@@ -1491,13 +1550,15 @@
       }
     ],
     "tasks": [
-      { "title": "Add a question type", "steps": [
-        "Define the type, its option schema and its answer schema.",
-        "Implement grading in the consuming skill module, not here.",
-        "Add the authoring UI and the learner-facing renderer.",
-        "Confirm the learner DTO for the new type excludes the answer.",
-        "Add generation support to the prompt if AI authoring should cover it."
-      ]}
+      {
+        "title": "Add a question kind",
+        "steps": [
+          "Register the kind's grader and redaction rule in its skill module and in `content/contract/redact.go`.",
+          "Add a runner component on the web.",
+          "Teach `domain.FingerprintFromBody` the kind's question text and options.",
+          "Seed an `assess.exam_parts` row whose `kind` it is."
+        ]
+      }
     ],
     "limitations": [
       "Difficulty is classical test theory (p-value, discrimination), not item response theory — adequate for sampling, not for adaptive certification.",
@@ -1512,28 +1573,44 @@
       "Generated items land as drafts and are deduped"
     ],
     "decisions": [
-      { "question": "Classical statistics or IRT?", "choice": "Classical for now", "why": "IRT needs far more data per item and a calibration process we cannot staff yet; the interface leaves room to upgrade" },
-      { "question": "Allow AI-generated items to auto-publish?", "choice": "Only for generated practice pool", "why": "By the owner's decision on 2026-09-11, generated practice pool items auto-publish with 6-stage verification (including blind solve model agreement) and the learner report queue as compensating controls; exam and authored curriculum items still require human review" }
+      {
+        "question": "Classical statistics or IRT?",
+        "choice": "Classical for now",
+        "why": "IRT needs far more data per item and a calibration process we cannot staff yet; the interface leaves room to upgrade"
+      },
+      {
+        "question": "Allow AI-generated items to auto-publish?",
+        "choice": "Only for generated practice pool",
+        "why": "By the owner's decision on 2026-09-11, generated practice pool items auto-publish with 6-stage verification (including blind solve model agreement) and the learner report queue as compensating controls; exam and authored curriculum items still require human review"
+      }
     ],
     "todo": [
-      { "title": "Phase 4", "items": [
-        "Items, options, sets and tagging",
-        "Authoring and review workflow with self-approval blocking",
-        "Learner DTO without answers, structurally enforced",
-        "Statistics job computing p-value and discrimination",
-        "Sampling with exposure control",
-        "AI generation into the review queue",
-        "Admin authoring UI with bulk import"
-      ]}
+      {
+        "title": "Open",
+        "items": [
+          "A job computing `question_stats` from real attempts (the table exists; nothing writes it)",
+          "Bank course layout per exam part: lessons are per kind today, not per part as WO 19 F.2 describes"
+        ]
+      }
     ],
-    "future": ["Item response theory calibration", "Automatic distractor quality analysis", "Near-duplicate detection by embedding", "Item retirement policy from statistics"],
+    "future": [
+      "Item response theory calibration",
+      "Automatic distractor quality analysis",
+      "Near-duplicate detection by embedding",
+      "Item retirement policy from statistics"
+    ],
     "doNot": [
       "Do not include the correct answer in a learner-facing response.",
       "Do not publish an AI-generated item without review.",
       "Do not carry statistics across a content edit.",
       "Do not sample from unapproved items."
     ],
-    "runtimePrompts": [{ "task": "questionbank.generate_items", "purpose": "Draft items from a topic, level and type, for admin review" }]
+    "runtimePrompts": [
+      {
+        "task": "questionbank.generate_items",
+        "purpose": "Draft items from a topic, level and type, for admin review"
+      }
+    ]
   },
 
   {
@@ -1602,7 +1679,12 @@
       "Band conversion uses the published table for the format, versioned so historical reports remain reproducible.",
       "Integrity signals are recorded and shown to the learner as self-awareness information; they never automatically invalidate an attempt.",
       "Items are sampled with exposure control so a learner does not see the same items in consecutive attempts.",
-      "The score report is generated once and stored — it must not change if the scoring table is later revised."
+      "The score report is generated once and stored — it must not change if the scoring table is later revised.",
+      "Exam structures are seeded data with an `https` source and a verification date.",
+      "A retake replays its composition; only a new test draws again.",
+      "A fixed test is one stored composition shared by everyone, composed without anyone's exposures.",
+      "A part is filled with exactly its question count, in whole groups; a part the bank cannot fill is refused with the part named.",
+      "The number of distinct tests shown is the coverage report's number."
     ],
     "errors": [
       { "code": "ATTEMPT_IN_PROGRESS", "status": "409", "meaning": "Finish or abandon the existing attempt first" },
@@ -1967,7 +2049,9 @@
       "**BR-RESOURCE-07**: An intent never confirmed within 15 minutes is swept to failed and its object removed. The sweeper marks the row before deleting, so a row confirmed meanwhile is left alone.",
       "**BR-RESOURCE-08**: Quotas bound each user to 50 resources and 250 MB, counting everything not rejected or failed.",
       "**BR-RESOURCE-09**: rejected is a verdict on the resource; failed is ours and retryable. A timeout or a 5xx never rejects a link.",
-      "**BR-RESOURCE-10**: The URL fetcher checks the address it is connecting to, in the dialer, on every hop, and never uses a proxy. Checking DNS first and connecting later is not a check."
+      "**BR-RESOURCE-10**: The URL fetcher checks the address it is connecting to, in the dialer, on every hop, and never uses a proxy. Checking DNS first and connecting later is not a check.",
+      "Extracted text and anything generated from it is private to the resource's owner.",
+      "Classification stores only spine codes that exist; the rest are dropped."
     ],
     "cache": [],
     "errors": [

@@ -110,6 +110,9 @@ func (m *Module) TTSCache() contract.TTSCache { return m.service }
 // TaxonomyResolver resolves taxonomy codes to identifiers.
 func (m *Module) TaxonomyResolver() contract.TaxonomyResolver { return m.service }
 
+// TagIndex exposes which content items carry a spine node.
+func (m *Module) TagIndex() contract.TagIndex { return m.service }
+
 // Service returns the underlying service instance.
 func (m *Module) Service() *service.Service {
 	return m.service
@@ -118,6 +121,11 @@ func (m *Module) Service() *service.Service {
 // Routes mounts the learner-facing content routes on router.
 func (m *Module) Routes(router chi.Router) {
 	m.handler.Routes(router)
+}
+
+// ReviewRoutes mounts the permission-gated review routes a moderator uses.
+func (m *Module) ReviewRoutes(r chi.Router) {
+	m.handler.ReviewRoutes(r)
 }
 
 // AdminRoutes mounts the back-office / authoring content routes on admin router.

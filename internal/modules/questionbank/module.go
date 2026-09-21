@@ -1,6 +1,10 @@
 package questionbank
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -20,7 +24,7 @@ type Deps struct {
 	Pool          *pgxpool.Pool
 	RBAC          rbaccontract.Authorizer
 	ContentReader contentcontract.Reader
-	ContentAuthor contentcontract.Author
+	TagIndex      contentcontract.TagIndex
 	LessonAuthor  lessoncontract.Author
 	Generator     learningcontract.Generator
 	Events        eventbus.EventBus
@@ -40,7 +44,7 @@ func New(deps Deps) *Module {
 		Repo:          repo,
 		RBAC:          deps.RBAC,
 		ContentReader: deps.ContentReader,
-		ContentAuthor: deps.ContentAuthor,
+		TagIndex:      deps.TagIndex,
 		LessonAuthor:  deps.LessonAuthor,
 		Generator:     deps.Generator,
 		Events:        deps.Events,
@@ -69,7 +73,30 @@ func (m *Module) Service() *service.Service {
 	return m.service
 }
 
+// ReviewRoutes mounts the permission-gated read endpoints a moderator uses.
+func (m *Module) ReviewRoutes(r chi.Router) {
+	m.handler.ReviewRoutes(r)
+}
+
 // AdminRoutes mounts questionbank admin endpoints.
 func (m *Module) AdminRoutes(r chi.Router) {
 	m.handler.AdminRoutes(r)
+}
+
+// Subscribe registers the consumer that moves an approved question into the
+// bank: content.published for a bank question's content item appends it to the
+// bank course and marks it published.
+func (m *Module) Subscribe(bus eventbus.EventBus) error {
+	if err := bus.Subscribe(contentcontract.EventContentPublished, m.handleContentPublished); err != nil {
+		return fmt.Errorf("subscribe questionbank consumer to %s: %w", contentcontract.EventContentPublished, err)
+	}
+	return nil
+}
+
+func (m *Module) handleContentPublished(ctx context.Context, msg eventbus.Message) error {
+	var payload contentcontract.Published
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+		return fmt.Errorf("decode %s payload: %w", contentcontract.EventContentPublished, err)
+	}
+	return m.service.HandleContentPublished(ctx, payload)
 }

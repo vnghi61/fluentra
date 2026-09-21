@@ -27,7 +27,7 @@ type Service struct {
 	repo          *repository.Repository
 	rbac          rbaccontract.Authorizer
 	contentReader contentcontract.Reader
-	contentAuthor contentcontract.Author
+	tagIndex      contentcontract.TagIndex
 	lessonAuthor  lessoncontract.Author
 	generator     learningcontract.Generator
 	events        eventbus.EventBus
@@ -39,7 +39,7 @@ type Config struct {
 	Repo          *repository.Repository
 	RBAC          rbaccontract.Authorizer
 	ContentReader contentcontract.Reader
-	ContentAuthor contentcontract.Author
+	TagIndex      contentcontract.TagIndex
 	LessonAuthor  lessoncontract.Author
 	Generator     learningcontract.Generator
 	Events        eventbus.EventBus
@@ -55,7 +55,7 @@ func New(cfg Config) *Service {
 		repo:          cfg.Repo,
 		rbac:          cfg.RBAC,
 		contentReader: cfg.ContentReader,
-		contentAuthor: cfg.ContentAuthor,
+		tagIndex:      cfg.TagIndex,
 		lessonAuthor:  cfg.LessonAuthor,
 		generator:     cfg.Generator,
 		events:        cfg.Events,
@@ -71,7 +71,19 @@ func (s *Service) ListQuestions(ctx context.Context, filter contract.Filter) ([]
 		}
 	}
 
-	items, total, err := s.repo.ListQuestions(ctx, filter)
+	var tagged []uuid.UUID
+	if filter.NodeCode != nil {
+		if s.tagIndex == nil {
+			return nil, 0, errors.New("filtering by spine node needs content's tag index")
+		}
+		ids, tagErr := s.tagIndex.ItemIDsTaggedWith(ctx, *filter.NodeCode)
+		if tagErr != nil {
+			return nil, 0, fmt.Errorf("resolve node %s: %w", *filter.NodeCode, tagErr)
+		}
+		tagged = ids
+	}
+
+	items, total, err := s.repo.ListQuestions(ctx, filter, tagged)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list questions: %w", err)
 	}
@@ -125,6 +137,19 @@ func (s *Service) GetQuestionStats(ctx context.Context, id uuid.UUID) (*contract
 		AvgTimeMs:      stats.AvgTimeMs,
 		LastComputedAt: stats.LastComputedAt,
 	}, nil
+}
+
+// DrawableForPart returns the questions an exam may draw for a part.
+func (s *Service) DrawableForPart(ctx context.Context, examPartID uuid.UUID) ([]*contract.Question, error) {
+	items, err := s.repo.ListDrawableQuestionsForPart(ctx, examPartID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*contract.Question, 0, len(items))
+	for _, it := range items {
+		res = append(res, toContractQuestion(it))
+	}
+	return res, nil
 }
 
 // SampleQuestions draws random published questions matching criteria.
@@ -196,16 +221,20 @@ func (s *Service) GenerateQuestions(ctx context.Context, req contract.GenerateRe
 
 	createdQuestions := make([]*contract.Question, 0, len(genItems))
 	for _, it := range genItems {
-		var contentItemID uuid.UUID
-		if s.contentReader != nil {
-			ver, vErr := s.contentReader.GetVersion(ctx, it.ContentVersionID)
-			if vErr == nil && ver != nil {
-				contentItemID = ver.ItemID
-			}
+		// The row points at the content item, never a version id standing in for
+		// one: no foreign key checks that column (DB4), so a wrong id would be a
+		// question whose body nobody can find.
+		if s.contentReader == nil {
+			return nil, errors.New("content reader is required to record a generated question")
 		}
-		if contentItemID == uuid.Nil {
-			contentItemID = it.ContentVersionID
+		ver, vErr := s.contentReader.GetVersion(ctx, it.ContentVersionID)
+		if vErr != nil {
+			return nil, fmt.Errorf("resolve generated version %s: %w", it.ContentVersionID, vErr)
 		}
+		if ver == nil {
+			return nil, fmt.Errorf("generated version %s not found", it.ContentVersionID)
+		}
+		contentItemID := ver.ItemID
 
 		fp, fpErr := domain.FingerprintFromBody(req.Kind, it.Body)
 		if fpErr != nil {
@@ -255,7 +284,19 @@ func (s *Service) GenerateQuestions(ctx context.Context, req contract.GenerateRe
 
 const skillReading = "reading"
 
-// PublishQuestion publishes a question and appends it to the bank course.
+// ErrNotReviewed refuses to put a question in the bank before a person has
+// approved its content version: brief §8 forbids publishing exam questions
+// without review, and the review queue is the only door.
+var ErrNotReviewed = apperr.New(apperr.Conflict, "QUESTION_NOT_REVIEWED",
+	"The question's content has not been reviewed and published yet.")
+
+// contentStatusPublished is the wire value of contract.Version.Status for
+// published content.
+const contentStatusPublished = "published"
+
+// PublishQuestion appends a reviewed question to the bank course. Its content
+// version must already be published through the review queue: this does not
+// publish content, it makes published content drawable.
 func (s *Service) PublishQuestion(ctx context.Context, id uuid.UUID) (*contract.Question, error) {
 	if s.rbac != nil {
 		if err := s.rbac.Require(ctx, rbaccontract.PermQuestionBankReview); err != nil {
@@ -271,26 +312,58 @@ func (s *Service) PublishQuestion(ctx context.Context, id uuid.UUID) (*contract.
 		return nil, fmt.Errorf("get question %s: %w", id, err)
 	}
 
+	raw, _ := q.Provenance["content_version_id"].(string)
+	versionID, _ := uuid.Parse(raw)
+	return s.publishIntoBank(ctx, q, versionID)
+}
+
+// HandleContentPublished is the content.published consumer. Approving a bank
+// question's content in the review queue is what puts it in the bank; content
+// that is not a bank question is ignored.
+func (s *Service) HandleContentPublished(ctx context.Context, event contentcontract.Published) error {
+	q, err := s.repo.GetQuestionByContentItemID(ctx, event.ItemID)
+	if err != nil {
+		if errors.Is(err, domain.ErrQuestionNotFound) {
+			return nil
+		}
+		return fmt.Errorf("find question for content item %s: %w", event.ItemID, err)
+	}
+	if q.Status == domain.StatusRetired {
+		return nil
+	}
+	_, err = s.publishIntoBank(ctx, q, event.VersionID)
+	return err
+}
+
+func (s *Service) publishIntoBank(
+	ctx context.Context, q *domain.Question, versionID uuid.UUID,
+) (*contract.Question, error) {
 	if q.ActivityID != nil && q.Status == domain.StatusPublished {
 		return toContractQuestion(q), nil
 	}
-
-	if s.bankCourses == nil || s.lessonAuthor == nil {
-		return nil, fmt.Errorf("lesson author is required to publish question to bank course")
+	if s.bankCourses == nil || s.contentReader == nil {
+		return nil, errors.New("lesson author and content reader are required to publish into the bank")
+	}
+	if versionID == uuid.Nil {
+		return nil, ErrNotReviewed
+	}
+	ver, err := s.contentReader.GetVersion(ctx, versionID)
+	if err != nil {
+		return nil, fmt.Errorf("get content version %s: %w", versionID, err)
+	}
+	if ver == nil || ver.ItemID != q.ContentItemID || ver.Status != contentStatusPublished {
+		return nil, ErrNotReviewed
 	}
 
-	versionID, body := s.resolveContentVersionAndBody(ctx, q)
-	examVersion := resolveExamVersion(q.Kind)
-
-	lessonID, err := s.bankCourses.ensureBankLesson(ctx, examVersion, q.Kind)
+	lessonID, err := s.bankCourses.ensureBankLesson(ctx, resolveExamVersion(q.Kind), q.Kind)
 	if err != nil {
 		return nil, fmt.Errorf("ensure bank lesson: %w", err)
 	}
 
 	actID, err := s.lessonAuthor.AppendActivity(ctx, lessonID, lessoncontract.ActivitySpec{
 		Kind:             q.Kind,
-		ContentVersionID: versionID,
-		Config:           body,
+		ContentVersionID: ver.ID,
+		Config:           ver.Body,
 		Weight:           1,
 	})
 	if err != nil {
@@ -309,35 +382,6 @@ func (s *Service) PublishQuestion(ctx context.Context, id uuid.UUID) (*contract.
 
 	s.publishItemEvent(ctx, q, actID)
 	return toContractQuestion(q), nil
-}
-
-func (s *Service) resolveContentVersionAndBody(
-	ctx context.Context, q *domain.Question,
-) (uuid.UUID, json.RawMessage) {
-	var versionID uuid.UUID
-	var body json.RawMessage
-	if rawVerID, ok := q.Provenance["content_version_id"].(string); ok && rawVerID != "" {
-		versionID, _ = uuid.Parse(rawVerID)
-	}
-	if versionID == uuid.Nil && s.contentAuthor != nil {
-		vID, ensureErr := s.contentAuthor.EnsurePublished(ctx, contentcontract.AuthorSpec{
-			Slug:      fmt.Sprintf("bank-%s", q.Fingerprint[:16]),
-			Kind:      q.Kind,
-			CEFRLevel: q.CEFRLevel,
-			Body:      json.RawMessage(`{}`),
-			AuthorID:  uuid.Nil,
-		})
-		if ensureErr == nil {
-			versionID = vID
-		}
-	}
-	if s.contentReader != nil && versionID != uuid.Nil {
-		ver, vErr := s.contentReader.GetVersion(ctx, versionID)
-		if vErr == nil && ver != nil {
-			body = ver.Body
-		}
-	}
-	return versionID, body
 }
 
 func resolveExamVersion(kind string) string {

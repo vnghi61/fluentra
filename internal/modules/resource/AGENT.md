@@ -168,6 +168,8 @@ and fails `go-arch-lint` in CI.
 9. **BR-RESOURCE-09** — **BR-RESOURCE-08**: Quotas bound each user to 50 resources and 250 MB, counting everything not rejected or failed.
 10. **BR-RESOURCE-10** — **BR-RESOURCE-09**: rejected is a verdict on the resource; failed is ours and retryable. A timeout or a 5xx never rejects a link.
 11. **BR-RESOURCE-11** — **BR-RESOURCE-10**: The URL fetcher checks the address it is connecting to, in the dialer, on every hop, and never uses a proxy. Checking DNS first and connecting later is not a check.
+12. **BR-RESOURCE-12** — Extracted text and anything generated from it is private to the resource's owner.
+13. **BR-RESOURCE-13** — Classification stores only spine codes that exist; the rest are dropped.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

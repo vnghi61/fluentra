@@ -2,13 +2,13 @@
 module: questionbank
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 4
 owner: "@learning-team"
 schema: assess
 tables: [questions, question_stats]
-depends_on: [content, ai, audit, search]
-depended_on_by: [exam, reading, listening, grammar, learning]
+depends_on: [content, lesson, learning, rbac]
+depended_on_by: [exam]
 spec_version: 1.0.0
 last_verified: 2026-08-06
 ---
@@ -25,7 +25,7 @@ last_verified: 2026-08-06
 | Path | `internal/modules/questionbank` |
 | Schema | `assess` |
 | Delivery phase | 4 |
-| Status | **PLANNED** |
+| Status | **IMPLEMENTED** |
 | Owner | @learning-team |
 
 ---
@@ -33,7 +33,7 @@ last_verified: 2026-08-06
 ## 1. Overview
 
 <!-- BEGIN GENERATED: overview -->
-The reusable item bank: authoring, typing, tagging, difficulty statistics, review workflow, and AI-assisted generation. One item, many uses — in a lesson, in a drill, in an exam.
+The exam item bank: generated questions tagged to the spine and to an exam part, each a content version drawn as an activity, with provenance, a fingerprint and empirical statistics.
 <!-- END GENERATED: overview -->
 
 ## 2. Responsibilities
@@ -41,19 +41,19 @@ The reusable item bank: authoring, typing, tagging, difficulty statistics, revie
 <!-- BEGIN GENERATED: responsibilities -->
 **This module owns:**
 
-- Question items across all supported types
-- Options, correct answers and per-option feedback
-- Question sets: reusable ordered groups
-- Tagging by skill, level, topic and exam relevance
-- Difficulty and discrimination statistics from real attempts
-- Authoring and review workflow
-- AI-assisted item generation for admin review
-- Item exposure control so the same items are not overused
+- Bank metadata for exam questions: kind, skill, CEFR level, exam part, questions per group, provenance
+- Generating draft questions for a part and spine nodes through `learning.Generator`
+- A normalised fingerprint per question, unique in the database
+- Moving an approved question into the bank course (`pool-bank`) once its content is published
+- Answering which published questions an exam can draw for a part
+- Holding `question_stats` for empirical difficulty
 
 **This module does NOT own:**
 
-- Delivering an exam — that is `exam`
-- Grading a learner's whole attempt — that is the exercise engine
+- The question's body, options and answer key — that is a `content` version, graded by the existing graders
+- Reviewing a question — that is `content`'s review queue (`/admin/review-queue`)
+- Composing or delivering a test — that is `exam`
+- Question sets — a set is a mock test composition, which `exam` stores
 <!-- END GENERATED: responsibilities -->
 
 ## 3. Entry points
@@ -74,15 +74,15 @@ Other modules may import **only** `internal/modules/questionbank/contract`.
 <!-- BEGIN GENERATED: contract -->
 | Kind | Name | Purpose |
 |---|---|---|
-| interface | `questionbank.Reader` | `GetSet`, `SampleItems(criteria)` — used by `exam` and by skill modules |
-| struct | `questionbank.Item` | `{ID, Type, Stem, Options, CorrectAnswer, Explanation}` — correct answers stripped for learner-facing calls |
+| interface | `questionbank.Reader` | `ListQuestions` (permission-checked) and `DrawableForPart` (system read for `exam`: published questions with an activity, stable order) |
+| interface | `questionbank.Author` | `GenerateQuestions`, `PublishQuestion` (refuses unreviewed content), `RetireQuestion` |
+| struct | `questionbank.Question` | Bank metadata only; the body is the content version it points at |
 
 ### Events
 
 | Event | Direction | Payload summary |
 |---|---|---|
-| `questionbank.item_published` | publishes | `{question_id, skill, level}` |
-| `activity.completed` | consumes | Accumulate attempt statistics for difficulty estimation |
+| `content.published` | consumes | Approving a bank question's content in the review queue appends it to the bank course and marks it published |
 <!-- END GENERATED: contract -->
 
 ## 5. Database schema
@@ -106,11 +106,9 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
 |---|---|---|---|
-| `GET` | `/api/v1/admin/questions` | `questionbank.read` | Search and filter items |
-| `POST` | `/api/v1/admin/questions` | `questionbank.create` | Create an item |
-| `POST` | `/api/v1/admin/questions/{id}/review` | `questionbank.review` | Approve or reject |
-| `POST` | `/api/v1/admin/questions/generate` | `questionbank.create` | AI-generate draft items for review |
-| `GET` | `/api/v1/admin/questions/{id}/stats` | `questionbank.read` | Empirical difficulty and discrimination |
+| `GET` | `/api/v1/admin/questions` | `questionbank.read` | Filter by exam part, kind, CEFR, spine node, status. Reachable by moderators |
+| `POST` | `/api/v1/admin/questions/generate` | `questionbank.create` | Generate draft questions for a part and nodes; they wait in the review queue |
+| `GET` | `/api/v1/admin/questions/{id}/stats` | `questionbank.read` | Empirical difficulty and discrimination. Reachable by moderators |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map
@@ -132,14 +130,10 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | Module | Direction | Why |
 |---|---|---|
 | [`content`](../../modules/content/AGENT.md) | → depends on | see its contract |
-| [`ai`](../../platform/ai/AGENT.md) | → depends on | see its contract |
-| [`audit`](../../modules/audit/AGENT.md) | → depends on | see its contract |
-| [`search`](../../platform/search/AGENT.md) | → depends on | see its contract |
+| [`lesson`](../../modules/lesson/AGENT.md) | → depends on | see its contract |
+| [`learning`](../../modules/learning/AGENT.md) | → depends on | see its contract |
+| [`rbac`](../../modules/rbac/AGENT.md) | → depends on | see its contract |
 | [`exam`](../../modules/exam/AGENT.md) | ← used by | consumes this module's contract |
-| [`reading`](../../modules/reading/AGENT.md) | ← used by | consumes this module's contract |
-| [`listening`](../../modules/listening/AGENT.md) | ← used by | consumes this module's contract |
-| [`grammar`](../../modules/grammar/AGENT.md) | ← used by | consumes this module's contract |
-| [`learning`](../../modules/learning/AGENT.md) | ← used by | consumes this module's contract |
 <!-- END GENERATED: related -->
 
 **Boundary reminder:** you may call these through their `contract` package only.
@@ -149,27 +143,23 @@ and fails `go-arch-lint` in CI.
 ## 9. Business rules
 
 <!-- BEGIN GENERATED: rules -->
-1. **BR-QUESTIONBANK-01** — The correct answer is **never** included in a learner-facing payload. The DTO used by learner endpoints does not contain the field at all — it cannot be leaked by an oversight.
-2. **BR-QUESTIONBANK-02** — AI-generated items always enter as drafts. They are never published without human review.
-3. **BR-QUESTIONBANK-03** — An author cannot approve their own item.
-4. **BR-QUESTIONBANK-04** — Difficulty is empirical (p-value from real attempts), with the authored estimate used only until enough attempts exist.
-5. **BR-QUESTIONBANK-05** — An item with fewer than 30 attempts has provisional statistics, clearly marked.
-6. **BR-QUESTIONBANK-06** — An item with discrimination below a threshold is flagged for review — it is not distinguishing strong from weak learners.
-7. **BR-QUESTIONBANK-07** — Exposure control caps how often an item can appear for the same learner within a window.
-8. **BR-QUESTIONBANK-08** — Editing a published item creates a new version; statistics do not carry over, because it is effectively a different item.
-9. **BR-QUESTIONBANK-09** — Every item states which skill and CEFR level it targets — an untagged item cannot be sampled.
+1. **BR-QUESTIONBANK-01** — A bank question's body is a content version and it is drawn as an activity. There is no second copy of its answer (no `question_options`).
+2. **BR-QUESTIONBANK-02** — The fingerprint is unique; a duplicate is refused by the database.
+3. **BR-QUESTIONBANK-03** — Every bank question carries provenance; an item without it is refused.
+4. **BR-QUESTIONBANK-04** — A question enters the bank only after its content version is published through the review queue. `PublishQuestion` on unreviewed content fails with `QUESTION_NOT_REVIEWED`.
+5. **BR-QUESTIONBANK-05** — Spine tags are `content.content_tags` on the question's content item, resolved through `content.TagIndex` — never joined from this module's SQL.
+6. **BR-QUESTIONBANK-06** — The correct answer never reaches a learner: sittings are served through the existing redaction.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks
 
 <!-- BEGIN GENERATED: tasks -->
-### Add a question type
+### Add a question kind
 
-1. Define the type, its option schema and its answer schema.
-2. Implement grading in the consuming skill module, not here.
-3. Add the authoring UI and the learner-facing renderer.
-4. Confirm the learner DTO for the new type excludes the answer.
-5. Add generation support to the prompt if AI authoring should cover it.
+1. Register the kind's grader and redaction rule in its skill module and in `content/contract/redact.go`.
+2. Add a runner component on the web.
+3. Teach `domain.FingerprintFromBody` the kind's question text and options.
+4. Seed an `assess.exam_parts` row whose `kind` it is.
 <!-- END GENERATED: tasks -->
 
 ## 11. Known limitations

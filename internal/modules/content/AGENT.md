@@ -192,6 +192,7 @@ and fails `go-arch-lint` in CI.
 7. **BR-CONTENT-07** — `body` is validated against a JSON schema chosen by `kind`, so a skill module's payload cannot be malformed.
 8. **BR-CONTENT-08** — Publishing invalidates the content cache, enqueues TTS generation, and triggers reindexing — all through the outbox so a failure in one does not roll back the publish.
 9. **BR-CONTENT-09** — Slugs are immutable after first publication; a changed slug would break external links and bookmarks.
+10. **BR-CONTENT-10** — Machine-authored exam and curriculum content enters as a draft (`Author.EnsureDraft`); only practice content may be published without review (`EnsurePublished`).
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

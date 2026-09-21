@@ -38,6 +38,7 @@ import (
 	listeningcontract "github.com/fluentra/fluentra/internal/modules/listening/contract"
 	"github.com/fluentra/fluentra/internal/modules/payment"
 	paymentsvc "github.com/fluentra/fluentra/internal/modules/payment/service"
+	"github.com/fluentra/fluentra/internal/modules/questionbank"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/reading"
@@ -799,7 +800,22 @@ func startModules(
 		return err
 	}
 
-	return nil
+	return subscribeQuestionbank(bus, pool, contentModule, lessonModule)
+}
+
+// subscribeQuestionbank registers the consumer that makes an approved bank
+// question drawable: approving it in the review queue publishes its content, and
+// content.published appends it to the bank course. No RBAC — the consumer acts
+// for the reviewer whose approval produced the event.
+func subscribeQuestionbank(
+	bus eventbus.EventBus, pool *pgxpool.Pool, contentModule *content.Module, lessonModule *lesson.Module,
+) error {
+	questionbankModule := questionbank.New(questionbank.Deps{
+		Pool:          pool,
+		ContentReader: contentModule.Reader(),
+		LessonAuthor:  lessonModule.Author(),
+	})
+	return questionbankModule.Subscribe(bus)
 }
 
 // newMailSender builds the appropriate Sender based on MAIL_TRANSPORT.

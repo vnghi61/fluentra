@@ -141,7 +141,12 @@ func (r *Repository) UpdateQuestionActivityID(
 }
 
 // ListQuestions returns paginated items matching criteria and total count.
-func (r *Repository) ListQuestions(ctx context.Context, filter contract.Filter) ([]*domain.Question, int, error) {
+//
+// taggedItemIDs, when non-nil, restricts the result to those content items: it is
+// how a spine-node filter arrives, resolved by `content` rather than joined here.
+func (r *Repository) ListQuestions(
+	ctx context.Context, filter contract.Filter, taggedItemIDs []uuid.UUID,
+) ([]*domain.Question, int, error) {
 	limit := filter.Limit
 	if limit <= 0 {
 		limit = 20
@@ -152,26 +157,26 @@ func (r *Repository) ListQuestions(ctx context.Context, filter contract.Filter) 
 	}
 
 	total, err := r.queries.CountQuestions(ctx, sqlc.CountQuestionsParams{
-		Kind:       filter.Kind,
-		Skill:      filter.Skill,
-		CefrLevel:  filter.CEFRLevel,
-		Status:     filter.Status,
-		ExamPartID: filter.ExamPartID,
-		NodeCode:   filter.NodeCode,
+		Kind:           filter.Kind,
+		Skill:          filter.Skill,
+		CefrLevel:      filter.CEFRLevel,
+		Status:         filter.Status,
+		ExamPartID:     filter.ExamPartID,
+		ContentItemIds: taggedItemIDs,
 	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("count questions: %w", err)
 	}
 
 	rows, err := r.queries.ListQuestions(ctx, sqlc.ListQuestionsParams{
-		Limit:      int32(limit),
-		Offset:     int32(offset),
-		Kind:       filter.Kind,
-		Skill:      filter.Skill,
-		CefrLevel:  filter.CEFRLevel,
-		Status:     filter.Status,
-		ExamPartID: filter.ExamPartID,
-		NodeCode:   filter.NodeCode,
+		Limit:          int32(limit),
+		Offset:         int32(offset),
+		Kind:           filter.Kind,
+		Skill:          filter.Skill,
+		CefrLevel:      filter.CEFRLevel,
+		Status:         filter.Status,
+		ExamPartID:     filter.ExamPartID,
+		ContentItemIds: taggedItemIDs,
 	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("list questions: %w", err)
@@ -183,6 +188,22 @@ func (r *Repository) ListQuestions(ctx context.Context, filter contract.Filter) 
 	}
 
 	return items, int(total), nil
+}
+
+// ListDrawableQuestionsForPart returns the published questions of a part that
+// have an activity in the bank course, in a stable order.
+func (r *Repository) ListDrawableQuestionsForPart(
+	ctx context.Context, examPartID uuid.UUID,
+) ([]*domain.Question, error) {
+	rows, err := r.queries.ListDrawableQuestionsForPart(ctx, &examPartID)
+	if err != nil {
+		return nil, fmt.Errorf("list drawable questions: %w", err)
+	}
+	items := make([]*domain.Question, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, toDomainQuestion(row))
+	}
+	return items, nil
 }
 
 // SamplePublishedQuestions draws N random published questions matching criteria.

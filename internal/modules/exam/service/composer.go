@@ -183,25 +183,27 @@ func (s *Service) GetExamVersionCoverage(ctx context.Context, versionID uuid.UUI
 }
 
 func (s *Service) computePartCoverage(ctx context.Context, p *domain.ExamPart) ExamPartCoverageDTO {
-	groupsNeeded := p.QuestionCount / p.GroupSize
-	if groupsNeeded <= 0 {
-		groupsNeeded = 1
-	}
+	groupsNeeded := groupsPerTest(p)
 
+	testsPossible := 0
 	publishedAvailable := 0
 	if s.questionbank != nil {
-		pubStatus := questionbankcontract.StatusPublished
-		_, total, err := s.questionbank.ListQuestions(ctx, questionbankcontract.Filter{
-			ExamPartID: &p.ID,
-			Status:     &pubStatus,
-			Limit:      1,
-		})
+		candidates, err := s.questionbank.DrawableForPart(ctx, p.ID)
 		if err == nil {
-			publishedAvailable = total
+			usable := fitPart(p, candidates)
+			publishedAvailable = len(usable)
+			// A test needs part.QuestionCount questions; count what the usable
+			// groups hold, so a variable-size part (TOEIC Part 7) is measured in
+			// questions and a fixed-size one comes out as groups / groups needed.
+			held := 0
+			for _, q := range usable {
+				held += groupSize(q)
+			}
+			if p.QuestionCount > 0 {
+				testsPossible = held / p.QuestionCount
+			}
 		}
 	}
-
-	testsPossible := publishedAvailable / groupsNeeded
 
 	return ExamPartCoverageDTO{
 		PartID:                   p.ID,
@@ -214,6 +216,40 @@ func (s *Service) computePartCoverage(ctx context.Context, p *domain.ExamPart) E
 		GroupsNeededPerTest:      groupsNeeded,
 		TestsPossible:            testsPossible,
 	}
+}
+
+// groupsPerTest is how many groups a fixed-size part draws. A part seeded with
+// group_size 1 whose bank items hold several questions each (TOEIC Part 7's
+// passages) has no fixed number; it is reported as its question count.
+func groupsPerTest(p *domain.ExamPart) int {
+	if p.GroupSize <= 0 {
+		return max(p.QuestionCount, 1)
+	}
+	return max(p.QuestionCount/p.GroupSize, 1)
+}
+
+// groupSize is how many questions one bank item holds.
+func groupSize(q *questionbankcontract.Question) int {
+	return max(q.QuestionCount, 1)
+}
+
+// fitPart keeps the drawable items whose shape fits the part. A part with a
+// fixed group size (VSTEP Listening Part 2: conversations of 4) takes only items
+// of exactly that size, or a test would cite questions it never plays. A part
+// seeded with group size 1 takes items of any size and is filled by question
+// count instead (G.3: question_count is questions; drawing is by activity).
+func fitPart(p *domain.ExamPart, candidates []*questionbankcontract.Question) []*questionbankcontract.Question {
+	out := make([]*questionbankcontract.Question, 0, len(candidates))
+	for _, q := range candidates {
+		if q.ActivityID == nil || *q.ActivityID == uuid.Nil {
+			continue
+		}
+		if p.GroupSize > 1 && groupSize(q) != p.GroupSize {
+			continue
+		}
+		out = append(out, q)
+	}
+	return out
 }
 
 // filterRequestedParts extracts requested parts or returns all parts if none requested.
@@ -263,87 +299,196 @@ func (s *Service) resolveMockTestParts(
 	return blueprint, parts, nil
 }
 
-// drawPartActivities selects the required number of activity IDs for one exam part.
+// drawPartActivities selects the activities for one exam part: exactly
+// part.QuestionCount questions, in whole groups, preferring what this learner
+// has not seen and following the blueprint's CEFR mix where the bank allows.
+// A part the bank cannot fill is refused with the part named (H.5 trap 1).
 func (s *Service) drawPartActivities(
-	ctx context.Context, part *domain.ExamPart, seed int64, userID *uuid.UUID,
+	ctx context.Context, part *domain.ExamPart, cefrMix map[string]float64, seed int64, userID *uuid.UUID,
 ) ([]uuid.UUID, error) {
-	needed := part.QuestionCount / part.GroupSize
-	if needed <= 0 {
-		needed = 1
-	}
-
-	var candidateQuestions []*questionbankcontract.Question
+	var candidates []*questionbankcontract.Question
 	if s.questionbank != nil {
-		pubStatus := questionbankcontract.StatusPublished
-		questions, _, err := s.questionbank.ListQuestions(ctx, questionbankcontract.Filter{
-			ExamPartID: &part.ID,
-			Status:     &pubStatus,
-			Limit:      1000,
-		})
+		drawable, err := s.questionbank.DrawableForPart(ctx, part.ID)
 		if err != nil {
-			return nil, fmt.Errorf("fetch published questions for part %s: %w", part.ID, err)
+			return nil, fmt.Errorf("fetch drawable questions for part %s: %w", part.ID, err)
 		}
-		candidateQuestions = questions
+		candidates = fitPart(part, drawable)
 	}
 
-	if len(candidateQuestions) < needed {
+	ordered := s.orderByExposure(ctx, candidates, seed, int64(part.PartNumber), userID)
+	picked, filled := pickByCEFR(ordered, part.QuestionCount, cefrMix)
+	if filled != part.QuestionCount {
+		held := 0
+		for _, q := range candidates {
+			held += groupSize(q)
+		}
+		needed, available := part.QuestionCount, held
+		if part.GroupSize > 1 {
+			needed, available = groupsPerTest(part), len(candidates)
+		}
 		return nil, apperr.New(
 			apperr.Conflict,
 			"INSUFFICIENT_ITEMS",
 			fmt.Sprintf("insufficient published questions to compose part %s-%d (%s): needed %d, available %d",
-				part.Section, part.PartNumber, part.ID, needed, len(candidateQuestions)),
+				part.Section, part.PartNumber, part.ID, needed, available),
 		)
 	}
 
-	candidateActIDs := make([]uuid.UUID, len(candidateQuestions))
-	for i, q := range candidateQuestions {
-		if q.ActivityID != nil && *q.ActivityID != uuid.Nil {
-			candidateActIDs[i] = *q.ActivityID
-		} else {
-			candidateActIDs[i] = q.ID
-		}
+	ids := make([]uuid.UUID, len(picked))
+	for i, q := range picked {
+		ids[i] = *q.ActivityID
 	}
-
-	return s.sampleActivities(ctx, candidateActIDs, needed, seed, int64(part.PartNumber), userID)
+	return ids, nil
 }
 
-func (s *Service) sampleActivities(
-	ctx context.Context, candidateActIDs []uuid.UUID, needed int, seed, partNum int64, userID *uuid.UUID,
-) ([]uuid.UUID, error) {
-	var unseen, seen []uuid.UUID
+// orderByExposure returns the candidates unseen-first, each half shuffled by the
+// seed. The input arrives ordered by id, so the same seed gives the same order.
+func (s *Service) orderByExposure(
+	ctx context.Context, candidates []*questionbankcontract.Question, seed, partNum int64, userID *uuid.UUID,
+) []*questionbankcontract.Question {
+	var unseen, seen []*questionbankcontract.Question
 	if userID != nil && s.exposures != nil {
-		exposures, expErr := s.exposures.ListItemExposures(ctx, *userID, candidateActIDs)
-		if expErr != nil {
-			slog.WarnContext(ctx, "could not query item exposures", "user_id", userID, "error", expErr)
+		actIDs := make([]uuid.UUID, len(candidates))
+		for i, q := range candidates {
+			actIDs[i] = *q.ActivityID
 		}
-		for _, actID := range candidateActIDs {
-			if _, served := exposures[actID]; served {
-				seen = append(seen, actID)
+		exposures, err := s.exposures.ListItemExposures(ctx, *userID, actIDs)
+		if err != nil {
+			slog.WarnContext(ctx, "could not query item exposures", "user_id", userID, "error", err)
+		}
+		for _, q := range candidates {
+			if _, served := exposures[*q.ActivityID]; served {
+				seen = append(seen, q)
 			} else {
-				unseen = append(unseen, actID)
+				unseen = append(unseen, q)
 			}
 		}
 	} else {
-		unseen = candidateActIDs
+		unseen = append(unseen, candidates...)
 	}
 
 	//nolint:gosec // deterministic shuffle for pseudo-random mock test composition
 	rng := rand.New(rand.NewSource(seed + partNum*1000003))
+	rng.Shuffle(len(unseen), func(i, j int) { unseen[i], unseen[j] = unseen[j], unseen[i] })
+	rng.Shuffle(len(seen), func(i, j int) { seen[i], seen[j] = seen[j], seen[i] })
+	return append(unseen, seen...)
+}
 
-	rng.Shuffle(len(unseen), func(i, j int) {
-		unseen[i], unseen[j] = unseen[j], unseen[i]
-	})
-	rng.Shuffle(len(seen), func(i, j int) {
-		seen[i], seen[j] = seen[j], seen[i]
-	})
-
-	if len(unseen) >= needed {
-		return unseen[:needed], nil
+// pickByCEFR fills exactly target questions from ordered. Items whose level
+// still has room in the blueprint's mix go first, then the rest, each in the
+// order given (unseen first). The mix is a preference, not a refusal: a bank
+// short of C1 still yields a test. It returns what it picked and how many
+// questions that holds; less than target means the bank cannot fill the part.
+func pickByCEFR(
+	ordered []*questionbankcontract.Question, target int, cefrMix map[string]float64,
+) ([]*questionbankcontract.Question, int) {
+	quota := cefrQuotas(target, cefrMix)
+	preferred := make([]*questionbankcontract.Question, 0, len(ordered))
+	var rest []*questionbankcontract.Question
+	for _, q := range ordered {
+		if size := groupSize(q); quota[q.CEFRLevel] >= size {
+			quota[q.CEFRLevel] -= size
+			preferred = append(preferred, q)
+			continue
+		}
+		rest = append(rest, q)
 	}
-	picked := append([]uuid.UUID{}, unseen...)
-	shortfall := needed - len(picked)
-	picked = append(picked, seen[:shortfall]...)
-	return picked, nil
+	return fillExactly(append(preferred, rest...), target)
+}
+
+// fillExactly walks items in order and takes each one that still leaves the
+// remainder reachable with the items after it. Plain greedy stops at 53 of 54
+// when every passage left holds two or more questions; this finds 54 whenever
+// the items can make it, and still prefers earlier items.
+func fillExactly(items []*questionbankcontract.Question, target int) ([]*questionbankcontract.Question, int) {
+	if target <= 0 {
+		return nil, 0
+	}
+	// reach[i][r]: can items[i:] sum to exactly r.
+	reach := make([][]bool, len(items)+1)
+	reach[len(items)] = make([]bool, target+1)
+	reach[len(items)][0] = true
+	for i := len(items) - 1; i >= 0; i-- {
+		size := groupSize(items[i])
+		reach[i] = make([]bool, target+1)
+		for r := 0; r <= target; r++ {
+			reach[i][r] = reach[i+1][r] || (r >= size && reach[i+1][r-size])
+		}
+	}
+
+	var picked []*questionbankcontract.Question
+	remaining := target
+	for i, q := range items {
+		if remaining == 0 {
+			break
+		}
+		size := groupSize(q)
+		if size <= remaining && reach[i+1][remaining-size] {
+			picked = append(picked, q)
+			remaining -= size
+		}
+	}
+	if remaining != 0 {
+		// Unreachable: report the most a greedy pass could hold, for the message.
+		picked, remaining = nil, target
+		for _, q := range items {
+			if size := groupSize(q); size <= remaining {
+				picked = append(picked, q)
+				remaining -= size
+			}
+		}
+	}
+	return picked, target - remaining
+}
+
+// cefrQuotas splits target questions across levels by the blueprint's weights,
+// largest remainder first, so the quotas always sum to target.
+func cefrQuotas(target int, mix map[string]float64) map[string]int {
+	quota := make(map[string]int, len(mix))
+	total := 0.0
+	for _, w := range mix {
+		if w > 0 {
+			total += w
+		}
+	}
+	if total == 0 || target <= 0 {
+		return quota
+	}
+	type rem struct {
+		level string
+		frac  float64
+	}
+	var rems []rem
+	assigned := 0
+	for level, w := range mix {
+		if w <= 0 {
+			continue
+		}
+		exact := float64(target) * w / total
+		whole := int(exact)
+		quota[level] = whole
+		assigned += whole
+		rems = append(rems, rem{level, exact - float64(whole)})
+	}
+	sort.Slice(rems, func(i, j int) bool {
+		if rems[i].frac != rems[j].frac {
+			return rems[i].frac > rems[j].frac
+		}
+		return rems[i].level < rems[j].level
+	})
+	for i := 0; assigned < target && len(rems) > 0; i = (i + 1) % len(rems) {
+		quota[rems[i].level]++
+		assigned++
+	}
+	return quota
+}
+
+func parseCEFRMix(raw json.RawMessage) map[string]float64 {
+	mix := map[string]float64{}
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &mix)
+	}
+	return mix
 }
 
 // ComposeMockTest composes a new mock test from the question bank.
@@ -369,21 +514,39 @@ func (s *Service) ComposeMockTest(
 		return nil, domain.ErrInvalidMockMode
 	}
 
+	if mode == domain.MockModeFixed && len(req.Parts) > 0 {
+		return nil, apperr.New(apperr.Validation, "FIXED_TEST_HAS_NO_PART_SELECTION",
+			"A fixed test is the whole blueprint; choose custom to pick parts.")
+	}
+
 	blueprint, parts, err := s.resolveMockTestParts(ctx, req.BlueprintID, req.Parts)
 	if err != nil {
 		return nil, err
 	}
 
+	// A fixed test is one stored composition everyone shares (H.2). It is
+	// composed once, without anyone's exposures — otherwise the "same" test would
+	// differ by who asked first — and every later request returns that row.
+	var drawFor *uuid.UUID
 	var seed int64
 	if mode == domain.MockModeFixed {
+		existing, findErr := s.findFixedMockTest(ctx, blueprint.ID)
+		if findErr != nil {
+			return nil, findErr
+		}
+		if existing != nil {
+			return existing, nil
+		}
 		seed = hashUUID(blueprint.ID)
 	} else {
+		drawFor = userID
 		seed = time.Now().UnixNano()
 	}
 
+	cefrMix := parseCEFRMix(blueprint.CefrDistribution)
 	compositions := make([]domain.MockTestPartComposition, 0, len(parts))
 	for _, part := range parts {
-		picked, drawErr := s.drawPartActivities(ctx, part, seed, userID)
+		picked, drawErr := s.drawPartActivities(ctx, part, cefrMix, seed, drawFor)
 		if drawErr != nil {
 			return nil, drawErr
 		}
@@ -413,6 +576,24 @@ func (s *Service) ComposeMockTest(
 		return nil, fmt.Errorf("create mock test: %w", err)
 	}
 	return saved, nil
+}
+
+// findFixedMockTest returns the earliest fixed test composed for a blueprint.
+func (s *Service) findFixedMockTest(ctx context.Context, blueprintID uuid.UUID) (*domain.MockTest, error) {
+	public, err := s.repo.ListMockTestsByOwner(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("list public mock tests: %w", err)
+	}
+	var found *domain.MockTest
+	for _, mt := range public {
+		if mt.OwnerID != nil || mt.BlueprintID != blueprintID || mt.Mode != domain.MockModeFixed {
+			continue
+		}
+		if found == nil || mt.CreatedAt.Before(found.CreatedAt) {
+			found = mt
+		}
+	}
+	return found, nil
 }
 
 // compositionToSectionActivities converts a mock test composition into ordered SectionActivities.
@@ -483,17 +664,20 @@ func (s *Service) compositionToSectionActivities(
 	return drawn, allActivityIDs
 }
 
-// resolveExamForVersion finds an assess.exam row for the version.
-func (s *Service) resolveExamForVersion(ctx context.Context, versionID uuid.UUID) (*sqlc.AssessExam, uuid.UUID) {
+// resolveExamForVersion finds the assess.exams row a version's sittings are
+// recorded under (1700000870 seeds one per blueprinted version). A version with
+// none is refused: recording the sitting under some other exam would put a
+// VSTEP attempt in a TOEIC history.
+func (s *Service) resolveExamForVersion(ctx context.Context, versionID uuid.UUID) (*sqlc.AssessExam, error) {
 	exam, err := s.repo.GetExamByVersionID(ctx, versionID)
-	if err == nil && exam != nil {
-		return exam, exam.ID
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("find exam for version %s: %w", versionID, err)
 	}
-	existingExams, _ := s.repo.ListExams(ctx)
-	if len(existingExams) > 0 {
-		return &existingExams[0], existingExams[0].ID
+	if exam == nil || err != nil {
+		return nil, apperr.New(apperr.Conflict, "EXAM_VERSION_HAS_NO_EXAM",
+			"This exam version has no exam to record sittings under.")
 	}
-	return nil, uuid.New()
+	return exam, nil
 }
 
 // validateMockTestAttempt loads and checks permissions and structures for a mock test.
@@ -569,7 +753,11 @@ func (s *Service) StartMockTestAttempt(
 		activityIDsToExpose = allActivityIDs
 	}
 
-	exam, examID := s.resolveExamForVersion(ctx, version.ID)
+	exam, err := s.resolveExamForVersion(ctx, version.ID)
+	if err != nil {
+		return nil, err
+	}
+	examID := exam.ID
 
 	duration := version.TotalMinutes
 	if duration <= 0 {

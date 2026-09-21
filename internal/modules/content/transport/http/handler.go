@@ -94,17 +94,24 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Get("/foundation/path", h.getFoundationPath)
 }
 
+// ReviewRoutes mounts the review queue and the review and publish decisions.
+// They are mounted outside the admin-only group: a moderator holds
+// content.review and content.publish without being an admin (ADR-0026, WO 19
+// §4.4), and each handler checks its own permission.
+func (h *Handler) ReviewRoutes(router chi.Router) {
+	router.Get("/admin/review-queue", h.adminListReviewQueue)
+	router.Post("/admin/content/{id}/review", h.review)
+	router.Post("/admin/content/{id}/publish", h.publish)
+}
+
 // AdminRoutes mounts staff/authoring content endpoints under the admin router.
 func (h *Handler) AdminRoutes(router chi.Router) {
 	router.Get("/admin/content", h.adminListContent)
 	router.Get("/admin/content/reports", h.adminListReports)
-	router.Get("/admin/review-queue", h.adminListReviewQueue)
 	router.Get("/admin/content/{id}", h.adminGetContent)
 	router.Post("/admin/content", h.createItem)
 	router.Put("/admin/content/{id}/draft", h.updateDraft)
 	router.Post("/admin/content/{id}/submit", h.submitForReview)
-	router.Post("/admin/content/{id}/review", h.review)
-	router.Post("/admin/content/{id}/publish", h.publish)
 	router.Post("/admin/content/{id}/archive", h.archive)
 
 	// Foundation Knowledge Spine authoring

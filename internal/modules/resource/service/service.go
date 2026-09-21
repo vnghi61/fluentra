@@ -673,7 +673,12 @@ func (s *Service) ClassifyResource(ctx context.Context, resourceID uuid.UUID) er
 	}
 
 	ext, err := s.repo.GetExtractionByResourceID(ctx, resourceID)
-	if err != nil || ext == nil || ext.CharCount == 0 || strings.TrimSpace(ext.Text) == "" {
+	if err != nil {
+		// A database error is the job's to retry; answering nil would mark the
+		// resource done and it would never be classified. No row is (nil, nil).
+		return fmt.Errorf("get extraction for %s: %w", resourceID, err)
+	}
+	if ext == nil || ext.CharCount == 0 || strings.TrimSpace(ext.Text) == "" {
 		return nil
 	}
 

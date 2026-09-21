@@ -29,6 +29,8 @@ ON CONFLICT (slug) DO UPDATE SET version_id = EXCLUDED.version_id;
 
 -- +goose Down
 -- +goose StatementBegin
+-- The two exams rows reference exam_versions, which 1700000860's Down deletes.
+DELETE FROM assess.exams WHERE slug IN ('toeic-lr-2026', 'vstep-3-5');
 ALTER TABLE assess.exam_attempts DROP COLUMN IF EXISTS mock_test_id;
 DROP TABLE IF EXISTS assess.mock_tests;
 -- +goose StatementEnd

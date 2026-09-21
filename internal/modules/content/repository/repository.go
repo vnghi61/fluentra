@@ -720,6 +720,15 @@ func (r *Repository) GetTaxonomyByID(ctx context.Context, id uuid.UUID) (domain.
 	return toDomainTaxonomy(row), nil
 }
 
+// ListContentItemIDsForTaxonomy returns the items tagged with a taxonomy node.
+func (r *Repository) ListContentItemIDsForTaxonomy(ctx context.Context, taxonomyID uuid.UUID) ([]uuid.UUID, error) {
+	ids, err := r.queries.ListContentItemIDsForTaxonomy(ctx, taxonomyID)
+	if err != nil {
+		return nil, fmt.Errorf("list content items for taxonomy: %w", err)
+	}
+	return ids, nil
+}
+
 // GetTaxonomyByCode retrieves the one taxonomy node carrying this code.
 //
 // A code is unique per namespace, not globally: nothing stops `skill.LISTENING`

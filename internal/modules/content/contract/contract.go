@@ -139,6 +139,12 @@ type TaxonomyNode struct {
 	DeprecatedAt *time.Time `json:"deprecated_at,omitempty"`
 }
 
+// TagIndex answers which content items carry a spine node, so that a module
+// filtering its own rows by spine tag never joins content.content_tags (rule L2).
+type TagIndex interface {
+	ItemIDsTaggedWith(ctx context.Context, code string) ([]uuid.UUID, error)
+}
+
 // TaxonomyResolver resolves taxonomy codes to identifiers and metadata.
 type TaxonomyResolver interface {
 	ResolveTaxonomyID(ctx context.Context, namespace, code string) (*uuid.UUID, error)

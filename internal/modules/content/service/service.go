@@ -130,6 +130,7 @@ type Repository interface {
 	) (domain.Taxonomy, error)
 	GetTaxonomyByID(ctx context.Context, id uuid.UUID) (domain.Taxonomy, error)
 	GetTaxonomyByCode(ctx context.Context, code string) (domain.Taxonomy, error)
+	ListContentItemIDsForTaxonomy(ctx context.Context, taxonomyID uuid.UUID) ([]uuid.UUID, error)
 	ListTaxonomiesFiltered(
 		ctx context.Context,
 		namespace, cefrLevel *string,
@@ -249,6 +250,27 @@ func (s *Service) ResolveTaxonomyID(ctx context.Context, namespace, code string)
 		return nil, err
 	}
 	return &tax.ID, nil
+}
+
+// ItemIDsTaggedWith returns the content items tagged with the spine node carrying
+// this code. An unknown code tags nothing, so it returns an empty, non-nil slice:
+// a caller filtering by it must match no rows rather than drop the filter.
+func (s *Service) ItemIDsTaggedWith(ctx context.Context, code string) ([]uuid.UUID, error) {
+	tax, err := s.repo.GetTaxonomyByCode(ctx, code)
+	if err != nil {
+		if errors.Is(err, domain.ErrTaxonomyNodeNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			return []uuid.UUID{}, nil
+		}
+		return nil, err
+	}
+	ids, err := s.repo.ListContentItemIDsForTaxonomy(ctx, tax.ID)
+	if err != nil {
+		return nil, err
+	}
+	if ids == nil {
+		ids = []uuid.UUID{}
+	}
+	return ids, nil
 }
 
 // GetTaxonomyByCode retrieves a taxonomy node carrying this code.

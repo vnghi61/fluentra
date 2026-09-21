@@ -48,12 +48,9 @@ WHERE (sqlc.narg('kind')::text IS NULL OR kind = sqlc.narg('kind'))
   AND (sqlc.narg('cefr_level')::text IS NULL OR cefr_level = sqlc.narg('cefr_level'))
   AND (sqlc.narg('status')::text IS NULL OR status = sqlc.narg('status'))
   AND (sqlc.narg('exam_part_id')::uuid IS NULL OR exam_part_id = sqlc.narg('exam_part_id'))
-  AND (sqlc.narg('node_code')::text IS NULL OR EXISTS (
-      SELECT 1 FROM content.content_tags ct
-      JOIN content.taxonomies t ON t.id = ct.taxonomy_id
-      WHERE ct.item_id = assess.questions.content_item_id
-        AND t.code = sqlc.narg('node_code')
-  ))
+  -- The spine tag filter arrives as content item ids resolved through content's
+  -- contract: content.content_tags belongs to `content` (rule L2).
+  AND (sqlc.narg('content_item_ids')::uuid[] IS NULL OR content_item_id = ANY(sqlc.narg('content_item_ids')::uuid[]))
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
@@ -64,12 +61,18 @@ WHERE (sqlc.narg('kind')::text IS NULL OR kind = sqlc.narg('kind'))
   AND (sqlc.narg('cefr_level')::text IS NULL OR cefr_level = sqlc.narg('cefr_level'))
   AND (sqlc.narg('status')::text IS NULL OR status = sqlc.narg('status'))
   AND (sqlc.narg('exam_part_id')::uuid IS NULL OR exam_part_id = sqlc.narg('exam_part_id'))
-  AND (sqlc.narg('node_code')::text IS NULL OR EXISTS (
-      SELECT 1 FROM content.content_tags ct
-      JOIN content.taxonomies t ON t.id = ct.taxonomy_id
-      WHERE ct.item_id = assess.questions.content_item_id
-        AND t.code = sqlc.narg('node_code')
-  ));
+  -- The spine tag filter arrives as content item ids resolved through content's
+  -- contract: content.content_tags belongs to `content` (rule L2).
+  AND (sqlc.narg('content_item_ids')::uuid[] IS NULL OR content_item_id = ANY(sqlc.narg('content_item_ids')::uuid[]));
+
+-- name: ListDrawableQuestionsForPart :many
+-- What an exam can actually draw for a part: published, and appended to the bank
+-- course so it has an activity. Ordered by id so a seeded shuffle is stable.
+SELECT * FROM assess.questions
+WHERE exam_part_id = $1
+  AND status = 'published'
+  AND activity_id IS NOT NULL
+ORDER BY id;
 
 -- name: SamplePublishedQuestions :many
 SELECT * FROM assess.questions

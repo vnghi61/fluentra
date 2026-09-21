@@ -660,6 +660,10 @@ func (f *fakeRepo) GetTaxonomyByID(_ context.Context, id uuid.UUID) (domain.Taxo
 	return domain.Taxonomy{ID: id, Code: "TOPIC"}, nil
 }
 
+func (f *fakeRepo) ListContentItemIDsForTaxonomy(context.Context, uuid.UUID) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
 func (f *fakeRepo) GetTaxonomyByCode(_ context.Context, code string) (domain.Taxonomy, error) {
 	return domain.Taxonomy{ID: uuid.New(), Code: code, Namespace: domain.NamespaceGrammar}, nil
 }

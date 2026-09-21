@@ -20,21 +20,18 @@ WHERE ($1::text IS NULL OR kind = $1)
   AND ($3::text IS NULL OR cefr_level = $3)
   AND ($4::text IS NULL OR status = $4)
   AND ($5::uuid IS NULL OR exam_part_id = $5)
-  AND ($6::text IS NULL OR EXISTS (
-      SELECT 1 FROM content.content_tags ct
-      JOIN content.taxonomies t ON t.id = ct.taxonomy_id
-      WHERE ct.item_id = assess.questions.content_item_id
-        AND t.code = $6
-  ))
+  -- The spine tag filter arrives as content item ids resolved through content's
+  -- contract: content.content_tags belongs to ` + "`" + `content` + "`" + ` (rule L2).
+  AND ($6::uuid[] IS NULL OR content_item_id = ANY($6::uuid[]))
 `
 
 type CountQuestionsParams struct {
-	Kind       *string
-	Skill      *string
-	CefrLevel  *string
-	Status     *string
-	ExamPartID *uuid.UUID
-	NodeCode   *string
+	Kind           *string
+	Skill          *string
+	CefrLevel      *string
+	Status         *string
+	ExamPartID     *uuid.UUID
+	ContentItemIds []uuid.UUID
 }
 
 func (q *Queries) CountQuestions(ctx context.Context, arg CountQuestionsParams) (int64, error) {
@@ -44,7 +41,7 @@ func (q *Queries) CountQuestions(ctx context.Context, arg CountQuestionsParams) 
 		arg.CefrLevel,
 		arg.Status,
 		arg.ExamPartID,
-		arg.NodeCode,
+		arg.ContentItemIds,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -221,6 +218,51 @@ func (q *Queries) GetQuestionStats(ctx context.Context, questionID uuid.UUID) (A
 	return i, err
 }
 
+const listDrawableQuestionsForPart = `-- name: ListDrawableQuestionsForPart :many
+SELECT id, content_item_id, activity_id, exam_part_id, kind, skill, cefr_level, difficulty, question_count, fingerprint, provenance, status, created_at, updated_at FROM assess.questions
+WHERE exam_part_id = $1
+  AND status = 'published'
+  AND activity_id IS NOT NULL
+ORDER BY id
+`
+
+// What an exam can actually draw for a part: published, and appended to the bank
+// course so it has an activity. Ordered by id so a seeded shuffle is stable.
+func (q *Queries) ListDrawableQuestionsForPart(ctx context.Context, examPartID *uuid.UUID) ([]AssessQuestion, error) {
+	rows, err := q.db.Query(ctx, listDrawableQuestionsForPart, examPartID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AssessQuestion
+	for rows.Next() {
+		var i AssessQuestion
+		if err := rows.Scan(
+			&i.ID,
+			&i.ContentItemID,
+			&i.ActivityID,
+			&i.ExamPartID,
+			&i.Kind,
+			&i.Skill,
+			&i.CefrLevel,
+			&i.Difficulty,
+			&i.QuestionCount,
+			&i.Fingerprint,
+			&i.Provenance,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listQuestions = `-- name: ListQuestions :many
 SELECT id, content_item_id, activity_id, exam_part_id, kind, skill, cefr_level, difficulty, question_count, fingerprint, provenance, status, created_at, updated_at FROM assess.questions
 WHERE ($3::text IS NULL OR kind = $3)
@@ -228,25 +270,22 @@ WHERE ($3::text IS NULL OR kind = $3)
   AND ($5::text IS NULL OR cefr_level = $5)
   AND ($6::text IS NULL OR status = $6)
   AND ($7::uuid IS NULL OR exam_part_id = $7)
-  AND ($8::text IS NULL OR EXISTS (
-      SELECT 1 FROM content.content_tags ct
-      JOIN content.taxonomies t ON t.id = ct.taxonomy_id
-      WHERE ct.item_id = assess.questions.content_item_id
-        AND t.code = $8
-  ))
+  -- The spine tag filter arrives as content item ids resolved through content's
+  -- contract: content.content_tags belongs to ` + "`" + `content` + "`" + ` (rule L2).
+  AND ($8::uuid[] IS NULL OR content_item_id = ANY($8::uuid[]))
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2
 `
 
 type ListQuestionsParams struct {
-	Limit      int32
-	Offset     int32
-	Kind       *string
-	Skill      *string
-	CefrLevel  *string
-	Status     *string
-	ExamPartID *uuid.UUID
-	NodeCode   *string
+	Limit          int32
+	Offset         int32
+	Kind           *string
+	Skill          *string
+	CefrLevel      *string
+	Status         *string
+	ExamPartID     *uuid.UUID
+	ContentItemIds []uuid.UUID
 }
 
 func (q *Queries) ListQuestions(ctx context.Context, arg ListQuestionsParams) ([]AssessQuestion, error) {
@@ -258,7 +297,7 @@ func (q *Queries) ListQuestions(ctx context.Context, arg ListQuestionsParams) ([
 		arg.CefrLevel,
 		arg.Status,
 		arg.ExamPartID,
-		arg.NodeCode,
+		arg.ContentItemIds,
 	)
 	if err != nil {
 		return nil, err

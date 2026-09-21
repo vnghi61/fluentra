@@ -96,6 +96,11 @@ type Reader interface {
 	ListQuestions(ctx context.Context, filter Filter) ([]*Question, int, error)
 	SampleQuestions(ctx context.Context, criteria SampleCriteria) ([]*Question, error)
 	GetQuestionStats(ctx context.Context, id uuid.UUID) (*QuestionStats, error)
+	// DrawableForPart is the system read an exam composes from: the published
+	// questions of one part that have an activity, in a stable order. It carries
+	// no permission check — a learner composing a mock test holds no
+	// questionbank permission, and nothing unpublished can come back.
+	DrawableForPart(ctx context.Context, examPartID uuid.UUID) ([]*Question, error)
 }
 
 // Author provides question bank modification and generation operations.

@@ -35,10 +35,15 @@ func NewHandler(service QuestionbankService) *Handler {
 	return &Handler{service: service}
 }
 
-// AdminRoutes registers routes under an admin router (e.g. /admin/questions).
+// AdminRoutes registers the routes only an admin reaches.
 func (h *Handler) AdminRoutes(r chi.Router) {
-	r.Get("/admin/questions", h.listQuestions)
 	r.Post("/admin/questions/generate", h.generateQuestions)
+}
+
+// ReviewRoutes registers the read routes a moderator also reaches: the service
+// checks questionbank.read, which WO 19 F.5 grants to moderator.
+func (h *Handler) ReviewRoutes(r chi.Router) {
+	r.Get("/admin/questions", h.listQuestions)
 	r.Get("/admin/questions/{id}/stats", h.getQuestionStats)
 }
 

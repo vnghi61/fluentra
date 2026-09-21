@@ -65,6 +65,9 @@ func TestRoutesMountTheDocumentedPaths(t *testing.T) {
 	admin := chi.NewRouter()
 	mod.AdminRoutes(admin)
 
+	review := chi.NewRouter()
+	mod.ReviewRoutes(review)
+
 	wantLearner := map[string]bool{
 		"GET /content":                        false,
 		"GET /content/{slug}":                 false,
@@ -79,11 +82,8 @@ func TestRoutesMountTheDocumentedPaths(t *testing.T) {
 		"POST /admin/content":                               false,
 		"PUT /admin/content/{id}/draft":                     false,
 		"POST /admin/content/{id}/submit":                   false,
-		"POST /admin/content/{id}/review":                   false,
-		"POST /admin/content/{id}/publish":                  false,
 		"POST /admin/content/{id}/archive":                  false,
 		"GET /admin/content/reports":                        false,
-		"GET /admin/review-queue":                           false,
 		"POST /admin/foundation/topics":                     false,
 		"PATCH /admin/foundation/topics/{code}":             false,
 		"PUT /admin/foundation/topics/{code}/prerequisites": false,
@@ -111,8 +111,17 @@ func TestRoutesMountTheDocumentedPaths(t *testing.T) {
 		}
 	}
 
+	// Mounted outside the admin-only group so a moderator reaches them; each
+	// handler checks its own permission.
+	wantReview := map[string]bool{
+		"GET /admin/review-queue":          false,
+		"POST /admin/content/{id}/review":  false,
+		"POST /admin/content/{id}/publish": false,
+	}
+
 	collect(learner, wantLearner, "learner")
 	collect(admin, wantAdmin, "admin")
+	collect(review, wantReview, "review")
 }
 
 // TestNewAuthoringWithoutAGuard is the other half of the fail-closed rule.

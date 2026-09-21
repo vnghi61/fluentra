@@ -57,6 +57,18 @@ func (f *fakeQBReader) ListQuestions(
 	return qs, len(qs), nil
 }
 
+func (f *fakeQBReader) DrawableForPart(
+	_ context.Context, examPartID uuid.UUID,
+) ([]*questionbankcontract.Question, error) {
+	var out []*questionbankcontract.Question
+	for _, q := range f.questionsByPart[examPartID] {
+		if q.Status == questionbankcontract.StatusPublished && q.ActivityID != nil {
+			out = append(out, q)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeQBReader) SampleQuestions(
 	_ context.Context, _ questionbankcontract.SampleCriteria,
 ) ([]*questionbankcontract.Question, error) {
@@ -531,10 +543,11 @@ func seedGateQuestions(parts []*domain.ExamPart, qb *fakeQBReader) {
 		for i := 0; i < count; i++ {
 			actID := uuid.New()
 			qs = append(qs, &questionbankcontract.Question{
-				ID:         uuid.New(),
-				ActivityID: &actID,
-				ExamPartID: &p.ID,
-				Status:     questionbankcontract.StatusPublished,
+				ID:            uuid.New(),
+				ActivityID:    &actID,
+				ExamPartID:    &p.ID,
+				QuestionCount: p.GroupSize,
+				Status:        questionbankcontract.StatusPublished,
 			})
 		}
 		qb.questionsByPart[p.ID] = qs
@@ -670,6 +683,33 @@ func gateCheckFixed(
 	assert.Equal(t, fixedTest1.Seed, fixedTest2.Seed)
 	assert.Equal(t, fixedTest1.Composition, fixedTest2.Composition,
 		"Fixed tests for the same blueprint must be identical")
+
+	// Two learners with different histories get the same fixed test: the
+	// composition is the stored one, not redrawn around each learner's exposures.
+	veteran := uuid.New()
+	for i := 0; i < 3; i++ {
+		mt, composeErr := svc.ComposeMockTest(ctx, &veteran, service.ComposeMockTestRequest{
+			BlueprintID: blueprintID,
+			Mode:        domain.MockModeRandom,
+		})
+		require.NoError(t, composeErr)
+		_, startErr := svc.StartMockTestAttempt(ctx, veteran, mt.ID)
+		require.NoError(t, startErr)
+	}
+	newcomer := uuid.New()
+	forVeteran, err := svc.ComposeMockTest(ctx, &veteran, service.ComposeMockTestRequest{
+		BlueprintID: blueprintID,
+		Mode:        domain.MockModeFixed,
+	})
+	require.NoError(t, err)
+	forNewcomer, err := svc.ComposeMockTest(ctx, &newcomer, service.ComposeMockTestRequest{
+		BlueprintID: blueprintID,
+		Mode:        domain.MockModeFixed,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, fixedTest1.ID, forVeteran.ID, "a fixed test is one stored row")
+	assert.Equal(t, fixedTest1.ID, forNewcomer.ID, "a fixed test is one stored row")
+	assert.Nil(t, forVeteran.OwnerID)
 }
 
 // Live DB Verification for Stage H tables & privileges

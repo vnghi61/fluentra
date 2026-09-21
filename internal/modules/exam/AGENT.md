@@ -178,6 +178,11 @@ and fails `go-arch-lint` in CI.
 8. **BR-EXAM-08** — Integrity signals are recorded and shown to the learner as self-awareness information; they never automatically invalidate an attempt.
 9. **BR-EXAM-09** — Items are sampled with exposure control so a learner does not see the same items in consecutive attempts.
 10. **BR-EXAM-10** — The score report is generated once and stored — it must not change if the scoring table is later revised.
+11. **BR-EXAM-11** — Exam structures are seeded data with an `https` source and a verification date.
+12. **BR-EXAM-12** — A retake replays its composition; only a new test draws again.
+13. **BR-EXAM-13** — A fixed test is one stored composition shared by everyone, composed without anyone's exposures.
+14. **BR-EXAM-14** — A part is filled with exactly its question count, in whole groups; a part the bank cannot fill is refused with the part named.
+15. **BR-EXAM-15** — The number of distinct tests shown is the coverage report's number.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

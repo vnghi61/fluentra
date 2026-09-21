@@ -435,7 +435,7 @@ func newIdentity(deps identityDeps) *identity {
 		Pool:          deps.Pool,
 		RBAC:          assembled.rbac.Authorizer(),
 		ContentReader: assembled.content.Reader(),
-		ContentAuthor: assembled.content.Author(),
+		TagIndex:      assembled.content.TagIndex(),
 		LessonAuthor:  assembled.lesson.Author(),
 		Generator:     assembled.learning.Generator(),
 		Events:        nil,
@@ -636,6 +636,10 @@ func (i *identity) Routes(api chi.Router) {
 		i.studio.ModerationRoutes(authenticated)
 		i.payment.AuthenticatedRoutes(authenticated)
 		i.resource.Routes(authenticated)
+		// Review is a moderator's job, not only an admin's: these check
+		// content.review / content.publish / questionbank.read per route.
+		i.content.ReviewRoutes(authenticated)
+		i.questionbank.ReviewRoutes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
@@ -955,6 +959,15 @@ func (r lazyQuestionbankReader) ListQuestions(
 		return nil, 0, fmt.Errorf("questionbank module is not assembled")
 	}
 	return r.of.questionbank.Reader().ListQuestions(ctx, filter)
+}
+
+func (r lazyQuestionbankReader) DrawableForPart(
+	ctx context.Context, examPartID uuid.UUID,
+) ([]*questionbankcontract.Question, error) {
+	if r.of.questionbank == nil {
+		return nil, fmt.Errorf("questionbank module is not assembled")
+	}
+	return r.of.questionbank.Reader().DrawableForPart(ctx, examPartID)
 }
 
 func (r lazyQuestionbankReader) SampleQuestions(

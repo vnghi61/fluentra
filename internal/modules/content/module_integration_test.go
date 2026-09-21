@@ -275,6 +275,7 @@ func newAuthoringFixture(ctx context.Context, t *testing.T) *authoringFixture {
 	router := chi.NewRouter()
 	fixture.mod.Routes(router)
 	fixture.mod.AdminRoutes(router)
+	fixture.mod.ReviewRoutes(router)
 	fixture.router = router
 
 	return fixture
@@ -513,6 +514,7 @@ func TestAdminListContentFiltered_Integration(t *testing.T) {
 	mod := content.New(content.Deps{Pool: pool, Guard: allowAllGuard{}})
 	router := chi.NewRouter()
 	mod.AdminRoutes(router)
+	mod.ReviewRoutes(router)
 
 	authorID := uuid.MustParse("018f0000-0000-7000-8000-000000000001")
 	seedUser(ctx, t, authorID, "author@fluentra.test")
@@ -760,4 +762,3 @@ func TestReviewQueue_Lifecycle_Integration(t *testing.T) {
 		"/content/foundation-b1-grammar-tense-choice-test001", nil, uuid.Nil)
 	wantStatus(t, rec, http.StatusOK, "read published item")
 }
-

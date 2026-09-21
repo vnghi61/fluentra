@@ -2,13 +2,13 @@
 module: questionbank
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 4
 owner: "@learning-team"
 schema: assess
 tables: [questions, question_stats]
-depends_on: [content, ai, audit, search]
-depended_on_by: [exam, reading, listening, grammar, learning]
+depends_on: [content, lesson, learning, rbac]
+depended_on_by: [exam]
 spec_version: 1.0.0
 last_verified: 2026-08-06
 ---
@@ -19,15 +19,10 @@ Ordered backlog. Every item states what "done" means. Keep this current — it i
 agent knows what is already handled and what is deliberately deferred.
 
 <!-- BEGIN GENERATED: todo -->
-## Phase 4
+## Open
 
-- [ ] Items, options, sets and tagging
-- [ ] Authoring and review workflow with self-approval blocking
-- [ ] Learner DTO without answers, structurally enforced
-- [ ] Statistics job computing p-value and discrimination
-- [ ] Sampling with exposure control
-- [ ] AI generation into the review queue
-- [ ] Admin authoring UI with bulk import
+- [ ] A job computing `question_stats` from real attempts (the table exists; nothing writes it)
+- [ ] Bank course layout per exam part: lessons are per kind today, not per part as WO 19 F.2 describes
 <!-- END GENERATED: todo -->
 
 ## Deferred (deliberately not doing yet)
