@@ -46,7 +46,19 @@ type resourceResponse struct {
 	DownloadURL      *string    `json:"download_url"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
-	ValidatedAt      *time.Time `json:"validated_at"`
+	ValidatedAt      *time.Time                  `json:"validated_at"`
+	Renditions       []resourceRenditionResponse `json:"renditions,omitempty"`
+}
+
+type resourceRenditionResponse struct {
+	Kind       string     `json:"kind"`
+	MIMEType   string     `json:"mime_type"`
+	Width      *int       `json:"width,omitempty"`
+	Height     *int       `json:"height,omitempty"`
+	DurationMS *int       `json:"duration_ms,omitempty"`
+	ByteSize   *int64     `json:"byte_size,omitempty"`
+	URL        *string    `json:"url,omitempty"`
+	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
 }
 
 type resourceListResponse struct {
@@ -57,6 +69,25 @@ type resourceListResponse struct {
 }
 
 func toResourceResponse(r contract.Resource) resourceResponse {
+	var renditions []resourceRenditionResponse
+	if len(r.Renditions) > 0 {
+		renditions = make([]resourceRenditionResponse, 0, len(r.Renditions))
+		for _, rend := range r.Renditions {
+			if rend.Status == "ready" {
+				renditions = append(renditions, resourceRenditionResponse{
+					Kind:       rend.Kind,
+					MIMEType:   rend.MIMEType,
+					Width:      rend.Width,
+					Height:     rend.Height,
+					DurationMS: rend.DurationMS,
+					ByteSize:   rend.ByteSize,
+					URL:        rend.URL,
+					ExpiresAt:  rend.ExpiresAt,
+				})
+			}
+		}
+	}
+
 	return resourceResponse{
 		ID:               r.ID,
 		Kind:             r.Kind,
@@ -70,6 +101,7 @@ func toResourceResponse(r contract.Resource) resourceResponse {
 		Checksum:         r.Checksum,
 		SourceURL:        r.SourceURL,
 		DownloadURL:      r.DownloadURL,
+		Renditions:       renditions,
 		CreatedAt:        r.CreatedAt,
 		UpdatedAt:        r.UpdatedAt,
 		ValidatedAt:      r.ValidatedAt,

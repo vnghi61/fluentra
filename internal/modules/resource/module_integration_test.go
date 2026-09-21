@@ -8,6 +8,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/png"
+	"image/png"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -26,10 +29,12 @@ import (
 
 	"github.com/fluentra/fluentra/db/migrations"
 	"github.com/fluentra/fluentra/internal/modules/resource"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/modules/resource/domain"
 	resourcejob "github.com/fluentra/fluentra/internal/modules/resource/job"
 	"github.com/fluentra/fluentra/internal/modules/resource/service"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
+	rendition "github.com/fluentra/fluentra/internal/platform/media/rendition"
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
@@ -832,8 +837,25 @@ func TestModule_UserErasurePurge(t *testing.T) {
 		"application/pdf",
 	)
 
-	if !store.hasObject(intent1.ObjectKey) || !store.hasObject(intent2.ObjectKey) {
-		t.Fatalf("expected both objects in storage before erasure")
+	// Also simulate a derived rendition in BucketDerived
+	derivedKey := fmt.Sprintf("renditions/%s/thumbnail.png", intent1.ID)
+	_ = store.Put(
+		context.Background(),
+		storage.BucketDerived,
+		derivedKey,
+		bytes.NewReader([]byte("png-thumbnail")),
+		13,
+		"image/png",
+	)
+	_, _ = pool.Exec(
+		context.Background(),
+		`INSERT INTO resource.renditions (resource_id, kind, status, object_key, mime_type)
+		 VALUES ($1, 'thumbnail', 'ready', $2, 'image/png')`,
+		intent1.ID, derivedKey,
+	)
+
+	if !store.hasObject(intent1.ObjectKey) || !store.hasObject(intent2.ObjectKey) || !store.hasObject(derivedKey) {
+		t.Fatalf("expected all objects in storage before erasure")
 	}
 
 	// Subscribe to eventbus
@@ -857,12 +879,16 @@ func TestModule_UserErasurePurge(t *testing.T) {
 		t.Fatalf("publish user.deleted: %v", err)
 	}
 
-	// Verify both objects are deleted from storage
+	// Verify both original objects are deleted from storage
 	if store.hasObject(intent1.ObjectKey) {
 		t.Fatalf("storage object 1 %s was not deleted by erasure purge", intent1.ObjectKey)
 	}
 	if store.hasObject(intent2.ObjectKey) {
 		t.Fatalf("storage object 2 %s was not deleted by erasure purge", intent2.ObjectKey)
+	}
+	// Verify derived rendition is deleted from storage
+	if store.hasObject(derivedKey) {
+		t.Fatalf("derived object %s was not deleted by erasure purge", derivedKey)
 	}
 
 	// Verify rows are deleted from database
@@ -878,5 +904,362 @@ func TestModule_UserErasurePurge(t *testing.T) {
 	if count != 0 {
 		t.Fatalf("expected 0 resources remaining for erased user, got %d", count)
 	}
+
+	var rendCount int
+	queryErr = pool.QueryRow(
+		context.Background(),
+		`SELECT count(*) FROM resource.renditions WHERE resource_id IN ($1, $2)`,
+		intent1.ID, intent2.ID,
+	).Scan(&rendCount)
+	if queryErr != nil {
+		t.Fatalf("count renditions: %v", queryErr)
+	}
+	if rendCount != 0 {
+		t.Fatalf("expected 0 renditions remaining for erased user, got %d", rendCount)
+	}
 }
+
+// TestModule_WorkOrder18Gate verifies WO-18 §13 gate test:
+// 1. Upload a 4000x3000 PNG screenshot -> validated
+// 2. Media rendering (simulating cmd/media -all)
+// 3. GET /me/resources/{id} -> renditions: thumbnail 320x240 PNG, display 2048x1536 PNG, both with valid URLs
+// 4. The original in fluentra-uploads is byte-identical to what was uploaded.
+func TestModule_WorkOrder18Gate(t *testing.T) {
+	if pool == nil {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	userA := insertUser(t, pool, "wo18_gate@example.com")
+	store := newInMemoryStore()
+
+	mod := resource.New(resource.Deps{
+		Pool:    pool,
+		Storage: store,
+	})
+
+	router := chi.NewRouter()
+	router.Route("/api/v1", func(r chi.Router) {
+		mod.Routes(r)
+	})
+
+	// 1. Create upload intent for PNG
+	intentBody := `{"filename":"screenshot.png","content_type":"image/png"}`
+	rec := doRequest(router, http.MethodPost, "/api/v1/me/resources/upload-intent", intentBody, userA)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("upload-intent failed: code %d, body %s", rec.Code, rec.Body)
+	}
+	var intent struct {
+		ID        uuid.UUID `json:"id"`
+		ObjectKey string    `json:"object_key"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &intent); err != nil {
+		t.Fatalf("unmarshal intent response: %v", err)
+	}
+
+	// 2. Generate 4000x3000 PNG image
+	img := image.NewRGBA(image.Rect(0, 0, 4000, 3000))
+	var buf bytes.Buffer
+	enc := png.Encoder{CompressionLevel: png.BestSpeed}
+	if err := enc.Encode(&buf, img); err != nil {
+		t.Fatalf("encode 4000x3000 png: %v", err)
+	}
+	originalBytes := buf.Bytes()
+
+	// Put in uploads bucket
+	err := store.Put(
+		context.Background(),
+		storage.BucketUploads,
+		intent.ObjectKey,
+		bytes.NewReader(originalBytes),
+		int64(len(originalBytes)),
+		"image/png",
+	)
+	if err != nil {
+		t.Fatalf("put object: %v", err)
+	}
+
+	// 3. Submit upload
+	submitGateUpload(t, router, userA, intent.ID)
+
+	// 4. Validate
+	worker := mod.ValidateWorker()
+	riverJob := &river.Job[resourcejob.ValidateResourceArgs]{
+		Args: resourcejob.ValidateResourceArgs{ResourceID: intent.ID},
+	}
+	if err := worker.Work(context.Background(), riverJob); err != nil {
+		t.Fatalf("validate worker failed: %v", err)
+	}
+
+	// Clear renditions created during validation to verify PlanRenditions backfills them
+	_, _ = pool.Exec(context.Background(), `DELETE FROM resource.renditions WHERE resource_id = $1`, intent.ID)
+
+	// 5. Plan renditions (simulating cmd/media)
+	planned, err := mod.Service().PlanRenditions(context.Background(), 10)
+	if err != nil {
+		t.Fatalf("plan renditions: %v", err)
+	}
+	if planned != 2 {
+		t.Fatalf("expected 2 planned renditions (thumbnail and display), got %d", planned)
+	}
+
+	// 6. Claim renditions
+	claimed, err := mod.Service().ClaimRenditions(context.Background(), 10)
+	if err != nil {
+		t.Fatalf("claim renditions: %v", err)
+	}
+	if len(claimed) != 2 {
+		t.Fatalf("expected 2 claimed renditions, got %d", len(claimed))
+	}
+
+	// 7. Render each claimed rendition and record ready
+	tmpSource, err := os.CreateTemp("", "wo18_orig_*.png")
+	if err != nil {
+		t.Fatalf("create temp file: %v", err)
+	}
+	defer func() { _ = os.Remove(tmpSource.Name()) }()
+	if _, err := tmpSource.Write(originalBytes); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+	_ = tmpSource.Close()
+
+	for _, cr := range claimed {
+		rendered, err := rendition.RenderImage(context.Background(), rendition.RenderRequest{
+			ResourceID: intent.ID,
+			Kind:       cr.Kind,
+			SourcePath: tmpSource.Name(),
+			SourceMIME: "image/png",
+			TempDir:    os.TempDir(),
+		})
+		if err != nil {
+			t.Fatalf("render %s: %v", cr.Kind, err)
+		}
+		defer func(p string) { _ = os.Remove(p) }(rendered.OutputPath)
+
+		rendBytes, err := os.ReadFile(rendered.OutputPath)
+		if err != nil {
+			t.Fatalf("read rendered output: %v", err)
+		}
+
+		derivedKey := fmt.Sprintf("renditions/%s/%s.png", intent.ID, cr.Kind)
+		err = store.Put(
+			context.Background(),
+			storage.BucketDerived,
+			derivedKey,
+			bytes.NewReader(rendBytes),
+			*rendered.ByteSize,
+			rendered.MIMEType,
+		)
+		if err != nil {
+			t.Fatalf("put derived rendition: %v", err)
+		}
+
+		_, err = mod.Service().RecordRenditionReady(
+			context.Background(),
+			cr.ID,
+			derivedKey,
+			rendered.MIMEType,
+			rendered.Width,
+			rendered.Height,
+			nil,
+			rendered.ByteSize,
+			rendered.ToolVersion,
+		)
+		if err != nil {
+			t.Fatalf("record rendition ready: %v", err)
+		}
+	}
+
+	// 8. GET /me/resources/{id}
+	getRec := doRequest(router, http.MethodGet, "/api/v1/me/resources/"+intent.ID.String(), "", userA)
+	if getRec.Code != http.StatusOK {
+		t.Fatalf("get resource failed: %d %s", getRec.Code, getRec.Body)
+	}
+
+	var resResp struct {
+		ID           uuid.UUID `json:"id"`
+		Status       string    `json:"status"`
+		DetectedMIME string    `json:"detected_mime"`
+		DownloadURL  *string   `json:"download_url"`
+		Renditions   []struct {
+			Kind       string  `json:"kind"`
+			MIMEType   string  `json:"mime_type"`
+			Width      *int    `json:"width"`
+			Height     *int    `json:"height"`
+			DurationMS *int    `json:"duration_ms"`
+			ByteSize   *int64  `json:"byte_size"`
+			URL        *string `json:"url"`
+		} `json:"renditions"`
+	}
+	if err := json.Unmarshal(getRec.Body.Bytes(), &resResp); err != nil {
+		t.Fatalf("unmarshal resource response: %v", err)
+	}
+
+	if resResp.Status != domain.StatusValidated {
+		t.Fatalf("expected status %q, got %q", domain.StatusValidated, resResp.Status)
+	}
+	if resResp.DetectedMIME != "image/png" {
+		t.Fatalf("expected detected_mime 'image/png', got %q", resResp.DetectedMIME)
+	}
+	if len(resResp.Renditions) != 2 {
+		t.Fatalf("expected 2 renditions, got %d", len(resResp.Renditions))
+	}
+
+	renditionMap := make(map[string]struct {
+		Width    int
+		Height   int
+		MIMEType string
+		URL      string
+	})
+	for _, r := range resResp.Renditions {
+		if r.URL == nil || *r.URL == "" {
+			t.Errorf("rendition %s missing url", r.Kind)
+		}
+		var w, h int
+		var dl string
+		if r.Width != nil {
+			w = *r.Width
+		}
+		if r.Height != nil {
+			h = *r.Height
+		}
+		if r.URL != nil {
+			dl = *r.URL
+		}
+		renditionMap[r.Kind] = struct {
+			Width    int
+			Height   int
+			MIMEType string
+			URL      string
+		}{Width: w, Height: h, MIMEType: r.MIMEType, URL: dl}
+	}
+
+	thumb, ok := renditionMap["thumbnail"]
+	if !ok {
+		t.Fatalf("missing thumbnail rendition")
+	}
+	if thumb.Width != 320 || thumb.Height != 240 || thumb.MIMEType != "image/png" {
+		t.Errorf("thumbnail mismatch: got %dx%d %s, expected 320x240 image/png", thumb.Width, thumb.Height, thumb.MIMEType)
+	}
+
+	disp, ok := renditionMap["display"]
+	if !ok {
+		t.Fatalf("missing display rendition")
+	}
+	if disp.Width != 2048 || disp.Height != 1536 || disp.MIMEType != "image/png" {
+		t.Errorf("display mismatch: got %dx%d %s, expected 2048x1536 image/png", disp.Width, disp.Height, disp.MIMEType)
+	}
+
+	// 9. Verify original in fluentra-uploads is byte-identical to what was uploaded
+	storedReader, err := store.Get(context.Background(), storage.BucketUploads, intent.ObjectKey)
+	if err != nil {
+		t.Fatalf("get stored original: %v", err)
+	}
+	defer func() { _ = storedReader.Close() }()
+	storedBytes, err := io.ReadAll(storedReader)
+	if err != nil {
+		t.Fatalf("read stored original: %v", err)
+	}
+	if !bytes.Equal(storedBytes, originalBytes) {
+		t.Fatalf("original in fluentra-uploads has mutated! len stored=%d, len original=%d", len(storedBytes), len(originalBytes))
+	}
+}
+
+// TestModule_ConcurrentRenditionClaims verifies WO-18 §13:
+// Two concurrent claims over the same pending rows never return the same row.
+func TestModule_ConcurrentRenditionClaims(t *testing.T) {
+	if pool == nil {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	userA := insertUser(t, pool, "claims_isolation@example.com")
+	store := newInMemoryStore()
+	mod := resource.New(resource.Deps{
+		Pool:    pool,
+		Storage: store,
+	})
+
+	router := chi.NewRouter()
+	router.Route("/api/v1", func(r chi.Router) {
+		mod.Routes(r)
+	})
+
+	// Create an image resource and validate it
+	intentRec := doRequest(
+		router,
+		http.MethodPost,
+		"/api/v1/me/resources/upload-intent",
+		`{"filename":"concurrency.png","content_type":"image/png"}`,
+		userA,
+	)
+	if intentRec.Code != http.StatusOK {
+		t.Fatalf("create upload intent: %d %s", intentRec.Code, intentRec.Body)
+	}
+	var intent struct {
+		ID        uuid.UUID `json:"id"`
+		ObjectKey string    `json:"object_key"`
+	}
+	if err := json.Unmarshal(intentRec.Body.Bytes(), &intent); err != nil {
+		t.Fatalf("unmarshal intent response: %v", err)
+	}
+
+	// Put 100x100 png
+	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	var buf bytes.Buffer
+	_ = png.Encode(&buf, img)
+	_ = store.Put(context.Background(), storage.BucketUploads, intent.ObjectKey, bytes.NewReader(buf.Bytes()), int64(buf.Len()), "image/png")
+
+	submitGateUpload(t, router, userA, intent.ID)
+	worker := mod.ValidateWorker()
+	_ = worker.Work(context.Background(), &river.Job[resourcejob.ValidateResourceArgs]{
+		Args: resourcejob.ValidateResourceArgs{ResourceID: intent.ID},
+	})
+
+	// Validation automatically planned 2 renditions (thumbnail and display)
+	planned := 2
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	var (
+		res1 []resourcecontract.Rendition
+		err1 error
+		res2 []resourcecontract.Rendition
+		err2 error
+	)
+
+	go func() {
+		defer wg.Done()
+		res1, err1 = mod.Service().ClaimRenditions(context.Background(), 10)
+	}()
+
+	go func() {
+		defer wg.Done()
+		res2, err2 = mod.Service().ClaimRenditions(context.Background(), 10)
+	}()
+
+	wg.Wait()
+
+	if err1 != nil {
+		t.Fatalf("claim 1: %v", err1)
+	}
+	if err2 != nil {
+		t.Fatalf("claim 2: %v", err2)
+	}
+
+	seen := make(map[uuid.UUID]bool)
+	for _, r := range res1 {
+		seen[r.ID] = true
+	}
+	for _, r := range res2 {
+		if seen[r.ID] {
+			t.Fatalf("race condition! Rendition %s was claimed by both workers", r.ID)
+		}
+		seen[r.ID] = true
+	}
+
+	if len(seen) != planned {
+		t.Fatalf("expected %d total claimed renditions across workers, got %d", planned, len(seen))
+	}
+}
+
 

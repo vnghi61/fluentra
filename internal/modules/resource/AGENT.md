@@ -6,7 +6,7 @@ status: IMPLEMENTED
 phase: 4
 owner: "@learning-team"
 schema: resource
-tables: [resources]
+tables: [resources, renditions]
 depends_on: [storage, job, user]
 depended_on_by: []
 spec_version: 1.0.0
@@ -50,12 +50,12 @@ Intake for material a learner brings: an uploaded file or a submitted URL become
 - URL validation that stores the page title and never the body, through a client whose dialer refuses non-public addresses
 - Per-user quotas: 50 resources and 250 MB, counting everything not rejected or failed
 - Presigned GET for a validated file its owner requests
-- Deleting a resource together with its stored object
+- Derived visual, audio, and video renditions in fluentra-derived for validated file resources
+- Deleting a resource together with its stored object and derived renditions
 - A cron sweep that fails abandoned intents and deletes their objects, and fails uploads whose validation never finished
 
 **This module does NOT own:**
 
-- Thumbnails, transcodes and other renditions (P3, work order 18)
 - Text extraction, transcription and classification (P4, work order 19)
 - Generating exercises from a resource (P6)
 - Byte storage and serving (platform/storage)
@@ -98,6 +98,7 @@ Migrations: `db/migrations/resource/` · Queries: `db/queries/resource/`
 | Table | Purpose | Key columns / notes |
 |---|---|---|
 | `resource.resources` | One uploaded file or submitted URL | `user_id`, `kind` (file or url), `title`, `object_key`, `original_filename`, `declared_mime`, `detected_mime`, `byte_size`, `checksum`, `source_url`, `status`, `failure_reason`, `validated_at`. `ck_resources_shape`: a file has an object and no URL, a URL the reverse. `ck_resources_rejected_has_reason`. |
+| `resource.renditions` | Derived visual, audio, and video renditions of validated file resources | `resource_id`, `kind`, `status`, `object_key`, `mime_type`, `width`, `height`, `duration_ms`, `byte_size`, `tool_version`, `attempts`, `failure_reason`. `uq_renditions_resource_kind`, `uq_renditions_object_key`. |
 
 **Indexes of note**
 

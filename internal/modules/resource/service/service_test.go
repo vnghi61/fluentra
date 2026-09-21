@@ -22,6 +22,7 @@ import (
 
 type mockRepo struct {
 	resources  map[uuid.UUID]*contract.Resource
+	renditions map[uuid.UUID]*contract.Rendition
 	usageCount int64
 	usageBytes int64
 	// staleExpired, when set, is what ListExpiredPendingResources returns: the
@@ -30,7 +31,10 @@ type mockRepo struct {
 }
 
 func newMockRepo() *mockRepo {
-	return &mockRepo{resources: make(map[uuid.UUID]*contract.Resource)}
+	return &mockRepo{
+		resources:  make(map[uuid.UUID]*contract.Resource),
+		renditions: make(map[uuid.UUID]*contract.Rendition),
+	}
 }
 
 func (m *mockRepo) CreateFileResourceIntent(
@@ -224,6 +228,152 @@ func (m *mockRepo) DeleteAllResourcesByUser(
 	}
 	return nil
 }
+
+func (m *mockRepo) InsertRenditionPending(
+	_ context.Context, resourceID uuid.UUID, kind string,
+) (*contract.Rendition, error) {
+	for _, r := range m.renditions {
+		if r.ResourceID == resourceID && r.Kind == kind {
+			return r, nil
+		}
+	}
+	id := uuid.New()
+	r := &contract.Rendition{
+		ID:         id,
+		ResourceID: resourceID,
+		Kind:       kind,
+		Status:     domain.RenditionStatusPending,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+	m.renditions[id] = r
+	return r, nil
+}
+
+func (m *mockRepo) ClaimPendingRenditions(
+	_ context.Context, limit int32,
+) ([]contract.Rendition, error) {
+	var claimed []contract.Rendition
+	now := time.Now()
+	for _, r := range m.renditions {
+		if int32(len(claimed)) >= limit {
+			break
+		}
+		if r.Status == domain.RenditionStatusPending && r.Attempts < 3 {
+			r.Attempts++
+			r.UpdatedAt = now
+			claimed = append(claimed, *r)
+		}
+	}
+	return claimed, nil
+}
+
+func (m *mockRepo) UpdateRenditionReady(
+	_ context.Context, id uuid.UUID, objectKey, mimeType string,
+	width, height, durationMS *int, byteSize *int64, toolVersion string,
+) (*contract.Rendition, error) {
+	r, ok := m.renditions[id]
+	if !ok {
+		return nil, errors.New("rendition not found")
+	}
+	r.Status = domain.RenditionStatusReady
+	r.ObjectKey = &objectKey
+	r.MIMEType = mimeType
+	r.Width = width
+	r.Height = height
+	r.DurationMS = durationMS
+	r.ByteSize = byteSize
+	r.ToolVersion = toolVersion
+	r.FailureReason = ""
+	r.UpdatedAt = time.Now()
+	return r, nil
+}
+
+func (m *mockRepo) UpdateRenditionSkipped(
+	_ context.Context, id uuid.UUID, reason string,
+) (*contract.Rendition, error) {
+	r, ok := m.renditions[id]
+	if !ok {
+		return nil, errors.New("rendition not found")
+	}
+	r.Status = domain.RenditionStatusSkipped
+	r.FailureReason = reason
+	r.UpdatedAt = time.Now()
+	return r, nil
+}
+
+func (m *mockRepo) UpdateRenditionFailed(
+	_ context.Context, id uuid.UUID, reason string,
+) (*contract.Rendition, error) {
+	r, ok := m.renditions[id]
+	if !ok {
+		return nil, errors.New("rendition not found")
+	}
+	if r.Attempts >= 3 {
+		r.Status = domain.RenditionStatusFailed
+	} else {
+		r.Status = domain.RenditionStatusPending
+	}
+	r.FailureReason = reason
+	r.UpdatedAt = time.Now()
+	return r, nil
+}
+
+func (m *mockRepo) ListReadyRenditionsByResourceID(
+	_ context.Context, resourceID uuid.UUID,
+) ([]contract.Rendition, error) {
+	var list []contract.Rendition
+	for _, r := range m.renditions {
+		if r.ResourceID == resourceID && r.Status == domain.RenditionStatusReady {
+			list = append(list, *r)
+		}
+	}
+	return list, nil
+}
+
+func (m *mockRepo) ListRenditionsByResourceID(
+	_ context.Context, resourceID uuid.UUID,
+) ([]contract.Rendition, error) {
+	var list []contract.Rendition
+	for _, r := range m.renditions {
+		if r.ResourceID == resourceID {
+			list = append(list, *r)
+		}
+	}
+	return list, nil
+}
+
+func (m *mockRepo) ListRenditionKeysByUserID(
+	_ context.Context, userID uuid.UUID,
+) ([]string, error) {
+	var keys []string
+	for _, res := range m.resources {
+		if res.UserID == userID {
+			for _, rend := range m.renditions {
+				if rend.ResourceID == res.ID && rend.ObjectKey != nil && *rend.ObjectKey != "" {
+					keys = append(keys, *rend.ObjectKey)
+				}
+			}
+		}
+	}
+	return keys, nil
+}
+
+func (m *mockRepo) ListValidatedFileResourcesForRenditions(
+	_ context.Context, limit int32,
+) ([]contract.Resource, error) {
+	var list []contract.Resource
+	for _, r := range m.resources {
+		if int32(len(list)) >= limit {
+			break
+		}
+		if r.Kind == domain.KindFile && r.Status == domain.StatusValidated {
+			list = append(list, *r)
+		}
+	}
+	return list, nil
+}
+
 
 
 type mockStorage struct {
@@ -649,3 +799,204 @@ func TestService_ValidateURL_RejectedVersusFailed(t *testing.T) {
 		})
 	}
 }
+
+func TestService_PlanRenditions(t *testing.T) {
+	repo := newMockRepo()
+	svc := service.New(repo, newMockStorage(), nil, nil, nil, nil)
+	ctx := context.Background()
+
+	// 1. Image
+	imgID := uuid.New()
+	repo.resources[imgID] = &contract.Resource{
+		ID:           imgID,
+		Kind:         domain.KindFile,
+		Status:       domain.StatusValidated,
+		DetectedMIME: "image/jpeg",
+	}
+
+	// 2. Audio
+	audioID := uuid.New()
+	repo.resources[audioID] = &contract.Resource{
+		ID:           audioID,
+		Kind:         domain.KindFile,
+		Status:       domain.StatusValidated,
+		DetectedMIME: "audio/mpeg",
+	}
+
+	// 3. PDF
+	pdfID := uuid.New()
+	repo.resources[pdfID] = &contract.Resource{
+		ID:           pdfID,
+		Kind:         domain.KindFile,
+		Status:       domain.StatusValidated,
+		DetectedMIME: "application/pdf",
+	}
+
+	// 4. Video
+	vidID := uuid.New()
+	repo.resources[vidID] = &contract.Resource{
+		ID:           vidID,
+		Kind:         domain.KindFile,
+		Status:       domain.StatusValidated,
+		DetectedMIME: "video/mp4",
+	}
+
+	plannedCount, err := svc.PlanRenditions(ctx, 10)
+	if err != nil {
+		t.Fatalf("plan renditions: %v", err)
+	}
+	// image: thumbnail, display (2)
+	// audio: audio_web (1)
+	// pdf: thumbnail, preview (2)
+	// video: poster, video_360p, video_720p (3)
+	// total = 8
+	if plannedCount != 8 {
+		t.Errorf("expected 8 planned renditions, got %d", plannedCount)
+	}
+
+	rList, _ := repo.ListRenditionsByResourceID(ctx, imgID)
+	if len(rList) != 2 {
+		t.Errorf("expected 2 renditions for image, got %d", len(rList))
+	}
+
+	rList, _ = repo.ListRenditionsByResourceID(ctx, audioID)
+	if len(rList) != 1 || rList[0].Kind != domain.RenditionKindAudioWeb {
+		t.Errorf("expected 1 audio_web rendition, got %v", rList)
+	}
+}
+
+func TestService_ClaimAndRecordRenditions(t *testing.T) {
+	repo := newMockRepo()
+	svc := service.New(repo, newMockStorage(), nil, nil, nil, nil)
+	ctx := context.Background()
+
+	resID := uuid.New()
+	repo.resources[resID] = &contract.Resource{
+		ID:           resID,
+		Kind:         domain.KindFile,
+		Status:       domain.StatusValidated,
+		DetectedMIME: "image/png",
+	}
+
+	plannedCount, err := svc.PlanRenditions(ctx, 10)
+	if err != nil || plannedCount != 2 {
+		t.Fatalf("plan renditions: count=%d, err=%v", plannedCount, err)
+	}
+
+	claimed, err := svc.ClaimRenditions(ctx, 10)
+	if err != nil {
+		t.Fatalf("claim renditions: %v", err)
+	}
+	if len(claimed) != 2 {
+		t.Fatalf("expected 2 claimed renditions, got %d", len(claimed))
+	}
+
+	// Record one ready
+	w := 320
+	h := 240
+	sz := int64(1024)
+	readyRend, err := svc.RecordRenditionReady(
+		ctx, claimed[0].ID, "renditions/res/thumb.webp", "image/webp",
+		&w, &h, nil, &sz, "test-v1",
+	)
+	if err != nil {
+		t.Fatalf("record ready: %v", err)
+	}
+	if readyRend.Status != domain.RenditionStatusReady {
+		t.Errorf("expected ready status, got %s", readyRend.Status)
+	}
+
+	// Record the other skipped
+	skippedRend, err := svc.RecordRenditionSkipped(ctx, claimed[1].ID, "tool not available")
+	if err != nil {
+		t.Fatalf("record skipped: %v", err)
+	}
+	if skippedRend.Status != domain.RenditionStatusSkipped {
+		t.Errorf("expected skipped status, got %s", skippedRend.Status)
+	}
+}
+
+func TestService_GetResource_IncludesRenditions(t *testing.T) {
+	repo := newMockRepo()
+	store := newMockStorage()
+	svc := service.New(repo, store, nil, nil, nil, nil)
+	ctx := context.Background()
+
+	userID := uuid.New()
+	resID := uuid.New()
+	objKey := "uploads/" + resID.String() + ".png"
+	repo.resources[resID] = &contract.Resource{
+		ID:        resID,
+		UserID:    userID,
+		Kind:      domain.KindFile,
+		Title:     "photo.png",
+		Status:    domain.StatusValidated,
+		ObjectKey: &objKey,
+	}
+
+	rendKey := "renditions/" + resID.String() + "/thumbnail.webp"
+	repo.renditions[uuid.New()] = &contract.Rendition{
+		ID:         uuid.New(),
+		ResourceID: resID,
+		Kind:       domain.RenditionKindThumbnail,
+		Status:     domain.RenditionStatusReady,
+		ObjectKey:  &rendKey,
+		MIMEType:   "image/webp",
+	}
+
+	got, err := svc.GetResource(ctx, resID, userID)
+	if err != nil {
+		t.Fatalf("GetResource: %v", err)
+	}
+	if got.DownloadURL == nil {
+		t.Error("expected original download URL")
+	}
+	if len(got.Renditions) != 1 {
+		t.Fatalf("expected 1 rendition, got %d", len(got.Renditions))
+	}
+	if got.Renditions[0].URL == nil || !strings.Contains(*got.Renditions[0].URL, storage.BucketDerived) {
+		t.Errorf("expected rendition URL pointing to derived bucket, got %v", got.Renditions[0].URL)
+	}
+}
+
+func TestService_DeleteResource_DeletesDerivedRenditions(t *testing.T) {
+	repo := newMockRepo()
+	store := newMockStorage()
+	svc := service.New(repo, store, nil, nil, nil, nil)
+	ctx := context.Background()
+
+	userID := uuid.New()
+	resID := uuid.New()
+	objKey := "uploads/" + resID.String() + ".pdf"
+	rendKey := "renditions/" + resID.String() + "/preview.png"
+
+	store.objects[objKey] = []byte("pdf data")
+	store.objects[rendKey] = []byte("rendered page")
+
+	repo.resources[resID] = &contract.Resource{
+		ID:        resID,
+		UserID:    userID,
+		Kind:      domain.KindFile,
+		Status:    domain.StatusValidated,
+		ObjectKey: &objKey,
+	}
+	repo.renditions[uuid.New()] = &contract.Rendition{
+		ID:         uuid.New(),
+		ResourceID: resID,
+		Kind:       domain.RenditionKindPreview,
+		Status:     domain.RenditionStatusReady,
+		ObjectKey:  &rendKey,
+	}
+
+	if err := svc.DeleteResource(ctx, resID, userID); err != nil {
+		t.Fatalf("DeleteResource: %v", err)
+	}
+
+	if _, ok := store.objects[objKey]; ok {
+		t.Error("expected original upload to be deleted from storage")
+	}
+	if _, ok := store.objects[rendKey]; ok {
+		t.Error("expected rendition object to be deleted from storage")
+	}
+}
+

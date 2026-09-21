@@ -11,6 +11,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -380,10 +381,16 @@ func TestResourceSchema_AppRoleCanUseIt(t *testing.T) {
 		has_table_privilege('fluentra_app', 'resource.resources', 'SELECT'),
 		has_table_privilege('fluentra_app', 'resource.resources', 'INSERT'),
 		has_table_privilege('fluentra_app', 'resource.resources', 'UPDATE'),
-		has_table_privilege('fluentra_app', 'resource.resources', 'DELETE')`
+		has_table_privilege('fluentra_app', 'resource.resources', 'DELETE'),
+		has_table_privilege('fluentra_app', 'resource.renditions', 'SELECT'),
+		has_table_privilege('fluentra_app', 'resource.renditions', 'INSERT'),
+		has_table_privilege('fluentra_app', 'resource.renditions', 'UPDATE'),
+		has_table_privilege('fluentra_app', 'resource.renditions', 'DELETE')`
 
-	var usage, sel, ins, upd, del bool
-	if err := pool.QueryRow(ctx, privilegeSQL).Scan(&usage, &sel, &ins, &upd, &del); err != nil {
+	var usage, sel, ins, upd, del, rSel, rIns, rUpd, rDel bool
+	if err := pool.QueryRow(ctx, privilegeSQL).Scan(
+		&usage, &sel, &ins, &upd, &del, &rSel, &rIns, &rUpd, &rDel,
+	); err != nil {
 		t.Fatalf("query privileges: %v", err)
 	}
 	if !usage {
@@ -393,4 +400,86 @@ func TestResourceSchema_AppRoleCanUseIt(t *testing.T) {
 		t.Errorf("fluentra_app privileges on resource.resources: select=%v insert=%v update=%v delete=%v",
 			sel, ins, upd, del)
 	}
+	if !rSel || !rIns || !rUpd || !rDel {
+		t.Errorf("fluentra_app privileges on resource.renditions: select=%v insert=%v update=%v delete=%v",
+			rSel, rIns, rUpd, rDel)
+	}
 }
+
+func TestSchema_RenditionsConstraints(t *testing.T) {
+	pool := migratedPool(t)
+	ctx := context.Background()
+	userID := insertUser(t, pool, "renditions_ck@example.com")
+
+	var resID uuid.UUID
+	err := pool.QueryRow(ctx, `
+		INSERT INTO resource.resources (user_id, kind, title, object_key)
+		VALUES ($1, 'file', 'File For Renditions', 'file-for-renditions-key')
+		RETURNING id
+	`, userID).Scan(&resID)
+	if err != nil {
+		t.Fatalf("insert resource: %v", err)
+	}
+
+	// 1. Invalid kind is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.renditions (resource_id, kind, status)
+		VALUES ($1, 'invalid_kind', 'pending')
+	`, resID)
+	assertCheckViolation(t, err, "ck_renditions_kind")
+
+	// 2. Invalid status is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.renditions (resource_id, kind, status)
+		VALUES ($1, 'thumbnail', 'unknown_status')
+	`, resID)
+	assertCheckViolation(t, err, "ck_renditions_status")
+
+	// 3. Status ready without object_key is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.renditions (resource_id, kind, status, object_key)
+		VALUES ($1, 'thumbnail', 'ready', NULL)
+	`, resID)
+	assertCheckViolation(t, err, "ck_renditions_ready_has_object")
+
+	// 4. Negative attempts is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.renditions (resource_id, kind, status, attempts)
+		VALUES ($1, 'thumbnail', 'pending', -1)
+	`, resID)
+	assertCheckViolation(t, err, "ck_renditions_attempts")
+
+	// 5. Valid rendition insert
+	validKey := "renditions/" + resID.String() + "/thumbnail.png"
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.renditions (resource_id, kind, status, object_key, width, height)
+		VALUES ($1, 'thumbnail', 'ready', $2, 320, 240)
+	`, resID, validKey)
+	if err != nil {
+		t.Fatalf("insert valid rendition: %v", err)
+	}
+
+	// 6. Duplicate (resource_id, kind) is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.renditions (resource_id, kind, status, object_key)
+		VALUES ($1, 'thumbnail', 'ready', 'another-key')
+	`, resID)
+	if err == nil {
+		t.Fatalf("expected unique violation on (resource_id, kind)")
+	}
+
+	// 7. Cascade delete from resource to renditions
+	_, err = pool.Exec(ctx, `DELETE FROM resource.resources WHERE id = $1`, resID)
+	if err != nil {
+		t.Fatalf("delete resource: %v", err)
+	}
+	var rCount int
+	err = pool.QueryRow(ctx, `SELECT count(*) FROM resource.renditions WHERE resource_id = $1`, resID).Scan(&rCount)
+	if err != nil {
+		t.Fatalf("count renditions after resource delete: %v", err)
+	}
+	if rCount != 0 {
+		t.Fatalf("expected 0 renditions after resource delete, got %d", rCount)
+	}
+}
+

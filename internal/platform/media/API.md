@@ -25,35 +25,13 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 ## Endpoint summary
 
 <!-- BEGIN GENERATED: api-summary -->
-| Method | Path | Permission | Purpose |
-|---|---|---|---|
-| `GET` | `/api/v1/admin/media/{asset_id}/derivatives` | `content.read` | Inspect the pipeline output for one asset |
-| `POST` | `/api/v1/admin/media/{asset_id}/reprocess` | `content.manage` | Re-run the pipeline |
+_None yet._
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
 
 <!-- BEGIN GENERATED: api-detail -->
-### `GET /api/v1/admin/media/{asset_id}/derivatives`
-
-Inspect the pipeline output for one asset
-
-| | |
-|---|---|
-| Permission | `content.read` |
-| Success | 200 |
-| Errors | standard set |
-
-### `POST /api/v1/admin/media/{asset_id}/reprocess`
-
-Re-run the pipeline
-
-| | |
-|---|---|
-| Permission | `content.manage` |
-| Success | 202 |
-| Errors | standard set |
-
+_This module exposes no HTTP endpoints. It is consumed through its `contract` package._
 <!-- END GENERATED: api-detail -->
 
 ## Error codes

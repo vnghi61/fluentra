@@ -331,3 +331,197 @@ func (r *Repository) DeleteAllResourcesByUser(
 	return nil
 }
 
+func renditionToContract(r sqlc.ResourceRendition) contract.Rendition {
+	var w, h, d *int
+	if r.Width != nil {
+		val := int(*r.Width)
+		w = &val
+	}
+	if r.Height != nil {
+		val := int(*r.Height)
+		h = &val
+	}
+	if r.DurationMs != nil {
+		val := int(*r.DurationMs)
+		d = &val
+	}
+	return contract.Rendition{
+		ID:            r.ID,
+		ResourceID:    r.ResourceID,
+		Kind:          r.Kind,
+		Status:        r.Status,
+		ObjectKey:     r.ObjectKey,
+		MIMEType:      r.MimeType,
+		Width:         w,
+		Height:        h,
+		DurationMS:    d,
+		ByteSize:      r.ByteSize,
+		ToolVersion:   r.ToolVersion,
+		Attempts:      int(r.Attempts),
+		FailureReason: r.FailureReason,
+		CreatedAt:     r.CreatedAt,
+		UpdatedAt:     r.UpdatedAt,
+	}
+}
+
+// InsertRenditionPending creates a pending rendition for a resource if not present.
+func (r *Repository) InsertRenditionPending(
+	ctx context.Context, resourceID uuid.UUID, kind string,
+) (*contract.Rendition, error) {
+	row, err := r.queries.InsertRenditionPending(ctx, sqlc.InsertRenditionPendingParams{
+		ResourceID: resourceID,
+		Kind:       kind,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil // ON CONFLICT DO NOTHING
+		}
+		return nil, fmt.Errorf("insert rendition pending: %w", err)
+	}
+	res := renditionToContract(row)
+	return &res, nil
+}
+
+// ClaimPendingRenditions claims up to limit pending renditions with FOR UPDATE SKIP LOCKED.
+func (r *Repository) ClaimPendingRenditions(
+	ctx context.Context, limit int32,
+) ([]contract.Rendition, error) {
+	rows, err := r.queries.ClaimPendingRenditions(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("claim pending renditions: %w", err)
+	}
+	items := make([]contract.Rendition, len(rows))
+	for i, row := range rows {
+		items[i] = renditionToContract(row)
+	}
+	return items, nil
+}
+
+// UpdateRenditionReady marks a rendition as ready with metadata and object key.
+func (r *Repository) UpdateRenditionReady(
+	ctx context.Context, id uuid.UUID, objectKey, mimeType string,
+	width, height, durationMS *int, byteSize *int64, toolVersion string,
+) (*contract.Rendition, error) {
+	var w, h, d *int32
+	if width != nil {
+		v := int32(*width)
+		w = &v
+	}
+	if height != nil {
+		v := int32(*height)
+		h = &v
+	}
+	if durationMS != nil {
+		v := int32(*durationMS)
+		d = &v
+	}
+	row, err := r.queries.UpdateRenditionReady(ctx, sqlc.UpdateRenditionReadyParams{
+		ID:          id,
+		ObjectKey:   &objectKey,
+		MimeType:    mimeType,
+		Width:       w,
+		Height:      h,
+		DurationMs:  d,
+		ByteSize:    byteSize,
+		ToolVersion: toolVersion,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("update rendition ready: %w", err)
+	}
+	res := renditionToContract(row)
+	return &res, nil
+}
+
+// UpdateRenditionSkipped marks a rendition as skipped with a reason.
+func (r *Repository) UpdateRenditionSkipped(
+	ctx context.Context, id uuid.UUID, reason string,
+) (*contract.Rendition, error) {
+	row, err := r.queries.UpdateRenditionSkipped(ctx, sqlc.UpdateRenditionSkippedParams{
+		ID:            id,
+		FailureReason: reason,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("update rendition skipped: %w", err)
+	}
+	res := renditionToContract(row)
+	return &res, nil
+}
+
+// UpdateRenditionFailed records a rendition failure, incrementing towards terminal failure.
+func (r *Repository) UpdateRenditionFailed(
+	ctx context.Context, id uuid.UUID, reason string,
+) (*contract.Rendition, error) {
+	row, err := r.queries.UpdateRenditionFailed(ctx, sqlc.UpdateRenditionFailedParams{
+		ID:            id,
+		FailureReason: reason,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("update rendition failed: %w", err)
+	}
+	res := renditionToContract(row)
+	return &res, nil
+}
+
+// ListReadyRenditionsByResourceID returns ready renditions for a resource.
+func (r *Repository) ListReadyRenditionsByResourceID(
+	ctx context.Context, resourceID uuid.UUID,
+) ([]contract.Rendition, error) {
+	rows, err := r.queries.ListReadyRenditionsByResourceID(ctx, resourceID)
+	if err != nil {
+		return nil, fmt.Errorf("list ready renditions: %w", err)
+	}
+	items := make([]contract.Rendition, len(rows))
+	for i, row := range rows {
+		items[i] = renditionToContract(row)
+	}
+	return items, nil
+}
+
+// ListRenditionsByResourceID returns all renditions for a resource.
+func (r *Repository) ListRenditionsByResourceID(
+	ctx context.Context, resourceID uuid.UUID,
+) ([]contract.Rendition, error) {
+	rows, err := r.queries.ListRenditionsByResourceID(ctx, resourceID)
+	if err != nil {
+		return nil, fmt.Errorf("list renditions: %w", err)
+	}
+	items := make([]contract.Rendition, len(rows))
+	for i, row := range rows {
+		items[i] = renditionToContract(row)
+	}
+	return items, nil
+}
+
+// ListRenditionKeysByUserID returns all rendition object keys for a user's resources.
+func (r *Repository) ListRenditionKeysByUserID(
+	ctx context.Context, userID uuid.UUID,
+) ([]string, error) {
+	keys, err := r.queries.ListRenditionKeysByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list rendition keys by user: %w", err)
+	}
+	res := make([]string, 0, len(keys))
+	for _, k := range keys {
+		if k != nil && *k != "" {
+			res = append(res, *k)
+		}
+	}
+	return res, nil
+}
+
+// ListValidatedFileResourcesForRenditions fetches validated file resources to plan renditions.
+func (r *Repository) ListValidatedFileResourcesForRenditions(
+	ctx context.Context, limit int32,
+) ([]contract.Resource, error) {
+	rows, err := r.queries.ListValidatedFileResourcesForRenditions(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list validated files for renditions: %w", err)
+	}
+	items := make([]contract.Resource, len(rows))
+	for i, row := range rows {
+		items[i] = toContract(row)
+	}
+	return items, nil
+}
+
+

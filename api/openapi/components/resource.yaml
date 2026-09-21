@@ -71,6 +71,10 @@ Resource:
       format: date-time
       nullable: true
       example: '2026-09-21T00:01:00Z'
+    renditions:
+      type: array
+      items:
+        $ref: '#/ResourceRendition'
 
 ResourceList:
   type: object
@@ -167,3 +171,45 @@ ResourceSubmitResponse:
       type: string
       enum: [uploaded]
       example: uploaded
+
+ResourceRendition:
+  type: object
+  description: A derived visual, audio, or video rendition of a validated file resource.
+  required:
+    - kind
+    - mime_type
+  properties:
+    kind:
+      type: string
+      enum: [thumbnail, display, preview, audio_web, poster, video_360p, video_720p]
+      example: thumbnail
+    mime_type:
+      type: string
+      example: image/png
+    width:
+      type: integer
+      nullable: true
+      example: 320
+    height:
+      type: integer
+      nullable: true
+      example: 240
+    duration_ms:
+      type: integer
+      nullable: true
+      example: null
+    byte_size:
+      type: integer
+      format: int64
+      nullable: true
+      example: 12450
+    url:
+      type: string
+      nullable: true
+      description: Presigned GET URL to download or display the rendition.
+      example: https://storage.example.com/fluentra-derived/...
+    expires_at:
+      type: string
+      format: date-time
+      nullable: true
+      example: '2026-09-21T01:00:00Z'

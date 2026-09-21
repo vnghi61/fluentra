@@ -242,40 +242,28 @@
     "purpose": "Everything that happens to audio and images: transcoding, waveform generation, speech recognition, pronunciation assessment, text-to-speech, and thumbnailing. It is the CPU-heavy part of the system and the first candidate for extraction to a separate service.",
     "businessPurpose": "Listening and speaking are half the product. Neither works without a reliable pipeline that turns a learner's browser recording into something a scoring engine can read, and turns published text into natural audio.",
     "responsibilities": [
-      "Audio transcoding (ffmpeg) to canonical formats: 16 kHz mono for ASR, Opus for playback",
-      "Waveform peak extraction for the player UI",
-      "ASR adapter: transcript plus word-level timings",
-      "Pronunciation assessment adapter: phoneme-level accuracy, fluency, completeness",
-      "Text-to-speech adapter with voice selection and caching",
-      "Image processing: resize, EXIF strip, re-encode, thumbnail",
-      "Duration, format and loudness validation",
-      "Orphaned-derivative garbage collection"
+      "Offline audio synthesising (cmd/tts, Piper engine) with caching in content.tts_cache",
+      "Offline resource rendition rendering (cmd/media, rendition package: images, pdf, office, audio, video)",
+      "Automated GitHub Actions workflow dispatching for media and tts rendering",
+      "ASR HTTP client adapter for audio transcription (whisper-compatible)"
     ],
     "notResponsibilities": [
-      "Storing the files — that is `platform/storage`",
-      "Deciding what a pronunciation score means for a learner — that is `speaking`",
-      "Text generation — that is `platform/ai`"
+      "Running heavy encoders on the production web or worker instances",
+      "Storing media files — that is platform/storage",
+      "Deciding pronunciation feedback logic — that is speaking module"
     ],
     "tables": [
       { "name": "tts_cache", "purpose": "Synthesised audio keyed by text hash and voice", "notes": "`text_hash`, `voice`, `engine`, `engine_version`, `object_key`, `created_at`" }
     ],
-    "endpoints": [
-      { "method": "GET", "path": "/api/v1/admin/media/{asset_id}/derivatives", "permission": "content.read", "purpose": "Inspect the pipeline output for one asset", "success": "200" },
-      { "method": "POST", "path": "/api/v1/admin/media/{asset_id}/reprocess", "permission": "content.manage", "purpose": "Re-run the pipeline", "success": "202" }
-    ],
+    "endpoints": [],
     "contract": [
-      { "kind": "interface", "name": "media.Processor", "purpose": "`Transcode`, `Waveform`, `Thumbnail` — enqueue-and-return, never synchronous" },
-      { "kind": "interface", "name": "media.Recognizer", "purpose": "`Transcribe(ctx, assetID, lang)` → transcript with word timings" },
-      { "kind": "interface", "name": "media.Assessor", "purpose": "`AssessPronunciation(ctx, assetID, referenceText)` → phoneme-level scores" },
-      { "kind": "interface", "name": "media.Synthesizer", "purpose": "`Speak(ctx, text, voice)` → an asset ID, cached by text and voice" }
+      { "kind": "interface", "name": "media.SynthesiserEngine", "purpose": "Synthesises text into audio clips (Piper, Mock)" },
+      { "kind": "interface", "name": "media.Transcriber", "purpose": "Transcribes audio recordings via HTTP ASR endpoint" },
+      { "kind": "struct", "name": "media.GitHubWorkflowDispatcher", "purpose": "Dispatches Actions workflows (tts-render, media-render)" }
     ],
     "events": {
-      "publishes": [
-        { "name": "media.processed", "payload": "`{asset_id, derivatives, duration_ms}`" },
-        { "name": "media.transcribed", "payload": "`{asset_id, transcript_id, confidence}`" },
-        { "name": "media.processing_failed", "payload": "`{asset_id, stage, reason}`" }
-      ],
-      "consumes": [{ "name": "content.published", "reason": "Pre-generate TTS for newly published text" }]
+      "publishes": [],
+      "consumes": []
     },
     "dependsOn": ["storage", "job", "ai", "telemetry"],
     "dependsWhy": {

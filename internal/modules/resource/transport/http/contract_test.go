@@ -112,7 +112,12 @@ func sampleResource() contract.Resource {
 	size := int64(2458120)
 	sum := "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 	url := "https://storage.local/download/sample.pdf"
+	rendURL := "https://storage.local/fluentra-derived/renditions/sample/thumbnail.png"
+	w := 320
+	h := 240
 	now := time.Now().UTC()
+	exp := now.Add(1 * time.Hour)
+	rSize := int64(12450)
 	return contract.Resource{
 		ID:               uuid.MustParse("018f3a5e-7b82-7d2c-80a2-bf3d6118d531"),
 		UserID:           uuid.MustParse("018f3a5e-7b82-7d2c-80a2-bf3d6118d531"),
@@ -130,6 +135,19 @@ func sampleResource() contract.Resource {
 		CreatedAt:        now,
 		UpdatedAt:        now,
 		ValidatedAt:      &now,
+		Renditions: []contract.Rendition{
+			{
+				Kind:        domain.RenditionKindThumbnail,
+				Status:      domain.RenditionStatusReady,
+				MIMEType:    "image/png",
+				Width:       &w,
+				Height:      &h,
+				ByteSize:    &rSize,
+				URL:         &rendURL,
+				ExpiresAt:   &exp,
+				ToolVersion: "pure-go",
+			},
+		},
 	}
 }
 

@@ -41,20 +41,16 @@ Everything that happens to audio and images: transcoding, waveform generation, s
 <!-- BEGIN GENERATED: responsibilities -->
 **This module owns:**
 
-- Audio transcoding (ffmpeg) to canonical formats: 16 kHz mono for ASR, Opus for playback
-- Waveform peak extraction for the player UI
-- ASR adapter: transcript plus word-level timings
-- Pronunciation assessment adapter: phoneme-level accuracy, fluency, completeness
-- Text-to-speech adapter with voice selection and caching
-- Image processing: resize, EXIF strip, re-encode, thumbnail
-- Duration, format and loudness validation
-- Orphaned-derivative garbage collection
+- Offline audio synthesising (cmd/tts, Piper engine) with caching in content.tts_cache
+- Offline resource rendition rendering (cmd/media, rendition package: images, pdf, office, audio, video)
+- Automated GitHub Actions workflow dispatching for media and tts rendering
+- ASR HTTP client adapter for audio transcription (whisper-compatible)
 
 **This module does NOT own:**
 
-- Storing the files — that is `platform/storage`
-- Deciding what a pronunciation score means for a learner — that is `speaking`
-- Text generation — that is `platform/ai`
+- Running heavy encoders on the production web or worker instances
+- Storing media files — that is platform/storage
+- Deciding pronunciation feedback logic — that is speaking module
 <!-- END GENERATED: responsibilities -->
 
 ## 3. Entry points
@@ -75,19 +71,13 @@ Other modules may import **only** `internal/platform/media/contract`.
 <!-- BEGIN GENERATED: contract -->
 | Kind | Name | Purpose |
 |---|---|---|
-| interface | `media.Processor` | `Transcode`, `Waveform`, `Thumbnail` — enqueue-and-return, never synchronous |
-| interface | `media.Recognizer` | `Transcribe(ctx, assetID, lang)` → transcript with word timings |
-| interface | `media.Assessor` | `AssessPronunciation(ctx, assetID, referenceText)` → phoneme-level scores |
-| interface | `media.Synthesizer` | `Speak(ctx, text, voice)` → an asset ID, cached by text and voice |
+| interface | `media.SynthesiserEngine` | Synthesises text into audio clips (Piper, Mock) |
+| interface | `media.Transcriber` | Transcribes audio recordings via HTTP ASR endpoint |
+| struct | `media.GitHubWorkflowDispatcher` | Dispatches Actions workflows (tts-render, media-render) |
 
 ### Events
 
-| Event | Direction | Payload summary |
-|---|---|---|
-| `media.processed` | publishes | `{asset_id, derivatives, duration_ms}` |
-| `media.transcribed` | publishes | `{asset_id, transcript_id, confidence}` |
-| `media.processing_failed` | publishes | `{asset_id, stage, reason}` |
-| `content.published` | consumes | Pre-generate TTS for newly published text |
+_None yet._
 <!-- END GENERATED: contract -->
 
 ## 5. Database schema
@@ -108,10 +98,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 (tag: `media`). See also [`API.md`](API.md).
 
 <!-- BEGIN GENERATED: endpoints -->
-| Method | Path | Permission | Purpose |
-|---|---|---|---|
-| `GET` | `/api/v1/admin/media/{asset_id}/derivatives` | `content.read` | Inspect the pipeline output for one asset |
-| `POST` | `/api/v1/admin/media/{asset_id}/reprocess` | `content.manage` | Re-run the pipeline |
+_None yet._
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

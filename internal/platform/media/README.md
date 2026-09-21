@@ -28,14 +28,10 @@ Listening and speaking are half the product. Neither works without a reliable pi
 ## Responsibilities
 
 <!-- BEGIN GENERATED: readme-resp -->
-- Audio transcoding (ffmpeg) to canonical formats: 16 kHz mono for ASR, Opus for playback
-- Waveform peak extraction for the player UI
-- ASR adapter: transcript plus word-level timings
-- Pronunciation assessment adapter: phoneme-level accuracy, fluency, completeness
-- Text-to-speech adapter with voice selection and caching
-- Image processing: resize, EXIF strip, re-encode, thumbnail
-- Duration, format and loudness validation
-- Orphaned-derivative garbage collection
+- Offline audio synthesising (cmd/tts, Piper engine) with caching in content.tts_cache
+- Offline resource rendition rendering (cmd/media, rendition package: images, pdf, office, audio, video)
+- Automated GitHub Actions workflow dispatching for media and tts rendering
+- ASR HTTP client adapter for audio transcription (whisper-compatible)
 <!-- END GENERATED: readme-resp -->
 
 ## Where things are

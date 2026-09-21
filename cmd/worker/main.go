@@ -201,6 +201,12 @@ type workerConfig struct {
 		MaxPriceVND     int64 `koanf:"max_price_vnd"`
 		RevenueShareBps int   `koanf:"revenue_share_bps"`
 	} `koanf:"studio"`
+	Media struct {
+		DispatchRepository string `koanf:"dispatch_repository"`
+		DispatchWorkflow   string `koanf:"dispatch_workflow"`
+		DispatchRef        string `koanf:"dispatch_ref"`
+		DispatchToken      string `koanf:"dispatch_token"`
+	} `koanf:"media"`
 }
 
 func (cfg workerConfig) aiProviders() []ai.ProviderConfig {
@@ -311,8 +317,10 @@ func configOptions() config.Options {
 			"studio.min_price_vnd":           int64(49000),
 			"studio.max_price_vnd":           int64(5000000),
 			"studio.revenue_share_bps":       7000,
+			"media.dispatch_workflow":        "media-render.yml",
+			"media.dispatch_ref":             "main",
 		},
-		EnvSections: []string{"SPEECH", "EXAM", "SEPAY", "STUDIO"},
+		EnvSections: []string{"SPEECH", "EXAM", "SEPAY", "STUDIO", "MEDIA"},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
 			{Name: "redis.url", DocSection: "docs/deployment/configuration.md#redis"},
@@ -772,11 +780,15 @@ func startModules(
 	}
 
 	resourceModule := resource.New(resource.Deps{
-		Pool:    pool,
-		Storage: storageStore,
+		Pool:        pool,
+		Storage:     storageStore,
+		MediaRender: newMediaRenderDispatcher(ctx, cfg),
 	})
 	river.AddWorker(workers, resourceModule.ValidateWorker())
 	cron.Register(resourceModule.SweepJob())
+	if err := resourceModule.Subscribe(bus); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -1053,7 +1065,6 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 
 	if err := startSkills(
 		d.pool, d.bus, d.cron, d.workers, d.lesson, learningModule, writingModule, speakingModule,
-		d.storage, jobClient,
 	); err != nil {
 		return err
 	}
@@ -1180,23 +1191,11 @@ func startSkills(
 	pool *pgxpool.Pool, bus *eventbus.InProcessBus, cron *job.CronScheduler, workers *river.Workers,
 	lessonModule *lesson.Module, learningModule *learning.Module,
 	writingModule *writing.Module, speakingModule *speaking.Module,
-	store storage.Store, enqueuer job.Enqueuer,
 ) error {
 	river.AddWorker(workers, writingModule.GradeSubmissionWorker())
 	river.AddWorker(workers, speakingModule.GradeRecordingWorker())
 	cron.Register(speakingModule.PurgeJob())
 	if err := speakingModule.Subscribe(bus); err != nil {
-		return err
-	}
-
-	resourceModule := resource.New(resource.Deps{
-		Pool:     pool,
-		Storage:  store,
-		Enqueuer: enqueuer,
-	})
-	river.AddWorker(workers, resourceModule.ValidateWorker())
-	cron.Register(resourceModule.SweepJob())
-	if err := resourceModule.Subscribe(bus); err != nil {
 		return err
 	}
 

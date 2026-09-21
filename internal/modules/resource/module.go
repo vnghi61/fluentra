@@ -27,6 +27,7 @@ type Deps struct {
 	Enqueuer     platformjob.Enqueuer
 	WorkerNudger service.WorkerNudger
 	URLFetcher   service.URLFetcher
+	MediaRender  service.MediaRenderRequester
 }
 
 // Module encapsulates the resource domain, repository, service, jobs, and HTTP transport.
@@ -47,6 +48,9 @@ func New(deps Deps) *Module {
 		deps.URLFetcher,
 		deps.WorkerNudger,
 	)
+	if deps.MediaRender != nil {
+		svc.SetMediaRender(deps.MediaRender)
+	}
 	handler := resourcehttp.NewHandler(svc)
 
 	return &Module{
@@ -74,6 +78,11 @@ func (m *Module) SweepJob() platformjob.CronJob {
 // Reader returns the read-only contract implementation.
 func (m *Module) Reader() contract.ResourceReader {
 	return &readerAdapter{service: m.service}
+}
+
+// Service returns the underlying domain service (used for worker/jobs and module integration tests).
+func (m *Module) Service() *service.Service {
+	return m.service
 }
 
 type readerAdapter struct {

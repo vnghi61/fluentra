@@ -51,6 +51,18 @@ type Repository interface {
 	ListStuckUploadedResources(ctx context.Context, before time.Time, limit int32) ([]contract.Resource, error)
 	ListResourcesByUserID(ctx context.Context, userID uuid.UUID) ([]contract.Resource, error)
 	DeleteAllResourcesByUser(ctx context.Context, userID uuid.UUID) error
+	InsertRenditionPending(ctx context.Context, resourceID uuid.UUID, kind string) (*contract.Rendition, error)
+	ClaimPendingRenditions(ctx context.Context, limit int32) ([]contract.Rendition, error)
+	UpdateRenditionReady(
+		ctx context.Context, id uuid.UUID, objectKey, mimeType string,
+		width, height, durationMS *int, byteSize *int64, toolVersion string,
+	) (*contract.Rendition, error)
+	UpdateRenditionSkipped(ctx context.Context, id uuid.UUID, reason string) (*contract.Rendition, error)
+	UpdateRenditionFailed(ctx context.Context, id uuid.UUID, reason string) (*contract.Rendition, error)
+	ListReadyRenditionsByResourceID(ctx context.Context, resourceID uuid.UUID) ([]contract.Rendition, error)
+	ListRenditionsByResourceID(ctx context.Context, resourceID uuid.UUID) ([]contract.Rendition, error)
+	ListRenditionKeysByUserID(ctx context.Context, userID uuid.UUID) ([]string, error)
+	ListValidatedFileResourcesForRenditions(ctx context.Context, limit int32) ([]contract.Resource, error)
 
 	// The two writes that share a transaction with a job enqueue.
 	ConfirmFileResourceTx(ctx context.Context, tx pgx.Tx, id, userID uuid.UUID) (*contract.Resource, error)
@@ -65,13 +77,19 @@ type WorkerNudger interface {
 }
 
 // Service orchestrates resource intake, storage, and validation.
+// MediaRenderRequester asks for media renditions to be rendered now.
+type MediaRenderRequester interface {
+	RequestRender(ctx context.Context) error
+}
+
 type Service struct {
-	repo     Repository
-	storage  storage.Store
-	pool     *pgxpool.Pool
-	enqueuer platformjob.Enqueuer
-	fetcher  URLFetcher
-	nudger   WorkerNudger
+	repo        Repository
+	storage     storage.Store
+	pool        *pgxpool.Pool
+	enqueuer    platformjob.Enqueuer
+	fetcher     URLFetcher
+	nudger      WorkerNudger
+	mediaRender MediaRenderRequester
 }
 
 // New constructs a new resource Service.
@@ -94,6 +112,11 @@ func New(
 		fetcher:  fetcher,
 		nudger:   nudger,
 	}
+}
+
+// SetMediaRender configures an optional dispatcher for rendering media renditions.
+func (s *Service) SetMediaRender(r MediaRenderRequester) {
+	s.mediaRender = r
 }
 
 // CreateUploadIntent issues a presigned S3 PUT instruction and stores a pending file resource.
@@ -309,6 +332,24 @@ func (s *Service) GetResource(ctx context.Context, id, userID uuid.UUID) (*contr
 		if err == nil {
 			res.DownloadURL = &downloadURL
 		}
+
+		renditions, err := s.repo.ListReadyRenditionsByResourceID(ctx, id)
+		if err == nil && len(renditions) > 0 {
+			now := time.Now()
+			expiry := now.Add(domain.PresignGetExpiry)
+			for i := range renditions {
+				if renditions[i].ObjectKey != nil && *renditions[i].ObjectKey != "" {
+					getURL, err := s.storage.PresignGet(
+						ctx, storage.BucketDerived, *renditions[i].ObjectKey, domain.PresignGetExpiry,
+					)
+					if err == nil {
+						renditions[i].URL = &getURL
+						renditions[i].ExpiresAt = &expiry
+					}
+				}
+			}
+			res.Renditions = renditions
+		}
 	}
 
 	return res, nil
@@ -327,6 +368,15 @@ func (s *Service) DeleteResource(ctx context.Context, id, userID uuid.UUID) erro
 		}
 	}
 
+	renditions, err := s.repo.ListRenditionsByResourceID(ctx, id)
+	if err == nil {
+		for _, rend := range renditions {
+			if rend.ObjectKey != nil && *rend.ObjectKey != "" {
+				_ = s.deleteStorageObject(ctx, storage.BucketDerived, *rend.ObjectKey)
+			}
+		}
+	}
+
 	if _, _, err := s.repo.DeleteResource(ctx, id, userID); err != nil {
 		return fmt.Errorf("delete resource record: %w", err)
 	}
@@ -337,6 +387,13 @@ func (s *Service) DeleteResource(ctx context.Context, id, userID uuid.UUID) erro
 // DeleteUserResources purges all resources, original upload files, and derived renditions
 // for a user upon account erasure (BR-RESOURCE-15).
 func (s *Service) DeleteUserResources(ctx context.Context, userID uuid.UUID) error {
+	renditionKeys, err := s.repo.ListRenditionKeysByUserID(ctx, userID)
+	if err == nil {
+		for _, rk := range renditionKeys {
+			_ = s.deleteStorageObject(ctx, storage.BucketDerived, rk)
+		}
+	}
+
 	resources, err := s.repo.ListResourcesByUserID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("list resources for user erasure: %w", err)
@@ -356,6 +413,59 @@ func (s *Service) DeleteUserResources(ctx context.Context, userID uuid.UUID) err
 
 	return nil
 }
+
+// PlanRenditions finds validated file resources and inserts pending renditions for missing kinds.
+func (s *Service) PlanRenditions(ctx context.Context, limit int32) (int, error) {
+	resources, err := s.repo.ListValidatedFileResourcesForRenditions(ctx, limit)
+	if err != nil {
+		return 0, fmt.Errorf("list validated files for renditions: %w", err)
+	}
+
+	count := 0
+	for _, res := range resources {
+		kinds := domain.PlannedRenditionsForMIME(res.DetectedMIME)
+		for _, k := range kinds {
+			created, err := s.repo.InsertRenditionPending(ctx, res.ID, k)
+			if err != nil {
+				return count, fmt.Errorf("insert rendition pending: %w", err)
+			}
+			if created != nil {
+				count++
+			}
+		}
+	}
+	return count, nil
+}
+
+// ClaimRenditions claims up to limit pending renditions for processing.
+func (s *Service) ClaimRenditions(ctx context.Context, limit int32) ([]contract.Rendition, error) {
+	return s.repo.ClaimPendingRenditions(ctx, limit)
+}
+
+// RecordRenditionReady marks a rendition as ready with metadata and object key.
+func (s *Service) RecordRenditionReady(
+	ctx context.Context, id uuid.UUID, objectKey, mimeType string,
+	width, height, durationMS *int, byteSize *int64, toolVersion string,
+) (*contract.Rendition, error) {
+	return s.repo.UpdateRenditionReady(
+		ctx, id, objectKey, mimeType, width, height, durationMS, byteSize, toolVersion,
+	)
+}
+
+// RecordRenditionSkipped marks a rendition as skipped with a reason.
+func (s *Service) RecordRenditionSkipped(
+	ctx context.Context, id uuid.UUID, reason string,
+) (*contract.Rendition, error) {
+	return s.repo.UpdateRenditionSkipped(ctx, id, reason)
+}
+
+// RecordRenditionFailed marks a rendition failure.
+func (s *Service) RecordRenditionFailed(
+	ctx context.Context, id uuid.UUID, reason string,
+) (*contract.Rendition, error) {
+	return s.repo.UpdateRenditionFailed(ctx, id, reason)
+}
+
 
 func (s *Service) deleteStorageObject(ctx context.Context, bucket, key string) error {
 	if err := s.storage.Delete(ctx, bucket, key); err != nil && !errors.Is(err, storage.ErrObjectNotFound) {
@@ -453,6 +563,19 @@ func (s *Service) validateFileResource(ctx context.Context, res *contract.Resour
 
 	if _, err := s.repo.UpdateValidationSuccess(ctx, res.ID, res.Title, detectedMIME, stat.Size, checksum); err != nil {
 		return fmt.Errorf("save validation success: %w", err)
+	}
+
+	// Plan renditions for the newly validated file
+	kinds := domain.PlannedRenditionsForMIME(detectedMIME)
+	for _, k := range kinds {
+		_, _ = s.repo.InsertRenditionPending(ctx, res.ID, k)
+	}
+
+	// Dispatch render workflow in Actions (WO-18 §8)
+	if s.mediaRender != nil {
+		if err := s.mediaRender.RequestRender(ctx); err != nil {
+			slog.WarnContext(ctx, "could not request media render dispatch", "resource_id", res.ID, "error", err)
+		}
 	}
 
 	return nil

@@ -6914,6 +6914,7 @@ export interface components {
              * @example 2026-09-21T00:01:00Z
              */
             validated_at?: string | null;
+            renditions?: components["schemas"]["ResourceRendition"][];
         };
         ResourceList: {
             items: components["schemas"]["Resource"][];
@@ -6989,6 +6990,37 @@ export interface components {
              * @enum {string}
              */
             status: "uploaded";
+        };
+        /** @description A derived visual, audio, or video rendition of a validated file resource. */
+        ResourceRendition: {
+            /**
+             * @example thumbnail
+             * @enum {string}
+             */
+            kind: "thumbnail" | "display" | "preview" | "audio_web" | "poster" | "video_360p" | "video_720p";
+            /** @example image/png */
+            mime_type: string;
+            /** @example 320 */
+            width?: number | null;
+            /** @example 240 */
+            height?: number | null;
+            /** @example null */
+            duration_ms?: number | null;
+            /**
+             * Format: int64
+             * @example 12450
+             */
+            byte_size?: number | null;
+            /**
+             * @description Presigned GET URL to download or display the rendition.
+             * @example https://storage.example.com/fluentra-derived/...
+             */
+            url?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-21T01:00:00Z
+             */
+            expires_at?: string | null;
         };
     };
     responses: {

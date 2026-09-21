@@ -276,6 +276,24 @@ type CoreUserPreference struct {
 	PracticeLevel        *CoreCefrLevel
 }
 
+type ResourceRendition struct {
+	ID            uuid.UUID
+	ResourceID    uuid.UUID
+	Kind          string
+	Status        string
+	ObjectKey     *string
+	MimeType      string
+	Width         *int32
+	Height        *int32
+	DurationMs    *int32
+	ByteSize      *int64
+	ToolVersion   string
+	Attempts      int32
+	FailureReason string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
 type ResourceResource struct {
 	ID               uuid.UUID
 	UserID           uuid.UUID
