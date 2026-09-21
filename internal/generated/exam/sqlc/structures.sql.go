@@ -7,9 +7,49 @@ package sqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
+
+const createMockTest = `-- name: CreateMockTest :one
+INSERT INTO assess.mock_tests (id, blueprint_id, mode, seed, composition, owner_id, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, blueprint_id, mode, seed, composition, owner_id, created_at
+`
+
+type CreateMockTestParams struct {
+	ID          uuid.UUID
+	BlueprintID uuid.UUID
+	Mode        string
+	Seed        int64
+	Composition []byte
+	OwnerID     *uuid.UUID
+	CreatedAt   time.Time
+}
+
+func (q *Queries) CreateMockTest(ctx context.Context, arg CreateMockTestParams) (AssessMockTest, error) {
+	row := q.db.QueryRow(ctx, createMockTest,
+		arg.ID,
+		arg.BlueprintID,
+		arg.Mode,
+		arg.Seed,
+		arg.Composition,
+		arg.OwnerID,
+		arg.CreatedAt,
+	)
+	var i AssessMockTest
+	err := row.Scan(
+		&i.ID,
+		&i.BlueprintID,
+		&i.Mode,
+		&i.Seed,
+		&i.Composition,
+		&i.OwnerID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
 
 const getBlueprintByID = `-- name: GetBlueprintByID :one
 SELECT id, version_id, name, cefr_distribution, node_distribution FROM assess.blueprints
@@ -48,6 +88,32 @@ func (q *Queries) GetBlueprintByName(ctx context.Context, arg GetBlueprintByName
 		&i.Name,
 		&i.CefrDistribution,
 		&i.NodeDistribution,
+	)
+	return i, err
+}
+
+const getExamByVersionID = `-- name: GetExamByVersionID :one
+SELECT id, slug, title_en, title_vi, description_en, description_vi, level, format, total_minutes, created_at, updated_at, version_id FROM assess.exams
+WHERE version_id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetExamByVersionID(ctx context.Context, versionID *uuid.UUID) (AssessExam, error) {
+	row := q.db.QueryRow(ctx, getExamByVersionID, versionID)
+	var i AssessExam
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.TitleEn,
+		&i.TitleVi,
+		&i.DescriptionEn,
+		&i.DescriptionVi,
+		&i.Level,
+		&i.Format,
+		&i.TotalMinutes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.VersionID,
 	)
 	return i, err
 }
@@ -116,6 +182,26 @@ func (q *Queries) GetExamVersionByID(ctx context.Context, id uuid.UUID) (AssessE
 		&i.VerifiedAt,
 		&i.IsCurrent,
 		&i.Notes,
+	)
+	return i, err
+}
+
+const getMockTestByID = `-- name: GetMockTestByID :one
+SELECT id, blueprint_id, mode, seed, composition, owner_id, created_at FROM assess.mock_tests
+WHERE id = $1
+`
+
+func (q *Queries) GetMockTestByID(ctx context.Context, id uuid.UUID) (AssessMockTest, error) {
+	row := q.db.QueryRow(ctx, getMockTestByID, id)
+	var i AssessMockTest
+	err := row.Scan(
+		&i.ID,
+		&i.BlueprintID,
+		&i.Mode,
+		&i.Seed,
+		&i.Composition,
+		&i.OwnerID,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -250,6 +336,40 @@ func (q *Queries) ListExamVersions(ctx context.Context) ([]AssessExamVersion, er
 			&i.VerifiedAt,
 			&i.IsCurrent,
 			&i.Notes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMockTestsByOwner = `-- name: ListMockTestsByOwner :many
+SELECT id, blueprint_id, mode, seed, composition, owner_id, created_at FROM assess.mock_tests
+WHERE owner_id = $1 OR owner_id IS NULL
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListMockTestsByOwner(ctx context.Context, ownerID *uuid.UUID) ([]AssessMockTest, error) {
+	rows, err := q.db.Query(ctx, listMockTestsByOwner, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AssessMockTest
+	for rows.Next() {
+		var i AssessMockTest
+		if err := rows.Scan(
+			&i.ID,
+			&i.BlueprintID,
+			&i.Mode,
+			&i.Seed,
+			&i.Composition,
+			&i.OwnerID,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

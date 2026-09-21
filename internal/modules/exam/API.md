@@ -6,7 +6,7 @@ status: DONE
 phase: 3
 owner: "@learning-team"
 schema: assess
-tables: [exams, exam_sections, exam_attempts, score_reports, integrity_events]
+tables: [exams, exam_sections, exam_attempts, score_reports, integrity_events, exam_versions, exam_parts, blueprints, mock_tests]
 depends_on: [questionbank, job, ai, writing, speaking, learning, lesson, listening]
 depended_on_by: [learning, analytics, admin]
 spec_version: 1.0.0
@@ -35,6 +35,10 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `POST` | `/api/v1/exam-attempts/{id}/sections/{n}/complete` | `self` | Finish a section |
 | `POST` | `/api/v1/exam-attempts/{id}/submit` | `self` | Submit the whole exam |
 | `GET` | `/api/v1/exam-attempts/{id}/report` | `self` | Score report when ready |
+| `GET` | `/api/v1/exam-versions` | `content.read.published` | Current verified exam versions and their blueprints |
+| `POST` | `/api/v1/mock-tests` | `self` | Compose a mock test |
+| `POST` | `/api/v1/mock-tests/{id}/attempts` | `self` | Start or retake a mock test attempt |
+| `GET` | `/api/v1/admin/exams/versions/{id}/coverage` | `questionbank.read` | Exam version coverage report |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -118,6 +122,46 @@ Score report when ready
 | | |
 |---|---|
 | Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+### `GET /api/v1/exam-versions`
+
+Current verified exam versions and their blueprints
+
+| | |
+|---|---|
+| Permission | `content.read.published` |
+| Success | 200 |
+| Errors | standard set |
+
+### `POST /api/v1/mock-tests`
+
+Compose a mock test
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 201 |
+| Errors | standard set |
+
+### `POST /api/v1/mock-tests/{id}/attempts`
+
+Start or retake a mock test attempt
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 201 |
+| Errors | standard set |
+
+### `GET /api/v1/admin/exams/versions/{id}/coverage`
+
+Exam version coverage report
+
+| | |
+|---|---|
+| Permission | `questionbank.read` |
 | Success | 200 |
 | Errors | standard set |
 

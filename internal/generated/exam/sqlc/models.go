@@ -228,6 +228,7 @@ type AssessExamAttempt struct {
 	SubmittedBy           *string
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
+	MockTestID            *uuid.UUID
 }
 
 type AssessExamPart struct {
@@ -272,6 +273,16 @@ type AssessIntegrityEvent struct {
 	Kind       string
 	OccurredAt time.Time
 	Metadata   []byte
+}
+
+type AssessMockTest struct {
+	ID          uuid.UUID
+	BlueprintID uuid.UUID
+	Mode        string
+	Seed        int64
+	Composition []byte
+	OwnerID     *uuid.UUID
+	CreatedAt   time.Time
 }
 
 type AssessScoreReport struct {

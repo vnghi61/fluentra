@@ -138,6 +138,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/admin/foundation/topics` | `content.create` | Create a new foundation taxonomy topic |
 | `PATCH` | `/api/v1/admin/foundation/topics/{code}` | `content.edit` | Update foundation topic metadata |
 | `PUT` | `/api/v1/admin/foundation/topics/{code}/prerequisites` | `content.edit` | Replace prerequisites for a foundation topic |
+| `GET` | `/api/v1/admin/review-queue` | `content.review` | List machine-generated drafts awaiting review |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

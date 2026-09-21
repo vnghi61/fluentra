@@ -60,6 +60,24 @@ func (q *Queries) CountUserExamAttempts(ctx context.Context, userID uuid.UUID) (
 	return count, err
 }
 
+const countUserMockTestAttempts = `-- name: CountUserMockTestAttempts :one
+SELECT COUNT(*)
+FROM assess.exam_attempts
+WHERE user_id = $1 AND mock_test_id = $2
+`
+
+type CountUserMockTestAttemptsParams struct {
+	UserID     uuid.UUID
+	MockTestID *uuid.UUID
+}
+
+func (q *Queries) CountUserMockTestAttempts(ctx context.Context, arg CountUserMockTestAttemptsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countUserMockTestAttempts, arg.UserID, arg.MockTestID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createExamAttempt = `-- name: CreateExamAttempt :one
 INSERT INTO assess.exam_attempts (
     id, user_id, exam_id, mode, chosen_duration_minutes,
@@ -69,7 +87,7 @@ INSERT INTO assess.exam_attempts (
     $1, $2, $3, $4, $5,
     $6, $7, $8, $9,
     $10, $11, $6, $6
-) RETURNING id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at
+) RETURNING id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at, mock_test_id
 `
 
 type CreateExamAttemptParams struct {
@@ -118,6 +136,71 @@ func (q *Queries) CreateExamAttempt(ctx context.Context, arg CreateExamAttemptPa
 		&i.SubmittedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MockTestID,
+	)
+	return i, err
+}
+
+const createMockTestAttempt = `-- name: CreateMockTestAttempt :one
+INSERT INTO assess.exam_attempts (
+    id, user_id, exam_id, mode, chosen_duration_minutes,
+    started_at, deadline_at, current_section, status,
+    section_activities, draft_answers, mock_test_id, created_at, updated_at
+) VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8, $9,
+    $10, $11, $12, $6, $6
+) RETURNING id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at, mock_test_id
+`
+
+type CreateMockTestAttemptParams struct {
+	ID                    uuid.UUID
+	UserID                uuid.UUID
+	ExamID                uuid.UUID
+	Mode                  string
+	ChosenDurationMinutes int32
+	StartedAt             time.Time
+	DeadlineAt            time.Time
+	CurrentSection        int32
+	Status                string
+	SectionActivities     []byte
+	DraftAnswers          []byte
+	MockTestID            *uuid.UUID
+}
+
+func (q *Queries) CreateMockTestAttempt(ctx context.Context, arg CreateMockTestAttemptParams) (AssessExamAttempt, error) {
+	row := q.db.QueryRow(ctx, createMockTestAttempt,
+		arg.ID,
+		arg.UserID,
+		arg.ExamID,
+		arg.Mode,
+		arg.ChosenDurationMinutes,
+		arg.StartedAt,
+		arg.DeadlineAt,
+		arg.CurrentSection,
+		arg.Status,
+		arg.SectionActivities,
+		arg.DraftAnswers,
+		arg.MockTestID,
+	)
+	var i AssessExamAttempt
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ExamID,
+		&i.Mode,
+		&i.ChosenDurationMinutes,
+		&i.StartedAt,
+		&i.DeadlineAt,
+		&i.CurrentSection,
+		&i.Status,
+		&i.SectionActivities,
+		&i.DraftAnswers,
+		&i.SubmittedAt,
+		&i.SubmittedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.MockTestID,
 	)
 	return i, err
 }
@@ -182,7 +265,7 @@ func (q *Queries) CreateScoreReport(ctx context.Context, arg CreateScoreReportPa
 }
 
 const getExamAttemptByID = `-- name: GetExamAttemptByID :one
-SELECT id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at
+SELECT id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at, mock_test_id
 FROM assess.exam_attempts
 WHERE id = $1
 `
@@ -206,12 +289,13 @@ func (q *Queries) GetExamAttemptByID(ctx context.Context, id uuid.UUID) (AssessE
 		&i.SubmittedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MockTestID,
 	)
 	return i, err
 }
 
 const getExamAttemptForUser = `-- name: GetExamAttemptForUser :one
-SELECT id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at
+SELECT id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at, mock_test_id
 FROM assess.exam_attempts
 WHERE id = $1 AND user_id = $2
 `
@@ -240,6 +324,7 @@ func (q *Queries) GetExamAttemptForUser(ctx context.Context, arg GetExamAttemptF
 		&i.SubmittedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MockTestID,
 	)
 	return i, err
 }
@@ -399,7 +484,7 @@ func (q *Queries) ListExams(ctx context.Context) ([]AssessExam, error) {
 }
 
 const listExpiredInProgressAttempts = `-- name: ListExpiredInProgressAttempts :many
-SELECT id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at
+SELECT id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at, mock_test_id
 FROM assess.exam_attempts
 WHERE status = 'in_progress'
   AND deadline_at <= $1
@@ -432,6 +517,7 @@ func (q *Queries) ListExpiredInProgressAttempts(ctx context.Context, deadlineAt 
 			&i.SubmittedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MockTestID,
 		); err != nil {
 			return nil, err
 		}
@@ -520,7 +606,7 @@ func (q *Queries) ListPendingScoreReports(ctx context.Context) ([]AssessScoreRep
 }
 
 const listUserExamAttempts = `-- name: ListUserExamAttempts :many
-SELECT id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at
+SELECT id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at, mock_test_id
 FROM assess.exam_attempts
 WHERE user_id = $1
 ORDER BY started_at DESC
@@ -558,6 +644,7 @@ func (q *Queries) ListUserExamAttempts(ctx context.Context, arg ListUserExamAtte
 			&i.SubmittedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MockTestID,
 		); err != nil {
 			return nil, err
 		}
@@ -576,7 +663,7 @@ SET status = 'completed',
     submitted_by = $3,
     updated_at = $2
 WHERE id = $1 AND status = 'in_progress'
-RETURNING id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at
+RETURNING id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at, mock_test_id
 `
 
 type MarkAttemptCompletedParams struct {
@@ -604,6 +691,7 @@ func (q *Queries) MarkAttemptCompleted(ctx context.Context, arg MarkAttemptCompl
 		&i.SubmittedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MockTestID,
 	)
 	return i, err
 }
@@ -615,7 +703,7 @@ SET status = 'expired',
     submitted_by = 'expiry',
     updated_at = $2
 WHERE id = $1 AND status = 'in_progress'
-RETURNING id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at
+RETURNING id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at, mock_test_id
 `
 
 type MarkAttemptExpiredParams struct {
@@ -642,6 +730,7 @@ func (q *Queries) MarkAttemptExpired(ctx context.Context, arg MarkAttemptExpired
 		&i.SubmittedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MockTestID,
 	)
 	return i, err
 }
@@ -679,7 +768,7 @@ UPDATE assess.exam_attempts
 SET current_section = $2,
     updated_at = $3
 WHERE id = $1 AND status = 'in_progress'
-RETURNING id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at
+RETURNING id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at, mock_test_id
 `
 
 type UpdateCurrentSectionParams struct {
@@ -707,6 +796,7 @@ func (q *Queries) UpdateCurrentSection(ctx context.Context, arg UpdateCurrentSec
 		&i.SubmittedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MockTestID,
 	)
 	return i, err
 }
@@ -716,7 +806,7 @@ UPDATE assess.exam_attempts
 SET draft_answers = $2,
     updated_at = $3
 WHERE id = $1 AND status = 'in_progress'
-RETURNING id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at
+RETURNING id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at, mock_test_id
 `
 
 type UpdateDraftAnswersParams struct {
@@ -744,6 +834,7 @@ func (q *Queries) UpdateDraftAnswers(ctx context.Context, arg UpdateDraftAnswers
 		&i.SubmittedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MockTestID,
 	)
 	return i, err
 }

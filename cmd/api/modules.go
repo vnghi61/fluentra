@@ -36,6 +36,7 @@ import (
 	paymentsvc "github.com/fluentra/fluentra/internal/modules/payment/service"
 	paymenthttp "github.com/fluentra/fluentra/internal/modules/payment/transport/http"
 	"github.com/fluentra/fluentra/internal/modules/questionbank"
+	questionbankcontract "github.com/fluentra/fluentra/internal/modules/questionbank/contract"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/reading"
@@ -355,6 +356,7 @@ func newIdentity(deps identityDeps) *identity {
 		Attempts:     lazyAttemptOutcomeReader{of: assembled},
 		Exposures:    lazyItemExposureRecorder{of: assembled},
 		Lesson:       assembled.lesson.Reader(),
+		Questionbank: lazyQuestionbankReader{of: assembled},
 		Drawer:       lazyExamPoolDrawer{of: assembled},
 		Enqueuer:     deps.Enqueuer,
 		WorkerNudger: deps.WorkerNudger,
@@ -644,6 +646,7 @@ func (i *identity) Routes(api chi.Router) {
 			i.vocabulary.AdminRoutes(admin)
 			i.payment.AdminRoutes(admin)
 			i.questionbank.AdminRoutes(admin)
+			i.exam.AdminRoutes(admin)
 		})
 	})
 }
@@ -932,6 +935,44 @@ func (d lazyExamPoolDrawer) DrawSitting(
 		}
 	}
 	return out, nil
+}
+
+type lazyQuestionbankReader struct{ of *identity }
+
+var _ questionbankcontract.Reader = lazyQuestionbankReader{}
+
+func (r lazyQuestionbankReader) GetQuestion(ctx context.Context, id uuid.UUID) (*questionbankcontract.Question, error) {
+	if r.of.questionbank == nil {
+		return nil, fmt.Errorf("questionbank module is not assembled")
+	}
+	return r.of.questionbank.Reader().GetQuestion(ctx, id)
+}
+
+func (r lazyQuestionbankReader) ListQuestions(
+	ctx context.Context, filter questionbankcontract.Filter,
+) ([]*questionbankcontract.Question, int, error) {
+	if r.of.questionbank == nil {
+		return nil, 0, fmt.Errorf("questionbank module is not assembled")
+	}
+	return r.of.questionbank.Reader().ListQuestions(ctx, filter)
+}
+
+func (r lazyQuestionbankReader) SampleQuestions(
+	ctx context.Context, criteria questionbankcontract.SampleCriteria,
+) ([]*questionbankcontract.Question, error) {
+	if r.of.questionbank == nil {
+		return nil, fmt.Errorf("questionbank module is not assembled")
+	}
+	return r.of.questionbank.Reader().SampleQuestions(ctx, criteria)
+}
+
+func (r lazyQuestionbankReader) GetQuestionStats(
+	ctx context.Context, id uuid.UUID,
+) (*questionbankcontract.QuestionStats, error) {
+	if r.of.questionbank == nil {
+		return nil, fmt.Errorf("questionbank module is not assembled")
+	}
+	return r.of.questionbank.Reader().GetQuestionStats(ctx, id)
 }
 
 // rateLimiterAdapter bridges platform/cache's limiter to the one httpx declares.

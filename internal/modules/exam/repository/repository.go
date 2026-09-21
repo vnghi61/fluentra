@@ -3,6 +3,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -81,6 +82,31 @@ func (r *Repository) CreateExamAttempt(
 		return nil, err
 	}
 	return &attempt, nil
+}
+
+// CreateMockTestAttempt inserts a sitting linked to a mock test.
+func (r *Repository) CreateMockTestAttempt(
+	ctx context.Context, arg sqlc.CreateMockTestAttemptParams,
+) (*sqlc.AssessExamAttempt, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	attempt, err := r.queries.CreateMockTestAttempt(ctx, arg)
+	if err != nil {
+		return nil, err
+	}
+	return &attempt, nil
+}
+
+// CountUserMockTestAttempts counts a learner's attempts for a mock test.
+func (r *Repository) CountUserMockTestAttempts(ctx context.Context, userID, mockTestID uuid.UUID) (int64, error) {
+	if r.queries == nil {
+		return 0, nil
+	}
+	return r.queries.CountUserMockTestAttempts(ctx, sqlc.CountUserMockTestAttemptsParams{
+		UserID:     userID,
+		MockTestID: &mockTestID,
+	})
 }
 
 // GetExamAttemptByID returns a sitting whoever owns it; for jobs, not for requests.
@@ -478,4 +504,90 @@ func toDomainBlueprint(row sqlc.AssessBlueprint) *domain.Blueprint {
 		CefrDistribution: row.CefrDistribution,
 		NodeDistribution: row.NodeDistribution,
 	}
+}
+
+// CreateMockTest persists a new composed mock test.
+func (r *Repository) CreateMockTest(ctx context.Context, mt *domain.MockTest) (*domain.MockTest, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	compBytes, err := json.Marshal(mt.Composition)
+	if err != nil {
+		return nil, err
+	}
+	row, err := r.queries.CreateMockTest(ctx, sqlc.CreateMockTestParams{
+		ID:          mt.ID,
+		BlueprintID: mt.BlueprintID,
+		Mode:        mt.Mode,
+		Seed:        mt.Seed,
+		Composition: compBytes,
+		OwnerID:     mt.OwnerID,
+		CreatedAt:   mt.CreatedAt,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return toDomainMockTest(row)
+}
+
+// GetMockTestByID retrieves a mock test by its ID.
+func (r *Repository) GetMockTestByID(ctx context.Context, id uuid.UUID) (*domain.MockTest, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.GetMockTestByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return toDomainMockTest(row)
+}
+
+// ListMockTestsByOwner retrieves mock tests for an owner or public tests.
+func (r *Repository) ListMockTestsByOwner(ctx context.Context, ownerID *uuid.UUID) ([]*domain.MockTest, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListMockTestsByOwner(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*domain.MockTest, 0, len(rows))
+	for _, row := range rows {
+		item, err := toDomainMockTest(row)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, item)
+	}
+	return res, nil
+}
+
+// GetExamByVersionID finds an exam template linked to this version.
+func (r *Repository) GetExamByVersionID(ctx context.Context, versionID uuid.UUID) (*sqlc.AssessExam, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	exam, err := r.queries.GetExamByVersionID(ctx, &versionID)
+	if err != nil {
+		return nil, err
+	}
+	return &exam, nil
+}
+
+func toDomainMockTest(row sqlc.AssessMockTest) (*domain.MockTest, error) {
+	var comp []domain.MockTestPartComposition
+	if len(row.Composition) > 0 {
+		if err := json.Unmarshal(row.Composition, &comp); err != nil {
+			return nil, err
+		}
+	}
+	return &domain.MockTest{
+		ID:          row.ID,
+		BlueprintID: row.BlueprintID,
+		Mode:        row.Mode,
+		Seed:        row.Seed,
+		Composition: comp,
+		OwnerID:     row.OwnerID,
+		CreatedAt:   row.CreatedAt,
+	}, nil
 }

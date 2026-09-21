@@ -2,8 +2,8 @@
 module: questionbank
 tier: learning
 group: modules
-status: ACTIVE
-phase: 3
+status: PLANNED
+phase: 4
 owner: "@learning-team"
 schema: assess
 tables: [questions, question_stats]
@@ -96,7 +96,6 @@ Migrations: `db/migrations/questionbank/` · Queries: `db/queries/questionbank/`
 | `assess.questions` | One item | Content-versioned. `content_item_id`, `activity_id`, `exam_part_id`, `kind`, `skill`, `cefr_level`, `difficulty`, `question_count`, `fingerprint`, `provenance`, `status` |
 | `assess.question_stats` | Empirical difficulty | `question_id`, `attempts`, `p_value`, `discrimination`, `avg_time_ms`, `last_computed_at` |
 
-*Note: Per Phase 3 Work Order 19 §F.1, `question_options`, `question_sets`, and `question_set_items` are not built. Options live directly in the content body read by graders; sets are mock test compositions in Stage H. Spine tagging uses `content.content_tags` on `content_item_id`.*
 <!-- END GENERATED: schema -->
 
 ## 6. HTTP endpoints

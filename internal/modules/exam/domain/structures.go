@@ -109,3 +109,51 @@ func (b *Blueprint) Validate() error {
 	}
 	return nil
 }
+
+// Mock test modes.
+const (
+	MockModeFixed     = "fixed"
+	MockModeRandom    = "random"
+	MockModeWeakTopic = "weak_topic"
+	MockModeFull      = "full"
+	MockModeCustom    = "custom"
+)
+
+// Mock test errors.
+var (
+	// ErrInvalidMockMode indicates the requested mock test mode is not supported.
+	ErrInvalidMockMode = apperr.New(apperr.Validation, "INVALID_MOCK_MODE", "unsupported mock test mode")
+	// ErrMockTestNotFound indicates the requested mock test does not exist.
+	ErrMockTestNotFound = apperr.New(apperr.NotFound, "MOCK_TEST_NOT_FOUND", "mock test not found")
+	// ErrInsufficientQuestionsForPart indicates not enough questions exist to compose a part.
+	ErrInsufficientQuestionsForPart = apperr.New(
+		apperr.Conflict, "INSUFFICIENT_ITEMS", "insufficient published questions to compose part",
+	)
+)
+
+// MockTestPartComposition lists activities drawn for a single exam part.
+type MockTestPartComposition struct {
+	PartID      uuid.UUID   `json:"part_id"`
+	ActivityIDs []uuid.UUID `json:"activity_ids"`
+}
+
+// MockTest models a composed mock test.
+type MockTest struct {
+	ID          uuid.UUID                 `json:"id"`
+	BlueprintID uuid.UUID                 `json:"blueprint_id"`
+	Mode        string                    `json:"mode"`
+	Seed        int64                     `json:"seed"`
+	Composition []MockTestPartComposition `json:"composition"`
+	OwnerID     *uuid.UUID                `json:"owner_id,omitempty"`
+	CreatedAt   time.Time                 `json:"created_at"`
+}
+
+// Validate checks mock test constraints.
+func (m *MockTest) Validate() error {
+	switch m.Mode {
+	case MockModeFixed, MockModeRandom, MockModeWeakTopic, MockModeFull, MockModeCustom:
+		return nil
+	default:
+		return ErrInvalidMockMode
+	}
+}

@@ -276,3 +276,188 @@ ExamScoreReport:
         $ref: '#/ExamIntegritySignal'
     disclaimer:
       type: string
+
+BlueprintSummary:
+  type: object
+  required: [id, name, cefr_distribution, node_distribution]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+      example: toeic_default
+    cefr_distribution:
+      type: object
+      additionalProperties: true
+      example:
+        B1: 0.5
+        B2: 0.5
+    node_distribution:
+      type: object
+      additionalProperties: true
+      example: {}
+
+ExamVersion:
+  type: object
+  required: [id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, blueprints]
+  properties:
+    id:
+      type: string
+      format: uuid
+    exam_family:
+      type: string
+      example: toeic_lr
+    code:
+      type: string
+      example: TOEIC_LR_2026
+    title:
+      type: string
+      example: TOEIC Listening & Reading (2026)
+    total_minutes:
+      type: integer
+      example: 120
+    scoring:
+      type: object
+      additionalProperties: true
+    source_url:
+      type: string
+      format: uri
+      example: https://www.etsglobal.org/dz/en/help-center/test-content/format-questions-toeic-listening-reading
+    verified_at:
+      type: string
+      format: date
+      example: "2026-09-20"
+    is_current:
+      type: boolean
+      example: true
+    notes:
+      type: string
+      example: "7 parts, 200 questions"
+    blueprints:
+      type: array
+      items:
+        $ref: '#/BlueprintSummary'
+
+ExamVersionListResponse:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ExamVersion'
+
+ComposeMockTestRequest:
+  type: object
+  required: [blueprint_id, mode]
+  properties:
+    blueprint_id:
+      type: string
+      format: uuid
+    mode:
+      type: string
+      enum: [fixed, random, weak_topic, full, custom]
+      example: random
+    parts:
+      type: array
+      items:
+        type: integer
+      description: Optional list of part numbers for custom mode
+
+MockTestPartComposition:
+  type: object
+  required: [part_id, activity_ids]
+  properties:
+    part_id:
+      type: string
+      format: uuid
+    activity_ids:
+      type: array
+      items:
+        type: string
+        format: uuid
+
+MockTest:
+  type: object
+  required: [id, blueprint_id, mode, seed, composition, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    blueprint_id:
+      type: string
+      format: uuid
+    mode:
+      type: string
+      enum: [fixed, random, weak_topic, full, custom]
+    seed:
+      type: integer
+      format: int64
+      example: 1234567890
+    composition:
+      type: array
+      items:
+        $ref: '#/MockTestPartComposition'
+    owner_id:
+      type: string
+      format: uuid
+      nullable: true
+    created_at:
+      type: string
+      format: date-time
+
+ExamPartCoverage:
+  type: object
+  required: [part_id, part_number, section, kind, question_count, group_size, published_groups_available, groups_needed_per_test, tests_possible]
+  properties:
+    part_id:
+      type: string
+      format: uuid
+    part_number:
+      type: integer
+      example: 1
+    section:
+      type: string
+      example: listening
+    kind:
+      type: string
+      example: photo_description
+    question_count:
+      type: integer
+      example: 6
+    group_size:
+      type: integer
+      example: 1
+    published_groups_available:
+      type: integer
+      example: 12
+    groups_needed_per_test:
+      type: integer
+      example: 6
+    tests_possible:
+      type: integer
+      example: 2
+
+ExamCoverageReport:
+  type: object
+  required: [version_id, exam_code, distinct_tests_possible, parts]
+  properties:
+    version_id:
+      type: string
+      format: uuid
+    exam_code:
+      type: string
+      example: TOEIC_LR_2026
+    distinct_tests_possible:
+      type: integer
+      example: 2
+    bottleneck_part_id:
+      type: string
+      format: uuid
+      nullable: true
+    parts:
+      type: array
+      items:
+        $ref: '#/ExamPartCoverage'
+

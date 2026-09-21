@@ -12,6 +12,7 @@ import (
 	examhttp "github.com/fluentra/fluentra/internal/modules/exam/transport/http"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	questionbankcontract "github.com/fluentra/fluentra/internal/modules/questionbank/contract"
 	platformjob "github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
@@ -35,6 +36,7 @@ type Deps struct {
 	Attempts     learningcontract.AttemptOutcomeReader
 	Exposures    learningcontract.ItemExposureRecorder
 	Lesson       lessoncontract.Reader
+	Questionbank questionbankcontract.Reader
 	Drawer       PoolDrawer
 	Enqueuer     platformjob.Enqueuer
 	WorkerNudger WorkerNudger
@@ -53,17 +55,18 @@ func New(deps Deps) *Module {
 	repo := examrepo.New(deps.Pool)
 
 	svc := service.New(service.Deps{
-		Pool:       deps.Pool,
-		Repo:       repo,
-		Learning:   deps.Learning,
-		Attempts:   deps.Attempts,
-		Exposures:  deps.Exposures,
-		Lesson:     deps.Lesson,
-		Drawer:     deps.Drawer,
-		Clock:      deps.Clock,
-		DailyLimit: deps.DailyLimit,
-		Enqueuer:   deps.Enqueuer,
-		Nudger:     deps.WorkerNudger,
+		Pool:         deps.Pool,
+		Repo:         repo,
+		Learning:     deps.Learning,
+		Attempts:     deps.Attempts,
+		Exposures:    deps.Exposures,
+		Lesson:       deps.Lesson,
+		Questionbank: deps.Questionbank,
+		Drawer:       deps.Drawer,
+		Clock:        deps.Clock,
+		DailyLimit:   deps.DailyLimit,
+		Enqueuer:     deps.Enqueuer,
+		Nudger:       deps.WorkerNudger,
 	})
 
 	handler := examhttp.NewHandler(svc)
@@ -88,6 +91,13 @@ func (m *Module) Service() *service.Service {
 func (m *Module) Routes(r chi.Router) {
 	if m.handler != nil {
 		m.handler.Routes(r)
+	}
+}
+
+// AdminRoutes mounts exam admin endpoints on the router.
+func (m *Module) AdminRoutes(r chi.Router) {
+	if m.handler != nil {
+		m.handler.AdminRoutes(r)
 	}
 }
 

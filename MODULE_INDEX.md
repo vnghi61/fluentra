@@ -163,7 +163,7 @@ graph BT
     RDG --> VOC
     SPK & LIS & RSC --> MED
     SPK & WRT & GRM & QB & RSC --> AI
-    QB --> CNT
+    QB --> CNT & LSN & LRN & RBAC
     WRT & GAM & SUB --> NOT
     EXM --> QB
     EXM --> WRT & SPK & LSN & LIS

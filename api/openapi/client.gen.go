@@ -301,6 +301,13 @@ type ClientInterface interface {
 	// Corresponds with POST /admin/courses (the `AdminCreateCourse` operationId).
 	AdminCreateCourse(ctx context.Context, body AdminCreateCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetExamVersionCoverage Exam version coverage report
+	//
+	// Report of published question groups available versus required per exam part.
+	//
+	// Corresponds with GET /admin/exams/versions/{id}/coverage (the `GetExamVersionCoverage` operationId).
+	GetExamVersionCoverage(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AdminListFlags List all feature flags.
 	//
 	// Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
@@ -1176,6 +1183,13 @@ type ClientInterface interface {
 	// Corresponds with POST /exam-attempts/{id}/submit (the `SubmitExamAttempt` operationId).
 	SubmitExamAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListExamVersions Current versions and their blueprints
+	//
+	// Lists verified exam versions and their blueprints available for mock test composition.
+	//
+	// Corresponds with GET /exam-versions (the `ListExamVersions` operationId).
+	ListExamVersions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListExams Available mock exams
 	//
 	// Lists active mock exam templates available to learners.
@@ -1737,6 +1751,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /me/weekly-plan (the `GetMyWeeklyPlan` operationId).
 	GetMyWeeklyPlan(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ComposeMockTestWithBody Compose a mock test
+	//
+	// Composes a mock test from the question bank based on blueprint and mode.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+	ComposeMockTestWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ComposeMockTest Compose a mock test
+	//
+	// Composes a mock test from the question bank based on blueprint and mode.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+	ComposeMockTest(ctx context.Context, body ComposeMockTestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartMockTestAttempt Start or retake a mock test attempt
+	//
+	// Starts a sitting from a composed mock test.
+	//
+	// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
+	StartMockTestAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ModerationListCoursesQueue List course submissions in review queue.
 	//
@@ -2663,6 +2702,23 @@ func (c *Client) AdminCreateCourseWithBody(ctx context.Context, contentType stri
 // Corresponds with POST /admin/courses (the `AdminCreateCourse` operationId).
 func (c *Client) AdminCreateCourse(ctx context.Context, body AdminCreateCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAdminCreateCourseRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetExamVersionCoverage Exam version coverage report
+//
+// Report of published question groups available versus required per exam part.
+//
+// Corresponds with GET /admin/exams/versions/{id}/coverage (the `GetExamVersionCoverage` operationId).
+func (c *Client) GetExamVersionCoverage(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetExamVersionCoverageRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -4458,6 +4514,23 @@ func (c *Client) SubmitExamAttempt(ctx context.Context, id openapi_types.UUID, r
 	return c.Client.Do(req)
 }
 
+// ListExamVersions Current versions and their blueprints
+//
+// Lists verified exam versions and their blueprints available for mock test composition.
+//
+// Corresponds with GET /exam-versions (the `ListExamVersions` operationId).
+func (c *Client) ListExamVersions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExamVersionsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListExams Available mock exams
 //
 // Lists active mock exam templates available to learners.
@@ -5710,6 +5783,61 @@ func (c *Client) GetVocabUpload(ctx context.Context, id openapi_types.UUID, reqE
 // Corresponds with GET /me/weekly-plan (the `GetMyWeeklyPlan` operationId).
 func (c *Client) GetMyWeeklyPlan(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetMyWeeklyPlanRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ComposeMockTestWithBody Compose a mock test
+//
+// Composes a mock test from the question bank based on blueprint and mode.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+func (c *Client) ComposeMockTestWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewComposeMockTestRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ComposeMockTest Compose a mock test
+//
+// Composes a mock test from the question bank based on blueprint and mode.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+func (c *Client) ComposeMockTest(ctx context.Context, body ComposeMockTestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewComposeMockTestRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartMockTestAttempt Start or retake a mock test attempt
+//
+// Starts a sitting from a composed mock test.
+//
+// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
+func (c *Client) StartMockTestAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartMockTestAttemptRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -7776,6 +7904,40 @@ func NewAdminCreateCourseRequestWithBody(server string, contentType string, body
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetExamVersionCoverageRequest constructs an http.Request for the GetExamVersionCoverage method
+func NewGetExamVersionCoverageRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/exams/versions/%s/coverage", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -10910,6 +11072,33 @@ func NewSubmitExamAttemptRequest(server string, id openapi_types.UUID) (*http.Re
 	return req, nil
 }
 
+// NewListExamVersionsRequest constructs an http.Request for the ListExamVersions method
+func NewListExamVersionsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/exam-versions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListExamsRequest constructs an http.Request for the ListExams method
 func NewListExamsRequest(server string) (*http.Request, error) {
 	var err error
@@ -12958,6 +13147,80 @@ func NewGetMyWeeklyPlanRequest(server string) (*http.Request, error) {
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewComposeMockTestRequest calls the generic ComposeMockTest builder with application/json body
+func NewComposeMockTestRequest(server string, body ComposeMockTestJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewComposeMockTestRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewComposeMockTestRequestWithBody constructs an http.Request for the ComposeMockTest method, with any body, and a specified content type
+func NewComposeMockTestRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/mock-tests")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewStartMockTestAttemptRequest constructs an http.Request for the StartMockTestAttempt method
+func NewStartMockTestAttemptRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/mock-tests/%s/attempts", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -15118,6 +15381,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /admin/courses (the `AdminCreateCourse` operationId).
 	AdminCreateCourseWithResponse(ctx context.Context, body AdminCreateCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateCourseResponse, error)
 
+	// GetExamVersionCoverageWithResponse Exam version coverage report
+	//
+	// Report of published question groups available versus required per exam part.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/exams/versions/{id}/coverage (the `GetExamVersionCoverage` operationId).
+	GetExamVersionCoverageWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetExamVersionCoverageResponse, error)
+
 	// AdminListFlagsWithResponse List all feature flags.
 	//
 	// Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
@@ -16071,6 +16343,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /exam-attempts/{id}/submit (the `SubmitExamAttempt` operationId).
 	SubmitExamAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*SubmitExamAttemptResponse, error)
 
+	// ListExamVersionsWithResponse Current versions and their blueprints
+	//
+	// Lists verified exam versions and their blueprints available for mock test composition.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /exam-versions (the `ListExamVersions` operationId).
+	ListExamVersionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExamVersionsResponse, error)
+
 	// ListExamsWithResponse Available mock exams
 	//
 	// Lists active mock exam templates available to learners.
@@ -16704,6 +16985,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /me/weekly-plan (the `GetMyWeeklyPlan` operationId).
 	GetMyWeeklyPlanWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyWeeklyPlanResponse, error)
+
+	// ComposeMockTestWithBodyWithResponse Compose a mock test
+	//
+	// Composes a mock test from the question bank based on blueprint and mode.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+	ComposeMockTestWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ComposeMockTestResponse, error)
+
+	// ComposeMockTestWithResponse Compose a mock test
+	//
+	// Composes a mock test from the question bank based on blueprint and mode.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+	ComposeMockTestWithResponse(ctx context.Context, body ComposeMockTestJSONRequestBody, reqEditors ...RequestEditorFn) (*ComposeMockTestResponse, error)
+
+	// StartMockTestAttemptWithResponse Start or retake a mock test attempt
+	//
+	// Starts a sitting from a composed mock test.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
+	StartMockTestAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StartMockTestAttemptResponse, error)
 
 	// ModerationListCoursesQueueWithResponse List course submissions in review queue.
 	//
@@ -18611,6 +18919,82 @@ func (r AdminCreateCourseResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AdminCreateCourseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetExamVersionCoverageResponse200Headers the declared response headers of an HTTP 200 response for GetExamVersionCoverage
+type GetExamVersionCoverageResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetExamVersionCoverageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ExamCoverageReport
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetExamVersionCoverageResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetExamVersionCoverageResponse) GetJSON200() *ExamCoverageReport {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetExamVersionCoverageResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetExamVersionCoverageResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetExamVersionCoverageResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetExamVersionCoverageResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetExamVersionCoverageResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetExamVersionCoverageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetExamVersionCoverageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetExamVersionCoverageResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -23550,6 +23934,68 @@ func (r SubmitExamAttemptResponse) ContentType() string {
 	return ""
 }
 
+// ListExamVersionsResponse200Headers the declared response headers of an HTTP 200 response for ListExamVersions
+type ListExamVersionsResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListExamVersionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ExamVersionListResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListExamVersionsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListExamVersionsResponse) GetJSON200() *ExamVersionListResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListExamVersionsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ListExamVersionsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListExamVersionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListExamVersionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListExamVersionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListExamVersionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ListExamsResponse200Headers the declared response headers of an HTTP 200 response for ListExams
 type ListExamsResponse200Headers struct {
 	XRequestId *string
@@ -27184,6 +27630,168 @@ func (r GetMyWeeklyPlanResponse) ContentType() string {
 	return ""
 }
 
+// ComposeMockTestResponse201Headers the declared response headers of an HTTP 201 response for ComposeMockTest
+type ComposeMockTestResponse201Headers struct {
+	XRequestId *string
+}
+
+type ComposeMockTestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *MockTest
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *ComposeMockTestResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r ComposeMockTestResponse) GetJSON201() *MockTest {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ComposeMockTestResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ComposeMockTestResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ComposeMockTestResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ComposeMockTestResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ComposeMockTestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ComposeMockTestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ComposeMockTestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ComposeMockTestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StartMockTestAttemptResponse201Headers the declared response headers of an HTTP 201 response for StartMockTestAttempt
+type StartMockTestAttemptResponse201Headers struct {
+	XRequestId *string
+}
+
+// StartMockTestAttemptResponse429Headers the declared response headers of an HTTP 429 response for StartMockTestAttempt
+type StartMockTestAttemptResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+type StartMockTestAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ExamAttempt
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *StartMockTestAttemptResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StartMockTestAttemptResponse429Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r StartMockTestAttemptResponse) GetJSON201() *ExamAttempt {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StartMockTestAttemptResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StartMockTestAttemptResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StartMockTestAttemptResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StartMockTestAttemptResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StartMockTestAttemptResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StartMockTestAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StartMockTestAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StartMockTestAttemptResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ModerationListCoursesQueueResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -30620,6 +31228,21 @@ func (c *ClientWithResponses) AdminCreateCourseWithResponse(ctx context.Context,
 	return ParseAdminCreateCourseResponse(rsp)
 }
 
+// GetExamVersionCoverageWithResponse Exam version coverage report
+//
+// Report of published question groups available versus required per exam part.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/exams/versions/{id}/coverage (the `GetExamVersionCoverage` operationId).
+func (c *ClientWithResponses) GetExamVersionCoverageWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetExamVersionCoverageResponse, error) {
+	rsp, err := c.GetExamVersionCoverage(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetExamVersionCoverageResponse(rsp)
+}
+
 // AdminListFlagsWithResponse List all feature flags.
 //
 // Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
@@ -32119,6 +32742,21 @@ func (c *ClientWithResponses) SubmitExamAttemptWithResponse(ctx context.Context,
 	return ParseSubmitExamAttemptResponse(rsp)
 }
 
+// ListExamVersionsWithResponse Current versions and their blueprints
+//
+// Lists verified exam versions and their blueprints available for mock test composition.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /exam-versions (the `ListExamVersions` operationId).
+func (c *ClientWithResponses) ListExamVersionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExamVersionsResponse, error) {
+	rsp, err := c.ListExamVersions(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListExamVersionsResponse(rsp)
+}
+
 // ListExamsWithResponse Available mock exams
 //
 // Lists active mock exam templates available to learners.
@@ -33171,6 +33809,51 @@ func (c *ClientWithResponses) GetMyWeeklyPlanWithResponse(ctx context.Context, r
 		return nil, err
 	}
 	return ParseGetMyWeeklyPlanResponse(rsp)
+}
+
+// ComposeMockTestWithBodyWithResponse Compose a mock test
+//
+// Composes a mock test from the question bank based on blueprint and mode.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+func (c *ClientWithResponses) ComposeMockTestWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ComposeMockTestResponse, error) {
+	rsp, err := c.ComposeMockTestWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseComposeMockTestResponse(rsp)
+}
+
+// ComposeMockTestWithResponse Compose a mock test
+//
+// Composes a mock test from the question bank based on blueprint and mode.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+func (c *ClientWithResponses) ComposeMockTestWithResponse(ctx context.Context, body ComposeMockTestJSONRequestBody, reqEditors ...RequestEditorFn) (*ComposeMockTestResponse, error) {
+	rsp, err := c.ComposeMockTest(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseComposeMockTestResponse(rsp)
+}
+
+// StartMockTestAttemptWithResponse Start or retake a mock test attempt
+//
+// Starts a sitting from a composed mock test.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
+func (c *ClientWithResponses) StartMockTestAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StartMockTestAttemptResponse, error) {
+	rsp, err := c.StartMockTestAttempt(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartMockTestAttemptResponse(rsp)
 }
 
 // ModerationListCoursesQueueWithResponse List course submissions in review queue.
@@ -35238,6 +35921,73 @@ func ParseAdminCreateCourseResponse(rsp *http.Response) (*AdminCreateCourseRespo
 			headers.XRequestId = &value
 		}
 		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetExamVersionCoverageResponse parses an HTTP response from a GetExamVersionCoverageWithResponse call
+func ParseGetExamVersionCoverageResponse(rsp *http.Response) (*GetExamVersionCoverageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetExamVersionCoverageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExamCoverageReport
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetExamVersionCoverageResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil
@@ -39968,6 +40718,59 @@ func ParseSubmitExamAttemptResponse(rsp *http.Response) (*SubmitExamAttemptRespo
 	return response, nil
 }
 
+// ParseListExamVersionsResponse parses an HTTP response from a ListExamVersionsWithResponse call
+func ParseListExamVersionsResponse(rsp *http.Response) (*ListExamVersionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListExamVersionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExamVersionListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListExamVersionsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseListExamsResponse parses an HTTP response from a ListExamsWithResponse call
 func ParseListExamsResponse(rsp *http.Response) (*ListExamsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -43146,6 +43949,171 @@ func ParseGetMyWeeklyPlanResponse(rsp *http.Response) (*GetMyWeeklyPlanResponse,
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseComposeMockTestResponse parses an HTTP response from a ComposeMockTestWithResponse call
+func ParseComposeMockTestResponse(rsp *http.Response) (*ComposeMockTestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ComposeMockTestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest MockTest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers ComposeMockTestResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStartMockTestAttemptResponse parses an HTTP response from a StartMockTestAttemptWithResponse call
+func ParseStartMockTestAttemptResponse(rsp *http.Response) (*StartMockTestAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StartMockTestAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ExamAttempt
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers StartMockTestAttemptResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers StartMockTestAttemptResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil

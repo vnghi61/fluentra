@@ -58,7 +58,8 @@
       { "method": "GET", "path": "/api/v1/foundation/path", "permission": "content.read.published", "purpose": "Get topologically sorted foundation learning path", "success": "200" },
       { "method": "POST", "path": "/api/v1/admin/foundation/topics", "permission": "content.create", "purpose": "Create a new foundation taxonomy topic", "success": "201", "errors": ["TAXONOMY_CODE_IMMUTABLE", "VALIDATION_FAILED"] },
       { "method": "PATCH", "path": "/api/v1/admin/foundation/topics/{code}", "permission": "content.edit", "purpose": "Update foundation topic metadata", "success": "200", "errors": ["TAXONOMY_CODE_IMMUTABLE", "NOT_FOUND"] },
-      { "method": "PUT", "path": "/api/v1/admin/foundation/topics/{code}/prerequisites", "permission": "content.edit", "purpose": "Replace prerequisites for a foundation topic", "success": "200", "errors": ["TAXONOMY_CYCLE", "CROSS_NAMESPACE_PREREQUISITE"] }
+      { "method": "PUT", "path": "/api/v1/admin/foundation/topics/{code}/prerequisites", "permission": "content.edit", "purpose": "Replace prerequisites for a foundation topic", "success": "200", "errors": ["TAXONOMY_CYCLE", "CROSS_NAMESPACE_PREREQUISITE"] },
+      { "method": "GET", "path": "/api/v1/admin/review-queue", "permission": "content.review", "purpose": "List machine-generated drafts awaiting review", "success": "200" }
     ],
     "contract": [
       { "kind": "interface", "name": "content.Reader", "purpose": "`GetVersion`, `GetManyVersions`, `Browse` — batched to avoid N+1 from lesson rendering" },
@@ -1554,7 +1555,11 @@
       { "name": "exam_sections", "purpose": "Timed part", "notes": "`exam_id`, `position`, `skill`, `minutes`, `question_set_id`, `navigation` (linear/free)" },
       { "name": "exam_attempts", "purpose": "One sitting", "notes": "`user_id`, `exam_id`, `mode`, `chosen_duration_minutes`, `started_at`, `deadline_at`, `status`, `section_activities`, `draft_answers`, `submitted_at`, `submitted_by`" },
       { "name": "score_reports", "purpose": "Learner-facing result", "notes": "`attempt_id`, `overall_band`, `per_section` jsonb, `feedback`, `percentile`" },
-      { "name": "integrity_events", "purpose": "Signals during an attempt", "notes": "`attempt_id`, `kind`, `occurred_at` — informational, never punitive automatically" }
+      { "name": "integrity_events", "purpose": "Signals during an attempt", "notes": "`attempt_id`, `kind`, `occurred_at` — informational, never punitive automatically" },
+      { "name": "exam_versions", "purpose": "Verified exam versions", "notes": "`exam_family`, `code`, `title`, `total_minutes`, `scoring`, `source_url`, `verified_at`, `is_current`" },
+      { "name": "exam_parts", "purpose": "Exam parts per version", "notes": "`version_id`, `section`, `part_number`, `kind`, `question_count`, `group_size`" },
+      { "name": "blueprints", "purpose": "Mock test blueprints", "notes": "`version_id`, `name`, `cefr_distribution`, `node_distribution`" },
+      { "name": "mock_tests", "purpose": "Composed mock tests", "notes": "`blueprint_id`, `mode`, `seed`, `composition`, `owner_id`" }
     ],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/exams", "permission": "content.read.published", "purpose": "Available mock exams", "success": "200" },
@@ -1564,7 +1569,11 @@
       { "method": "PUT", "path": "/api/v1/exam-attempts/{id}/answers", "permission": "self", "purpose": "Save answers (autosave)", "success": "200", "errors": ["ATTEMPT_EXPIRED"] },
       { "method": "POST", "path": "/api/v1/exam-attempts/{id}/sections/{n}/complete", "permission": "self", "purpose": "Finish a section", "success": "200" },
       { "method": "POST", "path": "/api/v1/exam-attempts/{id}/submit", "permission": "self", "purpose": "Submit the whole exam", "success": "202", "notes": "202 because writing and speaking sections grade asynchronously" },
-      { "method": "GET", "path": "/api/v1/exam-attempts/{id}/report", "permission": "self", "purpose": "Score report when ready", "success": "200" }
+      { "method": "GET", "path": "/api/v1/exam-attempts/{id}/report", "permission": "self", "purpose": "Score report when ready", "success": "200" },
+      { "method": "GET", "path": "/api/v1/exam-versions", "permission": "content.read.published", "purpose": "Current verified exam versions and their blueprints", "success": "200" },
+      { "method": "POST", "path": "/api/v1/mock-tests", "permission": "self", "purpose": "Compose a mock test", "success": "201" },
+      { "method": "POST", "path": "/api/v1/mock-tests/{id}/attempts", "permission": "self", "purpose": "Start or retake a mock test attempt", "success": "201" },
+      { "method": "GET", "path": "/api/v1/admin/exams/versions/{id}/coverage", "permission": "questionbank.read", "purpose": "Exam version coverage report", "success": "200" }
     ],
     "contract": [{ "kind": "interface", "name": "exam.Reader", "purpose": "`AttemptHistory`, `LatestBand` — used by `learning` and `analytics`" }],
     "events": {

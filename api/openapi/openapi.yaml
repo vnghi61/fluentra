@@ -6648,6 +6648,187 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /exam-versions:
+    get:
+      tags: [exam]
+      operationId: listExamVersions
+      summary: Current versions and their blueprints
+      description: Lists verified exam versions and their blueprints available for mock test composition.
+      x-permission: content.read.published
+      responses:
+        '200':
+          description: List of available exam versions.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              example:
+                items:
+                  - id: "20000000-0000-0000-0000-000000000001"
+                    exam_family: "toeic_lr"
+                    code: "TOEIC_LR_2026"
+                    title: "TOEIC Listening & Reading (2026)"
+                    total_minutes: 120
+                    scoring:
+                      type: "raw_with_estimate"
+                    source_url: "https://www.etsglobal.org/dz/en/help-center/test-content/format-questions-toeic-listening-reading"
+                    verified_at: "2026-09-20"
+                    is_current: true
+                    notes: "7 parts, 200 questions"
+                    blueprints:
+                      - id: "20000000-0000-0000-0010-000000000001"
+                        name: "toeic_default"
+                        cefr_distribution:
+                          B1: 0.5
+                          B2: 0.5
+                        node_distribution: {}
+              schema:
+                $ref: '#/components/schemas/ExamVersionListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /mock-tests:
+    post:
+      tags: [exam]
+      operationId: composeMockTest
+      summary: Compose a mock test
+      description: Composes a mock test from the question bank based on blueprint and mode.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              blueprint_id: "20000000-0000-0000-0010-000000000001"
+              mode: "random"
+            schema:
+              $ref: '#/components/schemas/ComposeMockTestRequest'
+      responses:
+        '201':
+          description: Composed mock test.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              example:
+                id: "30000000-0000-0000-0000-000000000001"
+                blueprint_id: "20000000-0000-0000-0010-000000000001"
+                mode: "random"
+                seed: 1234567890
+                composition:
+                  - part_id: "20000000-0000-0000-0001-000000000001"
+                    activity_ids: ["40000000-0000-0000-0000-000000000001"]
+                owner_id: "50000000-0000-0000-0000-000000000001"
+                created_at: "2026-09-20T12:00:00Z"
+              schema:
+                $ref: '#/components/schemas/MockTest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /mock-tests/{id}/attempts:
+    post:
+      tags: [exam]
+      operationId: startMockTestAttempt
+      summary: Start or retake a mock test attempt
+      description: Starts a sitting from a composed mock test.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Mock test ID.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Created sitting attempt.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              example:
+                id: "60000000-0000-0000-0000-000000000001"
+                exam_id: "10000000-0000-0000-0000-0000000000b1"
+                exam_slug: "mock-toeic-b1"
+                exam_title: "TOEIC Mock Exam (B1)"
+                level: "B1"
+                mode: "exam"
+                chosen_duration_minutes: 75
+                started_at: "2026-09-20T12:00:00Z"
+                deadline_at: "2026-09-20T13:15:00Z"
+                remaining_seconds: 4500
+                current_section: 1
+                status: "in_progress"
+                server_time: "2026-09-20T12:00:00Z"
+                sections: []
+              schema:
+                $ref: '#/components/schemas/ExamAttempt'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/exams/versions/{id}/coverage:
+    get:
+      tags: [exam]
+      operationId: getExamVersionCoverage
+      summary: Exam version coverage report
+      description: Report of published question groups available versus required per exam part.
+      x-permission: questionbank.read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Exam version ID.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Coverage report for the exam version.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              example:
+                version_id: "20000000-0000-0000-0000-000000000001"
+                exam_code: "TOEIC_LR_2026"
+                distinct_tests_possible: 2
+                bottleneck_part_id: null
+                parts:
+                  - part_id: "20000000-0000-0000-0001-000000000001"
+                    part_number: 1
+                    section: "listening"
+                    kind: "photo_description"
+                    question_count: 6
+                    group_size: 1
+                    published_groups_available: 12
+                    groups_needed_per_test: 6
+                    tests_possible: 2
+              schema:
+                $ref: '#/components/schemas/ExamCoverageReport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /exams:
     get:
       tags: [exam]
@@ -8555,6 +8736,22 @@ components:
       $ref: ./components/exam.yaml#/ExamIntegritySignal
     ExamScoreReport:
       $ref: ./components/exam.yaml#/ExamScoreReport
+    BlueprintSummary:
+      $ref: ./components/exam.yaml#/BlueprintSummary
+    ExamVersion:
+      $ref: ./components/exam.yaml#/ExamVersion
+    ExamVersionListResponse:
+      $ref: ./components/exam.yaml#/ExamVersionListResponse
+    ComposeMockTestRequest:
+      $ref: ./components/exam.yaml#/ComposeMockTestRequest
+    MockTestPartComposition:
+      $ref: ./components/exam.yaml#/MockTestPartComposition
+    MockTest:
+      $ref: ./components/exam.yaml#/MockTest
+    ExamPartCoverage:
+      $ref: ./components/exam.yaml#/ExamPartCoverage
+    ExamCoverageReport:
+      $ref: ./components/exam.yaml#/ExamCoverageReport
     SpeakingCriterion:
       $ref: ./components/speaking.yaml#/SpeakingCriterion
     SpeakingFeedback:

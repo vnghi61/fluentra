@@ -42,7 +42,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `POST` | `/api/v1/admin/foundation/topics` | `content.create` | Create a new foundation taxonomy topic |
 | `PATCH` | `/api/v1/admin/foundation/topics/{code}` | `content.edit` | Update foundation topic metadata |
 | `PUT` | `/api/v1/admin/foundation/topics/{code}/prerequisites` | `content.edit` | Replace prerequisites for a foundation topic |
-| `GET` | `/api/v1/admin/review-queue` | `content.review` | List content items awaiting review |
+| `GET` | `/api/v1/admin/review-queue` | `content.review` | List machine-generated drafts awaiting review |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -197,6 +197,16 @@ Replace prerequisites for a foundation topic
 | Permission | `content.edit` |
 | Success | 200 |
 | Errors | `TAXONOMY_CYCLE`, `CROSS_NAMESPACE_PREREQUISITE` |
+
+### `GET /api/v1/admin/review-queue`
+
+List machine-generated drafts awaiting review
+
+| | |
+|---|---|
+| Permission | `content.review` |
+| Success | 200 |
+| Errors | standard set |
 
 <!-- END GENERATED: api-detail -->
 

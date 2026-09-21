@@ -6,7 +6,7 @@ status: PLANNED
 phase: 4
 owner: "@learning-team"
 schema: assess
-tables: [questions, question_options, question_sets, question_set_items, question_stats]
+tables: [questions, question_stats]
 depends_on: [content, ai, audit, search]
 depended_on_by: [exam, reading, listening, grammar, learning]
 spec_version: 1.0.0

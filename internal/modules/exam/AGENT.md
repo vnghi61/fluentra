@@ -6,7 +6,7 @@ status: DONE
 phase: 3
 owner: "@learning-team"
 schema: assess
-tables: [exams, exam_sections, exam_attempts, score_reports, integrity_events, exam_versions, exam_parts, blueprints]
+tables: [exams, exam_sections, exam_attempts, score_reports, integrity_events, exam_versions, exam_parts, blueprints, mock_tests]
 depends_on: [questionbank, job, ai, writing, speaking, learning, lesson, listening]
 depended_on_by: [learning, analytics, admin]
 spec_version: 1.0.0
@@ -95,14 +95,15 @@ Migrations: `db/migrations/exam/` · Queries: `db/queries/exam/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
-| `assess.exams` | Exam definition | Content-versioned. `format`, `total_minutes`, `scoring_model`, `version_id` |
+| `assess.exams` | Exam definition | Content-versioned. `format`, `total_minutes`, `scoring_model` |
 | `assess.exam_sections` | Timed part | `exam_id`, `position`, `skill`, `minutes`, `question_set_id`, `navigation` (linear/free) |
 | `assess.exam_attempts` | One sitting | `user_id`, `exam_id`, `mode`, `chosen_duration_minutes`, `started_at`, `deadline_at`, `status`, `section_activities`, `draft_answers`, `submitted_at`, `submitted_by` |
 | `assess.score_reports` | Learner-facing result | `attempt_id`, `overall_band`, `per_section` jsonb, `feedback`, `percentile` |
 | `assess.integrity_events` | Signals during an attempt | `attempt_id`, `kind`, `occurred_at` — informational, never punitive automatically |
-| `assess.exam_versions` | Verified exam standard specifications | `exam_family`, `code`, `title`, `total_minutes`, `scoring`, `source_url`, `verified_at`, `is_current` |
-| `assess.exam_parts` | Parts and sections of an exam version | `version_id`, `section`, `part_number`, `kind`, `question_count`, `group_size`, `duration_minutes`, `constraints` |
-| `assess.blueprints` | Test composition blueprint | `version_id`, `name`, `cefr_distribution`, `node_distribution` |
+| `assess.exam_versions` | Verified exam versions | `exam_family`, `code`, `title`, `total_minutes`, `scoring`, `source_url`, `verified_at`, `is_current` |
+| `assess.exam_parts` | Exam parts per version | `version_id`, `section`, `part_number`, `kind`, `question_count`, `group_size` |
+| `assess.blueprints` | Mock test blueprints | `version_id`, `name`, `cefr_distribution`, `node_distribution` |
+| `assess.mock_tests` | Composed mock tests | `blueprint_id`, `mode`, `seed`, `composition`, `owner_id` |
 
 <!-- END GENERATED: schema -->
 
@@ -122,6 +123,10 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/exam-attempts/{id}/sections/{n}/complete` | `self` | Finish a section |
 | `POST` | `/api/v1/exam-attempts/{id}/submit` | `self` | Submit the whole exam |
 | `GET` | `/api/v1/exam-attempts/{id}/report` | `self` | Score report when ready |
+| `GET` | `/api/v1/exam-versions` | `content.read.published` | Current verified exam versions and their blueprints |
+| `POST` | `/api/v1/mock-tests` | `self` | Compose a mock test |
+| `POST` | `/api/v1/mock-tests/{id}/attempts` | `self` | Start or retake a mock test attempt |
+| `GET` | `/api/v1/admin/exams/versions/{id}/coverage` | `questionbank.read` | Exam version coverage report |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

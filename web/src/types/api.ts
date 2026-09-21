@@ -2671,6 +2671,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/exam-versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current versions and their blueprints
+         * @description Lists verified exam versions and their blueprints available for mock test composition.
+         */
+        get: operations["listExamVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mock-tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compose a mock test
+         * @description Composes a mock test from the question bank based on blueprint and mode.
+         */
+        post: operations["composeMockTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mock-tests/{id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start or retake a mock test attempt
+         * @description Starts a sitting from a composed mock test.
+         */
+        post: operations["startMockTestAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/exams/versions/{id}/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exam version coverage report
+         * @description Report of published question groups available versus required per exam part.
+         */
+        get: operations["getExamVersionCoverage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/exams": {
         parameters: {
             query?: never;
@@ -6177,6 +6257,123 @@ export interface components {
             per_section: components["schemas"]["ExamSectionOutcome"][];
             integrity_signals: components["schemas"]["ExamIntegritySignal"][];
             disclaimer: string;
+        };
+        BlueprintSummary: {
+            /** Format: uuid */
+            id: string;
+            /** @example toeic_default */
+            name: string;
+            /**
+             * @example {
+             *       "B1": 0.5,
+             *       "B2": 0.5
+             *     }
+             */
+            cefr_distribution: {
+                [key: string]: unknown;
+            };
+            /** @example {} */
+            node_distribution: {
+                [key: string]: unknown;
+            };
+        };
+        ExamVersion: {
+            /** Format: uuid */
+            id: string;
+            /** @example toeic_lr */
+            exam_family: string;
+            /** @example TOEIC_LR_2026 */
+            code: string;
+            /** @example TOEIC Listening & Reading (2026) */
+            title: string;
+            /** @example 120 */
+            total_minutes: number;
+            scoring: {
+                [key: string]: unknown;
+            };
+            /**
+             * Format: uri
+             * @example https://www.etsglobal.org/dz/en/help-center/test-content/format-questions-toeic-listening-reading
+             */
+            source_url: string;
+            /**
+             * Format: date
+             * @example 2026-09-20
+             */
+            verified_at: string;
+            /** @example true */
+            is_current: boolean;
+            /** @example 7 parts, 200 questions */
+            notes: string;
+            blueprints: components["schemas"]["BlueprintSummary"][];
+        };
+        ExamVersionListResponse: {
+            items: components["schemas"]["ExamVersion"][];
+        };
+        ComposeMockTestRequest: {
+            /** Format: uuid */
+            blueprint_id: string;
+            /**
+             * @example random
+             * @enum {string}
+             */
+            mode: "fixed" | "random" | "weak_topic" | "full" | "custom";
+            /** @description Optional list of part numbers for custom mode */
+            parts?: number[];
+        };
+        MockTestPartComposition: {
+            /** Format: uuid */
+            part_id: string;
+            activity_ids: string[];
+        };
+        MockTest: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            blueprint_id: string;
+            /** @enum {string} */
+            mode: "fixed" | "random" | "weak_topic" | "full" | "custom";
+            /**
+             * Format: int64
+             * @example 1234567890
+             */
+            seed: number;
+            composition: components["schemas"]["MockTestPartComposition"][];
+            /** Format: uuid */
+            owner_id?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        ExamPartCoverage: {
+            /** Format: uuid */
+            part_id: string;
+            /** @example 1 */
+            part_number: number;
+            /** @example listening */
+            section: string;
+            /** @example photo_description */
+            kind: string;
+            /** @example 6 */
+            question_count: number;
+            /** @example 1 */
+            group_size: number;
+            /** @example 12 */
+            published_groups_available: number;
+            /** @example 6 */
+            groups_needed_per_test: number;
+            /** @example 2 */
+            tests_possible: number;
+        };
+        ExamCoverageReport: {
+            /** Format: uuid */
+            version_id: string;
+            /** @example TOEIC_LR_2026 */
+            exam_code: string;
+            /** @example 2 */
+            distinct_tests_possible: number;
+            /** Format: uuid */
+            bottleneck_part_id?: string | null;
+            parts: components["schemas"]["ExamPartCoverage"][];
         };
         SpeakingCriterion: {
             /** @example fluency */
@@ -13739,6 +13936,208 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listExamVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of available exam versions. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "20000000-0000-0000-0000-000000000001",
+                     *           "exam_family": "toeic_lr",
+                     *           "code": "TOEIC_LR_2026",
+                     *           "title": "TOEIC Listening & Reading (2026)",
+                     *           "total_minutes": 120,
+                     *           "scoring": {
+                     *             "type": "raw_with_estimate"
+                     *           },
+                     *           "source_url": "https://www.etsglobal.org/dz/en/help-center/test-content/format-questions-toeic-listening-reading",
+                     *           "verified_at": "2026-09-20",
+                     *           "is_current": true,
+                     *           "notes": "7 parts, 200 questions",
+                     *           "blueprints": [
+                     *             {
+                     *               "id": "20000000-0000-0000-0010-000000000001",
+                     *               "name": "toeic_default",
+                     *               "cefr_distribution": {
+                     *                 "B1": 0.5,
+                     *                 "B2": 0.5
+                     *               },
+                     *               "node_distribution": {}
+                     *             }
+                     *           ]
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ExamVersionListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    composeMockTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "blueprint_id": "20000000-0000-0000-0010-000000000001",
+                 *       "mode": "random"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ComposeMockTestRequest"];
+            };
+        };
+        responses: {
+            /** @description Composed mock test. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "30000000-0000-0000-0000-000000000001",
+                     *       "blueprint_id": "20000000-0000-0000-0010-000000000001",
+                     *       "mode": "random",
+                     *       "seed": 1234567890,
+                     *       "composition": [
+                     *         {
+                     *           "part_id": "20000000-0000-0000-0001-000000000001",
+                     *           "activity_ids": [
+                     *             "40000000-0000-0000-0000-000000000001"
+                     *           ]
+                     *         }
+                     *       ],
+                     *       "owner_id": "50000000-0000-0000-0000-000000000001",
+                     *       "created_at": "2026-09-20T12:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["MockTest"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    startMockTestAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Mock test ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created sitting attempt. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "60000000-0000-0000-0000-000000000001",
+                     *       "exam_id": "10000000-0000-0000-0000-0000000000b1",
+                     *       "exam_slug": "mock-toeic-b1",
+                     *       "exam_title": "TOEIC Mock Exam (B1)",
+                     *       "level": "B1",
+                     *       "mode": "exam",
+                     *       "chosen_duration_minutes": 75,
+                     *       "started_at": "2026-09-20T12:00:00Z",
+                     *       "deadline_at": "2026-09-20T13:15:00Z",
+                     *       "remaining_seconds": 4500,
+                     *       "current_section": 1,
+                     *       "status": "in_progress",
+                     *       "server_time": "2026-09-20T12:00:00Z",
+                     *       "sections": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ExamAttempt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getExamVersionCoverage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Exam version ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Coverage report for the exam version. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "version_id": "20000000-0000-0000-0000-000000000001",
+                     *       "exam_code": "TOEIC_LR_2026",
+                     *       "distinct_tests_possible": 2,
+                     *       "bottleneck_part_id": null,
+                     *       "parts": [
+                     *         {
+                     *           "part_id": "20000000-0000-0000-0001-000000000001",
+                     *           "part_number": 1,
+                     *           "section": "listening",
+                     *           "kind": "photo_description",
+                     *           "question_count": 6,
+                     *           "group_size": 1,
+                     *           "published_groups_available": 12,
+                     *           "groups_needed_per_test": 6,
+                     *           "tests_possible": 2
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ExamCoverageReport"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
         };
     };

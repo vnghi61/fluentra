@@ -131,6 +131,7 @@ components:
   g_listening:   { in: generated/listening/sqlc }
   g_speaking:    { in: generated/speaking/sqlc }
   g_exam:        { in: generated/exam/sqlc }
+  g_questionbank: { in: generated/questionbank/sqlc }
   g_studio:      { in: generated/studio/sqlc }
   g_payment:     { in: generated/payment/sqlc }
   g_resource:    { in: generated/resource/sqlc }
@@ -270,7 +271,11 @@ components:
   m_writing_service:    { in: modules/writing/service }
   m_writing_job:        { in: modules/writing/job }
   m_writing_http:       { in: modules/writing/transport/http }
-  m_questionbank:  { in: modules/questionbank/** }
+  m_questionbank:            { in: modules/questionbank }
+  m_questionbank_domain:     { in: modules/questionbank/domain }
+  m_questionbank_repository: { in: modules/questionbank/repository }
+  m_questionbank_service:    { in: modules/questionbank/service }
+  m_questionbank_http:       { in: modules/questionbank/transport/http }
   m_exam:            { in: modules/exam }
   m_exam_domain:     { in: modules/exam/domain }
   m_exam_repository: { in: modules/exam/repository }
@@ -522,10 +527,14 @@ deps:
   m_writing_job:        { mayDependOn: [m_writing_service, c_writing, c_content, c_learning, p_job, p_ai, p_telemetry], anyVendorDeps: true }
   m_writing_http:       { mayDependOn: [m_writing_service, c_writing] }
   m_writing:            { mayDependOn: [m_writing_repository, m_writing_service, m_writing_job, m_writing_http, c_writing, c_content, c_learning, p_job, p_ai, p_telemetry] }
-  m_questionbank: { mayDependOn: [p_ai, p_search, p_telemetry, c_content, c_audit] }
+  m_questionbank_domain:     { mayDependOn: [c_questionbank] }
+  m_questionbank_repository: { mayDependOn: [m_questionbank_domain, c_questionbank, g_questionbank] }
+  m_questionbank_service:    { mayDependOn: [m_questionbank_domain, m_questionbank_repository, c_questionbank, c_content, c_lesson, c_learning, c_rbac, g_questionbank, p_ai, p_search, p_telemetry] }
+  m_questionbank_http:       { mayDependOn: [m_questionbank_domain, m_questionbank_service, c_questionbank] }
+  m_questionbank:            { mayDependOn: [m_questionbank_domain, m_questionbank_repository, m_questionbank_service, m_questionbank_http, c_questionbank, c_content, c_lesson, c_learning, c_rbac, g_questionbank, p_ai, p_search, p_telemetry] }
   m_exam_domain:     { mayDependOn: [c_exam] }
   m_exam_repository: { mayDependOn: [m_exam_domain, c_exam, g_exam] }
-  m_exam_service:    { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_job, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, g_exam, p_job, p_telemetry], anyVendorDeps: true }
+  m_exam_service:    { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_job, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, c_questionbank, g_exam, p_job, p_telemetry], anyVendorDeps: true }
   m_exam_job:        { mayDependOn: [m_exam_service, c_exam, p_job, p_telemetry], anyVendorDeps: true }
   m_exam_http:       { mayDependOn: [m_exam_domain, m_exam_service, c_exam] }
   m_exam:            { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_service, m_exam_job, m_exam_http, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, c_questionbank, g_exam, p_job, p_ai, p_telemetry] }

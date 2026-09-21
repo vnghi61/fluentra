@@ -308,6 +308,64 @@ func (m *mockExamRepo) ListIntegrityEvents(
 	return res, nil
 }
 
+func (m *mockExamRepo) ListCurrentExamVersions(_ context.Context) ([]*domain.ExamVersion, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) GetExamVersionByID(_ context.Context, _ uuid.UUID) (*domain.ExamVersion, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) GetExamVersionByCode(_ context.Context, _ string) (*domain.ExamVersion, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) ListExamPartsByVersionID(_ context.Context, _ uuid.UUID) ([]*domain.ExamPart, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) GetExamPartByID(_ context.Context, _ uuid.UUID) (*domain.ExamPart, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) ListBlueprintsByVersionID(_ context.Context, _ uuid.UUID) ([]*domain.Blueprint, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) GetBlueprintByID(_ context.Context, _ uuid.UUID) (*domain.Blueprint, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) GetBlueprintByName(_ context.Context, _ uuid.UUID, _ string) (*domain.Blueprint, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) CreateMockTest(_ context.Context, mt *domain.MockTest) (*domain.MockTest, error) {
+	return mt, nil
+}
+
+func (m *mockExamRepo) GetMockTestByID(_ context.Context, _ uuid.UUID) (*domain.MockTest, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) ListMockTestsByOwner(_ context.Context, _ *uuid.UUID) ([]*domain.MockTest, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) GetExamByVersionID(_ context.Context, _ uuid.UUID) (*sqlc.AssessExam, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) CreateMockTestAttempt(
+	_ context.Context, _ sqlc.CreateMockTestAttemptParams,
+) (*sqlc.AssessExamAttempt, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) CountUserMockTestAttempts(_ context.Context, _, _ uuid.UUID) (int64, error) {
+	return 0, nil
+}
+
 type fakeDrawer struct {
 	sections []service.SectionActivities
 }
