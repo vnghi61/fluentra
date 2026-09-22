@@ -15,16 +15,9 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { useAuthStore } from "@/stores/authStore";
-import {
-  adminApi,
-  type ModerationQueueItem,
-} from "../api/adminApi";
+import { adminApi, type ModerationQueueItem } from "../api/adminApi";
 
 export function AdminStudioModeration(): React.JSX.Element {
   const { t } = useTranslation();
@@ -44,7 +37,9 @@ export function AdminStudioModeration(): React.JSX.Element {
   const total = data?.total ?? 0;
   const error = queryError instanceof Error ? queryError.message : null;
 
-  const [activeItem, setActiveItem] = useState<ModerationQueueItem | null>(null);
+  const [activeItem, setActiveItem] = useState<ModerationQueueItem | null>(
+    null,
+  );
   const [decisionNotes, setDecisionNotes] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -126,7 +121,10 @@ export function AdminStudioModeration(): React.JSX.Element {
             )}
           </p>
         </div>
-        <Badge variant="primary" className="text-xs px-2.5 py-1 self-start sm:self-auto">
+        <Badge
+          variant="primary"
+          className="text-xs px-2.5 py-1 self-start sm:self-auto"
+        >
           {t("adminModeration.queueCount", {
             count: total,
             defaultValue: `${total} submissions pending review`,
@@ -185,9 +183,7 @@ export function AdminStudioModeration(): React.JSX.Element {
             <tbody className="divide-y divide-border-subtle">
               {items.map(({ draft, submission }) => {
                 const report = submission.verification_report as
-                  | { passed?: boolean }
-                  | null
-                  | undefined;
+                  { passed?: boolean } | null | undefined;
 
                 return (
                   <tr
@@ -281,10 +277,15 @@ export function AdminStudioModeration(): React.JSX.Element {
                     id="review-detail-title"
                     className="text-lg font-bold text-text"
                   >
-                    {t("adminModeration.reviewModalTitle", "Course Submission Review")}
+                    {t(
+                      "adminModeration.reviewModalTitle",
+                      "Course Submission Review",
+                    )}
                   </h2>
                 </div>
-                <p className="text-xs text-text-muted">{activeItem.draft.title}</p>
+                <p className="text-xs text-text-muted">
+                  {activeItem.draft.title}
+                </p>
               </div>
               <button
                 type="button"
@@ -326,7 +327,10 @@ export function AdminStudioModeration(): React.JSX.Element {
                     {activeItem.draft.cefr_level}
                   </Badge>
                   {activeItem.draft.price_vnd > 0 ? (
-                    <Badge variant="secondary" className="font-mono text-xs font-semibold">
+                    <Badge
+                      variant="secondary"
+                      className="font-mono text-xs font-semibold"
+                    >
                       ₫{activeItem.draft.price_vnd.toLocaleString("vi-VN")}
                     </Badge>
                   ) : (
@@ -344,7 +348,8 @@ export function AdminStudioModeration(): React.JSX.Element {
               )}
 
               <div className="text-[11px] text-text-muted font-mono pt-1">
-                Slug: /courses/{activeItem.draft.slug} • Author ID: {activeItem.draft.owner_id}
+                Slug: /courses/{activeItem.draft.slug} • Author ID:{" "}
+                {activeItem.draft.owner_id}
               </div>
             </div>
 
@@ -354,11 +359,17 @@ export function AdminStudioModeration(): React.JSX.Element {
                 <div className="flex items-center gap-2">
                   <Bot className="h-4 w-4 text-primary-accent" />
                   <h4 className="text-xs font-bold text-text uppercase tracking-wider">
-                    {t("adminModeration.gate1ReportTitle", "Gate 1 Automated Checks Report")}
+                    {t(
+                      "adminModeration.gate1ReportTitle",
+                      "Gate 1 Automated Checks Report",
+                    )}
                   </h4>
                 </div>
                 <Badge variant="success" className="text-xs">
-                  {t("adminModeration.checksPassed", "All 6 Automated Checks Passed")}
+                  {t(
+                    "adminModeration.checksPassed",
+                    "All 6 Automated Checks Passed",
+                  )}
                 </Badge>
               </div>
 
@@ -369,11 +380,17 @@ export function AdminStudioModeration(): React.JSX.Element {
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Size Requirements (≥3 lessons, ≥20 activities)</span>
+                  <span>Size Requirements (≥3 lessons, ≥20 exercises)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Activity Types Allowed (11 kinds)</span>
+                  <span>Activity Types Allowed (12 kinds)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
+                  <span>
+                    Material Readiness (resource owned, renditions ready)
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
@@ -427,7 +444,9 @@ export function AdminStudioModeration(): React.JSX.Element {
                   variant="outline"
                   size="sm"
                   disabled={isSelfAuthor || actionLoading}
-                  onClick={() => { void handleRejectOrRequestChanges("changes_requested"); }}
+                  onClick={() => {
+                    void handleRejectOrRequestChanges("changes_requested");
+                  }}
                   className="text-xs text-warning border-warning/40 hover:bg-warning/10"
                 >
                   <AlertCircle className="h-3.5 w-3.5 mr-1" />
@@ -438,7 +457,9 @@ export function AdminStudioModeration(): React.JSX.Element {
                   variant="outline"
                   size="sm"
                   disabled={isSelfAuthor || actionLoading}
-                  onClick={() => { void handleRejectOrRequestChanges("rejected"); }}
+                  onClick={() => {
+                    void handleRejectOrRequestChanges("rejected");
+                  }}
                   className="text-xs text-danger border-danger/40 hover:bg-danger/10"
                 >
                   <XCircle className="h-3.5 w-3.5 mr-1" />
@@ -449,13 +470,18 @@ export function AdminStudioModeration(): React.JSX.Element {
                   variant="primary"
                   size="sm"
                   disabled={isSelfAuthor || actionLoading}
-                  onClick={() => { void handleApprove(); }}
+                  onClick={() => {
+                    void handleApprove();
+                  }}
                   className="text-xs gap-1"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   {actionLoading
                     ? t("adminModeration.publishing", "Publishing...")
-                    : t("adminModeration.approveAndPublish", "Approve & Publish")}
+                    : t(
+                        "adminModeration.approveAndPublish",
+                        "Approve & Publish",
+                      )}
                 </Button>
               </div>
             </div>

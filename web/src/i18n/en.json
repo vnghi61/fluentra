@@ -801,6 +801,17 @@
     "sentenceTransformPlaceholder": "Type the rewritten sentence...",
     "incorrect": "Not quite. Check the correct answer above.",
     "knewItBtn": "I knew it",
+    "material": {
+      "videoLabel": "Video",
+      "documentLabel": "Document",
+      "untitled": "Course material",
+      "pages": "{{count}} pages",
+      "openDocument": "Open document",
+      "unavailable": "This material is not available right now.",
+      "done": "Marked as done.",
+      "hint": "Open the material, then mark it as done to complete this chapter.",
+      "markDone": "Mark as done"
+    },
     "listening": {
       "audioClip": "Audio clip",
       "instructions": "Listen, then answer the questions below.",
@@ -1696,7 +1707,8 @@
         "grammar_sentence_transform": "Rewrite the sentence",
         "reading_comprehension": "Reading comprehension",
         "writing_prompt": "Writing task",
-        "speaking_task": "Speaking task"
+        "speaking_task": "Speaking task",
+        "lesson_material": "Document / Video"
       },
       "field": {
         "question": "Question",
@@ -1739,6 +1751,21 @@
         "respondPrompt": "Question the learner answers aloud (at least 8 words)",
         "referenceText": "Text to read aloud (15–100 words)"
       },
+      "material": {
+        "document": "Document",
+        "video": "Video",
+        "title": "Material title",
+        "description": "Description (optional)",
+        "file": "File",
+        "rights": "I own or have the right to publish this material",
+        "uploadFailed": "Upload failed",
+        "statusIdle": "No file chosen yet",
+        "statusUploading": "Uploading…",
+        "statusProcessing": "Processing video… renditions are being prepared",
+        "statusProcessingDocument": "Processing document… preparing its preview",
+        "statusReady": "Ready to publish",
+        "statusFailed": "Processing failed"
+      },
       "issue": {
         "prompt": "The question is empty.",
         "fourOptions": "Fill in all 4 options.",
@@ -1756,7 +1783,11 @@
         "writingPrompt": "The writing prompt needs at least 15 words.",
         "modelAnswer": "The model answer needs at least 80 words.",
         "referenceText": "Read-aloud text must be 15–100 words.",
-        "respondPrompt": "The speaking question needs at least 8 words."
+        "respondPrompt": "The speaking question needs at least 8 words.",
+        "materialFile": "Choose a file for this material.",
+        "materialTitle": "The material title is empty.",
+        "materialRights": "Confirm you have the right to publish this material.",
+        "materialProcessing": "The material is still processing and cannot be submitted yet."
       }
     }
   },
@@ -1781,4 +1812,3 @@
     "pathSection": "Foundation Learning Path"
   }
 }
-

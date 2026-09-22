@@ -26,6 +26,7 @@ export const ACTIVITY_KINDS = [
   "reading_comprehension",
   "writing_prompt",
   "speaking_task",
+  "lesson_material",
 ] as const;
 
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
@@ -77,6 +78,17 @@ export interface ActivityFields {
   /** Speaking. */
   taskType: "read_aloud" | "respond";
   referenceText: string;
+  /**
+   * Lesson material (a document or a video). `resourceId` is the creator's own
+   * private resource; `materialStatus` is the editor's own view of its
+   * processing, never saved to the server.
+   */
+  materialKind: "document" | "video";
+  materialTitle: string;
+  materialDescription: string;
+  resourceId: string;
+  rightsConfirmed: boolean;
+  materialStatus: "idle" | "uploading" | "processing" | "ready" | "failed";
 }
 
 export interface DraftActivity {
@@ -117,16 +129,30 @@ export function emptyFields(): ActivityFields {
     sentence: "",
     passageTitle: "",
     passage: "",
-    questions: [blankQuestion(), blankQuestion(), blankQuestion(), blankQuestion()],
+    questions: [
+      blankQuestion(),
+      blankQuestion(),
+      blankQuestion(),
+      blankQuestion(),
+    ],
     modelAnswer: "",
     minWords: 80,
     taskType: "read_aloud",
     referenceText: "",
+    materialKind: "document",
+    materialTitle: "",
+    materialDescription: "",
+    resourceId: "",
+    rightsConfirmed: false,
+    materialStatus: "idle",
   };
 }
 
 /** The kinds the editor offered before it spoke the backend's names. */
-const LEGACY_KINDS: Record<string, { kind: ActivityKind; taskType?: "read_aloud" | "respond" }> = {
+const LEGACY_KINDS: Record<
+  string,
+  { kind: ActivityKind; taskType?: "read_aloud" | "respond" }
+> = {
   multiple_choice: { kind: "vocab_multiple_choice" },
   fill_blank: { kind: "vocab_gap_fill" },
   matching: { kind: "vocab_match" },
@@ -141,7 +167,10 @@ const LEGACY_KINDS: Record<string, { kind: ActivityKind; taskType?: "read_aloud"
 };
 
 function isKind(value: unknown): value is ActivityKind {
-  return typeof value === "string" && (ACTIVITY_KINDS as readonly string[]).includes(value);
+  return (
+    typeof value === "string" &&
+    (ACTIVITY_KINDS as readonly string[]).includes(value)
+  );
 }
 
 /**
@@ -150,7 +179,10 @@ function isKind(value: unknown): value is ActivityKind {
  * expected answer under the editor's own kind names.
  */
 export function readActivity(raw: unknown, fallbackId: string): DraftActivity {
-  const obj = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const obj = (raw && typeof raw === "object" ? raw : {}) as Record<
+    string,
+    unknown
+  >;
   const id = typeof obj.id === "string" ? obj.id : fallbackId;
   const title = typeof obj.title === "string" ? obj.title : "";
   const fields = emptyFields();
@@ -160,11 +192,29 @@ export function readActivity(raw: unknown, fallbackId: string): DraftActivity {
     Object.assign(fields, saved);
   } else {
     if (typeof obj.prompt === "string") fields.prompt = obj.prompt;
-    if (typeof obj.expected_answer === "string") fields.answer = obj.expected_answer;
+    if (typeof obj.expected_answer === "string")
+      fields.answer = obj.expected_answer;
+  }
+
+  // A material saved before its editor fields existed still carries the shape
+  // the server reads; read it back so the file picker is not empty.
+  const material = obj.material;
+  if (material && typeof material === "object") {
+    const m = material as Record<string, unknown>;
+    if (typeof m.resource_id === "string") fields.resourceId = m.resource_id;
+    if (m.material_kind === "video" || m.material_kind === "document") {
+      fields.materialKind = m.material_kind;
+    }
+    if (typeof m.title === "string") fields.materialTitle = m.title;
+    if (typeof m.description === "string")
+      fields.materialDescription = m.description;
+    if (m.rights_confirmed === true) fields.rightsConfirmed = true;
+    if (fields.resourceId) fields.materialStatus = "processing";
   }
 
   if (isKind(obj.kind)) return { id, kind: obj.kind, title, fields };
-  const legacy = typeof obj.kind === "string" ? LEGACY_KINDS[obj.kind] : undefined;
+  const legacy =
+    typeof obj.kind === "string" ? LEGACY_KINDS[obj.kind] : undefined;
   if (legacy?.taskType) fields.taskType = legacy.taskType;
   return { id, kind: legacy?.kind ?? "vocab_multiple_choice", title, fields };
 }
@@ -172,7 +222,10 @@ export function readActivity(raw: unknown, fallbackId: string): DraftActivity {
 const OPTION_IDS = ["a", "b", "c", "d"] as const;
 
 function choiceOptions(options: readonly string[]) {
-  return options.map((text, i) => ({ id: OPTION_IDS[i] ?? String(i), text: text.trim() }));
+  return options.map((text, i) => ({
+    id: OPTION_IDS[i] ?? String(i),
+    text: text.trim(),
+  }));
 }
 
 /**
@@ -199,7 +252,8 @@ export function stableShuffle<T>(items: readonly T[], seed: string): T[] {
   return out;
 }
 
-const explanation = (vi: string) => (vi.trim() ? { explanation: { text_vi: vi.trim() } } : {});
+const explanation = (vi: string) =>
+  vi.trim() ? { explanation: { text_vi: vi.trim() } } : {};
 
 /** The body Gate 1 verifies and publishes, which is also the runner's config. */
 export function buildBody(activity: DraftActivity): Record<string, unknown> {
@@ -257,13 +311,21 @@ export function buildBody(activity: DraftActivity): Record<string, unknown> {
     }
     case "vocab_match": {
       const pairs = f.pairs.filter((p) => p.word.trim() && p.meaning.trim());
-      const words = pairs.map((p, i) => ({ id: `w${i + 1}`, text: p.word.trim() }));
-      const definitions = pairs.map((p, i) => ({ id: `d${i + 1}`, text: p.meaning.trim() }));
+      const words = pairs.map((p, i) => ({
+        id: `w${i + 1}`,
+        text: p.word.trim(),
+      }));
+      const definitions = pairs.map((p, i) => ({
+        id: `d${i + 1}`,
+        text: p.meaning.trim(),
+      }));
       return {
         prompt: f.prompt.trim(),
         words,
         definitions: stableShuffle(definitions, activity.id),
-        correct_pairs: Object.fromEntries(words.map((w, i) => [w.id, `d${i + 1}`])),
+        correct_pairs: Object.fromEntries(
+          words.map((w, i) => [w.id, `d${i + 1}`]),
+        ),
       };
     }
     case "grammar_sentence_transform":
@@ -296,20 +358,48 @@ export function buildBody(activity: DraftActivity): Record<string, unknown> {
       };
     case "speaking_task":
       return f.taskType === "read_aloud"
-        ? { task_type: "read_aloud", prompt: f.prompt.trim(), reference_text: f.referenceText.trim() }
+        ? {
+            task_type: "read_aloud",
+            prompt: f.prompt.trim(),
+            reference_text: f.referenceText.trim(),
+          }
         : { task_type: "respond", prompt: f.prompt.trim() };
+    case "lesson_material":
+      // The draft body carries the resource id and title only, so Gate 1's
+      // non-empty check passes and no URL is ever written into it. The publish
+      // step replaces it with the copied object keys. `resource_id` is omitted
+      // when empty: the server decodes it as a UUID, and "" is not one.
+      return {
+        ...(f.resourceId.trim() ? { resource_id: f.resourceId.trim() } : {}),
+        title: f.materialTitle.trim(),
+      };
   }
 }
 
 /** What the draft stores for one activity: editor state plus what the server reads. */
-export function serialiseActivity(activity: DraftActivity): Record<string, unknown> {
+export function serialiseActivity(
+  activity: DraftActivity,
+): Record<string, unknown> {
   const body = buildBody(activity);
+  const f = activity.fields;
   return {
     id: activity.id,
     title: activity.title,
     kind: activity.kind,
-    ...(activity.kind === "speaking_task" && { task_type: activity.fields.taskType }),
-    weight: 1,
+    ...(activity.kind === "speaking_task" && {
+      task_type: activity.fields.taskType,
+    }),
+    ...(activity.kind === "lesson_material" && {
+      material: {
+        ...(f.resourceId.trim() ? { resource_id: f.resourceId.trim() } : {}),
+        material_kind: f.materialKind,
+        title: f.materialTitle.trim(),
+        description: f.materialDescription.trim(),
+        rights_confirmed: f.rightsConfirmed,
+      },
+    }),
+    // A material is completed, not scored (D20-8).
+    weight: activity.kind === "lesson_material" ? 0 : 1,
     fields: activity.fields,
     body,
     config: body,
@@ -318,7 +408,11 @@ export function serialiseActivity(activity: DraftActivity): Record<string, unkno
 
 const words = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
 
-function choiceIssues(prompt: string, options: readonly string[], issues: string[]) {
+function choiceIssues(
+  prompt: string,
+  options: readonly string[],
+  issues: string[],
+) {
   if (!prompt.trim()) issues.push("prompt");
   if (options.some((o) => !o.trim())) issues.push("fourOptions");
   const norm = options.map((o) => o.trim().toLowerCase()).filter(Boolean);
@@ -346,7 +440,8 @@ export function activityIssues(activity: DraftActivity): string[] {
       break;
     case "vocab_gap_fill":
       if (!f.answer.trim()) issues.push("answer");
-      if (!f.sentenceBefore.trim() && !f.sentenceAfter.trim()) issues.push("sentence");
+      if (!f.sentenceBefore.trim() && !f.sentenceAfter.trim())
+        issues.push("sentence");
       break;
     case "vocab_flashcard":
       if (!f.answer.trim()) issues.push("word");
@@ -359,19 +454,24 @@ export function activityIssues(activity: DraftActivity): string[] {
       if (words(f.answer) < 2) issues.push("reorderWords");
       break;
     case "vocab_match":
-      if (f.pairs.filter((p) => p.word.trim() && p.meaning.trim()).length < 2) issues.push("pairs");
+      if (f.pairs.filter((p) => p.word.trim() && p.meaning.trim()).length < 2)
+        issues.push("pairs");
       break;
     case "grammar_sentence_transform":
       if (!f.prompt.trim()) issues.push("prompt");
       if (!f.answer.trim()) issues.push("answer");
       if (!f.explanationVi.trim()) issues.push("explanationVi");
-      if (f.answer.trim() && f.prompt.toLowerCase().includes(f.answer.trim().toLowerCase())) {
+      if (
+        f.answer.trim() &&
+        f.prompt.toLowerCase().includes(f.answer.trim().toLowerCase())
+      ) {
         issues.push("answerInPrompt");
       }
       break;
     case "reading_comprehension":
       if (!f.passage.trim()) issues.push("passage");
-      if (f.questions.length < 4 || f.questions.length > 6) issues.push("questionCount");
+      if (f.questions.length < 4 || f.questions.length > 6)
+        issues.push("questionCount");
       for (const q of f.questions) {
         choiceIssues(q.prompt, q.options, issues);
         if (!q.explanationVi.trim()) issues.push("explanationVi");
@@ -388,6 +488,17 @@ export function activityIssues(activity: DraftActivity): string[] {
       } else if (words(f.prompt) < 8) {
         issues.push("respondPrompt");
       }
+      break;
+    case "lesson_material":
+      if (!f.resourceId.trim()) {
+        issues.push("materialFile");
+      } else if (f.materialStatus !== "ready") {
+        // A draft may be saved while a video processes; it may not be submitted
+        // until the renditions the runner needs are ready.
+        issues.push("materialProcessing");
+      }
+      if (!f.materialTitle.trim()) issues.push("materialTitle");
+      if (!f.rightsConfirmed) issues.push("materialRights");
       break;
   }
   return [...new Set(issues)];

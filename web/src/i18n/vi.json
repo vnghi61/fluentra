@@ -801,6 +801,17 @@
     "sentenceTransformPlaceholder": "Nhập câu viết lại...",
     "incorrect": "Chưa đúng. Xem đáp án chuẩn phía trên.",
     "knewItBtn": "Tôi nhớ từ này",
+    "material": {
+      "videoLabel": "Video",
+      "documentLabel": "Tài liệu",
+      "untitled": "Tài liệu bài học",
+      "pages": "{{count}} trang",
+      "openDocument": "Mở tài liệu",
+      "unavailable": "Tài liệu hiện không khả dụng.",
+      "done": "Đã đánh dấu hoàn thành.",
+      "hint": "Mở tài liệu, sau đó đánh dấu hoàn thành để kết thúc chương này.",
+      "markDone": "Đã xem xong"
+    },
     "listening": {
       "audioClip": "Đoạn ghi âm",
       "instructions": "Nghe xong hãy trả lời các câu hỏi bên dưới.",
@@ -1696,7 +1707,8 @@
         "grammar_sentence_transform": "Viết lại câu",
         "reading_comprehension": "Đọc hiểu",
         "writing_prompt": "Bài viết",
-        "speaking_task": "Luyện nói"
+        "speaking_task": "Luyện nói",
+        "lesson_material": "Tài liệu / Video"
       },
       "field": {
         "question": "Câu hỏi",
@@ -1739,6 +1751,21 @@
         "respondPrompt": "Câu hỏi cho học viên trả lời (tối thiểu 8 từ)",
         "referenceText": "Đoạn văn cần đọc (15–100 từ)"
       },
+      "material": {
+        "document": "Tài liệu",
+        "video": "Video",
+        "title": "Tiêu đề tài liệu",
+        "description": "Mô tả (không bắt buộc)",
+        "file": "Tệp",
+        "rights": "Tôi sở hữu hoặc có quyền đăng tài liệu này",
+        "uploadFailed": "Tải tệp thất bại",
+        "statusIdle": "Chưa chọn tệp",
+        "statusUploading": "Đang tải lên…",
+        "statusProcessing": "Đang xử lý video… các bản dựng đang được tạo",
+        "statusProcessingDocument": "Đang xử lý tài liệu… đang tạo bản xem trước",
+        "statusReady": "Sẵn sàng gửi duyệt",
+        "statusFailed": "Xử lý thất bại"
+      },
       "issue": {
         "prompt": "Chưa nhập câu hỏi.",
         "fourOptions": "Cần điền đủ 4 lựa chọn.",
@@ -1756,7 +1783,11 @@
         "writingPrompt": "Đề bài viết cần ít nhất 15 từ.",
         "modelAnswer": "Bài mẫu cần ít nhất 80 từ.",
         "referenceText": "Đoạn văn đọc to cần 15–100 từ.",
-        "respondPrompt": "Câu hỏi luyện nói cần ít nhất 8 từ."
+        "respondPrompt": "Câu hỏi luyện nói cần ít nhất 8 từ.",
+        "materialFile": "Chưa chọn tệp tài liệu.",
+        "materialTitle": "Chưa nhập tiêu đề tài liệu.",
+        "materialRights": "Cần xác nhận bạn có quyền đăng tài liệu này.",
+        "materialProcessing": "Tài liệu đang được xử lý, chưa thể gửi duyệt."
       }
     }
   },
@@ -1781,4 +1812,3 @@
     "pathSection": "Lộ trình học nền tảng"
   }
 }
-

@@ -54,7 +54,9 @@ describe("studio activity kinds", () => {
     ).body as { tokens: string[]; correct_answer: string };
 
     expect(body.correct_answer).toBe("She goes to school");
-    expect([...body.tokens].sort()).toEqual(["She", "goes", "school", "to"].sort());
+    expect([...body.tokens].sort()).toEqual(
+      ["She", "goes", "school", "to"].sort(),
+    );
     expect(body.tokens.join(" ")).not.toBe("She goes to school");
   });
 
@@ -76,7 +78,9 @@ describe("studio activity kinds", () => {
     expect(body.words).toHaveLength(2);
     const meaningOf = (word: string) => {
       const w = body.words.find((x) => x.text === word);
-      return body.definitions.find((d) => d.id === body.correct_pairs[w?.id ?? ""])?.text;
+      return body.definitions.find(
+        (d) => d.id === body.correct_pairs[w?.id ?? ""],
+      )?.text;
     };
     expect(meaningOf("cat")).toBe("con mèo");
     expect(meaningOf("dog")).toBe("con chó");
@@ -87,20 +91,69 @@ describe("studio activity kinds", () => {
       activity("speaking_task", { taskType: "read_aloud", referenceText: "x" }),
     );
     expect(saved.task_type).toBe("read_aloud");
-    expect(saved.body).toMatchObject({ task_type: "read_aloud", reference_text: "x" });
+    expect(saved.body).toMatchObject({
+      task_type: "read_aloud",
+      reference_text: "x",
+    });
+  });
+
+  it("serialises a material with its resource and never a URL", () => {
+    const saved = serialiseActivity(
+      activity("lesson_material", {
+        materialKind: "video",
+        materialTitle: "Intro",
+        resourceId: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+        rightsConfirmed: true,
+        materialStatus: "ready",
+      }),
+    );
+    expect(saved.kind).toBe("lesson_material");
+    expect(saved.body).toEqual({
+      resource_id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      title: "Intro",
+    });
+    expect(saved.material).toMatchObject({
+      resource_id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      material_kind: "video",
+      rights_confirmed: true,
+    });
+    expect(JSON.stringify(saved)).not.toContain("http");
+  });
+
+  it("omits an empty resource id so Gate 1 can parse the draft", () => {
+    const saved = serialiseActivity(
+      activity("lesson_material", { materialTitle: "Intro" }),
+    );
+    expect(saved.body).not.toHaveProperty("resource_id");
+    expect(saved.material as Record<string, unknown>).not.toHaveProperty(
+      "resource_id",
+    );
+    expect(
+      activityIssues(activity("lesson_material", { materialTitle: "Intro" })),
+    ).toContain("materialFile");
   });
 
   it("opens a draft saved by the old editor under the backend's kind names", () => {
     const read = readActivity(
-      { id: "a-9", kind: "fill_blank", title: "Old", prompt: "Fill it", expected_answer: "go" },
+      {
+        id: "a-9",
+        kind: "fill_blank",
+        title: "Old",
+        prompt: "Fill it",
+        expected_answer: "go",
+      },
       "fallback",
     );
     expect(read.kind).toBe("vocab_gap_fill");
     expect(read.fields.prompt).toBe("Fill it");
     expect(read.fields.answer).toBe("go");
 
-    expect(readActivity({ kind: "pronunciation" }, "x").fields.taskType).toBe("read_aloud");
-    expect(readActivity({ kind: "dialogue" }, "x").fields.taskType).toBe("respond");
+    expect(readActivity({ kind: "pronunciation" }, "x").fields.taskType).toBe(
+      "read_aloud",
+    );
+    expect(readActivity({ kind: "dialogue" }, "x").fields.taskType).toBe(
+      "respond",
+    );
   });
 
   it("reports what Gate 1 would reject before the creator submits", () => {
@@ -115,13 +168,15 @@ describe("studio activity kinds", () => {
         }),
       ),
     ).toEqual(["explanationVi"]);
-    expect(activityIssues(activity("writing_prompt", { prompt: "too short" }))).toEqual(
-      expect.arrayContaining(["writingPrompt", "modelAnswer"]),
-    );
+    expect(
+      activityIssues(activity("writing_prompt", { prompt: "too short" })),
+    ).toEqual(expect.arrayContaining(["writingPrompt", "modelAnswer"]));
   });
 
   it("shuffles the same way on every save", () => {
-    expect(stableShuffle([1, 2, 3, 4, 5], "a-1")).toEqual(stableShuffle([1, 2, 3, 4, 5], "a-1"));
+    expect(stableShuffle([1, 2, 3, 4, 5], "a-1")).toEqual(
+      stableShuffle([1, 2, 3, 4, 5], "a-1"),
+    );
   });
 });
 
@@ -133,7 +188,12 @@ describe("ActivityFieldsEditor", () => {
   const renderKind = (kind: DraftActivity["kind"]) =>
     render(
       <I18nextProvider i18n={i18n}>
-        <ActivityFieldsEditor kind={kind} fields={emptyFields()} idPrefix="a1" onChange={() => {}} />
+        <ActivityFieldsEditor
+          kind={kind}
+          fields={emptyFields()}
+          idPrefix="a1"
+          onChange={() => {}}
+        />
       </I18nextProvider>,
     );
 
@@ -158,10 +218,17 @@ describe("ActivityFieldsEditor", () => {
     const onChange = vi.fn();
     render(
       <I18nextProvider i18n={i18n}>
-        <ActivityFieldsEditor kind="vocab_gap_fill" fields={emptyFields()} idPrefix="a1" onChange={onChange} />
+        <ActivityFieldsEditor
+          kind="vocab_gap_fill"
+          fields={emptyFields()}
+          idPrefix="a1"
+          onChange={onChange}
+        />
       </I18nextProvider>,
     );
-    fireEvent.change(screen.getByLabelText("Từ điền vào chỗ trống"), { target: { value: "went" } });
+    fireEvent.change(screen.getByLabelText("Từ điền vào chỗ trống"), {
+      target: { value: "went" },
+    });
     expect(onChange).toHaveBeenCalledWith({ answer: "went" });
   });
 });

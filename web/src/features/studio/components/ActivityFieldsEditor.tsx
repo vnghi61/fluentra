@@ -1,9 +1,21 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  Plus,
+  Trash2,
+  Upload,
+} from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import {
+  pollMaterial,
+  resourceApi,
+  type MaterialUploadState,
+} from "@/features/resource/api/resourceApi";
 import {
   blankQuestion,
   type ActivityFields,
@@ -74,7 +86,10 @@ export function ActivityFieldsEditor({
   const choices = (
     options: readonly string[],
     correctIndex: number,
-    set: (options: [string, string, string, string], correctIndex: number) => void,
+    set: (
+      options: [string, string, string, string],
+      correctIndex: number,
+    ) => void,
     name: string,
   ) => (
     <fieldset className="space-y-1.5">
@@ -86,7 +101,9 @@ export function ActivityFieldsEditor({
               type="radio"
               name={name}
               checked={correctIndex === i}
-              onChange={() => set([...options] as [string, string, string, string], i)}
+              onChange={() =>
+                set([...options] as [string, string, string, string], i)
+              }
               aria-label={t("studio.activity.field.markCorrect", { n: i + 1 })}
               className="accent-primary"
             />
@@ -107,7 +124,10 @@ export function ActivityFieldsEditor({
     </fieldset>
   );
 
-  const explanationVi = text("explanationVi", k("explanationVi"), { multiline: true, rows: 2 });
+  const explanationVi = text("explanationVi", k("explanationVi"), {
+    multiline: true,
+    rows: 2,
+  });
 
   switch (kind) {
     case "vocab_multiple_choice":
@@ -115,7 +135,12 @@ export function ActivityFieldsEditor({
       return (
         <div className="space-y-2.5">
           {text("prompt", k("question"))}
-          {choices(f.options, f.correctIndex, (options, correctIndex) => onChange({ options, correctIndex }), `${idPrefix}-correct`)}
+          {choices(
+            f.options,
+            f.correctIndex,
+            (options, correctIndex) => onChange({ options, correctIndex }),
+            `${idPrefix}-correct`,
+          )}
           {explanationVi}
         </div>
       );
@@ -125,7 +150,12 @@ export function ActivityFieldsEditor({
         <div className="space-y-2.5">
           {text("sentence", k("contextSentence"))}
           {text("prompt", k("question"))}
-          {choices(f.options, f.correctIndex, (options, correctIndex) => onChange({ options, correctIndex }), `${idPrefix}-correct`)}
+          {choices(
+            f.options,
+            f.correctIndex,
+            (options, correctIndex) => onChange({ options, correctIndex }),
+            `${idPrefix}-correct`,
+          )}
           {explanationVi}
         </div>
       );
@@ -185,7 +215,11 @@ export function ActivityFieldsEditor({
                   value={pair.word}
                   placeholder={k("pairWord")}
                   onChange={(e) =>
-                    onChange({ pairs: f.pairs.map((p, j) => (j === i ? { ...p, word: e.target.value } : p)) })
+                    onChange({
+                      pairs: f.pairs.map((p, j) =>
+                        j === i ? { ...p, word: e.target.value } : p,
+                      ),
+                    })
                   }
                   className="text-xs"
                 />
@@ -193,13 +227,19 @@ export function ActivityFieldsEditor({
                   value={pair.meaning}
                   placeholder={k("pairMeaning")}
                   onChange={(e) =>
-                    onChange({ pairs: f.pairs.map((p, j) => (j === i ? { ...p, meaning: e.target.value } : p)) })
+                    onChange({
+                      pairs: f.pairs.map((p, j) =>
+                        j === i ? { ...p, meaning: e.target.value } : p,
+                      ),
+                    })
                   }
                   className="text-xs"
                 />
                 <button
                   type="button"
-                  onClick={() => onChange({ pairs: f.pairs.filter((_, j) => j !== i) })}
+                  onClick={() =>
+                    onChange({ pairs: f.pairs.filter((_, j) => j !== i) })
+                  }
                   disabled={f.pairs.length <= 2}
                   aria-label={k("removePair")}
                   className="p-1 text-text-muted hover:text-danger disabled:opacity-30"
@@ -210,7 +250,9 @@ export function ActivityFieldsEditor({
             ))}
             <button
               type="button"
-              onClick={() => onChange({ pairs: [...f.pairs, { word: "", meaning: "" }] })}
+              onClick={() =>
+                onChange({ pairs: [...f.pairs, { word: "", meaning: "" }] })
+              }
               disabled={f.pairs.length >= 8}
               className="flex items-center gap-1 text-[11px] font-semibold text-primary-accent disabled:opacity-40"
             >
@@ -237,16 +279,27 @@ export function ActivityFieldsEditor({
           {text("passage", k("passage"), { multiline: true, rows: 6 })}
           {f.questions.map((q, qi) => {
             const setQ = (patch: Partial<typeof q>) =>
-              onChange({ questions: f.questions.map((x, j) => (j === qi ? { ...x, ...patch } : x)) });
+              onChange({
+                questions: f.questions.map((x, j) =>
+                  j === qi ? { ...x, ...patch } : x,
+                ),
+              });
             return (
-              <div key={qi} className="space-y-1.5 rounded-md border border-border-subtle p-2">
+              <div
+                key={qi}
+                className="space-y-1.5 rounded-md border border-border-subtle p-2"
+              >
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-text">
                     {t("studio.activity.field.questionN", { n: qi + 1 })}
                   </span>
                   <button
                     type="button"
-                    onClick={() => onChange({ questions: f.questions.filter((_, j) => j !== qi) })}
+                    onClick={() =>
+                      onChange({
+                        questions: f.questions.filter((_, j) => j !== qi),
+                      })
+                    }
                     disabled={f.questions.length <= 4}
                     aria-label={k("removeQuestion")}
                     className="p-1 text-text-muted hover:text-danger disabled:opacity-30"
@@ -260,7 +313,12 @@ export function ActivityFieldsEditor({
                   onChange={(e) => setQ({ prompt: e.target.value })}
                   className="text-xs"
                 />
-                {choices(q.options, q.correctIndex, (options, correctIndex) => setQ({ options, correctIndex }), `${idPrefix}-q${qi}`)}
+                {choices(
+                  q.options,
+                  q.correctIndex,
+                  (options, correctIndex) => setQ({ options, correctIndex }),
+                  `${idPrefix}-q${qi}`,
+                )}
                 <textarea
                   rows={2}
                   value={q.explanationVi}
@@ -274,7 +332,9 @@ export function ActivityFieldsEditor({
           })}
           <button
             type="button"
-            onClick={() => onChange({ questions: [...f.questions, blankQuestion()] })}
+            onClick={() =>
+              onChange({ questions: [...f.questions, blankQuestion()] })
+            }
             disabled={f.questions.length >= 6}
             className="flex items-center gap-1 text-[11px] font-semibold text-primary-accent disabled:opacity-40"
           >
@@ -322,13 +382,216 @@ export function ActivityFieldsEditor({
               </label>
             ))}
           </div>
-          {text("prompt", k(f.taskType === "read_aloud" ? "instruction" : "respondPrompt"), {
-            multiline: f.taskType === "respond",
-            rows: 2,
-          })}
+          {text(
+            "prompt",
+            k(f.taskType === "read_aloud" ? "instruction" : "respondPrompt"),
+            {
+              multiline: f.taskType === "respond",
+              rows: 2,
+            },
+          )}
           {f.taskType === "read_aloud" &&
-            text("referenceText", k("referenceText"), { multiline: true, rows: 3 })}
+            text("referenceText", k("referenceText"), {
+              multiline: true,
+              rows: 3,
+            })}
         </div>
       );
+
+    case "lesson_material":
+      return (
+        <MaterialFields fields={f} onChange={onChange} idPrefix={idPrefix} />
+      );
   }
+}
+
+const MATERIAL_ACCEPT: Record<"document" | "video", string> = {
+  document:
+    ".pdf,.doc,.docx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  video: "video/mp4,video/webm",
+};
+
+/** The file picker, rights declaration and processing status for a material. */
+function MaterialFields({
+  fields: f,
+  onChange,
+  idPrefix,
+}: {
+  fields: ActivityFields;
+  onChange: (patch: Partial<ActivityFields>) => void;
+  idPrefix: string;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const stopPolling = useRef<(() => void) | null>(null);
+
+  const pollingFor = useRef<string | null>(null);
+
+  useEffect(() => () => stopPolling.current?.(), []);
+
+  const watch = (resourceId: string, kind: "document" | "video") => {
+    stopPolling.current?.();
+    pollingFor.current = resourceId;
+    stopPolling.current = pollMaterial(
+      resourceId,
+      kind,
+      (state: MaterialUploadState) => onChange({ materialStatus: state }),
+    );
+  };
+
+  // A reopened draft reads back as "processing" and nothing had asked the
+  // server since, so the material stayed there and the draft could never be
+  // submitted. Ask again whenever a file is present that nobody is watching.
+  useEffect(() => {
+    if (!f.resourceId || pollingFor.current === f.resourceId) return;
+    if (f.materialStatus === "ready" || f.materialStatus === "uploading")
+      return;
+    watch(f.resourceId, f.materialKind);
+  });
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    setIsUploading(true);
+    onChange({ materialStatus: "uploading" });
+    try {
+      const intent = await resourceApi.createUploadIntent(file.name, file.type);
+      await resourceApi.uploadDirect(intent, file);
+      await resourceApi.confirmUpload(intent.id);
+      onChange({
+        resourceId: intent.id,
+        materialStatus: "processing",
+        materialTitle:
+          f.materialTitle.trim() || file.name.replace(/\.[^.]+$/, ""),
+      });
+      watch(intent.id, f.materialKind);
+    } catch (err) {
+      onChange({ materialStatus: "failed" });
+      setError(
+        err instanceof Error
+          ? err.message
+          : t("studio.activity.material.uploadFailed", "Upload failed"),
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const status = f.materialStatus;
+  const statusText: Record<MaterialUploadState, string> = {
+    idle: t("studio.activity.material.statusIdle", "No file chosen yet"),
+    uploading: t("studio.activity.material.statusUploading", "Uploading…"),
+    processing:
+      f.materialKind === "video"
+        ? t(
+            "studio.activity.material.statusProcessing",
+            "Processing video… renditions are being prepared",
+          )
+        : t(
+            "studio.activity.material.statusProcessingDocument",
+            "Processing document… preparing its preview",
+          ),
+    ready: t("studio.activity.material.statusReady", "Ready to publish"),
+    failed: t("studio.activity.material.statusFailed", "Processing failed"),
+  };
+
+  return (
+    <div className="space-y-2.5">
+      <div className="flex gap-4 text-xs text-text">
+        {(["document", "video"] as const).map((kind) => (
+          <label key={kind} className="flex items-center gap-1.5">
+            <input
+              type="radio"
+              name={`${idPrefix}-material-kind`}
+              checked={f.materialKind === kind}
+              onChange={() => {
+                onChange({ materialKind: kind });
+                if (f.resourceId) watch(f.resourceId, kind);
+              }}
+              className="accent-primary"
+            />
+            {t(
+              kind === "document"
+                ? "studio.activity.material.document"
+                : "studio.activity.material.video",
+            )}
+          </label>
+        ))}
+      </div>
+
+      <div>
+        <label htmlFor={`${idPrefix}-material-title`} className={labelClass}>
+          {t("studio.activity.material.title", "Material title")}
+        </label>
+        <Input
+          id={`${idPrefix}-material-title`}
+          value={f.materialTitle}
+          onChange={(e) => onChange({ materialTitle: e.target.value })}
+          className="text-base sm:text-xs"
+        />
+      </div>
+
+      <div>
+        <label htmlFor={`${idPrefix}-material-desc`} className={labelClass}>
+          {t("studio.activity.material.description", "Description (optional)")}
+        </label>
+        <textarea
+          id={`${idPrefix}-material-desc`}
+          rows={2}
+          value={f.materialDescription}
+          onChange={(e) => onChange({ materialDescription: e.target.value })}
+          className={textareaClass}
+        />
+      </div>
+
+      <div>
+        <label htmlFor={`${idPrefix}-material-file`} className={labelClass}>
+          {t("studio.activity.material.file", "File")}
+        </label>
+        <input
+          id={`${idPrefix}-material-file`}
+          type="file"
+          accept={MATERIAL_ACCEPT[f.materialKind]}
+          disabled={isUploading}
+          onChange={(e) => void handleFile(e.target.files?.[0])}
+          className="block w-full text-base sm:text-xs text-text-muted file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-base sm:file:text-xs file:font-semibold file:text-primary-foreground"
+        />
+        <p className="mt-1 flex items-center gap-1.5 text-[11px] text-text-muted">
+          {status === "uploading" || status === "processing" ? (
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+          ) : status === "ready" ? (
+            <CheckCircle2 className="h-3 w-3 text-success" aria-hidden="true" />
+          ) : status === "failed" ? (
+            <AlertCircle className="h-3 w-3 text-danger" aria-hidden="true" />
+          ) : (
+            <Upload className="h-3 w-3" aria-hidden="true" />
+          )}
+          {statusText[status]}
+        </p>
+      </div>
+
+      <label className="flex items-start gap-2 text-[11px] text-text">
+        <input
+          type="checkbox"
+          checked={f.rightsConfirmed}
+          onChange={(e) => onChange({ rightsConfirmed: e.target.checked })}
+          className="mt-0.5 accent-primary"
+        />
+        <span>
+          {t(
+            "studio.activity.material.rights",
+            "I own or have the right to publish this material",
+          )}
+        </span>
+      </label>
+
+      {error && (
+        <p className="flex items-center gap-1.5 text-[11px] text-danger-accent">
+          <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
+          {error}
+        </p>
+      )}
+    </div>
+  );
 }
