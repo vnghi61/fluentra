@@ -644,6 +644,7 @@
       "slotListening": "1 Bài nghe",
       "slotSpeaking": "2 Bài nói",
       "slotWriting": "1 Bài viết",
+      "weakNode": "Ôn lại: {{label}}",
       "guestNote": "Đăng nhập để tích lũy chuỗi ngày và lưu tiến độ bài tập.",
       "levelLabel": "Cấp độ {{lvl}}",
       "levelGroup": "Cấp độ luyện tập",
@@ -1957,6 +1958,15 @@
       "description": "Học theo trình tự các chủ đề nền tảng này để nắm vững kiến thức một cách hiệu quả nhất."
     },
     "mastered": "Đã thành thạo",
+    "locked": "Chưa mở",
+    "next": {
+      "attempts": "{{count}} lượt làm",
+      "desc": "Chủ đề đầu tiên bạn chưa thành thạo, theo đúng thứ tự điều kiện tiên quyết.",
+      "label": "Lộ trình nền tảng",
+      "revisitBtn": "Ôn lại chủ đề này",
+      "startBtn": "Bắt đầu chủ đề này",
+      "title": "Bước tiếp theo trong lộ trình"
+    },
     "nextToLearn": "Bài tiếp theo",
     "target": "Mục tiêu",
     "attempts": "Lượt làm",

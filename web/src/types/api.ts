@@ -5429,7 +5429,7 @@ export interface components {
             local_date: string;
             /** @example B1 */
             level: string;
-            activities: components["schemas"]["LessonActivity"][];
+            activities: components["schemas"]["DailyPracticeActivity"][];
         };
         ResourcePracticeSet: {
             /** Format: uuid */
@@ -7573,6 +7573,15 @@ export interface components {
              * @example 2026-09-20T10:00:00Z
              */
             last_computed_at: string;
+        };
+        DailyPracticeActivity: components["schemas"]["LessonActivity"] & {
+            /** @description Set on the one item drawn to revisit the learner's weakest spine node (WO 21 Stage F). Absent on every other item. */
+            weak_node?: {
+                /** @example PRESENT_PERFECT */
+                code: string;
+                /** @example Present Perfect */
+                label: string;
+            };
         };
         /** @description A derived visual, audio, or video rendition of a validated file resource. */
         ResourceRendition: {

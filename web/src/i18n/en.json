@@ -644,6 +644,7 @@
       "slotListening": "1 Clip",
       "slotSpeaking": "2 Speaking",
       "slotWriting": "1 Writing",
+      "weakNode": "Review: {{label}}",
       "guestNote": "Sign in to save streaks and track exposure history.",
       "levelLabel": "Level {{lvl}}",
       "levelGroup": "Practice level",
@@ -1956,6 +1957,15 @@
       "description": "Follow this sequence of foundation topics to master this subject effectively."
     },
     "mastered": "Mastered",
+    "locked": "Locked",
+    "next": {
+      "attempts": "{{count}} attempts",
+      "desc": "The first topic you have not mastered yet, in prerequisite order.",
+      "label": "Foundation path",
+      "revisitBtn": "Revisit this topic",
+      "startBtn": "Start this topic",
+      "title": "Next in your path"
+    },
     "nextToLearn": "Next to Learn",
     "target": "Target",
     "attempts": "Attempts",

@@ -52,6 +52,14 @@ import {
 } from "@/features/writing";
 import { type SpeakingFeedback, speakingApi } from "@/features/speaking";
 import { readExampleSentences } from "@/lib/examples";
+import type { components } from "@/types/api";
+
+/**
+ * The activity shape the runner renders. A daily-set item can carry `weak_node`
+ * (why it is in today's list); a lesson's items cannot, so the union is the
+ * daily type with that field optional.
+ */
+type DailyPracticeActivity = components["schemas"]["DailyPracticeActivity"];
 
 // The activity `config` is a free-form object in the spec, because its shape
 // belongs to whichever skill module authored the activity and the OpenAPI
@@ -257,7 +265,7 @@ export function LessonPage(): React.JSX.Element {
     refetch: refetchLesson,
   } = useLesson(isDaily || isResourcePractice ? undefined : lessonId);
 
-  const activities = isDaily
+  const activities: DailyPracticeActivity[] = isDaily
     ? (dailySet?.activities ?? [])
     : isResourcePractice
       ? (resourcePractice?.activities ?? [])
@@ -929,6 +937,25 @@ export function LessonPage(): React.JSX.Element {
 
       {/* Main Exercise Canvas */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col justify-center">
+        {/*
+          The daily set draws one item to revisit the learner's weakest spine
+          node. It says so, because an exercise that looks like every other
+          one reads as a mistake rather than as a plan (WO 21 Stage F).
+        */}
+        {currentActivity?.weak_node && (
+          <div
+            role="status"
+            className="mx-auto mb-4 flex w-full max-w-2xl items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-primary-accent"
+          >
+            <RotateCcw className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>
+              {t("practice.daily.weakNode", {
+                label: currentActivity.weak_node.label,
+                defaultValue: `Review: ${currentActivity.weak_node.label}`,
+              })}
+            </span>
+          </div>
+        )}
         {submissionError && (
           <div className="mb-6 p-4 rounded-xl border border-danger/40 bg-danger/10 max-w-2xl mx-auto w-full flex items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-danger-accent text-sm font-medium">

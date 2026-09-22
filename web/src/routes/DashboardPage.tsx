@@ -12,6 +12,7 @@ import {
   DailyPracticeCard,
   DashboardError,
   DashboardSkeleton,
+  FoundationNextCard,
   PlacementInviteCard,
   ReviewsDueCard,
   SkillProgressCard,
@@ -78,6 +79,11 @@ export function DashboardPage(): React.JSX.Element {
       {/* Hero Card: 1. Continue Learning */}
       <section aria-label={t("dashboard.continue.title", "Continue Learning")}>
         <ContinueLearningCard dashboard={data} />
+      </section>
+
+      {/* The Foundation path's next node, when there are published topics. */}
+      <section aria-label={t("foundation.next.label", "Foundation path")}>
+        <FoundationNextCard />
       </section>
 
       {/* Personalized Weekly Plan */}

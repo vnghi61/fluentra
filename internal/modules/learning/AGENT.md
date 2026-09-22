@@ -222,6 +222,7 @@ and fails `go-arch-lint` in CI.
 10. **BR-LEARNING-10** — The placement test adapts: item difficulty follows the running estimate, and it stops when the confidence interval is narrow enough or the item budget is exhausted.
 11. **BR-LEARNING-11** — Placement completes nothing: no progress row, no `activity.completed`, no review card. A placement opens lessons below the placed level; a declared level opens nothing.
 12. **BR-LEARNING-12** — A node is weak only after three attempts, and mastered only after five (score >= 0.8).
+13. **BR-LEARNING-13** — The daily set labels the one item drawn for the learner's weakest node, so why it is in today's list is visible; the label is recomputed at read time, not stored.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

@@ -432,7 +432,8 @@
       "Skill mastery is an exponentially weighted estimate over recent attempts, not a raw average — recent performance must dominate.",
       "The placement test adapts: item difficulty follows the running estimate, and it stops when the confidence interval is narrow enough or the item budget is exhausted.",
       "Placement completes nothing: no progress row, no `activity.completed`, no review card. A placement opens lessons below the placed level; a declared level opens nothing.",
-      "A node is weak only after three attempts, and mastered only after five (score >= 0.8)."
+      "A node is weak only after three attempts, and mastered only after five (score >= 0.8).",
+      "The daily set labels the one item drawn for the learner's weakest node, so why it is in today's list is visible; the label is recomputed at read time, not stored."
     ],
 
     "cache": [

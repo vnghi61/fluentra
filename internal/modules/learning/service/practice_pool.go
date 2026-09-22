@@ -1145,7 +1145,7 @@ func (s *Service) GetDailySet(
 		return nil, fmt.Errorf("check existing daily set: %w", err)
 	}
 	if existing != nil {
-		return s.assembleDailySetDTO(ctx, existing.ID, localDate, level, existing.ActivityIDs)
+		return s.assembleDailySetDTO(ctx, userID, existing.ID, localDate, level, existing.ActivityIDs)
 	}
 
 	chosen, err := s.drawDailySet(ctx, userID, level, layout)
@@ -1160,7 +1160,7 @@ func (s *Service) GetDailySet(
 	if err != nil {
 		return nil, err
 	}
-	return s.assembleDailySetDTO(ctx, stored.ID, localDate, level, stored.ActivityIDs)
+	return s.assembleDailySetDTO(ctx, userID, stored.ID, localDate, level, stored.ActivityIDs)
 }
 
 func (s *Service) drawDailySet(
@@ -1545,12 +1545,16 @@ func (s *Service) saveDailySet(
 }
 
 func (s *Service) assembleDailySetDTO(
-	ctx context.Context, setID uuid.UUID, localDate time.Time, level string, activityIDs []uuid.UUID,
+	ctx context.Context, userID, setID uuid.UUID, localDate time.Time, level string, activityIDs []uuid.UUID,
 ) (*domain.DailySetDTO, error) {
-	dtos, err := s.resolveActivityDTOs(ctx, activityIDs)
+	dtos, versions, err := s.resolveActivityDTOs(ctx, activityIDs)
 	if err != nil {
 		return nil, err
 	}
+	// The item drawn for a weak node says so. Recomputed at read time rather
+	// than stored: the label is "what the learner should revisit today", and a
+	// stored label would go stale the moment their weak node changed.
+	s.labelWeakNode(ctx, userID, dtos, versions)
 	return &domain.DailySetDTO{
 		ID:         setID,
 		LocalDate:  localDate,
@@ -1559,13 +1563,72 @@ func (s *Service) assembleDailySetDTO(
 	}, nil
 }
 
+// weakNodeFor is the learner's lowest-scoring node with enough attempts whose
+// prerequisites they have met, or nil.
+func (s *Service) weakNodeFor(ctx context.Context, userID uuid.UUID) *domain.WeakNodeLabel {
+	if s.repo == nil || s.taxonomies == nil {
+		return nil
+	}
+	weakNodes, err := s.repo.ListWeakNodesByUser(ctx, userID, domain.MinAttemptsForWeakNode)
+	if err != nil || len(weakNodes) == 0 {
+		return nil
+	}
+	for _, w := range weakNodes {
+		if !s.isNodePrerequisitesMet(ctx, userID, w.NodeID) {
+			continue
+		}
+		node, err := s.taxonomies.GetTaxonomyByID(ctx, w.NodeID)
+		if err != nil || node == nil {
+			continue
+		}
+		return &domain.WeakNodeLabel{Code: node.Code, Label: node.Label}
+	}
+	return nil
+}
+
+// labelWeakNode marks the first item whose content version is tagged with the
+// learner's weak node. The daily set draws exactly one such item (Stage I).
+func (s *Service) labelWeakNode(
+	ctx context.Context,
+	userID uuid.UUID,
+	dtos []domain.DailySetActivityDTO,
+	versions map[uuid.UUID]*contentcontract.Version,
+) {
+	weak := s.weakNodeFor(ctx, userID)
+	if weak == nil {
+		return
+	}
+	for i := range dtos {
+		version := versions[dtos[i].ContentVersionID]
+		if version == nil {
+			continue
+		}
+		if weakNodeMatches(version.Tags, weak) {
+			dtos[i].WeakNode = weak
+			return
+		}
+	}
+}
+
+// weakNodeMatches reports whether a content version's spine tags include the
+// node an item was drawn to revisit.
+func weakNodeMatches(tags []string, weak *domain.WeakNodeLabel) bool {
+	for _, tag := range tags {
+		if tag == weak.Code {
+			return true
+		}
+	}
+	return false
+}
+
 // resolveActivityDTOs renders a list of activity ids for the runner, redacted.
 // Shared by the daily set and the private resource practice set, because both
 // are "a list of activities the learner sits today" and a second assembly
-// would drift from the first.
+// would drift from the first. The versions are returned so a caller can read
+// the tags the redaction keeps.
 func (s *Service) resolveActivityDTOs(
 	ctx context.Context, activityIDs []uuid.UUID,
-) ([]domain.DailySetActivityDTO, error) {
+) ([]domain.DailySetActivityDTO, map[uuid.UUID]*contentcontract.Version, error) {
 	resolved := make([]*lessoncontract.ActivityHierarchy, 0, len(activityIDs))
 	versionIDs := make([]uuid.UUID, 0, len(activityIDs))
 	for _, id := range activityIDs {
@@ -1594,7 +1657,7 @@ func (s *Service) resolveActivityDTOs(
 			Weight:           activity.Weight,
 		})
 	}
-	return dtos, nil
+	return dtos, versions, nil
 }
 
 func (s *Service) loadVersions(ctx context.Context, ids []uuid.UUID) map[uuid.UUID]*contentcontract.Version {

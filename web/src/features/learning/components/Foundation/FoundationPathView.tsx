@@ -1,9 +1,10 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
-import { CheckCircle2, ArrowRightCircle, Circle, BookOpen, Award } from "lucide-react";
+import { CheckCircle2, ArrowRightCircle, Circle, BookOpen, Award, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { FoundationPathNode } from "../../api/foundation";
+import { LockedBadge, pathNodeState } from "./FoundationNextCard";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
@@ -21,6 +22,9 @@ export function FoundationPathView({
   isLoading,
 }: FoundationPathViewProps): React.JSX.Element {
   const { t } = useTranslation();
+  // The path is topologically ordered, so everything after the first
+  // unmastered node waits on it.
+  let nextSeen = false;
 
   if (isLoading) {
     return (
@@ -82,8 +86,11 @@ export function FoundationPathView({
           {items.map((node, index) => {
             const isTarget = node.code === targetCode;
             const isCurrent = node.code === currentCode;
-            const isNext = node.next;
-            const isMastered = node.mastered;
+            const state = pathNodeState(node, nextSeen);
+            if (node.next) nextSeen = true;
+            const isNext = state === "next";
+            const isMastered = state === "mastered";
+            const isLocked = state === "locked";
 
             return (
               <div key={node.id} className="relative group">
@@ -96,6 +103,10 @@ export function FoundationPathView({
                   ) : isNext ? (
                     <span className="flex h-7 w-7 rounded-full bg-primary/20 text-primary items-center justify-center ring-4 ring-surface animate-bounce">
                       <ArrowRightCircle className="h-5 w-5" />
+                    </span>
+                  ) : isLocked ? (
+                    <span className="flex h-7 w-7 rounded-full bg-surface-subtle text-text-muted items-center justify-center ring-4 ring-surface border border-border">
+                      <Lock className="h-3.5 w-3.5" />
                     </span>
                   ) : (
                     <span className="flex h-7 w-7 rounded-full bg-surface-subtle text-text-muted items-center justify-center ring-4 ring-surface border border-border">
@@ -135,6 +146,7 @@ export function FoundationPathView({
                             {t("foundation.nextToLearn", "Next to Learn")}
                           </Badge>
                         )}
+                        {isLocked && <LockedBadge />}
                         {isTarget && (
                           <Badge variant="outline" className="text-xs border-primary/50 text-primary">
                             {t("foundation.target", "Target")}

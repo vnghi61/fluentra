@@ -356,7 +356,7 @@ func learnerReason(err error) string {
 func (s *Service) assembleResourcePracticeDTO(
 	ctx context.Context, set *domain.ResourcePracticeSet,
 ) (*domain.ResourcePracticeSetDTO, error) {
-	activities, err := s.resolveActivityDTOs(ctx, set.ActivityIDs)
+	activities, _, err := s.resolveActivityDTOs(ctx, set.ActivityIDs)
 	if err != nil {
 		return nil, err
 	}

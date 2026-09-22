@@ -384,7 +384,28 @@ DailyPracticeSet:
     activities:
       type: array
       items:
-        $ref: './lesson.yaml#/LessonActivity'
+        $ref: '#/DailyPracticeActivity'
+
+# A lesson activity plus the one field only a daily set can carry: why this
+# item is in today's list.
+DailyPracticeActivity:
+  allOf:
+    - $ref: './lesson.yaml#/LessonActivity'
+    - type: object
+      properties:
+        weak_node:
+          type: object
+          description: >-
+            Set on the one item drawn to revisit the learner's weakest spine
+            node (WO 21 Stage F). Absent on every other item.
+          required: [code, label]
+          properties:
+            code:
+              type: string
+              example: PRESENT_PERFECT
+            label:
+              type: string
+              example: Present Perfect
 
 # Private practice generated from one of the learner's own uploads (WO 21
 # Stage B). Never part of the shared bank and never visible to another learner.

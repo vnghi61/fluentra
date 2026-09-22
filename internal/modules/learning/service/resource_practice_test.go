@@ -238,3 +238,14 @@ func TestResourcePracticeSource_TruncatesToTheModelsWindow(t *testing.T) {
 		t.Errorf("source length = %d, want %d", got, resourcePracticeSourceChars)
 	}
 }
+
+func TestWeakNodeMatches_FindsTheNodeInTheVersionsTags(t *testing.T) {
+	weak := &domain.WeakNodeLabel{Code: "PRESENT_PERFECT", Label: "Present Perfect"}
+
+	if !weakNodeMatches([]string{"SENTENCE_STRUCTURE", "PRESENT_PERFECT"}, weak) {
+		t.Error("the weak node is in the tags but was not matched")
+	}
+	if weakNodeMatches([]string{"SENTENCE_STRUCTURE"}, weak) {
+		t.Error("a version without the weak node was matched")
+	}
+}

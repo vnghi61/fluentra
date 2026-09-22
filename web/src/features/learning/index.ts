@@ -11,6 +11,7 @@ export * from "./components/Dashboard/ReviewsDueCard";
 export * from "./components/Dashboard/SkillProgressCard";
 export * from "./components/Dashboard/DashboardSkeleton";
 export * from "./components/Dashboard/DashboardError";
+export * from "./components/Foundation/FoundationNextCard";
 export * from "./components/Runner/RunnerHeader";
 export * from "./components/Runner/ExerciseMultipleChoice";
 export * from "./components/Runner/ExerciseGapFill";

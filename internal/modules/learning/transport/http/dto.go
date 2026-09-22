@@ -324,6 +324,19 @@ func toProgressResponse(p *domain.ProgressData) ProgressResponse {
 	}
 }
 
+// WeakNodeResponse names the spine node an item was drawn to revisit.
+type WeakNodeResponse struct {
+	Code  string `json:"code"`
+	Label string `json:"label"`
+}
+
+func toWeakNodeResponse(weak *domain.WeakNodeLabel) *WeakNodeResponse {
+	if weak == nil {
+		return nil
+	}
+	return &WeakNodeResponse{Code: weak.Code, Label: weak.Label}
+}
+
 // DailyPracticeActivityResponse models one activity inside a daily practice set.
 type DailyPracticeActivityResponse struct {
 	ID               uuid.UUID              `json:"id"`
@@ -334,6 +347,8 @@ type DailyPracticeActivityResponse struct {
 	Config           map[string]interface{} `json:"config,omitempty"`
 	Content          map[string]interface{} `json:"content,omitempty"`
 	Weight           int                    `json:"weight"`
+	// WeakNode is set on the one item drawn for the learner's weakest node.
+	WeakNode *WeakNodeResponse `json:"weak_node,omitempty"`
 }
 
 // DailyPracticeResponse models the GET /practice/daily response.
@@ -356,6 +371,7 @@ func toDailyPracticeResponse(dto *domain.DailySetDTO) DailyPracticeResponse {
 			Config:           act.Config,
 			Content:          act.Content,
 			Weight:           act.Weight,
+			WeakNode:         toWeakNodeResponse(act.WeakNode),
 		}
 	}
 	return DailyPracticeResponse{
@@ -387,6 +403,7 @@ func toResourcePracticeResponse(dto *domain.ResourcePracticeSetDTO) ResourcePrac
 			Config:           act.Config,
 			Content:          act.Content,
 			Weight:           act.Weight,
+			WeakNode:         toWeakNodeResponse(act.WeakNode),
 		}
 	}
 	return ResourcePracticeResponse{
