@@ -36,6 +36,22 @@ Verified 2026-09-22 against `web/src` and the dev database.
 
 So the order below is **data first**: a screen over an empty table proves nothing.
 
+**Flashcard pronunciation (added 2026-09-22).** Not a WO 19 gap, but found while testing it and small
+enough to ride along as Stage G. Every speaker button falls back to browser speech synthesis because no
+card carries a recording, and on some Android phones synthesis never starts at all: a Xiaomi (HyperOS,
+imported ROM) with media volume up and an English Google TTS voice installed stays silent, because the OS
+stops Chrome reaching "Speech Services by Google". Branch `fix/android-speech-silent` makes the button
+detect that and say so; only a recording makes it speak.
+
+| Fact | Where |
+|---|---|
+| `PronounceButton` already prefers `audio_url` and falls back to synthesis on a missing or broken file | `web/src/components/ui/pronounce-button.tsx` |
+| `FreeDictionaryAPI.Lookup` already returns a human recording URL with its attribution page and licence (mostly CC BY / BY-SA, which require credit) | `vocabulary/repository/dictionary.go:20-44` |
+| A learner **upload** stores `audio_url` in the sense body, but drops `AudioAttribution` and `AudioLicence` | `vocabulary/service/upload.go` (sense body builder) |
+| The **210 seeded words** and the lessons' `vocab_flashcard` configs have no `audio_url`: 0 of 218 flashcard versions in dev | `cmd/seed/content_data.go`; dev DB |
+| A published version cannot be edited (BR-CONTENT-01): adding audio means a new version | `content` AGENT.md |
+| "eat" resolves to `eat-us.mp3` (BY-SA 3.0) and `eat-uk.mp3` (BY 3.0 US) | checked 2026-09-22 |
+
 ---
 
 ## 2. Decisions
@@ -47,6 +63,8 @@ So the order below is **data first**: a screen over an empty table proves nothin
 | D21-3. Who sees generated items | Only the owner (BR-RESOURCE-12). They never enter the shared bank or the review queue |
 | D21-4. Admin screens | New sections in `ADMIN_SECTIONS`, each gated by the permission its API already declares (`content.review`, `questionbank.read`, …) |
 | D21-5. Mock tests for learners | A second tab on `/exams`: pick a version and blueprint, compose, sit it with the existing runner |
+| D21-6. Where pronunciation audio comes from | **The dictionary's recording, stored as a link** — `DictionaryEntry` already argues against copying the files. Prefer the US recording, then UK, then any. Synthesis stays the fallback for words with none |
+| D21-7. Crediting a recording | The body carries `audio_attribution` and `audio_licence` beside `audio_url`; whenever the recording (not synthesis) plays, the card shows one line: "Âm thanh: Wikimedia Commons · CC BY-SA" linking the attribution page |
 
 ---
 
@@ -60,10 +78,12 @@ C  review queue    admin: approve / reject drafts             API exists
 D  bank + coverage admin: questions, generate, coverage       API exists
 E  mock tests      learner: compose and sit                   API exists
 F  path + weak     learner: path entry point, weak slot label API exists
+G  pronunciation   recorded audio on every flashcard          backfill + attribution
 ```
 
-A–B are the learner-material branch; C–D unblock E–F, because nothing publishes without review. One commit
-per stage: `feat(web): wo21 stage X — …`.
+A–B are the learner-material branch; C–D unblock E–F, because nothing publishes without review. G stands
+alone and may go first: it is the one learners already hit. One commit per stage:
+`feat(web): wo21 stage X — …`.
 
 ## 4. Numbers reserved
 
@@ -141,6 +161,37 @@ resource id must be a 404, not a generation.
 
 **Gate.** After five correct attempts a node shows as mastered and "next" moves on.
 
+## Stage G — recorded pronunciation on flashcards
+
+- **Carry the credit.** `upload.go`'s sense body adds `audio_attribution` and `audio_licence` from the
+  `DictionaryEntry` it already has (D21-7). Pick the recording by D21-6 inside `FreeDictionaryAPI`, not in
+  each caller, so upload and backfill cannot disagree.
+- **Backfill the seed.** A `-audio` mode on `cmd/seed` (no new binary): for every word sense and every
+  lesson `vocab_flashcard` whose current version has no `audio_url`, look the lemma up and publish a **new
+  version** with the three fields (BR-CONTENT-01 forbids editing the old one). Idempotent: a version that
+  already has `audio_url` is skipped. Rate-limited to the dictionary's courtesy pace, one lookup per lemma
+  even when several senses share it. Also run it from `make seed` so a fresh database gets audio.
+- **Show the credit.** `FlashcardFront`, `FlashcardBack` and `ExerciseFlashcard` read the two new fields;
+  `PronounceButton` reports which source actually played, and the card renders the attribution line only
+  when it was the recording.
+- **Contract.** The flashcard body is untyped `content` JSON; document the three fields where the
+  vocabulary card shape is described (`vocabulary/API.md`, the sense schema in the spec if it lists
+  fields) before the handler change, per CLAUDE.md rule 2.
+
+**Traps.**
+
+1. **Hotlinked files can move.** A 404 must fall through to synthesis, which `PronounceButton` already
+   does — keep a test that proves it, because it is the only thing standing between a dead link and a
+   silent button.
+2. **Attribution is not optional.** A recording played without its credit line breaches CC BY-SA; a
+   card whose body has `audio_url` but no `audio_attribution` must not play the recording.
+3. **Do not fetch audio in the browser** from the dictionary at tap time: it puts a third party on every
+   flashcard view and turns a slow upstream into a slow button.
+
+**Gate.** On the Xiaomi that stays silent with synthesis, tapping "eat" in SRS review and in a lesson
+flashcard plays the recording and shows the credit; a word the dictionary has no recording for still
+reaches synthesis and, when that is silent, the hint from `fix/android-speech-silent`.
+
 ---
 
 ## 5. Final gate
@@ -153,3 +204,5 @@ Playwright paths for Stages A, C and E, and `make gen-check-web` after committin
 1. Stage F's weak-slot label.
 2. Stage D's generate form (generate from the CLI).
 3. Stage B — ship A alone; the page is still useful as a private library.
+
+Stage G is not on this list: it is the one stage a learner already feels, and it is small.
