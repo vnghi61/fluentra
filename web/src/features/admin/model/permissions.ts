@@ -28,6 +28,8 @@ export const PERMISSIONS = {
   contentEdit: "content.edit",
   contentReview: "content.review",
   contentPublish: "content.publish",
+  questionbankRead: "questionbank.read",
+  questionbankCreate: "questionbank.create",
   moderationRead: "moderation.read",
   moderationAct: "moderation.act",
 } as const;

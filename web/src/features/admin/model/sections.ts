@@ -7,6 +7,7 @@ import {
   FileCheck,
   Flag,
   Gauge,
+  ListChecks,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -28,6 +29,7 @@ export type AdminSectionKey =
   | "users"
   | "content"
   | "review"
+  | "questions"
   | "reports"
   | "vocabulary"
   | "flags"
@@ -81,6 +83,14 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     labelFallback: "Review Queue",
     Icon: ClipboardCheck,
     anyOf: [PERMISSIONS.contentReview, PERMISSIONS.contentPublish],
+  },
+  {
+    key: "questions",
+    path: "/admin/questions",
+    labelKey: "page.questionBank",
+    labelFallback: "Question Bank",
+    Icon: ListChecks,
+    anyOf: [PERMISSIONS.questionbankRead, PERMISSIONS.questionbankCreate],
   },
   {
     key: "reports",

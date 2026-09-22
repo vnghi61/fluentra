@@ -33,6 +33,16 @@ export type AdminReviewQueueResponse =
   components["schemas"]["AdminReviewQueueResponse"];
 export type AdminReviewQueueItem =
   components["schemas"]["AdminReviewQueueItem"];
+export type Question = components["schemas"]["Question"];
+export type QuestionPage = components["schemas"]["QuestionPage"];
+export type QuestionStats = components["schemas"]["QuestionStats"];
+export type GenerateQuestionsRequest =
+  components["schemas"]["GenerateQuestionsRequest"];
+export type GeneratedQuestionsResponse =
+  components["schemas"]["GeneratedQuestionsResponse"];
+export type ExamCoverageReport = components["schemas"]["ExamCoverageReport"];
+export type ExamVersionListResponse =
+  components["schemas"]["ExamVersionListResponse"];
 
 export type AdminWordList = components["schemas"]["AdminWordList"];
 export type AdminWordSummary = components["schemas"]["AdminWordSummary"];
@@ -226,6 +236,51 @@ export const adminApi = {
     const qs = sp.toString();
     return apiFetch<AdminReviewQueueResponse>(
       `/api/v1/admin/review-queue${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /** Search and filter the exam question bank (WO 21 Stage D). */
+  async listQuestions(params: QuestionFilter = {}): Promise<QuestionPage> {
+    const sp = new URLSearchParams();
+    if (params.exam_version) sp.set("exam_version", params.exam_version);
+    if (params.exam_part_id) sp.set("exam_part_id", params.exam_part_id);
+    if (params.kind) sp.set("kind", params.kind);
+    if (params.cefr_level) sp.set("cefr_level", params.cefr_level);
+    if (params.node_code) sp.set("node_code", params.node_code);
+    if (params.status) sp.set("status", params.status);
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<QuestionPage>(`/api/v1/admin/questions${qs ? `?${qs}` : ""}`);
+  },
+
+  /** Empirical difficulty and discrimination for one bank item. */
+  async getQuestionStats(id: string): Promise<QuestionStats> {
+    return apiFetch<QuestionStats>(`/api/v1/admin/questions/${id}/stats`);
+  },
+
+  /** Generate draft items for review; they land in the review queue. */
+  async generateQuestions(
+    req: GenerateQuestionsRequest,
+  ): Promise<GeneratedQuestionsResponse> {
+    return apiFetch<GeneratedQuestionsResponse>(
+      "/api/v1/admin/questions/generate",
+      { method: "POST", body: JSON.stringify(req) },
+    );
+  },
+
+  /** The current exam versions and their blueprints. */
+  async listExamVersions(): Promise<ExamVersionListResponse> {
+    return apiFetch<ExamVersionListResponse>("/api/v1/exam-versions");
+  },
+
+  /**
+   * How many distinct tests the published bank can compose for a version, and
+   * which part is the bottleneck.
+   */
+  async getExamVersionCoverage(versionId: string): Promise<ExamCoverageReport> {
+    return apiFetch<ExamCoverageReport>(
+      `/api/v1/admin/exams/versions/${versionId}/coverage`,
     );
   },
 
@@ -424,6 +479,17 @@ export interface ReviewQueueParams {
   kind?: string | undefined;
   node?: string | undefined;
   cefr?: string | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+}
+
+export interface QuestionFilter {
+  exam_version?: string | undefined;
+  exam_part_id?: string | undefined;
+  kind?: string | undefined;
+  cefr_level?: string | undefined;
+  node_code?: string | undefined;
+  status?: string | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
 }
