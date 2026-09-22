@@ -48,24 +48,120 @@ export interface SpeakOptions {
   onEnd?: () => void;
   /** Called only for a failure worth reporting, never for an interruption. */
   onFailure?: () => void;
+  /**
+   * Called when the engine accepted the utterance but never started speaking,
+   * even without a pinned voice. On Android this is the device, not the page:
+   * media volume at zero, or no English voice installed for the TTS engine.
+   */
+  onSilent?: () => void;
 }
 
 /**
+ * How long an utterance may sit without its `start` event before it is treated
+ * as dropped. A single word has finished well inside this on every engine that
+ * works, so waiting longer only delays the retry.
+ */
+export const START_TIMEOUT_MS = 2000;
+
+/**
+ * Utterances being spoken, held so Chrome cannot garbage-collect one mid-speech
+ * — which loses its events and, on Android, sometimes its audio.
+ */
+const liveUtterances = new Set<SpeechSynthesisUtterance>();
+
+/**
+ * Bumped by every new request and every cancel. A retry scheduled for an older
+ * request sees the change and gives up, so a card advanced mid-wait does not
+ * hear the previous word two seconds later.
+ */
+let generation = 0;
+
+/**
  * Speaks `text`, or reports failure.
+ *
+ * Chrome on Android can accept an utterance and then say nothing, with no
+ * `error` event: the pinned voice is not installed, or belongs to another
+ * engine. The icon pulsed and the phone stayed silent. So the first attempt is
+ * watched for its `start` event; without one it is retried with no pinned
+ * voice, letting the engine pick its own English, and if that is silent too
+ * the caller is told, rather than left pulsing.
  *
  * Returns false when synthesis is unavailable or threw, so a caller can show
  * the absence rather than appearing to do nothing.
  */
 export function speakText(text: string, options: SpeakOptions = {}): boolean {
-  const { lang = "en-US", onStart, onEnd, onFailure } = options;
+  const { lang = "en-US", onStart, onEnd, onFailure, onSilent } = options;
 
   if (!text.trim() || !canSynthesise()) {
     onFailure?.();
     return false;
   }
 
+  const synth = window.speechSynthesis;
+  const request = ++generation;
+  let current: SpeechSynthesisUtterance | null = null;
+  let started = false;
+  let settled = false;
+  let watchdog: ReturnType<typeof setTimeout> | undefined;
+
+  const settle = () => {
+    settled = true;
+    if (watchdog) clearTimeout(watchdog);
+    onEnd?.();
+  };
+
+  const attempt = (pinVoice: boolean) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    const voice = pinVoice ? voiceFor(lang) : undefined;
+    if (voice) utterance.voice = voice;
+    // Slower than speech, because the point is to be copied.
+    utterance.rate = 0.9;
+    current = utterance;
+    liveUtterances.add(utterance);
+    const release = () => liveUtterances.delete(utterance);
+
+    utterance.onstart = () => {
+      if (utterance === current) started = true;
+    };
+    utterance.onend = () => {
+      release();
+      if (utterance === current && !settled) settle();
+    };
+    utterance.onerror = (event?: SpeechSynthesisErrorEvent) => {
+      release();
+      // An attempt this function replaced reports `interrupted`; it is not the
+      // outcome of the tap.
+      if (utterance !== current || settled) return;
+      settle();
+      // Only a missing voice or engine is worth reporting; an interrupted
+      // utterance plays again on the next tap.
+      if (!event?.error || !TRANSIENT_ERRORS.has(event.error)) {
+        onFailure?.();
+      }
+    };
+
+    synth.speak(utterance);
+
+    watchdog = setTimeout(() => {
+      if (started || settled || utterance !== current) return;
+      if (request !== generation) {
+        // Superseded or cancelled: end quietly, never speak the old text.
+        settle();
+        return;
+      }
+      if (pinVoice && voice) {
+        synth.cancel();
+        attempt(false);
+        return;
+      }
+      synth.cancel();
+      settle();
+      onSilent?.();
+    }, START_TIMEOUT_MS);
+  };
+
   try {
-    const synth = window.speechSynthesis;
     // Cancel only what is actually queued: queued utterances otherwise pile up
     // on repeated taps, but an unconditional cancel() right before speak() is
     // what makes Chrome on Android drop the new utterance.
@@ -74,27 +170,11 @@ export function speakText(text: string, options: SpeakOptions = {}): boolean {
     // and a paused synthesiser queues silently forever.
     synth.resume?.();
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang;
-    const voice = voiceFor(lang);
-    if (voice) utterance.voice = voice;
-    // Slower than speech, because the point is to be copied.
-    utterance.rate = 0.9;
-    utterance.onend = () => onEnd?.();
-    utterance.onerror = (event?: SpeechSynthesisErrorEvent) => {
-      onEnd?.();
-      // Only a missing voice or engine is worth reporting; an interrupted
-      // utterance plays again on the next tap.
-      if (!event?.error || !TRANSIENT_ERRORS.has(event.error)) {
-        onFailure?.();
-      }
-    };
-
     onStart?.();
-    synth.speak(utterance);
+    attempt(true);
     return true;
   } catch {
-    onEnd?.();
+    if (!settled) settle();
     onFailure?.();
     return false;
   }
@@ -102,5 +182,6 @@ export function speakText(text: string, options: SpeakOptions = {}): boolean {
 
 /** Stops anything currently being spoken. */
 export function cancelSpeech(): void {
+  generation++;
   if (canSynthesise()) window.speechSynthesis.cancel();
 }
