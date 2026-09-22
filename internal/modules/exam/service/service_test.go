@@ -579,7 +579,33 @@ func TestStartSitting_PracticeDurationIsClamped(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Equal(t, tc.got, att.ChosenDurationMinutes)
+		assert.False(t, att.Unlimited)
 	}
+}
+
+func TestStartSitting_PracticeUnlimitedIgnoresChosenDurationAndBacksStopsAtADay(t *testing.T) {
+	f := newFixture(t)
+
+	att, err := f.svc.StartSitting(context.Background(), uuid.New(), f.examID, service.StartAttemptRequest{
+		Mode: domain.ModePractice, Unlimited: true, ChosenDurationMinutes: 60,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.UnlimitedPracticeDurationMinutes, att.ChosenDurationMinutes)
+	assert.Equal(t, start.Add(domain.UnlimitedPracticeDurationMinutes*time.Minute), att.DeadlineAt)
+	assert.True(t, att.Unlimited)
+}
+
+func TestStartSitting_ExamModeIgnoresUnlimited(t *testing.T) {
+	f := newFixture(t)
+
+	att, err := f.svc.StartSitting(context.Background(), uuid.New(), f.examID, service.StartAttemptRequest{
+		Mode: domain.ModeExam, Unlimited: true,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 75, att.ChosenDurationMinutes)
+	assert.False(t, att.Unlimited)
 }
 
 // ---------------------------------------------------------------------------
@@ -846,6 +872,20 @@ func TestReport_CountsIntegritySignals(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, report.IntegritySignals, 1)
 	assert.Equal(t, 2, report.IntegritySignals[0].Count)
+}
+
+func TestReport_ElapsedSecondsIsSubmittedAtMinusStartedAt(t *testing.T) {
+	f := newFixture(t)
+	userID := uuid.New()
+	att := f.start(t, userID, domain.ModePractice)
+
+	f.clock.Set(start.Add(12*time.Minute + 34*time.Second))
+	_, err := f.svc.SubmitExam(context.Background(), userID, att.ID, domain.SubmittedByLearner)
+	require.NoError(t, err)
+
+	report, err := f.svc.GetScoreReport(context.Background(), userID, att.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 12*60+34, report.ElapsedSeconds)
 }
 
 // ---------------------------------------------------------------------------

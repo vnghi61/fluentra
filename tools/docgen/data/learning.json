@@ -1684,7 +1684,8 @@
       "A retake replays its composition; only a new test draws again.",
       "A fixed test is one stored composition shared by everyone, composed without anyone's exposures.",
       "A part is filled with exactly its question count, in whole groups; a part the bank cannot fill is refused with the part named.",
-      "The number of distinct tests shown is the coverage report's number."
+      "The number of distinct tests shown is the coverage report's number.",
+      "A practice sitting may opt out of a visible time limit; the server still applies a generous backstop deadline so an abandoned sitting cannot block a future attempt indefinitely."
     ],
     "errors": [
       { "code": "ATTEMPT_IN_PROGRESS", "status": "409", "meaning": "Finish or abandon the existing attempt first" },
@@ -1735,7 +1736,7 @@
       { "question": "Auto-invalidate on integrity signals?", "choice": "No — record and show", "why": "False positives (a notification, a second monitor) would penalise honest learners; the signal is more useful as self-awareness feedback than as enforcement" },
       { "question": "Store or recompute score reports?", "choice": "Store", "why": "A learner's past band must not change because we revised a conversion table" },
       { "question": "How are exam timeouts enforced?", "choice": "3-tier expiry: River job at deadline, 1-minute sweep cron, and lazy check on read", "why": "Guarantees attempt finalisation and score reporting even if learner abandons sitting or background workers experience delays" },
-      { "question": "How does practice mode differ from exam mode?", "choice": "Custom duration 10–180 minutes, free section navigation, and re-recordable speaking", "why": "Enables targeted practice without breaking realistic exam constraints" },
+      { "question": "How does practice mode differ from exam mode?", "choice": "Custom duration 10–180 minutes or unlimited (a generous backstop still applies), free section navigation, and re-recordable speaking", "why": "Enables targeted practice without breaking realistic exam constraints" },
       { "question": "How is the exam pool isolated from the practice pool?", "choice": "Distinct pool course pool-exam and strict refusal guards in preview and lessons", "why": "Prevents exam questions from leaking through regular study or practice routes" },
       { "question": "When can a listening item be drawn for an exam sitting?", "choice": "Only when TTS audio has been rendered and object key exists in storage", "why": "A learner cannot be tested on listening audio that does not exist" }
     ],

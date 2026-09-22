@@ -204,6 +204,9 @@ type ExamSectionDTO struct {
 type StartAttemptRequest struct {
 	Mode                  string `json:"mode"`
 	ChosenDurationMinutes int    `json:"chosen_duration_minutes,omitempty"`
+	// Unlimited skips ChosenDurationMinutes and runs a practice sitting against
+	// the unlimited-duration backstop instead. Ignored outside practice mode.
+	Unlimited bool `json:"unlimited,omitempty"`
 	// Sections limits a practice sitting to the sections chosen, by position.
 	// Empty means every section; exam mode always sits all four.
 	Sections []int `json:"sections,omitempty"`
@@ -218,6 +221,7 @@ type ExamAttemptDTO struct {
 	Level                   string                     `json:"level,omitempty"`
 	Mode                    string                     `json:"mode"`
 	ChosenDurationMinutes   int                        `json:"chosen_duration_minutes"`
+	Unlimited               bool                       `json:"unlimited"`
 	StartedAt               time.Time                  `json:"started_at"`
 	DeadlineAt              time.Time                  `json:"deadline_at"`
 	RemainingSeconds        int                        `json:"remaining_seconds"`
@@ -283,6 +287,10 @@ type ScoreReportDTO struct {
 	PerSection       []domain.SectionOutcome `json:"per_section"`
 	IntegritySignals []IntegritySignalDTO    `json:"integrity_signals"`
 	Disclaimer       string                  `json:"disclaimer"`
+	// ElapsedSeconds is submitted_at minus started_at — how long the learner
+	// actually took, regardless of any time limit chosen. Absent if, somehow,
+	// the attempt has no submission time yet.
+	ElapsedSeconds int `json:"elapsed_seconds,omitempty"`
 }
 
 // SittingsToday is how many sittings the learner has started today, and the limit.
@@ -381,6 +389,18 @@ func examDTO(r *sqlc.AssessExam) ExamDTO {
 	}
 }
 
+// sittingDuration picks the sitting's mode and length in minutes: the exam's own
+// length in exam mode; the clamped choice, or the unlimited backstop, in practice.
+func sittingDuration(req StartAttemptRequest, examMinutes int) (string, int) {
+	if req.Mode != domain.ModePractice {
+		return domain.ModeExam, examMinutes
+	}
+	if req.Unlimited {
+		return domain.ModePractice, domain.UnlimitedPracticeDurationMinutes
+	}
+	return domain.ModePractice, domain.ClampPracticeDuration(req.ChosenDurationMinutes)
+}
+
 // StartSitting begins a new exam sitting.
 func (s *Service) StartSitting(
 	ctx context.Context, userID, examID uuid.UUID, req StartAttemptRequest,
@@ -420,12 +440,7 @@ func (s *Service) StartSitting(
 		return nil, domain.ErrInsufficientItems
 	}
 
-	mode := domain.ModeExam
-	duration := int(exam.TotalMinutes)
-	if req.Mode == domain.ModePractice {
-		mode = domain.ModePractice
-		duration = domain.ClampPracticeDuration(req.ChosenDurationMinutes)
-	}
+	mode, duration := sittingDuration(req, int(exam.TotalMinutes))
 	deadlineAt := now.Add(time.Duration(duration) * time.Minute)
 
 	drawnBytes, err := json.Marshal(drawn)
@@ -1121,6 +1136,9 @@ func (s *Service) GetScoreReport(ctx context.Context, userID, attemptID uuid.UUI
 	if attempt.SubmittedBy != nil {
 		dto.SubmittedBy = *attempt.SubmittedBy
 	}
+	if attempt.SubmittedAt != nil {
+		dto.ElapsedSeconds = int(attempt.SubmittedAt.Sub(attempt.StartedAt).Seconds())
+	}
 	return dto, nil
 }
 
@@ -1303,6 +1321,7 @@ func (s *Service) attemptDTO(
 		ExamID:                attempt.ExamID,
 		Mode:                  attempt.Mode,
 		ChosenDurationMinutes: int(attempt.ChosenDurationMinutes),
+		Unlimited:             domain.IsUnlimitedPractice(attempt.Mode, int(attempt.ChosenDurationMinutes)),
 		StartedAt:             attempt.StartedAt,
 		DeadlineAt:            attempt.DeadlineAt,
 		RemainingSeconds:      domain.RemainingSeconds(attempt.DeadlineAt, now),

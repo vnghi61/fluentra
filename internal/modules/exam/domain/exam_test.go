@@ -23,6 +23,24 @@ func TestClampPracticeDuration(t *testing.T) {
 	}
 }
 
+func TestIsUnlimitedPractice(t *testing.T) {
+	tests := []struct {
+		name     string
+		mode     string
+		duration int
+		want     bool
+	}{
+		{"practice at backstop", ModePractice, UnlimitedPracticeDurationMinutes, true},
+		{"practice with a chosen duration", ModePractice, 60, false},
+		{"exam mode never unlimited", ModeExam, UnlimitedPracticeDurationMinutes, false},
+	}
+	for _, tt := range tests {
+		if got := IsUnlimitedPractice(tt.mode, tt.duration); got != tt.want {
+			t.Errorf("%s: IsUnlimitedPractice(%q, %d) = %v, want %v", tt.name, tt.mode, tt.duration, got, tt.want)
+		}
+	}
+}
+
 func TestIsPastDeadline(t *testing.T) {
 	deadline := time.Date(2026, 9, 13, 10, 0, 0, 0, time.UTC)
 

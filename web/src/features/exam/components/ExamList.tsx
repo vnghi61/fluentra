@@ -99,6 +99,7 @@ export const ExamList: React.FC<ExamListProps> = ({
   );
   const [practiceExam, setPracticeExam] = useState<ExamTemplate | null>(null);
   const [minutes, setMinutes] = useState(PRACTICE_DEFAULT_MINUTES);
+  const [unlimited, setUnlimited] = useState(false);
   const [chosenSections, setChosenSections] = useState<number[]>([]);
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
@@ -122,6 +123,7 @@ export const ExamList: React.FC<ExamListProps> = ({
 
   const openPractice = (exam: ExamTemplate) => {
     setMinutes(PRACTICE_DEFAULT_MINUTES);
+    setUnlimited(false);
     setChosenSections(sectionsOf(exam).map((section) => section.position));
     setPracticeExam(exam);
   };
@@ -136,7 +138,9 @@ export const ExamList: React.FC<ExamListProps> = ({
         mode === "practice"
           ? {
               mode,
-              chosen_duration_minutes: minutes,
+              ...(unlimited
+                ? { unlimited: true }
+                : { chosen_duration_minutes: minutes }),
               // Every section is the default; send the choice only when it narrows.
               ...(chosenSections.length < allSections && {
                 sections: [...chosenSections].sort((a, b) => a - b),
@@ -369,9 +373,9 @@ export const ExamList: React.FC<ExamListProps> = ({
           role="dialog"
           aria-modal="true"
           aria-labelledby="practice-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 pb-20 md:pb-4"
         >
-          <div className="max-h-[90vh] w-full max-w-lg space-y-5 overflow-y-auto rounded-2xl border border-border bg-surface-card p-5 shadow-2xl sm:p-6">
+          <div className="max-h-[calc(90vh-5rem)] w-full max-w-lg space-y-5 overflow-y-auto rounded-2xl border border-border bg-surface-card p-5 shadow-2xl sm:p-6 md:max-h-[90vh]">
             <div className="space-y-1.5">
               <h3 id="practice-title" className="text-lg font-bold text-text">
                 {t("exam.hub.practiceTitle")}
@@ -447,7 +451,9 @@ export const ExamList: React.FC<ExamListProps> = ({
               >
                 <span>{t("exam.hub.practiceDuration")}</span>
                 <span className="font-mono text-primary-accent">
-                  {t("exam.hub.minutes", { count: minutes })}
+                  {unlimited
+                    ? t("exam.hub.practiceUnlimited")
+                    : t("exam.hub.minutes", { count: minutes })}
                 </span>
               </label>
               <input
@@ -457,9 +463,35 @@ export const ExamList: React.FC<ExamListProps> = ({
                 max={180}
                 step={5}
                 value={minutes}
+                disabled={unlimited}
                 onChange={(e) => setMinutes(Number(e.target.value))}
-                className="h-11 w-full cursor-pointer accent-primary"
+                className={cn(
+                  "h-11 w-full cursor-pointer accent-primary",
+                  unlimited && "cursor-not-allowed opacity-40",
+                )}
               />
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={unlimited}
+                onClick={() => setUnlimited((v) => !v)}
+                className="flex min-h-[44px] w-full items-center gap-3 rounded-lg border border-border-subtle bg-surface-card px-3 text-left"
+              >
+                <span
+                  className={cn(
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded border",
+                    unlimited
+                      ? "border-primary bg-primary text-primary-fg"
+                      : "border-border bg-surface-card",
+                  )}
+                  aria-hidden="true"
+                >
+                  {unlimited && <Check className="h-3.5 w-3.5" />}
+                </span>
+                <span className="text-sm text-text">
+                  {t("exam.hub.practiceUnlimited")}
+                </span>
+              </button>
             </div>
             <div className="flex justify-end gap-3">
               <Button

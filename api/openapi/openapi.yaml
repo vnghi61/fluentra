@@ -6872,6 +6872,7 @@ paths:
                 level: "B1"
                 mode: "exam"
                 chosen_duration_minutes: 75
+                unlimited: false
                 started_at: "2026-09-20T12:00:00Z"
                 deadline_at: "2026-09-20T13:15:00Z"
                 remaining_seconds: 4500
@@ -7045,6 +7046,12 @@ paths:
                   type: integer
                   minimum: 10
                   maximum: 180
+                unlimited:
+                  type: boolean
+                  description: >-
+                    Practice mode only. Skips chosen_duration_minutes and runs the sitting without
+                    a visible time limit. The server still applies a generous backstop deadline so
+                    an abandoned sitting cannot block a future one indefinitely.
                 sections:
                   type: array
                   description: >-
@@ -7063,7 +7070,7 @@ paths:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
-              example: {"id": "44444444-4444-4444-4444-444444444444", "exam_id": "10000000-0000-0000-0000-0000000000b1", "exam_slug": "mock-toeic-b1", "exam_title": "TOEIC Mock Exam (B1)", "level": "B1", "mode": "exam", "chosen_duration_minutes": 75, "started_at": "2026-09-14T09:00:00Z", "deadline_at": "2026-09-14T10:15:00Z", "remaining_seconds": 3600, "current_section": 1, "section_deadline_at": "2026-09-14T09:20:00Z", "section_remaining_seconds": 300, "status": "in_progress", "section_activities": [{"section_position": 1, "skill": "listening", "activities": [{"id": "55555555-5555-5555-5555-555555555555", "kind": "listening_comprehension", "content_version_id": "66666666-6666-6666-6666-666666666666", "weight": 1, "config": {"title": "Platform announcement", "questions": [{"id": "q1", "prompt": "Which platform?", "options": [{"id": "A", "text": "3"}, {"id": "B", "text": "5"}]}]}}]}], "draft_answers": {"55555555-5555-5555-5555-555555555555": {"answers": {"q1": "A"}}}, "server_time": "2026-09-14T09:15:00Z"}
+              example: {"id": "44444444-4444-4444-4444-444444444444", "exam_id": "10000000-0000-0000-0000-0000000000b1", "exam_slug": "mock-toeic-b1", "exam_title": "TOEIC Mock Exam (B1)", "level": "B1", "mode": "exam", "chosen_duration_minutes": 75, "unlimited": false, "started_at": "2026-09-14T09:00:00Z", "deadline_at": "2026-09-14T10:15:00Z", "remaining_seconds": 3600, "current_section": 1, "section_deadline_at": "2026-09-14T09:20:00Z", "section_remaining_seconds": 300, "status": "in_progress", "section_activities": [{"section_position": 1, "skill": "listening", "activities": [{"id": "55555555-5555-5555-5555-555555555555", "kind": "listening_comprehension", "content_version_id": "66666666-6666-6666-6666-666666666666", "weight": 1, "config": {"title": "Platform announcement", "questions": [{"id": "q1", "prompt": "Which platform?", "options": [{"id": "A", "text": "3"}, {"id": "B", "text": "5"}]}]}}]}], "draft_answers": {"55555555-5555-5555-5555-555555555555": {"answers": {"q1": "A"}}}, "server_time": "2026-09-14T09:15:00Z"}
               schema:
                 $ref: '#/components/schemas/ExamAttempt'
         '400':
@@ -7107,7 +7114,7 @@ paths:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
-              example: {"items": [{"id": "44444444-4444-4444-4444-444444444444", "exam_id": "10000000-0000-0000-0000-0000000000b1", "exam_slug": "mock-toeic-b1", "exam_title": "TOEIC Mock Exam (B1)", "level": "B1", "mode": "exam", "chosen_duration_minutes": 75, "started_at": "2026-09-14T09:00:00Z", "deadline_at": "2026-09-14T10:15:00Z", "remaining_seconds": 3600, "current_section": 1, "section_deadline_at": "2026-09-14T09:20:00Z", "section_remaining_seconds": 300, "status": "in_progress", "server_time": "2026-09-14T09:15:00Z"}], "total": 1, "sittings_today": 1, "daily_limit": 5}
+              example: {"items": [{"id": "44444444-4444-4444-4444-444444444444", "exam_id": "10000000-0000-0000-0000-0000000000b1", "exam_slug": "mock-toeic-b1", "exam_title": "TOEIC Mock Exam (B1)", "level": "B1", "mode": "exam", "chosen_duration_minutes": 75, "unlimited": false, "started_at": "2026-09-14T09:00:00Z", "deadline_at": "2026-09-14T10:15:00Z", "remaining_seconds": 3600, "current_section": 1, "section_deadline_at": "2026-09-14T09:20:00Z", "section_remaining_seconds": 300, "status": "in_progress", "server_time": "2026-09-14T09:15:00Z"}], "total": 1, "sittings_today": 1, "daily_limit": 5}
               schema:
                 $ref: '#/components/schemas/ExamAttemptList'
         '401':
@@ -7139,7 +7146,7 @@ paths:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
-              example: {"id": "44444444-4444-4444-4444-444444444444", "exam_id": "10000000-0000-0000-0000-0000000000b1", "exam_slug": "mock-toeic-b1", "exam_title": "TOEIC Mock Exam (B1)", "level": "B1", "mode": "exam", "chosen_duration_minutes": 75, "started_at": "2026-09-14T09:00:00Z", "deadline_at": "2026-09-14T10:15:00Z", "remaining_seconds": 3600, "current_section": 1, "section_deadline_at": "2026-09-14T09:20:00Z", "section_remaining_seconds": 300, "status": "in_progress", "section_activities": [{"section_position": 1, "skill": "listening", "activities": [{"id": "55555555-5555-5555-5555-555555555555", "kind": "listening_comprehension", "content_version_id": "66666666-6666-6666-6666-666666666666", "weight": 1, "config": {"title": "Platform announcement", "questions": [{"id": "q1", "prompt": "Which platform?", "options": [{"id": "A", "text": "3"}, {"id": "B", "text": "5"}]}]}}]}], "draft_answers": {"55555555-5555-5555-5555-555555555555": {"answers": {"q1": "A"}}}, "server_time": "2026-09-14T09:15:00Z"}
+              example: {"id": "44444444-4444-4444-4444-444444444444", "exam_id": "10000000-0000-0000-0000-0000000000b1", "exam_slug": "mock-toeic-b1", "exam_title": "TOEIC Mock Exam (B1)", "level": "B1", "mode": "exam", "chosen_duration_minutes": 75, "unlimited": false, "started_at": "2026-09-14T09:00:00Z", "deadline_at": "2026-09-14T10:15:00Z", "remaining_seconds": 3600, "current_section": 1, "section_deadline_at": "2026-09-14T09:20:00Z", "section_remaining_seconds": 300, "status": "in_progress", "section_activities": [{"section_position": 1, "skill": "listening", "activities": [{"id": "55555555-5555-5555-5555-555555555555", "kind": "listening_comprehension", "content_version_id": "66666666-6666-6666-6666-666666666666", "weight": 1, "config": {"title": "Platform announcement", "questions": [{"id": "q1", "prompt": "Which platform?", "options": [{"id": "A", "text": "3"}, {"id": "B", "text": "5"}]}]}}]}], "draft_answers": {"55555555-5555-5555-5555-555555555555": {"answers": {"q1": "A"}}}, "server_time": "2026-09-14T09:15:00Z"}
               schema:
                 $ref: '#/components/schemas/ExamAttempt'
         '401':

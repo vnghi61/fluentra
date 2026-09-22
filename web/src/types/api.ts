@@ -6179,6 +6179,8 @@ export interface components {
             /** @enum {string} */
             mode: "exam" | "practice";
             chosen_duration_minutes: number;
+            /** @description Practice mode only. True when the sitting opted out of a visible time limit; deadline_at is then a backstop, not a real limit, and the client should show elapsed time instead of a countdown. */
+            unlimited: boolean;
             /** Format: date-time */
             started_at: string;
             /** Format: date-time */
@@ -6297,6 +6299,8 @@ export interface components {
             per_section: components["schemas"]["ExamSectionOutcome"][];
             integrity_signals: components["schemas"]["ExamIntegritySignal"][];
             disclaimer: string;
+            /** @description Seconds between started_at and submitted_at — how long the learner took. */
+            elapsed_seconds?: number;
         };
         BlueprintSummary: {
             /** Format: uuid */
@@ -14259,6 +14263,7 @@ export interface operations {
                      *       "level": "B1",
                      *       "mode": "exam",
                      *       "chosen_duration_minutes": 75,
+                     *       "unlimited": false,
                      *       "started_at": "2026-09-20T12:00:00Z",
                      *       "deadline_at": "2026-09-20T13:15:00Z",
                      *       "remaining_seconds": 4500,
@@ -14404,6 +14409,8 @@ export interface operations {
                     /** @enum {string} */
                     mode: "exam" | "practice";
                     chosen_duration_minutes?: number;
+                    /** @description Practice mode only. Skips chosen_duration_minutes and runs the sitting without a visible time limit. The server still applies a generous backstop deadline so an abandoned sitting cannot block a future one indefinitely. */
+                    unlimited?: boolean;
                     /** @description Practice mode only: the sections to sit, by position. Omitted or empty means all four. A position outside 1–4 or repeated is 400 EXAM_INVALID_SECTIONS. */
                     sections?: number[];
                 };
@@ -14426,6 +14433,7 @@ export interface operations {
                      *       "level": "B1",
                      *       "mode": "exam",
                      *       "chosen_duration_minutes": 75,
+                     *       "unlimited": false,
                      *       "started_at": "2026-09-14T09:00:00Z",
                      *       "deadline_at": "2026-09-14T10:15:00Z",
                      *       "remaining_seconds": 3600,
@@ -14517,6 +14525,7 @@ export interface operations {
                      *           "level": "B1",
                      *           "mode": "exam",
                      *           "chosen_duration_minutes": 75,
+                     *           "unlimited": false,
                      *           "started_at": "2026-09-14T09:00:00Z",
                      *           "deadline_at": "2026-09-14T10:15:00Z",
                      *           "remaining_seconds": 3600,
@@ -14567,6 +14576,7 @@ export interface operations {
                      *       "level": "B1",
                      *       "mode": "exam",
                      *       "chosen_duration_minutes": 75,
+                     *       "unlimited": false,
                      *       "started_at": "2026-09-14T09:00:00Z",
                      *       "deadline_at": "2026-09-14T10:15:00Z",
                      *       "remaining_seconds": 3600,

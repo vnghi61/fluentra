@@ -471,19 +471,33 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
         </nav>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div
-            className={cn(
-              "flex items-center gap-2 rounded-lg border px-3 py-1.5 font-mono text-sm font-bold sm:text-base",
-              remaining < 120
-                ? "border-danger/30 bg-danger/10 text-danger-accent"
-                : "border-border-subtle bg-surface-muted text-text",
-            )}
-            role="timer"
-            aria-label={t("exam.runner.timeLeft")}
-          >
-            <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>{formatClock(remaining)}</span>
-          </div>
+          {attempt.unlimited ? (
+            <div
+              className="flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-muted px-3 py-1.5 font-mono text-sm font-bold text-text sm:text-base"
+              role="timer"
+              aria-label={t("exam.runner.timeElapsed")}
+            >
+              <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {/* Elapsed is the complement of the backstop countdown, which already ticks. */}
+              <span>
+                {formatClock(attempt.chosen_duration_minutes * 60 - remaining)}
+              </span>
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-lg border px-3 py-1.5 font-mono text-sm font-bold sm:text-base",
+                remaining < 120
+                  ? "border-danger/30 bg-danger/10 text-danger-accent"
+                  : "border-border-subtle bg-surface-muted text-text",
+              )}
+              role="timer"
+              aria-label={t("exam.runner.timeLeft")}
+            >
+              <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{formatClock(remaining)}</span>
+            </div>
+          )}
           <Button
             type="button"
             variant="outline"

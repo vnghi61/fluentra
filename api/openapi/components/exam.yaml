@@ -38,7 +38,7 @@ ExamSittingSection:
 ExamAttempt:
   type: object
   description: A sitting. Every time in it is the server's.
-  required: [id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, remaining_seconds, current_section, status, server_time]
+  required: [id, exam_id, mode, chosen_duration_minutes, unlimited, started_at, deadline_at, remaining_seconds, current_section, status, server_time]
   properties:
     id:
       type: string
@@ -58,6 +58,12 @@ ExamAttempt:
       enum: [exam, practice]
     chosen_duration_minutes:
       type: integer
+    unlimited:
+      type: boolean
+      description: >-
+        Practice mode only. True when the sitting opted out of a visible time limit; deadline_at
+        is then a backstop, not a real limit, and the client should show elapsed time instead of
+        a countdown.
     started_at:
       type: string
       format: date-time
@@ -276,6 +282,10 @@ ExamScoreReport:
         $ref: '#/ExamIntegritySignal'
     disclaimer:
       type: string
+    elapsed_seconds:
+      type: integer
+      minimum: 0
+      description: Seconds between started_at and submitted_at — how long the learner took.
 
 BlueprintSummary:
   type: object

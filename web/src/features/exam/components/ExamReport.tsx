@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   BookOpen,
   CheckCircle2,
+  Clock,
   Flag,
   Headphones,
   Info,
@@ -36,6 +37,7 @@ import {
   reviewStates,
   type ReviewState,
 } from "./ExamItemReview";
+import { formatClock } from "./ExamSittingRunner";
 
 export interface ExamReportProps {
   report: ScoreReport;
@@ -131,6 +133,17 @@ export const ExamReport: React.FC<ExamReportProps> = ({
         {report.submitted_by === "expiry" && (
           <p className="text-xs text-text-muted">
             {t("exam.report.submittedByExpiry")}
+          </p>
+        )}
+        {report.elapsed_seconds !== undefined && (
+          <p className="inline-flex items-center gap-2 rounded-full border border-border-subtle bg-surface-muted px-3 py-1 text-sm font-medium text-text">
+            <Clock
+              className="h-4 w-4 shrink-0 text-primary-accent"
+              aria-hidden="true"
+            />
+            {t("exam.report.timeTaken", {
+              time: formatClock(report.elapsed_seconds),
+            })}
           </p>
         )}
         <div className="flex flex-wrap items-center justify-center gap-6 py-2 sm:gap-12">

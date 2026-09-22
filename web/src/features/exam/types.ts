@@ -112,6 +112,8 @@ export interface ExamAttempt {
   level?: ExamLevel;
   mode: ExamMode;
   chosen_duration_minutes: number;
+  /** Practice mode only: true when the sitting opted out of a visible time limit. */
+  unlimited: boolean;
   started_at: string;
   deadline_at: string;
   remaining_seconds: number;
@@ -135,6 +137,8 @@ export interface ExamAttemptListResponse {
 export interface StartSittingRequest {
   mode: ExamMode;
   chosen_duration_minutes?: number;
+  /** Practice mode only: skips chosen_duration_minutes and runs without a visible time limit. */
+  unlimited?: boolean;
   /** Practice mode only: the section positions to sit. Omitted means all. */
   sections?: number[];
 }
@@ -228,6 +232,8 @@ export interface ScoreReport {
   per_section: ExamSectionOutcome[];
   integrity_signals: IntegritySignal[];
   disclaimer: string;
+  /** Seconds between started_at and submitted_at — how long the learner took. */
+  elapsed_seconds?: number;
 }
 
 export interface ListeningPlayResult {
