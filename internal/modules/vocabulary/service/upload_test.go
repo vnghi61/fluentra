@@ -331,8 +331,10 @@ func item(term, meaning string) sqlc.SkillVocabUploadItem {
 func leisureEntry() repository.DictionaryEntry {
 	return repository.DictionaryEntry{
 		Lemma: wordLeisure, IPA: "/ˈliːʒə(ɹ)/", PartOfSpeech: posNoun,
-		Definition: "Time when one is not working or occupied; free time.",
-		AudioURL:   "https://example.test/leisure.mp3",
+		Definition:       "Time when one is not working or occupied; free time.",
+		AudioURL:         "https://example.test/leisure.mp3",
+		AudioAttribution: "https://commons.example/leisure",
+		AudioLicence:     "BY-SA 3.0",
 	}
 }
 
@@ -623,11 +625,33 @@ func TestVerifyPending_TheStoredContentCarriesWhatAFlashcardNeeds(t *testing.T) 
 	// The dictionary's IPA and its link to a human recording, not a stored file.
 	assert.Equal(t, "/ˈliːʒə(ɹ)/", body["ipa"])
 	assert.Equal(t, "https://example.test/leisure.mp3", body["audio_url"])
+	// The credit travels with the recording: CC BY-SA is not satisfied by
+	// playing the file, and the card needs the page that names the author.
+	assert.Equal(t, "https://commons.example/leisure", body["audio_attribution"])
+	assert.Equal(t, "BY-SA 3.0", body["audio_licence"])
 	// The learner's own note becomes the gloss: it is what they will recognise.
 	assert.Equal(t, "thời gian rảnh", body["definition_vi"])
 	assert.NotEmpty(t, body["example_sentences"])
 	// And the grader can score it.
 	assert.Equal(t, wordLeisure, body["correct_answer"])
+}
+
+func TestVerifyPending_DoesNotStoreARecordingItCannotCredit(t *testing.T) {
+	entry := item(wordLeisure, "thời gian rảnh")
+	repo := newUploadRepo(entry)
+	uncredited := leisureEntry()
+	uncredited.AudioAttribution = ""
+	uncredited.AudioLicence = ""
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{wordLeisure: uncredited}}
+	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: accepted(t)})
+
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+	require.Len(t, author.published, 1)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(author.published[0].Body, &body))
+	assert.NotContains(t, body, "audio_url",
+		"a recording with no attribution page must not reach a card")
 }
 
 func TestVerifyPending_RejectsAWordNeitherSourceRecognises(t *testing.T) {

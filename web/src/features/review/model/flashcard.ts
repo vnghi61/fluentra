@@ -26,6 +26,9 @@ export interface FlashcardContent {
   pos?: string;
   ipa?: string;
   audioUrl?: string;
+  /** The page crediting the recording. Required for `audioUrl` to be usable. */
+  audioAttribution?: string;
+  audioLicence?: string;
   definitionVi?: string;
   /** Every authored example, with its translation where one exists. */
   exampleSentences: ExampleSentence[];
@@ -52,8 +55,14 @@ export function flashcardContent(card: ReviewCard): FlashcardContent | null {
 
   const pos = str(body, "pos");
   const ipa = str(body, "ipa");
-  const audioUrl = str(body, "audio_url");
   const definitionVi = str(body, "definition_vi");
+  // The recording and its credit are one unit. The Wikimedia files are mostly
+  // CC BY-SA, which requires attribution, so a body that names a file but not
+  // the page crediting it must not play it: an uncredited recording is a
+  // licence breach, and synthesis is the honest fallback.
+  const audioAttribution = str(body, "audio_attribution");
+  const audioLicence = str(body, "audio_licence");
+  const audioUrl = audioAttribution ? str(body, "audio_url") : undefined;
   const exampleSentences = readExampleSentences(body);
 
   return {
@@ -62,6 +71,8 @@ export function flashcardContent(card: ReviewCard): FlashcardContent | null {
     ...(pos !== undefined && { pos }),
     ...(ipa !== undefined && { ipa }),
     ...(audioUrl !== undefined && { audioUrl }),
+    ...(audioAttribution !== undefined && { audioAttribution }),
+    ...(audioLicence !== undefined && { audioLicence }),
     ...(definitionVi !== undefined && { definitionVi }),
     exampleSentences,
   };

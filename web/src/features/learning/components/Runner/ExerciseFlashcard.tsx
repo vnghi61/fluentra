@@ -20,6 +20,9 @@ export interface ExerciseFlashcardProps {
   exampleSentences?: ExampleSentence[];
   /** A recorded pronunciation, when the activity config carries one. */
   audioUrl?: string | null | undefined;
+  /** The page crediting the recording; without it the recording does not play. */
+  audioAttribution?: string | null | undefined;
+  audioLicence?: string | null | undefined;
   isLoading?: boolean;
   isSubmitted: boolean;
   isCorrect?: boolean | null | undefined;
@@ -45,6 +48,8 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
   definitionVi,
   exampleSentences = [],
   audioUrl,
+  audioAttribution,
+  audioLicence,
   isLoading = false,
   isSubmitted,
   isCorrect,
@@ -114,7 +119,12 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
                     {ipa}
                   </p>
                 )}
-                <PronounceButton text={targetWord ?? ""} audioUrl={audioUrl} />
+                <PronounceButton
+                  text={targetWord ?? ""}
+                  audioUrl={audioUrl}
+                  audioAttribution={audioAttribution}
+                  audioLicence={audioLicence}
+                />
               </div>
               <p className="text-xs text-text-muted mt-6 flex items-center justify-center gap-1.5 font-medium">
                 <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />

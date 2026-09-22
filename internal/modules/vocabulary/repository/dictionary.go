@@ -115,20 +115,34 @@ func (d *FreeDictionaryAPI) WithDatamuseURL(u string) *FreeDictionaryAPI {
 	return d
 }
 
+// WithTimeout bounds every request this client makes.
+//
+// The live path keeps the five-second default: a learner's upload waits on it,
+// and a slow dictionary must not hold a job open. The seed backfill lowers it
+// because it has the Commons fallback below and nobody waiting.
+func (d *FreeDictionaryAPI) WithTimeout(timeout time.Duration) *FreeDictionaryAPI {
+	d.client.Timeout = timeout
+	return d
+}
+
+// dictionaryPhonetic is one pronunciation block. Named because the choice
+// between several of them is now a rule of ours rather than a loop.
+type dictionaryPhonetic struct {
+	Text      string `json:"text"`
+	Audio     string `json:"audio"`
+	SourceURL string `json:"sourceUrl"`
+	License   *struct {
+		Name string `json:"name"`
+	} `json:"license"`
+}
+
 // The upstream response, named for what it is rather than mapped field by field
 // into the domain type: the shape belongs to them.
 type dictionaryAPIEntry struct {
-	Word      string `json:"word"`
-	Phonetic  string `json:"phonetic"`
-	Phonetics []struct {
-		Text      string `json:"text"`
-		Audio     string `json:"audio"`
-		SourceURL string `json:"sourceUrl"`
-		License   *struct {
-			Name string `json:"name"`
-		} `json:"license"`
-	} `json:"phonetics"`
-	Meanings []struct {
+	Word      string               `json:"word"`
+	Phonetic  string               `json:"phonetic"`
+	Phonetics []dictionaryPhonetic `json:"phonetics"`
+	Meanings  []struct {
 		PartOfSpeech string `json:"partOfSpeech"`
 		Definitions  []struct {
 			Definition string `json:"definition"`
@@ -315,28 +329,74 @@ func mapDatamusePOS(tag string) string {
 	}
 }
 
+// accentRank orders recordings the way the course does: American first, then
+// British, then whatever else the dictionary offers. The filenames the upstream
+// serves end in the accent, such as `leisure-ca-us.mp3` and `eat-uk.mp3`.
+func accentRank(audioURL string) int {
+	lower := strings.ToLower(audioURL)
+	switch {
+	case strings.Contains(lower, "-us."):
+		return 0
+	case strings.Contains(lower, "-uk."):
+		return 1
+	default:
+		return 2
+	}
+}
+
+// pickPronunciation chooses the one recording a flashcard should play.
+//
+// Empty when nothing is usable, and that is a real answer: the browser's own
+// speech synthesis covers every word for which the dictionary has no recording.
+// A recording with no source page is not chosen at all — the Wikimedia files
+// are mostly CC BY-SA, and a licence that requires attribution is not satisfied
+// by playing the file, so an uncreditable recording is worse than none.
+func pickPronunciation(phonetics []dictionaryPhonetic) (url, sourceURL, licence string) {
+	bestRank := -1
+	for _, phonetic := range phonetics {
+		candidate := strings.TrimSpace(phonetic.Audio)
+		source := strings.TrimSpace(phonetic.SourceURL)
+		if !strings.HasPrefix(candidate, "https://") || source == "" {
+			continue
+		}
+		rank := accentRank(candidate)
+		if bestRank != -1 && rank >= bestRank {
+			continue
+		}
+		bestRank = rank
+		url = candidate
+		sourceURL = source
+		licence = ""
+		if phonetic.License != nil {
+			licence = phonetic.License.Name
+		}
+	}
+	return url, sourceURL, licence
+}
+
 // mapDictionaryEntry takes the first usable value for each field.
 //
 // The upstream returns several phonetics blocks, most of them duplicates and
 // some with no audio at all, and several meanings. First-usable rather than
 // best-match because there is no signal to rank them by, and because a
 // flashcard needs one of each rather than the right one of many.
+//
+// The recording is the exception. Its blocks carry different accents, and the
+// course teaches American English, so the US recording wins, then the UK one,
+// then any other. Choosing here rather than in each caller is what keeps the
+// upload path and the seed backfill from disagreeing about which file a word
+// should play.
 func mapDictionaryEntry(raw dictionaryAPIEntry) DictionaryEntry {
 	entry := DictionaryEntry{
 		Lemma: raw.Word,
 		IPA:   raw.Phonetic,
 	}
 
+	entry.AudioURL, entry.AudioAttribution, entry.AudioLicence = pickPronunciation(raw.Phonetics)
+
 	for _, phonetic := range raw.Phonetics {
 		if entry.IPA == "" && phonetic.Text != "" {
 			entry.IPA = phonetic.Text
-		}
-		if entry.AudioURL == "" && phonetic.Audio != "" {
-			entry.AudioURL = phonetic.Audio
-			entry.AudioAttribution = phonetic.SourceURL
-			if phonetic.License != nil {
-				entry.AudioLicence = phonetic.License.Name
-			}
 		}
 	}
 

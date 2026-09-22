@@ -279,6 +279,12 @@ export function ReviewPage(): React.JSX.Element {
                   {...(content.audioUrl !== undefined && {
                     audioUrl: content.audioUrl,
                   })}
+                  {...(content.audioAttribution !== undefined && {
+                    audioAttribution: content.audioAttribution,
+                  })}
+                  {...(content.audioLicence !== undefined && {
+                    audioLicence: content.audioLicence,
+                  })}
                   onFlip={() => setIsFlipped(true)}
                 />
               }
@@ -293,6 +299,12 @@ export function ReviewPage(): React.JSX.Element {
                   exampleSentences={content.exampleSentences}
                   {...(content.audioUrl !== undefined && {
                     audioUrl: content.audioUrl,
+                  })}
+                  {...(content.audioAttribution !== undefined && {
+                    audioAttribution: content.audioAttribution,
+                  })}
+                  {...(content.audioLicence !== undefined && {
+                    audioLicence: content.audioLicence,
                   })}
                   {...(content.pos !== undefined && {
                     partOfSpeech: content.pos,

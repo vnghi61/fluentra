@@ -27,6 +27,26 @@ export interface Recording {
   licence?: string | undefined;
 }
 
+/**
+ * What to call the source that must be credited.
+ *
+ * Wikimedia Commons is named rather than shown as a hostname because that is
+ * where these files live and what a learner recognises; anything else is
+ * labelled by its host, which is still an honest credit and better than
+ * claiming Commons for a file that is not there.
+ */
+export function creditLabel(recording: Recording): string {
+  try {
+    const host = new URL(recording.creditUrl).hostname.replace(/^www\./, "");
+    if (host === "commons.wikimedia.org" || host.endsWith(".wikimedia.org")) {
+      return "Wikimedia Commons";
+    }
+    return host;
+  } catch {
+    return "Wikimedia Commons";
+  }
+}
+
 const DICTIONARY_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/";
 const COMMONS = "https://commons.wikimedia.org/wiki/";
 const LOOKUP_TIMEOUT_MS = 4000;

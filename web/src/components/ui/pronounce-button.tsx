@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import {
+  creditLabel,
   findRecordings,
   isSingleWord,
   playFirstRecording,
@@ -40,6 +41,14 @@ export interface PronounceButtonProps {
   text: string;
   /** A recorded pronunciation, preferred over synthesis when it plays. */
   audioUrl?: string | null | undefined;
+  /**
+   * The page crediting the recording. A recording whose licence requires
+   * attribution must not play without it, so an `audioUrl` with no attribution
+   * is treated as no recording at all.
+   */
+  audioAttribution?: string | null | undefined;
+  /** The licence's short name, shown beside the credit. */
+  audioLicence?: string | null | undefined;
   /** BCP-47 tag handed to the synthesiser. The material is English. */
   lang?: string;
   size?: "sm" | "md";
@@ -51,6 +60,8 @@ export interface PronounceButtonProps {
 export const PronounceButton: React.FC<PronounceButtonProps> = ({
   text,
   audioUrl,
+  audioAttribution,
+  audioLicence,
   lang = "en-US",
   size = "sm",
   className,
@@ -76,6 +87,12 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
     stopRecordingRef.current = null;
   };
 
+  // A recording whose licence requires attribution is not playable without it:
+  // playing the file would breach CC BY-SA. The card model drops such a URL
+  // before it gets here; this is the second lock on the same door.
+  const playableAudioUrl =
+    audioUrl && audioAttribution?.trim() ? audioUrl : null;
+
   // A card can be advanced mid-utterance. Without this, the previous word keeps
   // talking over the next one, which is worse than silence.
   useEffect(() => {
@@ -88,6 +105,14 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
       stopRecordingRef.current = null;
       cancelSpeech();
     };
+  }, [text, audioUrl]);
+
+  // A new card is a new word: the previous card's failure must not disable this
+  // card's button, and its credit line must not outlive it.
+  useEffect(() => {
+    setFailed(false);
+    setSilent(false);
+    setCredit(null);
   }, [text, audioUrl]);
 
   /**
@@ -144,14 +169,23 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
       setSilent(false);
       setCredit(null);
 
-      if (!audioUrl) {
+      if (!playableAudioUrl) {
         speak();
         return;
       }
 
       try {
-        const audio = new Audio(reachableStorageUrl(audioUrl));
+        const audio = new Audio(reachableStorageUrl(playableAudioUrl));
         audioRef.current = audio;
+        // The credit appears only once the recording actually plays, so a dead
+        // link shows synthesis and no licence line it does not owe.
+        audio.onplaying = () => {
+          setCredit({
+            url: playableAudioUrl,
+            creditUrl: audioAttribution ?? "",
+            licence: audioLicence?.trim() ? audioLicence : undefined,
+          });
+        };
         audio.onended = () => setIsPlaying(false);
         // A broken or missing asset falls through to synthesis rather than
         // reporting failure: the learner wanted to hear the word, and the
@@ -163,7 +197,7 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
         speak();
       }
     },
-    [audioUrl, speak, text],
+    [audioAttribution, audioLicence, playableAudioUrl, speak, text],
   );
 
   useEffect(() => {
@@ -235,15 +269,16 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
             role="status"
             className="fixed inset-x-4 bottom-24 z-50 mx-auto max-w-sm rounded-lg border border-border-subtle bg-surface-card px-3 py-2 text-left text-xs text-text-muted shadow-lg"
           >
-            {t("pronounce.recordingCredit", "Recorded pronunciation")}
-            {" · "}
+            {t("pronounce.recordingCredit", "Audio")}
+            {": "}
             <a
               href={credit.creditUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex min-h-[44px] items-center font-medium text-primary-accent underline"
             >
-              Wikimedia Commons{credit.licence ? ` · ${credit.licence}` : ""}
+              {creditLabel(credit)}
+              {credit.licence ? ` · ${credit.licence}` : ""}
             </a>
           </span>,
           document.body,

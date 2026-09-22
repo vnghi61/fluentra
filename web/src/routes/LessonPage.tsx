@@ -118,6 +118,9 @@ interface FlashcardConfig {
   example_sentence?: string;
   example_sentences?: string[];
   audio_url?: string;
+  /** The page crediting the recording; without it the recording does not play. */
+  audio_attribution?: string;
+  audio_licence?: string;
 }
 
 // The listening body the browser receives. `script` is absent by design: the
@@ -978,9 +981,14 @@ export function LessonPage(): React.JSX.Element {
             exampleSentences={readExampleSentences(
               fcConfig as unknown as Record<string, unknown>,
             )}
-            {...(fcConfig.audio_url !== undefined && {
-              audioUrl: fcConfig.audio_url,
-            })}
+            {...(fcConfig.audio_url !== undefined &&
+              fcConfig.audio_attribution !== undefined && {
+                audioUrl: fcConfig.audio_url,
+                audioAttribution: fcConfig.audio_attribution,
+                ...(fcConfig.audio_licence !== undefined && {
+                  audioLicence: fcConfig.audio_licence,
+                }),
+              })}
             isLoading={isSubmitting || isAttemptPending}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}

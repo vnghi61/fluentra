@@ -18,6 +18,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -63,6 +64,16 @@ var demoAccounts = []demoAccount{
 }
 
 func main() {
+	audio := flag.Bool("audio", false,
+		"backfill recorded pronunciation onto flashcards that have none, then exit")
+	flag.Parse()
+	if *audio {
+		if err := runAudioBackfill(context.Background(), os.Stdout); err != nil {
+			log.Print(err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(context.Background(), os.Stdout); err != nil {
 		log.Print(err)
 		os.Exit(1)

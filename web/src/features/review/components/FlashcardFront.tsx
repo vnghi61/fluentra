@@ -8,6 +8,9 @@ export interface FlashcardFrontProps {
   word: string;
   ipa?: string;
   audioUrl?: string | null;
+  /** The page crediting the recording; without it the recording does not play. */
+  audioAttribution?: string | null;
+  audioLicence?: string | null;
   onFlip: () => void;
 }
 
@@ -15,6 +18,8 @@ export const FlashcardFront: React.FC<FlashcardFrontProps> = ({
   word,
   ipa,
   audioUrl,
+  audioAttribution,
+  audioLicence,
   onFlip,
 }) => {
   const { t } = useTranslation();
@@ -55,6 +60,8 @@ export const FlashcardFront: React.FC<FlashcardFrontProps> = ({
           <PronounceButton
             text={word}
             audioUrl={audioUrl}
+            audioAttribution={audioAttribution}
+            audioLicence={audioLicence}
             label={t("review.listenBtn", "Pronounce word")}
           />
         </div>

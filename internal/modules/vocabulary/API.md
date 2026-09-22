@@ -222,6 +222,26 @@ Withdraw one sense from the shared dictionary
 
 <!-- END GENERATED: api-detail -->
 
+## The flashcard body
+
+A sense's content version body is untyped JSON (`vocab_flashcard` /
+`vocabulary_quiz`), and the review card renders it directly. The pronunciation
+fields are:
+
+| Field | Meaning |
+|---|---|
+| `audio_url` | A human recording of the word, hosted upstream (the free dictionary serves Wikimedia Commons files). |
+| `audio_attribution` | The page crediting the recording's author and licence. **Required**: a body with `audio_url` but no attribution does not play the recording. |
+| `audio_licence` | The licence's short name, shown beside the credit (for example `BY-SA 3.0`). Optional, because not every source names one. |
+
+The Wikimedia recordings are mostly CC BY-SA, and a licence that requires
+attribution is not satisfied by playing the file. So the write path stores the
+recording only when it can store the credit too, and the read path
+(`web/src/features/review/model/flashcard.ts`) drops an uncredited recording,
+falling back to the browser's speech synthesis. Lesson `vocab_flashcard`
+activities carry the same three keys on `learn.activities.config`, which is what
+the runner reads.
+
 ## Error codes
 
 <!-- BEGIN GENERATED: api-errors -->

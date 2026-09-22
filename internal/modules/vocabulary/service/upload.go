@@ -1121,8 +1121,16 @@ func senseBody(
 	if entry.IPA != "" {
 		body["ipa"] = entry.IPA
 	}
-	if entry.AudioURL != "" {
+	// The recording travels with its credit. The Wikimedia files are mostly
+	// CC BY-SA, which requires attribution, so a URL without the page that
+	// credits it is not stored at all: the card would have no way to honour the
+	// licence, and an uncredited recording must not play.
+	if entry.AudioURL != "" && entry.AudioAttribution != "" {
 		body["audio_url"] = entry.AudioURL
+		body["audio_attribution"] = entry.AudioAttribution
+		if entry.AudioLicence != "" {
+			body["audio_licence"] = entry.AudioLicence
+		}
 	}
 	// The Vietnamese shown on the back of the card: the learner's own note when
 	// they wrote one, because that is the wording they will recognise, and the
@@ -1656,14 +1664,19 @@ func (u *Uploads) republishSense(
 	}
 
 	// The body is rebuilt in full, so every field the read path renders has to be
-	// carried here. The IPA comes off the word row and the pronunciation URL off
+	// carried here. The IPA comes off the word row and the pronunciation off
 	// the version being replaced; rebuilding from the columns alone dropped both,
-	// silently, from every word the sweep touched.
+	// silently, from every word the sweep touched — and the credit travels with
+	// the recording, because a new version that keeps the audio and loses its
+	// attribution has breached the licence the old one honoured.
 	entry := repository.DictionaryEntry{}
 	if sense.Ipa != nil {
 		entry.IPA = *sense.Ipa
 	}
-	entry.AudioURL = u.publishedAudioURL(ctx, sense.ContentVersionID)
+	audio := u.publishedAudio(ctx, sense.ContentVersionID)
+	entry.AudioURL = audio.URL
+	entry.AudioAttribution = audio.Attribution
+	entry.AudioLicence = audio.Licence
 
 	body, err := json.Marshal(
 		senseBody(sense.Lemma, sense.Pos, cefr, sense.Definition, gloss, entry, examples),
@@ -1713,27 +1726,38 @@ func (u *Uploads) republishSense(
 	return nil
 }
 
-// publishedAudioURL reads `audio_url` off a published sense body.
+// publishedAudio is the pronunciation a published sense body already carries,
+// with the credit that must travel beside it.
+type publishedAudio struct {
+	URL         string `json:"audio_url"`
+	Attribution string `json:"audio_attribution"`
+	Licence     string `json:"audio_licence"`
+}
+
+// publishedAudio reads the pronunciation off a published sense body.
 //
 // Empty on any failure, and that is deliberate: a missing recording falls back
 // to the browser's own speech synthesis, which every word has. Failing the
 // enrichment because a lookup did not answer would trade a whole sweep for a
 // field nothing depends on.
-func (u *Uploads) publishedAudioURL(ctx context.Context, versionID *uuid.UUID) string {
+func (u *Uploads) publishedAudio(ctx context.Context, versionID *uuid.UUID) publishedAudio {
 	if u.versions == nil || versionID == nil {
-		return ""
+		return publishedAudio{}
 	}
 	version, err := u.versions.GetVersion(ctx, *versionID)
 	if err != nil || version == nil || len(version.Body) == 0 {
-		return ""
+		return publishedAudio{}
 	}
-	var body struct {
-		AudioURL string `json:"audio_url"`
-	}
+	var body publishedAudio
 	if err := json.Unmarshal(version.Body, &body); err != nil {
-		return ""
+		return publishedAudio{}
 	}
-	return body.AudioURL
+	// The same rule the write path applies: a recording with no attribution is
+	// not carried forward, because the next version could not credit it either.
+	if body.Attribution == "" {
+		body.URL = ""
+	}
+	return body
 }
 
 func normaliseSentence(s string) string {

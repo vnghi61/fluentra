@@ -12,6 +12,9 @@ export interface FlashcardBackProps {
   definitionVi?: string;
   exampleSentences?: ExampleSentence[];
   audioUrl?: string | null | undefined;
+  /** The page crediting the recording; without it the recording does not play. */
+  audioAttribution?: string | null | undefined;
+  audioLicence?: string | null | undefined;
   partOfSpeech?: string;
   onReportSentence?: ((sentenceText: string) => void) | undefined;
 }
@@ -23,6 +26,8 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
   definitionVi,
   exampleSentences = [],
   audioUrl,
+  audioAttribution,
+  audioLicence,
   partOfSpeech,
   onReportSentence,
 }) => {
@@ -85,7 +90,12 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
           {ipa && (
             <p className="font-mono text-sm text-primary-accent">{ipa}</p>
           )}
-          <PronounceButton text={word} audioUrl={audioUrl} />
+          <PronounceButton
+            text={word}
+            audioUrl={audioUrl}
+            audioAttribution={audioAttribution}
+            audioLicence={audioLicence}
+          />
         </div>
 
         {/* The meaning in the language the learner is reading in comes first. */}

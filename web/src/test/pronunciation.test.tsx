@@ -34,6 +34,30 @@ class FakeUtterance {
   }
 }
 
+/**
+ * Stands in for <audio>. Every source that plays in these tests is a recording,
+ * and the assertions are about which one was chosen and whether it was allowed
+ * to play at all.
+ */
+class FakeAudio {
+  static instances: FakeAudio[] = [];
+  static fail = false;
+  src: string;
+  onplaying: (() => void) | null = null;
+  onended: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  constructor(src: string) {
+    this.src = src;
+    FakeAudio.instances.push(this);
+  }
+  play() {
+    return FakeAudio.fail
+      ? Promise.reject(new Error("unsupported"))
+      : Promise.resolve();
+  }
+  pause() {}
+}
+
 beforeEach(() => {
   speak.mockClear();
   cancel.mockClear();
@@ -173,26 +197,55 @@ describe("PronounceButton", () => {
     });
   });
 
-  describe("when the device cannot speak, a recording plays instead", () => {
-    class FakeAudio {
-      static instances: FakeAudio[] = [];
-      static fail = false;
-      src: string;
-      onplaying: (() => void) | null = null;
-      onended: (() => void) | null = null;
-      onerror: (() => void) | null = null;
-      constructor(src: string) {
-        this.src = src;
-        FakeAudio.instances.push(this);
-      }
-      play() {
-        return FakeAudio.fail
-          ? Promise.reject(new Error("unsupported"))
-          : Promise.resolve();
-      }
-      pause() {}
-    }
+  describe("when the card carries a recording", () => {
+    beforeEach(() => {
+      FakeAudio.instances = [];
+      FakeAudio.fail = false;
+      vi.stubGlobal("Audio", FakeAudio);
+    });
 
+    it("plays it and shows the credit the licence requires", async () => {
+      render(
+        <PronounceButton
+          text="eat"
+          audioUrl="https://cdn.example/eat-us.mp3"
+          audioAttribution="https://commons.wikimedia.org/wiki/File:En-us-eat.ogg"
+          audioLicence="BY-SA 3.0"
+        />,
+      );
+      await userEvent.click(screen.getByRole("button"));
+
+      expect(FakeAudio.instances[0]?.src).toBe("https://cdn.example/eat-us.mp3");
+      act(() => FakeAudio.instances[0]?.onplaying?.());
+
+      // The recording played, so synthesis was never asked.
+      expect(speak).not.toHaveBeenCalled();
+      const credit = screen.getByRole("link", { name: /Wikimedia Commons/ });
+      expect(credit).toHaveAttribute(
+        "href",
+        "https://commons.wikimedia.org/wiki/File:En-us-eat.ogg",
+      );
+      expect(credit).toHaveTextContent("BY-SA 3.0");
+    });
+
+    it("refuses a recording with no attribution and synthesises instead", async () => {
+      // CC BY-SA is not satisfied by playing the file. A card that cannot say
+      // where the audio came from must not play it.
+      render(
+        <PronounceButton
+          text="eat"
+          audioUrl="https://cdn.example/eat-us.mp3"
+        />,
+      );
+      await userEvent.click(screen.getByRole("button"));
+
+      expect(FakeAudio.instances).toHaveLength(0);
+      expect(speak).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("when the device cannot speak, a recording plays instead", () => {
     const fetchMock = vi.fn();
 
     beforeEach(() => {
@@ -237,7 +290,7 @@ describe("PronounceButton", () => {
                 },
                 {
                   audio: "https://api.example/eat-us.mp3",
-                  sourceUrl: "https://commons.example/us",
+                  sourceUrl: "https://commons.wikimedia.org/wiki/File:En-us-eat.ogg",
                   license: { name: "BY-SA 3.0" },
                 },
               ],
@@ -254,7 +307,10 @@ describe("PronounceButton", () => {
       act(() => FakeAudio.instances[0]?.onplaying?.());
 
       const credit = screen.getByRole("link", { name: /Wikimedia Commons/ });
-      expect(credit).toHaveAttribute("href", "https://commons.example/us");
+      expect(credit).toHaveAttribute(
+        "href",
+        "https://commons.wikimedia.org/wiki/File:En-us-eat.ogg",
+      );
       expect(credit).toHaveTextContent("BY-SA 3.0");
       expect(screen.queryByText(/media volume/i)).not.toBeInTheDocument();
     });

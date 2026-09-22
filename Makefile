@@ -141,6 +141,10 @@ migrate-new: ## Create a migration: make migrate-new MODULE=auth NAME=add_mfa
 
 seed: ## Load the development dataset
 	go run ./cmd/seed
+	# Recorded pronunciation, looked up per lemma. Separate because it is the
+	# one part of the seed that calls somebody else's API; -audio is idempotent,
+	# so a re-run only asks about words that still have no recording.
+	go run ./cmd/seed -audio
 
 audit-logs: ## Prove no OTP code or personal data reaches Loki (needs `make dev`)
 	python scripts/audit-log-privacy.py
