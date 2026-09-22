@@ -94,6 +94,10 @@ func (s *Service) dispatchItemVerification(
 	case kindSpeakingTask:
 		_, err := s.checkSpeakingTask(ctx, req.TaskType, req.Body, existing)
 		return err
+	case learningcontract.KindLessonMaterial:
+		// Structure only: a material has no answer key and nothing to blind
+		// solve. Its readiness is checked where the resource lives (WO 20).
+		return validateLessonMaterial(req.Body)
 	default:
 		// Vocabulary kinds and others
 		return s.checkCandidateWithBlindSolve(ctx, req.CEFRLevel, req.Kind, req.Body, existing, req.BlindSolve)
@@ -282,6 +286,26 @@ func cefrBandIndex(level string) (int, bool) {
 }
 
 const kindFoundationTopic = "foundation_topic"
+
+// validateLessonMaterial checks a lesson_material body's shape only — no answer
+// key, no blind solve. The draft carries a resource_id and title before publish;
+// the published body carries the objects the copy produced. Either shape passes.
+func validateLessonMaterial(raw json.RawMessage) error {
+	var body map[string]any
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return fmt.Errorf("check 1 (parse) failed: invalid lesson material json: %w", err)
+	}
+	title, _ := body["title"].(string)
+	if strings.TrimSpace(title) == "" {
+		return errors.New("check 3 (structure) failed: material title is required")
+	}
+	if _, ok := body["resource_id"]; !ok {
+		if _, ok := body["objects"]; !ok {
+			return errors.New("check 3 (structure) failed: material must reference a resource or carry its objects")
+		}
+	}
+	return nil
+}
 
 func validateFoundationTopic(raw []byte) error {
 	var body struct {

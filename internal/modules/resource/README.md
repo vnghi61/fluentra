@@ -8,7 +8,7 @@ owner: "@learning-team"
 schema: resource
 tables: [resources, renditions, extractions, classifications]
 depends_on: [storage, job, user]
-depended_on_by: []
+depended_on_by: [studio]
 spec_version: 1.0.0
 last_verified: 2026-09-21
 ---
@@ -41,6 +41,7 @@ Learners and educators bring external materials to study. Intake must accept fil
 - Grounding and classifying extracted text into CEFR levels, skills, and spine taxonomy nodes
 - Deleting a resource together with its stored object, derived renditions, extraction and classification
 - A cron sweep that fails abandoned intents and deletes their objects, and fails uploads whose validation never finished
+- Reading one resource for its owner and copying its original and ready renditions into a published course's own storage (WO 20)
 <!-- END GENERATED: readme-resp -->
 
 ## Where things are

@@ -233,7 +233,7 @@
       "publishes": [{ "name": "lesson.published", "payload": "`{lesson_id, course_id, skill_focus}`" }],
       "consumes": [{ "name": "content.archived", "reason": "Flag lessons whose content was archived" }]
     },
-    "dependsOn": ["content", "cache"],
+    "dependsOn": ["content", "cache", "storage"],
     "dependedOnBy": ["learning", "admin", "search"],
     "rules": [
       "An activity binds to a **content version**, not a content item — republishing content does not silently change a lesson a learner is halfway through.",
@@ -242,7 +242,8 @@
       "Reordering activities does not affect in-flight attempts; those reference the activity ID.",
       "A published lesson's activity list is versioned — changing it creates a new lesson version rather than mutating the live one.",
       "Estimated duration is the sum of activity estimates and is recalculated on change, because it drives the learner's daily plan.",
-      "Unlocking is evaluated by `learning`, using rules this module defines — the rule lives here, the learner state lives there."
+      "Unlocking is evaluated by `learning`, using rules this module defines — the rule lives here, the learner state lives there.",
+      "Material URLs are issued at read time, after the paywall, and expire; a signed URL is never written into the lesson cache."
     ],
     "cache": [
       { "key": "fluentra:{env}:lesson:detail:{lesson_id}:v1", "ttl": "1 h", "invalidation": "`lesson.published`, structure edit" },
@@ -1919,7 +1920,8 @@
       "Transcribing audio and video resources via media.HTTPTranscriber",
       "Grounding and classifying extracted text into CEFR levels, skills, and spine taxonomy nodes",
       "Deleting a resource together with its stored object, derived renditions, extraction and classification",
-      "A cron sweep that fails abandoned intents and deletes their objects, and fails uploads whose validation never finished"
+      "A cron sweep that fails abandoned intents and deletes their objects, and fails uploads whose validation never finished",
+      "Reading one resource for its owner and copying its original and ready renditions into a published course's own storage (WO 20)"
     ],
     "notResponsibilities": [
       "Generating exercises from a resource (P6)",
@@ -2016,6 +2018,11 @@
         "kind": "struct",
         "name": "resource.Resource",
         "purpose": "`{ID, UserID, Kind, Title, ObjectKey, OriginalFilename, DeclaredMIME, DetectedMIME, ByteSize, Checksum, SourceURL, Status, FailureReason, DownloadURL, CreatedAt, UpdatedAt, ValidatedAt}`"
+      },
+      {
+        "kind": "interface",
+        "name": "resource.MaterialPublisher",
+        "purpose": "`MaterialForOwner(ctx, ownerID, resourceID)` and `CopyForPublication(ctx, resourceID, destPrefix)`: the read-and-copy surface `studio` uses to publish a material into a course"
       }
     ],
     "events": {
@@ -2038,7 +2045,7 @@
       "job": "The resource.validate River worker and the resource.sweep_pending cron",
       "user": "Account erasure event user.deleted to purge user resources"
     },
-    "dependedOnBy": [],
+    "dependedOnBy": ["studio"],
     "rules": [
       "**BR-RESOURCE-01**: A resource belongs to one user and is visible only to them. Another user's id answers 404, never 403.",
       "**BR-RESOURCE-02**: The stored original is never modified or replaced. Derived forms go to fluentra-derived (P3).",
@@ -2054,7 +2061,8 @@
       "Extracted text and anything generated from it is private to the resource's owner.",
       "Classification stores only spine codes that exist; the rest are dropped.",
       "A transcript is queued by cmd/media in the transaction that settles the audio_web rendition, ready or skipped. Video gets an audio_web rendition for its soundtrack.",
-      "An extraction and its classification job are written in one transaction."
+      "An extraction and its classification job are written in one transaction.",
+      "**BR-RESOURCE-16**: A resource leaves its owner's private space only by being copied into a published course, and only its owner can start that copy."
     ],
     "cache": [],
     "errors": [
@@ -2166,7 +2174,9 @@
           "Video renditions are measured against the 10-minute limit after the transcode, not before it: a long video spends the whole encode budget and is then skipped",
           "classifications.ai_request_id stays null until platform/ai returns the ai_requests row id",
           "OCR for text-heavy images (WO 19 B.1, optional; the first thing cut)",
-          "Publish resource.validated and resource.rejected through the outbox once something consumes them"
+          "Publish resource.validated and resource.rejected through the outbox once something consumes them",
+          "A sweeper for `course-materials/{course_id}` copies no published version references (WO 20 Stage C; out of scope, the copies are cheap and correct to keep)",
+          "A DOC/PPT material has no PDF rendition (WO 18 renders only thumbnail and preview), so its card opens the original download; a `pdf` rendition is a future step"
         ]
       }
     ],

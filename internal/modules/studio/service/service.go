@@ -16,6 +16,7 @@ import (
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	paymentcontract "github.com/fluentra/fluentra/internal/modules/payment/contract"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/modules/studio/contract"
 	"github.com/fluentra/fluentra/internal/modules/studio/domain"
 	"github.com/fluentra/fluentra/internal/modules/studio/repository"
@@ -37,6 +38,7 @@ type Service struct {
 	revenueShareBPS    int
 	payoutManager      paymentcontract.PayoutManager
 	payoutThresholdVND int64
+	materialPublisher  resourcecontract.MaterialPublisher
 }
 
 // NewService constructs the studio Service.
@@ -95,6 +97,12 @@ func (s *Service) SetPriceBounds(minVND, maxVND int64, revShareBPS int) {
 // SetPayoutManager configures the billing payout manager adapter.
 func (s *Service) SetPayoutManager(manager paymentcontract.PayoutManager) {
 	s.payoutManager = manager
+}
+
+// SetMaterialPublisher configures the resource read-and-copy surface used to
+// publish lesson_material activities (WO 20).
+func (s *Service) SetMaterialPublisher(publisher resourcecontract.MaterialPublisher) {
+	s.materialPublisher = publisher
 }
 
 // SetPayoutThresholdVND sets the minimum creator payout threshold.
@@ -459,6 +467,124 @@ func (s *Service) verifyDraftItems(
 	return failures, stats
 }
 
+// verifyMaterials runs Gate 1's material_ready check: every lesson_material
+// activity must point at a validated resource its draft owner owns, with the
+// renditions the runner needs already ready.
+//
+// The resource id is creator-controlled draft jsonb, so it is resolved through
+// MaterialForOwner with the *draft owner* — never the caller of the review
+// endpoint — and the material kind is derived from the resource's detected MIME
+// rather than trusted from the draft (WO 20 Stage B, traps 1 and 3).
+func (s *Service) verifyMaterials(
+	ctx context.Context, draft *domain.CourseDraft, structure *domain.CourseStructure,
+) []domain.VerificationFailure {
+	if structure == nil || s.materialPublisher == nil {
+		return nil
+	}
+	var failures []domain.VerificationFailure
+	for uIdx, unit := range structure.Units {
+		for lIdx, lesson := range unit.Lessons {
+			for aIdx, act := range lesson.Activities {
+				if act.Kind != domain.KindLessonMaterial {
+					continue
+				}
+				resourceID, ok := materialResourceID(act)
+				if !ok {
+					failures = append(failures, materialFailure(uIdx, lIdx, aIdx,
+						"Material has no resource to publish"))
+					continue
+				}
+				mat, err := s.materialPublisher.MaterialForOwner(ctx, draft.OwnerID, resourceID)
+				if err != nil {
+					failures = append(failures, materialFailure(uIdx, lIdx, aIdx,
+						"Material resource does not exist or is not yours"))
+					continue
+				}
+				if mat.Status != resourcecontract.MaterialValidated {
+					failures = append(failures, materialFailure(uIdx, lIdx, aIdx,
+						fmt.Sprintf("Material is %s, not validated yet", mat.Status)))
+					continue
+				}
+				if msg, ok := missingMaterialRendition(mat); !ok {
+					failures = append(failures, materialFailure(uIdx, lIdx, aIdx, msg))
+				}
+			}
+		}
+	}
+	return failures
+}
+
+// materialResourceID reads the resource id an activity points at, from the
+// material object or, as the editor also writes it, from the activity body.
+func materialResourceID(act domain.ActivityDraft) (uuid.UUID, bool) {
+	if act.Material != nil && act.Material.ResourceID != nil && *act.Material.ResourceID != uuid.Nil {
+		return *act.Material.ResourceID, true
+	}
+	var body struct {
+		ResourceID uuid.UUID `json:"resource_id"`
+	}
+	if len(act.Body) > 0 && json.Unmarshal(act.Body, &body) == nil && body.ResourceID != uuid.Nil {
+		return body.ResourceID, true
+	}
+	return uuid.Nil, false
+}
+
+// missingMaterialRendition reports the message to fail with when the material
+// lacks a rendition the runner needs, or ok when it is publishable.
+func missingMaterialRendition(mat *resourcecontract.Material) (string, bool) {
+	ready := map[string]bool{}
+	for _, r := range mat.Renditions {
+		if r.Status == resourcecontract.RenditionReady {
+			ready[r.Kind] = true
+		}
+	}
+	// The resource intake also accepts images and audio, which are neither a
+	// document nor a video. Without this they would wait forever for a preview
+	// they never get, and the creator would read "still processing".
+	if !isMaterialMIME(mat.DetectedMIME) {
+		return "Material must be a PDF, Word or PowerPoint document, or an MP4 or WebM video", false
+	}
+	if strings.HasPrefix(mat.DetectedMIME, "video/") {
+		if !ready["video_360p"] {
+			return "Video is still processing; its 360p rendition is not ready", false
+		}
+		return "", true
+	}
+	if !ready["preview"] {
+		return "Document is still processing; its preview is not ready", false
+	}
+	return "", true
+}
+
+// materialMIMEs are the detected types a lesson material may have: the
+// documents the media pipeline renders a preview for, and web video.
+var materialMIMEs = map[string]bool{
+	"application/pdf":    true,
+	"application/msword": true,
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.document":   true,
+	"application/vnd.ms-powerpoint":                                             true,
+	"application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+	"video/mp4":  true,
+	"video/webm": true,
+}
+
+func isMaterialMIME(detected string) bool {
+	base, _, _ := strings.Cut(detected, ";")
+	return materialMIMEs[strings.ToLower(strings.TrimSpace(base))]
+}
+
+// materialFailure builds a failure attributed to the material_ready check.
+func materialFailure(uIdx, lIdx, aIdx int, message string) domain.VerificationFailure {
+	return domain.VerificationFailure{
+		UnitIndex:     uIdx,
+		LessonIndex:   lIdx,
+		ActivityIndex: aIdx,
+		Kind:          domain.KindLessonMaterial,
+		Check:         "material_ready",
+		Message:       message,
+	}
+}
+
 // RunGate1Verification is the automated gate (WO 15 §7).
 //
 // It checks the shape of the course, the kinds it uses, the safety of its text
@@ -497,6 +623,7 @@ func (s *Service) RunGate1Verification(
 
 	itemFailures, stats := s.verifyDraftItems(ctx, sub.ID, draft, structure)
 	failures = append(failures, itemFailures...)
+	failures = append(failures, s.verifyMaterials(ctx, draft, structure)...)
 
 	passed := len(failures) == 0
 	report := domain.VerificationReport{
@@ -908,11 +1035,26 @@ func (s *Service) publishDraft(
 			activitySpecs := make([]lessoncontract.ActivitySpec, len(lesson.Activities))
 			for aIdx, act := range lesson.Activities {
 				contentSlug := fmt.Sprintf("%s-u%d-l%d-a%d", draft.Slug, uIdx+1, lIdx+1, aIdx+1)
+				body := act.Body
+				config := act.Config
+				// A material points at the creator's private resource until
+				// publish. The copy makes the course own its bytes, and the
+				// content body and activity config carry the copied object keys
+				// — never a URL, and never a reference to the creator's account
+				// (D20-2, D20-3, BR-STUDIO-08).
+				if act.Kind == domain.KindLessonMaterial {
+					materialBody, err := s.publishMaterial(ctx, draft, publishedCourseID, contentSlug, act)
+					if err != nil {
+						return uuid.Nil, 0, err
+					}
+					body = materialBody
+					config = materialBody
+				}
 				versionID, err := s.contentAuthor.EnsurePublished(ctx, contentcontract.AuthorSpec{
 					Slug:      contentSlug,
 					Kind:      act.Kind,
 					CEFRLevel: level,
-					Body:      act.Body,
+					Body:      body,
 					AuthorID:  draft.OwnerID,
 				})
 				if err != nil {
@@ -922,7 +1064,7 @@ func (s *Service) publishDraft(
 					Position:         aIdx + 1,
 					Kind:             act.Kind,
 					ContentVersionID: versionID,
-					Config:           act.Config,
+					Config:           config,
 					Weight:           act.Weight,
 				}
 			}
@@ -934,6 +1076,92 @@ func (s *Service) publishDraft(
 	}
 
 	return publishedCourseID, estimatedHours, nil
+}
+
+// publishMaterial copies a lesson_material's resource into the course's own
+// storage and returns the content body — object keys only, as Gate 1 requires.
+//
+// The copy happens before the listing is made public, inside publishDraft's
+// existing "built unlisted, made public at the end" sequence: a failed copy
+// fails the publish, and nothing half-published is reachable.
+func (s *Service) publishMaterial(
+	ctx context.Context, draft *domain.CourseDraft, courseID uuid.UUID,
+	contentSlug string, act domain.ActivityDraft,
+) (json.RawMessage, error) {
+	if s.materialPublisher == nil {
+		return nil, fmt.Errorf("publish material %s: material publishing is not configured", contentSlug)
+	}
+	resourceID, ok := materialResourceID(act)
+	if !ok {
+		return nil, fmt.Errorf("publish material %s: activity has no resource", contentSlug)
+	}
+	// Ownership is proven again here, not only at Gate 1: the draft could have
+	// been edited between the two.
+	mat, err := s.materialPublisher.MaterialForOwner(ctx, draft.OwnerID, resourceID)
+	if err != nil {
+		return nil, fmt.Errorf("publish material %s: %w", contentSlug, err)
+	}
+	prefix := fmt.Sprintf("course-materials/%s/%s/", courseID, contentSlug)
+	objects, err := s.materialPublisher.CopyForPublication(ctx, resourceID, prefix)
+	if err != nil {
+		return nil, fmt.Errorf("publish material %s: %w", contentSlug, err)
+	}
+
+	title, description := "", ""
+	if act.Material != nil {
+		title = act.Material.Title
+		description = act.Material.Description
+	}
+
+	objectMap := map[string]any{"original": objects.Original}
+	if objects.Poster != nil {
+		objectMap["poster"] = *objects.Poster
+	}
+	if objects.Video360p != nil {
+		objectMap["video_360p"] = *objects.Video360p
+	}
+	if objects.Video720p != nil {
+		objectMap["video_720p"] = *objects.Video720p
+	}
+	if objects.Preview != nil {
+		objectMap["preview"] = *objects.Preview
+	}
+
+	body := map[string]any{
+		"material_kind": materialKindFromMIME(mat.DetectedMIME),
+		"title":         title,
+		"objects":       objectMap,
+	}
+	if description != "" {
+		body["description"] = description
+	}
+	if secs, ok := videoDurationSeconds(mat); ok {
+		body["duration_seconds"] = secs
+	}
+	raw, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("encode material %s body: %w", contentSlug, err)
+	}
+	return raw, nil
+}
+
+// materialKindFromMIME derives the material kind from the resource's bytes,
+// never from the creator-controlled draft (Stage B trap 3).
+func materialKindFromMIME(detected string) string {
+	if strings.HasPrefix(detected, "video/") {
+		return "video"
+	}
+	return "document"
+}
+
+// videoDurationSeconds reads a video's duration off its renditions' metadata.
+func videoDurationSeconds(mat *resourcecontract.Material) (int, bool) {
+	for _, r := range mat.Renditions {
+		if r.DurationMS != nil && *r.DurationMS > 0 {
+			return *r.DurationMS / 1000, true
+		}
+	}
+	return 0, false
 }
 
 // ApproveSubmission is the human gate: it publishes the course.

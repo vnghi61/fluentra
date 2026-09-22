@@ -7,7 +7,7 @@ phase: 3
 owner: "@commerce-team"
 schema: studio
 tables: [creator_profiles, payout_accounts, course_drafts, submissions, listings, purchases, creator_ledger, takedowns]
-depends_on: [content, lesson, learning, payment, job]
+depends_on: [content, lesson, learning, payment, job, resource]
 depended_on_by: [admin, lesson, learning]
 spec_version: 1.0.0
 last_verified: 2026-08-06
@@ -33,6 +33,7 @@ Creator Studio: authoring community courses, draft editing, submissions, automat
 - Gate 1 automated verification (structure, CEFR, safety, runner kinds)
 - Gate 2 human moderation queue and approval/rejection decisions
 - Course publishing to catalogue with content versioning
+- Publishing a lesson material by copying the creator's resource into the course's own storage (WO 20)
 <!-- END GENERATED: readme-resp -->
 
 ## Where things are

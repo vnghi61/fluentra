@@ -31,6 +31,7 @@ import (
 	grammarcontract "github.com/fluentra/fluentra/internal/modules/grammar/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
+	learningdomain "github.com/fluentra/fluentra/internal/modules/learning/domain"
 	learningjob "github.com/fluentra/fluentra/internal/modules/learning/job"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
@@ -564,6 +565,9 @@ func startLearning(
 	for kind, grader := range skillGraders {
 		graders[kind] = grader
 	}
+	// A lesson_material completes by being marked done; its grader ships with
+	// the engine (WO 20).
+	graders[learningcontract.KindLessonMaterial] = learningdomain.NewMaterialGrader()
 
 	// The owner of generated practice content, resolved the way the vocabulary
 	// generator resolves it. On a database with no administrator yet it is zero,
@@ -673,10 +677,11 @@ func startModules(
 	}
 
 	lessonModule := lesson.New(lesson.Deps{
-		Pool:   pool,
-		Guard:  workerGuard{},
-		Caches: newLessonCaches(redisClient),
-		Env:    cfg.App.Environment,
+		Pool:    pool,
+		Guard:   workerGuard{},
+		Caches:  newLessonCaches(redisClient),
+		Env:     cfg.App.Environment,
+		Storage: storageStore,
 	})
 
 	if err := lessonModule.Subscribe(bus); err != nil {

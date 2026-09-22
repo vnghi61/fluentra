@@ -13,6 +13,17 @@ generated text describes commits; release notes should describe change.
 
 ### Added
 
+- **Documents and videos in a community course (Phase 3 Work Order 20)**: a creator can now
+  build a chapter that is something to read or watch, not only exercises. A new activity kind
+  `lesson_material` carries a document or a video uploaded through the existing resource
+  intake, and a lesson is valid with one material or three exercises. Gate 1 resolves the
+  draft owner's resource and requires the renditions the runner needs before publishing.
+  At publish, the resource's original and ready renditions are copied server-side into
+  `fluentra-media` under `course-materials/{course_id}/…`, so the sold course owns its bytes
+  and survives the creator's quota or account erasure. The runner signs fresh, expiring URLs
+  at read time — after the paywall, never stored in the lesson cache — and completes a
+  material when the learner marks it done.
+
 - **Full 4-skill mock exams (Phase 3 Work Order 12)**:
   - **Standardized Exam Simulation (`/exams`)**: Full 4-skill mock examinations (Listening, Reading, Writing, Speaking) mapped across CEFR levels (A2, B1, B2). Supports both **Exam Mode** (fixed 75-minute duration, linear forward-only section progression, locked navigation, no re-recording) and **Practice Mode** (custom duration 10–180 minutes, free tab navigation, re-recordable speaking).
   - **Server-Authoritative Timing & 3-Tier Expiry**: Strict server-enforced countdown with 5-second network grace period. Sittings are auto-finalised via three independent layers: scheduled River job at deadline, 1-minute database sweep cron (`1_700_000_601`), and lazy check on attempt reads.

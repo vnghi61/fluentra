@@ -7,7 +7,7 @@ phase: 2
 owner: "@learning-team"
 schema: learn
 tables: [courses, course_units, lessons, activities, lesson_prerequisites]
-depends_on: [content, cache]
+depends_on: [content, cache, storage]
 depended_on_by: [learning, admin, search]
 spec_version: 1.0.0
 last_verified: 2026-08-25
@@ -137,6 +137,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 |---|---|---|
 | [`content`](../../modules/content/AGENT.md) | → depends on | see its contract |
 | [`cache`](../../platform/cache/AGENT.md) | → depends on | see its contract |
+| [`storage`](../../platform/storage/AGENT.md) | → depends on | see its contract |
 | [`learning`](../../modules/learning/AGENT.md) | ← used by | consumes this module's contract |
 | [`admin`](../../modules/admin/AGENT.md) | ← used by | consumes this module's contract |
 | [`search`](../../platform/search/AGENT.md) | ← used by | consumes this module's contract |
@@ -156,6 +157,7 @@ and fails `go-arch-lint` in CI.
 5. **BR-LESSON-05** — A published lesson's activity list is versioned — changing it creates a new lesson version rather than mutating the live one.
 6. **BR-LESSON-06** — Estimated duration is the sum of activity estimates and is recalculated on change, because it drives the learner's daily plan.
 7. **BR-LESSON-07** — Unlocking is evaluated by `learning`, using rules this module defines — the rule lives here, the learner state lives there.
+8. **BR-LESSON-08** — Material URLs are issued at read time, after the paywall, and expire; a signed URL is never written into the lesson cache.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

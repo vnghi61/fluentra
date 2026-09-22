@@ -463,9 +463,9 @@ deps:
   m_content:            { mayDependOn: [m_content_domain, m_content_repository, m_content_service, m_content_http, c_content] }
   # lesson, by layer
   m_lesson_repository: { mayDependOn: [m_lesson_domain, c_lesson, g_lesson] }
-  m_lesson_service:    { mayDependOn: [m_lesson_domain, c_lesson, c_content, c_studio, p_cache] }
+  m_lesson_service:    { mayDependOn: [m_lesson_domain, c_lesson, c_content, c_studio, p_cache, p_storage] }
   m_lesson_http:       { mayDependOn: [m_lesson_domain, m_lesson_service, c_lesson, c_content] }
-  m_lesson:            { mayDependOn: [m_lesson_domain, m_lesson_repository, m_lesson_service, m_lesson_http, c_lesson, c_content, c_studio] }
+  m_lesson:            { mayDependOn: [m_lesson_domain, m_lesson_repository, m_lesson_service, m_lesson_http, c_lesson, c_content, c_studio, p_storage] }
   # learning, split by layer once it grew layers. P8.3's brief says the module is
   # one component and to inherit that; it stopped being possible the moment the
   # module had more than one package, because `modules/learning/**` makes every
@@ -565,10 +565,10 @@ deps:
   m_payment_http:       { mayDependOn: [m_payment_domain, m_payment_service, c_payment] }
   m_payment:            { mayDependOn: [m_payment_domain, m_payment_repository, m_payment_service, m_payment_job, m_payment_http, c_payment, p_job, p_telemetry] }
   m_studio_repository: { mayDependOn: [m_studio_domain, c_studio, g_studio] }
-  m_studio_service:    { mayDependOn: [m_studio_domain, m_studio_repository, c_studio, c_learning, c_lesson, c_content, c_payment] }
+  m_studio_service:    { mayDependOn: [m_studio_domain, m_studio_repository, c_studio, c_learning, c_lesson, c_content, c_payment, c_resource] }
   m_studio_job:        { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, c_studio, p_job] }
   m_studio_http:       { mayDependOn: [m_studio_domain, m_studio_service, c_studio, c_payment] }
-  m_studio:            { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, m_studio_job, m_studio_http, c_studio, c_learning, c_lesson, c_content, p_job, c_payment] }
+  m_studio:            { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, m_studio_job, m_studio_http, c_studio, c_learning, c_lesson, c_content, c_resource, p_job, c_payment] }
 
   # resource
   m_resource_domain:     { mayDependOn: [c_resource] }

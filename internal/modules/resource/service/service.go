@@ -452,6 +452,123 @@ func (s *Service) DeleteResource(ctx context.Context, id, userID uuid.UUID) erro
 	return nil
 }
 
+// MaterialForOwner returns a validated file resource with its renditions, for
+// its owner only (BR-RESOURCE-01). A resource the caller does not own is the
+// same 404 as any other foreign id.
+func (s *Service) MaterialForOwner(
+	ctx context.Context, ownerID, resourceID uuid.UUID,
+) (*contract.Material, error) {
+	res, err := s.repo.GetResourceByIDAndUser(ctx, resourceID, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	mat := &contract.Material{
+		ID:           res.ID,
+		UserID:       res.UserID,
+		DetectedMIME: res.DetectedMIME,
+		Status:       res.Status,
+		Renditions:   nil,
+	}
+	if res.ObjectKey != nil {
+		mat.ObjectKey = *res.ObjectKey
+	}
+	if res.ByteSize != nil {
+		mat.ByteSize = *res.ByteSize
+	}
+	renditions, err := s.repo.ListRenditionsByResourceID(ctx, resourceID)
+	if err == nil {
+		mat.Renditions = renditions
+	}
+	return mat, nil
+}
+
+// CopyForPublication copies a resource's original and every ready rendition
+// into fluentra-media under destPrefix, so a published course owns its bytes
+// and is decoupled from the creator's account and quota (D20-2).
+//
+// The copy is server-side and idempotent: the same destPrefix writes the same
+// destination keys, so re-publishing a revision replaces them rather than
+// accumulating. Called only after MaterialForOwner has proven ownership.
+func (s *Service) CopyForPublication(
+	ctx context.Context, resourceID uuid.UUID, destPrefix string,
+) (*contract.PublishedObjects, error) {
+	res, err := s.repo.GetResourceByID(ctx, resourceID)
+	if err != nil {
+		return nil, err
+	}
+	if res.Kind != domain.KindFile || res.ObjectKey == nil || *res.ObjectKey == "" {
+		return nil, fmt.Errorf("%w: resource has no stored original to publish",
+			domain.ErrResourceTypeNotSupported)
+	}
+	if destPrefix == "" {
+		return nil, fmt.Errorf("publish resource: destination prefix is required")
+	}
+	if !strings.HasSuffix(destPrefix, "/") {
+		destPrefix += "/"
+	}
+
+	out := &contract.PublishedObjects{
+		Original: destPrefix + "original" + objectExt(*res.ObjectKey),
+	}
+	if err := s.storage.Copy(ctx,
+		storage.BucketUploads, *res.ObjectKey, storage.BucketMedia, out.Original); err != nil {
+		return nil, fmt.Errorf("copy original to course storage: %w", err)
+	}
+
+	renditions, err := s.repo.ListReadyRenditionsByResourceID(ctx, resourceID)
+	if err != nil {
+		return nil, fmt.Errorf("list ready renditions for publish: %w", err)
+	}
+	if err := s.copyRenditions(ctx, destPrefix, renditions, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// copyRenditions copies every ready rendition into the course's storage and
+// records the destination key on the right field of out.
+func (s *Service) copyRenditions(
+	ctx context.Context, destPrefix string, renditions []contract.Rendition, out *contract.PublishedObjects,
+) error {
+	for _, r := range renditions {
+		if r.ObjectKey == nil || *r.ObjectKey == "" {
+			continue
+		}
+		destKey := destPrefix + r.Kind + objectExt(*r.ObjectKey)
+		if err := s.storage.Copy(ctx,
+			storage.BucketDerived, *r.ObjectKey, storage.BucketMedia, destKey); err != nil {
+			return fmt.Errorf("copy %s rendition to course storage: %w", r.Kind, err)
+		}
+		assignPublishedObject(out, r.Kind, destKey)
+	}
+	return nil
+}
+
+// assignPublishedObject maps a rendition kind to the field it lands in.
+func assignPublishedObject(out *contract.PublishedObjects, kind, key string) {
+	switch kind {
+	case domain.RenditionKindPoster:
+		out.Poster = &key
+	case domain.RenditionKindVideo360p:
+		out.Video360p = &key
+	case domain.RenditionKindVideo720p:
+		out.Video720p = &key
+	case domain.RenditionKindPreview:
+		out.Preview = &key
+	case domain.RenditionKindAudioWeb:
+		out.AudioWeb = &key
+	}
+}
+
+// objectExt keeps a copied object's extension so a browser and the media
+// pipeline still recognise its format.
+func objectExt(key string) string {
+	if ext := path.Ext(key); ext != "" {
+		return ext
+	}
+	return ".bin"
+}
+
 // DeleteUserResources purges all resources, original upload files, and derived renditions
 // for a user upon account erasure (BR-RESOURCE-15).
 func (s *Service) DeleteUserResources(ctx context.Context, userID uuid.UUID) error {

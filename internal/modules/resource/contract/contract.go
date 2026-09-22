@@ -110,3 +110,53 @@ type ResourceList struct {
 type ResourceReader interface {
 	GetResource(ctx context.Context, id, userID uuid.UUID) (*Resource, error)
 }
+
+// Material is a narrow view of a validated file resource for publication:
+// its detected MIME, status, the original object key and every rendition with
+// its own status. No presigned URLs: a publisher copies the bytes, it does not
+// hand them to a browser.
+type Material struct {
+	ID           uuid.UUID   `json:"id"`
+	UserID       uuid.UUID   `json:"user_id"`
+	DetectedMIME string      `json:"detected_mime"`
+	Status       string      `json:"status"`
+	ObjectKey    string      `json:"object_key,omitempty"`
+	ByteSize     int64       `json:"byte_size,omitempty"`
+	Renditions   []Rendition `json:"renditions"`
+}
+
+// PublishedObjects holds the fluentra-media keys a published course material
+// landed at. The content body stores these keys, never URLs (Gate 1 refuses a
+// URL in any activity body).
+type PublishedObjects struct {
+	Original  string  `json:"original"`
+	Poster    *string `json:"poster,omitempty"`
+	Video360p *string `json:"video_360p,omitempty"`
+	Video720p *string `json:"video_720p,omitempty"`
+	Preview   *string `json:"preview,omitempty"`
+	AudioWeb  *string `json:"audio_web,omitempty"`
+}
+
+// MaterialPublisher is the narrow read-and-copy surface a course publisher
+// uses. It reads one resource for its owner, and it copies a resource's objects
+// into the course's own storage. Deliberately not the resource lifecycle: a
+// publisher can neither write nor delete a learner's resource.
+type MaterialPublisher interface {
+	// MaterialForOwner returns the caller-owned resource as a material, or the
+	// same not-found a foreign resource answers (BR-RESOURCE-01).
+	MaterialForOwner(ctx context.Context, ownerID, resourceID uuid.UUID) (*Material, error)
+	// CopyForPublication copies the original and every ready rendition into
+	// fluentra-media under destPrefix. Idempotent: re-running writes the same
+	// destination keys.
+	CopyForPublication(ctx context.Context, resourceID uuid.UUID, destPrefix string) (*PublishedObjects, error)
+}
+
+// Lifecycle values a publisher reasons about, exported so callers do not carry
+// their own copies of the strings.
+const (
+	// MaterialValidated is the resource status a publishable material must hold.
+	MaterialValidated = "validated"
+	// RenditionReady is the rendition status the runner needs before a material
+	// may be published.
+	RenditionReady = "ready"
+)

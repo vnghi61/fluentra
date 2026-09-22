@@ -4998,7 +4998,7 @@ export interface components {
             kind: string;
             /** Format: uuid */
             content_version_id: string;
-            /** @description Activity-specific configuration. */
+            /** @description Activity-specific configuration. A `lesson_material` activity carries the material's object keys and, issued at read time after the paywall, a `sources` object: `{poster_url?, video: [{url, height}], document: {url, preview_url?, page_count?}}`. The URLs expire and are never stored in the lesson cache. */
             config?: Record<string, never>;
             /** @example 10 */
             weight: number;
@@ -6859,7 +6859,7 @@ export interface components {
             price_vnd: number;
             /** @enum {string} */
             status: "draft" | "submitted" | "verifying" | "in_review" | "published" | "rejected" | "changes_requested";
-            /** @description Course structure containing units, lessons, and activities. */
+            /** @description Course structure containing units, lessons, and activities. A `lesson_material` activity adds `material: {resource_id, material_kind, title, description?, rights_confirmed}`, where `resource_id` is the creator's own private resource and `material_kind` is a hint the server never trusts — the real kind is derived from the resource's detected MIME. */
             structure: Record<string, never>;
             /** Format: date-time */
             created_at: string;

@@ -105,6 +105,11 @@ func (m *Module) Reader() contract.ResourceReader {
 	return &readerAdapter{service: m.service}
 }
 
+// MaterialPublisher returns the read-and-copy surface a course publisher uses.
+func (m *Module) MaterialPublisher() contract.MaterialPublisher {
+	return m.service
+}
+
 // Service returns the underlying domain service (used for worker/jobs and module integration tests).
 func (m *Module) Service() *service.Service {
 	return m.service

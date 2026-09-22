@@ -8,7 +8,7 @@ owner: "@learning-team"
 schema: resource
 tables: [resources, renditions, extractions, classifications]
 depends_on: [storage, job, user]
-depended_on_by: []
+depended_on_by: [studio]
 spec_version: 1.0.0
 last_verified: 2026-09-21
 ---
@@ -26,6 +26,8 @@ agent knows what is already handled and what is deliberately deferred.
 - [ ] classifications.ai_request_id stays null until platform/ai returns the ai_requests row id
 - [ ] OCR for text-heavy images (WO 19 B.1, optional; the first thing cut)
 - [ ] Publish resource.validated and resource.rejected through the outbox once something consumes them
+- [ ] A sweeper for `course-materials/{course_id}` copies no published version references (WO 20 Stage C; out of scope, the copies are cheap and correct to keep)
+- [ ] A DOC/PPT material has no PDF rendition (WO 18 renders only thumbnail and preview), so its card opens the original download; a `pdf` rendition is a future step
 <!-- END GENERATED: todo -->
 
 ## Deferred (deliberately not doing yet)

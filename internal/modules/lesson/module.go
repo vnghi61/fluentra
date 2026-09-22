@@ -17,6 +17,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/lesson/service"
 	lessonhttp "github.com/fluentra/fluentra/internal/modules/lesson/transport/http"
 	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
+	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
@@ -39,6 +40,7 @@ type Deps struct {
 
 	AccessReader  studiocontract.AccessReader
 	ListingReader studiocontract.ListingReader
+	Storage       storage.Store
 }
 
 // Module is the lesson module, assembled. It is the only symbol cmd/ imports.
@@ -73,6 +75,7 @@ func New(deps Deps) *Module {
 		Env:           deps.Env,
 		AccessReader:  deps.AccessReader,
 		ListingReader: deps.ListingReader,
+		Storage:       deps.Storage,
 	})
 
 	handler, err := lessonhttp.NewHandler(svc, deps.Guard)

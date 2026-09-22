@@ -369,6 +369,9 @@ const (
 	KindFoundationQuiz = "foundation_quiz"
 	// KindFoundationReview is a review question tagged to a spine node.
 	KindFoundationReview = "foundation_review"
+	// KindLessonMaterial is a non-graded course material — a document or video
+	// a learner opens and marks as done (WO 20).
+	KindLessonMaterial = "lesson_material"
 )
 
 // GenerateRequest specifies parameters for the unified item generator.

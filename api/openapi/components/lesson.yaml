@@ -87,7 +87,12 @@ LessonActivity:
       format: uuid
     config:
       type: object
-      description: Activity-specific configuration.
+      description: >-
+        Activity-specific configuration. A `lesson_material` activity carries the
+        material's object keys and, issued at read time after the paywall, a
+        `sources` object: `{poster_url?, video: [{url, height}],
+        document: {url, preview_url?, page_count?}}`. The URLs expire and are
+        never stored in the lesson cache.
     weight:
       type: integer
       example: 10

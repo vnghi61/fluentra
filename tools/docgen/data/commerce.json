@@ -443,7 +443,8 @@
       "Course draft CRUD and structure validation",
       "Gate 1 automated verification (structure, CEFR, safety, runner kinds)",
       "Gate 2 human moderation queue and approval/rejection decisions",
-      "Course publishing to catalogue with content versioning"
+      "Course publishing to catalogue with content versioning",
+      "Publishing a lesson material by copying the creator's resource into the course's own storage (WO 20)"
     ],
     "notResponsibilities": [
       "Lesson execution and grading — that is `lesson` and `learning`",
@@ -489,13 +490,14 @@
         { "name": "payment.succeeded", "reason": "Fulfill paid course purchase and credit creator ledger with 70/30 split" }
       ]
     },
-    "dependsOn": ["content", "lesson", "learning", "payment", "job"],
+    "dependsOn": ["content", "lesson", "learning", "payment", "job", "resource"],
     "dependsWhy": {
       "content": "Publishes activity content versions",
       "lesson": "Creates courses, units, and lessons in the core catalogue",
       "learning": "ItemVerifier candidate checks and learner progress lookup for refund eligibility",
       "payment": "Order creation and payment matching for paid courses",
-      "job": "Gate 1 verification worker"
+      "job": "Gate 1 verification worker",
+      "resource": "Reads and copies a creator's uploaded material into a published course"
     },
     "dependedOnBy": ["admin", "lesson", "learning"],
     "rules": [
@@ -508,7 +510,9 @@
       "BR-STUDIO-07: A submission that fails Gate 1 never reaches a human.",
       "BR-STUDIO-08: Every activity in a published community course is a real content_version.",
       "BR-STUDIO-09: A creator's payout account is never returned in a list response and never logged.",
-      "BR-STUDIO-10: A course may not contain a kind the lesson runner cannot render (11 runner kinds only)."
+      "BR-STUDIO-10: A course may not contain a kind the lesson runner cannot render (eleven graded runner kinds plus lesson_material).",
+      "BR-STUDIO-11: A lesson holds at least one material or three exercises; a course holds at least twenty exercises, materials not counted.",
+      "BR-STUDIO-12: A published material is a copy owned by the course; the creator's resource and account can be deleted without affecting it."
     ],
     "errors": [
       { "code": "DRAFT_NOT_FOUND", "status": "404", "meaning": "Course draft not found" },
@@ -534,7 +538,8 @@
     "doNot": [
       "Do not allow a creator to review their own submission.",
       "Do not log or expose raw payout bank account numbers.",
-      "Do not allow activity kinds outside the 11 runner kinds."
+      "Do not allow activity kinds outside the twelve runner kinds.",
+      "Do not trust a material's resource_id: resolve it through the draft owner, and derive its kind from the resource's MIME."
     ],
     "runtimePrompts": []
   }

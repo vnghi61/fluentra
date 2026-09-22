@@ -1,11 +1,30 @@
 ---
 doc_type: handoff
 phase: 4
-status: planned
+status: in_progress
 last_verified: 2026-09-22
 ---
 
 # Phase 3 — work order 20: documents and videos in a community course
+
+> **Where this stands (2026-09-22).** Stages A–E are implemented: the `lesson_material`
+> kind, Gate 1's `material_ready`, the publish-time copy into `fluentra-media`, read-time
+> signed `sources`, the `lesson_material` grader, the Studio editor, the runner renderer,
+> and the business rules/docs. Two things remain and are deliberate:
+> the Stage D gate (watch a video on a phone over the LAN) needs a running stack, and
+> Stage E's reviewer view is cut per §5 — reviewers open materials from the draft.
+> The outline-icon item (§D.4) does not apply: the course outline lists lessons, not
+> activities, so there is no exercise icon to replace.
+>
+> **Where the code differs from D20-2.** Copies land under
+> `course-materials/{course_id}/{activity content slug}/`, not `{content_version_id}`:
+> the version id only exists after `EnsurePublished`, which needs the copied keys first.
+>
+> **Review fixes (2026-09-22).** A video no longer gets a `document` source pointing at its
+> raw upload; Gate 1 refuses a material that is audio or an image instead of reporting it
+> as "still processing"; the runner plays one `src` so an expired URL actually triggers
+> the refetch (errors on `<source>` children never reach `<video>`); a reopened draft
+> resumes polling its material instead of staying at "processing" and blocking submit.
 
 **Purpose.** Let a creator build a course where a chapter is something to *read* or *watch*, not only
 exercises: "Chapter 1 — read this document, Chapter 2 — do these exercises, Chapter 3 — watch this

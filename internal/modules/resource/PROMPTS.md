@@ -8,7 +8,7 @@ owner: "@learning-team"
 schema: resource
 tables: [resources, renditions, extractions, classifications]
 depends_on: [storage, job, user]
-depended_on_by: []
+depended_on_by: [studio]
 spec_version: 1.0.0
 last_verified: 2026-09-21
 ---

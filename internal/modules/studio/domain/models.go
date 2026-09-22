@@ -29,8 +29,13 @@ const (
 	SubmissionStatusChangesRequested = "changes_requested"
 )
 
-// AllowedActivityKinds contains the eleven activity kinds a creator may author (BR-STUDIO-10).
-// Listening comprehension is excluded in v1.
+// KindLessonMaterial is an authored activity that is a document or a video to
+// read or watch, not a graded exercise (WO 20, D20-1).
+const KindLessonMaterial = "lesson_material"
+
+// AllowedActivityKinds contains the twelve activity kinds a creator may author
+// (BR-STUDIO-10). Listening comprehension is excluded in v1. The twelfth kind,
+// lesson_material, is the runner's non-graded document/video kind.
 var AllowedActivityKinds = map[string]struct{}{
 	"vocab_multiple_choice":      {},
 	"vocab_gap_fill":             {},
@@ -44,6 +49,7 @@ var AllowedActivityKinds = map[string]struct{}{
 	"reading_comprehension":      {},
 	"writing_prompt":             {},
 	"speaking_task":              {},
+	KindLessonMaterial:           {},
 }
 
 // IsAllowedActivityKind returns true if kind is supported by the lesson runner.

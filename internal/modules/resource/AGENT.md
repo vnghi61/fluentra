@@ -8,7 +8,7 @@ owner: "@learning-team"
 schema: resource
 tables: [resources, renditions, extractions, classifications]
 depends_on: [storage, job, user]
-depended_on_by: []
+depended_on_by: [studio]
 spec_version: 1.0.0
 last_verified: 2026-09-21
 ---
@@ -56,6 +56,7 @@ Intake for material a learner brings: an uploaded file or a submitted URL become
 - Grounding and classifying extracted text into CEFR levels, skills, and spine taxonomy nodes
 - Deleting a resource together with its stored object, derived renditions, extraction and classification
 - A cron sweep that fails abandoned intents and deletes their objects, and fails uploads whose validation never finished
+- Reading one resource for its owner and copying its original and ready renditions into a published course's own storage (WO 20)
 
 **This module does NOT own:**
 
@@ -83,6 +84,7 @@ Other modules may import **only** `internal/modules/resource/contract`.
 |---|---|---|
 | interface | `resource.ResourceReader` | `GetResource(ctx, id, userID)`: one resource, for its owner only. No consumer yet |
 | struct | `resource.Resource` | `{ID, UserID, Kind, Title, ObjectKey, OriginalFilename, DeclaredMIME, DetectedMIME, ByteSize, Checksum, SourceURL, Status, FailureReason, DownloadURL, CreatedAt, UpdatedAt, ValidatedAt}` |
+| interface | `resource.MaterialPublisher` | `MaterialForOwner(ctx, ownerID, resourceID)` and `CopyForPublication(ctx, resourceID, destPrefix)`: the read-and-copy surface `studio` uses to publish a material into a course |
 
 ### Events
 
@@ -148,6 +150,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | [`storage`](../../platform/storage/AGENT.md) | → depends on | Presigned PUT and GET, stat, read and delete in fluentra-uploads |
 | [`job`](../../platform/job/AGENT.md) | → depends on | The resource.validate River worker and the resource.sweep_pending cron |
 | [`user`](../../modules/user/AGENT.md) | → depends on | Account erasure event user.deleted to purge user resources |
+| [`studio`](../../modules/studio/AGENT.md) | ← used by | consumes this module's contract |
 <!-- END GENERATED: related -->
 
 **Boundary reminder:** you may call these through their `contract` package only.
@@ -172,6 +175,7 @@ and fails `go-arch-lint` in CI.
 13. **BR-RESOURCE-13** — Classification stores only spine codes that exist; the rest are dropped.
 14. **BR-RESOURCE-14** — A transcript is queued by cmd/media in the transaction that settles the audio_web rendition, ready or skipped. Video gets an audio_web rendition for its soundtrack.
 15. **BR-RESOURCE-15** — An extraction and its classification job are written in one transaction.
+16. **BR-RESOURCE-16** — **BR-RESOURCE-16**: A resource leaves its owner's private space only by being copied into a published course, and only its owner can start that copy.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

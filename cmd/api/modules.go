@@ -274,6 +274,7 @@ func newIdentity(deps identityDeps) *identity {
 		Env:           deps.Env,
 		AccessReader:  lazyStudioAccess{of: assembled},
 		ListingReader: lazyStudioListing{of: assembled},
+		Storage:       deps.Storage,
 	})
 
 	assembled.srs = srs.New(srs.Deps{
@@ -406,23 +407,6 @@ func newIdentity(deps identityDeps) *identity {
 	paymentMod.SetPayoutAccountReader(lazyPaymentAccountReader{of: assembled})
 	assembled.payment = paymentMod
 
-	studioMod, err := studio.NewModule(studio.Dependencies{
-		Pool:           deps.Pool,
-		Guard:          lazyGuard{of: assembled},
-		ItemVerifier:   assembled.learning.ItemVerifier(),
-		LessonAuthor:   assembled.lesson.Author(),
-		ContentAuthor:  assembled.content.Author(),
-		OrderCreator:   assembled.payment.OrderCreator(),
-		ProgressReader: assembled.learning.ProgressReader(),
-		LessonReader:   assembled.lesson.Reader(),
-		RefundRecorder: assembled.payment.RefundRecorder(),
-		PayoutManager:  assembled.payment.PayoutManager(),
-	})
-	if err != nil {
-		panic(fmt.Sprintf("assemble studio module: %v", err))
-	}
-	assembled.studio = studioMod
-
 	assembled.resource = resource.New(resource.Deps{
 		Pool:         deps.Pool,
 		Storage:      deps.Storage,
@@ -430,6 +414,24 @@ func newIdentity(deps identityDeps) *identity {
 		WorkerNudger: deps.WorkerNudger,
 		Taxonomies:   assembled.content.TaxonomyResolver(),
 	})
+
+	studioMod, err := studio.NewModule(studio.Dependencies{
+		Pool:              deps.Pool,
+		Guard:             lazyGuard{of: assembled},
+		ItemVerifier:      assembled.learning.ItemVerifier(),
+		LessonAuthor:      assembled.lesson.Author(),
+		ContentAuthor:     assembled.content.Author(),
+		OrderCreator:      assembled.payment.OrderCreator(),
+		ProgressReader:    assembled.learning.ProgressReader(),
+		LessonReader:      assembled.lesson.Reader(),
+		RefundRecorder:    assembled.payment.RefundRecorder(),
+		PayoutManager:     assembled.payment.PayoutManager(),
+		MaterialPublisher: assembled.resource.MaterialPublisher(),
+	})
+	if err != nil {
+		panic(fmt.Sprintf("assemble studio module: %v", err))
+	}
+	assembled.studio = studioMod
 
 	assembled.questionbank = questionbank.New(questionbank.Deps{
 		Pool:          deps.Pool,
@@ -460,6 +462,7 @@ func buildDeclaredKinds() []string {
 	kinds = append(kinds, listeningcontract.GradedKinds()...)
 	kinds = append(kinds, speakingcontract.GradedKinds()...)
 	kinds = append(kinds, "foundation_quiz", "foundation_review")
+	kinds = append(kinds, learningcontract.KindLessonMaterial)
 	return kinds
 }
 
@@ -472,7 +475,7 @@ func buildGraders(
 	listeningGrader learningcontract.ExerciseGrader,
 	speakingGrader learningcontract.ExerciseGrader,
 ) map[string]learningcontract.ExerciseGrader {
-	return mergeGraders(
+	graders := mergeGraders(
 		vocabularyGraders(vocabGrader),
 		grammarGraders(grammarGrader),
 		readingGraders(readingGrader),
@@ -480,6 +483,10 @@ func buildGraders(
 		listeningGraders(listeningGrader),
 		speakingGraders(speakingGrader),
 	)
+	// A lesson_material is not a skill exercise: it is completed by marking it
+	// done, so its grader ships with the engine that dispatches it.
+	graders[learningcontract.KindLessonMaterial] = learningdomain.NewMaterialGrader()
+	return graders
 }
 
 // vocabularyGraders registers one grader under every kind it claims.

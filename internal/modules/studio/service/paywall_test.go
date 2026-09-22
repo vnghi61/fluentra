@@ -38,7 +38,7 @@ func (
 		AmountVND:   in.AmountVND,
 		SubjectKind: in.SubjectKind,
 		SubjectID:   in.SubjectID,
-		Status:      "pending",
+		Status:      testPayoutPending,
 	}, nil
 }
 

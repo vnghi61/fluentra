@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // CourseStructure represents the hierarchical draft outline: units -> lessons -> activities.
@@ -35,6 +37,20 @@ type ActivityDraft struct {
 	Weight   int             `json:"weight"`
 	Config   json.RawMessage `json:"config,omitempty"`
 	Body     json.RawMessage `json:"body"`
+	// Material is present only for a lesson_material activity: the resource the
+	// creator uploaded, which type it is, and the rights declaration.
+	Material *MaterialDraft `json:"material,omitempty"`
+}
+
+// MaterialDraft is a lesson_material activity's authored shape. resource_id is
+// the creator's own private resource; material_kind is a hint the server never
+// trusts — the real kind is derived from the resource's detected MIME.
+type MaterialDraft struct {
+	ResourceID      *uuid.UUID `json:"resource_id,omitempty"`
+	MaterialKind    string     `json:"material_kind,omitempty"`
+	Title           string     `json:"title,omitempty"`
+	Description     string     `json:"description,omitempty"`
+	RightsConfirmed bool       `json:"rights_confirmed,omitempty"`
 }
 
 // VerificationFailure records one failure identified during Gate 1.
@@ -144,12 +160,12 @@ func ValidateStructureAndSafety(
 		})
 	}
 
-	totalLessons, totalActivities := 0, 0
+	totalLessons, totalExercises := 0, 0
 	for uIdx, unit := range structure.Units {
-		unitFailures, lessons, activities := validateUnit(uIdx, unit)
+		unitFailures, lessons, exercises := validateUnit(uIdx, unit)
 		failures = append(failures, unitFailures...)
 		totalLessons += lessons
-		totalActivities += activities
+		totalExercises += exercises
 	}
 
 	if totalLessons < minLessonsPerCourse {
@@ -159,11 +175,13 @@ func ValidateStructureAndSafety(
 				minLessonsPerCourse, totalLessons),
 		})
 	}
-	if totalActivities < minActivitiesPerCours {
+	// D20-3: the twenty are graded exercises. A material is not practice, so a
+	// course of twenty videos is not a practice course.
+	if totalExercises < minActivitiesPerCours {
 		failures = append(failures, VerificationFailure{
 			Check: checkMinimumSize,
-			Message: fmt.Sprintf("Course must have at least %d activities in total, found %d",
-				minActivitiesPerCours, totalActivities),
+			Message: fmt.Sprintf("Course must have at least %d exercises in total, found %d",
+				minActivitiesPerCours, totalExercises),
 		})
 	}
 
@@ -171,8 +189,9 @@ func ValidateStructureAndSafety(
 }
 
 // validateUnit checks one unit and its lessons, and reports how many lessons
-// and activities it holds so the course totals can be summed.
-func validateUnit(uIdx int, unit UnitDraft) (failures []VerificationFailure, lessons, activities int) {
+// and graded exercises it holds so the course totals can be summed. Materials
+// are counted for neither total (D20-3).
+func validateUnit(uIdx int, unit UnitDraft) (failures []VerificationFailure, lessons, exercises int) {
 	if strings.TrimSpace(unit.Title) == "" {
 		failures = append(failures, VerificationFailure{
 			UnitIndex: uIdx,
@@ -201,13 +220,16 @@ func validateUnit(uIdx int, unit UnitDraft) (failures []VerificationFailure, les
 	for lIdx, lesson := range unit.Lessons {
 		lessonFailures, count := validateLesson(uIdx, lIdx, lesson)
 		failures = append(failures, lessonFailures...)
-		activities += count
+		exercises += count
 	}
-	return failures, lessons, activities
+	return failures, lessons, exercises
 }
 
-// validateLesson checks one lesson and its activities.
-func validateLesson(uIdx, lIdx int, lesson LessonDraft) (failures []VerificationFailure, activities int) {
+// validateLesson checks one lesson and its activities, returning the number of
+// graded exercises it holds. A lesson is valid with at least one material, or
+// with 3-30 exercises; materials do not count towards the exercise minimum
+// (D20-3).
+func validateLesson(uIdx, lIdx int, lesson LessonDraft) (failures []VerificationFailure, exercises int) {
 	if strings.TrimSpace(lesson.Title) == "" {
 		failures = append(failures, VerificationFailure{
 			UnitIndex:   uIdx,
@@ -225,21 +247,41 @@ func validateLesson(uIdx, lIdx int, lesson LessonDraft) (failures []Verification
 		})
 	}
 
-	activities = len(lesson.Activities)
-	if activities < minActivitiesPerUnit || activities > maxActivitiesPerUnit {
+	materials := 0
+	for _, act := range lesson.Activities {
+		if act.Kind == KindLessonMaterial {
+			materials++
+		}
+	}
+	exercises = len(lesson.Activities) - materials
+	total := len(lesson.Activities)
+
+	// A lesson with a material may be nothing but that material ("Chapter 3:
+	// watch a video"). Without one, the 3-30 exercise rule stands. The upper
+	// bound applies either way: a lesson is still a bounded run of activities.
+	switch {
+	case materials > 0 && total > maxActivitiesPerUnit:
 		failures = append(failures, VerificationFailure{
 			UnitIndex:   uIdx,
 			LessonIndex: lIdx,
 			Check:       checkStructure,
-			Message: fmt.Sprintf("Unit %d Lesson %d must have %d-%d activities, found %d",
-				uIdx+1, lIdx+1, minActivitiesPerUnit, maxActivitiesPerUnit, activities),
+			Message: fmt.Sprintf("Unit %d Lesson %d must have at most %d activities, found %d",
+				uIdx+1, lIdx+1, maxActivitiesPerUnit, total),
+		})
+	case materials == 0 && (total < minActivitiesPerUnit || total > maxActivitiesPerUnit):
+		failures = append(failures, VerificationFailure{
+			UnitIndex:   uIdx,
+			LessonIndex: lIdx,
+			Check:       checkStructure,
+			Message: fmt.Sprintf("Unit %d Lesson %d must have %d-%d exercises, or at least one material, found %d",
+				uIdx+1, lIdx+1, minActivitiesPerUnit, maxActivitiesPerUnit, exercises),
 		})
 	}
 
 	for aIdx, act := range lesson.Activities {
 		failures = append(failures, validateActivity(uIdx, lIdx, aIdx, act)...)
 	}
-	return failures, activities
+	return failures, exercises
 }
 
 // validateActivity checks one activity's kind and its text.
@@ -264,6 +306,20 @@ func validateActivity(uIdx, lIdx, aIdx int, act ActivityDraft) []VerificationFai
 			Check:         checkSafety,
 			Message:       "Activity body contains prohibited contact details or promotional URLs",
 		})
+	}
+	// A material's text is creator-authored too, so the same contact-detail
+	// rule runs over its title and description (WO 20 Stage B trap 2).
+	if act.Material != nil {
+		if hasContactDetails(act.Material.Title) || hasContactDetails(act.Material.Description) {
+			failures = append(failures, VerificationFailure{
+				UnitIndex:     uIdx,
+				LessonIndex:   lIdx,
+				ActivityIndex: aIdx,
+				Kind:          act.Kind,
+				Check:         checkSafety,
+				Message:       "Material title or description contains contact info or URLs",
+			})
+		}
 	}
 	return failures
 }
