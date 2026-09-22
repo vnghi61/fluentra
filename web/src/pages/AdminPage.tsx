@@ -7,6 +7,7 @@ import {
   AdminFeatureFlags,
   AdminAIUsage,
   AdminContentList,
+  AdminReviewQueue,
   AdminReportedContentList,
   AdminVocabulary,
   AdminStudioModeration,
@@ -86,6 +87,7 @@ export function AdminPage(): React.JSX.Element {
           <>
             {visible === "users" && <AdminUserList />}
             {visible === "content" && <AdminContentList />}
+            {visible === "review" && <AdminReviewQueue />}
             {visible === "reports" && <AdminReportedContentList />}
             {visible === "vocabulary" && <AdminVocabulary />}
             {visible === "flags" && <AdminFeatureFlags />}

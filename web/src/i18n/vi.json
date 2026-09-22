@@ -625,6 +625,7 @@
     "profileAvatar": "Hồ sơ và ảnh đại diện",
     "retry": "Thử lại",
     "returnToSignIn": "Quay lại đăng nhập",
+    "reviewQueue": "Duyệt nội dung",
     "securityDevices": "Bảo mật và thiết bị",
     "unableToLoadSettings": "Không tải được cài đặt",
     "verifyYourEmailNow": "Xác minh email ngay",
@@ -1158,6 +1159,25 @@
     "reviewBtn": "Xem xét",
     "noReports": "Chưa có nội dung nào bị báo cáo.",
     "reportsCount": "{{count}} người học"
+  },
+  "adminReview": {
+    "allKinds": "Tất cả loại",
+    "allPurposes": "Tất cả mục đích",
+    "approveAndPublish": "Duyệt và xuất bản",
+    "blindSolve": "Máy tự giải",
+    "cefrReasoning": "Kiểm tra trình độ",
+    "decisionFailed": "Không lưu được quyết định.",
+    "empty": "Không có nội dung nào chờ duyệt.",
+    "errorDesc": "Không tải được hàng đợi duyệt.",
+    "kindFilter": "Loại",
+    "noteLabel": "Ghi chú (bắt buộc khi yêu cầu sửa)",
+    "pageOf": "Trang {{current}}/{{total}}",
+    "provenance": "Nguồn tạo",
+    "purposeFilter": "Mục đích",
+    "requestChanges": "Yêu cầu sửa",
+    "subtitle": "Bản nháp do máy tạo đang chờ người duyệt. Duyệt là xuất bản; yêu cầu sửa sẽ trả lại kèm ghi chú của bạn.",
+    "title": "Hàng đợi duyệt nội dung",
+    "unknownModel": "không rõ model"
   },
   "exam": {
     "title": "Bài thi thử",

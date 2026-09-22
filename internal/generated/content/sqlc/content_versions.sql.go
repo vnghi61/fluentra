@@ -95,6 +95,9 @@ SELECT COUNT(*)::bigint
 FROM content.content_versions v
 JOIN content.content_items i ON i.id = v.item_id
 WHERE v.status IN ('draft', 'in_review')
+  -- Purpose ` + "`" + `resource` + "`" + ` is a learner's private practice generated from their
+  -- own upload: it never enters the review queue (WO 21 D21-3, BR-RESOURCE-12).
+  AND COALESCE(v.body->'_provenance'->>'purpose', '') <> 'resource'
   AND ($1::text IS NULL OR (v.body->'_provenance'->>'purpose' = $1 OR i.slug ILIKE $1 || '-%'))
   AND ($2::text IS NULL OR v.kind = $2)
   AND ($3::text IS NULL OR v.cefr_level = $3)
@@ -393,6 +396,9 @@ SELECT
 FROM content.content_versions v
 JOIN content.content_items i ON i.id = v.item_id
 WHERE v.status IN ('draft', 'in_review')
+  -- Purpose ` + "`" + `resource` + "`" + ` is a learner's private practice generated from their
+  -- own upload: it never enters the review queue (WO 21 D21-3, BR-RESOURCE-12).
+  AND COALESCE(v.body->'_provenance'->>'purpose', '') <> 'resource'
   AND ($1::text IS NULL OR (v.body->'_provenance'->>'purpose' = $1 OR i.slug ILIKE $1 || '-%'))
   AND ($2::text IS NULL OR v.kind = $2)
   AND ($3::text IS NULL OR v.cefr_level = $3)

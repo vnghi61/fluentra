@@ -625,6 +625,7 @@
     "profileAvatar": "Profile & Avatar",
     "retry": "Retry",
     "returnToSignIn": "Return to Sign in",
+    "reviewQueue": "Review Queue",
     "securityDevices": "Security & Devices",
     "unableToLoadSettings": "Unable to load settings",
     "verifyYourEmailNow": "Verify your email now",
@@ -1158,6 +1159,25 @@
     "reviewBtn": "Review item",
     "noReports": "No items have been reported yet.",
     "reportsCount": "{{count}} learners"
+  },
+  "adminReview": {
+    "allKinds": "All kinds",
+    "allPurposes": "All purposes",
+    "approveAndPublish": "Approve and publish",
+    "blindSolve": "Blind solve",
+    "cefrReasoning": "Level check",
+    "decisionFailed": "The decision could not be saved.",
+    "empty": "Nothing is waiting for review.",
+    "errorDesc": "The review queue could not be loaded.",
+    "kindFilter": "Kind",
+    "noteLabel": "Note (required to request changes)",
+    "pageOf": "Page {{current}} of {{total}}",
+    "provenance": "Provenance",
+    "purposeFilter": "Purpose",
+    "requestChanges": "Request changes",
+    "subtitle": "Machine-generated drafts waiting for a person. Approving publishes the item; requesting changes sends it back with your note.",
+    "title": "Content Review Queue",
+    "unknownModel": "unknown model"
   },
   "exam": {
     "title": "Mock exam",

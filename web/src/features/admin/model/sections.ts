@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   BookA,
   BookOpen,
+  ClipboardCheck,
   DollarSign,
   FileCheck,
   Flag,
@@ -26,6 +27,7 @@ import { PERMISSIONS, usePermissions } from "./permissions";
 export type AdminSectionKey =
   | "users"
   | "content"
+  | "review"
   | "reports"
   | "vocabulary"
   | "flags"
@@ -71,6 +73,14 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
       PERMISSIONS.contentReview,
       PERMISSIONS.contentPublish,
     ],
+  },
+  {
+    key: "review",
+    path: "/admin/review",
+    labelKey: "page.reviewQueue",
+    labelFallback: "Review Queue",
+    Icon: ClipboardCheck,
+    anyOf: [PERMISSIONS.contentReview, PERMISSIONS.contentPublish],
   },
   {
     key: "reports",

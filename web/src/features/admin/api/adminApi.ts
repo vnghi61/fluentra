@@ -29,6 +29,10 @@ export type AuthoringStatus = components["schemas"]["AuthoringStatus"];
 export type ReportedContentVersion =
   components["schemas"]["ReportedContentVersion"];
 export type ReportedContentList = components["schemas"]["ReportedContentList"];
+export type AdminReviewQueueResponse =
+  components["schemas"]["AdminReviewQueueResponse"];
+export type AdminReviewQueueItem =
+  components["schemas"]["AdminReviewQueueItem"];
 
 export type AdminWordList = components["schemas"]["AdminWordList"];
 export type AdminWordSummary = components["schemas"]["AdminWordSummary"];
@@ -201,6 +205,28 @@ export const adminApi = {
   /** Get single content item detail with all versions */
   async getContent(id: string): Promise<AdminContentItemDetail> {
     return apiFetch<AdminContentItemDetail>(`/api/v1/admin/content/${id}`);
+  },
+
+  /**
+   * The machine-generated drafts awaiting review, oldest first.
+   *
+   * Approving and rejecting go through the same content review endpoints the
+   * authoring screen uses; there is no separate decision path.
+   */
+  async listReviewQueue(
+    params: ReviewQueueParams = {},
+  ): Promise<AdminReviewQueueResponse> {
+    const sp = new URLSearchParams();
+    if (params.purpose) sp.set("purpose", params.purpose);
+    if (params.kind) sp.set("kind", params.kind);
+    if (params.node) sp.set("node", params.node);
+    if (params.cefr) sp.set("cefr", params.cefr);
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<AdminReviewQueueResponse>(
+      `/api/v1/admin/review-queue${qs ? `?${qs}` : ""}`,
+    );
   },
 
   /** Update draft body and metadata */
@@ -389,6 +415,15 @@ export interface SearchContentParams {
   status?: string | undefined;
   kind?: string | undefined;
   q?: string | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+}
+
+export interface ReviewQueueParams {
+  purpose?: string | undefined;
+  kind?: string | undefined;
+  node?: string | undefined;
+  cefr?: string | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
 }

@@ -193,6 +193,7 @@ and fails `go-arch-lint` in CI.
 8. **BR-CONTENT-08** — Publishing invalidates the content cache, enqueues TTS generation, and triggers reindexing — all through the outbox so a failure in one does not roll back the publish.
 9. **BR-CONTENT-09** — Slugs are immutable after first publication; a changed slug would break external links and bookmarks.
 10. **BR-CONTENT-10** — Machine-authored exam and curriculum content enters as a draft (`Author.EnsureDraft`); only practice content may be published without review (`EnsurePublished`).
+11. **BR-CONTENT-11** — A machine-authored draft (a body carrying `_provenance`) may be approved directly: the review queue walks it draft → in_review → approved in one transaction, because a generator cannot submit its own output. A human draft still needs its author to submit it. Drafts whose provenance purpose is `resource` never enter the queue: they are a learner's private practice.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

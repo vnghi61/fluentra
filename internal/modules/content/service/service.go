@@ -823,6 +823,31 @@ func (s *Service) Review(
 			return err
 		}
 
+		// A machine-authored draft has no author to submit it. The generator
+		// wrote it and moved on, and the review queue is where a person reads
+		// it — so an approval walks draft → in_review → approved inside this
+		// transaction. A human's draft still needs its author to submit it.
+		if draftVersion.Status == domain.StatusDraft && domain.HasProvenance(draftVersion.Body) {
+			if err := domain.ValidateTransition(draftVersion.Status, domain.StatusInReview); err != nil {
+				return err
+			}
+			if _, err := txRepo.UpdateVersionDraft(
+				ctx,
+				draftVersion.ID,
+				draftVersion.Kind,
+				[]byte(draftVersion.Body),
+				draftVersion.CEFRLevel,
+				draftVersion.MediaRefs,
+				domain.StatusInReview,
+			); err != nil {
+				return err
+			}
+			if _, err := txRepo.UpdateItemStatus(ctx, itemID, domain.StatusInReview); err != nil {
+				return err
+			}
+			draftVersion.Status = domain.StatusInReview
+		}
+
 		var nextStatus domain.AuthoringStatus
 		switch req.Decision {
 		case domain.ReviewDecisionApproved:

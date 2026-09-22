@@ -106,6 +106,9 @@ SELECT
 FROM content.content_versions v
 JOIN content.content_items i ON i.id = v.item_id
 WHERE v.status IN ('draft', 'in_review')
+  -- Purpose `resource` is a learner's private practice generated from their
+  -- own upload: it never enters the review queue (WO 21 D21-3, BR-RESOURCE-12).
+  AND COALESCE(v.body->'_provenance'->>'purpose', '') <> 'resource'
   AND (sqlc.narg('purpose')::text IS NULL OR (v.body->'_provenance'->>'purpose' = sqlc.narg('purpose') OR i.slug ILIKE sqlc.narg('purpose') || '-%'))
   AND (sqlc.narg('kind')::text IS NULL OR v.kind = sqlc.narg('kind'))
   AND (sqlc.narg('cefr_level')::text IS NULL OR v.cefr_level = sqlc.narg('cefr_level'))
@@ -123,6 +126,9 @@ SELECT COUNT(*)::bigint
 FROM content.content_versions v
 JOIN content.content_items i ON i.id = v.item_id
 WHERE v.status IN ('draft', 'in_review')
+  -- Purpose `resource` is a learner's private practice generated from their
+  -- own upload: it never enters the review queue (WO 21 D21-3, BR-RESOURCE-12).
+  AND COALESCE(v.body->'_provenance'->>'purpose', '') <> 'resource'
   AND (sqlc.narg('purpose')::text IS NULL OR (v.body->'_provenance'->>'purpose' = sqlc.narg('purpose') OR i.slug ILIKE sqlc.narg('purpose') || '-%'))
   AND (sqlc.narg('kind')::text IS NULL OR v.kind = sqlc.narg('kind'))
   AND (sqlc.narg('cefr_level')::text IS NULL OR v.cefr_level = sqlc.narg('cefr_level'))
