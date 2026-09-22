@@ -42,13 +42,13 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/reading"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
 	"github.com/fluentra/fluentra/internal/modules/resource"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/modules/speaking"
 	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
 	srsservice "github.com/fluentra/fluentra/internal/modules/srs/service"
 	"github.com/fluentra/fluentra/internal/modules/studio"
 	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
-	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary"
 	vocabularycontract "github.com/fluentra/fluentra/internal/modules/vocabulary/contract"
@@ -394,8 +394,8 @@ func newIdentity(deps identityDeps) *identity {
 		Flags:         assembled.admin.FlagReader(),
 		Courses:       assembled.lesson.Catalog(),
 		SRSPace:       assembled.srs.ReviewPace(),
-		StudioAccess:      lazyStudioAccess{of: assembled},
-		Resource:          lazyResourceReader{of: assembled},
+		StudioAccess:  lazyStudioAccess{of: assembled},
+		Resource:      lazyResourceReader{of: assembled},
 	})
 
 	paymentMod, err := payment.NewModule(payment.Dependencies{

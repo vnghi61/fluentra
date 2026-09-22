@@ -14239,6 +14239,16 @@ export interface operations {
                      *               },
                      *               "node_distribution": {}
                      *             }
+                     *           ],
+                     *           "distinct_tests_possible": 2,
+                     *           "parts": [
+                     *             {
+                     *               "part_number": 1,
+                     *               "section": "listening",
+                     *               "kind": "photo_description",
+                     *               "question_count": 6,
+                     *               "group_size": 1
+                     *             }
                      *           ]
                      *         }
                      *       ]
