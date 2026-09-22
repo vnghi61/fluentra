@@ -69,18 +69,24 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [failed, setFailed] = useState(false);
-  // Nothing could be heard: neither the device's voice nor a recording. The
-  // button stays usable — this is usually the phone's media volume or its
-  // text-to-speech service, which the learner can fix.
-  const [silent, setSilent] = useState(false);
-  // The recording that is playing, credited while it does (CC BY-SA).
-  const [credit, setCredit] = useState<Recording | null>(null);
+  // The failure, silence and credit are all "for a word": storing the word
+  // they belong to means a new card never inherits the previous one's state,
+  // without an effect that resets three pieces of state on every card change.
+  const [failedFor, setFailedFor] = useState<string | null>(null);
+  const [silentFor, setSilentFor] = useState<string | null>(null);
+  const [creditFor, setCreditFor] = useState<{
+    text: string;
+    recording: Recording;
+  } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const stopRecordingRef = useRef<(() => void) | null>(null);
   // Bumped by every tap and every card change, so a recording looked up for an
   // earlier tap or an earlier card never starts playing late.
   const requestRef = useRef(0);
+
+  const failed = failedFor === text;
+  const silent = silentFor === text;
+  const credit = creditFor?.text === text ? creditFor.recording : null;
 
   const stopRecording = () => {
     stopRecordingRef.current?.();
@@ -107,14 +113,6 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
     };
   }, [text, audioUrl]);
 
-  // A new card is a new word: the previous card's failure must not disable this
-  // card's button, and its credit line must not outlive it.
-  useEffect(() => {
-    setFailed(false);
-    setSilent(false);
-    setCredit(null);
-  }, [text, audioUrl]);
-
   /**
    * The device could not speak: play a human recording of the word instead.
    * Only then, so a third party is asked only once the device has failed.
@@ -124,8 +122,8 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
       const request = requestRef.current;
       const giveUp = () => {
         setIsPlaying(false);
-        if (reason === "failed") setFailed(true);
-        else setSilent(true);
+        if (reason === "failed") setFailedFor(text);
+        else setSilentFor(text);
       };
       if (!isSingleWord(text)) {
         giveUp();
@@ -136,7 +134,7 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
         if (request !== requestRef.current) return;
         stopRecordingRef.current?.();
         stopRecordingRef.current = playFirstRecording(recordings, {
-          onPlaying: (recording) => setCredit(recording),
+          onPlaying: (recording) => setCreditFor({ text, recording }),
           onEnded: () => setIsPlaying(false),
           onExhausted: giveUp,
         });
@@ -166,8 +164,8 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
 
       requestRef.current++;
       stopRecording();
-      setSilent(false);
-      setCredit(null);
+      setSilentFor(null);
+      setCreditFor(null);
 
       if (!playableAudioUrl) {
         speak();
@@ -180,10 +178,13 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
         // The credit appears only once the recording actually plays, so a dead
         // link shows synthesis and no licence line it does not owe.
         audio.onplaying = () => {
-          setCredit({
-            url: playableAudioUrl,
-            creditUrl: audioAttribution ?? "",
-            licence: audioLicence?.trim() ? audioLicence : undefined,
+          setCreditFor({
+            text,
+            recording: {
+              url: playableAudioUrl,
+              creditUrl: audioAttribution ?? "",
+              licence: audioLicence?.trim() ? audioLicence : undefined,
+            },
           });
         };
         audio.onended = () => setIsPlaying(false);
@@ -202,13 +203,13 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
 
   useEffect(() => {
     if (!silent) return undefined;
-    const hide = setTimeout(() => setSilent(false), 6000);
+    const hide = setTimeout(() => setSilentFor(null), 6000);
     return () => clearTimeout(hide);
   }, [silent]);
 
   useEffect(() => {
     if (!credit) return undefined;
-    const hide = setTimeout(() => setCredit(null), 8000);
+    const hide = setTimeout(() => setCreditFor(null), 8000);
     return () => clearTimeout(hide);
   }, [credit]);
 

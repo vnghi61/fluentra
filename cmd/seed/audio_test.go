@@ -13,6 +13,10 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
 )
 
+// testLemma is the word every fixture looks up; a constant because goconst
+// counts the repetitions.
+const testLemma = "eat"
+
 type stubDictionary struct {
 	entry repository.DictionaryEntry
 	err   error
@@ -53,13 +57,13 @@ func TestLemmaAudio_KeepsTheDictionarysRecording(t *testing.T) {
 	// that names the licence, and the Commons fallback exists for the days it
 	// does not answer at all.
 	audio := commonsBackfill(t, stubDictionary{entry: repository.DictionaryEntry{
-		Lemma:            "eat",
+		Lemma:            testLemma,
 		AudioURL:         "https://api.dictionaryapi.dev/media/pronunciations/en/eat-us.mp3",
 		AudioAttribution: "https://commons.wikimedia.org/wiki/File:En-us-eat.ogg",
 		AudioLicence:     "BY-SA 3.0",
 	}}, "En-us-eat.ogg")
 
-	entry, found, err := audio.lookup(context.Background(), "eat")
+	entry, found, err := audio.lookup(context.Background(), testLemma)
 	require.NoError(t, err)
 	require.True(t, found)
 
@@ -68,10 +72,10 @@ func TestLemmaAudio_KeepsTheDictionarysRecording(t *testing.T) {
 }
 
 func TestLemmaAudio_FallsBackToCommonsWhenTheDictionaryHasNoRecording(t *testing.T) {
-	audio := commonsBackfill(t, stubDictionary{entry: repository.DictionaryEntry{Lemma: "eat"}},
+	audio := commonsBackfill(t, stubDictionary{entry: repository.DictionaryEntry{Lemma: testLemma}},
 		"En-us-eat.ogg")
 
-	entry, found, err := audio.lookup(context.Background(), "eat")
+	entry, found, err := audio.lookup(context.Background(), testLemma)
 	require.NoError(t, err)
 	require.True(t, found)
 
@@ -82,10 +86,10 @@ func TestLemmaAudio_FallsBackToCommonsWhenTheDictionaryHasNoRecording(t *testing
 }
 
 func TestLemmaAudio_FallsBackToTheBritishFileWhenThereIsNoAmericanOne(t *testing.T) {
-	audio := commonsBackfill(t, stubDictionary{entry: repository.DictionaryEntry{Lemma: "eat"}},
+	audio := commonsBackfill(t, stubDictionary{entry: repository.DictionaryEntry{Lemma: testLemma}},
 		"En-uk-eat.ogg")
 
-	entry, found, err := audio.lookup(context.Background(), "eat")
+	entry, found, err := audio.lookup(context.Background(), testLemma)
 	require.NoError(t, err)
 	require.True(t, found)
 
@@ -106,7 +110,7 @@ func TestLemmaAudio_ReportsAFailureOnlyWhenCommonsHasNothingEither(t *testing.T)
 	// word has no recording.
 	audio := commonsBackfill(t, stubDictionary{err: assert.AnError})
 
-	_, found, err := audio.lookup(context.Background(), "eat")
+	_, found, err := audio.lookup(context.Background(), testLemma)
 	require.Error(t, err)
 	assert.False(t, found)
 }

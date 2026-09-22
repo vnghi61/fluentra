@@ -25,9 +25,9 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/repository"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
 	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
-	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
@@ -351,29 +351,29 @@ func New(deps Deps) *Service {
 		}
 	}
 	return &Service{
-		pool:          deps.Pool,
-		repo:          deps.Repo,
-		lesson:        deps.Lesson,
-		lessonAuthor:  deps.LessonAuthor,
-		content:       deps.Content,
-		contentAuthor: deps.ContentAuthor,
-		srsDue:        deps.SRSDue,
-		srsCards:      deps.SRSCards,
-		graders:       deps.Graders,
-		events:        deps.Events,
-		metrics:       deps.Metrics,
-		clock:         clk,
-		newID:         idGen,
-		caches:        deps.Caches,
-		env:           deps.Env,
-		ai:            deps.AI,
-		user:          deps.User,
-		flags:         deps.Flags,
-		courses:       deps.Courses,
-		srsPace:       deps.SRSPace,
-		studioAccess:  deps.StudioAccess,
-		taxonomies:    deps.Taxonomies,
-		resource:      deps.Resource,
+		pool:             deps.Pool,
+		repo:             deps.Repo,
+		lesson:           deps.Lesson,
+		lessonAuthor:     deps.LessonAuthor,
+		content:          deps.Content,
+		contentAuthor:    deps.ContentAuthor,
+		srsDue:           deps.SRSDue,
+		srsCards:         deps.SRSCards,
+		graders:          deps.Graders,
+		events:           deps.Events,
+		metrics:          deps.Metrics,
+		clock:            clk,
+		newID:            idGen,
+		caches:           deps.Caches,
+		env:              deps.Env,
+		ai:               deps.AI,
+		user:             deps.User,
+		flags:            deps.Flags,
+		courses:          deps.Courses,
+		srsPace:          deps.SRSPace,
+		studioAccess:     deps.StudioAccess,
+		taxonomies:       deps.Taxonomies,
+		resource:         deps.Resource,
 		resourcePractice: deps.ResourcePractice,
 
 		generatorAuthor: deps.GeneratorAuthorID,

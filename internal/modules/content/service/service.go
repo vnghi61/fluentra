@@ -828,34 +828,15 @@ func (s *Service) Review(
 		// it — so an approval walks draft → in_review → approved inside this
 		// transaction. A human's draft still needs its author to submit it.
 		if draftVersion.Status == domain.StatusDraft && domain.HasProvenance(draftVersion.Body) {
-			if err := domain.ValidateTransition(draftVersion.Status, domain.StatusInReview); err != nil {
-				return err
-			}
-			if _, err := txRepo.UpdateVersionDraft(
-				ctx,
-				draftVersion.ID,
-				draftVersion.Kind,
-				[]byte(draftVersion.Body),
-				draftVersion.CEFRLevel,
-				draftVersion.MediaRefs,
-				domain.StatusInReview,
-			); err != nil {
-				return err
-			}
-			if _, err := txRepo.UpdateItemStatus(ctx, itemID, domain.StatusInReview); err != nil {
+			if err := submitMachineDraftForReview(ctx, txRepo, itemID, draftVersion); err != nil {
 				return err
 			}
 			draftVersion.Status = domain.StatusInReview
 		}
 
-		var nextStatus domain.AuthoringStatus
-		switch req.Decision {
-		case domain.ReviewDecisionApproved:
-			nextStatus = domain.StatusApproved
-		case domain.ReviewDecisionChangesRequested:
-			nextStatus = domain.StatusDraft
-		default:
-			return domain.ErrInvalidReviewDecision
+		nextStatus, err := nextStatusForDecision(req.Decision)
+		if err != nil {
+			return err
 		}
 
 		if err := domain.ValidateTransition(draftVersion.Status, nextStatus); err != nil {
@@ -889,10 +870,8 @@ func (s *Service) Review(
 
 		// Stage D: Each node's cefr_level in content.taxonomies is set when its topic is approved,
 		// from the approved topic's level (BR-FOUNDATION-05, WO 16 §14).
-		if item.Kind == KindFoundationTopic && nextStatus == domain.StatusApproved {
-			if err := updateSpineNodeCEFRFromTopic(ctx, txRepo, itemID, draftVersion.CEFRLevel); err != nil {
-				return err
-			}
+		if err := maybeUpdateSpineNodeCEFR(ctx, txRepo, item.Kind, itemID, nextStatus, draftVersion.CEFRLevel); err != nil {
+			return err
 		}
 
 		return nil
@@ -903,6 +882,60 @@ func (s *Service) Review(
 	}
 
 	return version, nil
+}
+
+// nextStatusForDecision maps an editorial decision to the status it moves a
+// version to.
+func nextStatusForDecision(decision domain.ReviewDecision) (domain.AuthoringStatus, error) {
+	switch decision {
+	case domain.ReviewDecisionApproved:
+		return domain.StatusApproved, nil
+	case domain.ReviewDecisionChangesRequested:
+		return domain.StatusDraft, nil
+	default:
+		return "", domain.ErrInvalidReviewDecision
+	}
+}
+
+// submitMachineDraftForReview moves a generator's draft to in_review, the
+// state a reviewer's decision is taken from.
+func submitMachineDraftForReview(
+	ctx context.Context, txRepo Repository, itemID uuid.UUID, version domain.Version,
+) error {
+	if err := domain.ValidateTransition(version.Status, domain.StatusInReview); err != nil {
+		return err
+	}
+	if _, err := txRepo.UpdateVersionDraft(
+		ctx,
+		version.ID,
+		version.Kind,
+		[]byte(version.Body),
+		version.CEFRLevel,
+		version.MediaRefs,
+		domain.StatusInReview,
+	); err != nil {
+		return err
+	}
+	if _, err := txRepo.UpdateItemStatus(ctx, itemID, domain.StatusInReview); err != nil {
+		return err
+	}
+	return nil
+}
+
+// maybeUpdateSpineNodeCEFR writes an approved foundation topic's level onto the
+// spine node it is tagged with.
+func maybeUpdateSpineNodeCEFR(
+	ctx context.Context,
+	txRepo Repository,
+	itemKind string,
+	itemID uuid.UUID,
+	status domain.AuthoringStatus,
+	cefrLevel string,
+) error {
+	if itemKind != KindFoundationTopic || status != domain.StatusApproved {
+		return nil
+	}
+	return updateSpineNodeCEFRFromTopic(ctx, txRepo, itemID, cefrLevel)
 }
 
 func updateSpineNodeCEFRFromTopic(

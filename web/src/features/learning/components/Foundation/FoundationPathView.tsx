@@ -15,6 +15,8 @@ export interface FoundationPathViewProps {
   isLoading?: boolean;
 }
 
+type NodeState = ReturnType<typeof pathNodeState>;
+
 export function FoundationPathView({
   items,
   targetCode,
@@ -23,8 +25,19 @@ export function FoundationPathView({
 }: FoundationPathViewProps): React.JSX.Element {
   const { t } = useTranslation();
   // The path is topologically ordered, so everything after the first
-  // unmastered node waits on it.
-  let nextSeen = false;
+  // unmastered node waits on it. Computed in one pass rather than while
+  // rendering the list.
+  const nodeStates = React.useMemo(() => {
+    return items
+      .reduce<{ states: NodeState[]; nextSeen: boolean }>(
+        (acc, node) => ({
+          states: [...acc.states, pathNodeState(node, acc.nextSeen)],
+          nextSeen: acc.nextSeen || node.next,
+        }),
+        { states: [], nextSeen: false },
+      )
+      .states;
+  }, [items]);
 
   if (isLoading) {
     return (
@@ -86,8 +99,7 @@ export function FoundationPathView({
           {items.map((node, index) => {
             const isTarget = node.code === targetCode;
             const isCurrent = node.code === currentCode;
-            const state = pathNodeState(node, nextSeen);
-            if (node.next) nextSeen = true;
+            const state = nodeStates[index] ?? "open";
             const isNext = state === "next";
             const isMastered = state === "mastered";
             const isLocked = state === "locked";

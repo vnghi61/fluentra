@@ -24,7 +24,7 @@ function card(body: Record<string, unknown>): ReviewCard {
     lapses: 0,
     state: "new",
     content: { kind: "vocab_flashcard", body },
-  } as ReviewCard;
+  };
 }
 
 describe("flashcardContent audio", () => {

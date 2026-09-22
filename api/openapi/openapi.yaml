@@ -6791,6 +6791,13 @@ paths:
                           B1: 0.5
                           B2: 0.5
                         node_distribution: {}
+                    distinct_tests_possible: 2
+                    parts:
+                      - part_number: 1
+                        section: "listening"
+                        kind: "photo_description"
+                        question_count: 6
+                        group_size: 1
               schema:
                 $ref: '#/components/schemas/ExamVersionListResponse'
         '401':

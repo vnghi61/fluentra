@@ -15,6 +15,9 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
+// testWeakNodeCode is the spine node the fixtures classify against.
+const testWeakNodeCode = "PRESENT_PERFECT"
+
 // ---------------------------------------------------------------- fixtures
 
 type stubResourceReader struct {
@@ -102,7 +105,7 @@ func resourcePracticeService(
 
 func classifiedResource() *resourcecontract.Resource {
 	level := "B1"
-	skill := "grammar"
+	skill := domain.SkillGrammar
 	return &resourcecontract.Resource{
 		ID:     uuid.New(),
 		UserID: uuid.New(),
@@ -114,7 +117,7 @@ func classifiedResource() *resourcecontract.Resource {
 		Classification: &resourcecontract.Classification{
 			CEFREstimate: &level,
 			Skill:        &skill,
-			NodeCodes:    []string{"PRESENT_PERFECT"},
+			NodeCodes:    []string{testWeakNodeCode},
 		},
 	}
 }
@@ -240,9 +243,9 @@ func TestResourcePracticeSource_TruncatesToTheModelsWindow(t *testing.T) {
 }
 
 func TestWeakNodeMatches_FindsTheNodeInTheVersionsTags(t *testing.T) {
-	weak := &domain.WeakNodeLabel{Code: "PRESENT_PERFECT", Label: "Present Perfect"}
+	weak := &domain.WeakNodeLabel{Code: testWeakNodeCode, Label: "Present Perfect"}
 
-	if !weakNodeMatches([]string{"SENTENCE_STRUCTURE", "PRESENT_PERFECT"}, weak) {
+	if !weakNodeMatches([]string{"SENTENCE_STRUCTURE", testWeakNodeCode}, weak) {
 		t.Error("the weak node is in the tags but was not matched")
 	}
 	if weakNodeMatches([]string{"SENTENCE_STRUCTURE"}, weak) {
