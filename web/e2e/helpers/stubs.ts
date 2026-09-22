@@ -270,3 +270,200 @@ export async function stubLearningApi(page: Page): Promise<void> {
     ),
   );
 }
+
+/** The session a layout check of the admin screens needs. */
+export const stubAdminSession: AuthSession = {
+  ...stubSession,
+  role: "admin",
+};
+
+/**
+ * Authenticates as an administrator, so `/admin/*` renders instead of
+ * redirecting to the dashboard.
+ */
+export async function stubAuthenticatedAdmin(page: Page): Promise<void> {
+  await page.route("**/api/v1/auth/refresh", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(stubAdminSession),
+    }),
+  );
+}
+
+/**
+ * The WO 21 screens' API, stubbed for layout checks at 320 px.
+ *
+ * The payloads are the fullest reasonable state — a long file name, a long
+ * slug, a fingerprint — because an empty screen has nothing to overflow with.
+ * The admin payloads need `stubAuthenticatedAdmin` first; the learner ones do
+ * not.
+ */
+export async function stubWo21Api(page: Page): Promise<void> {
+  const json = (body: unknown) => ({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify(body),
+  });
+
+  await page.route("**/api/v1/me/resources**", (route) =>
+    route.fulfill(
+      json({
+        items: [
+          {
+            id: "018f3a5e-7b82-7d2c-80a2-bf3d6118d531",
+            kind: "file",
+            title:
+              "Advanced Grammar Guide — Present Perfect and Past Simple (2026 edition)",
+            status: "validated",
+            failure_reason: "",
+            original_filename:
+              "advanced-grammar-guide-present-perfect-and-past-simple.pdf",
+            declared_mime: "application/pdf",
+            detected_mime: "application/pdf",
+            byte_size: 2458120,
+            checksum: null,
+            source_url: null,
+            download_url: "https://storage.example.com/file.pdf",
+            created_at: NOW,
+            updated_at: NOW,
+            validated_at: NOW,
+            renditions: [],
+            extraction: {
+              source: "pdf_text",
+              char_count: 1540,
+              truncated: false,
+              excerpt: "Unit 1: Present Perfect Tense.",
+            },
+            classification: {
+              cefr_estimate: "B1",
+              skill: "grammar",
+              nodes: [{ code: "PRESENT_PERFECT", label: "Present Perfect" }],
+            },
+          },
+        ],
+        total: 1,
+        page: 1,
+        page_size: 100,
+      }),
+    ),
+  );
+
+  await page.route("**/api/v1/exam-versions", (route) =>
+    route.fulfill(
+      json({
+        items: [
+          {
+            id: "20000000-0000-0000-0000-000000000002",
+            exam_family: "vstep",
+            code: "VSTEP_3_5",
+            title: "VSTEP (Level 3-5 / B1-C1) — Vietnamese Standardised Test",
+            total_minutes: 100,
+            scoring: { type: "raw" },
+            source_url: "https://example.test/vstep",
+            verified_at: "2026-09-20",
+            is_current: true,
+            notes: "",
+            distinct_tests_possible: 2,
+            blueprints: [
+              {
+                id: "30000000-0000-0000-0010-000000000002",
+                name: "vstep_default",
+                cefr_distribution: { B1: 1 },
+                node_distribution: {},
+              },
+            ],
+            parts: [
+              {
+                part_number: 1,
+                section: "listening",
+                kind: "listening_comprehension",
+                question_count: 35,
+                group_size: 1,
+              },
+            ],
+          },
+        ],
+      }),
+    ),
+  );
+
+  await page.route("**/api/v1/exams", (route) => route.fulfill(json([])));
+  await page.route("**/api/v1/exam-attempts**", (route) =>
+    route.fulfill(json({ items: [], sittings_today: 0, daily_limit: 5 })),
+  );
+
+  await page.route("**/api/v1/me/permissions", (route) =>
+    route.fulfill(
+      json({
+        permissions: [
+          "content.review",
+          "content.publish",
+          "questionbank.read",
+          "questionbank.create",
+          "admin.dashboard",
+        ],
+      }),
+    ),
+  );
+
+  await page.route("**/api/v1/admin/review-queue**", (route) =>
+    route.fulfill(
+      json({
+        items: [
+          {
+            id: "0199a1c2-3d4e-7f80-9abc-def012345602",
+            item_id: "0199a1c2-3d4e-7f80-9abc-def012345601",
+            slug: "foundation-b1-grammar-tense-choice-a1b2c3d4-e5f6a7b8",
+            kind: "grammar_tense_choice",
+            cefr_level: "B1",
+            status: "draft",
+            body: {
+              prompt: "She ___ lived here for three years.",
+              options: [
+                { id: "A", text: "has" },
+                { id: "B", text: "have" },
+              ],
+              correct_option_id: "A",
+            },
+            blind_solve_answer: { selected_option_id: "A" },
+            cefr_reasoning: "Present perfect corresponds to B1.",
+            provenance: { model: "test-model", prompt_version: "v1" },
+            node_codes: ["PRESENT_PERFECT"],
+            created_at: NOW,
+          },
+        ],
+        total: 1,
+      }),
+    ),
+  );
+
+  await page.route("**/api/v1/admin/questions**", (route) =>
+    route.fulfill(
+      json({
+        items: [
+          {
+            id: "0199a1c2-3d4e-7f80-9abc-def01234567a",
+            content_item_id: "0199a1c2-3d4e-7f80-9abc-def01234567b",
+            activity_id: "0199a1c2-3d4e-7f80-9abc-def01234567c",
+            exam_part_id: null,
+            kind: "grammar_tense_choice",
+            skill: "grammar",
+            cefr_level: "B1",
+            difficulty: null,
+            question_count: 1,
+            fingerprint:
+              "7d2b45f1e8a93102efb132a0c49876543210fedcba9876543210fedcba987654",
+            provenance: { model: "test-model" },
+            status: "published",
+            created_at: NOW,
+            updated_at: NOW,
+          },
+        ],
+        total: 1,
+        limit: 20,
+        offset: 0,
+      }),
+    ),
+  );
+}

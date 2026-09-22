@@ -4,9 +4,11 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   stubAccountApi,
   stubAuthenticated,
+  stubAuthenticatedAdmin,
   stubLearningApi,
   stubRegistration,
   stubSignedOut,
+  stubWo21Api,
 } from "../helpers/stubs";
 
 /**
@@ -203,8 +205,47 @@ test.describe("R6/R1 at 320 px", () => {
     });
   }
 
-  test("the account screens fit", async ({ page }) => {
-    await stubAuthenticated(page);
+  // The WO 21 screens: the learner's private library and the mock-test
+  // composer, in both locales.
+  for (const locale of ["en", "vi"] as const) {
+    test(`the wo21 learner screens fit in ${locale}`, async ({ page }) => {
+      await stubAuthenticated(page);
+      await stubAccountApi(page);
+      await stubLearningApi(page);
+      await stubWo21Api(page);
+
+      await page.addInitScript((value) => {
+        window.localStorage.setItem("fluentra.locale", value);
+      }, locale);
+
+      await page.goto("/my-resources");
+      await check(page, `my resources — ${locale}`);
+
+      await page.goto("/exams");
+      await page
+        .getByRole("button", { name: /Mock tests|Đề thi thử/i })
+        .click();
+      await check(page, `mock tests — ${locale}`);
+    });
+
+    test(`the wo21 admin screens fit in ${locale}`, async ({ page }) => {
+      await stubAuthenticatedAdmin(page);
+      await stubAccountApi(page);
+      await stubWo21Api(page);
+
+      await page.addInitScript((value) => {
+        window.localStorage.setItem("fluentra.locale", value);
+      }, locale);
+
+      await page.goto("/admin/review");
+      await check(page, `review queue — ${locale}`);
+
+      await page.goto("/admin/questions");
+      await check(page, `question bank — ${locale}`);
+    });
+  }
+
+  test("the account screens fit", async ({ page }) => {    await stubAuthenticated(page);
     await stubAccountApi(page);
 
     await page.goto("/settings");
