@@ -14,11 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import {
-  adminApi,
-  type Question,
-  type QuestionFilter,
-} from "../api/adminApi";
+import { adminApi, type Question, type QuestionFilter } from "../api/adminApi";
 
 /**
  * The exam question bank and its coverage report (WO 21 Stage D).
@@ -110,7 +106,9 @@ function QuestionsTab(): React.JSX.Element {
           >
             {KINDS.map((value) => (
               <option key={value} value={value}>
-                {value === "" ? t("adminQuestions.allKinds", "All kinds") : value}
+                {value === ""
+                  ? t("adminQuestions.allKinds", "All kinds")
+                  : value}
               </option>
             ))}
           </select>
@@ -136,7 +134,9 @@ function QuestionsTab(): React.JSX.Element {
           >
             {LEVELS.map((value) => (
               <option key={value} value={value}>
-                {value === "" ? t("adminQuestions.allLevels", "All levels") : value}
+                {value === ""
+                  ? t("adminQuestions.allLevels", "All levels")
+                  : value}
               </option>
             ))}
           </select>
@@ -146,7 +146,10 @@ function QuestionsTab(): React.JSX.Element {
               type="text"
               value={filter.node_code ?? ""}
               onChange={(e) => setFilterValue("node_code", e.target.value)}
-              placeholder={t("adminQuestions.nodePlaceholder", "Spine node code")}
+              placeholder={t(
+                "adminQuestions.nodePlaceholder",
+                "Spine node code",
+              )}
               className="w-full bg-transparent text-base focus:outline-none"
             />
           </label>
@@ -192,14 +195,20 @@ function QuestionsTab(): React.JSX.Element {
           <p className="text-sm">
             {error instanceof Error
               ? error.message
-              : t("adminQuestions.errorDesc", "The question bank could not be loaded.")}
+              : t(
+                  "adminQuestions.errorDesc",
+                  "The question bank could not be loaded.",
+                )}
           </p>
         </div>
       )}
 
       {isLoading ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+          <Loader2
+            className="h-6 w-6 animate-spin text-primary"
+            aria-hidden="true"
+          />
         </div>
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-border bg-card py-12 text-center text-sm text-muted-foreground">
@@ -281,14 +290,23 @@ function QuestionsTab(): React.JSX.Element {
               id="question-stats-title"
               className="flex items-center gap-2 text-lg font-bold text-text"
             >
-              <BarChart3 className="h-5 w-5 text-primary-accent" aria-hidden="true" />
+              <BarChart3
+                className="h-5 w-5 text-primary-accent"
+                aria-hidden="true"
+              />
               {t("adminQuestions.statsTitle", "Item performance")}
             </h2>
             {stats.isLoading ? (
-              <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+              <Loader2
+                className="mx-auto h-6 w-6 animate-spin text-primary"
+                aria-hidden="true"
+              />
             ) : stats.isError ? (
               <p className="text-sm text-danger-accent">
-                {t("adminQuestions.statsError", "Statistics could not be loaded.")}
+                {t(
+                  "adminQuestions.statsError",
+                  "Statistics could not be loaded.",
+                )}
               </p>
             ) : (
               <dl className="grid grid-cols-2 gap-3 text-sm">
@@ -326,7 +344,13 @@ function QuestionsTab(): React.JSX.Element {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }): React.JSX.Element {
+function Stat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}): React.JSX.Element {
   return (
     <div className="rounded-lg border border-border-subtle p-3">
       <dt className="text-xs font-semibold uppercase tracking-wider text-text-muted">
@@ -539,7 +563,10 @@ function CoverageTab(): React.JSX.Element {
 
       {coverage.isLoading ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+          <Loader2
+            className="h-6 w-6 animate-spin text-primary"
+            aria-hidden="true"
+          />
         </div>
       ) : coverage.isError ? (
         <p className="text-sm text-danger-accent">

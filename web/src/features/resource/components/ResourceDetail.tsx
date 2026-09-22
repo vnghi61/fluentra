@@ -28,7 +28,10 @@ import {
   statusLabelKey,
   statusTone,
 } from "../model/resourceStatus";
-import { useDeleteResource, useStartResourcePractice } from "../hooks/useResources";
+import {
+  useDeleteResource,
+  useStartResourcePractice,
+} from "../hooks/useResources";
 
 function findRendition(
   resource: Resource,
@@ -83,7 +86,10 @@ function ResourcePreview({
         src={reachableStorageUrl(audio.url)}
         className="w-full"
       >
-        {t("resources.audioUnsupported", "Your browser cannot play this audio.")}
+        {t(
+          "resources.audioUnsupported",
+          "Your browser cannot play this audio.",
+        )}
       </audio>
     ) : null;
   }
@@ -100,7 +106,10 @@ function ResourcePreview({
         {...(poster?.url && { poster: reachableStorageUrl(poster.url) })}
         className="max-h-96 w-full rounded-xl border border-border-subtle"
       >
-        {t("resources.videoUnsupported", "Your browser cannot play this video.")}
+        {t(
+          "resources.videoUnsupported",
+          "Your browser cannot play this video.",
+        )}
       </video>
     ) : null;
   }
@@ -305,7 +314,10 @@ export function ResourceDetail({
         <details className="group rounded-xl border border-border-subtle bg-surface-card">
           <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-2 p-4 text-sm font-medium text-text">
             <span className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary-accent" aria-hidden="true" />
+              <FileText
+                className="h-4 w-4 text-primary-accent"
+                aria-hidden="true"
+              />
               {extraction.source === "transcript"
                 ? t("resources.transcriptTitle", "Transcript")
                 : t("resources.extractedTitle", "Extracted text")}
@@ -343,7 +355,10 @@ export function ResourceDetail({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-0.5">
               <h2 className="flex items-center gap-2 text-sm font-semibold text-text">
-                <Sparkles className="h-4 w-4 text-primary-accent" aria-hidden="true" />
+                <Sparkles
+                  className="h-4 w-4 text-primary-accent"
+                  aria-hidden="true"
+                />
                 {t("resources.practiceTitle", "Practice from this file")}
               </h2>
               <p className="text-xs text-text-muted">
@@ -376,7 +391,10 @@ export function ResourceDetail({
               role="alert"
               className="flex items-start gap-2 text-sm text-danger-accent"
             >
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <AlertCircle
+                className="mt-0.5 h-4 w-4 shrink-0"
+                aria-hidden="true"
+              />
               <span>
                 {startPractice.error instanceof Error
                   ? startPractice.error.message

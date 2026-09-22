@@ -21,8 +21,7 @@ export type ResourceClassification =
   components["schemas"]["ResourceClassification"];
 export type ClassificationNode = components["schemas"]["ClassificationNode"];
 export type ResourcePracticeSet = components["schemas"]["ResourcePracticeSet"];
-export type ResourcePracticeActivity =
-  components["schemas"]["LessonActivity"];
+export type ResourcePracticeActivity = components["schemas"]["LessonActivity"];
 
 /**
  * The types a learner may upload: `resource/domain/mime.go`'s allow-list,
@@ -116,9 +115,7 @@ export const resourceApi = {
 
   /** The practice generated from this file. */
   getResourcePractice(id: string): Promise<ResourcePracticeSet> {
-    return apiFetch<ResourcePracticeSet>(
-      `/api/v1/me/resources/${id}/practice`,
-    );
+    return apiFetch<ResourcePracticeSet>(`/api/v1/me/resources/${id}/practice`);
   },
 };
 

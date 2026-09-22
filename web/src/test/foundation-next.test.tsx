@@ -88,9 +88,7 @@ describe("FoundationNextCard", () => {
 
     await renderCard();
 
-    expect(
-      await screen.findByText("Present Continuous"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Present Continuous")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Start this topic/i }),
     ).toHaveAttribute("href", "/foundation/topics/PRESENT_CONTINUOUS");
@@ -99,10 +97,7 @@ describe("FoundationNextCard", () => {
   it("renders nothing when no topics are published yet", async () => {
     server.use(
       http.get("/api/v1/me/foundation/next", () =>
-        HttpResponse.json(
-          { title: "Not Found", status: 404 },
-          { status: 404 },
-        ),
+        HttpResponse.json({ title: "Not Found", status: 404 }, { status: 404 }),
       ),
     );
 

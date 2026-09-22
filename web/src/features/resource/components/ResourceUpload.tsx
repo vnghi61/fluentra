@@ -3,10 +3,7 @@ import { useTranslation } from "react-i18next";
 import { AlertCircle, Loader2, UploadCloud } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  RESOURCE_ACCEPT,
-  RESOURCE_MAX_BYTES,
-} from "../api/resourceApi";
+import { RESOURCE_ACCEPT, RESOURCE_MAX_BYTES } from "../api/resourceApi";
 import { useUploadResource } from "../hooks/useResources";
 
 export interface ResourceUploadProps {
@@ -89,10 +86,7 @@ export function ResourceUpload({
             aria-hidden="true"
           />
         ) : (
-          <UploadCloud
-            className="h-8 w-8 text-primary"
-            aria-hidden="true"
-          />
+          <UploadCloud className="h-8 w-8 text-primary" aria-hidden="true" />
         )}
         <div className="space-y-1">
           <p className="text-sm font-medium text-text">

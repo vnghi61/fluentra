@@ -28,7 +28,10 @@ export {
   useStartResourcePractice,
   quotaUsage,
 } from "./hooks/useResources";
-export { ResourceUpload, type ResourceUploadProps } from "./components/ResourceUpload";
+export {
+  ResourceUpload,
+  type ResourceUploadProps,
+} from "./components/ResourceUpload";
 export { ResourceList, ResourceQuota } from "./components/ResourceList";
 export { ResourceDetail } from "./components/ResourceDetail";
 export {

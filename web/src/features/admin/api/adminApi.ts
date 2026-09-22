@@ -251,7 +251,9 @@ export const adminApi = {
     if (params.limit !== undefined) sp.set("limit", params.limit.toString());
     if (params.offset !== undefined) sp.set("offset", params.offset.toString());
     const qs = sp.toString();
-    return apiFetch<QuestionPage>(`/api/v1/admin/questions${qs ? `?${qs}` : ""}`);
+    return apiFetch<QuestionPage>(
+      `/api/v1/admin/questions${qs ? `?${qs}` : ""}`,
+    );
   },
 
   /** Empirical difficulty and discrimination for one bank item. */

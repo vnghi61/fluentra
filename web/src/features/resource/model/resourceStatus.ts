@@ -69,6 +69,7 @@ export function formatBytes(bytes: number | null | undefined): string {
     units.length - 1,
   );
   const value = bytes / 1024 ** index;
-  const rounded = value >= 10 || index === 0 ? Math.round(value) : value.toFixed(1);
+  const rounded =
+    value >= 10 || index === 0 ? Math.round(value) : value.toFixed(1);
   return `${rounded} ${units[index]}`;
 }

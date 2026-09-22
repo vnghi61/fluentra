@@ -14,10 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExerciseMultipleChoice } from "@/features/learning/components/Runner/ExerciseMultipleChoice";
 import { cn } from "@/lib/utils";
-import {
-  adminApi,
-  type AdminReviewQueueItem,
-} from "../api/adminApi";
+import { adminApi, type AdminReviewQueueItem } from "../api/adminApi";
 
 /**
  * The machine-generated drafts awaiting a person (WO 21 Stage C).
@@ -222,9 +219,7 @@ export function AdminReviewQueue(): React.JSX.Element {
           >
             {KINDS.map((value) => (
               <option key={value} value={value}>
-                {value === ""
-                  ? t("adminReview.allKinds", "All kinds")
-                  : value}
+                {value === "" ? t("adminReview.allKinds", "All kinds") : value}
               </option>
             ))}
           </select>
@@ -421,7 +416,10 @@ export function AdminReviewQueue(): React.JSX.Element {
 
             <label className="block space-y-1">
               <span className="text-sm font-medium text-text">
-                {t("adminReview.noteLabel", "Note (required to request changes)")}
+                {t(
+                  "adminReview.noteLabel",
+                  "Note (required to request changes)",
+                )}
               </span>
               <textarea
                 value={note}

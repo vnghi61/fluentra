@@ -1,12 +1,25 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
-import { CheckCircle2, ArrowRightCircle, Circle, BookOpen, Award, Lock } from "lucide-react";
+import {
+  CheckCircle2,
+  ArrowRightCircle,
+  Circle,
+  BookOpen,
+  Award,
+  Lock,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { FoundationPathNode } from "../../api/foundation";
 import { LockedBadge, pathNodeState } from "./FoundationNextCard";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 
 export interface FoundationPathViewProps {
   items: FoundationPathNode[];
@@ -28,15 +41,13 @@ export function FoundationPathView({
   // unmastered node waits on it. Computed in one pass rather than while
   // rendering the list.
   const nodeStates = React.useMemo(() => {
-    return items
-      .reduce<{ states: NodeState[]; nextSeen: boolean }>(
-        (acc, node) => ({
-          states: [...acc.states, pathNodeState(node, acc.nextSeen)],
-          nextSeen: acc.nextSeen || node.next,
-        }),
-        { states: [], nextSeen: false },
-      )
-      .states;
+    return items.reduce<{ states: NodeState[]; nextSeen: boolean }>(
+      (acc, node) => ({
+        states: [...acc.states, pathNodeState(node, acc.nextSeen)],
+        nextSeen: acc.nextSeen || node.next,
+      }),
+      { states: [], nextSeen: false },
+    ).states;
   }, [items]);
 
   if (isLoading) {
@@ -48,7 +59,10 @@ export function FoundationPathView({
         </CardHeader>
         <CardContent className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center space-x-4 p-4 border rounded-lg bg-surface-subtle animate-pulse">
+            <div
+              key={i}
+              className="flex items-center space-x-4 p-4 border rounded-lg bg-surface-subtle animate-pulse"
+            >
               <div className="h-10 w-10 rounded-full bg-muted" />
               <div className="space-y-2 flex-1">
                 <div className="h-4 w-1/3 bg-muted rounded" />
@@ -66,7 +80,12 @@ export function FoundationPathView({
       <Card className="border border-border-subtle bg-surface">
         <CardContent className="p-6 text-center text-text-muted">
           <BookOpen className="h-10 w-10 mx-auto text-text-muted mb-2 opacity-60" />
-          <p>{t("foundation.path.empty", "No prerequisite path recorded for this topic.")}</p>
+          <p>
+            {t(
+              "foundation.path.empty",
+              "No prerequisite path recorded for this topic.",
+            )}
+          </p>
         </CardContent>
       </Card>
     );
@@ -144,7 +163,10 @@ export function FoundationPathView({
                           Step {index + 1}
                         </span>
                         {node.cefr_level && (
-                          <Badge variant="secondary" className="text-xs px-2 py-0">
+                          <Badge
+                            variant="secondary"
+                            className="text-xs px-2 py-0"
+                          >
                             {node.cefr_level}
                           </Badge>
                         )}
@@ -160,7 +182,10 @@ export function FoundationPathView({
                         )}
                         {isLocked && <LockedBadge />}
                         {isTarget && (
-                          <Badge variant="outline" className="text-xs border-primary/50 text-primary">
+                          <Badge
+                            variant="outline"
+                            className="text-xs border-primary/50 text-primary"
+                          >
                             {t("foundation.target", "Target")}
                           </Badge>
                         )}
@@ -174,7 +199,9 @@ export function FoundationPathView({
                           {node.label || node.code}
                         </Link>
                       </h4>
-                      <p className="text-xs font-mono text-text-muted">{node.code}</p>
+                      <p className="text-xs font-mono text-text-muted">
+                        {node.code}
+                      </p>
                     </div>
 
                     {/* Mastery Stats */}

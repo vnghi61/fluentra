@@ -39,7 +39,8 @@ const validatedResource = {
     source: "pdf_text",
     char_count: 1540,
     truncated: false,
-    excerpt: "Unit 1: Present Perfect Tense. She has lived here for three years.",
+    excerpt:
+      "Unit 1: Present Perfect Tense. She has lived here for three years.",
   },
   classification: {
     cefr_estimate: "B1",
@@ -53,7 +54,8 @@ const rejectedResource = {
   id: "0199a1c2-3d4e-7f80-9abc-def0123456a2",
   title: "scan.png",
   status: "rejected",
-  failure_reason: "We could not read this file. Its contents did not match its type.",
+  failure_reason:
+    "We could not read this file. Its contents did not match its type.",
   detected_mime: "image/png",
   renditions: [],
   extraction: undefined,
@@ -132,9 +134,7 @@ describe("MyResourcesPage", () => {
     // A validated file with no renditions yet is still being processed, and a
     // rejection says why rather than showing a bare status.
     expect(screen.getAllByText("Processing").length).toBeGreaterThan(0);
-    expect(
-      screen.getByText(/did not match its type/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/did not match its type/i)).toBeInTheDocument();
     expect(screen.getByText(/of 50 files/)).toBeInTheDocument();
   });
 
@@ -150,9 +150,9 @@ describe("MyResourcesPage", () => {
     Object.defineProperty(file, "size", { value: 51 * 1024 * 1024 });
     fireEvent.change(input as HTMLInputElement, { target: { files: [file] } });
 
-    expect(
-      await screen.findByRole("alert"),
-    ).toHaveTextContent(/50 MB or smaller/);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /50 MB or smaller/,
+    );
   });
 });
 

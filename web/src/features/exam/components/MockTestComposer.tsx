@@ -147,7 +147,10 @@ export function MockTestComposer(): React.JSX.Element {
   if (versions.isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+        <Loader2
+          className="h-6 w-6 animate-spin text-primary"
+          aria-hidden="true"
+        />
       </div>
     );
   }
@@ -160,10 +163,7 @@ export function MockTestComposer(): React.JSX.Element {
       >
         <AlertCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
         <p className="text-sm">
-          {t(
-            "mockTest.versionsError",
-            "Exam versions could not be loaded.",
-          )}
+          {t("mockTest.versionsError", "Exam versions could not be loaded.")}
         </p>
       </div>
     );
@@ -308,7 +308,10 @@ export function MockTestComposer(): React.JSX.Element {
             role="alert"
             className="flex items-start gap-2 rounded-lg border border-danger/20 bg-danger/10 p-3 text-sm text-danger-accent"
           >
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <AlertCircle
+              className="mt-0.5 h-4 w-4 shrink-0"
+              aria-hidden="true"
+            />
             <span>{error}</span>
           </p>
         )}
@@ -337,7 +340,10 @@ export function MockTestComposer(): React.JSX.Element {
           <ul className="space-y-1 text-sm text-text">
             {composed.composition.map((part) => (
               <li key={part.part_id} className="flex items-center gap-2">
-                <Layers className="h-3.5 w-3.5 text-text-muted" aria-hidden="true" />
+                <Layers
+                  className="h-3.5 w-3.5 text-text-muted"
+                  aria-hidden="true"
+                />
                 {t("mockTest.partItems", {
                   count: part.activity_ids.length,
                   defaultValue: `${part.activity_ids.length} items`,
@@ -346,7 +352,11 @@ export function MockTestComposer(): React.JSX.Element {
             ))}
           </ul>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => void sit()} isLoading={isStarting} className="gap-2">
+            <Button
+              onClick={() => void sit()}
+              isLoading={isStarting}
+              className="gap-2"
+            >
               <Play className="h-4 w-4" aria-hidden="true" />
               {t("mockTest.sitBtn", "Sit this test")}
             </Button>

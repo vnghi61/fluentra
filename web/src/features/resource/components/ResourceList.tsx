@@ -114,7 +114,10 @@ export function ResourceList({
   return (
     <ul className="space-y-2">
       {resources.map((resource) => {
-        const family = resource.kind === "url" ? "url" : resourceFamily(resource.detected_mime ?? "");
+        const family =
+          resource.kind === "url"
+            ? "url"
+            : resourceFamily(resource.detected_mime ?? "");
         const processing =
           resource.status === "pending" ||
           resource.status === "uploaded" ||

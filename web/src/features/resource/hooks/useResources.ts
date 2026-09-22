@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { renditionsPending, resourceApi, type Resource } from "../api/resourceApi";
+import {
+  renditionsPending,
+  resourceApi,
+  type Resource,
+} from "../api/resourceApi";
 import { resourceKeys } from "../api/keys";
 
 /**

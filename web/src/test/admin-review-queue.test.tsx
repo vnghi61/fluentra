@@ -61,15 +61,18 @@ describe("AdminReviewQueue", () => {
       http.get("/api/v1/admin/review-queue", () =>
         HttpResponse.json({ items: [item], total: 1 }),
       ),
-      http.post("/api/v1/admin/content/:id/review", async ({ request, params }) => {
-        const body = (await request.json()) as {
-          decision: string;
-          comments?: string;
-        };
-        decisions.push(body);
-        expect(params.id).toBe(item.item_id);
-        return HttpResponse.json({ ...item, status: "approved" });
-      }),
+      http.post(
+        "/api/v1/admin/content/:id/review",
+        async ({ request, params }) => {
+          const body = (await request.json()) as {
+            decision: string;
+            comments?: string;
+          };
+          decisions.push(body);
+          expect(params.id).toBe(item.item_id);
+          return HttpResponse.json({ ...item, status: "approved" });
+        },
+      ),
       http.post("/api/v1/admin/content/:id/publish", ({ params }) => {
         published.push(String(params.id));
         return HttpResponse.json({ ...item, status: "published" });
@@ -91,7 +94,9 @@ describe("AdminReviewQueue", () => {
     // The learner's renderer, with the key revealed.
     expect(screen.getByText(/She ___ lived here/)).toBeInTheDocument();
     expect(screen.getByText("has")).toBeInTheDocument();
-    expect(screen.getByText(/Present perfect corresponds to B1/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Present perfect corresponds to B1/),
+    ).toBeInTheDocument();
     expect(screen.getByText(/test-model/)).toBeInTheDocument();
   });
 

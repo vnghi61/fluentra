@@ -82,7 +82,12 @@ describe("AdminQuestionBank", () => {
 
     server.use(
       http.get("/api/v1/admin/questions", () =>
-        HttpResponse.json({ items: [question], total: 1, limit: 20, offset: 0 }),
+        HttpResponse.json({
+          items: [question],
+          total: 1,
+          limit: 20,
+          offset: 0,
+        }),
       ),
       http.get("/api/v1/admin/questions/:id/stats", () =>
         HttpResponse.json({
@@ -156,9 +161,7 @@ describe("AdminQuestionBank", () => {
       count: 5,
       node_codes: ["PRESENT_PERFECT", "PAST_SIMPLE"],
     });
-    expect(
-      await screen.findByText(/drafts generated/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/drafts generated/i)).toBeInTheDocument();
   });
 
   it("shows the coverage number and marks the bottleneck part", async () => {

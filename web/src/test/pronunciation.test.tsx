@@ -215,7 +215,9 @@ describe("PronounceButton", () => {
       );
       await userEvent.click(screen.getByRole("button"));
 
-      expect(FakeAudio.instances[0]?.src).toBe("https://cdn.example/eat-us.mp3");
+      expect(FakeAudio.instances[0]?.src).toBe(
+        "https://cdn.example/eat-us.mp3",
+      );
       act(() => FakeAudio.instances[0]?.onplaying?.());
 
       // The recording played, so synthesis was never asked.
@@ -290,7 +292,8 @@ describe("PronounceButton", () => {
                 },
                 {
                   audio: "https://api.example/eat-us.mp3",
-                  sourceUrl: "https://commons.wikimedia.org/wiki/File:En-us-eat.ogg",
+                  sourceUrl:
+                    "https://commons.wikimedia.org/wiki/File:En-us-eat.ogg",
                   license: { name: "BY-SA 3.0" },
                 },
               ],

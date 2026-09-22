@@ -72,10 +72,8 @@ export function PracticePage(): React.JSX.Element {
           )}
         </p>
       </header>
-
       {/* Daily Practice Set */}
       <DailyPracticeCard />
-
       {!signedIn ? (
         <>
           <GuestNotice />
@@ -133,7 +131,6 @@ export function PracticePage(): React.JSX.Element {
       ) : (
         <ReviewQueueCard dueCount={due.data?.due_count ?? 0} />
       )}
-
       {/*
         The forecast is supporting detail, so it fails quietly: a learner whose
         queue loaded does not need an error banner because a chart did not.
@@ -143,7 +140,6 @@ export function PracticePage(): React.JSX.Element {
       ) : forecast.data ? (
         <ForecastStrip days={forecast.data.days} />
       ) : null}
-
       {/*
         The drills generated from the learner's own dictionary.
 
@@ -186,7 +182,6 @@ export function PracticePage(): React.JSX.Element {
           </CardFooter>
         </Card>
       )}
-
       {/*
         This card said "Word lists are not here yet" for as long as there was no
         screen behind it. There is one now, so it says what it does instead of
@@ -219,7 +214,6 @@ export function PracticePage(): React.JSX.Element {
           </Link>
         </CardFooter>
       </Card>
-
       {/*
         The learner's own files.
 
@@ -254,8 +248,8 @@ export function PracticePage(): React.JSX.Element {
           </Link>
         </CardFooter>
       </Card>
-
-      {/* Reading Comprehension Card */}      <Card>
+      {/* Reading Comprehension Card */}{" "}
+      <Card>
         <CardHeader>
           <div className="flex items-center gap-2 text-text-muted mb-1">
             <BookOpen className="h-5 w-5" aria-hidden="true" />
@@ -282,7 +276,6 @@ export function PracticePage(): React.JSX.Element {
           </Link>
         </CardFooter>
       </Card>
-
       {/*
         Listening Practice Card.
 
@@ -325,7 +318,6 @@ export function PracticePage(): React.JSX.Element {
           </Link>
         </CardFooter>
       </Card>
-
       {/* Writing Prompts & Essays Card */}
       <Card>
         <CardHeader>
@@ -354,7 +346,6 @@ export function PracticePage(): React.JSX.Element {
           </Link>
         </CardFooter>
       </Card>
-
       {/*
         Speaking Practice Card.
 

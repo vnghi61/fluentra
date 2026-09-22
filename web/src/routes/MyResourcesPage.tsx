@@ -4,7 +4,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { AlertCircle, FileText, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ResourceList,
@@ -66,7 +71,10 @@ export function MyResourcesPage(): React.JSX.Element {
         <Card className="border-danger/30 p-6 text-center">
           <CardHeader className="space-y-2">
             <div className="flex justify-center">
-              <AlertCircle className="h-8 w-8 text-danger-accent" aria-hidden="true" />
+              <AlertCircle
+                className="h-8 w-8 text-danger-accent"
+                aria-hidden="true"
+              />
             </div>
             <CardTitle>
               {t("resources.errorTitle", "Unable to load your resources")}

@@ -33,8 +33,10 @@ describe("flashcardContent audio", () => {
       card({
         word: "eat",
         definition: "Put food into the mouth.",
-        audio_url: "https://api.dictionaryapi.dev/media/pronunciations/en/eat-us.mp3",
-        audio_attribution: "https://commons.wikimedia.org/wiki/File:En-us-eat.ogg",
+        audio_url:
+          "https://api.dictionaryapi.dev/media/pronunciations/en/eat-us.mp3",
+        audio_attribution:
+          "https://commons.wikimedia.org/wiki/File:En-us-eat.ogg",
         audio_licence: "BY-SA 3.0",
       }),
     );
@@ -53,7 +55,8 @@ describe("flashcardContent audio", () => {
       card({
         word: "eat",
         definition: "Put food into the mouth.",
-        audio_url: "https://api.dictionaryapi.dev/media/pronunciations/en/eat-us.mp3",
+        audio_url:
+          "https://api.dictionaryapi.dev/media/pronunciations/en/eat-us.mp3",
       }),
     );
 

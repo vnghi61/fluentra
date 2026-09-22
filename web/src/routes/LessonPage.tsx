@@ -694,10 +694,7 @@ export function LessonPage(): React.JSX.Element {
               {isDaily
                 ? t("practice.daily.errorTitle", "Unable to Load Practice Set")
                 : isResourcePractice
-                  ? t(
-                      "resources.practiceErrorTitle",
-                      "Unable to Load Practice",
-                    )
+                  ? t("resources.practiceErrorTitle", "Unable to Load Practice")
                   : t("learn.errorTitle", "Unable to Load Lesson")}
             </CardTitle>
             <CardDescription>
@@ -924,10 +921,7 @@ export function LessonPage(): React.JSX.Element {
                 },
               )
             : isResourcePractice
-              ? t(
-                  "resources.practiceRunnerTitle",
-                  "Practice from your file",
-                )
+              ? t("resources.practiceRunnerTitle", "Practice from your file")
               : (lesson?.title ?? "")
         }
         currentStep={currentIndex + 1}
