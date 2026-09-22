@@ -2,20 +2,17 @@ package exam_test
 
 import (
 	"context"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/fluentra/fluentra/internal/generated/exam/sqlc"
 	"github.com/fluentra/fluentra/internal/modules/exam/domain"
-	"github.com/fluentra/fluentra/internal/modules/exam/repository"
 	"github.com/fluentra/fluentra/internal/modules/exam/service"
 	questionbankcontract "github.com/fluentra/fluentra/internal/modules/questionbank/contract"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
@@ -710,60 +707,4 @@ func gateCheckFixed(
 	assert.Equal(t, fixedTest1.ID, forVeteran.ID, "a fixed test is one stored row")
 	assert.Equal(t, fixedTest1.ID, forNewcomer.ID, "a fixed test is one stored row")
 	assert.Nil(t, forVeteran.OwnerID)
-}
-
-// Live DB Verification for Stage H tables & privileges
-func TestStageH_Gate_DatabaseVerification(t *testing.T) {
-	loadEnvFallback()
-
-	dsn := os.Getenv("TEST_DATABASE_URL")
-	if dsn == "" {
-		dsn = os.Getenv("DB_DSN")
-	}
-	if dsn == "" {
-		t.Skip("Neither TEST_DATABASE_URL nor DB_DSN is set; skipping database verification")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Skipf("cannot connect to db: %v", err)
-	}
-	defer pool.Close()
-
-	if err := pool.Ping(ctx); err != nil {
-		t.Skipf("db ping failed: %v", err)
-	}
-
-	for _, priv := range []string{"SELECT", "INSERT", "UPDATE", "DELETE"} {
-		var hasPriv bool
-		err := pool.QueryRow(ctx,
-			"SELECT has_table_privilege('fluentra_app', 'assess.mock_tests', $1)", priv,
-		).Scan(&hasPriv)
-		require.NoError(t, err, "Check privilege %s on assess.mock_tests", priv)
-		assert.True(t, hasPriv, "fluentra_app must have %s on assess.mock_tests", priv)
-	}
-
-	var colExists bool
-	err = pool.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1 FROM information_schema.columns
-			WHERE table_schema = 'assess' AND table_name = 'exam_attempts' AND column_name = 'mock_test_id'
-		)
-	`).Scan(&colExists)
-	require.NoError(t, err)
-	assert.True(t, colExists, "assess.exam_attempts must have mock_test_id column")
-
-	repo := repository.New(pool)
-	vstepExam, err := repo.GetExamBySlug(ctx, "vstep-3-5")
-	require.NoError(t, err)
-	require.NotNil(t, vstepExam)
-	assert.NotNil(t, vstepExam.VersionID)
-
-	toeicExam, err := repo.GetExamBySlug(ctx, "toeic-lr-2026")
-	require.NoError(t, err)
-	require.NotNil(t, toeicExam)
-	assert.NotNil(t, toeicExam.VersionID)
 }

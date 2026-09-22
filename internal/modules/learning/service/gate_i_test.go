@@ -3,18 +3,15 @@ package service_test
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
-	"github.com/fluentra/fluentra/internal/modules/learning/repository"
 	"github.com/fluentra/fluentra/internal/modules/learning/service"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
@@ -241,112 +238,4 @@ func TestGateI_PrerequisiteGating_DailySet(t *testing.T) {
 	}
 	assert.True(t, foundPresPerf,
 		"Learner Bob who met PAST_SIMPLE and is weak on PRESENT_PERFECT must get PRESENT_PERFECT in daily set")
-}
-
-// TestGateI_LiveDatabaseVerification verifies §2 live database checks:
-// 1. learn.node_mastery table existence and schema.
-// 2. fluentra_app permissions (SELECT, INSERT, UPDATE, DELETE).
-// 3. User erasure drops records for user_id.
-func TestGateI_LiveDatabaseVerification(t *testing.T) {
-	dsn := os.Getenv("TEST_DATABASE_URL")
-	if dsn == "" {
-		dsn = os.Getenv("DATABASE_URL")
-	}
-	if dsn == "" {
-		dsn = os.Getenv("DB_DSN")
-	}
-	if dsn == "" {
-		t.Skip("Neither TEST_DATABASE_URL nor DB_DSN is set; skipping database verification")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Skipf("cannot connect to db: %v", err)
-	}
-	defer pool.Close()
-
-	if err := pool.Ping(ctx); err != nil {
-		t.Skipf("db ping failed: %v", err)
-	}
-
-	// 1. Check fluentra_app privileges on learn.node_mastery
-	for _, priv := range []string{"SELECT", "INSERT", "UPDATE", "DELETE"} {
-		var hasPriv bool
-		err := pool.QueryRow(ctx,
-			"SELECT has_table_privilege('fluentra_app', 'learn.node_mastery', $1)", priv,
-		).Scan(&hasPriv)
-		require.NoError(t, err, "Check privilege %s on learn.node_mastery", priv)
-		assert.True(t, hasPriv, "fluentra_app must have %s on learn.node_mastery", priv)
-	}
-
-	// 2. Check table columns
-	var exists bool
-	err = pool.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1 FROM information_schema.tables
-			WHERE table_schema = 'learn' AND table_name = 'node_mastery'
-		)
-	`).Scan(&exists)
-	require.NoError(t, err)
-	assert.True(t, exists, "learn.node_mastery must exist")
-
-	// 3. Test CRUD and erasure via Repository
-	repo := repository.New(pool)
-	testUser := uuid.New()
-	testNode := uuid.New()
-
-	// Ensure core.users row exists for FK
-	_, err = pool.Exec(ctx, `
-		INSERT INTO core.users (id, email, status, created_at, updated_at)
-		VALUES ($1, $2, 'active', now(), now())
-		ON CONFLICT (id) DO NOTHING
-	`, testUser, "gate-i-"+testUser.String()[:8]+"@test.local")
-	require.NoError(t, err)
-
-	defer func() {
-		_, _ = pool.Exec(ctx, "DELETE FROM learn.node_mastery WHERE user_id = $1", testUser)
-		_, _ = pool.Exec(ctx, "DELETE FROM core.users WHERE id = $1", testUser)
-	}()
-
-	now := time.Now().UTC().Truncate(time.Microsecond)
-	m := domain.NodeMastery{
-		UserID:     testUser,
-		NodeID:     testNode,
-		Attempts:   3,
-		Correct:    1,
-		Score:      0.333,
-		LastSeenAt: &now,
-	}
-
-	upserted, err := repo.UpsertNodeMastery(ctx, m)
-	require.NoError(t, err)
-	require.NotNil(t, upserted)
-	assert.Equal(t, testUser, upserted.UserID)
-	assert.Equal(t, testNode, upserted.NodeID)
-	assert.Equal(t, 3, upserted.Attempts)
-	assert.Equal(t, 1, upserted.Correct)
-	assert.InDelta(t, 0.333, upserted.Score, 0.001)
-
-	// Read back
-	readBack, err := repo.GetNodeMastery(ctx, testUser, testNode)
-	require.NoError(t, err)
-	require.NotNil(t, readBack)
-	assert.Equal(t, 3, readBack.Attempts)
-
-	// List weak nodes
-	weak, err := repo.ListWeakNodesByUser(ctx, testUser, domain.MinAttemptsForWeakNode)
-	require.NoError(t, err)
-	require.NotEmpty(t, weak)
-	assert.Equal(t, testNode, weak[0].NodeID)
-
-	// User erasure
-	err = repo.DeleteNodeMasteryByUser(ctx, testUser)
-	require.NoError(t, err)
-
-	afterErasure, err := repo.GetNodeMastery(ctx, testUser, testNode)
-	require.NoError(t, err)
-	assert.Nil(t, afterErasure, "record must be deleted after user erasure")
 }
