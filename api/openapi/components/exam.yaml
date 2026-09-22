@@ -310,7 +310,7 @@ BlueprintSummary:
 
 ExamVersion:
   type: object
-  required: [id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, blueprints]
+  required: [id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, blueprints, distinct_tests_possible, parts]
   properties:
     id:
       type: string
@@ -348,6 +348,38 @@ ExamVersion:
       type: array
       items:
         $ref: '#/BlueprintSummary'
+    distinct_tests_possible:
+      type: integer
+      description: >-
+        How many distinct tests the published bank can compose for this version
+        (the coverage report's number). Shown to learners so the product never
+        implies more tests than the bank holds.
+      example: 2
+    parts:
+      type: array
+      description: >-
+        The version's structure, so a custom composition can name the parts it
+        wants. Counts of available bank items are not here; those stay in the
+        admin coverage report.
+      items:
+        type: object
+        required: [part_number, section, kind, question_count, group_size]
+        properties:
+          part_number:
+            type: integer
+            example: 1
+          section:
+            type: string
+            example: listening
+          kind:
+            type: string
+            example: photo_description
+          question_count:
+            type: integer
+            example: 6
+          group_size:
+            type: integer
+            example: 1
 
 ExamVersionListResponse:
   type: object

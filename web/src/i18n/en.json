@@ -1221,6 +1221,8 @@
   },
   "exam": {
     "title": "Mock exam",
+    "tabMockTests": "Mock tests",
+    "tabTemplates": "Mock Exams",
     "mode": {
       "exam": "Exam mode",
       "practice": "Practice mode"
@@ -1445,6 +1447,33 @@
       "loading": "Loading your result…",
       "loadFailed": "The result could not be loaded."
     }
+  },
+  "mockTest": {
+    "blueprint": "Blueprint",
+    "composeBtn": "Compose the test",
+    "composeFailed": "The test could not be composed.",
+    "composeNew": "Compose a new test",
+    "composed": "Your test is ready.",
+    "distinctTests": "{{count}} distinct tests available",
+    "mode": "Mode",
+    "modeCustom": "Custom parts",
+    "modeCustomHint": "Choose the parts to include; the rest of the test is left out.",
+    "modeFixed": "Fixed",
+    "modeFixedHint": "A stored composition shared by everyone.",
+    "modeRandom": "Random",
+    "modeRandomHint": "A fresh draw from the published bank, preferring items you have not seen.",
+    "modeWeak": "Weak topics",
+    "modeWeakHint": "Weighted towards the spine nodes you are weakest at.",
+    "partItems": "{{count}} items",
+    "parts": "Parts",
+    "retakeNote": "Sitting it again replays this same test; compose a new one to draw different items.",
+    "sitBtn": "Sit this test",
+    "startFailed": "The sitting could not be started.",
+    "subtitle": "Compose a test from the published bank, sit it under the real timer, and read the report. A retake replays the same test; a new test draws again.",
+    "title": "Mock tests",
+    "totalMinutes": "{{minutes}} minutes",
+    "version": "Exam version",
+    "versionsError": "Exam versions could not be loaded."
   },
   "placement": {
     "loading": "Loading your placement test…",

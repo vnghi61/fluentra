@@ -534,10 +534,10 @@ deps:
   m_questionbank:            { mayDependOn: [m_questionbank_domain, m_questionbank_repository, m_questionbank_service, m_questionbank_http, c_questionbank, c_content, c_lesson, c_learning, c_rbac, g_questionbank, p_ai, p_search, p_telemetry] }
   m_exam_domain:     { mayDependOn: [c_exam] }
   m_exam_repository: { mayDependOn: [m_exam_domain, c_exam, g_exam] }
-  m_exam_service:    { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_job, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, c_questionbank, g_exam, p_job, p_telemetry], anyVendorDeps: true }
+  m_exam_service:    { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_job, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, c_questionbank, c_content, g_exam, p_job, p_telemetry], anyVendorDeps: true }
   m_exam_job:        { mayDependOn: [m_exam_service, c_exam, p_job, p_telemetry], anyVendorDeps: true }
   m_exam_http:       { mayDependOn: [m_exam_domain, m_exam_service, c_exam] }
-  m_exam:            { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_service, m_exam_job, m_exam_http, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, c_questionbank, g_exam, p_job, p_ai, p_telemetry] }
+  m_exam:            { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_service, m_exam_job, m_exam_http, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, c_questionbank, c_content, g_exam, p_job, p_ai, p_telemetry] }
   # c_user is on this list and is not in MODULE_INDEX's original arrow set. It
   # is there for one field: the learner's timezone. BR-GAMIFICATION-02 puts the
   # streak day boundary in the learner's own zone, and without reading it every

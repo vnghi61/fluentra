@@ -1691,6 +1691,7 @@
       "A fixed test is one stored composition shared by everyone, composed without anyone's exposures.",
       "A part is filled with exactly its question count, in whole groups; a part the bank cannot fill is refused with the part named.",
       "The number of distinct tests shown is the coverage report's number.",
+      "A mock test's composition is stored on the attempt and served from there, so its activity configs are redacted at composition time: a key that reaches the composition reaches the learner.",
       "A practice sitting may opt out of a visible time limit; the server still applies a generous backstop deadline so an abandoned sitting cannot block a future attempt indefinitely."
     ],
     "errors": [

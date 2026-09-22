@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { ApiError, apiFetch } from "@/api/client";
 import { reachableStorageUrl } from "@/lib/storage-url";
+import type { components } from "@/types/api";
 import type {
   CompleteSectionResult,
   ExamAttempt,
@@ -17,6 +18,14 @@ import type {
   SubmitExamResult,
 } from "../types";
 import { examKeys } from "./keys";
+
+/** The mock-test surface, typed from the spec rather than by hand. */
+export type ExamVersionListResponse =
+  components["schemas"]["ExamVersionListResponse"];
+export type ExamVersion = components["schemas"]["ExamVersion"];
+export type MockTest = components["schemas"]["MockTest"];
+export type ComposeMockTestRequest =
+  components["schemas"]["ComposeMockTestRequest"];
 
 /** The problem code of a failed request, if the server sent one. */
 export function problemCode(err: unknown): string | undefined {
@@ -134,12 +143,44 @@ export const examApi = {
       method: "DELETE",
     });
   },
+
+  /** Current exam versions with their blueprints and how many tests exist. */
+  async listExamVersions(): Promise<ExamVersionListResponse> {
+    return apiFetch<ExamVersionListResponse>("/api/v1/exam-versions");
+  },
+
+  /**
+   * Compose a mock test from the bank. A bank that cannot fill a part answers
+   * 409 with the part that is short in the problem's detail.
+   */
+  async composeMockTest(req: ComposeMockTestRequest): Promise<MockTest> {
+    return apiFetch<MockTest>("/api/v1/mock-tests", {
+      method: "POST",
+      body: JSON.stringify(req),
+    });
+  },
+
+  /** Start or retake a composed test; a retake replays the same composition. */
+  async startMockTestAttempt(mockTestId: string): Promise<ExamAttempt> {
+    return apiFetch<ExamAttempt>(`/api/v1/mock-tests/${mockTestId}/attempts`, {
+      method: "POST",
+    });
+  },
 };
 
 export function useExams(enabled = true) {
   return useQuery({
     queryKey: examKeys.lists(),
     queryFn: () => examApi.listExams(),
+    enabled,
+  });
+}
+
+/** The verified exam versions a mock test can be composed from. */
+export function useExamVersions(enabled = true) {
+  return useQuery({
+    queryKey: examKeys.versions(),
+    queryFn: () => examApi.listExamVersions(),
     enabled,
   });
 }

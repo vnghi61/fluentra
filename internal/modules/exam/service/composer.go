@@ -18,6 +18,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/fluentra/fluentra/internal/generated/exam/sqlc"
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/exam/domain"
 	examjob "github.com/fluentra/fluentra/internal/modules/exam/job"
 	questionbankcontract "github.com/fluentra/fluentra/internal/modules/questionbank/contract"
@@ -54,6 +55,23 @@ type ExamVersionDTO struct {
 	IsCurrent    bool                  `json:"is_current"`
 	Notes        string                `json:"notes"`
 	Blueprints   []BlueprintSummaryDTO `json:"blueprints"`
+	// DistinctTestsPossible is the coverage report's number: how many distinct
+	// tests the published bank can compose. Learners see it so the product
+	// never implies more tests than the bank holds (WO 19 H.3).
+	DistinctTestsPossible int `json:"distinct_tests_possible"`
+	// Parts is the version's structure: what a "custom" composition chooses
+	// between. Counts of available bank items are not here; those stay in the
+	// admin coverage report.
+	Parts []ExamVersionPartDTO `json:"parts"`
+}
+
+// ExamVersionPartDTO is one part of an exam version's structure.
+type ExamVersionPartDTO struct {
+	PartNumber    int    `json:"part_number"`
+	Section       string `json:"section"`
+	Kind          string `json:"kind"`
+	QuestionCount int    `json:"question_count"`
+	GroupSize     int    `json:"group_size"`
 }
 
 // ExamVersionListResponseDTO wraps the list of exam versions.
@@ -118,6 +136,22 @@ func (s *Service) ListCurrentExamVersions(ctx context.Context) ([]ExamVersionDTO
 			}
 		}
 
+		parts, err := s.repo.ListExamPartsByVersionID(ctx, v.ID)
+		if err != nil {
+			return nil, fmt.Errorf("list parts for version %s: %w", v.ID, err)
+		}
+		sortParts(parts)
+		partDTOs := make([]ExamVersionPartDTO, 0, len(parts))
+		for _, p := range parts {
+			partDTOs = append(partDTOs, ExamVersionPartDTO{
+				PartNumber:    p.PartNumber,
+				Section:       p.Section,
+				Kind:          p.Kind,
+				QuestionCount: p.QuestionCount,
+				GroupSize:     p.GroupSize,
+			})
+		}
+
 		out = append(out, ExamVersionDTO{
 			ID:           v.ID,
 			ExamFamily:   v.ExamFamily,
@@ -130,6 +164,10 @@ func (s *Service) ListCurrentExamVersions(ctx context.Context) ([]ExamVersionDTO
 			IsCurrent:    v.IsCurrent,
 			Notes:        v.Notes,
 			Blueprints:   bpDTOs,
+			Parts:        partDTOs,
+			// The same number the admin coverage report shows, so the learner's
+			// test list and the operator's report cannot disagree.
+			DistinctTestsPossible: s.coverageForParts(ctx, v, parts).DistinctTestsPossible,
 		})
 	}
 	return out, nil
@@ -145,12 +183,31 @@ func (s *Service) GetExamVersionCoverage(ctx context.Context, versionID uuid.UUI
 	if err != nil || version == nil {
 		return nil, apperr.New(apperr.NotFound, "EXAM_VERSION_NOT_FOUND", "exam version not found")
 	}
+	return s.coverageForVersion(ctx, version), nil
+}
 
-	parts, err := s.repo.ListExamPartsByVersionID(ctx, versionID)
+// coverageForVersion is the report for a version already in hand.
+func (s *Service) coverageForVersion(ctx context.Context, version *domain.ExamVersion) *ExamCoverageReportDTO {
+	parts, err := s.repo.ListExamPartsByVersionID(ctx, version.ID)
 	if err != nil {
-		return nil, fmt.Errorf("list exam parts: %w", err)
+		// A version whose parts cannot be read has no coverage; the list still
+		// renders, and the report route surfaces the error itself.
+		return &ExamCoverageReportDTO{
+			VersionID: version.ID,
+			ExamCode:  version.Code,
+			Title:     version.Title,
+			Parts:     []ExamPartCoverageDTO{},
+		}
 	}
+	return s.coverageForParts(ctx, version, parts)
+}
 
+// coverageForParts computes the report from parts already loaded. The exam
+// version list calls it per version, so a learner's list and the operator's
+// report are one computation rather than two that can disagree.
+func (s *Service) coverageForParts(
+	ctx context.Context, version *domain.ExamVersion, parts []*domain.ExamPart,
+) *ExamCoverageReportDTO {
 	sortParts(parts)
 
 	partCoverages := make([]ExamPartCoverageDTO, 0, len(parts))
@@ -179,7 +236,7 @@ func (s *Service) GetExamVersionCoverage(ctx context.Context, versionID uuid.UUI
 		DistinctTestsPossible: distinctTests,
 		BottleneckPartID:      bottleneckID,
 		Parts:                 partCoverages,
-	}, nil
+	}
 }
 
 func (s *Service) computePartCoverage(ctx context.Context, p *domain.ExamPart) ExamPartCoverageDTO {
@@ -639,7 +696,11 @@ func (s *Service) compositionToSectionActivities(
 				if h, err := s.lesson.ResolveActivity(ctx, actID); err == nil && h != nil {
 					actDTO.Kind = h.Kind
 					actDTO.ContentVersionID = h.ContentVersionID
-					actDTO.Config = h.Config
+					// Redacted, exactly as the exam pool's draw redacts. The
+					// sitting is served from this stored copy, so a key that
+					// reaches here reaches the learner (WO 19 H.6 trap 1); the
+					// grader reads the content version, not this config.
+					actDTO.Config = contentcontract.RedactForLearner(h.Config)
 				}
 			}
 			group.acts = append(group.acts, actDTO)

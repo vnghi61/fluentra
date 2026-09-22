@@ -6392,6 +6392,24 @@ export interface components {
             /** @example 7 parts, 200 questions */
             notes: string;
             blueprints: components["schemas"]["BlueprintSummary"][];
+            /**
+             * @description How many distinct tests the published bank can compose for this version (the coverage report's number). Shown to learners so the product never implies more tests than the bank holds.
+             * @example 2
+             */
+            distinct_tests_possible: number;
+            /** @description The version's structure, so a custom composition can name the parts it wants. Counts of available bank items are not here; those stay in the admin coverage report. */
+            parts: {
+                /** @example 1 */
+                part_number: number;
+                /** @example listening */
+                section: string;
+                /** @example photo_description */
+                kind: string;
+                /** @example 6 */
+                question_count: number;
+                /** @example 1 */
+                group_size: number;
+            }[];
         };
         ExamVersionListResponse: {
             items: components["schemas"]["ExamVersion"][];

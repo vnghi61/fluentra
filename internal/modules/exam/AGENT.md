@@ -183,7 +183,8 @@ and fails `go-arch-lint` in CI.
 13. **BR-EXAM-13** — A fixed test is one stored composition shared by everyone, composed without anyone's exposures.
 14. **BR-EXAM-14** — A part is filled with exactly its question count, in whole groups; a part the bank cannot fill is refused with the part named.
 15. **BR-EXAM-15** — The number of distinct tests shown is the coverage report's number.
-16. **BR-EXAM-16** — A practice sitting may opt out of a visible time limit; the server still applies a generous backstop deadline so an abandoned sitting cannot block a future attempt indefinitely.
+16. **BR-EXAM-16** — A mock test's composition is stored on the attempt and served from there, so its activity configs are redacted at composition time: a key that reaches the composition reaches the learner.
+17. **BR-EXAM-17** — A practice sitting may opt out of a visible time limit; the server still applies a generous backstop deadline so an abandoned sitting cannot block a future attempt indefinitely.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

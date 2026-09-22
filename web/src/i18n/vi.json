@@ -1222,6 +1222,8 @@
   },
   "exam": {
     "title": "Bài thi thử",
+    "tabMockTests": "Đề thi thử",
+    "tabTemplates": "Đề mẫu",
     "mode": {
       "exam": "Chế độ thi",
       "practice": "Chế độ luyện tập"
@@ -1446,6 +1448,33 @@
       "loading": "Đang tải kết quả…",
       "loadFailed": "Không tải được kết quả."
     }
+  },
+  "mockTest": {
+    "blueprint": "Bản thiết kế",
+    "composeBtn": "Tạo đề thi",
+    "composeFailed": "Không tạo được đề thi.",
+    "composeNew": "Tạo đề mới",
+    "composed": "Đề của bạn đã sẵn sàng.",
+    "distinctTests": "Có {{count}} đề khác nhau",
+    "mode": "Chế độ",
+    "modeCustom": "Chọn phần thi",
+    "modeCustomHint": "Chọn các phần muốn làm; những phần còn lại sẽ bị bỏ qua.",
+    "modeFixed": "Cố định",
+    "modeFixedHint": "Một đề đã lưu, mọi người dùng chung.",
+    "modeRandomHint": "Bốc mới từ ngân hàng đã xuất bản, ưu tiên câu bạn chưa gặp.",
+    "modeRandom": "Ngẫu nhiên",
+    "modeWeak": "Chủ điểm yếu",
+    "modeWeakHint": "Ưu tiên các nút kiến thức bạn còn yếu nhất.",
+    "partItems": "{{count}} câu",
+    "parts": "Các phần",
+    "retakeNote": "Làm lại sẽ dùng đúng đề này; hãy tạo đề mới nếu muốn câu khác.",
+    "sitBtn": "Làm đề này",
+    "startFailed": "Không bắt đầu được lượt thi.",
+    "subtitle": "Tạo đề từ ngân hàng đã xuất bản, làm dưới đồng hồ thật và xem báo cáo. Làm lại dùng đúng đề cũ; tạo đề mới sẽ bốc câu khác.",
+    "title": "Đề thi thử",
+    "totalMinutes": "{{minutes}} phút",
+    "version": "Phiên bản đề thi",
+    "versionsError": "Không tải được danh sách đề thi."
   },
   "placement": {
     "loading": "Đang tải bài kiểm tra xếp lớp…",
