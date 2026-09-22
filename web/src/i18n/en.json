@@ -732,7 +732,8 @@
   "pronounce": {
     "listen": "Listen to the pronunciation",
     "unavailable": "Pronunciation unavailable",
-    "silent": "No sound? Turn up your phone's media volume, or install an English voice in its text-to-speech settings."
+    "silent": "No sound? Turn up your phone's media volume, or install an English voice in its text-to-speech settings.",
+    "recordingCredit": "Recorded pronunciation"
   },
   "review": {
     "again": "Forgot",

@@ -732,7 +732,8 @@
   "pronounce": {
     "listen": "Nghe phát âm",
     "unavailable": "Chưa có phát âm",
-    "silent": "Không nghe thấy? Hãy tăng âm lượng media của điện thoại, hoặc cài giọng đọc tiếng Anh trong phần Chuyển văn bản thành giọng nói."
+    "silent": "Không nghe thấy? Hãy tăng âm lượng media của điện thoại, hoặc cài giọng đọc tiếng Anh trong phần Chuyển văn bản thành giọng nói.",
+    "recordingCredit": "Bản thu âm giọng người thật"
   },
   "review": {
     "again": "Chưa nhớ",

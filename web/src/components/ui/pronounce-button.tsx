@@ -4,6 +4,12 @@ import { Volume2, VolumeX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import {
+  findRecordings,
+  isSingleWord,
+  playFirstRecording,
+  type Recording,
+} from "@/lib/recorded-pronunciation";
 import { cancelSpeech, speakText } from "@/lib/speech";
 import { reachableStorageUrl } from "@/lib/storage-url";
 import { cn } from "@/lib/utils";
@@ -53,31 +59,76 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
   const { t } = useTranslation();
   const [isPlaying, setIsPlaying] = useState(false);
   const [failed, setFailed] = useState(false);
-  // The engine took the utterance and never spoke. The button stays usable —
-  // this is usually the phone's media volume or TTS voice, fixable by the user.
+  // Nothing could be heard: neither the device's voice nor a recording. The
+  // button stays usable — this is usually the phone's media volume or its
+  // text-to-speech service, which the learner can fix.
   const [silent, setSilent] = useState(false);
+  // The recording that is playing, credited while it does (CC BY-SA).
+  const [credit, setCredit] = useState<Recording | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const stopRecordingRef = useRef<(() => void) | null>(null);
+  // Bumped by every tap and every card change, so a recording looked up for an
+  // earlier tap or an earlier card never starts playing late.
+  const requestRef = useRef(0);
+
+  const stopRecording = () => {
+    stopRecordingRef.current?.();
+    stopRecordingRef.current = null;
+  };
 
   // A card can be advanced mid-utterance. Without this, the previous word keeps
   // talking over the next one, which is worse than silence.
   useEffect(() => {
+    const requests = requestRef;
     return () => {
+      requests.current++;
       audioRef.current?.pause();
       audioRef.current = null;
+      stopRecordingRef.current?.();
+      stopRecordingRef.current = null;
       cancelSpeech();
     };
   }, [text, audioUrl]);
 
+  /**
+   * The device could not speak: play a human recording of the word instead.
+   * Only then, so a third party is asked only once the device has failed.
+   */
+  const playRecording = useCallback(
+    (reason: "silent" | "failed") => {
+      const request = requestRef.current;
+      const giveUp = () => {
+        setIsPlaying(false);
+        if (reason === "failed") setFailed(true);
+        else setSilent(true);
+      };
+      if (!isSingleWord(text)) {
+        giveUp();
+        return;
+      }
+      setIsPlaying(true);
+      void findRecordings(text).then((recordings) => {
+        if (request !== requestRef.current) return;
+        stopRecordingRef.current?.();
+        stopRecordingRef.current = playFirstRecording(recordings, {
+          onPlaying: (recording) => setCredit(recording),
+          onEnded: () => setIsPlaying(false),
+          onExhausted: giveUp,
+        });
+      });
+    },
+    [text],
+  );
+
   const speak = useCallback(() => {
-    setSilent(false);
     speakText(text, {
       lang,
       onStart: () => setIsPlaying(true),
       onEnd: () => setIsPlaying(false),
-      onFailure: () => setFailed(true),
-      onSilent: () => setSilent(true),
+      onFailure: () => playRecording("failed"),
+      onSilent: () => playRecording("silent"),
     });
-  }, [text, lang]);
+  }, [text, lang, playRecording]);
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -87,6 +138,11 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
       e.preventDefault();
 
       if (!text.trim()) return;
+
+      requestRef.current++;
+      stopRecording();
+      setSilent(false);
+      setCredit(null);
 
       if (!audioUrl) {
         speak();
@@ -115,6 +171,12 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
     const hide = setTimeout(() => setSilent(false), 6000);
     return () => clearTimeout(hide);
   }, [silent]);
+
+  useEffect(() => {
+    if (!credit) return undefined;
+    const hide = setTimeout(() => setCredit(null), 8000);
+    return () => clearTimeout(hide);
+  }, [credit]);
 
   const unavailable = failed || !text.trim();
   const title =
@@ -164,6 +226,25 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
               "pronounce.silent",
               "No sound? Turn up your phone's media volume, or install an English voice in its text-to-speech settings.",
             )}
+          </span>,
+          document.body,
+        )}
+      {credit &&
+        createPortal(
+          <span
+            role="status"
+            className="fixed inset-x-4 bottom-24 z-50 mx-auto max-w-sm rounded-lg border border-border-subtle bg-surface-card px-3 py-2 text-left text-xs text-text-muted shadow-lg"
+          >
+            {t("pronounce.recordingCredit", "Recorded pronunciation")}
+            {" · "}
+            <a
+              href={credit.creditUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[44px] items-center font-medium text-primary-accent underline"
+            >
+              Wikimedia Commons{credit.licence ? ` · ${credit.licence}` : ""}
+            </a>
           </span>,
           document.body,
         )}

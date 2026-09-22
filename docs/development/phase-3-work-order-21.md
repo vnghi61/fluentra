@@ -64,6 +64,7 @@ detect that and say so; only a recording makes it speak.
 | D21-4. Admin screens | New sections in `ADMIN_SECTIONS`, each gated by the permission its API already declares (`content.review`, `questionbank.read`, …) |
 | D21-5. Mock tests for learners | A second tab on `/exams`: pick a version and blueprint, compose, sit it with the existing runner |
 | D21-6. Where pronunciation audio comes from | **The dictionary's recording, stored as a link** — `DictionaryEntry` already argues against copying the files. Prefer the US recording, then UK, then any. Synthesis stays the fallback for words with none |
+| D21-8. When the device cannot speak | **The browser fetches a recording itself**, owner's call 2026-09-22: synthesis first, then the dictionary, then Wikimedia Commons by file name, then the hint. A third party is asked only after the device has failed, and only for a single word |
 | D21-7. Crediting a recording | The body carries `audio_attribution` and `audio_licence` beside `audio_url`; whenever the recording (not synthesis) plays, the card shows one line: "Âm thanh: Wikimedia Commons · CC BY-SA" linking the attribution page |
 
 ---
@@ -185,12 +186,21 @@ resource id must be a 404, not a generation.
    silent button.
 2. **Attribution is not optional.** A recording played without its credit line breaches CC BY-SA; a
    card whose body has `audio_url` but no `audio_attribution` must not play the recording.
-3. **Do not fetch audio in the browser** from the dictionary at tap time: it puts a third party on every
-   flashcard view and turns a slow upstream into a slow button.
+3. **Do not fetch audio in the browser on every tap.** It puts a third party on every flashcard view and
+   turns a slow upstream into a slow button. The browser asks a third party only after the device has
+   already failed (D21-8); the backfill is what keeps that path rare.
+
+**Already shipped ahead of this stage (D21-8, `fix/pronunciation-recording-fallback`).** When synthesis
+errors or never starts, `PronounceButton` looks the word up in the browser — `api.dictionaryapi.dev`
+first, then Wikimedia Commons by name (`Special:FilePath/En-us-<word>.ogg`, then `En-uk-`) — plays the
+first file that loads, and credits it. The dictionary was down (522, then timeouts) on the day this was
+written, which is why Commons is a source in its own right and not only through the dictionary. Single
+words only; a sentence goes straight to the hint. Stage G still matters: the backfill makes the
+recording the first choice instead of a four-second fallback.
 
 **Gate.** On the Xiaomi that stays silent with synthesis, tapping "eat" in SRS review and in a lesson
 flashcard plays the recording and shows the credit; a word the dictionary has no recording for still
-reaches synthesis and, when that is silent, the hint from `fix/android-speech-silent`.
+reaches synthesis, then the browser fallback, and only then the media-volume hint.
 
 ---
 
