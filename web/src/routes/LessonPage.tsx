@@ -44,6 +44,7 @@ import {
   RunnerHeader,
 } from "@/features/learning";
 import { useLesson } from "@/features/lesson";
+import { useResourcePractice } from "@/features/resource";
 import {
   clearWritingDraft,
   type WritingFeedback,
@@ -212,6 +213,14 @@ export function LessonPage(): React.JSX.Element {
     (typeof window !== "undefined" &&
       window.location.pathname.includes("/practice/daily"));
 
+  // Private practice generated from one of the learner's own uploads. It is a
+  // list of activities like the daily set, so it runs through the same runner;
+  // only where it comes from and where it exits to differ.
+  const isResourcePractice =
+    typeof window !== "undefined" &&
+    window.location.pathname.includes("/practice/resource/");
+  const resourceId = params["resourceId"] ?? "";
+
   const [practiceLevel] = useState<string>(() => {
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
@@ -233,20 +242,46 @@ export function LessonPage(): React.JSX.Element {
   } = useDailyPracticeSet(practiceLevel, isDaily);
 
   const {
+    data: resourcePractice,
+    isLoading: resourcePracticeLoading,
+    isError: isResourcePracticeError,
+    error: resourcePracticeError,
+    refetch: refetchResourcePractice,
+  } = useResourcePractice(resourceId, isResourcePractice);
+
+  const {
     data: lesson,
     isLoading: lessonLoading,
     isError: isLessonError,
     error: lessonError,
     refetch: refetchLesson,
-  } = useLesson(isDaily ? undefined : lessonId);
+  } = useLesson(isDaily || isResourcePractice ? undefined : lessonId);
 
   const activities = isDaily
     ? (dailySet?.activities ?? [])
-    : (lesson?.activities ?? []);
-  const isLoading = isDaily ? dailyLoading : lessonLoading;
-  const isError = isDaily ? isDailyError : isLessonError;
-  const error = isDaily ? dailyError : lessonError;
-  const refetch = isDaily ? refetchDaily : refetchLesson;
+    : isResourcePractice
+      ? (resourcePractice?.activities ?? [])
+      : (lesson?.activities ?? []);
+  const isLoading = isDaily
+    ? dailyLoading
+    : isResourcePractice
+      ? resourcePracticeLoading
+      : lessonLoading;
+  const isError = isDaily
+    ? isDailyError
+    : isResourcePractice
+      ? isResourcePracticeError
+      : isLessonError;
+  const error = isDaily
+    ? dailyError
+    : isResourcePractice
+      ? resourcePracticeError
+      : lessonError;
+  const refetch = isDaily
+    ? refetchDaily
+    : isResourcePractice
+      ? refetchResourcePractice
+      : refetchLesson;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null);
@@ -618,6 +653,13 @@ export function LessonPage(): React.JSX.Element {
 
   const handleConfirmExit = () => {
     setIsExitDialogOpen(false);
+    if (isResourcePractice && resourceId) {
+      void navigate({
+        to: "/my-resources/$resourceId",
+        params: { resourceId },
+      });
+      return;
+    }
     void navigate({ to: isDaily ? "/practice" : "/learn" });
   };
 
@@ -629,7 +671,10 @@ export function LessonPage(): React.JSX.Element {
     );
   }
 
-  if (isError || (isDaily ? !dailySet : !lesson)) {
+  if (
+    isError ||
+    (isDaily ? !dailySet : isResourcePractice ? !resourcePractice : !lesson)
+  ) {
     return (
       <div className="py-12 max-w-lg mx-auto">
         <Card className="border-danger/30 text-center p-6">
@@ -640,7 +685,12 @@ export function LessonPage(): React.JSX.Element {
             <CardTitle>
               {isDaily
                 ? t("practice.daily.errorTitle", "Unable to Load Practice Set")
-                : t("learn.errorTitle", "Unable to Load Lesson")}
+                : isResourcePractice
+                  ? t(
+                      "resources.practiceErrorTitle",
+                      "Unable to Load Practice",
+                    )
+                  : t("learn.errorTitle", "Unable to Load Lesson")}
             </CardTitle>
             <CardDescription>
               {error?.message ||
@@ -649,7 +699,15 @@ export function LessonPage(): React.JSX.Element {
                       "practice.daily.errorDesc",
                       "Could not load today's practice activities.",
                     )
-                  : t("learn.errorDesc", "Could not load lesson activities."))}
+                  : isResourcePractice
+                    ? t(
+                        "resources.practiceErrorDesc",
+                        "Practice from this file could not be loaded.",
+                      )
+                    : t(
+                        "learn.errorDesc",
+                        "Could not load lesson activities.",
+                      ))}
             </CardDescription>
           </CardHeader>
           <CardFooter className="justify-center gap-3">
@@ -657,13 +715,22 @@ export function LessonPage(): React.JSX.Element {
               {t("action.retry", "Try again")}
             </Button>
             <Button
-              onClick={() =>
-                void navigate({ to: isDaily ? "/practice" : "/learn" })
-              }
+              onClick={() => {
+                if (isResourcePractice && resourceId) {
+                  void navigate({
+                    to: "/my-resources/$resourceId",
+                    params: { resourceId },
+                  });
+                  return;
+                }
+                void navigate({ to: isDaily ? "/practice" : "/learn" });
+              }}
             >
               {isDaily
                 ? t("practice.daily.backBtn", "Back to Practice")
-                : t("runner.backToCourseBtn", "Back to Syllabus")}
+                : isResourcePractice
+                  ? t("resources.backToList", "All resources")
+                  : t("runner.backToCourseBtn", "Back to Syllabus")}
             </Button>
           </CardFooter>
         </Card>
@@ -848,7 +915,12 @@ export function LessonPage(): React.JSX.Element {
                   level: dailySet?.level || practiceLevel,
                 },
               )
-            : (lesson?.title ?? "")
+            : isResourcePractice
+              ? t(
+                  "resources.practiceRunnerTitle",
+                  "Practice from your file",
+                )
+              : (lesson?.title ?? "")
         }
         currentStep={currentIndex + 1}
         totalSteps={activities.length}

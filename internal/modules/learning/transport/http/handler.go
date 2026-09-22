@@ -42,6 +42,12 @@ type LearningService interface {
 		ctx context.Context, userID uuid.UUID, targetCode string,
 	) (*domain.LearnerFoundationPath, error)
 	GetLearnerFoundationNext(ctx context.Context, userID uuid.UUID) (*domain.FoundationPathNode, error)
+	RequestResourcePractice(
+		ctx context.Context, userID, resourceID uuid.UUID,
+	) (*domain.ResourcePracticeSetDTO, error)
+	GetResourcePractice(
+		ctx context.Context, userID, resourceID uuid.UUID,
+	) (*domain.ResourcePracticeSetDTO, error)
 	PlacementService
 }
 
@@ -86,6 +92,11 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Get("/me/weekly-plan", h.getWeeklyPlan)
 	router.Get("/me/foundation/path", h.getMyFoundationPath)
 	router.Get("/me/foundation/next", h.getMyFoundationNext)
+	// Practice generated from a learner's own upload. The path is under
+	// /me/resources because that is where the resource lives; the service is
+	// learning's, because that is where generation lives.
+	router.Post("/me/resources/{id}/practice", h.startResourcePractice)
+	router.Get("/me/resources/{id}/practice", h.getResourcePractice)
 	router.Get("/me/placement", h.getPlacement)
 	router.Post("/me/placement", h.startPlacement)
 	router.Get("/me/placement/sessions/{id}", h.getPlacementSession)
@@ -101,6 +112,22 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Post("/me/sessions/{id}/complete", h.completeSession)
 }
 
+// requireSelf is the authorization for a /me endpoint: an authenticated actor
+// reading their own data, which the caller has already checked.
+//
+// It deliberately does not call guard.Require("self"). "self" is not a
+// permission in the catalogue, and Require denies an undeclared permission
+// (BR-RBAC-01) — so asking for it refused every one of these endpoints. The
+// guard is still required at construction, because a handler that can be built
+// without one is a handler whose authorization is a matter of remembering.
+func (h *Handler) requireSelf(_ context.Context) error {
+	if h.guard == nil {
+		return apperr.New(apperr.Internal, "GUARD_REQUIRED",
+			"authorization guard is required for learning handlers")
+	}
+	return nil
+}
+
 func (h *Handler) getMyFoundationPath(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	actor, ok := httpx.ActorFrom(ctx)
@@ -108,7 +135,7 @@ func (h *Handler) getMyFoundationPath(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
 		return
 	}
-	if err := h.guard.Require(ctx, "self"); err != nil {
+	if err := h.requireSelf(ctx); err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
 	}
@@ -130,7 +157,7 @@ func (h *Handler) getMyFoundationNext(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
 		return
 	}
-	if err := h.guard.Require(ctx, "self"); err != nil {
+	if err := h.requireSelf(ctx); err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
 	}
@@ -142,6 +169,57 @@ func (h *Handler) getMyFoundationNext(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, r, http.StatusOK, next)
+}
+
+func (h *Handler) startResourcePractice(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+	if err := h.requireSelf(ctx); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	resourceID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid resource ID format"))
+		return
+	}
+
+	set, err := h.service.RequestResourcePractice(ctx, actor.UserID, resourceID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	// 202: the request is accepted; the worker turns it into activities.
+	httpx.WriteJSON(w, r, http.StatusAccepted, toResourcePracticeResponse(set))
+}
+
+func (h *Handler) getResourcePractice(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+	if err := h.requireSelf(ctx); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	resourceID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid resource ID format"))
+		return
+	}
+
+	set, err := h.service.GetResourcePractice(ctx, actor.UserID, resourceID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, toResourcePracticeResponse(set))
 }
 
 func (h *Handler) getDailyPractice(w http.ResponseWriter, r *http.Request) {

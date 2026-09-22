@@ -48,6 +48,7 @@ import (
 	srsservice "github.com/fluentra/fluentra/internal/modules/srs/service"
 	"github.com/fluentra/fluentra/internal/modules/studio"
 	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary"
 	vocabularycontract "github.com/fluentra/fluentra/internal/modules/vocabulary/contract"
@@ -393,7 +394,8 @@ func newIdentity(deps identityDeps) *identity {
 		Flags:         assembled.admin.FlagReader(),
 		Courses:       assembled.lesson.Catalog(),
 		SRSPace:       assembled.srs.ReviewPace(),
-		StudioAccess:  lazyStudioAccess{of: assembled},
+		StudioAccess:      lazyStudioAccess{of: assembled},
+		Resource:          lazyResourceReader{of: assembled},
 	})
 
 	paymentMod, err := payment.NewModule(payment.Dependencies{
@@ -688,6 +690,21 @@ func (g lazyGuard) Require(ctx context.Context, permission string) error {
 func (g lazyGuard) authorizer() rbaccontract.Authorizer { return g.of.rbac.Authorizer() }
 
 // lazyStudioAccess adapts studio's AccessReader to lesson and learning's paywall check (BR-STUDIO-05).
+// lazyResourceReader adapts the resource module, assembled after learning, to
+// the reader learning needs for practice generated from a learner's upload.
+type lazyResourceReader struct{ of *identity }
+
+var _ resourcecontract.ResourceReader = lazyResourceReader{}
+
+func (r lazyResourceReader) GetResource(
+	ctx context.Context, id, userID uuid.UUID,
+) (*resourcecontract.Resource, error) {
+	if r.of.resource == nil {
+		return nil, errors.New("resource module is not assembled, so the resource cannot be read")
+	}
+	return r.of.resource.Reader().GetResource(ctx, id, userID)
+}
+
 type lazyStudioAccess struct{ of *identity }
 
 var _ studiocontract.AccessReader = lazyStudioAccess{}

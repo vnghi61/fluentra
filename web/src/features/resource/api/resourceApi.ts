@@ -20,6 +20,9 @@ export type ResourceExtraction = components["schemas"]["ResourceExtraction"];
 export type ResourceClassification =
   components["schemas"]["ResourceClassification"];
 export type ClassificationNode = components["schemas"]["ClassificationNode"];
+export type ResourcePracticeSet = components["schemas"]["ResourcePracticeSet"];
+export type ResourcePracticeActivity =
+  components["schemas"]["LessonActivity"];
 
 /**
  * The types a learner may upload: `resource/domain/mime.go`'s allow-list,
@@ -98,6 +101,24 @@ export const resourceApi = {
   /** Delete a resource and its stored object. */
   deleteResource(id: string): Promise<void> {
     return apiFetch<void>(`/api/v1/me/resources/${id}`, { method: "DELETE" });
+  },
+
+  /**
+   * Ask for practice from this file. Answers 202 with the set, which may still
+   * be generating; the runner polls until it is ready.
+   */
+  startResourcePractice(id: string): Promise<ResourcePracticeSet> {
+    return apiFetch<ResourcePracticeSet>(
+      `/api/v1/me/resources/${id}/practice`,
+      { method: "POST" },
+    );
+  },
+
+  /** The practice generated from this file. */
+  getResourcePractice(id: string): Promise<ResourcePracticeSet> {
+    return apiFetch<ResourcePracticeSet>(
+      `/api/v1/me/resources/${id}/practice`,
+    );
   },
 };
 

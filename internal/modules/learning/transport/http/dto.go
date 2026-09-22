@@ -365,3 +365,35 @@ func toDailyPracticeResponse(dto *domain.DailySetDTO) DailyPracticeResponse {
 		Activities: activities,
 	}
 }
+
+// ResourcePracticeResponse models GET and POST /me/resources/{id}/practice.
+type ResourcePracticeResponse struct {
+	ResourceID    uuid.UUID                       `json:"resource_id"`
+	Status        string                          `json:"status"`
+	FailureReason string                          `json:"failure_reason,omitempty"`
+	GeneratedOn   string                          `json:"generated_on"`
+	Activities    []DailyPracticeActivityResponse `json:"activities"`
+}
+
+func toResourcePracticeResponse(dto *domain.ResourcePracticeSetDTO) ResourcePracticeResponse {
+	activities := make([]DailyPracticeActivityResponse, len(dto.Activities))
+	for i, act := range dto.Activities {
+		activities[i] = DailyPracticeActivityResponse{
+			ID:               act.ID,
+			LessonID:         act.LessonID,
+			Position:         act.Position,
+			Kind:             act.Kind,
+			ContentVersionID: act.ContentVersionID,
+			Config:           act.Config,
+			Content:          act.Content,
+			Weight:           act.Weight,
+		}
+	}
+	return ResourcePracticeResponse{
+		ResourceID:    dto.ResourceID,
+		Status:        dto.Status,
+		FailureReason: dto.FailureReason,
+		GeneratedOn:   dto.GeneratedOn,
+		Activities:    activities,
+	}
+}

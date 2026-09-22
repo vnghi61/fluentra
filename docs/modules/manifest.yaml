@@ -45,7 +45,7 @@ modules:
   # ------------------------------------------------------------- learning
   - { name: content,      tier: learning, phase: 2, schema: content,    owner: "@learning-team", depends_on: [storage, search, audit, ai, media] }
   - { name: lesson,       tier: learning, phase: 2, schema: learn,      owner: "@learning-team", depends_on: [content, cache] }
-  - { name: learning,     tier: learning, phase: 2, schema: learn,      owner: "@learning-team", depends_on: [lesson, content, srs, cache, job] }
+  - { name: learning,     tier: learning, phase: 2, schema: learn,      owner: "@learning-team", depends_on: [lesson, content, srs, resource, cache, job] }
   - { name: srs,          tier: learning, phase: 2, schema: learn,      owner: "@learning-team", depends_on: [cache, job, content] }
   - { name: vocabulary,   tier: learning, phase: 2, schema: skill,      owner: "@learning-team", depends_on: [content, lesson, srs, job, media, ai, search] }
   - { name: grammar,      tier: learning, phase: 3, schema: skill,      owner: "@learning-team", depends_on: [content, srs, ai, learning] }

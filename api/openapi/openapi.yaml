@@ -8464,6 +8464,100 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /me/resources/{id}/practice:
+    post:
+      tags: [learning]
+      operationId: startResourcePractice
+      summary: Generate practice from one of the caller's own resources.
+      description: >-
+        Queues one set of ten practice items built from the resource's extracted
+        text and classification. Regenerable once a day: asking again the same
+        day returns the existing set. Private to the resource's owner
+        (BR-RESOURCE-12) and never part of the shared bank.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource UUID.
+          schema: { type: string, format: uuid }
+      responses:
+        '202':
+          description: The set exists, or is being generated.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourcePracticeSet'
+              example:
+                resource_id: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+                status: ready
+                failure_reason: ''
+                generated_on: '2026-09-22'
+                activities:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                    lesson_id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                    position: 1
+                    kind: grammar_tense_choice
+                    content_version_id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                    config:
+                      prompt: She ___ lived here for three years.
+                      options:
+                        - id: A
+                          text: has
+                        - id: B
+                          text: have
+                    weight: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [learning]
+      operationId: getResourcePractice
+      summary: Read the practice generated from one of the caller's resources.
+      description: >-
+        Returns the set's status and, once ready, its activities. The same
+        404 as a foreign resource when the caller does not own it.
+      x-permission: self
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource UUID.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The practice set.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourcePracticeSet'
+              example:
+                resource_id: 018f3a5e-7b82-7d2c-80a2-bf3d6118d531
+                status: generating
+                failure_reason: ''
+                generated_on: '2026-09-22'
+                activities: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 components:
   securitySchemes:
     BearerAuth:
@@ -8729,6 +8823,8 @@ components:
       $ref: ./components/learning.yaml#/CompleteSessionRequest
     DailyPracticeSet:
       $ref: ./components/learning.yaml#/DailyPracticeSet
+    ResourcePracticeSet:
+      $ref: ./components/learning.yaml#/ResourcePracticeSet
     ReviewGrade:
       $ref: ./components/srs.yaml#/ReviewGrade
     ReviewCard:

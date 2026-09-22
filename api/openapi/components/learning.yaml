@@ -386,6 +386,32 @@ DailyPracticeSet:
       items:
         $ref: './lesson.yaml#/LessonActivity'
 
+# Private practice generated from one of the learner's own uploads (WO 21
+# Stage B). Never part of the shared bank and never visible to another learner.
+ResourcePracticeSet:
+  type: object
+  required: [resource_id, status, generated_on, activities]
+  properties:
+    resource_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [generating, ready, failed]
+      example: ready
+    failure_reason:
+      type: string
+      example: ''
+    generated_on:
+      type: string
+      format: date
+      example: '2026-09-22'
+    activities:
+      type: array
+      description: Empty while generating; the ten items once ready.
+      items:
+        $ref: './lesson.yaml#/LessonActivity'
+
 
 PlacementSkillEstimate:
   type: object

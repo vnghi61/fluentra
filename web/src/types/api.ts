@@ -3555,6 +3555,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/resources/{id}/practice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the practice generated from one of the caller's resources.
+         * @description Returns the set's status and, once ready, its activities. The same 404 as a foreign resource when the caller does not own it.
+         */
+        get: operations["getResourcePractice"];
+        put?: never;
+        /**
+         * Generate practice from one of the caller's own resources.
+         * @description Queues one set of ten practice items built from the resource's extracted text and classification. Regenerable once a day: asking again the same day returns the existing set. Private to the resource's owner (BR-RESOURCE-12) and never part of the shared bank.
+         */
+        post: operations["startResourcePractice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5405,6 +5429,24 @@ export interface components {
             local_date: string;
             /** @example B1 */
             level: string;
+            activities: components["schemas"]["LessonActivity"][];
+        };
+        ResourcePracticeSet: {
+            /** Format: uuid */
+            resource_id: string;
+            /**
+             * @example ready
+             * @enum {string}
+             */
+            status: "generating" | "ready" | "failed";
+            /** @example  */
+            failure_reason?: string;
+            /**
+             * Format: date
+             * @example 2026-09-22
+             */
+            generated_on: string;
+            /** @description Empty while generating; the ten items once ready. */
             activities: components["schemas"]["LessonActivity"][];
         };
         /**
@@ -16189,6 +16231,101 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getResourcePractice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The practice set. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "resource_id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531",
+                     *       "status": "generating",
+                     *       "failure_reason": "",
+                     *       "generated_on": "2026-09-22",
+                     *       "activities": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResourcePracticeSet"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    startResourcePractice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The set exists, or is being generated. */
+            202: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "resource_id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531",
+                     *       "status": "ready",
+                     *       "failure_reason": "",
+                     *       "generated_on": "2026-09-22",
+                     *       "activities": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "lesson_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "position": 1,
+                     *           "kind": "grammar_tense_choice",
+                     *           "content_version_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "config": {
+                     *             "prompt": "She ___ lived here for three years.",
+                     *             "options": [
+                     *               {
+                     *                 "id": "A",
+                     *                 "text": "has"
+                     *               },
+                     *               {
+                     *                 "id": "B",
+                     *                 "text": "have"
+                     *               }
+                     *             ]
+                     *           },
+                     *           "weight": 1
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResourcePracticeSet"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
             500: components["responses"]["InternalServerError"];
         };
     };

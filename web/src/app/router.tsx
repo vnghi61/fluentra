@@ -71,7 +71,11 @@ function isBareRoute(pathname: string): boolean {
  * to a visitor with no account, and the header is where their Sign in and Create
  * account links live.
  */
-const runnerRoutes = ["/learn/lesson/", "/practice/daily"];
+const runnerRoutes = [
+  "/learn/lesson/",
+  "/practice/daily",
+  "/practice/resource/",
+];
 
 function isRunnerRoute(pathname: string): boolean {
   return runnerRoutes.some((prefix) => pathname.startsWith(prefix));
@@ -349,6 +353,21 @@ export const reviewRoute = createRoute({
 export const dailyPracticeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/practice/daily",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: LessonPage,
+});
+
+// Private practice generated from one of the learner's own uploads. The same
+// runner as a lesson and the daily set; only the source of the activities
+// differs.
+export const resourcePracticeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/practice/resource/$resourceId",
   beforeLoad: () => {
     const { status } = useAuthStore.getState();
     if (status === "unauthenticated") {
@@ -639,6 +658,7 @@ export const routeTree = rootRoute.addChildren([
 
   practiceRoute,
   dailyPracticeRoute,
+  resourcePracticeRoute,
   reviewRoute,
   myWordsRoute,
   myWritingRoute,

@@ -45,6 +45,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/reading"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
 	"github.com/fluentra/fluentra/internal/modules/resource"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/modules/speaking"
 	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
@@ -539,6 +540,7 @@ func startLearning(
 	rbacModule *rbac.Module,
 	cfg workerConfig, storageStore storage.Store,
 	skillGraders map[string]learningcontract.ExerciseGrader,
+	resourceReader resourcecontract.ResourceReader,
 ) (*learning.Module, error) {
 	graders := make(map[string]learningcontract.ExerciseGrader)
 	if readingModule != nil {
@@ -604,6 +606,7 @@ func startLearning(
 		Synthesiser:       mediaSynthesiser,
 		Audio:             media.NewCacheLocator(contentModule.TTSCache()).WithVoice(cfg.Speech.TTSVoice),
 		AudioRender:       newRenderDispatcher(ctx, cfg),
+		Resource:          resourceReader,
 	})
 
 	for _, scheduled := range learningModule.CronJobs() {
@@ -699,10 +702,15 @@ func startModules(
 
 	aiClient := newWorkerAIClient(ctx, cfg, pool)
 
+	// The resource module is assembled below, after learning; learning reads a
+	// learner's upload through this holder. Reading before assembly is an error,
+	// never an empty answer.
+	resourceHolder := &lateResource{}
 	if err := startGrading(ctx, gradingDeps{
 		pool: pool, bus: bus, cron: cron, workers: workers, instruments: instruments, cfg: cfg,
 		storage: storageStore, ai: aiClient, lesson: lessonModule, content: contentModule,
 		reading: readingModule, grammar: grammarModule, listening: listeningModule, rbac: rbacModule,
+		resource: resourceHolder,
 	}); err != nil {
 		return err
 	}
@@ -787,6 +795,7 @@ func startModules(
 		Transcriber: newWorkerTranscriber(cfg),
 		AIClient:    aiClient,
 	})
+	resourceHolder.module = resourceModule
 	if err := startResource(resourceModule, bus, cron, workers); err != nil {
 		return err
 	}
@@ -1053,6 +1062,22 @@ type gradingDeps struct {
 	grammar     *grammar.Module
 	listening   *listening.Module
 	rbac        *rbac.Module
+	resource    resourcecontract.ResourceReader
+}
+
+// lateResource carries the resource module to learning, which is assembled
+// first. Reading before assembly is an error, never an empty answer.
+type lateResource struct{ module *resource.Module }
+
+var _ resourcecontract.ResourceReader = (*lateResource)(nil)
+
+func (r *lateResource) GetResource(
+	ctx context.Context, id, userID uuid.UUID,
+) (*resourcecontract.Resource, error) {
+	if r.module == nil {
+		return nil, errors.New("resource module is not assembled, so the resource cannot be read")
+	}
+	return r.module.Reader().GetResource(ctx, id, userID)
 }
 
 // startGrading builds learning with every grader the worker needs, and the skill
@@ -1092,6 +1117,7 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 	learningModule, err := startLearning(
 		ctx, d.pool, d.cron, d.instruments, d.lesson, d.content, d.ai, d.reading, d.grammar,
 		d.listening, d.rbac, d.cfg, d.storage, skillGraders(writingModule, speakingModule),
+		d.resource,
 	)
 	if err != nil {
 		return err

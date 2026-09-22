@@ -670,6 +670,18 @@ type LearnProgress struct {
 	UpdatedAt   time.Time
 }
 
+type LearnResourcePracticeSet struct {
+	ResourceID    uuid.UUID
+	UserID        uuid.UUID
+	LessonID      *uuid.UUID
+	ActivityIds   []uuid.UUID
+	Status        string
+	FailureReason string
+	GeneratedOn   pgtype.Date
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
 type LearnReviewCard struct {
 	ID               uuid.UUID
 	UserID           uuid.UUID

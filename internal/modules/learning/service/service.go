@@ -27,6 +27,7 @@ import (
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
 	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
@@ -277,6 +278,10 @@ type Deps struct {
 	StudioAccess studiocontract.AccessReader
 	// Taxonomies resolves spine taxonomy node codes and labels for item generation.
 	Taxonomies contentcontract.TaxonomyResolver
+	// Resource reads a learner's own upload, for practice generated from it.
+	Resource resourcecontract.ResourceReader
+	// ResourcePractice stores the private practice sets generated from uploads.
+	ResourcePractice ResourcePracticeStore
 }
 
 // AudioSynthesiser produces pre-rendered audio for listening exercises.
@@ -308,6 +313,10 @@ type Service struct {
 	srsPace       srscontract.ReviewPaceReader
 	studioAccess  studiocontract.AccessReader
 	taxonomies    contentcontract.TaxonomyResolver
+	resource      resourcecontract.ResourceReader
+	// resourcePractice is nil on deployments without resource intake, and the
+	// feature answers a clear "not configured" rather than panicking.
+	resourcePractice ResourcePracticeStore
 
 	generatorAuthor uuid.UUID
 	authorResolver  contract.AuthorResolver
@@ -364,6 +373,8 @@ func New(deps Deps) *Service {
 		srsPace:       deps.SRSPace,
 		studioAccess:  deps.StudioAccess,
 		taxonomies:    deps.Taxonomies,
+		resource:      deps.Resource,
+		resourcePractice: deps.ResourcePractice,
 
 		generatorAuthor: deps.GeneratorAuthorID,
 		authorResolver:  deps.AuthorResolver,
@@ -1149,7 +1160,16 @@ func (s *Service) executeRollupSteps(
 
 // DeleteUserData removes all learner data subject to user.deleted erasure (Stage I).
 func (s *Service) DeleteUserData(ctx context.Context, userID uuid.UUID) error {
-	return s.repo.DeleteNodeMasteryByUser(ctx, userID)
+	if err := s.repo.DeleteNodeMasteryByUser(ctx, userID); err != nil {
+		return err
+	}
+	// The private practice generated from a learner's own upload is theirs to
+	// erase too. The hidden course it points at is content, and the lesson
+	// contract has no delete; the set rows are what name the learner's files.
+	if s.resourcePractice != nil {
+		return s.resourcePractice.DeleteResourcePracticeSetsForUser(ctx, userID)
+	}
+	return nil
 }
 
 // updateNodeMastery folds one attempt score into the learner's estimate for every

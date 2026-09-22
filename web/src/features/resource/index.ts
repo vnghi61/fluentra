@@ -14,6 +14,8 @@ export {
   type ResourceExtraction,
   type ResourceClassification,
   type ClassificationNode,
+  type ResourcePracticeSet,
+  type ResourcePracticeActivity,
   type MaterialUploadState,
 } from "./api/resourceApi";
 export { resourceKeys } from "./api/keys";
@@ -22,6 +24,8 @@ export {
   useResource,
   useUploadResource,
   useDeleteResource,
+  useResourcePractice,
+  useStartResourcePractice,
   quotaUsage,
 } from "./hooks/useResources";
 export { ResourceUpload, type ResourceUploadProps } from "./components/ResourceUpload";

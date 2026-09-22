@@ -1652,6 +1652,20 @@ type ClientInterface interface {
 	// Corresponds with GET /me/resources/{id} (the `GetMyResource` operationId).
 	GetMyResource(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetResourcePractice Read the practice generated from one of the caller's resources.
+	//
+	// Returns the set's status and, once ready, its activities. The same 404 as a foreign resource when the caller does not own it.
+	//
+	// Corresponds with GET /me/resources/{id}/practice (the `GetResourcePractice` operationId).
+	GetResourcePractice(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartResourcePractice Generate practice from one of the caller's own resources.
+	//
+	// Queues one set of ten practice items built from the resource's extracted text and classification. Regenerable once a day: asking again the same day returns the existing set. Private to the resource's owner (BR-RESOURCE-12) and never part of the shared bank.
+	//
+	// Corresponds with POST /me/resources/{id}/practice (the `StartResourcePractice` operationId).
+	StartResourcePractice(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// StartLearningSessionWithBody Start a study session.
 	//
 	// Records the beginning of an active learner study session.
@@ -5577,6 +5591,40 @@ func (c *Client) DeleteMyResource(ctx context.Context, id openapi_types.UUID, re
 // Corresponds with GET /me/resources/{id} (the `GetMyResource` operationId).
 func (c *Client) GetMyResource(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetMyResourceRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetResourcePractice Read the practice generated from one of the caller's resources.
+//
+// Returns the set's status and, once ready, its activities. The same 404 as a foreign resource when the caller does not own it.
+//
+// Corresponds with GET /me/resources/{id}/practice (the `GetResourcePractice` operationId).
+func (c *Client) GetResourcePractice(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetResourcePracticeRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartResourcePractice Generate practice from one of the caller's own resources.
+//
+// Queues one set of ten practice items built from the resource's extracted text and classification. Regenerable once a day: asking again the same day returns the existing set. Private to the resource's owner (BR-RESOURCE-12) and never part of the shared bank.
+//
+// Corresponds with POST /me/resources/{id}/practice (the `StartResourcePractice` operationId).
+func (c *Client) StartResourcePractice(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartResourcePracticeRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -12916,6 +12964,74 @@ func NewGetMyResourceRequest(server string, id openapi_types.UUID) (*http.Reques
 	return req, nil
 }
 
+// NewGetResourcePracticeRequest constructs an http.Request for the GetResourcePractice method
+func NewGetResourcePracticeRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/resources/%s/practice", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStartResourcePracticeRequest constructs an http.Request for the StartResourcePractice method
+func NewStartResourcePracticeRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/resources/%s/practice", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewStartLearningSessionRequest calls the generic StartLearningSession builder with application/json body
 func NewStartLearningSessionRequest(server string, body StartLearningSessionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -17002,6 +17118,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /me/resources/{id} (the `GetMyResource` operationId).
 	GetMyResourceWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetMyResourceResponse, error)
+
+	// GetResourcePracticeWithResponse Read the practice generated from one of the caller's resources.
+	//
+	// Returns the set's status and, once ready, its activities. The same 404 as a foreign resource when the caller does not own it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/resources/{id}/practice (the `GetResourcePractice` operationId).
+	GetResourcePracticeWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetResourcePracticeResponse, error)
+
+	// StartResourcePracticeWithResponse Generate practice from one of the caller's own resources.
+	//
+	// Queues one set of ten practice items built from the resource's extracted text and classification. Regenerable once a day: asking again the same day returns the existing set. Private to the resource's owner (BR-RESOURCE-12) and never part of the shared bank.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/resources/{id}/practice (the `StartResourcePractice` operationId).
+	StartResourcePracticeWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StartResourcePracticeResponse, error)
 
 	// StartLearningSessionWithBodyWithResponse Start a study session.
 	//
@@ -27228,6 +27362,151 @@ func (r GetMyResourceResponse) ContentType() string {
 	return ""
 }
 
+// GetResourcePracticeResponse200Headers the declared response headers of an HTTP 200 response for GetResourcePractice
+type GetResourcePracticeResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetResourcePracticeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ResourcePracticeSet
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetResourcePracticeResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetResourcePracticeResponse) GetJSON200() *ResourcePracticeSet {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetResourcePracticeResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetResourcePracticeResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetResourcePracticeResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetResourcePracticeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetResourcePracticeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetResourcePracticeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetResourcePracticeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StartResourcePracticeResponse202Headers the declared response headers of an HTTP 202 response for StartResourcePractice
+type StartResourcePracticeResponse202Headers struct {
+	XRequestId *string
+}
+
+type StartResourcePracticeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *ResourcePracticeSet
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers202 the parsed response headers for an HTTP 202 response
+	Headers202 *StartResourcePracticeResponse202Headers
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r StartResourcePracticeResponse) GetJSON202() *ResourcePracticeSet {
+	return r.JSON202
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StartResourcePracticeResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StartResourcePracticeResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StartResourcePracticeResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StartResourcePracticeResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StartResourcePracticeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StartResourcePracticeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StartResourcePracticeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StartResourcePracticeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StartLearningSessionResponse201Headers the declared response headers of an HTTP 201 response for StartLearningSession
 type StartLearningSessionResponse201Headers struct {
 	XRequestId *string
@@ -33903,6 +34182,36 @@ func (c *ClientWithResponses) GetMyResourceWithResponse(ctx context.Context, id 
 		return nil, err
 	}
 	return ParseGetMyResourceResponse(rsp)
+}
+
+// GetResourcePracticeWithResponse Read the practice generated from one of the caller's resources.
+//
+// Returns the set's status and, once ready, its activities. The same 404 as a foreign resource when the caller does not own it.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/resources/{id}/practice (the `GetResourcePractice` operationId).
+func (c *ClientWithResponses) GetResourcePracticeWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetResourcePracticeResponse, error) {
+	rsp, err := c.GetResourcePractice(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetResourcePracticeResponse(rsp)
+}
+
+// StartResourcePracticeWithResponse Generate practice from one of the caller's own resources.
+//
+// Queues one set of ten practice items built from the resource's extracted text and classification. Regenerable once a day: asking again the same day returns the existing set. Private to the resource's owner (BR-RESOURCE-12) and never part of the shared bank.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/resources/{id}/practice (the `StartResourcePractice` operationId).
+func (c *ClientWithResponses) StartResourcePracticeWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StartResourcePracticeResponse, error) {
+	rsp, err := c.StartResourcePractice(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartResourcePracticeResponse(rsp)
 }
 
 // StartLearningSessionWithBodyWithResponse Start a study session.
@@ -43792,6 +44101,133 @@ func ParseGetMyResourceResponse(rsp *http.Response) (*GetMyResourceResponse, err
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetResourcePracticeResponse parses an HTTP response from a GetResourcePracticeWithResponse call
+func ParseGetResourcePracticeResponse(rsp *http.Response) (*GetResourcePracticeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetResourcePracticeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResourcePracticeSet
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetResourcePracticeResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStartResourcePracticeResponse parses an HTTP response from a StartResourcePracticeWithResponse call
+func ParseStartResourcePracticeResponse(rsp *http.Response) (*StartResourcePracticeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StartResourcePracticeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest ResourcePracticeSet
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 202:
+		var headers StartResourcePracticeResponse202Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers202 = &headers
 	}
 
 	return response, nil

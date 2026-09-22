@@ -348,7 +348,8 @@
       { "name": "daily_sets", "purpose": "Daily practice set cache", "notes": "`user_id`, `local_date`, `activity_ids`. Unique on (user_id, local_date)." },
       { "name": "placement_sessions", "purpose": "One adaptive placement test", "notes": "`user_id`, `status`, `stage`, `started_at`, `deadline_at`, `estimate` jsonb, `items` jsonb (served items with their attempts), `version`, `productive_status`, `productive_deadline_at`, `result_id`, `completed_at`" },
       { "name": "weekly_plans", "purpose": "A learner's plan for one week", "notes": "`user_id`, `week_start` (Monday, Asia/Ho_Chi_Minh), `minutes_goal`, `items` jsonb. Primary key (user_id, week_start); progress is read, not stored" },
-      { "name": "node_mastery", "purpose": "Per-node spine taxonomy mastery estimate", "notes": "`user_id`, `node_id`, `attempts`, `correct`, `score`, `last_seen_at`. Primary key (user_id, node_id)." }
+      { "name": "node_mastery", "purpose": "Per-node spine taxonomy mastery estimate", "notes": "`user_id`, `node_id`, `attempts`, `correct`, `score`, `last_seen_at`. Primary key (user_id, node_id)." },
+      { "name": "resource_practice_sets", "purpose": "Private practice generated from a learner's own upload (WO 21 Stage B)", "notes": "`resource_id` PK, `user_id`, `lesson_id`, `activity_ids`, `status` (generating/ready/failed), `failure_reason`, `generated_on`. Regenerable once a day; never part of the shared bank." }
     ],
     "indexes": [
       "`uq_progress_user_scope` — the read path for every dashboard",
@@ -378,7 +379,9 @@
       { "method": "GET", "path": "/api/v1/me/path", "permission": "self", "purpose": "Recommended courses for the learner's level and the lesson to start at in each", "success": "200" },
       { "method": "GET", "path": "/api/v1/me/weekly-plan", "permission": "self", "purpose": "This week's plan, built on the first request of the week, with progress read now", "success": "200" },
       { "method": "GET", "path": "/api/v1/me/foundation/path", "permission": "self", "purpose": "Learning path to a target foundation topic with user mastery", "success": "200", "errors": ["NOT_FOUND", "VALIDATION_FAILED"] },
-      { "method": "GET", "path": "/api/v1/me/foundation/next", "permission": "self", "purpose": "Next foundation topic to learn across strands", "success": "200", "errors": ["NOT_FOUND"] }
+      { "method": "GET", "path": "/api/v1/me/foundation/next", "permission": "self", "purpose": "Next foundation topic to learn across strands", "success": "200", "errors": ["NOT_FOUND"] },
+      { "method": "POST", "path": "/api/v1/me/resources/{id}/practice", "permission": "self", "purpose": "Generate one private set of ten practice items from the caller's own resource (WO 21 Stage B); regenerable once a day", "success": "202", "errors": ["RESOURCE_NOT_FOUND", "RESOURCE_PRACTICE_NO_TEXT", "RESOURCE_PRACTICE_UNCLASSIFIED"] },
+      { "method": "GET", "path": "/api/v1/me/resources/{id}/practice", "permission": "self", "purpose": "The private practice set generated from one of the caller's resources, with its activities once ready", "success": "200", "errors": ["RESOURCE_NOT_FOUND", "RESOURCE_PRACTICE_NOT_FOUND"] }
     ],
 
     "contract": [
@@ -404,11 +407,12 @@
         { "name": "user.deleted", "reason": "Anonymise progress and attempts" }
       ]
     },
-    "dependsOn": ["lesson", "content", "srs", "user", "admin", "cache", "job"],
+    "dependsOn": ["lesson", "content", "srs", "resource", "user", "admin", "cache", "job"],
     "dependsWhy": {
       "lesson": "Structure, activities, unlocking rules, the curriculum catalogue for the starting path",
       "content": "Rendering activity content",
       "srs": "Push review items produced by a graded attempt; due reviews and review pace for the weekly plan",
+      "resource": "The learner's own upload: its extracted text and classification are the source for private practice (WO 21 Stage B)",
       "user": "The learning profile: declared level, target level, weekly minutes",
       "admin": "The `placement.invite` flag",
       "cache": "Dashboard and progress reads",

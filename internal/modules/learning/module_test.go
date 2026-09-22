@@ -36,8 +36,8 @@ func TestModule_New_DefaultGraders(t *testing.T) {
 	}
 
 	cronJobs := mod.CronJobs()
-	if len(cronJobs) != 7 {
-		t.Fatalf("expected 7 cron jobs, got %d", len(cronJobs))
+	if len(cronJobs) != 8 {
+		t.Fatalf("expected 8 cron jobs, got %d", len(cronJobs))
 	}
 	if cronJobs[0].Name != "learning.rotate_partitions" {
 		t.Errorf("got job name %s, want learning.rotate_partitions", cronJobs[0].Name)
@@ -65,6 +65,9 @@ func TestModule_New_DefaultGraders(t *testing.T) {
 	}
 	if cronJobs[6].Interval != 24*time.Hour {
 		t.Errorf("daily generation runs every %s, want every 24h", cronJobs[6].Interval)
+	}
+	if cronJobs[7].Name != "learning.generate_resource_practice" {
+		t.Errorf("got job name %s, want learning.generate_resource_practice", cronJobs[7].Name)
 	}
 
 	r := chi.NewRouter()

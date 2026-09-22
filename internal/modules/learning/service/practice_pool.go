@@ -1547,14 +1547,33 @@ func (s *Service) saveDailySet(
 func (s *Service) assembleDailySetDTO(
 	ctx context.Context, setID uuid.UUID, localDate time.Time, level string, activityIDs []uuid.UUID,
 ) (*domain.DailySetDTO, error) {
+	dtos, err := s.resolveActivityDTOs(ctx, activityIDs)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.DailySetDTO{
+		ID:         setID,
+		LocalDate:  localDate,
+		Level:      level,
+		Activities: dtos,
+	}, nil
+}
+
+// resolveActivityDTOs renders a list of activity ids for the runner, redacted.
+// Shared by the daily set and the private resource practice set, because both
+// are "a list of activities the learner sits today" and a second assembly
+// would drift from the first.
+func (s *Service) resolveActivityDTOs(
+	ctx context.Context, activityIDs []uuid.UUID,
+) ([]domain.DailySetActivityDTO, error) {
 	resolved := make([]*lessoncontract.ActivityHierarchy, 0, len(activityIDs))
 	versionIDs := make([]uuid.UUID, 0, len(activityIDs))
 	for _, id := range activityIDs {
 		activity, err := s.lesson.ResolveActivity(ctx, id)
 		if err != nil || activity == nil {
 			// An item that can no longer be resolved is left out rather than
-			// failing the whole day's set.
-			slog.WarnContext(ctx, "daily set activity could not be resolved", "activity_id", id, "error", err)
+			// failing the whole set.
+			slog.WarnContext(ctx, "practice set activity could not be resolved", "activity_id", id, "error", err)
 			continue
 		}
 		resolved = append(resolved, activity)
@@ -1575,13 +1594,7 @@ func (s *Service) assembleDailySetDTO(
 			Weight:           activity.Weight,
 		})
 	}
-
-	return &domain.DailySetDTO{
-		ID:         setID,
-		LocalDate:  localDate,
-		Level:      level,
-		Activities: dtos,
-	}, nil
+	return dtos, nil
 }
 
 func (s *Service) loadVersions(ctx context.Context, ids []uuid.UUID) map[uuid.UUID]*contentcontract.Version {

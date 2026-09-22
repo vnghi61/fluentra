@@ -81,6 +81,36 @@ export function useDeleteResource() {
   });
 }
 
+/**
+ * The practice generated from one resource, polled while it is being built.
+ *
+ * Generation is ten model calls, which outlives an HTTP request, so the POST
+ * only queues it and this is what watches it finish.
+ */
+export function useResourcePractice(resourceId: string, enabled = true) {
+  return useQuery({
+    queryKey: resourceKeys.practice(resourceId),
+    queryFn: () => resourceApi.getResourcePractice(resourceId),
+    enabled: enabled && resourceId !== "",
+    refetchInterval: (query) => {
+      const set = query.state.data;
+      if (!set) return false;
+      return set.status === "generating" ? 3000 : false;
+    },
+  });
+}
+
+/** Ask for a set; the caller navigates to the runner when it accepts. */
+export function useStartResourcePractice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => resourceApi.startResourcePractice(id),
+    onSuccess: (set, id) => {
+      queryClient.setQueryData(resourceKeys.practice(id), set);
+    },
+  });
+}
+
 /** How much of the per-user quota the list uses. */
 export function quotaUsage(resources: Resource[]): {
   count: number;

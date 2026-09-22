@@ -8,6 +8,7 @@ import {
   ExternalLink,
   FileText,
   Loader2,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 
@@ -27,7 +28,7 @@ import {
   statusLabelKey,
   statusTone,
 } from "../model/resourceStatus";
-import { useDeleteResource } from "../hooks/useResources";
+import { useDeleteResource, useStartResourcePractice } from "../hooks/useResources";
 
 function findRendition(
   resource: Resource,
@@ -125,6 +126,7 @@ export function ResourceDetail({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const remove = useDeleteResource();
+  const startPractice = useStartResourcePractice();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const family =
@@ -141,6 +143,23 @@ export function ResourceDetail({
   const handleDelete = () => {
     remove.mutate(resource.id, {
       onSuccess: () => void navigate({ to: "/my-resources" }),
+    });
+  };
+
+  // Generation needs the text and at least one spine node, which is exactly
+  // what the server checks; the button says so instead of failing a request.
+  const canGeneratePractice =
+    resource.status === "validated" &&
+    (resource.extraction?.char_count ?? 0) > 0 &&
+    (resource.classification?.nodes?.length ?? 0) > 0;
+
+  const handleStartPractice = () => {
+    startPractice.mutate(resource.id, {
+      onSuccess: () =>
+        void navigate({
+          to: "/practice/resource/$resourceId",
+          params: { resourceId: resource.id },
+        }),
     });
   };
 
@@ -317,6 +336,59 @@ export function ResourceDetail({
           </div>
         </details>
       )}
+
+      {/* Practice generated from this file (WO 21 Stage B). */}
+      <Card>
+        <CardContent className="space-y-2 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-0.5">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-text">
+                <Sparkles className="h-4 w-4 text-primary-accent" aria-hidden="true" />
+                {t("resources.practiceTitle", "Practice from this file")}
+              </h2>
+              <p className="text-xs text-text-muted">
+                {t(
+                  "resources.practiceDesc",
+                  "Ten exercises built from its text. They are private to you and never enter the shared question bank.",
+                )}
+              </p>
+            </div>
+            <Button
+              disabled={!canGeneratePractice}
+              isLoading={startPractice.isPending}
+              onClick={handleStartPractice}
+              className="gap-2 sm:shrink-0"
+            >
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              {t("resources.practiceBtn", "Create practice")}
+            </Button>
+          </div>
+          {!canGeneratePractice && (
+            <p className="text-xs text-text-muted">
+              {t(
+                "resources.practiceNotReady",
+                "Once the file has been read and classified, practice can be built from it.",
+              )}
+            </p>
+          )}
+          {startPractice.isError && (
+            <p
+              role="alert"
+              className="flex items-start gap-2 text-sm text-danger-accent"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>
+                {startPractice.error instanceof Error
+                  ? startPractice.error.message
+                  : t(
+                      "resources.practiceError",
+                      "Practice could not be created from this file.",
+                    )}
+              </span>
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="flex justify-end pt-2">
         <Button

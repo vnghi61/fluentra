@@ -6,8 +6,8 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn
-tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets, placement_sessions, weekly_plans, node_mastery]
-depends_on: [lesson, content, srs, user, admin, cache, job]
+tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets, placement_sessions, weekly_plans, node_mastery, resource_practice_sets]
+depends_on: [lesson, content, srs, resource, user, admin, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
 last_verified: 2026-08-25
@@ -120,6 +120,7 @@ Migrations: `db/migrations/learning/` · Queries: `db/queries/learning/`
 | `learn.placement_sessions` | One adaptive placement test | `user_id`, `status`, `stage`, `started_at`, `deadline_at`, `estimate` jsonb, `items` jsonb (served items with their attempts), `version`, `productive_status`, `productive_deadline_at`, `result_id`, `completed_at` |
 | `learn.weekly_plans` | A learner's plan for one week | `user_id`, `week_start` (Monday, Asia/Ho_Chi_Minh), `minutes_goal`, `items` jsonb. Primary key (user_id, week_start); progress is read, not stored |
 | `learn.node_mastery` | Per-node spine taxonomy mastery estimate | `user_id`, `node_id`, `attempts`, `correct`, `score`, `last_seen_at`. Primary key (user_id, node_id). |
+| `learn.resource_practice_sets` | Private practice generated from a learner's own upload (WO 21 Stage B) | `resource_id` PK, `user_id`, `lesson_id`, `activity_ids`, `status` (generating/ready/failed), `failure_reason`, `generated_on`. Regenerable once a day; never part of the shared bank. |
 
 **Indexes of note**
 
@@ -159,6 +160,8 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `GET` | `/api/v1/me/weekly-plan` | `self` | This week's plan, built on the first request of the week, with progress read now |
 | `GET` | `/api/v1/me/foundation/path` | `self` | Learning path to a target foundation topic with user mastery |
 | `GET` | `/api/v1/me/foundation/next` | `self` | Next foundation topic to learn across strands |
+| `POST` | `/api/v1/me/resources/{id}/practice` | `self` | Generate one private set of ten practice items from the caller's own resource (WO 21 Stage B); regenerable once a day |
+| `GET` | `/api/v1/me/resources/{id}/practice` | `self` | The private practice set generated from one of the caller's resources, with its activities once ready |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map
@@ -183,6 +186,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | [`lesson`](../../modules/lesson/AGENT.md) | → depends on | Structure, activities, unlocking rules, the curriculum catalogue for the starting path |
 | [`content`](../../modules/content/AGENT.md) | → depends on | Rendering activity content |
 | [`srs`](../../modules/srs/AGENT.md) | → depends on | Push review items produced by a graded attempt; due reviews and review pace for the weekly plan |
+| [`resource`](../../modules/resource/AGENT.md) | → depends on | The learner's own upload: its extracted text and classification are the source for private practice (WO 21 Stage B) |
 | [`user`](../../modules/user/AGENT.md) | → depends on | The learning profile: declared level, target level, weekly minutes |
 | [`admin`](../../modules/admin/AGENT.md) | → depends on | The `placement.invite` flag |
 | [`cache`](../../platform/cache/AGENT.md) | → depends on | Dashboard and progress reads |

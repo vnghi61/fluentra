@@ -6,8 +6,8 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn
-tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets, placement_sessions, weekly_plans, node_mastery]
-depends_on: [lesson, content, srs, user, admin, cache, job]
+tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets, placement_sessions, weekly_plans, node_mastery, resource_practice_sets]
+depends_on: [lesson, content, srs, resource, user, admin, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
 last_verified: 2026-08-06
@@ -46,6 +46,8 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `GET` | `/api/v1/me/weekly-plan` | `self` | This week's plan, built on the first request of the week, with progress read now |
 | `GET` | `/api/v1/me/foundation/path` | `self` | Learning path to a target foundation topic with user mastery |
 | `GET` | `/api/v1/me/foundation/next` | `self` | Next foundation topic to learn across strands |
+| `POST` | `/api/v1/me/resources/{id}/practice` | `self` | Generate one private set of ten practice items from the caller's own resource (WO 21 Stage B); regenerable once a day |
+| `GET` | `/api/v1/me/resources/{id}/practice` | `self` | The private practice set generated from one of the caller's resources, with its activities once ready |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -244,6 +246,26 @@ Next foundation topic to learn across strands
 | Permission | `self` |
 | Success | 200 |
 | Errors | `NOT_FOUND` |
+
+### `POST /api/v1/me/resources/{id}/practice`
+
+Generate one private set of ten practice items from the caller's own resource (WO 21 Stage B); regenerable once a day
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 202 |
+| Errors | `RESOURCE_NOT_FOUND`, `RESOURCE_PRACTICE_NO_TEXT`, `RESOURCE_PRACTICE_UNCLASSIFIED` |
+
+### `GET /api/v1/me/resources/{id}/practice`
+
+The private practice set generated from one of the caller's resources, with its activities once ready
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `RESOURCE_NOT_FOUND`, `RESOURCE_PRACTICE_NOT_FOUND` |
 
 <!-- END GENERATED: api-detail -->
 

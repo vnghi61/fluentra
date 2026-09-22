@@ -85,7 +85,7 @@ Legend — **Status**: `PLANNED` (spec only) · `IN_PROGRESS` · `DONE` · `DEPR
 |---|---|---|---|---|---|---|---|
 | L1 | `content` | Canonical content model, versioning, publish workflow, taxonomy, media links, CEFR levelling | `content` | `content_items`, `content_versions`, `media_assets`, `taxonomies`, `content_tags`, `item_reports` | storage, search, audit, ai | 2 | DONE |
 | L2 | `lesson` | Courses → units → lessons → activities; sequencing, prerequisites, unlocking | `learn` | `courses`, `course_units`, `lessons`, `activities`, `activity_content` | content, cache | 2 | DONE |
-| L3 | `learning` | Enrolment, progress, placement test, adaptive path, session tracking, exercise engine | `learn` | `enrollments`, `progress`, `attempts`, `learning_sessions`, `placement_results`, `placement_sessions`, `skill_mastery`, `answer_explanations`, `item_exposures`, `daily_sets`, `weekly_plans` | lesson, content, srs, user, admin, ai, all skill modules (contract) | 2 | DONE |
+| L3 | `learning` | Enrolment, progress, placement test, adaptive path, session tracking, exercise engine | `learn` | `enrollments`, `progress`, `attempts`, `learning_sessions`, `placement_results`, `placement_sessions`, `skill_mastery`, `answer_explanations`, `item_exposures`, `daily_sets`, `weekly_plans`, `node_mastery`, `resource_practice_sets` | lesson, content, srs, resource, user, admin, ai, all skill modules (contract) | 2 | DONE |
 | L4 | `srs` | FSRS scheduling, review cards, due queues, review logs, retention forecasting | `learn` | `review_cards`, `review_logs`, `srs_params`, `review_daily_stats` | cache, job, content, user, learning (contract) | 2 | DONE |
 | L5 | `vocabulary` | Words, senses, decks, collocations, word families, vocab exercises, practice generation | `skill` | `words`, `word_senses`, `decks`, `deck_items`, `user_word_state` | content, lesson, srs, job, media, ai | 2 | DONE |
 | L6 | `grammar` | Grammar point taxonomy, rules, error tagging, gap-fill and transformation drills | `skill` | `grammar_points`, `grammar_rules`, `grammar_exercises`, `error_tags` | content, srs, ai | 3 | PLANNED |
@@ -159,6 +159,7 @@ graph BT
     VOC --> LSN
     VOC & GRM & RDG & LIS & SPK & WRT & RSC --> CNT
     VOC & GRM & RDG & LIS & SPK & WRT & EXM --> LRN
+    LRN --> RSC
     RDG & LIS --> QB
     RDG --> VOC
     SPK & LIS & RSC --> MED

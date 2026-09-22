@@ -165,6 +165,18 @@ func (f *fakeLearningService) GetLearnerFoundationNext(
 	return nil, nil
 }
 
+func (f *fakeLearningService) RequestResourcePractice(
+	context.Context, uuid.UUID, uuid.UUID,
+) (*domain.ResourcePracticeSetDTO, error) {
+	return &domain.ResourcePracticeSetDTO{Status: domain.ResourcePracticeGenerating}, nil
+}
+
+func (f *fakeLearningService) GetResourcePractice(
+	context.Context, uuid.UUID, uuid.UUID,
+) (*domain.ResourcePracticeSetDTO, error) {
+	return &domain.ResourcePracticeSetDTO{Status: domain.ResourcePracticeReady}, nil
+}
+
 const (
 	testStateInProgress = "in_progress"
 	testStateCompleted  = "completed"
