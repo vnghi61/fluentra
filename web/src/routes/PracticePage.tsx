@@ -5,6 +5,7 @@ import {
   AlertCircle,
   BookMarked,
   BookOpen,
+  FolderOpen,
   Headphones,
   Layers,
   Mic,
@@ -219,8 +220,42 @@ export function PracticePage(): React.JSX.Element {
         </CardFooter>
       </Card>
 
-      {/* Reading Comprehension Card */}
+      {/*
+        The learner's own files.
+
+        A private library, not a shared bank (BR-RESOURCE-12): the page lists
+        what they uploaded, what we read out of it, and — once Stage B lands —
+        the practice generated from it.
+      */}
       <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2 text-text-muted mb-1">
+            <FolderOpen className="h-5 w-5" aria-hidden="true" />
+            <span className="text-xs font-semibold uppercase tracking-wider">
+              {t("practice.resources.label", "Your material")}
+            </span>
+          </div>
+          <CardTitle className="text-base font-semibold">
+            {t("practice.resources.title", "My resources")}
+          </CardTitle>
+          <CardDescription>
+            {t(
+              "practice.resources.desc",
+              "Upload a PDF, a recording or a video from your own course. We read it, estimate its level, and can build practice from it — and it stays private to you.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="pt-0">
+          <Link to="/my-resources">
+            <Button variant="secondary" className="gap-2">
+              <FolderOpen className="h-4 w-4" aria-hidden="true" />
+              {t("practice.resources.openBtn", "Open my resources")}
+            </Button>
+          </Link>
+        </CardFooter>
+      </Card>
+
+      {/* Reading Comprehension Card */}      <Card>
         <CardHeader>
           <div className="flex items-center gap-2 text-text-muted mb-1">
             <BookOpen className="h-5 w-5" aria-hidden="true" />

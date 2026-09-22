@@ -15,6 +15,26 @@ export type ResourceUploadIntent =
 export type Resource = components["schemas"]["Resource"];
 export type ResourceRendition = components["schemas"]["ResourceRendition"];
 export type ResourceSubmit = components["schemas"]["ResourceSubmitResponse"];
+export type ResourceListResponse = components["schemas"]["ResourceList"];
+export type ResourceExtraction = components["schemas"]["ResourceExtraction"];
+export type ResourceClassification =
+  components["schemas"]["ResourceClassification"];
+export type ClassificationNode = components["schemas"]["ClassificationNode"];
+
+/**
+ * The types a learner may upload: `resource/domain/mime.go`'s allow-list,
+ * written out because the browser needs it before the request is made. A file
+ * outside it would be rejected by the server after a 50 MB upload, which is a
+ * slow way to learn.
+ */
+export const RESOURCE_ACCEPT =
+  ".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,.mp3,.wav,.m4a,.mp4,.webm";
+
+export const RESOURCE_MAX_BYTES = 50 * 1024 * 1024;
+
+/** The per-user quotas from `resource/AGENT.md` §9 (BR-RESOURCE-08). */
+export const RESOURCE_QUOTA_COUNT = 50;
+export const RESOURCE_QUOTA_BYTES = 250 * 1024 * 1024;
 
 /** The rendition kinds a material must have ready before it can be published. */
 const REQUIRED_RENDITIONS: Record<"document" | "video", string[]> = {
@@ -67,7 +87,44 @@ export const resourceApi = {
   getResource(id: string): Promise<Resource> {
     return apiFetch<Resource>(`/api/v1/me/resources/${id}`);
   },
+
+  /** The caller's resources, newest first. */
+  listResources(page = 1, pageSize = 100): Promise<ResourceListResponse> {
+    return apiFetch<ResourceListResponse>(
+      `/api/v1/me/resources?page=${page}&page_size=${pageSize}`,
+    );
+  },
+
+  /** Delete a resource and its stored object. */
+  deleteResource(id: string): Promise<void> {
+    return apiFetch<void>(`/api/v1/me/resources/${id}`, { method: "DELETE" });
+  },
 };
+
+/** The kinds of derived form a file resource may have. */
+export function resourceFamily(mime: string): string {
+  const base = mime.split(";")[0]?.trim().toLowerCase() ?? "";
+  if (base === "application/pdf") return "document";
+  if (base.startsWith("image/")) return "image";
+  if (base.startsWith("audio/")) return "audio";
+  if (base.startsWith("video/")) return "video";
+  return "document";
+}
+
+/**
+ * Whether a validated file is still having its derived forms built.
+ *
+ * The API only attaches renditions that are ready, so an empty list on a
+ * validated file is either "the pipeline has not finished" or "this kind needs
+ * none". Every family except a URL gets at least one, which is what makes the
+ * inference safe.
+ */
+export function renditionsPending(resource: Resource): boolean {
+  if (resource.status !== "validated" || resource.kind !== "file") {
+    return false;
+  }
+  return (resource.renditions?.length ?? 0) === 0;
+}
 
 /** Whether a resource is validated and every rendition the runner needs is ready. */
 export function materialReady(

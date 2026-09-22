@@ -158,6 +158,16 @@ const MyWritingPage = lazyRouteComponent(
   "MyWritingPage",
 );
 
+const MyResourcesPage = lazyRouteComponent(
+  () => import("@/routes/MyResourcesPage"),
+  "MyResourcesPage",
+);
+
+const ResourceDetailPage = lazyRouteComponent(
+  () => import("@/routes/ResourceDetailPage"),
+  "ResourceDetailPage",
+);
+
 const MySpeakingPage = lazyRouteComponent(
   () => import("@/routes/MySpeakingPage"),
   "MySpeakingPage",
@@ -386,6 +396,32 @@ export const mySpeakingRoute = createRoute({
   component: MySpeakingPage,
 });
 
+// The learner's own uploaded material. Signed-in only: a resource belongs to a
+// person, and another learner's id answers 404.
+export const myResourcesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/my-resources",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: MyResourcesPage,
+});
+
+export const resourceDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/my-resources/$resourceId",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: ResourceDetailPage,
+});
+
 export const progressRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/progress",
@@ -607,6 +643,8 @@ export const routeTree = rootRoute.addChildren([
   myWordsRoute,
   myWritingRoute,
   mySpeakingRoute,
+  myResourcesRoute,
+  resourceDetailRoute,
   examsRoute,
   examSittingRoute,
   examReportRoute,
