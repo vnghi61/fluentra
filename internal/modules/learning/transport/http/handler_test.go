@@ -153,6 +153,18 @@ func (f *fakeLearningService) GetWeeklyPlan(context.Context, uuid.UUID) (*servic
 	return f.planDTO, f.placementErr
 }
 
+func (f *fakeLearningService) GetLearnerFoundationPath(
+	context.Context, uuid.UUID, string,
+) (*domain.LearnerFoundationPath, error) {
+	return nil, nil
+}
+
+func (f *fakeLearningService) GetLearnerFoundationNext(
+	context.Context, uuid.UUID,
+) (*domain.FoundationPathNode, error) {
+	return nil, nil
+}
+
 const (
 	testStateInProgress = "in_progress"
 	testStateCompleted  = "completed"

@@ -90,11 +90,24 @@ export const FlipCard: React.FC<FlipCardProps> = ({
         )}
         style={{ transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
       >
-        <div className={face} aria-hidden={flipped}>
+        {/*
+          pointer-events-none on the face turned away: mobile WebKit and Chrome
+          still hit-test a backface-hidden face, and the back sits on top in DOM
+          order, so a tap on the front's speaker landed on the back and flipped
+          the card instead of speaking. Desktop hit-testing respects the backface.
+        */}
+        <div
+          className={cn(face, flipped && "pointer-events-none")}
+          aria-hidden={flipped}
+        >
           {front}
         </div>
         <div
-          className={cn(face, "[transform:rotateY(180deg)]")}
+          className={cn(
+            face,
+            "[transform:rotateY(180deg)]",
+            !flipped && "pointer-events-none",
+          )}
           aria-hidden={!flipped}
         >
           {back}

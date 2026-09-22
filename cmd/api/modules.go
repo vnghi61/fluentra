@@ -35,6 +35,8 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/payment"
 	paymentsvc "github.com/fluentra/fluentra/internal/modules/payment/service"
 	paymenthttp "github.com/fluentra/fluentra/internal/modules/payment/transport/http"
+	"github.com/fluentra/fluentra/internal/modules/questionbank"
+	questionbankcontract "github.com/fluentra/fluentra/internal/modules/questionbank/contract"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/reading"
@@ -85,6 +87,7 @@ type identity struct {
 	studio       *studio.Module
 	payment      *payment.Module
 	resource     *resource.Module
+	questionbank *questionbank.Module
 
 	rateLimit *httpx.RateLimiter
 }
@@ -271,6 +274,7 @@ func newIdentity(deps identityDeps) *identity {
 		Env:           deps.Env,
 		AccessReader:  lazyStudioAccess{of: assembled},
 		ListingReader: lazyStudioListing{of: assembled},
+		Storage:       deps.Storage,
 	})
 
 	assembled.srs = srs.New(srs.Deps{
@@ -353,6 +357,7 @@ func newIdentity(deps identityDeps) *identity {
 		Attempts:     lazyAttemptOutcomeReader{of: assembled},
 		Exposures:    lazyItemExposureRecorder{of: assembled},
 		Lesson:       assembled.lesson.Reader(),
+		Questionbank: lazyQuestionbankReader{of: assembled},
 		Drawer:       lazyExamPoolDrawer{of: assembled},
 		Enqueuer:     deps.Enqueuer,
 		WorkerNudger: deps.WorkerNudger,
@@ -367,6 +372,7 @@ func newIdentity(deps identityDeps) *identity {
 		LessonAuthor:  assembled.lesson.Author(),
 		Content:       assembled.content.Reader(),
 		ContentAuthor: assembled.content.Author(),
+		Taxonomies:    assembled.content.TaxonomyResolver(),
 		SRSDue:        assembled.srs.QueueReader(),
 
 		SRSCards: assembled.srs.CardWriter(),
@@ -401,28 +407,40 @@ func newIdentity(deps identityDeps) *identity {
 	paymentMod.SetPayoutAccountReader(lazyPaymentAccountReader{of: assembled})
 	assembled.payment = paymentMod
 
+	assembled.resource = resource.New(resource.Deps{
+		Pool:         deps.Pool,
+		Storage:      deps.Storage,
+		Enqueuer:     deps.Enqueuer,
+		WorkerNudger: deps.WorkerNudger,
+		Taxonomies:   assembled.content.TaxonomyResolver(),
+	})
+
 	studioMod, err := studio.NewModule(studio.Dependencies{
-		Pool:           deps.Pool,
-		Guard:          lazyGuard{of: assembled},
-		ItemVerifier:   assembled.learning.ItemVerifier(),
-		LessonAuthor:   assembled.lesson.Author(),
-		ContentAuthor:  assembled.content.Author(),
-		OrderCreator:   assembled.payment.OrderCreator(),
-		ProgressReader: assembled.learning.ProgressReader(),
-		LessonReader:   assembled.lesson.Reader(),
-		RefundRecorder: assembled.payment.RefundRecorder(),
-		PayoutManager:  assembled.payment.PayoutManager(),
+		Pool:              deps.Pool,
+		Guard:             lazyGuard{of: assembled},
+		ItemVerifier:      assembled.learning.ItemVerifier(),
+		LessonAuthor:      assembled.lesson.Author(),
+		ContentAuthor:     assembled.content.Author(),
+		OrderCreator:      assembled.payment.OrderCreator(),
+		ProgressReader:    assembled.learning.ProgressReader(),
+		LessonReader:      assembled.lesson.Reader(),
+		RefundRecorder:    assembled.payment.RefundRecorder(),
+		PayoutManager:     assembled.payment.PayoutManager(),
+		MaterialPublisher: assembled.resource.MaterialPublisher(),
 	})
 	if err != nil {
 		panic(fmt.Sprintf("assemble studio module: %v", err))
 	}
 	assembled.studio = studioMod
 
-	assembled.resource = resource.New(resource.Deps{
-		Pool:         deps.Pool,
-		Storage:      deps.Storage,
-		Enqueuer:     deps.Enqueuer,
-		WorkerNudger: deps.WorkerNudger,
+	assembled.questionbank = questionbank.New(questionbank.Deps{
+		Pool:          deps.Pool,
+		RBAC:          assembled.rbac.Authorizer(),
+		ContentReader: assembled.content.Reader(),
+		TagIndex:      assembled.content.TagIndex(),
+		LessonAuthor:  assembled.lesson.Author(),
+		Generator:     assembled.learning.Generator(),
+		Events:        nil,
 	})
 
 	return assembled
@@ -443,6 +461,8 @@ func buildDeclaredKinds() []string {
 	kinds = append(kinds, writingcontract.GradedKinds()...)
 	kinds = append(kinds, listeningcontract.GradedKinds()...)
 	kinds = append(kinds, speakingcontract.GradedKinds()...)
+	kinds = append(kinds, "foundation_quiz", "foundation_review")
+	kinds = append(kinds, learningcontract.KindLessonMaterial)
 	return kinds
 }
 
@@ -455,7 +475,7 @@ func buildGraders(
 	listeningGrader learningcontract.ExerciseGrader,
 	speakingGrader learningcontract.ExerciseGrader,
 ) map[string]learningcontract.ExerciseGrader {
-	return mergeGraders(
+	graders := mergeGraders(
 		vocabularyGraders(vocabGrader),
 		grammarGraders(grammarGrader),
 		readingGraders(readingGrader),
@@ -463,6 +483,10 @@ func buildGraders(
 		listeningGraders(listeningGrader),
 		speakingGraders(speakingGrader),
 	)
+	// A lesson_material is not a skill exercise: it is completed by marking it
+	// done, so its grader ships with the engine that dispatches it.
+	graders[learningcontract.KindLessonMaterial] = learningdomain.NewMaterialGrader()
+	return graders
 }
 
 // vocabularyGraders registers one grader under every kind it claims.
@@ -475,10 +499,13 @@ func vocabularyGraders(grader learningcontract.ExerciseGrader) map[string]learni
 }
 
 func grammarGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
-	graders := make(map[string]learningcontract.ExerciseGrader, len(grammarcontract.GradedKinds()))
+	graders := make(map[string]learningcontract.ExerciseGrader, len(grammarcontract.GradedKinds())+2)
 	for _, kind := range grammarcontract.GradedKinds() {
 		graders[kind] = grader
 	}
+	// Stage D: Register multiple-choice grader aliases for foundation_quiz and foundation_review
+	graders["foundation_quiz"] = grader
+	graders["foundation_review"] = grader
 	return graders
 }
 
@@ -616,6 +643,10 @@ func (i *identity) Routes(api chi.Router) {
 		i.studio.ModerationRoutes(authenticated)
 		i.payment.AuthenticatedRoutes(authenticated)
 		i.resource.Routes(authenticated)
+		// Review is a moderator's job, not only an admin's: these check
+		// content.review / content.publish / questionbank.read per route.
+		i.content.ReviewRoutes(authenticated)
+		i.questionbank.ReviewRoutes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
@@ -625,6 +656,8 @@ func (i *identity) Routes(api chi.Router) {
 			i.lesson.AdminRoutes(admin)
 			i.vocabulary.AdminRoutes(admin)
 			i.payment.AdminRoutes(admin)
+			i.questionbank.AdminRoutes(admin)
+			i.exam.AdminRoutes(admin)
 		})
 	})
 }
@@ -913,6 +946,53 @@ func (d lazyExamPoolDrawer) DrawSitting(
 		}
 	}
 	return out, nil
+}
+
+type lazyQuestionbankReader struct{ of *identity }
+
+var _ questionbankcontract.Reader = lazyQuestionbankReader{}
+
+func (r lazyQuestionbankReader) GetQuestion(ctx context.Context, id uuid.UUID) (*questionbankcontract.Question, error) {
+	if r.of.questionbank == nil {
+		return nil, fmt.Errorf("questionbank module is not assembled")
+	}
+	return r.of.questionbank.Reader().GetQuestion(ctx, id)
+}
+
+func (r lazyQuestionbankReader) ListQuestions(
+	ctx context.Context, filter questionbankcontract.Filter,
+) ([]*questionbankcontract.Question, int, error) {
+	if r.of.questionbank == nil {
+		return nil, 0, fmt.Errorf("questionbank module is not assembled")
+	}
+	return r.of.questionbank.Reader().ListQuestions(ctx, filter)
+}
+
+func (r lazyQuestionbankReader) DrawableForPart(
+	ctx context.Context, examPartID uuid.UUID,
+) ([]*questionbankcontract.Question, error) {
+	if r.of.questionbank == nil {
+		return nil, fmt.Errorf("questionbank module is not assembled")
+	}
+	return r.of.questionbank.Reader().DrawableForPart(ctx, examPartID)
+}
+
+func (r lazyQuestionbankReader) SampleQuestions(
+	ctx context.Context, criteria questionbankcontract.SampleCriteria,
+) ([]*questionbankcontract.Question, error) {
+	if r.of.questionbank == nil {
+		return nil, fmt.Errorf("questionbank module is not assembled")
+	}
+	return r.of.questionbank.Reader().SampleQuestions(ctx, criteria)
+}
+
+func (r lazyQuestionbankReader) GetQuestionStats(
+	ctx context.Context, id uuid.UUID,
+) (*questionbankcontract.QuestionStats, error) {
+	if r.of.questionbank == nil {
+		return nil, fmt.Errorf("questionbank module is not assembled")
+	}
+	return r.of.questionbank.Reader().GetQuestionStats(ctx, id)
 }
 
 // rateLimiterAdapter bridges platform/cache's limiter to the one httpx declares.

@@ -308,6 +308,64 @@ func (m *mockExamRepo) ListIntegrityEvents(
 	return res, nil
 }
 
+func (m *mockExamRepo) ListCurrentExamVersions(_ context.Context) ([]*domain.ExamVersion, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) GetExamVersionByID(_ context.Context, _ uuid.UUID) (*domain.ExamVersion, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) GetExamVersionByCode(_ context.Context, _ string) (*domain.ExamVersion, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) ListExamPartsByVersionID(_ context.Context, _ uuid.UUID) ([]*domain.ExamPart, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) GetExamPartByID(_ context.Context, _ uuid.UUID) (*domain.ExamPart, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) ListBlueprintsByVersionID(_ context.Context, _ uuid.UUID) ([]*domain.Blueprint, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) GetBlueprintByID(_ context.Context, _ uuid.UUID) (*domain.Blueprint, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) GetBlueprintByName(_ context.Context, _ uuid.UUID, _ string) (*domain.Blueprint, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) CreateMockTest(_ context.Context, mt *domain.MockTest) (*domain.MockTest, error) {
+	return mt, nil
+}
+
+func (m *mockExamRepo) GetMockTestByID(_ context.Context, _ uuid.UUID) (*domain.MockTest, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) ListMockTestsByOwner(_ context.Context, _ *uuid.UUID) ([]*domain.MockTest, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) GetExamByVersionID(_ context.Context, _ uuid.UUID) (*sqlc.AssessExam, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) CreateMockTestAttempt(
+	_ context.Context, _ sqlc.CreateMockTestAttemptParams,
+) (*sqlc.AssessExamAttempt, error) {
+	return nil, nil
+}
+
+func (m *mockExamRepo) CountUserMockTestAttempts(_ context.Context, _, _ uuid.UUID) (int64, error) {
+	return 0, nil
+}
+
 type fakeDrawer struct {
 	sections []service.SectionActivities
 }
@@ -521,7 +579,33 @@ func TestStartSitting_PracticeDurationIsClamped(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Equal(t, tc.got, att.ChosenDurationMinutes)
+		assert.False(t, att.Unlimited)
 	}
+}
+
+func TestStartSitting_PracticeUnlimitedIgnoresChosenDurationAndBacksStopsAtADay(t *testing.T) {
+	f := newFixture(t)
+
+	att, err := f.svc.StartSitting(context.Background(), uuid.New(), f.examID, service.StartAttemptRequest{
+		Mode: domain.ModePractice, Unlimited: true, ChosenDurationMinutes: 60,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.UnlimitedPracticeDurationMinutes, att.ChosenDurationMinutes)
+	assert.Equal(t, start.Add(domain.UnlimitedPracticeDurationMinutes*time.Minute), att.DeadlineAt)
+	assert.True(t, att.Unlimited)
+}
+
+func TestStartSitting_ExamModeIgnoresUnlimited(t *testing.T) {
+	f := newFixture(t)
+
+	att, err := f.svc.StartSitting(context.Background(), uuid.New(), f.examID, service.StartAttemptRequest{
+		Mode: domain.ModeExam, Unlimited: true,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 75, att.ChosenDurationMinutes)
+	assert.False(t, att.Unlimited)
 }
 
 // ---------------------------------------------------------------------------
@@ -788,6 +872,20 @@ func TestReport_CountsIntegritySignals(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, report.IntegritySignals, 1)
 	assert.Equal(t, 2, report.IntegritySignals[0].Count)
+}
+
+func TestReport_ElapsedSecondsIsSubmittedAtMinusStartedAt(t *testing.T) {
+	f := newFixture(t)
+	userID := uuid.New()
+	att := f.start(t, userID, domain.ModePractice)
+
+	f.clock.Set(start.Add(12*time.Minute + 34*time.Second))
+	_, err := f.svc.SubmitExam(context.Background(), userID, att.ID, domain.SubmittedByLearner)
+	require.NoError(t, err)
+
+	report, err := f.svc.GetScoreReport(context.Background(), userID, att.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 12*60+34, report.ElapsedSeconds)
 }
 
 // ---------------------------------------------------------------------------

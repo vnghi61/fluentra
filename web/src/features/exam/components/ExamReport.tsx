@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   BookOpen,
   CheckCircle2,
+  Clock,
   Flag,
   Headphones,
   Info,
@@ -36,6 +37,7 @@ import {
   reviewStates,
   type ReviewState,
 } from "./ExamItemReview";
+import { formatClock } from "./ExamSittingRunner";
 
 export interface ExamReportProps {
   report: ScoreReport;
@@ -131,6 +133,17 @@ export const ExamReport: React.FC<ExamReportProps> = ({
         {report.submitted_by === "expiry" && (
           <p className="text-xs text-text-muted">
             {t("exam.report.submittedByExpiry")}
+          </p>
+        )}
+        {report.elapsed_seconds !== undefined && (
+          <p className="inline-flex items-center gap-2 rounded-full border border-border-subtle bg-surface-muted px-3 py-1 text-sm font-medium text-text">
+            <Clock
+              className="h-4 w-4 shrink-0 text-primary-accent"
+              aria-hidden="true"
+            />
+            {t("exam.report.timeTaken", {
+              time: formatClock(report.elapsed_seconds),
+            })}
           </p>
         )}
         <div className="flex flex-wrap items-center justify-center gap-6 py-2 sm:gap-12">
@@ -512,7 +525,11 @@ const ItemRow: React.FC<{
 
   const kindLabels: Record<string, string> = {
     listening_comprehension: t("exam.report.kindListening"),
+    photo_description: t("exam.report.kindListening"),
+    question_response: t("exam.report.kindListening"),
     reading_comprehension: t("exam.report.kindReading"),
+    mcq_gap: t("exam.report.kindReading"),
+    text_completion: t("exam.report.kindReading"),
     grammar_sentence_transform: t("exam.report.kindRewrite"),
     writing_prompt: t("exam.report.kindEssay"),
     speaking_task: t("exam.report.kindSpeaking"),

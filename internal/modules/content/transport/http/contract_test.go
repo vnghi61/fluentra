@@ -145,3 +145,50 @@ func TestContract_AdminContentDetailMatchesTheSpec(t *testing.T) {
 		responseSchema(t, spec, "/admin/content/{id}", http.MethodGet, http.StatusOK),
 		recorder.Body.Bytes())
 }
+
+func TestContract_AdminReviewQueueMatchesTheSpec(t *testing.T) {
+	spec := loadSpec(t)
+	bodyJSON := []byte(`{
+		"prompt": "She has ___ to Paris.",
+		"options": ["be", "been", "was", "being"],
+		"correct_index": 1,
+		"_provenance": {
+			"purpose": "foundation",
+			"prompt_version": "v1.0",
+			"model": "gpt-4o",
+			"ai_request_id": "req-123",
+			"blind_solve_answer": {"selected": 1},
+			"cefr_estimate": "B1",
+			"cefr_reasoning": "Standard present perfect tense usage."
+		}
+	}`)
+	svc := &mockContentService{
+		reviewQueueFn: func(_ context.Context, _ domain.ReviewQueueFilter) ([]domain.ReviewQueueItem, int64, error) {
+			return []domain.ReviewQueueItem{
+				{
+					ID:        uuid.MustParse("0199a1c2-3d4e-7f80-9abc-def012345602"),
+					ItemID:    uuid.MustParse("0199a1c2-3d4e-7f80-9abc-def012345601"),
+					Slug:      "foundation-b1-grammar-tense-choice-abc12345",
+					Kind:      "grammar_tense_choice",
+					CEFRLevel: "B1",
+					Status:    domain.StatusDraft,
+					Body:      bodyJSON,
+					CreatedAt: time.Date(2026, 9, 21, 12, 0, 0, 0, time.UTC),
+					NodeCodes: []string{"PRESENT_PERFECT"},
+				},
+			}, 1, nil
+		},
+	}
+
+	router := setupTestRouter(svc, &mockGuard{})
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(
+		http.MethodGet, "/admin/review-queue?purpose=foundation", http.NoBody))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", recorder.Code, recorder.Body)
+	}
+	assertMatchesSchema(t,
+		responseSchema(t, spec, "/admin/review-queue", http.MethodGet, http.StatusOK),
+		recorder.Body.Bytes())
+}

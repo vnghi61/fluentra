@@ -55,6 +55,15 @@ export interface AppShellProps {
    * pays for the `/me/permissions` read it makes.
    */
   adminNav?: React.ReactNode;
+  /**
+   * Whether to draw the mobile bottom navigation.
+   *
+   * The lesson runner is full-screen and distraction-free (P10.3): it carries
+   * its own header, exit and progress, and the fixed bar otherwise sits on top
+   * of its primary action — the Check button of a four-option exercise lands
+   * behind it on a 390 px phone. The router decides; the shell only obeys.
+   */
+  bottomNav?: boolean;
 }
 
 /**
@@ -132,6 +141,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   adminNav,
   displayName,
   avatarUrl,
+  bottomNav = true,
 }) => {
   const { t } = useTranslation();
   const signedIn = status === "authenticated";
@@ -311,7 +321,11 @@ export const AppShell: React.FC<AppShellProps> = ({
             </div>
           </header>
 
-          <main className="flex-1 p-4 pb-20 md:pb-4 max-w-7xl mx-auto w-full">
+          <main
+            className={`flex-1 p-4 max-w-7xl mx-auto w-full ${
+              bottomNav ? "pb-20 md:pb-4" : "pb-4"
+            }`}
+          >
             {children}
           </main>
         </div>
@@ -323,23 +337,25 @@ export const AppShell: React.FC<AppShellProps> = ({
         the IA puts them and which keeps the bar at four thumb-sized targets
         instead of seven.
       */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-card border-t border-border-subtle flex items-center justify-around z-50 px-2 pb-[env(safe-area-inset-bottom)]">
-        {destinations.map(({ to, labelKey, fallback, Icon, exact }) => (
-          <Link
-            key={to}
-            to={to}
-            activeOptions={{ exact }}
-            className="flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] text-text-muted text-[11px] font-medium"
-            activeProps={{
-              className:
-                "flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] text-primary-accent text-[11px] font-semibold",
-            }}
-          >
-            <Icon className="h-5 w-5" aria-hidden="true" />
-            {t(labelKey, fallback)}
-          </Link>
-        ))}
-      </nav>
+      {bottomNav && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-card border-t border-border-subtle flex items-center justify-around z-50 px-2 pb-[env(safe-area-inset-bottom)]">
+          {destinations.map(({ to, labelKey, fallback, Icon, exact }) => (
+            <Link
+              key={to}
+              to={to}
+              activeOptions={{ exact }}
+              className="flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] text-text-muted text-[11px] font-medium"
+              activeProps={{
+                className:
+                  "flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] text-primary-accent text-[11px] font-semibold",
+              }}
+            >
+              <Icon className="h-5 w-5" aria-hidden="true" />
+              {t(labelKey, fallback)}
+            </Link>
+          ))}
+        </nav>
+      )}
     </div>
   );
 };

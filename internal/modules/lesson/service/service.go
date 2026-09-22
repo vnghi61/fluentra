@@ -19,6 +19,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/lesson/domain"
 	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
 	"github.com/fluentra/fluentra/internal/platform/cache"
+	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
 )
@@ -151,6 +152,7 @@ type Deps struct {
 
 	AccessReader  studiocontract.AccessReader
 	ListingReader studiocontract.ListingReader
+	Storage       storage.Store
 }
 
 // Service orchestrates curriculum and lesson use cases.
@@ -169,6 +171,7 @@ type Service struct {
 
 	accessReader  studiocontract.AccessReader
 	listingReader studiocontract.ListingReader
+	storage       storage.Store
 }
 
 // New creates a new lesson Service.
@@ -200,6 +203,7 @@ func New(deps Deps) *Service {
 		env:           env,
 		accessReader:  deps.AccessReader,
 		listingReader: deps.ListingReader,
+		storage:       deps.Storage,
 	}
 }
 
@@ -905,7 +909,151 @@ func (s *Service) GetLessonDetail(ctx context.Context, lessonID, userID uuid.UUI
 	}
 
 	detailKey := cache.Key(s.env, "lesson", "detail", lessonID.String(), cacheVersion)
-	return s.loadLessonDetail(ctx, detailKey, lessonID)
+	detail, err := s.loadLessonDetail(ctx, detailKey, lessonID)
+	if err != nil {
+		return nil, err
+	}
+	// Material URLs are issued here, after the paywall above and after the
+	// cached, answer-redacted detail was loaded — never stored in the cache, so
+	// every read gets a fresh, expiring URL (WO 20 D20-4, D20-7).
+	return s.withMaterialSources(ctx, detail), nil
+}
+
+// materialActivityKind is the runner kind whose config carries object keys to
+// sign at read time.
+const materialActivityKind = "lesson_material"
+
+// materialSourceTTL bounds how long a material URL stays valid. Short enough
+// that a leaked URL is not a permanent one, long enough for a lesson.
+const materialSourceTTL = time.Hour
+
+// withMaterialSources returns a copy of the lesson detail with a signed
+// `config.sources` object on every lesson_material activity. Fresh URLs every
+// read: a learner who leaves the tab open past the TTL refetches and gets a
+// live one.
+func (s *Service) withMaterialSources(ctx context.Context, detail *LessonDetailDTO) *LessonDetailDTO {
+	if s.storage == nil || detail == nil {
+		return detail
+	}
+	signed := false
+	activities := make([]LessonActivityDTO, len(detail.Activities))
+	copy(activities, detail.Activities)
+	for i := range activities {
+		if activities[i].Kind != materialActivityKind {
+			continue
+		}
+		if config, ok := s.materialSources(ctx, activities[i].Config); ok {
+			activities[i].Config = config
+			signed = true
+		}
+	}
+	if !signed {
+		return detail
+	}
+	clone := *detail
+	clone.Activities = activities
+	return &clone
+}
+
+// materialSources turns a material activity's stored object keys into presigned
+// GET URLs laid out the way the runner reads them. It signs nothing it cannot
+// resolve, and returns the config unchanged when there is nothing to add.
+func (s *Service) materialSources(ctx context.Context, raw json.RawMessage) (json.RawMessage, bool) {
+	if len(raw) == 0 {
+		return raw, false
+	}
+	var config map[string]any
+	if err := json.Unmarshal(raw, &config); err != nil {
+		return raw, false
+	}
+	objects, ok := config["objects"].(map[string]any)
+	if !ok {
+		return raw, false
+	}
+
+	sources := map[string]any{}
+	if poster := objectKey(objects, "poster"); poster != "" {
+		if url, err := s.storage.PresignGet(ctx, storage.BucketMedia, poster, materialSourceTTL); err == nil {
+			sources["poster_url"] = url
+		}
+	}
+	if video := s.videoSources(ctx, objects); len(video) > 0 {
+		sources["video"] = video
+	}
+	if document, ok := s.documentSource(ctx, config, objects); ok {
+		sources["document"] = document
+	}
+
+	if len(sources) == 0 {
+		return raw, false
+	}
+	config["sources"] = sources
+	encoded, err := json.Marshal(config)
+	if err != nil {
+		return raw, false
+	}
+	return encoded, true
+}
+
+// videoSources signs the video renditions, highest quality first so the browser
+// picks 720p when it can.
+func (s *Service) videoSources(ctx context.Context, objects map[string]any) []map[string]any {
+	video := make([]map[string]any, 0, 2)
+	for _, candidate := range []struct {
+		key    string
+		height int
+	}{{"video_720p", 720}, {"video_360p", 360}} {
+		key := objectKey(objects, candidate.key)
+		if key == "" {
+			continue
+		}
+		if url, err := s.storage.PresignGet(ctx, storage.BucketMedia, key, materialSourceTTL); err == nil {
+			video = append(video, map[string]any{"url": url, "height": candidate.height})
+		}
+	}
+	return video
+}
+
+// documentSource signs a document's original and, when present, its preview.
+//
+// A document's original is a PDF when it was a PDF; a DOC/PPT cannot be rendered
+// in a browser, so its card leans on the preview image. A video's original is
+// the raw upload and is never offered: the learner gets the renditions.
+func (s *Service) documentSource(
+	ctx context.Context, config, objects map[string]any,
+) (map[string]any, bool) {
+	if kind, _ := config["material_kind"].(string); kind != "document" {
+		return nil, false
+	}
+	documentKey := objectKey(objects, "pdf")
+	if documentKey == "" {
+		documentKey = objectKey(objects, "original")
+	}
+	if documentKey == "" {
+		return nil, false
+	}
+	url, err := s.storage.PresignGet(ctx, storage.BucketMedia, documentKey, materialSourceTTL)
+	if err != nil {
+		return nil, false
+	}
+	document := map[string]any{"url": url}
+	if preview := objectKey(objects, "preview"); preview != "" {
+		if previewURL, pErr := s.storage.PresignGet(
+			ctx, storage.BucketMedia, preview, materialSourceTTL,
+		); pErr == nil {
+			document["preview_url"] = previewURL
+		}
+	}
+	if pageCount, ok := config["page_count"]; ok {
+		document["page_count"] = pageCount
+	}
+	return document, true
+}
+
+// objectKey reads a non-empty object key out of a material's objects map.
+func objectKey(objects map[string]any, name string) string {
+	value, _ := objects[name].(string)
+	return strings.TrimSpace(value)
 }
 
 func (s *Service) loadLessonDetail(

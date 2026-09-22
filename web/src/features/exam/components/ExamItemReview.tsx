@@ -443,6 +443,10 @@ export const ExamItemReview: React.FC<{
   switch (item.kind) {
     case "listening_comprehension":
     case "reading_comprehension":
+    case "text_completion":
+    case "mcq_gap":
+    case "photo_description":
+    case "question_response":
       return <ComprehensionReview item={item} firstNumber={firstNumber} />;
     case "grammar_sentence_transform":
       return <RewriteReview item={item} />;

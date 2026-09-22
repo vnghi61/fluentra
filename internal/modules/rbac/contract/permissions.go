@@ -70,6 +70,11 @@ const (
 	// are not the same authority.
 	PermBillingRead   Permission = "billing.read"
 	PermBillingManage Permission = "billing.manage"
+
+	// question bank
+	PermQuestionBankRead   Permission = "questionbank.read"
+	PermQuestionBankCreate Permission = "questionbank.create"
+	PermQuestionBankReview Permission = "questionbank.review"
 )
 
 // All is every permission this build knows about. An integration test compares
@@ -86,6 +91,7 @@ func All() []Permission {
 		PermContentReadPublished,
 		PermContentCreate, PermContentEdit, PermContentReview, PermContentPublish,
 		PermBillingRead, PermBillingManage,
+		PermQuestionBankRead, PermQuestionBankCreate, PermQuestionBankReview,
 	}
 }
 

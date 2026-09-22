@@ -7,7 +7,7 @@ phase: 3
 owner: "@commerce-team"
 schema: studio
 tables: [creator_profiles, payout_accounts, course_drafts, submissions, listings, purchases, creator_ledger, takedowns]
-depends_on: [content, lesson, learning, payment, job]
+depends_on: [content, lesson, learning, payment, job, resource]
 depended_on_by: [admin, lesson, learning]
 spec_version: 1.0.0
 last_verified: 2026-09-20
@@ -58,3 +58,14 @@ Ordered backlog for the Creator Studio module.
 ## Next Steps (Step 8)
 
 - [ ] Step 8: Web frontend for Creator Studio, Moderation Queue, and Checkout UI
+
+## Work Order 20 Landed (Documents and videos in a community course)
+
+- [x] Activity kind `lesson_material` (document / video) accepted by Gate 1 (BR-STUDIO-10, twelve kinds)
+- [x] Gate 1 `material_ready`: `MaterialForOwner` resolves the draft owner's validated resource with the renditions the runner needs
+- [x] A lesson is valid with one material, or 3–30 exercises; a course needs twenty exercises, materials not counted (BR-STUDIO-11)
+- [x] Publishing copies the resource's original and ready renditions into `fluentra-media` under `course-materials/{course_id}/{slug}-u{n}-l{n}-a{n}/` (BR-STUDIO-12)
+- [ ] A sweeper for `course-materials/` prefixes no published version references (out of scope; recorded in `resource/TODO.md`)
+- [ ] The Gate 2 review screen does not yet render a material with the runner component; reviewers open it from the draft (WO 20 §5, first cut)
+- [ ] Free-preview lessons for non-buyers (D20-4)
+- [ ] Video progress tracking, resume position, subtitles

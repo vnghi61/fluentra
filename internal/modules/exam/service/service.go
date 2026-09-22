@@ -23,6 +23,7 @@ import (
 	examjob "github.com/fluentra/fluentra/internal/modules/exam/job"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	questionbankcontract "github.com/fluentra/fluentra/internal/modules/questionbank/contract"
 	platformjob "github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
@@ -100,36 +101,52 @@ type ExamRepository interface {
 	UpdateScoreReport(ctx context.Context, arg sqlc.UpdateScoreReportParams) (*sqlc.AssessScoreReport, error)
 	RecordIntegrityEvent(ctx context.Context, arg sqlc.RecordIntegrityEventParams) error
 	ListIntegrityEvents(ctx context.Context, attemptID uuid.UUID) ([]sqlc.AssessIntegrityEvent, error)
+	ListCurrentExamVersions(ctx context.Context) ([]*domain.ExamVersion, error)
+	GetExamVersionByID(ctx context.Context, id uuid.UUID) (*domain.ExamVersion, error)
+	GetExamVersionByCode(ctx context.Context, code string) (*domain.ExamVersion, error)
+	ListExamPartsByVersionID(ctx context.Context, versionID uuid.UUID) ([]*domain.ExamPart, error)
+	GetExamPartByID(ctx context.Context, id uuid.UUID) (*domain.ExamPart, error)
+	ListBlueprintsByVersionID(ctx context.Context, versionID uuid.UUID) ([]*domain.Blueprint, error)
+	GetBlueprintByID(ctx context.Context, id uuid.UUID) (*domain.Blueprint, error)
+	GetBlueprintByName(ctx context.Context, versionID uuid.UUID, name string) (*domain.Blueprint, error)
+	CreateMockTest(ctx context.Context, mt *domain.MockTest) (*domain.MockTest, error)
+	GetMockTestByID(ctx context.Context, id uuid.UUID) (*domain.MockTest, error)
+	ListMockTestsByOwner(ctx context.Context, ownerID *uuid.UUID) ([]*domain.MockTest, error)
+	GetExamByVersionID(ctx context.Context, versionID uuid.UUID) (*sqlc.AssessExam, error)
+	CreateMockTestAttempt(ctx context.Context, arg sqlc.CreateMockTestAttemptParams) (*sqlc.AssessExamAttempt, error)
+	CountUserMockTestAttempts(ctx context.Context, userID, mockTestID uuid.UUID) (int64, error)
 }
 
 // Deps defines dependencies for the exam service.
 type Deps struct {
-	Pool       *pgxpool.Pool
-	Repo       ExamRepository
-	Learning   learningcontract.SittingAnswerSubmitter
-	Attempts   learningcontract.AttemptOutcomeReader
-	Exposures  learningcontract.ItemExposureRecorder
-	Lesson     lessoncontract.Reader
-	Drawer     PoolDrawer
-	Clock      clock.Clock
-	DailyLimit int
-	Enqueuer   platformjob.Enqueuer
-	Nudger     WorkerNudger
+	Pool         *pgxpool.Pool
+	Repo         ExamRepository
+	Learning     learningcontract.SittingAnswerSubmitter
+	Attempts     learningcontract.AttemptOutcomeReader
+	Exposures    learningcontract.ItemExposureRecorder
+	Lesson       lessoncontract.Reader
+	Questionbank questionbankcontract.Reader
+	Drawer       PoolDrawer
+	Clock        clock.Clock
+	DailyLimit   int
+	Enqueuer     platformjob.Enqueuer
+	Nudger       WorkerNudger
 }
 
 // Service orchestrates exam sittings, timing, auto-submission, and scoring.
 type Service struct {
-	pool       *pgxpool.Pool
-	repo       ExamRepository
-	learning   learningcontract.SittingAnswerSubmitter
-	attempts   learningcontract.AttemptOutcomeReader
-	exposures  learningcontract.ItemExposureRecorder
-	lesson     lessoncontract.Reader
-	drawer     PoolDrawer
-	clock      clock.Clock
-	dailyLimit int
-	enqueuer   platformjob.Enqueuer
-	nudger     WorkerNudger
+	pool         *pgxpool.Pool
+	repo         ExamRepository
+	learning     learningcontract.SittingAnswerSubmitter
+	attempts     learningcontract.AttemptOutcomeReader
+	exposures    learningcontract.ItemExposureRecorder
+	lesson       lessoncontract.Reader
+	questionbank questionbankcontract.Reader
+	drawer       PoolDrawer
+	clock        clock.Clock
+	dailyLimit   int
+	enqueuer     platformjob.Enqueuer
+	nudger       WorkerNudger
 }
 
 // New constructs an exam service.
@@ -143,17 +160,18 @@ func New(deps Deps) *Service {
 		clk = clock.Real{}
 	}
 	return &Service{
-		pool:       deps.Pool,
-		repo:       deps.Repo,
-		learning:   deps.Learning,
-		attempts:   deps.Attempts,
-		exposures:  deps.Exposures,
-		lesson:     deps.Lesson,
-		drawer:     deps.Drawer,
-		clock:      clk,
-		dailyLimit: dailyLimit,
-		enqueuer:   deps.Enqueuer,
-		nudger:     deps.Nudger,
+		pool:         deps.Pool,
+		repo:         deps.Repo,
+		learning:     deps.Learning,
+		attempts:     deps.Attempts,
+		exposures:    deps.Exposures,
+		lesson:       deps.Lesson,
+		questionbank: deps.Questionbank,
+		drawer:       deps.Drawer,
+		clock:        clk,
+		dailyLimit:   dailyLimit,
+		enqueuer:     deps.Enqueuer,
+		nudger:       deps.Nudger,
 	}
 }
 
@@ -186,6 +204,9 @@ type ExamSectionDTO struct {
 type StartAttemptRequest struct {
 	Mode                  string `json:"mode"`
 	ChosenDurationMinutes int    `json:"chosen_duration_minutes,omitempty"`
+	// Unlimited skips ChosenDurationMinutes and runs a practice sitting against
+	// the unlimited-duration backstop instead. Ignored outside practice mode.
+	Unlimited bool `json:"unlimited,omitempty"`
 	// Sections limits a practice sitting to the sections chosen, by position.
 	// Empty means every section; exam mode always sits all four.
 	Sections []int `json:"sections,omitempty"`
@@ -200,6 +221,7 @@ type ExamAttemptDTO struct {
 	Level                   string                     `json:"level,omitempty"`
 	Mode                    string                     `json:"mode"`
 	ChosenDurationMinutes   int                        `json:"chosen_duration_minutes"`
+	Unlimited               bool                       `json:"unlimited"`
 	StartedAt               time.Time                  `json:"started_at"`
 	DeadlineAt              time.Time                  `json:"deadline_at"`
 	RemainingSeconds        int                        `json:"remaining_seconds"`
@@ -265,6 +287,10 @@ type ScoreReportDTO struct {
 	PerSection       []domain.SectionOutcome `json:"per_section"`
 	IntegritySignals []IntegritySignalDTO    `json:"integrity_signals"`
 	Disclaimer       string                  `json:"disclaimer"`
+	// ElapsedSeconds is submitted_at minus started_at — how long the learner
+	// actually took, regardless of any time limit chosen. Absent if, somehow,
+	// the attempt has no submission time yet.
+	ElapsedSeconds int `json:"elapsed_seconds,omitempty"`
 }
 
 // SittingsToday is how many sittings the learner has started today, and the limit.
@@ -363,6 +389,18 @@ func examDTO(r *sqlc.AssessExam) ExamDTO {
 	}
 }
 
+// sittingDuration picks the sitting's mode and length in minutes: the exam's own
+// length in exam mode; the clamped choice, or the unlimited backstop, in practice.
+func sittingDuration(req StartAttemptRequest, examMinutes int) (string, int) {
+	if req.Mode != domain.ModePractice {
+		return domain.ModeExam, examMinutes
+	}
+	if req.Unlimited {
+		return domain.ModePractice, domain.UnlimitedPracticeDurationMinutes
+	}
+	return domain.ModePractice, domain.ClampPracticeDuration(req.ChosenDurationMinutes)
+}
+
 // StartSitting begins a new exam sitting.
 func (s *Service) StartSitting(
 	ctx context.Context, userID, examID uuid.UUID, req StartAttemptRequest,
@@ -402,12 +440,7 @@ func (s *Service) StartSitting(
 		return nil, domain.ErrInsufficientItems
 	}
 
-	mode := domain.ModeExam
-	duration := int(exam.TotalMinutes)
-	if req.Mode == domain.ModePractice {
-		mode = domain.ModePractice
-		duration = domain.ClampPracticeDuration(req.ChosenDurationMinutes)
-	}
+	mode, duration := sittingDuration(req, int(exam.TotalMinutes))
 	deadlineAt := now.Add(time.Duration(duration) * time.Minute)
 
 	drawnBytes, err := json.Marshal(drawn)
@@ -1103,6 +1136,9 @@ func (s *Service) GetScoreReport(ctx context.Context, userID, attemptID uuid.UUI
 	if attempt.SubmittedBy != nil {
 		dto.SubmittedBy = *attempt.SubmittedBy
 	}
+	if attempt.SubmittedAt != nil {
+		dto.ElapsedSeconds = int(attempt.SubmittedAt.Sub(attempt.StartedAt).Seconds())
+	}
 	return dto, nil
 }
 
@@ -1285,6 +1321,7 @@ func (s *Service) attemptDTO(
 		ExamID:                attempt.ExamID,
 		Mode:                  attempt.Mode,
 		ChosenDurationMinutes: int(attempt.ChosenDurationMinutes),
+		Unlimited:             domain.IsUnlimitedPractice(attempt.Mode, int(attempt.ChosenDurationMinutes)),
 		StartedAt:             attempt.StartedAt,
 		DeadlineAt:            attempt.DeadlineAt,
 		RemainingSeconds:      domain.RemainingSeconds(attempt.DeadlineAt, now),

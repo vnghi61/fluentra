@@ -301,6 +301,13 @@ type ClientInterface interface {
 	// Corresponds with POST /admin/courses (the `AdminCreateCourse` operationId).
 	AdminCreateCourse(ctx context.Context, body AdminCreateCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetExamVersionCoverage Exam version coverage report
+	//
+	// Report of published question groups available versus required per exam part.
+	//
+	// Corresponds with GET /admin/exams/versions/{id}/coverage (the `GetExamVersionCoverage` operationId).
+	GetExamVersionCoverage(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AdminListFlags List all feature flags.
 	//
 	// Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
@@ -440,6 +447,45 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /admin/payments/unmatched (the `PaymentListUnmatchedTransactions` operationId).
 	PaymentListUnmatchedTransactions(ctx context.Context, params *PaymentListUnmatchedTransactionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListQuestions Search and filter question bank items.
+	//
+	// Returns paginated question bank items filtered by criteria.
+	//
+	// Corresponds with GET /admin/questions (the `ListQuestions` operationId).
+	ListQuestions(ctx context.Context, params *ListQuestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GenerateQuestionsWithBody AI-generate draft items for review.
+	//
+	// Generates N draft items for a part and nodes, through Generator.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/questions/generate (the `GenerateQuestions` operationId).
+	GenerateQuestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GenerateQuestions AI-generate draft items for review.
+	//
+	// Generates N draft items for a part and nodes, through Generator.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/questions/generate (the `GenerateQuestions` operationId).
+	GenerateQuestions(ctx context.Context, body GenerateQuestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetQuestionStats Empirical difficulty and discrimination statistics.
+	//
+	// Returns empirical statistics from real learner attempts.
+	//
+	// Corresponds with GET /admin/questions/{id}/stats (the `GetQuestionStats` operationId).
+	GetQuestionStats(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminListReviewQueue List machine-generated drafts awaiting review.
+	//
+	// Returns drafts produced by the generator, oldest first, with blind solve answers, CEFR reasoning, and provenance.
+	//
+	// Corresponds with GET /admin/review-queue (the `AdminListReviewQueue` operationId).
+	AdminListReviewQueue(ctx context.Context, params *AdminListReviewQueueParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RbacListRoles List roles and the permissions they grant.
 	//
@@ -1137,6 +1183,13 @@ type ClientInterface interface {
 	// Corresponds with POST /exam-attempts/{id}/submit (the `SubmitExamAttempt` operationId).
 	SubmitExamAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListExamVersions Current versions and their blueprints
+	//
+	// Lists verified exam versions and their blueprints available for mock test composition.
+	//
+	// Corresponds with GET /exam-versions (the `ListExamVersions` operationId).
+	ListExamVersions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListExams Available mock exams
 	//
 	// Lists active mock exam templates available to learners.
@@ -1353,6 +1406,20 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /me/export/{id} (the `UserGetExport` operationId).
 	UserGetExport(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMyFoundationNext Next foundation topic to learn across strands.
+	//
+	// Returns the next unmastered topic across foundation strands, preferring the learner's stated goal and nodes matching their current placement level.
+	//
+	// Corresponds with GET /me/foundation/next (the `GetMyFoundationNext` operationId).
+	GetMyFoundationNext(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMyFoundationPath Learning path to a target foundation topic with user mastery.
+	//
+	// Returns the prerequisite chain leading to the target topic in topological order, including attempts, scores, and mastery status for the caller, marking the first unmastered node as next.
+	//
+	// Corresponds with GET /me/foundation/path (the `GetMyFoundationPath` operationId).
+	GetMyFoundationPath(ctx context.Context, params *GetMyFoundationPathParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetGamificationSummary The caller's XP, level, streak, badges and open quests.
 	//
@@ -1698,6 +1765,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /me/weekly-plan (the `GetMyWeeklyPlan` operationId).
 	GetMyWeeklyPlan(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ComposeMockTestWithBody Compose a mock test
+	//
+	// Composes a mock test from the question bank based on blueprint and mode.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+	ComposeMockTestWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ComposeMockTest Compose a mock test
+	//
+	// Composes a mock test from the question bank based on blueprint and mode.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+	ComposeMockTest(ctx context.Context, body ComposeMockTestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartMockTestAttempt Start or retake a mock test attempt
+	//
+	// Starts a sitting from a composed mock test.
+	//
+	// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
+	StartMockTestAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ModerationListCoursesQueue List course submissions in review queue.
 	//
@@ -2634,6 +2726,23 @@ func (c *Client) AdminCreateCourse(ctx context.Context, body AdminCreateCourseJS
 	return c.Client.Do(req)
 }
 
+// GetExamVersionCoverage Exam version coverage report
+//
+// Report of published question groups available versus required per exam part.
+//
+// Corresponds with GET /admin/exams/versions/{id}/coverage (the `GetExamVersionCoverage` operationId).
+func (c *Client) GetExamVersionCoverage(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetExamVersionCoverageRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AdminListFlags List all feature flags.
 //
 // Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
@@ -2924,6 +3033,95 @@ func (c *Client) AdminPublishLesson(ctx context.Context, id openapi_types.UUID, 
 // Corresponds with GET /admin/payments/unmatched (the `PaymentListUnmatchedTransactions` operationId).
 func (c *Client) PaymentListUnmatchedTransactions(ctx context.Context, params *PaymentListUnmatchedTransactionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPaymentListUnmatchedTransactionsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListQuestions Search and filter question bank items.
+//
+// Returns paginated question bank items filtered by criteria.
+//
+// Corresponds with GET /admin/questions (the `ListQuestions` operationId).
+func (c *Client) ListQuestions(ctx context.Context, params *ListQuestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListQuestionsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GenerateQuestionsWithBody AI-generate draft items for review.
+//
+// Generates N draft items for a part and nodes, through Generator.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/questions/generate (the `GenerateQuestions` operationId).
+func (c *Client) GenerateQuestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenerateQuestionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GenerateQuestions AI-generate draft items for review.
+//
+// Generates N draft items for a part and nodes, through Generator.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/questions/generate (the `GenerateQuestions` operationId).
+func (c *Client) GenerateQuestions(ctx context.Context, body GenerateQuestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenerateQuestionsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetQuestionStats Empirical difficulty and discrimination statistics.
+//
+// Returns empirical statistics from real learner attempts.
+//
+// Corresponds with GET /admin/questions/{id}/stats (the `GetQuestionStats` operationId).
+func (c *Client) GetQuestionStats(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetQuestionStatsRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminListReviewQueue List machine-generated drafts awaiting review.
+//
+// Returns drafts produced by the generator, oldest first, with blind solve answers, CEFR reasoning, and provenance.
+//
+// Corresponds with GET /admin/review-queue (the `AdminListReviewQueue` operationId).
+func (c *Client) AdminListReviewQueue(ctx context.Context, params *AdminListReviewQueueParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminListReviewQueueRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4330,6 +4528,23 @@ func (c *Client) SubmitExamAttempt(ctx context.Context, id openapi_types.UUID, r
 	return c.Client.Do(req)
 }
 
+// ListExamVersions Current versions and their blueprints
+//
+// Lists verified exam versions and their blueprints available for mock test composition.
+//
+// Corresponds with GET /exam-versions (the `ListExamVersions` operationId).
+func (c *Client) ListExamVersions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExamVersionsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListExams Available mock exams
 //
 // Lists active mock exam templates available to learners.
@@ -4807,6 +5022,40 @@ func (c *Client) UserRequestExport(ctx context.Context, reqEditors ...RequestEdi
 // Corresponds with GET /me/export/{id} (the `UserGetExport` operationId).
 func (c *Client) UserGetExport(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUserGetExportRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetMyFoundationNext Next foundation topic to learn across strands.
+//
+// Returns the next unmastered topic across foundation strands, preferring the learner's stated goal and nodes matching their current placement level.
+//
+// Corresponds with GET /me/foundation/next (the `GetMyFoundationNext` operationId).
+func (c *Client) GetMyFoundationNext(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetMyFoundationNextRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetMyFoundationPath Learning path to a target foundation topic with user mastery.
+//
+// Returns the prerequisite chain leading to the target topic in topological order, including attempts, scores, and mastery status for the caller, marking the first unmastered node as next.
+//
+// Corresponds with GET /me/foundation/path (the `GetMyFoundationPath` operationId).
+func (c *Client) GetMyFoundationPath(ctx context.Context, params *GetMyFoundationPathParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetMyFoundationPathRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -5582,6 +5831,61 @@ func (c *Client) GetVocabUpload(ctx context.Context, id openapi_types.UUID, reqE
 // Corresponds with GET /me/weekly-plan (the `GetMyWeeklyPlan` operationId).
 func (c *Client) GetMyWeeklyPlan(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetMyWeeklyPlanRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ComposeMockTestWithBody Compose a mock test
+//
+// Composes a mock test from the question bank based on blueprint and mode.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+func (c *Client) ComposeMockTestWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewComposeMockTestRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ComposeMockTest Compose a mock test
+//
+// Composes a mock test from the question bank based on blueprint and mode.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+func (c *Client) ComposeMockTest(ctx context.Context, body ComposeMockTestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewComposeMockTestRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartMockTestAttempt Start or retake a mock test attempt
+//
+// Starts a sitting from a composed mock test.
+//
+// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
+func (c *Client) StartMockTestAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartMockTestAttemptRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -7652,6 +7956,40 @@ func NewAdminCreateCourseRequestWithBody(server string, contentType string, body
 	return req, nil
 }
 
+// NewGetExamVersionCoverageRequest constructs an http.Request for the GetExamVersionCoverage method
+func NewGetExamVersionCoverageRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/exams/versions/%s/coverage", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAdminListFlagsRequest constructs an http.Request for the AdminListFlags method
 func NewAdminListFlagsRequest(server string) (*http.Request, error) {
 	var err error
@@ -8042,6 +8380,332 @@ func NewPaymentListUnmatchedTransactionsRequest(server string, params *PaymentLi
 		// styled parameters, preserving literal commas as delimiters
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListQuestionsRequest constructs an http.Request for the ListQuestions method
+func NewListQuestionsRequest(server string, params *ListQuestionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/questions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.ExamVersion != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "exam_version", *params.ExamVersion, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ExamPartId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "exam_part_id", *params.ExamPartId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Kind != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "kind", *params.Kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.CefrLevel != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cefr_level", *params.CefrLevel, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.NodeCode != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "node_code", *params.NodeCode, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGenerateQuestionsRequest calls the generic GenerateQuestions builder with application/json body
+func NewGenerateQuestionsRequest(server string, body GenerateQuestionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGenerateQuestionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGenerateQuestionsRequestWithBody constructs an http.Request for the GenerateQuestions method, with any body, and a specified content type
+func NewGenerateQuestionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/questions/generate")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetQuestionStatsRequest constructs an http.Request for the GetQuestionStats method
+func NewGetQuestionStatsRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/questions/%s/stats", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminListReviewQueueRequest constructs an http.Request for the AdminListReviewQueue method
+func NewAdminListReviewQueueRequest(server string, params *AdminListReviewQueueParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/review-queue")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Purpose != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "purpose", *params.Purpose, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Kind != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "kind", *params.Kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Node != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "node", *params.Node, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cefr != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cefr", *params.Cefr, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
 
 		if params.Limit != nil {
 
@@ -10456,6 +11120,33 @@ func NewSubmitExamAttemptRequest(server string, id openapi_types.UUID) (*http.Re
 	return req, nil
 }
 
+// NewListExamVersionsRequest constructs an http.Request for the ListExamVersions method
+func NewListExamVersionsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/exam-versions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListExamsRequest constructs an http.Request for the ListExams method
 func NewListExamsRequest(server string) (*http.Request, error) {
 	var err error
@@ -11289,6 +11980,83 @@ func NewUserGetExportRequest(server string, id openapi_types.UUID) (*http.Reques
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetMyFoundationNextRequest constructs an http.Request for the GetMyFoundationNext method
+func NewGetMyFoundationNextRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/foundation/next")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetMyFoundationPathRequest constructs an http.Request for the GetMyFoundationPath method
+func NewGetMyFoundationPathRequest(server string, params *GetMyFoundationPathParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/foundation/path")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "target", params.Target, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -12504,6 +13272,80 @@ func NewGetMyWeeklyPlanRequest(server string) (*http.Request, error) {
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewComposeMockTestRequest calls the generic ComposeMockTest builder with application/json body
+func NewComposeMockTestRequest(server string, body ComposeMockTestJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewComposeMockTestRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewComposeMockTestRequestWithBody constructs an http.Request for the ComposeMockTest method, with any body, and a specified content type
+func NewComposeMockTestRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/mock-tests")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewStartMockTestAttemptRequest constructs an http.Request for the StartMockTestAttempt method
+func NewStartMockTestAttemptRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/mock-tests/%s/attempts", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -14664,6 +15506,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /admin/courses (the `AdminCreateCourse` operationId).
 	AdminCreateCourseWithResponse(ctx context.Context, body AdminCreateCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateCourseResponse, error)
 
+	// GetExamVersionCoverageWithResponse Exam version coverage report
+	//
+	// Report of published question groups available versus required per exam part.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/exams/versions/{id}/coverage (the `GetExamVersionCoverage` operationId).
+	GetExamVersionCoverageWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetExamVersionCoverageResponse, error)
+
 	// AdminListFlagsWithResponse List all feature flags.
 	//
 	// Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
@@ -14811,6 +15662,51 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /admin/payments/unmatched (the `PaymentListUnmatchedTransactions` operationId).
 	PaymentListUnmatchedTransactionsWithResponse(ctx context.Context, params *PaymentListUnmatchedTransactionsParams, reqEditors ...RequestEditorFn) (*PaymentListUnmatchedTransactionsResponse, error)
+
+	// ListQuestionsWithResponse Search and filter question bank items.
+	//
+	// Returns paginated question bank items filtered by criteria.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/questions (the `ListQuestions` operationId).
+	ListQuestionsWithResponse(ctx context.Context, params *ListQuestionsParams, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error)
+
+	// GenerateQuestionsWithBodyWithResponse AI-generate draft items for review.
+	//
+	// Generates N draft items for a part and nodes, through Generator.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/questions/generate (the `GenerateQuestions` operationId).
+	GenerateQuestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenerateQuestionsResponse, error)
+
+	// GenerateQuestionsWithResponse AI-generate draft items for review.
+	//
+	// Generates N draft items for a part and nodes, through Generator.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/questions/generate (the `GenerateQuestions` operationId).
+	GenerateQuestionsWithResponse(ctx context.Context, body GenerateQuestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*GenerateQuestionsResponse, error)
+
+	// GetQuestionStatsWithResponse Empirical difficulty and discrimination statistics.
+	//
+	// Returns empirical statistics from real learner attempts.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/questions/{id}/stats (the `GetQuestionStats` operationId).
+	GetQuestionStatsWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetQuestionStatsResponse, error)
+
+	// AdminListReviewQueueWithResponse List machine-generated drafts awaiting review.
+	//
+	// Returns drafts produced by the generator, oldest first, with blind solve answers, CEFR reasoning, and provenance.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/review-queue (the `AdminListReviewQueue` operationId).
+	AdminListReviewQueueWithResponse(ctx context.Context, params *AdminListReviewQueueParams, reqEditors ...RequestEditorFn) (*AdminListReviewQueueResponse, error)
 
 	// RbacListRolesWithResponse List roles and the permissions they grant.
 	//
@@ -15572,6 +16468,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /exam-attempts/{id}/submit (the `SubmitExamAttempt` operationId).
 	SubmitExamAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*SubmitExamAttemptResponse, error)
 
+	// ListExamVersionsWithResponse Current versions and their blueprints
+	//
+	// Lists verified exam versions and their blueprints available for mock test composition.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /exam-versions (the `ListExamVersions` operationId).
+	ListExamVersionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExamVersionsResponse, error)
+
 	// ListExamsWithResponse Available mock exams
 	//
 	// Lists active mock exam templates available to learners.
@@ -15818,6 +16723,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /me/export/{id} (the `UserGetExport` operationId).
 	UserGetExportWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*UserGetExportResponse, error)
+
+	// GetMyFoundationNextWithResponse Next foundation topic to learn across strands.
+	//
+	// Returns the next unmastered topic across foundation strands, preferring the learner's stated goal and nodes matching their current placement level.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/foundation/next (the `GetMyFoundationNext` operationId).
+	GetMyFoundationNextWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyFoundationNextResponse, error)
+
+	// GetMyFoundationPathWithResponse Learning path to a target foundation topic with user mastery.
+	//
+	// Returns the prerequisite chain leading to the target topic in topological order, including attempts, scores, and mastery status for the caller, marking the first unmastered node as next.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/foundation/path (the `GetMyFoundationPath` operationId).
+	GetMyFoundationPathWithResponse(ctx context.Context, params *GetMyFoundationPathParams, reqEditors ...RequestEditorFn) (*GetMyFoundationPathResponse, error)
 
 	// GetGamificationSummaryWithResponse The caller's XP, level, streak, badges and open quests.
 	//
@@ -16205,6 +17128,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /me/weekly-plan (the `GetMyWeeklyPlan` operationId).
 	GetMyWeeklyPlanWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyWeeklyPlanResponse, error)
+
+	// ComposeMockTestWithBodyWithResponse Compose a mock test
+	//
+	// Composes a mock test from the question bank based on blueprint and mode.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+	ComposeMockTestWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ComposeMockTestResponse, error)
+
+	// ComposeMockTestWithResponse Compose a mock test
+	//
+	// Composes a mock test from the question bank based on blueprint and mode.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+	ComposeMockTestWithResponse(ctx context.Context, body ComposeMockTestJSONRequestBody, reqEditors ...RequestEditorFn) (*ComposeMockTestResponse, error)
+
+	// StartMockTestAttemptWithResponse Start or retake a mock test attempt
+	//
+	// Starts a sitting from a composed mock test.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
+	StartMockTestAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StartMockTestAttemptResponse, error)
 
 	// ModerationListCoursesQueueWithResponse List course submissions in review queue.
 	//
@@ -18118,6 +19068,82 @@ func (r AdminCreateCourseResponse) ContentType() string {
 	return ""
 }
 
+// GetExamVersionCoverageResponse200Headers the declared response headers of an HTTP 200 response for GetExamVersionCoverage
+type GetExamVersionCoverageResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetExamVersionCoverageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ExamCoverageReport
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetExamVersionCoverageResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetExamVersionCoverageResponse) GetJSON200() *ExamCoverageReport {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetExamVersionCoverageResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetExamVersionCoverageResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetExamVersionCoverageResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetExamVersionCoverageResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetExamVersionCoverageResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetExamVersionCoverageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetExamVersionCoverageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetExamVersionCoverageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AdminListFlagsResponse200Headers the declared response headers of an HTTP 200 response for AdminListFlags
 type AdminListFlagsResponse200Headers struct {
 	XRequestId *string
@@ -18823,6 +19849,303 @@ func (r PaymentListUnmatchedTransactionsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PaymentListUnmatchedTransactionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ListQuestionsResponse200Headers the declared response headers of an HTTP 200 response for ListQuestions
+type ListQuestionsResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListQuestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QuestionPage
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListQuestionsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListQuestionsResponse) GetJSON200() *QuestionPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListQuestionsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ListQuestionsResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ListQuestionsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListQuestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListQuestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListQuestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListQuestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GenerateQuestionsResponse201Headers the declared response headers of an HTTP 201 response for GenerateQuestions
+type GenerateQuestionsResponse201Headers struct {
+	XRequestId *string
+}
+
+type GenerateQuestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *GeneratedQuestionsResponse
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *GenerateQuestionsResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r GenerateQuestionsResponse) GetJSON201() *GeneratedQuestionsResponse {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r GenerateQuestionsResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GenerateQuestionsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GenerateQuestionsResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r GenerateQuestionsResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GenerateQuestionsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GenerateQuestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GenerateQuestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GenerateQuestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GenerateQuestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetQuestionStatsResponse200Headers the declared response headers of an HTTP 200 response for GetQuestionStats
+type GetQuestionStatsResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetQuestionStatsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QuestionStats
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetQuestionStatsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetQuestionStatsResponse) GetJSON200() *QuestionStats {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetQuestionStatsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetQuestionStatsResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetQuestionStatsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetQuestionStatsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetQuestionStatsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetQuestionStatsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetQuestionStatsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetQuestionStatsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminListReviewQueueResponse200Headers the declared response headers of an HTTP 200 response for AdminListReviewQueue
+type AdminListReviewQueueResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminListReviewQueueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminReviewQueueResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminListReviewQueueResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminListReviewQueueResponse) GetJSON200() *AdminReviewQueueResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminListReviewQueueResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminListReviewQueueResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminListReviewQueueResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminListReviewQueueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminListReviewQueueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminListReviewQueueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminListReviewQueueResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -22754,6 +24077,68 @@ func (r SubmitExamAttemptResponse) ContentType() string {
 	return ""
 }
 
+// ListExamVersionsResponse200Headers the declared response headers of an HTTP 200 response for ListExamVersions
+type ListExamVersionsResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListExamVersionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ExamVersionListResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListExamVersionsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListExamVersionsResponse) GetJSON200() *ExamVersionListResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListExamVersionsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ListExamVersionsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListExamVersionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListExamVersionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListExamVersionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListExamVersionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ListExamsResponse200Headers the declared response headers of an HTTP 200 response for ListExams
 type ListExamsResponse200Headers struct {
 	XRequestId *string
@@ -24224,6 +25609,137 @@ func (r UserGetExportResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UserGetExportResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetMyFoundationNextResponse200Headers the declared response headers of an HTTP 200 response for GetMyFoundationNext
+type GetMyFoundationNextResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetMyFoundationNextResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FoundationPathNode
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetMyFoundationNextResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetMyFoundationNextResponse) GetJSON200() *FoundationPathNode {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetMyFoundationNextResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetMyFoundationNextResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetMyFoundationNextResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMyFoundationNextResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMyFoundationNextResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyFoundationNextResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetMyFoundationPathResponse200Headers the declared response headers of an HTTP 200 response for GetMyFoundationPath
+type GetMyFoundationPathResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetMyFoundationPathResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LearnerFoundationPath
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetMyFoundationPathResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetMyFoundationPathResponse) GetJSON200() *LearnerFoundationPath {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetMyFoundationPathResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetMyFoundationPathResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r GetMyFoundationPathResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r GetMyFoundationPathResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMyFoundationPathResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMyFoundationPathResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyFoundationPathResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -26382,6 +27898,168 @@ func (r GetMyWeeklyPlanResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetMyWeeklyPlanResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ComposeMockTestResponse201Headers the declared response headers of an HTTP 201 response for ComposeMockTest
+type ComposeMockTestResponse201Headers struct {
+	XRequestId *string
+}
+
+type ComposeMockTestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *MockTest
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *ComposeMockTestResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r ComposeMockTestResponse) GetJSON201() *MockTest {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ComposeMockTestResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ComposeMockTestResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ComposeMockTestResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ComposeMockTestResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ComposeMockTestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ComposeMockTestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ComposeMockTestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ComposeMockTestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StartMockTestAttemptResponse201Headers the declared response headers of an HTTP 201 response for StartMockTestAttempt
+type StartMockTestAttemptResponse201Headers struct {
+	XRequestId *string
+}
+
+// StartMockTestAttemptResponse429Headers the declared response headers of an HTTP 429 response for StartMockTestAttempt
+type StartMockTestAttemptResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+type StartMockTestAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ExamAttempt
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *StartMockTestAttemptResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StartMockTestAttemptResponse429Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r StartMockTestAttemptResponse) GetJSON201() *ExamAttempt {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StartMockTestAttemptResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StartMockTestAttemptResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StartMockTestAttemptResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StartMockTestAttemptResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StartMockTestAttemptResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StartMockTestAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StartMockTestAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StartMockTestAttemptResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -29824,6 +31502,21 @@ func (c *ClientWithResponses) AdminCreateCourseWithResponse(ctx context.Context,
 	return ParseAdminCreateCourseResponse(rsp)
 }
 
+// GetExamVersionCoverageWithResponse Exam version coverage report
+//
+// Report of published question groups available versus required per exam part.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/exams/versions/{id}/coverage (the `GetExamVersionCoverage` operationId).
+func (c *ClientWithResponses) GetExamVersionCoverageWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetExamVersionCoverageResponse, error) {
+	rsp, err := c.GetExamVersionCoverage(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetExamVersionCoverageResponse(rsp)
+}
+
 // AdminListFlagsWithResponse List all feature flags.
 //
 // Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
@@ -30066,6 +31759,81 @@ func (c *ClientWithResponses) PaymentListUnmatchedTransactionsWithResponse(ctx c
 		return nil, err
 	}
 	return ParsePaymentListUnmatchedTransactionsResponse(rsp)
+}
+
+// ListQuestionsWithResponse Search and filter question bank items.
+//
+// Returns paginated question bank items filtered by criteria.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/questions (the `ListQuestions` operationId).
+func (c *ClientWithResponses) ListQuestionsWithResponse(ctx context.Context, params *ListQuestionsParams, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error) {
+	rsp, err := c.ListQuestions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListQuestionsResponse(rsp)
+}
+
+// GenerateQuestionsWithBodyWithResponse AI-generate draft items for review.
+//
+// Generates N draft items for a part and nodes, through Generator.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/questions/generate (the `GenerateQuestions` operationId).
+func (c *ClientWithResponses) GenerateQuestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenerateQuestionsResponse, error) {
+	rsp, err := c.GenerateQuestionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenerateQuestionsResponse(rsp)
+}
+
+// GenerateQuestionsWithResponse AI-generate draft items for review.
+//
+// Generates N draft items for a part and nodes, through Generator.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/questions/generate (the `GenerateQuestions` operationId).
+func (c *ClientWithResponses) GenerateQuestionsWithResponse(ctx context.Context, body GenerateQuestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*GenerateQuestionsResponse, error) {
+	rsp, err := c.GenerateQuestions(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenerateQuestionsResponse(rsp)
+}
+
+// GetQuestionStatsWithResponse Empirical difficulty and discrimination statistics.
+//
+// Returns empirical statistics from real learner attempts.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/questions/{id}/stats (the `GetQuestionStats` operationId).
+func (c *ClientWithResponses) GetQuestionStatsWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetQuestionStatsResponse, error) {
+	rsp, err := c.GetQuestionStats(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetQuestionStatsResponse(rsp)
+}
+
+// AdminListReviewQueueWithResponse List machine-generated drafts awaiting review.
+//
+// Returns drafts produced by the generator, oldest first, with blind solve answers, CEFR reasoning, and provenance.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/review-queue (the `AdminListReviewQueue` operationId).
+func (c *ClientWithResponses) AdminListReviewQueueWithResponse(ctx context.Context, params *AdminListReviewQueueParams, reqEditors ...RequestEditorFn) (*AdminListReviewQueueResponse, error) {
+	rsp, err := c.AdminListReviewQueue(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminListReviewQueueResponse(rsp)
 }
 
 // RbacListRolesWithResponse List roles and the permissions they grant.
@@ -31248,6 +33016,21 @@ func (c *ClientWithResponses) SubmitExamAttemptWithResponse(ctx context.Context,
 	return ParseSubmitExamAttemptResponse(rsp)
 }
 
+// ListExamVersionsWithResponse Current versions and their blueprints
+//
+// Lists verified exam versions and their blueprints available for mock test composition.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /exam-versions (the `ListExamVersions` operationId).
+func (c *ClientWithResponses) ListExamVersionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExamVersionsResponse, error) {
+	rsp, err := c.ListExamVersions(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListExamVersionsResponse(rsp)
+}
+
 // ListExamsWithResponse Available mock exams
 //
 // Lists active mock exam templates available to learners.
@@ -31655,6 +33438,36 @@ func (c *ClientWithResponses) UserGetExportWithResponse(ctx context.Context, id 
 		return nil, err
 	}
 	return ParseUserGetExportResponse(rsp)
+}
+
+// GetMyFoundationNextWithResponse Next foundation topic to learn across strands.
+//
+// Returns the next unmastered topic across foundation strands, preferring the learner's stated goal and nodes matching their current placement level.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/foundation/next (the `GetMyFoundationNext` operationId).
+func (c *ClientWithResponses) GetMyFoundationNextWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyFoundationNextResponse, error) {
+	rsp, err := c.GetMyFoundationNext(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMyFoundationNextResponse(rsp)
+}
+
+// GetMyFoundationPathWithResponse Learning path to a target foundation topic with user mastery.
+//
+// Returns the prerequisite chain leading to the target topic in topological order, including attempts, scores, and mastery status for the caller, marking the first unmastered node as next.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/foundation/path (the `GetMyFoundationPath` operationId).
+func (c *ClientWithResponses) GetMyFoundationPathWithResponse(ctx context.Context, params *GetMyFoundationPathParams, reqEditors ...RequestEditorFn) (*GetMyFoundationPathResponse, error) {
+	rsp, err := c.GetMyFoundationPath(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMyFoundationPathResponse(rsp)
 }
 
 // GetGamificationSummaryWithResponse The caller's XP, level, streak, badges and open quests.
@@ -32300,6 +34113,51 @@ func (c *ClientWithResponses) GetMyWeeklyPlanWithResponse(ctx context.Context, r
 		return nil, err
 	}
 	return ParseGetMyWeeklyPlanResponse(rsp)
+}
+
+// ComposeMockTestWithBodyWithResponse Compose a mock test
+//
+// Composes a mock test from the question bank based on blueprint and mode.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+func (c *ClientWithResponses) ComposeMockTestWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ComposeMockTestResponse, error) {
+	rsp, err := c.ComposeMockTestWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseComposeMockTestResponse(rsp)
+}
+
+// ComposeMockTestWithResponse Compose a mock test
+//
+// Composes a mock test from the question bank based on blueprint and mode.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
+func (c *ClientWithResponses) ComposeMockTestWithResponse(ctx context.Context, body ComposeMockTestJSONRequestBody, reqEditors ...RequestEditorFn) (*ComposeMockTestResponse, error) {
+	rsp, err := c.ComposeMockTest(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseComposeMockTestResponse(rsp)
+}
+
+// StartMockTestAttemptWithResponse Start or retake a mock test attempt
+//
+// Starts a sitting from a composed mock test.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
+func (c *ClientWithResponses) StartMockTestAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StartMockTestAttemptResponse, error) {
+	rsp, err := c.StartMockTestAttempt(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartMockTestAttemptResponse(rsp)
 }
 
 // ModerationListCoursesQueueWithResponse List course submissions in review queue.
@@ -34372,6 +36230,73 @@ func ParseAdminCreateCourseResponse(rsp *http.Response) (*AdminCreateCourseRespo
 	return response, nil
 }
 
+// ParseGetExamVersionCoverageResponse parses an HTTP response from a GetExamVersionCoverageWithResponse call
+func ParseGetExamVersionCoverageResponse(rsp *http.Response) (*GetExamVersionCoverageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetExamVersionCoverageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExamCoverageReport
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetExamVersionCoverageResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAdminListFlagsResponse parses an HTTP response from a AdminListFlagsWithResponse call
 func ParseAdminListFlagsResponse(rsp *http.Response) (*AdminListFlagsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -34985,6 +36910,267 @@ func ParsePaymentListUnmatchedTransactionsResponse(rsp *http.Response) (*Payment
 		}
 		response.JSON200 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseListQuestionsResponse parses an HTTP response from a ListQuestionsWithResponse call
+func ParseListQuestionsResponse(rsp *http.Response) (*ListQuestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListQuestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QuestionPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListQuestionsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGenerateQuestionsResponse parses an HTTP response from a GenerateQuestionsWithResponse call
+func ParseGenerateQuestionsResponse(rsp *http.Response) (*GenerateQuestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GenerateQuestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest GeneratedQuestionsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers GenerateQuestionsResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetQuestionStatsResponse parses an HTTP response from a GetQuestionStatsWithResponse call
+func ParseGetQuestionStatsResponse(rsp *http.Response) (*GetQuestionStatsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetQuestionStatsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QuestionStats
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetQuestionStatsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminListReviewQueueResponse parses an HTTP response from a AdminListReviewQueueWithResponse call
+func ParseAdminListReviewQueueResponse(rsp *http.Response) (*AdminListReviewQueueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminListReviewQueueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminReviewQueueResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminListReviewQueueResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil
@@ -38836,6 +41022,59 @@ func ParseSubmitExamAttemptResponse(rsp *http.Response) (*SubmitExamAttemptRespo
 	return response, nil
 }
 
+// ParseListExamVersionsResponse parses an HTTP response from a ListExamVersionsWithResponse call
+func ParseListExamVersionsResponse(rsp *http.Response) (*ListExamVersionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListExamVersionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExamVersionListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListExamVersionsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseListExamsResponse parses an HTTP response from a ListExamsWithResponse call
 func ParseListExamsResponse(rsp *http.Response) (*ListExamsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -40124,6 +42363,119 @@ func ParseUserGetExportResponse(rsp *http.Response) (*UserGetExportResponse, err
 	switch {
 	case rsp.StatusCode == 200:
 		var headers UserGetExportResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetMyFoundationNextResponse parses an HTTP response from a GetMyFoundationNextWithResponse call
+func ParseGetMyFoundationNextResponse(rsp *http.Response) (*GetMyFoundationNextResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMyFoundationNextResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FoundationPathNode
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetMyFoundationNextResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetMyFoundationPathResponse parses an HTTP response from a GetMyFoundationPathWithResponse call
+func ParseGetMyFoundationPathResponse(rsp *http.Response) (*GetMyFoundationPathResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMyFoundationPathResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LearnerFoundationPath
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetMyFoundationPathResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
@@ -42014,6 +44366,171 @@ func ParseGetMyWeeklyPlanResponse(rsp *http.Response) (*GetMyWeeklyPlanResponse,
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseComposeMockTestResponse parses an HTTP response from a ComposeMockTestWithResponse call
+func ParseComposeMockTestResponse(rsp *http.Response) (*ComposeMockTestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ComposeMockTestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest MockTest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers ComposeMockTestResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStartMockTestAttemptResponse parses an HTTP response from a StartMockTestAttemptWithResponse call
+func ParseStartMockTestAttemptResponse(rsp *http.Response) (*StartMockTestAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StartMockTestAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ExamAttempt
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers StartMockTestAttemptResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers StartMockTestAttemptResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil

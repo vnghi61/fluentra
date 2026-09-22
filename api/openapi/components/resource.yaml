@@ -71,6 +71,14 @@ Resource:
       format: date-time
       nullable: true
       example: '2026-09-21T00:01:00Z'
+    renditions:
+      type: array
+      items:
+        $ref: '#/ResourceRendition'
+    extraction:
+      $ref: '#/ResourceExtraction'
+    classification:
+      $ref: '#/ResourceClassification'
 
 ResourceList:
   type: object
@@ -167,3 +175,101 @@ ResourceSubmitResponse:
       type: string
       enum: [uploaded]
       example: uploaded
+
+ResourceRendition:
+  type: object
+  description: A derived visual, audio, or video rendition of a validated file resource.
+  required:
+    - kind
+    - mime_type
+  properties:
+    kind:
+      type: string
+      enum: [thumbnail, display, preview, audio_web, poster, video_360p, video_720p]
+      example: thumbnail
+    mime_type:
+      type: string
+      example: image/png
+    width:
+      type: integer
+      nullable: true
+      example: 320
+    height:
+      type: integer
+      nullable: true
+      example: 240
+    duration_ms:
+      type: integer
+      nullable: true
+      example: null
+    byte_size:
+      type: integer
+      format: int64
+      nullable: true
+      example: 12450
+    url:
+      type: string
+      nullable: true
+      description: Presigned GET URL to download or display the rendition.
+      example: https://storage.example.com/fluentra-derived/...
+    expires_at:
+      type: string
+      format: date-time
+      nullable: true
+      example: '2026-09-21T01:00:00Z'
+
+ResourceExtraction:
+  type: object
+  nullable: true
+  description: Extracted textual content and metadata from the resource.
+  required:
+    - source
+    - char_count
+    - truncated
+    - excerpt
+  properties:
+    source:
+      type: string
+      enum: [pdf_text, ocr, transcript]
+      example: pdf_text
+    char_count:
+      type: integer
+      example: 1540
+    truncated:
+      type: boolean
+      example: false
+    excerpt:
+      type: string
+      description: The first 2,000 characters of the extracted text.
+      example: "Unit 1: Present Perfect Tense..."
+
+ResourceClassification:
+  type: object
+  nullable: true
+  description: Grounded spine taxonomy classification and CEFR estimate.
+  properties:
+    cefr_estimate:
+      type: string
+      nullable: true
+      example: B1
+    skill:
+      type: string
+      nullable: true
+      example: grammar
+    nodes:
+      type: array
+      items:
+        $ref: '#/ClassificationNode'
+
+ClassificationNode:
+  type: object
+  required:
+    - code
+    - label
+  properties:
+    code:
+      type: string
+      example: PRESENT_PERFECT
+    label:
+      type: string
+      example: Present Perfect

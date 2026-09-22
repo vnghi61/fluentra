@@ -276,6 +276,46 @@ type CoreUserPreference struct {
 	PracticeLevel        *CoreCefrLevel
 }
 
+type ResourceClassification struct {
+	ResourceID    uuid.UUID
+	CefrEstimate  *string
+	Skill         *string
+	NodeCodes     []string
+	PromptVersion string
+	Model         string
+	AiRequestID   *uuid.UUID
+	CreatedAt     time.Time
+}
+
+type ResourceExtraction struct {
+	ResourceID  uuid.UUID
+	Source      string
+	Text        string
+	CharCount   int32
+	Truncated   bool
+	Language    string
+	ToolVersion string
+	CreatedAt   time.Time
+}
+
+type ResourceRendition struct {
+	ID            uuid.UUID
+	ResourceID    uuid.UUID
+	Kind          string
+	Status        string
+	ObjectKey     *string
+	MimeType      string
+	Width         *int32
+	Height        *int32
+	DurationMs    *int32
+	ByteSize      *int64
+	ToolVersion   string
+	Attempts      int32
+	FailureReason string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
 type ResourceResource struct {
 	ID               uuid.UUID
 	UserID           uuid.UUID

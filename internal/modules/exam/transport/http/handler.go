@@ -36,6 +36,14 @@ type ExamService interface {
 	GetScoreReport(ctx context.Context, userID, attemptID uuid.UUID) (*service.ScoreReportDTO, error)
 	ListUserAttempts(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]service.ExamAttemptDTO, int64, error)
 	SittingsToday(ctx context.Context, userID uuid.UUID) (service.SittingsToday, error)
+	ListCurrentExamVersions(ctx context.Context) ([]service.ExamVersionDTO, error)
+	ComposeMockTest(
+		ctx context.Context, userID *uuid.UUID, req service.ComposeMockTestRequest,
+	) (*domain.MockTest, error)
+	StartMockTestAttempt(
+		ctx context.Context, userID, mockTestID uuid.UUID,
+	) (*service.ExamAttemptDTO, error)
+	GetExamVersionCoverage(ctx context.Context, versionID uuid.UUID) (*service.ExamCoverageReportDTO, error)
 }
 
 // maxAnswersBody bounds an autosave body: a sitting's answers, each bounded by
@@ -62,6 +70,16 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/exam-attempts/{id}/sections/{n}/complete", h.completeSection)
 	r.Post("/exam-attempts/{id}/submit", h.submitExam)
 	r.Get("/exam-attempts/{id}/report", h.getReport)
+
+	// Mock tests and exam versions
+	r.Get("/exam-versions", h.listExamVersions)
+	r.Post("/mock-tests", h.composeMockTest)
+	r.Post("/mock-tests/{id}/attempts", h.startMockTestAttempt)
+}
+
+// AdminRoutes mounts exam admin endpoints.
+func (h *Handler) AdminRoutes(r chi.Router) {
+	r.Get("/admin/exams/versions/{id}/coverage", h.getExamVersionCoverage)
 }
 
 func (h *Handler) listExams(w http.ResponseWriter, r *http.Request) {
@@ -280,6 +298,84 @@ func (h *Handler) getReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	report, err := h.service.GetScoreReport(ctx, actor.UserID, attemptID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, report)
+}
+
+func (h *Handler) listExamVersions(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	versions, err := h.service.ListCurrentExamVersions(ctx)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	if versions == nil {
+		versions = []service.ExamVersionDTO{}
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, service.ExamVersionListResponseDTO{Items: versions})
+}
+
+func (h *Handler) composeMockTest(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+
+	var req service.ComposeMockTestRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.BadRequest, "INVALID_REQUEST_BODY", "failed to parse request body"))
+		return
+	}
+
+	mt, err := h.service.ComposeMockTest(ctx, &actor.UserID, req)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusCreated, mt)
+}
+
+func (h *Handler) startMockTestAttempt(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+
+	mockTestIDStr := chi.URLParam(r, "id")
+	mockTestID, err := uuid.Parse(mockTestIDStr)
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.BadRequest, "INVALID_MOCK_TEST_ID", "Invalid mock test ID"))
+		return
+	}
+
+	attempt, err := h.service.StartMockTestAttempt(ctx, actor.UserID, mockTestID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusCreated, attempt)
+}
+
+func (h *Handler) getExamVersionCoverage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	versionIDStr := chi.URLParam(r, "id")
+	versionID, err := uuid.Parse(versionIDStr)
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.BadRequest, "INVALID_VERSION_ID", "Invalid version ID"))
+		return
+	}
+
+	report, err := h.service.GetExamVersionCoverage(ctx, versionID)
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return

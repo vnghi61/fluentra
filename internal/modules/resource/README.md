@@ -6,9 +6,9 @@ status: IMPLEMENTED
 phase: 4
 owner: "@learning-team"
 schema: resource
-tables: [resources]
-depends_on: [storage, job]
-depended_on_by: []
+tables: [resources, renditions, extractions, classifications]
+depends_on: [storage, job, user]
+depended_on_by: [studio]
 spec_version: 1.0.0
 last_verified: 2026-09-21
 ---
@@ -35,8 +35,13 @@ Learners and educators bring external materials to study. Intake must accept fil
 - URL validation that stores the page title and never the body, through a client whose dialer refuses non-public addresses
 - Per-user quotas: 50 resources and 250 MB, counting everything not rejected or failed
 - Presigned GET for a validated file its owner requests
-- Deleting a resource together with its stored object
+- Derived visual, audio, and video renditions in fluentra-derived for validated file resources
+- Extracting text from PDF and Office document resources
+- Transcribing audio and video resources via media.HTTPTranscriber
+- Grounding and classifying extracted text into CEFR levels, skills, and spine taxonomy nodes
+- Deleting a resource together with its stored object, derived renditions, extraction and classification
 - A cron sweep that fails abandoned intents and deletes their objects, and fails uploads whose validation never finished
+- Reading one resource for its owner and copying its original and ready renditions into a published course's own storage (WO 20)
 <!-- END GENERATED: readme-resp -->
 
 ## Where things are

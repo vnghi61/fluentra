@@ -720,6 +720,15 @@ func (r *Repository) GetTaxonomyByID(ctx context.Context, id uuid.UUID) (domain.
 	return toDomainTaxonomy(row), nil
 }
 
+// ListContentItemIDsForTaxonomy returns the items tagged with a taxonomy node.
+func (r *Repository) ListContentItemIDsForTaxonomy(ctx context.Context, taxonomyID uuid.UUID) ([]uuid.UUID, error) {
+	ids, err := r.queries.ListContentItemIDsForTaxonomy(ctx, taxonomyID)
+	if err != nil {
+		return nil, fmt.Errorf("list content items for taxonomy: %w", err)
+	}
+	return ids, nil
+}
+
 // GetTaxonomyByCode retrieves the one taxonomy node carrying this code.
 //
 // A code is unique per namespace, not globally: nothing stops `skill.LISTENING`
@@ -928,6 +937,74 @@ func (r *Repository) GetPublishedTopicBodyByTaxonomyID(
 		return nil, false, fmt.Errorf("get published topic body: %w", err)
 	}
 	return body, true, nil
+}
+
+// ListReviewQueue returns drafts produced by the generator, oldest first.
+func (r *Repository) ListReviewQueue(
+	ctx context.Context, filter domain.ReviewQueueFilter,
+) ([]domain.ReviewQueueItem, error) {
+	rows, err := r.queries.ListReviewQueue(ctx, sqlccontent.ListReviewQueueParams{
+		Purpose:      filter.Purpose,
+		Kind:         filter.Kind,
+		CefrLevel:    filter.CEFRLevel,
+		NodeCode:     filter.NodeCode,
+		ResultOffset: domain.NormaliseOffset(filter.Offset),
+		ResultLimit:  domain.NormaliseLimit(filter.Limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list review queue: %w", err)
+	}
+	res := make([]domain.ReviewQueueItem, 0, len(rows))
+	for _, row := range rows {
+		res = append(res, domain.ReviewQueueItem{
+			ID:        row.ID,
+			ItemID:    row.ItemID,
+			Slug:      row.Slug,
+			Kind:      row.Kind,
+			CEFRLevel: row.CefrLevel,
+			Status:    domain.AuthoringStatus(row.Status),
+			Body:      row.Body,
+			CreatedAt: row.CreatedAt,
+			NodeCodes: toNodeCodes(row.NodeCodes),
+		})
+	}
+	return res, nil
+}
+
+// CountReviewQueue counts total items matching review queue filter.
+func (r *Repository) CountReviewQueue(
+	ctx context.Context, filter domain.ReviewQueueFilter,
+) (int64, error) {
+	count, err := r.queries.CountReviewQueue(ctx, sqlccontent.CountReviewQueueParams{
+		Purpose:   filter.Purpose,
+		Kind:      filter.Kind,
+		CefrLevel: filter.CEFRLevel,
+		NodeCode:  filter.NodeCode,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("count review queue: %w", err)
+	}
+	return count, nil
+}
+
+func toNodeCodes(v interface{}) []string {
+	if v == nil {
+		return []string{}
+	}
+	switch codes := v.(type) {
+	case []string:
+		return codes
+	case []interface{}:
+		res := make([]string, 0, len(codes))
+		for _, c := range codes {
+			if s, ok := c.(string); ok {
+				res = append(res, s)
+			}
+		}
+		return res
+	default:
+		return []string{}
+	}
 }
 
 // boundedPosition narrows a position to the width of the column that stores it.

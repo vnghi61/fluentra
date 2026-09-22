@@ -7,7 +7,7 @@ phase: 3
 owner: "@commerce-team"
 schema: studio
 tables: [creator_profiles, payout_accounts, course_drafts, submissions, listings, purchases, creator_ledger, takedowns]
-depends_on: [content, lesson, learning, payment, job]
+depends_on: [content, lesson, learning, payment, job, resource]
 depended_on_by: [admin, lesson, learning]
 spec_version: 1.0.0
 last_verified: 2026-08-06
@@ -48,6 +48,7 @@ Creator Studio: authoring community courses, draft editing, submissions, automat
 - Gate 1 automated verification (structure, CEFR, safety, runner kinds)
 - Gate 2 human moderation queue and approval/rejection decisions
 - Course publishing to catalogue with content versioning
+- Publishing a lesson material by copying the creator's resource into the course's own storage (WO 20)
 
 **This module does NOT own:**
 
@@ -153,6 +154,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | [`learning`](../../modules/learning/AGENT.md) | → depends on | ItemVerifier candidate checks and learner progress lookup for refund eligibility |
 | [`payment`](../../modules/payment/AGENT.md) | → depends on | Order creation and payment matching for paid courses |
 | [`job`](../../platform/job/AGENT.md) | → depends on | Gate 1 verification worker |
+| [`resource`](../../modules/resource/AGENT.md) | → depends on | Reads and copies a creator's uploaded material into a published course |
 | [`admin`](../../modules/admin/AGENT.md) | ← used by | consumes this module's contract |
 | [`lesson`](../../modules/lesson/AGENT.md) | ← used by | consumes this module's contract |
 | [`learning`](../../modules/learning/AGENT.md) | ← used by | consumes this module's contract |
@@ -174,7 +176,9 @@ and fails `go-arch-lint` in CI.
 7. **BR-STUDIO-07** — BR-STUDIO-07: A submission that fails Gate 1 never reaches a human.
 8. **BR-STUDIO-08** — BR-STUDIO-08: Every activity in a published community course is a real content_version.
 9. **BR-STUDIO-09** — BR-STUDIO-09: A creator's payout account is never returned in a list response and never logged.
-10. **BR-STUDIO-10** — BR-STUDIO-10: A course may not contain a kind the lesson runner cannot render (11 runner kinds only).
+10. **BR-STUDIO-10** — BR-STUDIO-10: A course may not contain a kind the lesson runner cannot render (eleven graded runner kinds plus lesson_material).
+11. **BR-STUDIO-11** — BR-STUDIO-11: A lesson holds at least one material or three exercises; a course holds at least twenty exercises, materials not counted.
+12. **BR-STUDIO-12** — BR-STUDIO-12: A published material is a copy owned by the course; the creator's resource and account can be deleted without affecting it.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks
@@ -235,7 +239,8 @@ go test -tags=integration ./internal/modules/studio/...  # integration (testcont
 <!-- BEGIN GENERATED: donot -->
 - Do not allow a creator to review their own submission.
 - Do not log or expose raw payout bank account numbers.
-- Do not allow activity kinds outside the 11 runner kinds.
+- Do not allow activity kinds outside the twelve runner kinds.
+- Do not trust a material's resource_id: resolve it through the draft owner, and derive its kind from the resource's MIME.
 <!-- END GENERATED: donot -->
 
 ---

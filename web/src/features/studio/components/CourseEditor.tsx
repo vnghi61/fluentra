@@ -25,37 +25,25 @@ import {
   useUpdateDraft,
   useSubmitDraft,
 } from "../hooks/useStudio";
+import {
+  ACTIVITY_KINDS,
+  activityIssues,
+  emptyFields,
+  readActivity,
+  serialiseActivity,
+  type ActivityFields,
+  type ActivityKind,
+  type DraftActivity,
+} from "../model/activityKinds";
+import { ActivityFieldsEditor } from "./ActivityFieldsEditor";
 
 const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"];
-
-const ACTIVITY_KINDS = [
-  { value: "multiple_choice", label: "Multiple Choice" },
-  { value: "fill_blank", label: "Fill in the Blank" },
-  { value: "matching", label: "Matching Pairs" },
-  { value: "ordering", label: "Word Ordering" },
-  { value: "translation", label: "Translation" },
-  { value: "open_response", label: "Open Response" },
-  { value: "pronunciation", label: "Pronunciation" },
-  { value: "dialogue", label: "Interactive Dialogue" },
-  { value: "error_correction", label: "Error Correction" },
-  { value: "dictation", label: "Dictation" },
-  { value: "short_answer", label: "Short Answer" },
-];
-
-export interface ActivityItem {
-  id: string;
-  kind: string;
-  title: string;
-  prompt: string;
-  expected_answer?: string | undefined;
-  explanation?: string | undefined;
-}
 
 export interface LessonItem {
   id: string;
   title: string;
   description?: string | undefined;
-  activities: ActivityItem[];
+  activities: DraftActivity[];
 }
 
 export interface UnitItem {
@@ -80,7 +68,8 @@ export function CourseEditor({
   const navigate = useNavigate();
 
   const isEditing = Boolean(draftId);
-  const { data: existingDraft, isLoading: draftLoading } = useCourseDraft(draftId);
+  const { data: existingDraft, isLoading: draftLoading } =
+    useCourseDraft(draftId);
   const createMutation = useCreateDraft();
   const updateMutation = useUpdateDraft(draftId ?? "");
   const submitMutation = useSubmitDraft(draftId ?? "");
@@ -105,10 +94,9 @@ export function CourseEditor({
           activities: [
             {
               id: "a-1",
-              kind: "multiple_choice",
-              title: "Basic vocabulary check",
-              prompt: "Select the most accurate translation.",
-              expected_answer: "Option A",
+              kind: "vocab_multiple_choice",
+              title: "Activity 1",
+              fields: emptyFields(),
             },
           ],
         },
@@ -119,7 +107,9 @@ export function CourseEditor({
   const [expandedUnits, setExpandedUnits] = useState<Record<string, boolean>>({
     "u-1": true,
   });
-  const [expandedLessons, setExpandedLessons] = useState<Record<string, boolean>>({
+  const [expandedLessons, setExpandedLessons] = useState<
+    Record<string, boolean>
+  >({
     "l-1": true,
   });
 
@@ -140,9 +130,20 @@ export function CourseEditor({
     setIsFree(price === 0);
     if (price > 0) setPriceVnd(price);
 
-    const structure = existingDraft.structure as unknown as CourseStructure | undefined;
+    const structure = existingDraft.structure as unknown as
+      CourseStructure | undefined;
     if (structure?.units && structure.units.length > 0) {
-      setUnits(structure.units);
+      setUnits(
+        structure.units.map((unit) => ({
+          ...unit,
+          lessons: (unit.lessons ?? []).map((lesson) => ({
+            ...lesson,
+            activities: (lesson.activities ?? []).map((raw, i) =>
+              readActivity(raw, `${lesson.id}-a${i}`),
+            ),
+          })),
+        })),
+      );
     }
   }
 
@@ -229,11 +230,39 @@ export function CourseEditor({
           ...lesson.activities,
           {
             id: newActivityId,
-            kind: "multiple_choice",
+            kind: "vocab_multiple_choice",
             title: `Activity ${lesson.activities.length + 1}`,
-            prompt: "Answer the following question:",
+            fields: emptyFields(),
           },
         ];
+      }
+      return copy;
+    });
+  };
+
+  const updateActivity = (
+    unitIndex: number,
+    lessonIndex: number,
+    activityIndex: number,
+    patch: {
+      kind?: ActivityKind;
+      title?: string;
+      fields?: Partial<ActivityFields>;
+    },
+  ) => {
+    setUnits((prev) => {
+      const copy = [...prev];
+      const lesson = copy[unitIndex]?.lessons[lessonIndex];
+      const act = lesson?.activities[activityIndex];
+      if (lesson && act) {
+        const next = [...lesson.activities];
+        next[activityIndex] = {
+          ...act,
+          ...(patch.kind && { kind: patch.kind }),
+          ...(patch.title !== undefined && { title: patch.title }),
+          fields: { ...act.fields, ...patch.fields },
+        };
+        lesson.activities = next;
       }
       return copy;
     });
@@ -267,21 +296,65 @@ export function CourseEditor({
       u.lessons.reduce((lAcc, l) => lAcc + (l.activities?.length ?? 0), 0),
     0,
   );
+  // D20-3: the twenty are graded exercises. A material is something to read or
+  // watch, and a course of twenty videos is not a practice course.
+  const isMaterial = (a: DraftActivity) => a.kind === "lesson_material";
+  const totalExercises = units.reduce(
+    (acc, u) =>
+      acc +
+      u.lessons.reduce(
+        (lAcc, l) => lAcc + l.activities.filter((a) => !isMaterial(a)).length,
+        0,
+      ),
+    0,
+  );
+  const totalMaterials = totalActivities - totalExercises;
+  // A lesson is valid with at least one material, or with 3-30 exercises.
+  const everyLessonValid = units.every((u) =>
+    u.lessons.every((l) => {
+      const materials = l.activities.filter(isMaterial).length;
+      const exercises = l.activities.length - materials;
+      return materials > 0 || (exercises >= 3 && exercises <= 30);
+    }),
+  );
+  // A material may be saved while its video processes, but it may not be
+  // submitted: Gate 1's material_ready would reject it, and the creator should
+  // not spend a submission round-trip to learn that (WO 20 Stage B.1).
+  const everyMaterialReady = units.every((u) =>
+    u.lessons.every((l) =>
+      l.activities.every(
+        (a) =>
+          !isMaterial(a) ||
+          (a.fields.resourceId.trim() !== "" &&
+            a.fields.materialStatus === "ready"),
+      ),
+    ),
+  );
 
   const meetsMinLessons = totalLessons >= 3;
-  const meetsMinActivities = totalActivities >= 20;
+  const meetsMinActivities = totalExercises >= 20;
   const meetsPriceBounds = isFree || (priceVnd >= 49000 && priceVnd <= 5000000);
   const canSubmit =
     title.trim().length > 0 &&
     slug.trim().length > 0 &&
     meetsMinLessons &&
     meetsMinActivities &&
+    everyLessonValid &&
+    everyMaterialReady &&
     meetsPriceBounds;
 
   const handleSaveDraft = async () => {
     setStatusMessage(null);
     const finalPrice = isFree ? 0 : priceVnd;
-    const structureData = { units } as unknown as Record<string, unknown>;
+    const structureData = {
+      units: units.map((unit) => ({
+        ...unit,
+        lessons: unit.lessons.map((lesson) => ({
+          ...lesson,
+          activities: lesson.activities.map(serialiseActivity),
+        })),
+      })),
+    } as unknown as Record<string, unknown>;
 
     try {
       if (isEditing && draftId) {
@@ -377,7 +450,9 @@ export function CourseEditor({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => { void handleSaveDraft(); }}
+            onClick={() => {
+              void handleSaveDraft();
+            }}
             disabled={createMutation.isPending || updateMutation.isPending}
             className="gap-1.5 text-xs font-semibold"
           >
@@ -389,7 +464,9 @@ export function CourseEditor({
             <Button
               variant="primary"
               size="sm"
-              onClick={() => { void handleSubmit(); }}
+              onClick={() => {
+                void handleSubmit();
+              }}
               disabled={!canSubmit || submitMutation.isPending}
               className="gap-1.5 text-xs font-semibold"
             >
@@ -420,9 +497,15 @@ export function CourseEditor({
       {/* Rules Validation Checklist Card */}
       <Card className="border-border-subtle bg-surface-card/60 p-4 space-y-2 text-xs">
         <div className="flex items-center justify-between font-bold text-text">
-          <span>{t("studio.editor.requirementsTitle", "Submission Quality Gates Checklist")}</span>
+          <span>
+            {t(
+              "studio.editor.requirementsTitle",
+              "Submission Quality Gates Checklist",
+            )}
+          </span>
           <span className="text-text-muted">
-            {totalLessons} lessons • {totalActivities} activities
+            {totalLessons} lessons • {totalExercises} exercises
+            {totalMaterials > 0 ? ` • ${totalMaterials} materials` : ""}
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
@@ -433,9 +516,13 @@ export function CourseEditor({
               <AlertCircle className="h-4 w-4 text-warning shrink-0" />
             )}
             <span className={meetsMinLessons ? "text-text" : "text-text-muted"}>
-              {t("studio.editor.ruleMinLessons", "Min 3 lessons (Current: {{count}})", {
-                count: totalLessons,
-              })}
+              {t(
+                "studio.editor.ruleMinLessons",
+                "Min 3 lessons (Current: {{count}})",
+                {
+                  count: totalLessons,
+                },
+              )}
             </span>
           </div>
 
@@ -445,10 +532,16 @@ export function CourseEditor({
             ) : (
               <AlertCircle className="h-4 w-4 text-warning shrink-0" />
             )}
-            <span className={meetsMinActivities ? "text-text" : "text-text-muted"}>
-              {t("studio.editor.ruleMinActivities", "Min 20 activities (Current: {{count}})", {
-                count: totalActivities,
-              })}
+            <span
+              className={meetsMinActivities ? "text-text" : "text-text-muted"}
+            >
+              {t(
+                "studio.editor.ruleMinActivities",
+                "Min 20 exercises (Current: {{count}})",
+                {
+                  count: totalExercises,
+                },
+              )}
             </span>
           </div>
 
@@ -458,7 +551,9 @@ export function CourseEditor({
             ) : (
               <AlertCircle className="h-4 w-4 text-warning shrink-0" />
             )}
-            <span className={meetsPriceBounds ? "text-text" : "text-text-muted"}>
+            <span
+              className={meetsPriceBounds ? "text-text" : "text-text-muted"}
+            >
               {isFree
                 ? t("studio.editor.ruleFree", "Free Community Course")
                 : t("studio.editor.rulePriceBounds", "₫49,000 - ₫5,000,000")}
@@ -544,7 +639,14 @@ export function CourseEditor({
             >
               {CEFR_LEVELS.map((lvl) => (
                 <option key={lvl} value={lvl}>
-                  {lvl} - {lvl === "A1" ? "Beginner" : lvl === "B1" ? "Intermediate" : lvl === "C1" ? "Advanced" : lvl}
+                  {lvl} -{" "}
+                  {lvl === "A1"
+                    ? "Beginner"
+                    : lvl === "B1"
+                      ? "Intermediate"
+                      : lvl === "C1"
+                        ? "Advanced"
+                        : lvl}
                 </option>
               ))}
             </select>
@@ -720,7 +822,9 @@ export function CourseEditor({
                                 ) : (
                                   <ChevronRight className="h-3.5 w-3.5 text-text-muted" />
                                 )}
-                                <span>{lesson.title || `Lesson ${lIdx + 1}`}</span>
+                                <span>
+                                  {lesson.title || `Lesson ${lIdx + 1}`}
+                                </span>
                                 <span className="text-[11px] font-normal text-text-muted">
                                   ({lesson.activities.length} activities)
                                 </span>
@@ -766,96 +870,118 @@ export function CourseEditor({
 
                                 {/* Activities inside Lesson */}
                                 <div className="space-y-2 pt-1">
-                                  {lesson.activities.map((activity, aIdx) => (
-                                    <div
-                                      key={activity.id}
-                                      className="rounded-md border border-border-subtle bg-surface-card p-2.5 space-y-2 text-xs"
-                                    >
-                                      <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2">
-                                          <Badge
-                                            variant="secondary"
-                                            className="text-[10px] uppercase font-mono"
-                                          >
-                                            {activity.kind.replace("_", " ")}
-                                          </Badge>
-                                          <input
-                                            type="text"
-                                            value={activity.title}
-                                            onChange={(e) => {
-                                              const val = e.target.value;
-                                              setUnits((prev) => {
-                                                const c = [...prev];
-                                                const act =
-                                                  c[uIdx]?.lessons[lIdx]
-                                                    ?.activities[aIdx];
-                                                if (act) act.title = val;
-                                                return c;
-                                              });
-                                            }}
-                                            placeholder="Activity title..."
-                                            className="font-semibold text-text bg-transparent border-0 focus:outline-none focus:ring-0 text-base sm:text-xs w-48"
-                                          />
+                                  {lesson.activities.map((activity, aIdx) => {
+                                    const issues = activityIssues(activity);
+                                    return (
+                                      <div
+                                        key={activity.id}
+                                        className="rounded-md border border-border-subtle bg-surface-card p-2.5 space-y-2 text-xs"
+                                      >
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                          <div className="flex flex-1 min-w-0 items-center gap-2">
+                                            <Badge
+                                              variant="secondary"
+                                              className="text-[10px] shrink-0"
+                                            >
+                                              {t(
+                                                `studio.activity.kind.${activity.kind}`,
+                                              )}
+                                            </Badge>
+                                            <input
+                                              type="text"
+                                              value={activity.title}
+                                              onChange={(e) =>
+                                                updateActivity(
+                                                  uIdx,
+                                                  lIdx,
+                                                  aIdx,
+                                                  {
+                                                    title: e.target.value,
+                                                  },
+                                                )
+                                              }
+                                              placeholder={t(
+                                                "studio.activity.titlePlaceholder",
+                                              )}
+                                              aria-label={t(
+                                                "studio.activity.titlePlaceholder",
+                                              )}
+                                              className="font-semibold text-text bg-transparent border-0 focus:outline-none focus:ring-0 text-base sm:text-xs min-w-11 flex-1 sm:flex-none sm:w-48"
+                                            />
+                                          </div>
+
+                                          <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+                                            <select
+                                              value={activity.kind}
+                                              aria-label={t(
+                                                "studio.activity.kindLabel",
+                                              )}
+                                              onChange={(e) =>
+                                                updateActivity(
+                                                  uIdx,
+                                                  lIdx,
+                                                  aIdx,
+                                                  {
+                                                    kind: e.target
+                                                      .value as ActivityKind,
+                                                  },
+                                                )
+                                              }
+                                              className="rounded border border-border-subtle bg-surface-base px-2 py-0.5 text-base sm:text-[11px] text-text min-h-11 sm:min-h-0 flex-1 min-w-11 sm:flex-none"
+                                            >
+                                              {ACTIVITY_KINDS.map((kind) => (
+                                                <option key={kind} value={kind}>
+                                                  {t(
+                                                    `studio.activity.kind.${kind}`,
+                                                  )}
+                                                </option>
+                                              ))}
+                                            </select>
+
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                removeActivity(uIdx, lIdx, aIdx)
+                                              }
+                                              aria-label={t(
+                                                "studio.activity.remove",
+                                              )}
+                                              className="text-text-muted hover:text-danger p-0.5"
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                            </button>
+                                          </div>
                                         </div>
 
-                                        <div className="flex items-center gap-2">
-                                          <select
-                                            value={activity.kind}
-                                            onChange={(e) => {
-                                              const val = e.target.value;
-                                              setUnits((prev) => {
-                                                const c = [...prev];
-                                                const act =
-                                                  c[uIdx]?.lessons[lIdx]
-                                                    ?.activities[aIdx];
-                                                if (act) act.kind = val;
-                                                return c;
-                                              });
-                                            }}
-                                            className="rounded border border-border-subtle bg-surface-base px-2 py-0.5 text-base sm:text-[11px] text-text"
-                                          >
-                                            {ACTIVITY_KINDS.map((k) => (
-                                              <option
-                                                key={k.value}
-                                                value={k.value}
+                                        <ActivityFieldsEditor
+                                          kind={activity.kind}
+                                          fields={activity.fields}
+                                          idPrefix={activity.id}
+                                          onChange={(fields) =>
+                                            updateActivity(uIdx, lIdx, aIdx, {
+                                              fields,
+                                            })
+                                          }
+                                        />
+
+                                        {issues.length > 0 && (
+                                          <ul className="space-y-0.5 rounded bg-warning/10 px-2 py-1.5 text-[11px] text-warning-accent">
+                                            {issues.map((issue) => (
+                                              <li
+                                                key={issue}
+                                                className="flex items-start gap-1.5"
                                               >
-                                                {k.label}
-                                              </option>
+                                                <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+                                                {t(
+                                                  `studio.activity.issue.${issue}`,
+                                                )}
+                                              </li>
                                             ))}
-                                          </select>
-
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              removeActivity(uIdx, lIdx, aIdx)
-                                            }
-                                            className="text-text-muted hover:text-danger p-0.5"
-                                          >
-                                            <Trash2 className="h-3 w-3" />
-                                          </button>
-                                        </div>
+                                          </ul>
+                                        )}
                                       </div>
-
-                                      {/* Prompt */}
-                                      <Input
-                                        value={activity.prompt}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          setUnits((prev) => {
-                                            const c = [...prev];
-                                            const act =
-                                              c[uIdx]?.lessons[lIdx]?.activities[
-                                                aIdx
-                                              ];
-                                            if (act) act.prompt = val;
-                                            return c;
-                                          });
-                                        }}
-                                        placeholder="Activity prompt / question..."
-                                        className="text-xs"
-                                      />
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}

@@ -90,6 +90,41 @@ func (q *Queries) CountPublishedContentVersions(ctx context.Context, arg CountPu
 	return column_1, err
 }
 
+const countReviewQueue = `-- name: CountReviewQueue :one
+SELECT COUNT(*)::bigint
+FROM content.content_versions v
+JOIN content.content_items i ON i.id = v.item_id
+WHERE v.status IN ('draft', 'in_review')
+  AND ($1::text IS NULL OR (v.body->'_provenance'->>'purpose' = $1 OR i.slug ILIKE $1 || '-%'))
+  AND ($2::text IS NULL OR v.kind = $2)
+  AND ($3::text IS NULL OR v.cefr_level = $3)
+  AND ($4::text IS NULL OR EXISTS (
+      SELECT 1
+      FROM content.content_tags ct
+      JOIN content.taxonomies t ON t.id = ct.taxonomy_id
+      WHERE ct.item_id = v.item_id AND t.code = $4
+  ))
+`
+
+type CountReviewQueueParams struct {
+	Purpose   *string
+	Kind      *string
+	CefrLevel *string
+	NodeCode  *string
+}
+
+func (q *Queries) CountReviewQueue(ctx context.Context, arg CountReviewQueueParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countReviewQueue,
+		arg.Purpose,
+		arg.Kind,
+		arg.CefrLevel,
+		arg.NodeCode,
+	)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createContentVersion = `-- name: CreateContentVersion :one
 INSERT INTO content.content_versions (id, item_id, version, kind, body, cefr_level, status, media_refs, published_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -327,6 +362,97 @@ func (q *Queries) ListContentVersionsByItemID(ctx context.Context, itemID uuid.U
 			&i.PublishedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReviewQueue = `-- name: ListReviewQueue :many
+SELECT
+    v.id,
+    v.item_id,
+    i.slug,
+    v.kind,
+    v.cefr_level,
+    v.status,
+    v.body,
+    v.created_at,
+    COALESCE(
+        (SELECT array_agg(t.code::text ORDER BY t.code)
+         FROM content.content_tags ct
+         JOIN content.taxonomies t ON t.id = ct.taxonomy_id
+         WHERE ct.item_id = v.item_id),
+        '{}'::text[]
+    ) AS node_codes
+FROM content.content_versions v
+JOIN content.content_items i ON i.id = v.item_id
+WHERE v.status IN ('draft', 'in_review')
+  AND ($1::text IS NULL OR (v.body->'_provenance'->>'purpose' = $1 OR i.slug ILIKE $1 || '-%'))
+  AND ($2::text IS NULL OR v.kind = $2)
+  AND ($3::text IS NULL OR v.cefr_level = $3)
+  AND ($4::text IS NULL OR EXISTS (
+      SELECT 1
+      FROM content.content_tags ct
+      JOIN content.taxonomies t ON t.id = ct.taxonomy_id
+      WHERE ct.item_id = v.item_id AND t.code = $4
+  ))
+ORDER BY v.created_at ASC, v.id ASC
+LIMIT $6 OFFSET $5
+`
+
+type ListReviewQueueParams struct {
+	Purpose      *string
+	Kind         *string
+	CefrLevel    *string
+	NodeCode     *string
+	ResultOffset int32
+	ResultLimit  int32
+}
+
+type ListReviewQueueRow struct {
+	ID        uuid.UUID
+	ItemID    uuid.UUID
+	Slug      string
+	Kind      string
+	CefrLevel string
+	Status    ContentAuthoringStatus
+	Body      []byte
+	CreatedAt time.Time
+	NodeCodes interface{}
+}
+
+func (q *Queries) ListReviewQueue(ctx context.Context, arg ListReviewQueueParams) ([]ListReviewQueueRow, error) {
+	rows, err := q.db.Query(ctx, listReviewQueue,
+		arg.Purpose,
+		arg.Kind,
+		arg.CefrLevel,
+		arg.NodeCode,
+		arg.ResultOffset,
+		arg.ResultLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReviewQueueRow
+	for rows.Next() {
+		var i ListReviewQueueRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ItemID,
+			&i.Slug,
+			&i.Kind,
+			&i.CefrLevel,
+			&i.Status,
+			&i.Body,
+			&i.CreatedAt,
+			&i.NodeCodes,
 		); err != nil {
 			return nil, err
 		}

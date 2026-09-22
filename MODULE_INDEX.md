@@ -96,7 +96,7 @@ Legend — **Status**: `PLANNED` (spec only) · `IN_PROGRESS` · `DONE` · `DEPR
 | L11 | `questionbank` | Item authoring, item types, tagging, difficulty (IRT-lite), review workflow, AI generation | `assess` | `questions`, `question_options`, `question_sets`, `question_stats` | content, ai, audit | 3 | PLANNED |
 | L12 | `exam` | Mock exams (IELTS/TOEIC), sections, timing, auto-submit, scoring, score reports | `assess` | `exams`, `exam_sections`, `exam_attempts`, `score_reports`, `integrity_events` | questionbank, job, ai, writing, speaking, learning, lesson, listening | 3 | IMPLEMENTED |
 | L13 | `gamification` | XP, levels, streaks, badges, quests, leaderboards | `learn` | `xp_events`, `streaks`, `badges`, `badges_earned`, `quests`, `user_quests`, `leaderboard_snapshots` | learning, srs, user, cache, job, notification | 3 | DONE |
-| L14 | `resource` | Learner-provided files and URLs: storage, validation, ownership, intake | `resource` | `resources` | storage, job | 4 | IMPLEMENTED |
+| L14 | `resource` | Learner-provided files and URLs: storage, validation, ownership, intake | `resource` | `resources`, `renditions`, `extractions`, `classifications` | storage, job, user, content, media, ai | 4 | IMPLEMENTED |
 
 ### 2.4 Commerce & insight tier — `internal/modules/`
 
@@ -105,7 +105,7 @@ Legend — **Status**: `PLANNED` (spec only) · `IN_PROGRESS` · `DONE` · `DEPR
 | B1 | `analytics` | Event ingestion, daily rollups, funnels, cohorts, admin KPI reports | `analytics` | `analytics_events`, `daily_rollups`, `funnels`, `cohorts` | job, cache | 4 | PLANNED |
 | B2 | `subscription` | Plans, entitlements, trials, upgrades, renewals, grace periods | `billing` | `plans`, `entitlements`, `subscriptions`, `subscription_events` | payment, user, notification | 4 | PLANNED |
 | B3 | `payment` | Gateway adapters, checkout sessions, webhooks, invoices, refunds, reconciliation | `billing` | `payments`, `invoices`, `payment_webhooks`, `refunds` | subscription, audit, job | 4 | PLANNED |
-| B4 | `studio` | Creator profiles, course drafts, automated Gate 1, moderation queue Gate 2, listings | `studio` | `creator_profiles`, `payout_accounts`, `course_drafts`, `submissions`, `listings`, `purchases`, `creator_ledger` | content, lesson, learning, job, payment | 3 | IMPLEMENTED |
+| B4 | `studio` | Creator profiles, course drafts, automated Gate 1, moderation queue Gate 2, listings | `studio` | `creator_profiles`, `payout_accounts`, `course_drafts`, `submissions`, `listings`, `purchases`, `creator_ledger` | content, lesson, learning, job, payment, resource | 3 | IMPLEMENTED |
 
 ---
 
@@ -141,29 +141,29 @@ graph BT
     core --> platform
     learning --> platform
     commerce --> platform
-    STD --> CNT & LSN & LRN & PAY
+    STD --> CNT & LSN & LRN & PAY & RSC
     AUTH --> USR & RBAC & AUD
     ADM --> core
     ADM --> CNT & ANA & SUB
     USR & RBAC & CNT & QB & SUB & PAY --> AUD
     NOT --> USR
     CNT --> STO & SCH
-    LSN --> CNT & STD
+    LSN --> CNT & STD & STO
     LRN --> CNT
     LRN --> LSN & SRS & USR & ADM & STD
     SRS --> CNT
     SRS --> USR
-    SPK --> USR
+    SPK & RSC --> USR
     SRS --> LRN
     VOC & GRM --> SRS
     VOC --> LSN
-    VOC & GRM & RDG & LIS & SPK & WRT --> CNT
+    VOC & GRM & RDG & LIS & SPK & WRT & RSC --> CNT
     VOC & GRM & RDG & LIS & SPK & WRT & EXM --> LRN
     RDG & LIS --> QB
     RDG --> VOC
-    SPK & LIS --> MED
-    SPK & WRT & GRM & QB --> AI
-    QB --> CNT
+    SPK & LIS & RSC --> MED
+    SPK & WRT & GRM & QB & RSC --> AI
+    QB --> CNT & LSN & LRN & RBAC
     WRT & GAM & SUB --> NOT
     EXM --> QB
     EXM --> WRT & SPK & LSN & LIS

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -305,4 +306,337 @@ func (r *Repository) ListStuckUploadedResources(
 		items[i] = toContract(row)
 	}
 	return items, nil
+}
+
+// ListResourcesByUserID returns all resources belonging to a user.
+func (r *Repository) ListResourcesByUserID(ctx context.Context, userID uuid.UUID) ([]contract.Resource, error) {
+	rows, err := r.queries.ListResourcesByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list resources by user: %w", err)
+	}
+	items := make([]contract.Resource, len(rows))
+	for i, row := range rows {
+		items[i] = toContract(row)
+	}
+	return items, nil
+}
+
+// DeleteAllResourcesByUser removes all resources belonging to a user.
+func (r *Repository) DeleteAllResourcesByUser(
+	ctx context.Context, userID uuid.UUID,
+) error {
+	_, err := r.queries.DeleteAllResourcesByUser(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("delete all resources by user: %w", err)
+	}
+	return nil
+}
+
+func renditionToContract(r sqlc.ResourceRendition) contract.Rendition {
+	var w, h, d *int
+	if r.Width != nil {
+		val := int(*r.Width)
+		w = &val
+	}
+	if r.Height != nil {
+		val := int(*r.Height)
+		h = &val
+	}
+	if r.DurationMs != nil {
+		val := int(*r.DurationMs)
+		d = &val
+	}
+	return contract.Rendition{
+		ID:            r.ID,
+		ResourceID:    r.ResourceID,
+		Kind:          r.Kind,
+		Status:        r.Status,
+		ObjectKey:     r.ObjectKey,
+		MIMEType:      r.MimeType,
+		Width:         w,
+		Height:        h,
+		DurationMS:    d,
+		ByteSize:      r.ByteSize,
+		ToolVersion:   r.ToolVersion,
+		Attempts:      int(r.Attempts),
+		FailureReason: r.FailureReason,
+		CreatedAt:     r.CreatedAt,
+		UpdatedAt:     r.UpdatedAt,
+	}
+}
+
+// InsertRenditionPending creates a pending rendition for a resource if not present.
+func (r *Repository) InsertRenditionPending(
+	ctx context.Context, resourceID uuid.UUID, kind string,
+) (*contract.Rendition, error) {
+	row, err := r.queries.InsertRenditionPending(ctx, sqlc.InsertRenditionPendingParams{
+		ResourceID: resourceID,
+		Kind:       kind,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil // ON CONFLICT DO NOTHING
+		}
+		return nil, fmt.Errorf("insert rendition pending: %w", err)
+	}
+	res := renditionToContract(row)
+	return &res, nil
+}
+
+// ClaimPendingRenditions claims up to limit pending renditions with FOR UPDATE SKIP LOCKED.
+func (r *Repository) ClaimPendingRenditions(
+	ctx context.Context, limit int32,
+) ([]contract.Rendition, error) {
+	rows, err := r.queries.ClaimPendingRenditions(ctx, sqlc.ClaimPendingRenditionsParams{LimitCount: limit})
+	if err != nil {
+		return nil, fmt.Errorf("claim pending renditions: %w", err)
+	}
+	items := make([]contract.Rendition, len(rows))
+	for i, row := range rows {
+		items[i] = renditionToContract(row)
+	}
+	return items, nil
+}
+
+// UpdateRenditionReady marks a rendition as ready with metadata and object key.
+func (r *Repository) UpdateRenditionReady(
+	ctx context.Context, id uuid.UUID, objectKey, mimeType string,
+	width, height, durationMS *int, byteSize *int64, toolVersion string,
+) (*contract.Rendition, error) {
+	w, h, d := int32Ptr(width), int32Ptr(height), int32Ptr(durationMS)
+	row, err := r.queries.UpdateRenditionReady(ctx, sqlc.UpdateRenditionReadyParams{
+		ID:          id,
+		ObjectKey:   &objectKey,
+		MimeType:    mimeType,
+		Width:       w,
+		Height:      h,
+		DurationMs:  d,
+		ByteSize:    byteSize,
+		ToolVersion: toolVersion,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("update rendition ready: %w", err)
+	}
+	res := renditionToContract(row)
+	return &res, nil
+}
+
+// UpdateRenditionSkipped marks a rendition as skipped with a reason.
+func (r *Repository) UpdateRenditionSkipped(
+	ctx context.Context, id uuid.UUID, reason string,
+) (*contract.Rendition, error) {
+	row, err := r.queries.UpdateRenditionSkipped(ctx, sqlc.UpdateRenditionSkippedParams{
+		ID:            id,
+		FailureReason: reason,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("update rendition skipped: %w", err)
+	}
+	res := renditionToContract(row)
+	return &res, nil
+}
+
+// UpdateRenditionFailed records a rendition failure, incrementing towards terminal failure.
+func (r *Repository) UpdateRenditionFailed(
+	ctx context.Context, id uuid.UUID, reason string,
+) (*contract.Rendition, error) {
+	row, err := r.queries.UpdateRenditionFailed(ctx, sqlc.UpdateRenditionFailedParams{
+		ID:            id,
+		FailureReason: reason,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("update rendition failed: %w", err)
+	}
+	res := renditionToContract(row)
+	return &res, nil
+}
+
+// ListReadyRenditionsByResourceID returns ready renditions for a resource.
+func (r *Repository) ListReadyRenditionsByResourceID(
+	ctx context.Context, resourceID uuid.UUID,
+) ([]contract.Rendition, error) {
+	rows, err := r.queries.ListReadyRenditionsByResourceID(ctx, resourceID)
+	if err != nil {
+		return nil, fmt.Errorf("list ready renditions: %w", err)
+	}
+	items := make([]contract.Rendition, len(rows))
+	for i, row := range rows {
+		items[i] = renditionToContract(row)
+	}
+	return items, nil
+}
+
+// ListRenditionsByResourceID returns all renditions for a resource.
+func (r *Repository) ListRenditionsByResourceID(
+	ctx context.Context, resourceID uuid.UUID,
+) ([]contract.Rendition, error) {
+	rows, err := r.queries.ListRenditionsByResourceID(ctx, resourceID)
+	if err != nil {
+		return nil, fmt.Errorf("list renditions: %w", err)
+	}
+	items := make([]contract.Rendition, len(rows))
+	for i, row := range rows {
+		items[i] = renditionToContract(row)
+	}
+	return items, nil
+}
+
+// ListRenditionKeysByUserID returns all rendition object keys for a user's resources.
+func (r *Repository) ListRenditionKeysByUserID(
+	ctx context.Context, userID uuid.UUID,
+) ([]string, error) {
+	keys, err := r.queries.ListRenditionKeysByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list rendition keys by user: %w", err)
+	}
+	res := make([]string, 0, len(keys))
+	for _, k := range keys {
+		if k != nil && *k != "" {
+			res = append(res, *k)
+		}
+	}
+	return res, nil
+}
+
+// ListValidatedFileResourcesForRenditions fetches validated file resources to plan renditions.
+func (r *Repository) ListValidatedFileResourcesForRenditions(
+	ctx context.Context, limit int32,
+) ([]contract.Resource, error) {
+	rows, err := r.queries.ListValidatedFileResourcesForRenditions(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list validated files for renditions: %w", err)
+	}
+	items := make([]contract.Resource, len(rows))
+	for i, row := range rows {
+		items[i] = toContract(row)
+	}
+	return items, nil
+}
+
+// UpsertExtractionTx is UpsertExtraction inside the caller's transaction, so
+// the extraction and the classification job it queues are written together.
+func (r *Repository) UpsertExtractionTx(
+	ctx context.Context, tx pgx.Tx, resourceID uuid.UUID, source, text string, charCount int32,
+	truncated bool, language, toolVersion string,
+) (*contract.Extraction, error) {
+	return (&Repository{pool: r.pool, queries: r.queries.WithTx(tx)}).UpsertExtraction(
+		ctx, resourceID, source, text, charCount, truncated, language, toolVersion)
+}
+
+// UpsertExtraction inserts or updates an extraction row for a resource.
+func (r *Repository) UpsertExtraction(
+	ctx context.Context,
+	resourceID uuid.UUID,
+	source, text string,
+	charCount int32,
+	truncated bool,
+	language, toolVersion string,
+) (*contract.Extraction, error) {
+	row, err := r.queries.UpsertExtraction(ctx, sqlc.UpsertExtractionParams{
+		ResourceID:  resourceID,
+		Source:      source,
+		Text:        text,
+		CharCount:   charCount,
+		Truncated:   truncated,
+		Language:    language,
+		ToolVersion: toolVersion,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("upsert extraction: %w", err)
+	}
+	return extractionToContract(row), nil
+}
+
+// GetExtractionByResourceID retrieves the extraction row for a resource.
+func (r *Repository) GetExtractionByResourceID(
+	ctx context.Context, resourceID uuid.UUID,
+) (*contract.Extraction, error) {
+	row, err := r.queries.GetExtractionByResourceID(ctx, resourceID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get extraction: %w", err)
+	}
+	return extractionToContract(row), nil
+}
+
+// UpsertClassification inserts or updates a classification row for a resource.
+func (r *Repository) UpsertClassification(
+	ctx context.Context,
+	resourceID uuid.UUID,
+	cefrEstimate, skill *string,
+	nodeCodes []string,
+	promptVersion, model string,
+	aiRequestID *uuid.UUID,
+) (*contract.Classification, error) {
+	row, err := r.queries.UpsertClassification(ctx, sqlc.UpsertClassificationParams{
+		ResourceID:    resourceID,
+		CefrEstimate:  cefrEstimate,
+		Skill:         skill,
+		NodeCodes:     nodeCodes,
+		PromptVersion: promptVersion,
+		Model:         model,
+		AiRequestID:   aiRequestID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("upsert classification: %w", err)
+	}
+	return classificationToContract(row), nil
+}
+
+// GetClassificationByResourceID retrieves the classification row for a resource.
+func (r *Repository) GetClassificationByResourceID(
+	ctx context.Context, resourceID uuid.UUID,
+) (*contract.Classification, error) {
+	row, err := r.queries.GetClassificationByResourceID(ctx, resourceID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get classification: %w", err)
+	}
+	return classificationToContract(row), nil
+}
+
+func extractionToContract(row sqlc.ResourceExtraction) *contract.Extraction {
+	excerpt := row.Text
+	if len(excerpt) > 2000 {
+		excerpt = excerpt[:2000]
+	}
+	return &contract.Extraction{
+		ResourceID:  row.ResourceID,
+		Source:      row.Source,
+		Text:        row.Text,
+		CharCount:   int(row.CharCount),
+		Truncated:   row.Truncated,
+		Language:    row.Language,
+		ToolVersion: row.ToolVersion,
+		Excerpt:     excerpt,
+		CreatedAt:   row.CreatedAt,
+	}
+}
+
+func classificationToContract(row sqlc.ResourceClassification) *contract.Classification {
+	return &contract.Classification{
+		ResourceID:    row.ResourceID,
+		CEFREstimate:  row.CefrEstimate,
+		Skill:         row.Skill,
+		NodeCodes:     row.NodeCodes,
+		PromptVersion: row.PromptVersion,
+		Model:         row.Model,
+		AIRequestID:   row.AiRequestID,
+		CreatedAt:     row.CreatedAt,
+	}
+}
+
+// int32Ptr narrows a measured dimension or duration for an int4 column. Values
+// come from ffmpeg and image headers and are far below the bound; clamping
+// keeps a corrupt header from wrapping into a negative number.
+func int32Ptr(v *int) *int32 {
+	if v == nil {
+		return nil
+	}
+	c := int32(min(max(*v, math.MinInt32), math.MaxInt32)) //nolint:gosec // G115: clamped on this line
+	return &c
 }

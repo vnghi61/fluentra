@@ -2,13 +2,13 @@
 module: questionbank
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 4
 owner: "@learning-team"
 schema: assess
-tables: [questions, question_options, question_sets, question_set_items, question_stats]
-depends_on: [content, ai, audit, search]
-depended_on_by: [exam, reading, listening, grammar, learning]
+tables: [questions, question_stats]
+depends_on: [content, lesson, learning, rbac]
+depended_on_by: [exam]
 spec_version: 1.0.0
 last_verified: 2026-08-06
 ---
@@ -22,20 +22,18 @@ The reusable item bank: authoring, typing, tagging, difficulty statistics, revie
 ## Business purpose
 
 <!-- BEGIN GENERATED: purpose -->
-The reusable item bank: authoring, typing, tagging, difficulty statistics, review workflow, and AI-assisted generation. One item, many uses — in a lesson, in a drill, in an exam.
+The exam item bank: generated questions tagged to the spine and to an exam part, each a content version drawn as an activity, with provenance, a fingerprint and empirical statistics.
 <!-- END GENERATED: purpose -->
 
 ## Responsibilities
 
 <!-- BEGIN GENERATED: readme-resp -->
-- Question items across all supported types
-- Options, correct answers and per-option feedback
-- Question sets: reusable ordered groups
-- Tagging by skill, level, topic and exam relevance
-- Difficulty and discrimination statistics from real attempts
-- Authoring and review workflow
-- AI-assisted item generation for admin review
-- Item exposure control so the same items are not overused
+- Bank metadata for exam questions: kind, skill, CEFR level, exam part, questions per group, provenance
+- Generating draft questions for a part and spine nodes through `learning.Generator`
+- A normalised fingerprint per question, unique in the database
+- Moving an approved question into the bank course (`pool-bank`) once its content is published
+- Answering which published questions an exam can draw for a part
+- Holding `question_stats` for empirical difficulty
 <!-- END GENERATED: readme-resp -->
 
 ## Where things are

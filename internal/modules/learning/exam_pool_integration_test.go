@@ -78,7 +78,7 @@ func TestTopUpExamPool_AppendsAnActivityAgainstTheRealDatabase(t *testing.T) {
 	}
 
 	contentModule := content.NewAuthoring(content.Deps{Pool: attemptPool})
-	lessonModule := lesson.New(lesson.Deps{Pool: attemptPool, Guard: allowAll{}, Env: "test"})
+	lessonModule := lesson.New(lesson.Deps{Pool: attemptPool, Guard: allowAll{}, Env: envTest})
 	model := &fencedExamModel{}
 
 	svc := service.New(service.Deps{

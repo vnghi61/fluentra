@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -154,6 +155,30 @@ func (m *foundationMockRepo) GetPublishedTopicBodyByTaxonomyID(
 
 func (m *foundationMockRepo) ListTagsForContentItem(_ context.Context, itemID uuid.UUID) ([]domain.Taxonomy, error) {
 	return m.topicTags[itemID], nil
+}
+
+func (m *foundationMockRepo) UpdateTaxonomy(
+	ctx context.Context,
+	id uuid.UUID,
+	label, description *string,
+	cefrLevel *string, setCEFR bool,
+	parentID *uuid.UUID, setParent bool,
+	position *int,
+	deprecatedAt *time.Time, setDeprecated bool,
+) (domain.Taxonomy, error) {
+	t, ok := m.taxonomiesByID[id]
+	if !ok {
+		return m.fakeRepo.UpdateTaxonomy(
+			ctx, id, label, description, cefrLevel, setCEFR,
+			parentID, setParent, position, deprecatedAt, setDeprecated,
+		)
+	}
+	if setCEFR {
+		t.CEFRLevel = cefrLevel
+	}
+	m.taxonomiesByID[id] = t
+	m.taxonomies[t.Code] = t
+	return t, nil
 }
 
 // foundationFixture is a service with the three grammar nodes the cycle and
@@ -400,5 +425,66 @@ func TestFoundationService_PublishCompletenessGate(t *testing.T) {
 	}
 	if publishedVer.Status != domain.StatusPublished {
 		t.Errorf("got version status %v, want published", publishedVer.Status)
+	}
+}
+
+// TestReview_FoundationTopicSetsNodeCEFRLevel asserts that approving a foundation_topic version
+// sets the tagged taxonomy node's cefr_level from the topic's level (Stage D, WO 16 §14).
+func TestReview_FoundationTopicSetsNodeCEFRLevel(t *testing.T) {
+	ctx := context.Background()
+	repo := newFoundationMockRepo()
+	svc := service.New(service.Deps{
+		Pool:  fakeBeginner{},
+		Repo:  repo,
+		Clock: clock.Real{},
+	})
+
+	authorID := uuid.New()
+	reviewerID := uuid.New()
+
+	// 1. Create a taxonomy node with no CEFR level or initial level
+	taxID := uuid.New()
+	tax := domain.Taxonomy{
+		ID:        taxID,
+		Namespace: "grammar",
+		Code:      "PRESENT_PERFECT",
+		Label:     "Present Perfect",
+	}
+	repo.taxonomies[tax.Code] = tax
+	repo.taxonomiesByID[taxID] = tax
+
+	// 2. Create a foundation_topic item tagged to this node
+	itemID := uuid.New()
+	verID := uuid.New()
+	repo.items[itemID] = domain.Item{
+		ID:               itemID,
+		OwnerID:          authorID,
+		Kind:             kindFoundationTopic,
+		Status:           domain.StatusDraft,
+		CurrentVersionID: &verID,
+	}
+	repo.versions[verID] = domain.Version{
+		ID:        verID,
+		ItemID:    itemID,
+		Kind:      kindFoundationTopic,
+		CEFRLevel: "B1",
+		Status:    domain.StatusInReview,
+		Body: json.RawMessage(`{"schema_version":1,"objective":"Test",` +
+			`"explanation":{"en":"En","vi":"Vi"},"examples":[{"text":"Ex","note":"N"}]}`),
+	}
+	repo.topicTags[itemID] = []domain.Taxonomy{tax}
+
+	// 3. Reviewer approves the version
+	_, err := svc.Review(ctx, reviewerID, itemID, service.ReviewDecisionRequest{
+		Decision: domain.ReviewDecisionApproved,
+	})
+	if err != nil {
+		t.Fatalf("unexpected review error: %v", err)
+	}
+
+	// 4. Assert the node's CEFR level was updated to B1
+	updatedTax := repo.taxonomies["PRESENT_PERFECT"]
+	if updatedTax.CEFRLevel == nil || *updatedTax.CEFRLevel != "B1" {
+		t.Errorf("expected taxonomy CEFR level to be set to B1, got: %v", updatedTax.CEFRLevel)
 	}
 }

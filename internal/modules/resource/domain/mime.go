@@ -57,6 +57,18 @@ func IsAllowedMIME(mime string) bool {
 	return allowedMIMETypes[base]
 }
 
+// IsAudioMIME reports whether the MIME type is an audio type.
+func IsAudioMIME(mime string) bool {
+	norm := NormalizeMIME(mime)
+	return strings.HasPrefix(norm, "audio/")
+}
+
+// IsVideoMIME reports whether the MIME type is a video type.
+func IsVideoMIME(mime string) bool {
+	norm := NormalizeMIME(mime)
+	return strings.HasPrefix(norm, "video/")
+}
+
 // NormalizeMIME cleans and lowercases a MIME type, stripping parameters.
 func NormalizeMIME(mime string) string {
 	base, _, _ := strings.Cut(mime, ";")

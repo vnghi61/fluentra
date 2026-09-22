@@ -11,6 +11,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -375,22 +376,192 @@ func TestResourceSchema_AppRoleCanUseIt(t *testing.T) {
 	pool := migratedPool(t)
 	ctx := context.Background()
 
-	const privilegeSQL = `SELECT
-		has_schema_privilege('fluentra_app', 'resource', 'USAGE'),
-		has_table_privilege('fluentra_app', 'resource.resources', 'SELECT'),
-		has_table_privilege('fluentra_app', 'resource.resources', 'INSERT'),
-		has_table_privilege('fluentra_app', 'resource.resources', 'UPDATE'),
-		has_table_privilege('fluentra_app', 'resource.resources', 'DELETE')`
-
-	var usage, sel, ins, upd, del bool
-	if err := pool.QueryRow(ctx, privilegeSQL).Scan(&usage, &sel, &ins, &upd, &del); err != nil {
-		t.Fatalf("query privileges: %v", err)
+	var usage bool
+	if err := pool.QueryRow(ctx,
+		`SELECT has_schema_privilege('fluentra_app', 'resource', 'USAGE')`).Scan(&usage); err != nil {
+		t.Fatalf("query schema privilege: %v", err)
 	}
 	if !usage {
 		t.Error("fluentra_app has no USAGE on schema resource")
 	}
-	if !sel || !ins || !upd || !del {
-		t.Errorf("fluentra_app privileges on resource.resources: select=%v insert=%v update=%v delete=%v",
-			sel, ins, upd, del)
+
+	tables := []string{"resource.resources", "resource.renditions", "resource.extractions", "resource.classifications"}
+	for _, table := range tables {
+		for _, privilege := range []string{"SELECT", "INSERT", "UPDATE", "DELETE"} {
+			var granted bool
+			if err := pool.QueryRow(ctx,
+				`SELECT has_table_privilege('fluentra_app', $1, $2)`, table, privilege,
+			).Scan(&granted); err != nil {
+				t.Fatalf("query %s on %s: %v", privilege, table, err)
+			}
+			if !granted {
+				t.Errorf("fluentra_app has no %s on %s", privilege, table)
+			}
+		}
+	}
+}
+
+func TestSchema_RenditionsConstraints(t *testing.T) {
+	pool := migratedPool(t)
+	ctx := context.Background()
+	userID := insertUser(t, pool, "renditions_ck@example.com")
+
+	var resID uuid.UUID
+	err := pool.QueryRow(ctx, `
+		INSERT INTO resource.resources (user_id, kind, title, object_key)
+		VALUES ($1, 'file', 'File For Renditions', 'file-for-renditions-key')
+		RETURNING id
+	`, userID).Scan(&resID)
+	if err != nil {
+		t.Fatalf("insert resource: %v", err)
+	}
+
+	// 1. Invalid kind is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.renditions (resource_id, kind, status)
+		VALUES ($1, 'invalid_kind', 'pending')
+	`, resID)
+	assertCheckViolation(t, err, "ck_renditions_kind")
+
+	// 2. Invalid status is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.renditions (resource_id, kind, status)
+		VALUES ($1, 'thumbnail', 'unknown_status')
+	`, resID)
+	assertCheckViolation(t, err, "ck_renditions_status")
+
+	// 3. Status ready without object_key is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.renditions (resource_id, kind, status, object_key)
+		VALUES ($1, 'thumbnail', 'ready', NULL)
+	`, resID)
+	assertCheckViolation(t, err, "ck_renditions_ready_has_object")
+
+	// 4. Negative attempts is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.renditions (resource_id, kind, status, attempts)
+		VALUES ($1, 'thumbnail', 'pending', -1)
+	`, resID)
+	assertCheckViolation(t, err, "ck_renditions_attempts")
+
+	// 5. Valid rendition insert
+	validKey := "renditions/" + resID.String() + "/thumbnail.png"
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.renditions (resource_id, kind, status, object_key, width, height)
+		VALUES ($1, 'thumbnail', 'ready', $2, 320, 240)
+	`, resID, validKey)
+	if err != nil {
+		t.Fatalf("insert valid rendition: %v", err)
+	}
+
+	// 6. Duplicate (resource_id, kind) is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.renditions (resource_id, kind, status, object_key)
+		VALUES ($1, 'thumbnail', 'ready', 'another-key')
+	`, resID)
+	if err == nil {
+		t.Fatalf("expected unique violation on (resource_id, kind)")
+	}
+
+	// 7. Cascade delete from resource to renditions
+	_, err = pool.Exec(ctx, `DELETE FROM resource.resources WHERE id = $1`, resID)
+	if err != nil {
+		t.Fatalf("delete resource: %v", err)
+	}
+	var rCount int
+	err = pool.QueryRow(ctx, `SELECT count(*) FROM resource.renditions WHERE resource_id = $1`, resID).Scan(&rCount)
+	if err != nil {
+		t.Fatalf("count renditions after resource delete: %v", err)
+	}
+	if rCount != 0 {
+		t.Fatalf("expected 0 renditions after resource delete, got %d", rCount)
+	}
+}
+
+func TestSchema_ExtractionsAndClassificationsConstraints(t *testing.T) {
+	pool := migratedPool(t)
+	ctx := context.Background()
+	userID := insertUser(t, pool, "stage_b_ck@example.com")
+
+	var resID uuid.UUID
+	err := pool.QueryRow(ctx, `
+		INSERT INTO resource.resources (user_id, kind, title, object_key)
+		VALUES ($1, 'file', 'File For Stage B', 'stage-b-key')
+		RETURNING id
+	`, userID).Scan(&resID)
+	if err != nil {
+		t.Fatalf("insert resource: %v", err)
+	}
+
+	// 1. Extractions: Invalid source is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.extractions (resource_id, source, text, char_count)
+		VALUES ($1, 'invalid_source', 'hello', 5)
+	`, resID)
+	assertCheckViolation(t, err, "ck_extractions_source")
+
+	// 2. Extractions: Negative char_count is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.extractions (resource_id, source, text, char_count)
+		VALUES ($1, 'pdf_text', 'hello', -1)
+	`, resID)
+	assertCheckViolation(t, err, "ck_extractions_size")
+
+	// 3. Extractions: char_count > 400,000 is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.extractions (resource_id, source, text, char_count)
+		VALUES ($1, 'pdf_text', 'huge', 400001)
+	`, resID)
+	assertCheckViolation(t, err, "ck_extractions_size")
+
+	// 4. Extractions: valid insert
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.extractions (resource_id, source, text, char_count, language, tool_version)
+		VALUES ($1, 'pdf_text', 'Valid extracted text from PDF', 29, 'en', 'pdftotext 24.02.0')
+	`, resID)
+	if err != nil {
+		t.Fatalf("insert valid extraction: %v", err)
+	}
+
+	// 5. Classifications: Invalid CEFR level is refused
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.classifications (resource_id, cefr_estimate, skill, prompt_version, model)
+		VALUES ($1, 'INVALID', 'reading', '1', 'model')
+	`, resID)
+	assertCheckViolation(t, err, "ck_classifications_cefr")
+
+	// 6. Classifications: valid insert
+	_, err = pool.Exec(ctx, `
+		INSERT INTO resource.classifications (resource_id, cefr_estimate, skill, node_codes, prompt_version, model)
+		VALUES ($1, 'B1', 'reading', ARRAY['TENSES', 'MODALS'], '1', 'gpt-4o')
+	`, resID)
+	if err != nil {
+		t.Fatalf("insert valid classification: %v", err)
+	}
+
+	// 7. Verify ai.ai_budgets has rows for resource_classify
+	var budgetCount int
+	err = pool.QueryRow(ctx, `SELECT count(*) FROM ai.ai_budgets WHERE task = 'resource_classify'`).Scan(&budgetCount)
+	if err != nil {
+		t.Fatalf("count resource_classify budgets: %v", err)
+	}
+	if budgetCount == 0 {
+		t.Fatalf("expected ai_budgets rows for resource_classify, got 0")
+	}
+
+	// 8. Cascade delete from resource to extractions and classifications
+	_, err = pool.Exec(ctx, `DELETE FROM resource.resources WHERE id = $1`, resID)
+	if err != nil {
+		t.Fatalf("delete resource: %v", err)
+	}
+
+	var extCount, clsCount int
+	_ = pool.QueryRow(ctx, `SELECT count(*) FROM resource.extractions WHERE resource_id = $1`, resID).Scan(&extCount)
+	_ = pool.QueryRow(ctx, `SELECT count(*) FROM resource.classifications WHERE resource_id = $1`, resID).Scan(&clsCount)
+	if extCount != 0 {
+		t.Fatalf("expected 0 extractions after resource delete, got %d", extCount)
+	}
+	if clsCount != 0 {
+		t.Fatalf("expected 0 classifications after resource delete, got %d", clsCount)
 	}
 }

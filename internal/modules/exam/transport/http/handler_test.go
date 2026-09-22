@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/fluentra/fluentra/internal/modules/exam/domain"
 	"github.com/fluentra/fluentra/internal/modules/exam/service"
 	examhttp "github.com/fluentra/fluentra/internal/modules/exam/transport/http"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
@@ -112,6 +113,28 @@ func (f *fakeExamService) ListUserAttempts(
 
 func (f *fakeExamService) SittingsToday(_ context.Context, _ uuid.UUID) (service.SittingsToday, error) {
 	return service.SittingsToday{Used: 1, Limit: 5}, nil
+}
+
+func (f *fakeExamService) ListCurrentExamVersions(_ context.Context) ([]service.ExamVersionDTO, error) {
+	return nil, nil
+}
+
+func (f *fakeExamService) ComposeMockTest(
+	_ context.Context, _ *uuid.UUID, _ service.ComposeMockTestRequest,
+) (*domain.MockTest, error) {
+	return nil, nil
+}
+
+func (f *fakeExamService) StartMockTestAttempt(
+	_ context.Context, _, _ uuid.UUID,
+) (*service.ExamAttemptDTO, error) {
+	return nil, nil
+}
+
+func (f *fakeExamService) GetExamVersionCoverage(
+	_ context.Context, _ uuid.UUID,
+) (*service.ExamCoverageReportDTO, error) {
+	return nil, nil
 }
 
 func withActor(r *http.Request, userID uuid.UUID) *http.Request {

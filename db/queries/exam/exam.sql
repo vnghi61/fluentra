@@ -32,6 +32,22 @@ INSERT INTO assess.exam_attempts (
     $10, $11, $6, $6
 ) RETURNING *;
 
+-- name: CreateMockTestAttempt :one
+INSERT INTO assess.exam_attempts (
+    id, user_id, exam_id, mode, chosen_duration_minutes,
+    started_at, deadline_at, current_section, status,
+    section_activities, draft_answers, mock_test_id, created_at, updated_at
+) VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8, $9,
+    $10, $11, $12, $6, $6
+) RETURNING *;
+
+-- name: CountUserMockTestAttempts :one
+SELECT COUNT(*)
+FROM assess.exam_attempts
+WHERE user_id = $1 AND mock_test_id = $2;
+
 -- name: GetExamAttemptByID :one
 SELECT *
 FROM assess.exam_attempts

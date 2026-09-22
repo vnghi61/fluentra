@@ -6,9 +6,9 @@ status: IMPLEMENTED
 phase: 4
 owner: "@learning-team"
 schema: resource
-tables: [resources]
-depends_on: [storage, job]
-depended_on_by: []
+tables: [resources, renditions, extractions, classifications]
+depends_on: [storage, job, user]
+depended_on_by: [studio]
 spec_version: 1.0.0
 last_verified: 2026-09-21
 ---
@@ -50,13 +50,16 @@ Intake for material a learner brings: an uploaded file or a submitted URL become
 - URL validation that stores the page title and never the body, through a client whose dialer refuses non-public addresses
 - Per-user quotas: 50 resources and 250 MB, counting everything not rejected or failed
 - Presigned GET for a validated file its owner requests
-- Deleting a resource together with its stored object
+- Derived visual, audio, and video renditions in fluentra-derived for validated file resources
+- Extracting text from PDF and Office document resources
+- Transcribing audio and video resources via media.HTTPTranscriber
+- Grounding and classifying extracted text into CEFR levels, skills, and spine taxonomy nodes
+- Deleting a resource together with its stored object, derived renditions, extraction and classification
 - A cron sweep that fails abandoned intents and deletes their objects, and fails uploads whose validation never finished
+- Reading one resource for its owner and copying its original and ready renditions into a published course's own storage (WO 20)
 
 **This module does NOT own:**
 
-- Thumbnails, transcodes and other renditions (P3, work order 18)
-- Text extraction, transcription and classification (P4, work order 19)
 - Generating exercises from a resource (P6)
 - Byte storage and serving (platform/storage)
 <!-- END GENERATED: responsibilities -->
@@ -81,10 +84,13 @@ Other modules may import **only** `internal/modules/resource/contract`.
 |---|---|---|
 | interface | `resource.ResourceReader` | `GetResource(ctx, id, userID)`: one resource, for its owner only. No consumer yet |
 | struct | `resource.Resource` | `{ID, UserID, Kind, Title, ObjectKey, OriginalFilename, DeclaredMIME, DetectedMIME, ByteSize, Checksum, SourceURL, Status, FailureReason, DownloadURL, CreatedAt, UpdatedAt, ValidatedAt}` |
+| interface | `resource.MaterialPublisher` | `MaterialForOwner(ctx, ownerID, resourceID)` and `CopyForPublication(ctx, resourceID, destPrefix)`: the read-and-copy surface `studio` uses to publish a material into a course |
 
 ### Events
 
-_None yet._
+| Event | Direction | Payload summary |
+|---|---|---|
+| `user.deleted` | consumes |  |
 <!-- END GENERATED: contract -->
 
 ## 5. Database schema
@@ -96,6 +102,9 @@ Migrations: `db/migrations/resource/` · Queries: `db/queries/resource/`
 | Table | Purpose | Key columns / notes |
 |---|---|---|
 | `resource.resources` | One uploaded file or submitted URL | `user_id`, `kind` (file or url), `title`, `object_key`, `original_filename`, `declared_mime`, `detected_mime`, `byte_size`, `checksum`, `source_url`, `status`, `failure_reason`, `validated_at`. `ck_resources_shape`: a file has an object and no URL, a URL the reverse. `ck_resources_rejected_has_reason`. |
+| `resource.renditions` | Derived visual, audio, and video renditions of validated file resources | `resource_id`, `kind`, `status`, `object_key`, `mime_type`, `width`, `height`, `duration_ms`, `byte_size`, `tool_version`, `attempts`, `failure_reason`. `uq_renditions_resource_kind`, `uq_renditions_object_key`. |
+| `resource.extractions` | Extracted text from validated documents and audio/video transcripts | `resource_id`, `source` ('pdf_text', 'ocr', 'transcript'), `text`, `char_count` (max 400,000), `truncated`, `language`, `tool_version`. |
+| `resource.classifications` | CEFR estimate, targeted skill, and grounded spine taxonomy node codes | `resource_id`, `cefr_estimate`, `skill`, `node_codes`, `prompt_version`, `model`, `ai_request_id`. |
 
 **Indexes of note**
 
@@ -140,6 +149,8 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 |---|---|---|
 | [`storage`](../../platform/storage/AGENT.md) | → depends on | Presigned PUT and GET, stat, read and delete in fluentra-uploads |
 | [`job`](../../platform/job/AGENT.md) | → depends on | The resource.validate River worker and the resource.sweep_pending cron |
+| [`user`](../../modules/user/AGENT.md) | → depends on | Account erasure event user.deleted to purge user resources |
+| [`studio`](../../modules/studio/AGENT.md) | ← used by | consumes this module's contract |
 <!-- END GENERATED: related -->
 
 **Boundary reminder:** you may call these through their `contract` package only.
@@ -154,11 +165,17 @@ and fails `go-arch-lint` in CI.
 3. **BR-RESOURCE-03** — **BR-RESOURCE-03**: A URL resource keeps its title and metadata, never the fetched body.
 4. **BR-RESOURCE-04** — **BR-RESOURCE-04**: A file is classified by its bytes. A declared kind that disagrees with the detected kind is a rejection.
 5. **BR-RESOURCE-05** — **BR-RESOURCE-05**: rejected always carries a reason, and the database enforces it. Reasons are fixed learner-facing sentences; the detail goes to the log.
-6. **BR-RESOURCE-06** — **BR-RESOURCE-06**: Deleting a resource deletes its object. If storage cannot be reached the delete fails and the row stays.
-7. **BR-RESOURCE-07** — **BR-RESOURCE-07**: An intent never confirmed within 15 minutes is swept to failed and its object removed. The sweeper marks the row before deleting, so a row confirmed meanwhile is left alone.
-8. **BR-RESOURCE-08** — **BR-RESOURCE-08**: Quotas bound each user to 50 resources and 250 MB, counting everything not rejected or failed.
-9. **BR-RESOURCE-09** — **BR-RESOURCE-09**: rejected is a verdict on the resource; failed is ours and retryable. A timeout or a 5xx never rejects a link.
-10. **BR-RESOURCE-10** — **BR-RESOURCE-10**: The URL fetcher checks the address it is connecting to, in the dialer, on every hop, and never uses a proxy. Checking DNS first and connecting later is not a check.
+6. **BR-RESOURCE-06** — **BR-RESOURCE-15**: Erasing an account deletes that user's resources, originals and renditions.
+7. **BR-RESOURCE-07** — **BR-RESOURCE-06**: Deleting a resource deletes its object. If storage cannot be reached the delete fails and the row stays.
+8. **BR-RESOURCE-08** — **BR-RESOURCE-07**: An intent never confirmed within 15 minutes is swept to failed and its object removed. The sweeper marks the row before deleting, so a row confirmed meanwhile is left alone.
+9. **BR-RESOURCE-09** — **BR-RESOURCE-08**: Quotas bound each user to 50 resources and 250 MB, counting everything not rejected or failed.
+10. **BR-RESOURCE-10** — **BR-RESOURCE-09**: rejected is a verdict on the resource; failed is ours and retryable. A timeout or a 5xx never rejects a link.
+11. **BR-RESOURCE-11** — **BR-RESOURCE-10**: The URL fetcher checks the address it is connecting to, in the dialer, on every hop, and never uses a proxy. Checking DNS first and connecting later is not a check.
+12. **BR-RESOURCE-12** — Extracted text and anything generated from it is private to the resource's owner.
+13. **BR-RESOURCE-13** — Classification stores only spine codes that exist; the rest are dropped.
+14. **BR-RESOURCE-14** — A transcript is queued by cmd/media in the transaction that settles the audio_web rendition, ready or skipped. Video gets an audio_web rendition for its soundtrack.
+15. **BR-RESOURCE-15** — An extraction and its classification job are written in one transaction.
+16. **BR-RESOURCE-16** — **BR-RESOURCE-16**: A resource leaves its owner's private space only by being copied into a published course, and only its owner can start that copy.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

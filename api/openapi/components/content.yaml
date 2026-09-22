@@ -493,4 +493,64 @@ ReplacePrerequisitesRequest:
         type: string
         example: PAST_SIMPLE
 
+AdminReviewQueueItem:
+  type: object
+  description: A machine-generated draft version awaiting human editorial review.
+  required: [id, item_id, slug, kind, cefr_level, status, body, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Content version ID.
+    item_id:
+      type: string
+      format: uuid
+      description: Content item ID.
+    slug:
+      type: string
+      example: foundation-b1-grammar-tense-choice-a1b2c3d4
+    kind:
+      type: string
+      example: grammar_tense_choice
+    cefr_level:
+      $ref: '#/CEFRLevel'
+    status:
+      $ref: '#/AuthoringStatus'
+    body:
+      type: object
+      description: Unredacted version payload including exercise structure and answer keys.
+      additionalProperties: true
+    blind_solve_answer:
+      type: object
+      description: Answer predicted by blind solver next to the key.
+      additionalProperties: true
+    cefr_reasoning:
+      type: string
+      example: Present perfect with clear time markers corresponding to B1 level.
+    provenance:
+      type: object
+      description: Machine author provenance (prompt version, model, ai request ID).
+      additionalProperties: true
+    node_codes:
+      type: array
+      items:
+        type: string
+      example: [PRESENT_PERFECT]
+    created_at:
+      type: string
+      format: date-time
+
+AdminReviewQueueResponse:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/AdminReviewQueueItem'
+    total:
+      type: integer
+      example: 1
+
+
 

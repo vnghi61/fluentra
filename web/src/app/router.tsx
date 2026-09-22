@@ -60,6 +60,22 @@ function isBareRoute(pathname: string): boolean {
     (prefix) => pathname === prefix || pathname.startsWith(prefix),
   );
 }
+
+/**
+ * The immersive runners, which keep the shell header but not the bottom bar.
+ *
+ * The lesson runner is full-screen and distraction-free (P10.3) and carries its
+ * own exit and progress. The fixed bottom bar sat on top of its primary action:
+ * on a 390 px phone the Check button of a four-option exercise rendered behind
+ * it. These routes stay in the shell — unlike the exam sitting, a lesson is open
+ * to a visitor with no account, and the header is where their Sign in and Create
+ * account links live.
+ */
+const runnerRoutes = ["/learn/lesson/", "/practice/daily"];
+
+function isRunnerRoute(pathname: string): boolean {
+  return runnerRoutes.some((prefix) => pathname.startsWith(prefix));
+}
 import { authApi } from "@/features/auth";
 import { clearAllWritingDrafts } from "@/features/writing/utils/draftStorage";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
@@ -182,7 +198,13 @@ const StudioEditorPage = lazyRouteComponent(
   "StudioEditorPage",
 );
 
+const FoundationTopicPage = lazyRouteComponent(
+  () => import("@/routes/FoundationTopicPage"),
+  "FoundationTopicPage",
+);
+
 /** Lazy: it reads /me/permissions, which nobody but an administrator needs. */
+
 const AdminSidebarNav = React.lazy(() =>
   import("@/features/admin/components/AdminSidebarNav").then((m) => ({
     default: m.AdminSidebarNav,
@@ -222,6 +244,7 @@ function RootApp(): React.JSX.Element {
       }
       onLogout={() => void handleLogout()}
       chrome={!isBareRoute(pathname)}
+      bottomNav={!isRunnerRoute(pathname)}
       displayName={displayName}
       avatarUrl={avatarUrl}
       banner={
@@ -563,12 +586,21 @@ export const placementRoute = createRoute({
   component: PlacementPage,
 });
 
+export const foundationTopicRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/foundation/topics/$code",
+  // Open to a visitor with no account (ADR-0025). Shows personalized mastery if signed in.
+  component: FoundationTopicPage,
+});
+
 export const routeTree = rootRoute.addChildren([
   homeRoute,
   welcomeRoute,
   placementRoute,
+  foundationTopicRoute,
   learnRoute,
   lessonRoute,
+
   practiceRoute,
   dailyPracticeRoute,
   reviewRoute,

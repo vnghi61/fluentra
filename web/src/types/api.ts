@@ -1026,6 +1026,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search and filter question bank items.
+         * @description Returns paginated question bank items filtered by criteria.
+         */
+        get: operations["listQuestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/questions/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * AI-generate draft items for review.
+         * @description Generates N draft items for a part and nodes, through Generator.
+         */
+        post: operations["generateQuestions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/questions/{id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Empirical difficulty and discrimination statistics.
+         * @description Returns empirical statistics from real learner attempts.
+         */
+        get: operations["getQuestionStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/audit-logs": {
         parameters: {
             query?: never;
@@ -1386,6 +1446,26 @@ export interface paths {
          * @description Replaces the prerequisite edge set for a topic within the same namespace. An in-memory cycle check runs on the proposed graph before database modification. Refuses any cycle with 422 TAXONOMY_CYCLE.
          */
         put: operations["replaceFoundationPrerequisites"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/review-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List machine-generated drafts awaiting review.
+         * @description Returns drafts produced by the generator, oldest first, with blind solve answers, CEFR reasoning, and provenance.
+         */
+        get: operations["adminListReviewQueue"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1877,6 +1957,46 @@ export interface paths {
          * @description Built on the first request of a week starting Monday in Asia/Ho_Chi_Minh and fixed for that week: 40% the next lessons, 30% daily practice sets, 20% due reviews at the learner's pace, 10% one writing or speaking task, with one extra item for the weakest skill. Progress is read at request time (work order 13 §3.7).
          */
         get: operations["getMyWeeklyPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/foundation/path": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Learning path to a target foundation topic with user mastery.
+         * @description Returns the prerequisite chain leading to the target topic in topological order, including attempts, scores, and mastery status for the caller, marking the first unmastered node as next.
+         */
+        get: operations["getMyFoundationPath"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/foundation/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Next foundation topic to learn across strands.
+         * @description Returns the next unmastered topic across foundation strands, preferring the learner's stated goal and nodes matching their current placement level.
+         */
+        get: operations["getMyFoundationNext"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2583,6 +2703,86 @@ export interface paths {
          * @description Returns a paginated list of speaking submissions with status, band scores, task types, and recording availability for the authenticated user.
          */
         get: operations["listSpeakingSubmissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exam-versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current versions and their blueprints
+         * @description Lists verified exam versions and their blueprints available for mock test composition.
+         */
+        get: operations["listExamVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mock-tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compose a mock test
+         * @description Composes a mock test from the question bank based on blueprint and mode.
+         */
+        post: operations["composeMockTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mock-tests/{id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start or retake a mock test attempt
+         * @description Starts a sitting from a composed mock test.
+         */
+        post: operations["startMockTestAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/exams/versions/{id}/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exam version coverage report
+         * @description Report of published question groups available versus required per exam part.
+         */
+        get: operations["getExamVersionCoverage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4687,6 +4887,52 @@ export interface components {
             /** @description Complete set of prerequisite topic codes within the same namespace. */
             requires_codes: string[];
         };
+        /** @description A machine-generated draft version awaiting human editorial review. */
+        AdminReviewQueueItem: {
+            /**
+             * Format: uuid
+             * @description Content version ID.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Content item ID.
+             */
+            item_id: string;
+            /** @example foundation-b1-grammar-tense-choice-a1b2c3d4 */
+            slug: string;
+            /** @example grammar_tense_choice */
+            kind: string;
+            cefr_level: components["schemas"]["CEFRLevel"];
+            status: components["schemas"]["AuthoringStatus"];
+            /** @description Unredacted version payload including exercise structure and answer keys. */
+            body: {
+                [key: string]: unknown;
+            };
+            /** @description Answer predicted by blind solver next to the key. */
+            blind_solve_answer?: {
+                [key: string]: unknown;
+            };
+            /** @example Present perfect with clear time markers corresponding to B1 level. */
+            cefr_reasoning?: string;
+            /** @description Machine author provenance (prompt version, model, ai request ID). */
+            provenance?: {
+                [key: string]: unknown;
+            };
+            /**
+             * @example [
+             *       "PRESENT_PERFECT"
+             *     ]
+             */
+            node_codes?: string[];
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminReviewQueueResponse: {
+            items: components["schemas"]["AdminReviewQueueItem"][];
+            /** @example 1 */
+            total: number;
+        };
         CourseSummary: {
             /** Format: uuid */
             id: string;
@@ -4752,7 +4998,7 @@ export interface components {
             kind: string;
             /** Format: uuid */
             content_version_id: string;
-            /** @description Activity-specific configuration. */
+            /** @description Activity-specific configuration. A `lesson_material` activity carries the material's object keys and, issued at read time after the paywall, a `sources` object: `{poster_url?, video: [{url, height}], document: {url, preview_url?, page_count?}}`. The URLs expire and are never stored in the lesson cache. */
             config?: Record<string, never>;
             /** @example 10 */
             weight: number;
@@ -5933,6 +6179,8 @@ export interface components {
             /** @enum {string} */
             mode: "exam" | "practice";
             chosen_duration_minutes: number;
+            /** @description Practice mode only. True when the sitting opted out of a visible time limit; deadline_at is then a backstop, not a real limit, and the client should show elapsed time instead of a countdown. */
+            unlimited: boolean;
             /** Format: date-time */
             started_at: string;
             /** Format: date-time */
@@ -6051,6 +6299,125 @@ export interface components {
             per_section: components["schemas"]["ExamSectionOutcome"][];
             integrity_signals: components["schemas"]["ExamIntegritySignal"][];
             disclaimer: string;
+            /** @description Seconds between started_at and submitted_at — how long the learner took. */
+            elapsed_seconds?: number;
+        };
+        BlueprintSummary: {
+            /** Format: uuid */
+            id: string;
+            /** @example toeic_default */
+            name: string;
+            /**
+             * @example {
+             *       "B1": 0.5,
+             *       "B2": 0.5
+             *     }
+             */
+            cefr_distribution: {
+                [key: string]: unknown;
+            };
+            /** @example {} */
+            node_distribution: {
+                [key: string]: unknown;
+            };
+        };
+        ExamVersion: {
+            /** Format: uuid */
+            id: string;
+            /** @example toeic_lr */
+            exam_family: string;
+            /** @example TOEIC_LR_2026 */
+            code: string;
+            /** @example TOEIC Listening & Reading (2026) */
+            title: string;
+            /** @example 120 */
+            total_minutes: number;
+            scoring: {
+                [key: string]: unknown;
+            };
+            /**
+             * Format: uri
+             * @example https://www.etsglobal.org/dz/en/help-center/test-content/format-questions-toeic-listening-reading
+             */
+            source_url: string;
+            /**
+             * Format: date
+             * @example 2026-09-20
+             */
+            verified_at: string;
+            /** @example true */
+            is_current: boolean;
+            /** @example 7 parts, 200 questions */
+            notes: string;
+            blueprints: components["schemas"]["BlueprintSummary"][];
+        };
+        ExamVersionListResponse: {
+            items: components["schemas"]["ExamVersion"][];
+        };
+        ComposeMockTestRequest: {
+            /** Format: uuid */
+            blueprint_id: string;
+            /**
+             * @example random
+             * @enum {string}
+             */
+            mode: "fixed" | "random" | "weak_topic" | "full" | "custom";
+            /** @description Optional list of part numbers for custom mode */
+            parts?: number[];
+        };
+        MockTestPartComposition: {
+            /** Format: uuid */
+            part_id: string;
+            activity_ids: string[];
+        };
+        MockTest: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            blueprint_id: string;
+            /** @enum {string} */
+            mode: "fixed" | "random" | "weak_topic" | "full" | "custom";
+            /**
+             * Format: int64
+             * @example 1234567890
+             */
+            seed: number;
+            composition: components["schemas"]["MockTestPartComposition"][];
+            /** Format: uuid */
+            owner_id?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        ExamPartCoverage: {
+            /** Format: uuid */
+            part_id: string;
+            /** @example 1 */
+            part_number: number;
+            /** @example listening */
+            section: string;
+            /** @example photo_description */
+            kind: string;
+            /** @example 6 */
+            question_count: number;
+            /** @example 1 */
+            group_size: number;
+            /** @example 12 */
+            published_groups_available: number;
+            /** @example 6 */
+            groups_needed_per_test: number;
+            /** @example 2 */
+            tests_possible: number;
+        };
+        ExamCoverageReport: {
+            /** Format: uuid */
+            version_id: string;
+            /** @example TOEIC_LR_2026 */
+            exam_code: string;
+            /** @example 2 */
+            distinct_tests_possible: number;
+            /** Format: uuid */
+            bottleneck_part_id?: string | null;
+            parts: components["schemas"]["ExamPartCoverage"][];
         };
         SpeakingCriterion: {
             /** @example fluency */
@@ -6393,6 +6760,36 @@ export interface components {
             items: components["schemas"]["WeeklyPlanItem"][];
             progress: components["schemas"]["WeeklyPlanProgress"];
         };
+        FoundationPathNode: {
+            /** Format: uuid */
+            id: string;
+            /** @example grammar */
+            namespace: string;
+            /** @example PRESENT_PERFECT */
+            code: string;
+            /** @example Present Perfect */
+            label: string;
+            /** @example B1 */
+            cefr_level?: string | null;
+            /** @example 5 */
+            attempts: number;
+            /**
+             * Format: float
+             * @example 0.85
+             */
+            score: number;
+            /** @example true */
+            mastered: boolean;
+            /** @example false */
+            next: boolean;
+        };
+        LearnerFoundationPath: {
+            /** @example PRESENT_PERFECT */
+            target: string;
+            /** @example grammar */
+            namespace: string;
+            items: components["schemas"]["FoundationPathNode"][];
+        };
         CreatorProfile: {
             /** Format: uuid */
             user_id: string;
@@ -6462,7 +6859,7 @@ export interface components {
             price_vnd: number;
             /** @enum {string} */
             status: "draft" | "submitted" | "verifying" | "in_review" | "published" | "rejected" | "changes_requested";
-            /** @description Course structure containing units, lessons, and activities. */
+            /** @description Course structure containing units, lessons, and activities. A `lesson_material` activity adds `material: {resource_id, material_kind, title, description?, rights_confirmed}`, where `resource_id` is the creator's own private resource and `material_kind` is a hint the server never trusts — the real kind is derived from the resource's detected MIME. */
             structure: Record<string, never>;
             /** Format: date-time */
             created_at: string;
@@ -6914,6 +7311,9 @@ export interface components {
              * @example 2026-09-21T00:01:00Z
              */
             validated_at?: string | null;
+            renditions?: components["schemas"]["ResourceRendition"][];
+            extraction?: components["schemas"]["ResourceExtraction"];
+            classification?: components["schemas"]["ResourceClassification"];
         };
         ResourceList: {
             items: components["schemas"]["Resource"][];
@@ -6990,6 +7390,192 @@ export interface components {
              */
             status: "uploaded";
         };
+        /** @description An item in the assessment question bank. */
+        Question: {
+            /**
+             * Format: uuid
+             * @example 0199a1c2-3d4e-7f80-9abc-def01234567a
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @example 0199a1c2-3d4e-7f80-9abc-def01234567b
+             */
+            content_item_id: string;
+            /**
+             * Format: uuid
+             * @example 0199a1c2-3d4e-7f80-9abc-def01234567c
+             */
+            activity_id?: string | null;
+            /**
+             * Format: uuid
+             * @example null
+             */
+            exam_part_id?: string | null;
+            /** @example photo_description */
+            kind: string;
+            /** @example listening */
+            skill: string;
+            /** @example B1 */
+            cefr_level: string;
+            /**
+             * Format: float
+             * @example 0.55
+             */
+            difficulty?: number | null;
+            /** @example 1 */
+            question_count: number;
+            /** @example 7d2b45f1e8a931... */
+            fingerprint: string;
+            /**
+             * @example {
+             *       "prompt_version": "item_generate.v1",
+             *       "model": "gpt-4o-mini",
+             *       "ai_request_id": "0199a1c2-3d4e-7f80-9abc-def01234567d"
+             *     }
+             */
+            provenance: {
+                [key: string]: unknown;
+            };
+            /**
+             * @example draft
+             * @enum {string}
+             */
+            status: "draft" | "in_review" | "published" | "retired";
+            /**
+             * Format: date-time
+             * @example 2026-09-20T10:00:00Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-20T10:00:00Z
+             */
+            updated_at: string;
+        };
+        /** @description A paginated list of question bank items. */
+        QuestionPage: {
+            items: components["schemas"]["Question"][];
+            /** @example 60 */
+            total: number;
+            /** @example 20 */
+            limit: number;
+            /** @example 0 */
+            offset: number;
+        };
+        /** @description Request payload to generate new draft items for review. */
+        GenerateQuestionsRequest: {
+            /** @example mcq_gap */
+            kind: string;
+            /** @example B1 */
+            cefr_level: string;
+            /**
+             * @example [
+             *       "grammar.PRESENT_PERFECT"
+             *     ]
+             */
+            node_codes: string[];
+            /** @example 5 */
+            count: number;
+            /**
+             * Format: uuid
+             * @example null
+             */
+            exam_part_id?: string | null;
+        };
+        /** @description Generated question bank items resulting from the generation request. */
+        GeneratedQuestionsResponse: {
+            questions: components["schemas"]["Question"][];
+        };
+        /** @description Empirical difficulty and discrimination statistics for a question. */
+        QuestionStats: {
+            /**
+             * Format: uuid
+             * @example 0199a1c2-3d4e-7f80-9abc-def01234567a
+             */
+            question_id: string;
+            /** @example 42 */
+            attempts: number;
+            /**
+             * Format: float
+             * @example 0.68
+             */
+            p_value?: number | null;
+            /**
+             * Format: float
+             * @example 0.45
+             */
+            discrimination?: number | null;
+            /** @example 15400 */
+            avg_time_ms: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-20T10:00:00Z
+             */
+            last_computed_at: string;
+        };
+        /** @description A derived visual, audio, or video rendition of a validated file resource. */
+        ResourceRendition: {
+            /**
+             * @example thumbnail
+             * @enum {string}
+             */
+            kind: "thumbnail" | "display" | "preview" | "audio_web" | "poster" | "video_360p" | "video_720p";
+            /** @example image/png */
+            mime_type: string;
+            /** @example 320 */
+            width?: number | null;
+            /** @example 240 */
+            height?: number | null;
+            /** @example null */
+            duration_ms?: number | null;
+            /**
+             * Format: int64
+             * @example 12450
+             */
+            byte_size?: number | null;
+            /**
+             * @description Presigned GET URL to download or display the rendition.
+             * @example https://storage.example.com/fluentra-derived/...
+             */
+            url?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-21T01:00:00Z
+             */
+            expires_at?: string | null;
+        };
+        /** @description Extracted textual content and metadata from the resource. */
+        ResourceExtraction: {
+            /**
+             * @example pdf_text
+             * @enum {string}
+             */
+            source: "pdf_text" | "ocr" | "transcript";
+            /** @example 1540 */
+            char_count: number;
+            /** @example false */
+            truncated: boolean;
+            /**
+             * @description The first 2,000 characters of the extracted text.
+             * @example Unit 1: Present Perfect Tense...
+             */
+            excerpt: string;
+        } | null;
+        ClassificationNode: {
+            /** @example PRESENT_PERFECT */
+            code: string;
+            /** @example Present Perfect */
+            label: string;
+        };
+        /** @description Grounded spine taxonomy classification and CEFR estimate. */
+        ResourceClassification: {
+            /** @example B1 */
+            cefr_estimate?: string | null;
+            /** @example grammar */
+            skill?: string | null;
+            nodes?: components["schemas"]["ClassificationNode"][];
+        } | null;
     };
     responses: {
         /** @description The request is malformed or has an invalid cursor. */
@@ -9251,6 +9837,162 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    listQuestions: {
+        parameters: {
+            query?: {
+                exam_version?: string;
+                exam_part_id?: string;
+                kind?: string;
+                cefr_level?: string;
+                node_code?: string;
+                status?: "draft" | "in_review" | "published" | "retired";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated question bank items. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "content_item_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "activity_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "exam_part_id": null,
+                     *           "kind": "photo_description",
+                     *           "skill": "listening",
+                     *           "cefr_level": "B1",
+                     *           "difficulty": 0.55,
+                     *           "question_count": 1,
+                     *           "fingerprint": "7d2b45f1e8a93102efb132a0c49876543210fedcba9876543210fedcba987654",
+                     *           "provenance": {
+                     *             "prompt_version": "item_generate.v1",
+                     *             "model": "gpt-4o-mini",
+                     *             "ai_request_id": "0199a1c2-3d4e-7f80-9abc-def01234567d"
+                     *           },
+                     *           "status": "draft",
+                     *           "created_at": "2026-09-20T10:00:00Z",
+                     *           "updated_at": "2026-09-20T10:00:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "limit": 20,
+                     *       "offset": 0
+                     *     }
+                     */
+                    "application/json": components["schemas"]["QuestionPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    generateQuestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateQuestionsRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft questions generated and awaiting review. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "questions": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "content_item_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "activity_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "exam_part_id": null,
+                     *           "kind": "mcq_gap",
+                     *           "skill": "reading",
+                     *           "cefr_level": "B1",
+                     *           "difficulty": null,
+                     *           "question_count": 1,
+                     *           "fingerprint": "a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0",
+                     *           "provenance": {
+                     *             "prompt_version": "item_generate.v1",
+                     *             "model": "gpt-4o-mini",
+                     *             "ai_request_id": "0199a1c2-3d4e-7f80-9abc-def01234567d"
+                     *           },
+                     *           "status": "draft",
+                     *           "created_at": "2026-09-20T10:00:00Z",
+                     *           "updated_at": "2026-09-20T10:00:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["GeneratedQuestionsResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getQuestionStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of the question bank item. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Empirical statistics for the question. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "question_id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *       "attempts": 42,
+                     *       "p_value": 0.68,
+                     *       "discrimination": 0.45,
+                     *       "avg_time_ms": 15400,
+                     *       "last_computed_at": "2026-09-20T10:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["QuestionStats"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
     auditSearchLogs: {
         parameters: {
             query?: {
@@ -10198,6 +10940,93 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationFailed"];
+        };
+    };
+    adminListReviewQueue: {
+        parameters: {
+            query?: {
+                /** @description Filter by generation purpose (bank, foundation, resource). */
+                purpose?: string;
+                /** @description Filter by content kind. */
+                kind?: string;
+                /** @description Filter by spine node code. */
+                node?: string;
+                /** @description Filter by CEFR level. */
+                cefr?: components["schemas"]["CEFRLevel"];
+                /** @description Maximum items to return. */
+                limit?: number;
+                /** @description Items to skip before returning. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of items awaiting review. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345602",
+                     *           "item_id": "0199a1c2-3d4e-7f80-9abc-def012345601",
+                     *           "slug": "foundation-b1-grammar-tense-choice-a1b2c3d4",
+                     *           "kind": "grammar_tense_choice",
+                     *           "cefr_level": "B1",
+                     *           "status": "draft",
+                     *           "body": {
+                     *             "prompt": "She ___ lived here for three years.",
+                     *             "options": [
+                     *               {
+                     *                 "id": "A",
+                     *                 "text": "has"
+                     *               },
+                     *               {
+                     *                 "id": "B",
+                     *                 "text": "have"
+                     *               },
+                     *               {
+                     *                 "id": "C",
+                     *                 "text": "had"
+                     *               },
+                     *               {
+                     *                 "id": "D",
+                     *                 "text": "having"
+                     *               }
+                     *             ],
+                     *             "correct_option_id": "A"
+                     *           },
+                     *           "blind_solve_answer": {
+                     *             "selected_option_id": "A"
+                     *           },
+                     *           "cefr_reasoning": "Present perfect tense corresponds to B1.",
+                     *           "provenance": {
+                     *             "prompt_version": "item_generate.v1",
+                     *             "model": "mock-model",
+                     *             "ai_request_id": "0199a1c2-3d4e-7f80-9abc-def012345603"
+                     *           },
+                     *           "node_codes": [
+                     *             "PRESENT_PERFECT"
+                     *           ],
+                     *           "created_at": "2026-09-21T10:00:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminReviewQueueResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
         };
     };
     adminListContent: {
@@ -11459,6 +12288,121 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    getMyFoundationPath: {
+        parameters: {
+            query: {
+                /** @description Target topic code (e.g. PRESENT_PERFECT). */
+                target: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The learner foundation path. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "target": "PRESENT_PERFECT",
+                     *       "namespace": "grammar",
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "namespace": "grammar",
+                     *           "code": "SENTENCE_STRUCTURE",
+                     *           "label": "Sentence Structure",
+                     *           "cefr_level": "A1",
+                     *           "attempts": 6,
+                     *           "score": 0.85,
+                     *           "mastered": true,
+                     *           "next": false
+                     *         },
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "namespace": "grammar",
+                     *           "code": "PRESENT_SIMPLE",
+                     *           "label": "Present Simple",
+                     *           "cefr_level": "A1",
+                     *           "attempts": 5,
+                     *           "score": 0.9,
+                     *           "mastered": true,
+                     *           "next": false
+                     *         },
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "namespace": "grammar",
+                     *           "code": "PRESENT_CONTINUOUS",
+                     *           "label": "Present Continuous",
+                     *           "cefr_level": "A1",
+                     *           "attempts": 0,
+                     *           "score": 0,
+                     *           "mastered": false,
+                     *           "next": true
+                     *         },
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567d",
+                     *           "namespace": "grammar",
+                     *           "code": "PRESENT_PERFECT",
+                     *           "label": "Present Perfect",
+                     *           "cefr_level": "B1",
+                     *           "attempts": 0,
+                     *           "score": 0,
+                     *           "mastered": false,
+                     *           "next": false
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["LearnerFoundationPath"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getMyFoundationNext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The next foundation topic to study. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *       "namespace": "grammar",
+                     *       "code": "PRESENT_CONTINUOUS",
+                     *       "label": "Present Continuous",
+                     *       "cefr_level": "A1",
+                     *       "attempts": 0,
+                     *       "score": 0,
+                     *       "mastered": false,
+                     *       "next": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FoundationPathNode"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     getReviewSession: {
@@ -13184,6 +14128,209 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
+    listExamVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of available exam versions. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "20000000-0000-0000-0000-000000000001",
+                     *           "exam_family": "toeic_lr",
+                     *           "code": "TOEIC_LR_2026",
+                     *           "title": "TOEIC Listening & Reading (2026)",
+                     *           "total_minutes": 120,
+                     *           "scoring": {
+                     *             "type": "raw_with_estimate"
+                     *           },
+                     *           "source_url": "https://www.etsglobal.org/dz/en/help-center/test-content/format-questions-toeic-listening-reading",
+                     *           "verified_at": "2026-09-20",
+                     *           "is_current": true,
+                     *           "notes": "7 parts, 200 questions",
+                     *           "blueprints": [
+                     *             {
+                     *               "id": "20000000-0000-0000-0010-000000000001",
+                     *               "name": "toeic_default",
+                     *               "cefr_distribution": {
+                     *                 "B1": 0.5,
+                     *                 "B2": 0.5
+                     *               },
+                     *               "node_distribution": {}
+                     *             }
+                     *           ]
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ExamVersionListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    composeMockTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "blueprint_id": "20000000-0000-0000-0010-000000000001",
+                 *       "mode": "random"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ComposeMockTestRequest"];
+            };
+        };
+        responses: {
+            /** @description Composed mock test. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "30000000-0000-0000-0000-000000000001",
+                     *       "blueprint_id": "20000000-0000-0000-0010-000000000001",
+                     *       "mode": "random",
+                     *       "seed": 1234567890,
+                     *       "composition": [
+                     *         {
+                     *           "part_id": "20000000-0000-0000-0001-000000000001",
+                     *           "activity_ids": [
+                     *             "40000000-0000-0000-0000-000000000001"
+                     *           ]
+                     *         }
+                     *       ],
+                     *       "owner_id": "50000000-0000-0000-0000-000000000001",
+                     *       "created_at": "2026-09-20T12:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["MockTest"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    startMockTestAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Mock test ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created sitting attempt. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "60000000-0000-0000-0000-000000000001",
+                     *       "exam_id": "10000000-0000-0000-0000-0000000000b1",
+                     *       "exam_slug": "mock-toeic-b1",
+                     *       "exam_title": "TOEIC Mock Exam (B1)",
+                     *       "level": "B1",
+                     *       "mode": "exam",
+                     *       "chosen_duration_minutes": 75,
+                     *       "unlimited": false,
+                     *       "started_at": "2026-09-20T12:00:00Z",
+                     *       "deadline_at": "2026-09-20T13:15:00Z",
+                     *       "remaining_seconds": 4500,
+                     *       "current_section": 1,
+                     *       "status": "in_progress",
+                     *       "server_time": "2026-09-20T12:00:00Z",
+                     *       "sections": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ExamAttempt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getExamVersionCoverage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Exam version ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Coverage report for the exam version. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "version_id": "20000000-0000-0000-0000-000000000001",
+                     *       "exam_code": "TOEIC_LR_2026",
+                     *       "distinct_tests_possible": 2,
+                     *       "bottleneck_part_id": null,
+                     *       "parts": [
+                     *         {
+                     *           "part_id": "20000000-0000-0000-0001-000000000001",
+                     *           "part_number": 1,
+                     *           "section": "listening",
+                     *           "kind": "photo_description",
+                     *           "question_count": 6,
+                     *           "group_size": 1,
+                     *           "published_groups_available": 12,
+                     *           "groups_needed_per_test": 6,
+                     *           "tests_possible": 2
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ExamCoverageReport"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
     listExams: {
         parameters: {
             query?: never;
@@ -13262,6 +14409,8 @@ export interface operations {
                     /** @enum {string} */
                     mode: "exam" | "practice";
                     chosen_duration_minutes?: number;
+                    /** @description Practice mode only. Skips chosen_duration_minutes and runs the sitting without a visible time limit. The server still applies a generous backstop deadline so an abandoned sitting cannot block a future one indefinitely. */
+                    unlimited?: boolean;
                     /** @description Practice mode only: the sections to sit, by position. Omitted or empty means all four. A position outside 1–4 or repeated is 400 EXAM_INVALID_SECTIONS. */
                     sections?: number[];
                 };
@@ -13284,6 +14433,7 @@ export interface operations {
                      *       "level": "B1",
                      *       "mode": "exam",
                      *       "chosen_duration_minutes": 75,
+                     *       "unlimited": false,
                      *       "started_at": "2026-09-14T09:00:00Z",
                      *       "deadline_at": "2026-09-14T10:15:00Z",
                      *       "remaining_seconds": 3600,
@@ -13375,6 +14525,7 @@ export interface operations {
                      *           "level": "B1",
                      *           "mode": "exam",
                      *           "chosen_duration_minutes": 75,
+                     *           "unlimited": false,
                      *           "started_at": "2026-09-14T09:00:00Z",
                      *           "deadline_at": "2026-09-14T10:15:00Z",
                      *           "remaining_seconds": 3600,
@@ -13425,6 +14576,7 @@ export interface operations {
                      *       "level": "B1",
                      *       "mode": "exam",
                      *       "chosen_duration_minutes": 75,
+                     *       "unlimited": false,
                      *       "started_at": "2026-09-14T09:00:00Z",
                      *       "deadline_at": "2026-09-14T10:15:00Z",
                      *       "remaining_seconds": 3600,

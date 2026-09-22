@@ -2,13 +2,13 @@
 module: questionbank
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 4
 owner: "@learning-team"
 schema: assess
-tables: [questions, question_options, question_sets, question_set_items, question_stats]
-depends_on: [content, ai, audit, search]
-depended_on_by: [exam, reading, listening, grammar, learning]
+tables: [questions, question_stats]
+depends_on: [content, lesson, learning, rbac]
+depended_on_by: [exam]
 spec_version: 1.0.0
 last_verified: 2026-08-06
 ---
@@ -27,11 +27,9 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 <!-- BEGIN GENERATED: api-summary -->
 | Method | Path | Permission | Purpose |
 |---|---|---|---|
-| `GET` | `/api/v1/admin/questions` | `questionbank.read` | Search and filter items |
-| `POST` | `/api/v1/admin/questions` | `questionbank.create` | Create an item |
-| `POST` | `/api/v1/admin/questions/{id}/review` | `questionbank.review` | Approve or reject |
-| `POST` | `/api/v1/admin/questions/generate` | `questionbank.create` | AI-generate draft items for review |
-| `GET` | `/api/v1/admin/questions/{id}/stats` | `questionbank.read` | Empirical difficulty and discrimination |
+| `GET` | `/api/v1/admin/questions` | `questionbank.read` | Filter by exam part, kind, CEFR, spine node, status. Reachable by moderators |
+| `POST` | `/api/v1/admin/questions/generate` | `questionbank.create` | Generate draft questions for a part and nodes; they wait in the review queue |
+| `GET` | `/api/v1/admin/questions/{id}/stats` | `questionbank.read` | Empirical difficulty and discrimination. Reachable by moderators |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -39,7 +37,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 <!-- BEGIN GENERATED: api-detail -->
 ### `GET /api/v1/admin/questions`
 
-Search and filter items
+Filter by exam part, kind, CEFR, spine node, status. Reachable by moderators
 
 | | |
 |---|---|
@@ -47,39 +45,19 @@ Search and filter items
 | Success | 200 |
 | Errors | standard set |
 
-### `POST /api/v1/admin/questions`
-
-Create an item
-
-| | |
-|---|---|
-| Permission | `questionbank.create` |
-| Success | 201 |
-| Errors | standard set |
-
-### `POST /api/v1/admin/questions/{id}/review`
-
-Approve or reject
-
-| | |
-|---|---|
-| Permission | `questionbank.review` |
-| Success | 200 |
-| Errors | `SELF_APPROVAL_FORBIDDEN` |
-
 ### `POST /api/v1/admin/questions/generate`
 
-AI-generate draft items for review
+Generate draft questions for a part and nodes; they wait in the review queue
 
 | | |
 |---|---|
 | Permission | `questionbank.create` |
-| Success | 202 |
+| Success | 200 |
 | Errors | standard set |
 
 ### `GET /api/v1/admin/questions/{id}/stats`
 
-Empirical difficulty and discrimination
+Empirical difficulty and discrimination. Reachable by moderators
 
 | | |
 |---|---|
@@ -94,9 +72,8 @@ Empirical difficulty and discrimination
 <!-- BEGIN GENERATED: api-errors -->
 | Code | Status | Meaning |
 |---|---|---|
-| `SELF_APPROVAL_FORBIDDEN` | 403 | Author reviewing their own item |
-| `INSUFFICIENT_ITEMS` | 409 | Not enough approved items matching the sampling criteria |
-| `ITEM_IN_USE` | 409 | Cannot archive an item used by a published exam |
+| `QUESTION_NOT_FOUND` | 404 | No such question |
+| `QUESTION_NOT_REVIEWED` | 409 | Its content version is not published yet; approve it in the review queue |
 <!-- END GENERATED: api-errors -->
 
 ## Rate limits

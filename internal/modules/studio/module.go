@@ -13,6 +13,7 @@ import (
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	paymentcontract "github.com/fluentra/fluentra/internal/modules/payment/contract"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/modules/studio/contract"
 	"github.com/fluentra/fluentra/internal/modules/studio/job"
 	"github.com/fluentra/fluentra/internal/modules/studio/repository"
@@ -34,6 +35,7 @@ type Dependencies struct {
 	LessonReader       lessoncontract.Reader
 	RefundRecorder     paymentcontract.RefundRecorder
 	PayoutManager      paymentcontract.PayoutManager
+	MaterialPublisher  resourcecontract.MaterialPublisher
 	MinPriceVND        int64
 	MaxPriceVND        int64
 	RevenueShareBPS    int
@@ -66,6 +68,9 @@ func NewModule(deps Dependencies) (*Module, error) {
 	}
 	if deps.PayoutManager != nil {
 		svc.SetPayoutManager(deps.PayoutManager)
+	}
+	if deps.MaterialPublisher != nil {
+		svc.SetMaterialPublisher(deps.MaterialPublisher)
 	}
 	if deps.PayoutThresholdVND > 0 {
 		svc.SetPayoutThresholdVND(deps.PayoutThresholdVND)

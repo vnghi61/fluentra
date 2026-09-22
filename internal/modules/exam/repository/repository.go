@@ -3,12 +3,14 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/fluentra/fluentra/internal/generated/exam/sqlc"
+	"github.com/fluentra/fluentra/internal/modules/exam/domain"
 )
 
 // Repository manages persistent operations for the assess schema.
@@ -80,6 +82,31 @@ func (r *Repository) CreateExamAttempt(
 		return nil, err
 	}
 	return &attempt, nil
+}
+
+// CreateMockTestAttempt inserts a sitting linked to a mock test.
+func (r *Repository) CreateMockTestAttempt(
+	ctx context.Context, arg sqlc.CreateMockTestAttemptParams,
+) (*sqlc.AssessExamAttempt, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	attempt, err := r.queries.CreateMockTestAttempt(ctx, arg)
+	if err != nil {
+		return nil, err
+	}
+	return &attempt, nil
+}
+
+// CountUserMockTestAttempts counts a learner's attempts for a mock test.
+func (r *Repository) CountUserMockTestAttempts(ctx context.Context, userID, mockTestID uuid.UUID) (int64, error) {
+	if r.queries == nil {
+		return 0, nil
+	}
+	return r.queries.CountUserMockTestAttempts(ctx, sqlc.CountUserMockTestAttemptsParams{
+		UserID:     userID,
+		MockTestID: &mockTestID,
+	})
 }
 
 // GetExamAttemptByID returns a sitting whoever owns it; for jobs, not for requests.
@@ -300,4 +327,267 @@ func (r *Repository) ListIntegrityEvents(
 		return nil, nil
 	}
 	return r.queries.ListIntegrityEvents(ctx, attemptID)
+}
+
+// ListExamVersions returns all exam versions.
+func (r *Repository) ListExamVersions(ctx context.Context) ([]*domain.ExamVersion, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListExamVersions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*domain.ExamVersion, len(rows))
+	for i, row := range rows {
+		res[i] = toDomainExamVersion(row)
+	}
+	return res, nil
+}
+
+// ListCurrentExamVersions returns all current exam versions.
+func (r *Repository) ListCurrentExamVersions(ctx context.Context) ([]*domain.ExamVersion, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListCurrentExamVersions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*domain.ExamVersion, len(rows))
+	for i, row := range rows {
+		res[i] = toDomainExamVersion(row)
+	}
+	return res, nil
+}
+
+// GetExamVersionByID returns an exam version by its ID.
+func (r *Repository) GetExamVersionByID(ctx context.Context, id uuid.UUID) (*domain.ExamVersion, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.GetExamVersionByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return toDomainExamVersion(row), nil
+}
+
+// GetExamVersionByCode returns an exam version by its unique code.
+func (r *Repository) GetExamVersionByCode(ctx context.Context, code string) (*domain.ExamVersion, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.GetExamVersionByCode(ctx, code)
+	if err != nil {
+		return nil, err
+	}
+	return toDomainExamVersion(row), nil
+}
+
+// ListExamPartsByVersionID returns all exam parts for a given version.
+func (r *Repository) ListExamPartsByVersionID(
+	ctx context.Context, versionID uuid.UUID,
+) ([]*domain.ExamPart, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListExamPartsByVersionID(ctx, versionID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*domain.ExamPart, len(rows))
+	for i, row := range rows {
+		res[i] = toDomainExamPart(row)
+	}
+	return res, nil
+}
+
+// GetExamPartByID returns an exam part by its ID.
+func (r *Repository) GetExamPartByID(ctx context.Context, id uuid.UUID) (*domain.ExamPart, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.GetExamPartByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return toDomainExamPart(row), nil
+}
+
+// ListBlueprintsByVersionID returns all blueprints for a version.
+func (r *Repository) ListBlueprintsByVersionID(
+	ctx context.Context, versionID uuid.UUID,
+) ([]*domain.Blueprint, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListBlueprintsByVersionID(ctx, versionID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*domain.Blueprint, len(rows))
+	for i, row := range rows {
+		res[i] = toDomainBlueprint(row)
+	}
+	return res, nil
+}
+
+// GetBlueprintByID returns a blueprint by its ID.
+func (r *Repository) GetBlueprintByID(ctx context.Context, id uuid.UUID) (*domain.Blueprint, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.GetBlueprintByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return toDomainBlueprint(row), nil
+}
+
+// GetBlueprintByName returns a blueprint by its version ID and name.
+func (r *Repository) GetBlueprintByName(
+	ctx context.Context, versionID uuid.UUID, name string,
+) (*domain.Blueprint, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.GetBlueprintByName(ctx, sqlc.GetBlueprintByNameParams{
+		VersionID: versionID,
+		Name:      name,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return toDomainBlueprint(row), nil
+}
+
+func toDomainExamVersion(row sqlc.AssessExamVersion) *domain.ExamVersion {
+	return &domain.ExamVersion{
+		ID:           row.ID,
+		ExamFamily:   row.ExamFamily,
+		Code:         row.Code,
+		Title:        row.Title,
+		TotalMinutes: int(row.TotalMinutes),
+		Scoring:      row.Scoring,
+		SourceURL:    row.SourceUrl,
+		VerifiedAt:   row.VerifiedAt.Time,
+		IsCurrent:    row.IsCurrent,
+		Notes:        row.Notes,
+	}
+}
+
+func toDomainExamPart(row sqlc.AssessExamPart) *domain.ExamPart {
+	var dur *int
+	if row.DurationMinutes != nil {
+		d := int(*row.DurationMinutes)
+		dur = &d
+	}
+	return &domain.ExamPart{
+		ID:              row.ID,
+		VersionID:       row.VersionID,
+		Section:         row.Section,
+		PartNumber:      int(row.PartNumber),
+		Kind:            row.Kind,
+		QuestionCount:   int(row.QuestionCount),
+		GroupSize:       int(row.GroupSize),
+		DurationMinutes: dur,
+		Constraints:     row.Constraints,
+	}
+}
+
+func toDomainBlueprint(row sqlc.AssessBlueprint) *domain.Blueprint {
+	return &domain.Blueprint{
+		ID:               row.ID,
+		VersionID:        row.VersionID,
+		Name:             row.Name,
+		CefrDistribution: row.CefrDistribution,
+		NodeDistribution: row.NodeDistribution,
+	}
+}
+
+// CreateMockTest persists a new composed mock test.
+func (r *Repository) CreateMockTest(ctx context.Context, mt *domain.MockTest) (*domain.MockTest, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	compBytes, err := json.Marshal(mt.Composition)
+	if err != nil {
+		return nil, err
+	}
+	row, err := r.queries.CreateMockTest(ctx, sqlc.CreateMockTestParams{
+		ID:          mt.ID,
+		BlueprintID: mt.BlueprintID,
+		Mode:        mt.Mode,
+		Seed:        mt.Seed,
+		Composition: compBytes,
+		OwnerID:     mt.OwnerID,
+		CreatedAt:   mt.CreatedAt,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return toDomainMockTest(row)
+}
+
+// GetMockTestByID retrieves a mock test by its ID.
+func (r *Repository) GetMockTestByID(ctx context.Context, id uuid.UUID) (*domain.MockTest, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.GetMockTestByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return toDomainMockTest(row)
+}
+
+// ListMockTestsByOwner retrieves mock tests for an owner or public tests.
+func (r *Repository) ListMockTestsByOwner(ctx context.Context, ownerID *uuid.UUID) ([]*domain.MockTest, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListMockTestsByOwner(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*domain.MockTest, 0, len(rows))
+	for _, row := range rows {
+		item, err := toDomainMockTest(row)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, item)
+	}
+	return res, nil
+}
+
+// GetExamByVersionID finds an exam template linked to this version.
+func (r *Repository) GetExamByVersionID(ctx context.Context, versionID uuid.UUID) (*sqlc.AssessExam, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	exam, err := r.queries.GetExamByVersionID(ctx, &versionID)
+	if err != nil {
+		return nil, err
+	}
+	return &exam, nil
+}
+
+func toDomainMockTest(row sqlc.AssessMockTest) (*domain.MockTest, error) {
+	var comp []domain.MockTestPartComposition
+	if len(row.Composition) > 0 {
+		if err := json.Unmarshal(row.Composition, &comp); err != nil {
+			return nil, err
+		}
+	}
+	return &domain.MockTest{
+		ID:          row.ID,
+		BlueprintID: row.BlueprintID,
+		Mode:        row.Mode,
+		Seed:        row.Seed,
+		Composition: comp,
+		OwnerID:     row.OwnerID,
+		CreatedAt:   row.CreatedAt,
+	}, nil
 }

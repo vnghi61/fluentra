@@ -130,6 +130,7 @@ type Repository interface {
 	) (domain.Taxonomy, error)
 	GetTaxonomyByID(ctx context.Context, id uuid.UUID) (domain.Taxonomy, error)
 	GetTaxonomyByCode(ctx context.Context, code string) (domain.Taxonomy, error)
+	ListContentItemIDsForTaxonomy(ctx context.Context, taxonomyID uuid.UUID) ([]uuid.UUID, error)
 	ListTaxonomiesFiltered(
 		ctx context.Context,
 		namespace, cefrLevel *string,
@@ -155,6 +156,9 @@ type Repository interface {
 	ReplacePrerequisites(ctx context.Context, nodeID uuid.UUID, requiresNodeIDs []uuid.UUID) error
 	CountTaggedContentByKindForTaxonomy(ctx context.Context, taxonomyID uuid.UUID) (map[string]int, error)
 	GetPublishedTopicBodyByTaxonomyID(ctx context.Context, taxonomyID uuid.UUID) ([]byte, bool, error)
+
+	ListReviewQueue(ctx context.Context, filter domain.ReviewQueueFilter) ([]domain.ReviewQueueItem, error)
+	CountReviewQueue(ctx context.Context, filter domain.ReviewQueueFilter) (int64, error)
 
 	WithTx(tx pgx.Tx) Repository
 }
@@ -246,6 +250,128 @@ func (s *Service) ResolveTaxonomyID(ctx context.Context, namespace, code string)
 		return nil, err
 	}
 	return &tax.ID, nil
+}
+
+// ItemIDsTaggedWith returns the content items tagged with the spine node carrying
+// this code. An unknown code tags nothing, so it returns an empty, non-nil slice:
+// a caller filtering by it must match no rows rather than drop the filter.
+func (s *Service) ItemIDsTaggedWith(ctx context.Context, code string) ([]uuid.UUID, error) {
+	tax, err := s.repo.GetTaxonomyByCode(ctx, code)
+	if err != nil {
+		if errors.Is(err, domain.ErrTaxonomyNodeNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			return []uuid.UUID{}, nil
+		}
+		return nil, err
+	}
+	ids, err := s.repo.ListContentItemIDsForTaxonomy(ctx, tax.ID)
+	if err != nil {
+		return nil, err
+	}
+	if ids == nil {
+		ids = []uuid.UUID{}
+	}
+	return ids, nil
+}
+
+// GetTaxonomyByCode retrieves a taxonomy node carrying this code.
+func (s *Service) GetTaxonomyByCode(ctx context.Context, code string) (*contract.TaxonomyNode, error) {
+	tax, err := s.repo.GetTaxonomyByCode(ctx, code)
+	if err != nil {
+		if errors.Is(err, domain.ErrTaxonomyNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &contract.TaxonomyNode{
+		ID:           tax.ID,
+		Namespace:    tax.Namespace,
+		Code:         tax.Code,
+		Label:        tax.Label,
+		CEFRLevel:    tax.CEFRLevel,
+		DeprecatedAt: tax.DeprecatedAt,
+	}, nil
+}
+
+// GetTaxonomyByID retrieves a taxonomy node by its UUID.
+func (s *Service) GetTaxonomyByID(ctx context.Context, id uuid.UUID) (*contract.TaxonomyNode, error) {
+	tax, err := s.repo.GetTaxonomyByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, domain.ErrTaxonomyNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &contract.TaxonomyNode{
+		ID:           tax.ID,
+		Namespace:    tax.Namespace,
+		Code:         tax.Code,
+		Label:        tax.Label,
+		CEFRLevel:    tax.CEFRLevel,
+		DeprecatedAt: tax.DeprecatedAt,
+	}, nil
+}
+
+// ListTaxonomiesInNamespace lists all active taxonomy nodes in a namespace.
+func (s *Service) ListTaxonomiesInNamespace(ctx context.Context, namespace string) ([]contract.TaxonomyNode, error) {
+	items, err := s.repo.ListAllTaxonomiesInNamespace(ctx, namespace)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]contract.TaxonomyNode, len(items))
+	for i, t := range items {
+		res[i] = contract.TaxonomyNode{
+			ID:           t.ID,
+			Namespace:    t.Namespace,
+			Code:         t.Code,
+			Label:        t.Label,
+			CEFRLevel:    t.CEFRLevel,
+			DeprecatedAt: t.DeprecatedAt,
+		}
+	}
+	return res, nil
+}
+
+// ListPrerequisites returns the taxonomy nodes required by nodeID.
+func (s *Service) ListPrerequisites(ctx context.Context, nodeID uuid.UUID) ([]contract.TaxonomyNode, error) {
+	items, err := s.repo.ListPrerequisitesForNode(ctx, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]contract.TaxonomyNode, len(items))
+	for i, t := range items {
+		res[i] = contract.TaxonomyNode{
+			ID:           t.ID,
+			Namespace:    t.Namespace,
+			Code:         t.Code,
+			Label:        t.Label,
+			CEFRLevel:    t.CEFRLevel,
+			DeprecatedAt: t.DeprecatedAt,
+		}
+	}
+	return res, nil
+}
+
+// GetTaxonomyPath returns the topologically sorted path of taxonomy nodes leading to targetCode (or across namespace),
+// skipping deprecated nodes per BR-FOUNDATION-07.
+func (s *Service) GetTaxonomyPath(
+	ctx context.Context, targetCode *string, namespace *string,
+) ([]contract.TaxonomyNode, error) {
+	items, err := s.GetFoundationPath(ctx, targetCode, namespace)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]contract.TaxonomyNode, len(items))
+	for i, t := range items {
+		res[i] = contract.TaxonomyNode{
+			ID:           t.ID,
+			Namespace:    t.Namespace,
+			Code:         t.Code,
+			Label:        t.Label,
+			CEFRLevel:    t.CEFRLevel,
+			DeprecatedAt: t.DeprecatedAt,
+		}
+	}
+	return res, nil
 }
 
 // GetManyVersions retrieves multiple content versions in ONE single query,
@@ -736,6 +862,14 @@ func (s *Service) Review(
 			return err
 		}
 
+		// Stage D: Each node's cefr_level in content.taxonomies is set when its topic is approved,
+		// from the approved topic's level (BR-FOUNDATION-05, WO 16 §14).
+		if item.Kind == KindFoundationTopic && nextStatus == domain.StatusApproved {
+			if err := updateSpineNodeCEFRFromTopic(ctx, txRepo, itemID, draftVersion.CEFRLevel); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 
@@ -744,6 +878,33 @@ func (s *Service) Review(
 	}
 
 	return version, nil
+}
+
+func updateSpineNodeCEFRFromTopic(
+	ctx context.Context,
+	txRepo Repository,
+	itemID uuid.UUID,
+	cefrLevel string,
+) error {
+	tags, err := txRepo.ListTagsForContentItem(ctx, itemID)
+	if err != nil {
+		return err
+	}
+	for _, tag := range tags {
+		_, err = txRepo.UpdateTaxonomy(
+			ctx,
+			tag.ID,
+			nil, nil,
+			&cefrLevel, true,
+			nil, false,
+			nil,
+			nil, false,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) verifyMediaAssetsReady(
@@ -1075,4 +1236,22 @@ func (s *Service) Get(ctx context.Context, textHash, voice string) (string, bool
 // Put implements contract.TTSCache.
 func (s *Service) Put(ctx context.Context, textHash, voice, engine, engineVersion, objectKey string) error {
 	return s.repo.UpsertTTSCache(ctx, textHash, voice, engine, engineVersion, objectKey)
+}
+
+// ReviewQueue returns drafts produced by the generator awaiting editorial review.
+func (s *Service) ReviewQueue(
+	ctx context.Context,
+	filter domain.ReviewQueueFilter,
+) ([]domain.ReviewQueueItem, int64, error) {
+	items, err := s.repo.ListReviewQueue(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	count, err := s.repo.CountReviewQueue(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return items, count, nil
 }

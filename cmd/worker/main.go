@@ -31,6 +31,7 @@ import (
 	grammarcontract "github.com/fluentra/fluentra/internal/modules/grammar/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
+	learningdomain "github.com/fluentra/fluentra/internal/modules/learning/domain"
 	learningjob "github.com/fluentra/fluentra/internal/modules/learning/job"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
@@ -38,6 +39,7 @@ import (
 	listeningcontract "github.com/fluentra/fluentra/internal/modules/listening/contract"
 	"github.com/fluentra/fluentra/internal/modules/payment"
 	paymentsvc "github.com/fluentra/fluentra/internal/modules/payment/service"
+	"github.com/fluentra/fluentra/internal/modules/questionbank"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/reading"
@@ -201,6 +203,12 @@ type workerConfig struct {
 		MaxPriceVND     int64 `koanf:"max_price_vnd"`
 		RevenueShareBps int   `koanf:"revenue_share_bps"`
 	} `koanf:"studio"`
+	Media struct {
+		DispatchRepository string `koanf:"dispatch_repository"`
+		DispatchWorkflow   string `koanf:"dispatch_workflow"`
+		DispatchRef        string `koanf:"dispatch_ref"`
+		DispatchToken      string `koanf:"dispatch_token"`
+	} `koanf:"media"`
 }
 
 func (cfg workerConfig) aiProviders() []ai.ProviderConfig {
@@ -311,8 +319,10 @@ func configOptions() config.Options {
 			"studio.min_price_vnd":           int64(49000),
 			"studio.max_price_vnd":           int64(5000000),
 			"studio.revenue_share_bps":       7000,
+			"media.dispatch_workflow":        "media-render.yml",
+			"media.dispatch_ref":             "main",
 		},
-		EnvSections: []string{"SPEECH", "EXAM", "SEPAY", "STUDIO"},
+		EnvSections: []string{"SPEECH", "EXAM", "SEPAY", "STUDIO", "MEDIA"},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
 			{Name: "redis.url", DocSection: "docs/deployment/configuration.md#redis"},
@@ -540,6 +550,9 @@ func startLearning(
 		for _, kind := range grammarcontract.GradedKinds() {
 			graders[kind] = grammarModule.Grader()
 		}
+		// Stage D: Register multiple-choice grader aliases for foundation_quiz and foundation_review
+		graders["foundation_quiz"] = grammarModule.Grader()
+		graders["foundation_review"] = grammarModule.Grader()
 	}
 	if listeningModule != nil {
 		for _, kind := range listeningcontract.GradedKinds() {
@@ -552,6 +565,9 @@ func startLearning(
 	for kind, grader := range skillGraders {
 		graders[kind] = grader
 	}
+	// A lesson_material completes by being marked done; its grader ships with
+	// the engine (WO 20).
+	graders[learningcontract.KindLessonMaterial] = learningdomain.NewMaterialGrader()
 
 	// The owner of generated practice content, resolved the way the vocabulary
 	// generator resolves it. On a database with no administrator yet it is zero,
@@ -579,6 +595,7 @@ func startLearning(
 		LessonAuthor:  lessonModule.Author(),
 		Content:       contentModule.Reader(),
 		ContentAuthor: contentModule.Author(),
+		Taxonomies:    contentModule.TaxonomyResolver(),
 		Graders:       graders,
 		AI:            aiClient,
 
@@ -643,9 +660,7 @@ func startModules(
 		return err
 	}
 
-	for _, scheduled := range trail.CronJobs() {
-		cron.Register(scheduled)
-	}
+	registerCronJobs(cron, trail.CronJobs())
 
 	if err := trail.RotatePartitions(ctx); err != nil {
 		slog.ErrorContext(ctx, "could not rotate audit partitions at start-up; the scheduled job will retry",
@@ -662,10 +677,11 @@ func startModules(
 	}
 
 	lessonModule := lesson.New(lesson.Deps{
-		Pool:   pool,
-		Guard:  workerGuard{},
-		Caches: newLessonCaches(redisClient),
-		Env:    cfg.App.Environment,
+		Pool:    pool,
+		Guard:   workerGuard{},
+		Caches:  newLessonCaches(redisClient),
+		Env:     cfg.App.Environment,
+		Storage: storageStore,
 	})
 
 	if err := lessonModule.Subscribe(bus); err != nil {
@@ -695,9 +711,7 @@ func startModules(
 		Pool: pool,
 	})
 
-	for _, scheduled := range srsModule.CronJobs() {
-		cron.Register(scheduled)
-	}
+	registerCronJobs(cron, srsModule.CronJobs())
 
 	if err := srsModule.RotatePartitions(ctx); err != nil {
 		slog.ErrorContext(ctx, "could not rotate srs partitions at start-up; the scheduled job will retry",
@@ -753,32 +767,65 @@ func startModules(
 
 	river.AddWorker(workers, userModule.ExportWorker())
 
-	for _, scheduled := range userModule.CronJobs() {
-		cron.Register(scheduled)
-	}
+	registerCronJobs(cron, userModule.CronJobs())
 
 	if err := authModule.Subscribe(bus); err != nil {
 		return err
 	}
-	for _, scheduled := range authModule.CronJobs() {
-		cron.Register(scheduled)
-	}
+	registerCronJobs(cron, authModule.CronJobs())
 
 	adminModule := admin.New(admin.Deps{
 		Pool: pool,
 	})
-	for _, scheduled := range adminModule.CronJobs() {
-		cron.Register(scheduled)
-	}
+	registerCronJobs(cron, adminModule.CronJobs())
 
 	resourceModule := resource.New(resource.Deps{
-		Pool:    pool,
-		Storage: storageStore,
+		Pool:        pool,
+		Storage:     storageStore,
+		MediaRender: newMediaRenderDispatcher(ctx, cfg),
+		Taxonomies:  contentModule.TaxonomyResolver(),
+		Transcriber: newWorkerTranscriber(cfg),
+		AIClient:    aiClient,
 	})
-	river.AddWorker(workers, resourceModule.ValidateWorker())
-	cron.Register(resourceModule.SweepJob())
+	if err := startResource(resourceModule, bus, cron, workers); err != nil {
+		return err
+	}
 
-	return nil
+	return subscribeQuestionbank(bus, pool, contentModule, lessonModule)
+}
+
+// registerCronJobs schedules a module's cron jobs.
+func registerCronJobs(cron *job.CronScheduler, jobs []job.CronJob) {
+	for _, scheduled := range jobs {
+		cron.Register(scheduled)
+	}
+}
+
+// startResource registers resource's validation, transcription and
+// classification workers, its sweep, and its erasure consumer.
+func startResource(
+	resourceModule *resource.Module, bus eventbus.EventBus, cron *job.CronScheduler, workers *river.Workers,
+) error {
+	river.AddWorker(workers, resourceModule.ValidateWorker())
+	river.AddWorker(workers, resourceModule.TranscribeWorker())
+	river.AddWorker(workers, resourceModule.ClassifyWorker())
+	cron.Register(resourceModule.SweepJob())
+	return resourceModule.Subscribe(bus)
+}
+
+// subscribeQuestionbank registers the consumer that makes an approved bank
+// question drawable: approving it in the review queue publishes its content, and
+// content.published appends it to the bank course. No RBAC — the consumer acts
+// for the reviewer whose approval produced the event.
+func subscribeQuestionbank(
+	bus eventbus.EventBus, pool *pgxpool.Pool, contentModule *content.Module, lessonModule *lesson.Module,
+) error {
+	questionbankModule := questionbank.New(questionbank.Deps{
+		Pool:          pool,
+		ContentReader: contentModule.Reader(),
+		LessonAuthor:  lessonModule.Author(),
+	})
+	return questionbankModule.Subscribe(bus)
 }
 
 // newMailSender builds the appropriate Sender based on MAIL_TRANSPORT.
@@ -1050,6 +1097,9 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 		return err
 	}
 	learningRef.module = learningModule
+	if err := learningModule.Subscribe(d.bus); err != nil {
+		return err
+	}
 
 	if err := startSkills(
 		d.pool, d.bus, d.cron, d.workers, d.lesson, learningModule, writingModule, speakingModule,

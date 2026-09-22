@@ -342,6 +342,7 @@ func TestEveryEndpointIsBehindItsOwnPermission(t *testing.T) {
 			contenthttp.PermContentReview, http.MethodPost, "/admin/content/" + id + "/review",
 			contenthttp.ReviewDecisionRequest{Decision: decisionApproved},
 		},
+		{contenthttp.PermContentReview, http.MethodGet, "/admin/review-queue", nil},
 		{contenthttp.PermContentPublish, http.MethodPost, "/admin/content/" + id + "/publish", nil},
 		{contenthttp.PermContentPublish, http.MethodPost, "/admin/content/" + id + "/archive", nil},
 	}
@@ -358,6 +359,107 @@ func TestEveryEndpointIsBehindItsOwnPermission(t *testing.T) {
 				)
 			}
 		})
+	}
+}
+
+func TestAdminReviewQueue(t *testing.T) {
+	t.Parallel()
+
+	itemID := uuid.MustParse("0199a1c2-3d4e-7f80-9abc-def012345601")
+	verID := uuid.MustParse("0199a1c2-3d4e-7f80-9abc-def012345602")
+	bodyJSON := []byte(`{
+		"prompt": "She has ___ to Paris.",
+		"options": ["be", "been", "was", "being"],
+		"correct_index": 1,
+		"_provenance": {
+			"purpose": "foundation",
+			"prompt_version": "v1.0",
+			"model": "gpt-4o",
+			"ai_request_id": "req-123",
+			"blind_solve_answer": {"selected": 1},
+			"cefr_estimate": "B1",
+			"cefr_reasoning": "Standard present perfect tense usage."
+		}
+	}`)
+
+	var capturedFilter domain.ReviewQueueFilter
+	svc := &mockContentService{
+		reviewQueueFn: func(_ context.Context, filter domain.ReviewQueueFilter) ([]domain.ReviewQueueItem, int64, error) {
+			capturedFilter = filter
+			return []domain.ReviewQueueItem{
+				{
+					ID:        verID,
+					ItemID:    itemID,
+					Slug:      "foundation-b1-grammar-tense-choice-abc12345",
+					Kind:      "grammar_tense_choice",
+					CEFRLevel: "B1",
+					Status:    domain.StatusDraft,
+					Body:      bodyJSON,
+					CreatedAt: time.Date(2026, 9, 21, 12, 0, 0, 0, time.UTC),
+					NodeCodes: []string{codePresentPerfect},
+				},
+			}, 1, nil
+		},
+	}
+
+	router := setupTestRouter(svc, &mockGuard{})
+	urlPath := "/admin/review-queue?purpose=foundation&kind=grammar_tense_choice" +
+		"&cefr=B1&node=" + codePresentPerfect + "&limit=10&offset=5"
+	rec := do(router, adminRequest(http.MethodGet, urlPath, nil, uuid.New()))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	verifyCapturedFilter(t, capturedFilter)
+
+	var resp contenthttp.AdminReviewQueueResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if resp.Total != 1 || len(resp.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d (total %d)", len(resp.Items), resp.Total)
+	}
+
+	verifyQueueItem(t, resp.Items[0], verID, itemID)
+}
+
+func verifyCapturedFilter(t *testing.T, f domain.ReviewQueueFilter) {
+	t.Helper()
+	if f.Purpose == nil || *f.Purpose != "foundation" {
+		t.Errorf("expected purpose 'foundation', got %v", f.Purpose)
+	}
+	if f.Kind == nil || *f.Kind != "grammar_tense_choice" {
+		t.Errorf("expected kind 'grammar_tense_choice', got %v", f.Kind)
+	}
+	if f.CEFRLevel == nil || *f.CEFRLevel != "B1" {
+		t.Errorf("expected cefr 'B1', got %v", f.CEFRLevel)
+	}
+	if f.NodeCode == nil || *f.NodeCode != codePresentPerfect {
+		t.Errorf("expected node %q, got %v", codePresentPerfect, f.NodeCode)
+	}
+	if f.Limit != 10 || f.Offset != 5 {
+		t.Errorf("expected limit 10 offset 5, got limit %d offset %d", f.Limit, f.Offset)
+	}
+}
+
+func verifyQueueItem(t *testing.T, item contenthttp.AdminReviewQueueItemResponse, verID, itemID uuid.UUID) {
+	t.Helper()
+	if item.ID != verID || item.ItemID != itemID {
+		t.Errorf("item ID mismatch: got %v / %v", item.ID, item.ItemID)
+	}
+	if item.CEFRReasoning != "Standard present perfect tense usage." {
+		t.Errorf("expected cefr reasoning, got %q", item.CEFRReasoning)
+	}
+	if item.BlindSolveAnswer == nil {
+		t.Error("expected non-nil blind_solve_answer")
+	}
+	if item.Provenance == nil {
+		t.Error("expected non-nil provenance")
+	}
+	if len(item.NodeCodes) != 1 || item.NodeCodes[0] != codePresentPerfect {
+		t.Errorf("expected node codes [%s], got %v", codePresentPerfect, item.NodeCodes)
 	}
 }
 

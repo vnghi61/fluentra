@@ -264,3 +264,40 @@ SET status     = 'failed',
 WHERE status = 'grading'
   AND updated_at < $1;
 
+-- name: GetNodeMastery :one
+SELECT user_id, node_id, attempts, correct, score, last_seen_at
+FROM learn.node_mastery
+WHERE user_id = $1 AND node_id = $2;
+
+-- name: ListNodeMasteryByUser :many
+SELECT user_id, node_id, attempts, correct, score, last_seen_at
+FROM learn.node_mastery
+WHERE user_id = $1
+ORDER BY score ASC, attempts DESC;
+
+-- name: UpsertNodeMastery :one
+INSERT INTO learn.node_mastery (user_id, node_id, attempts, correct, score, last_seen_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (user_id, node_id)
+DO UPDATE SET
+    attempts = EXCLUDED.attempts,
+    correct = EXCLUDED.correct,
+    score = EXCLUDED.score,
+    last_seen_at = EXCLUDED.last_seen_at
+RETURNING user_id, node_id, attempts, correct, score, last_seen_at;
+
+-- name: ListWeakNodesByUser :many
+SELECT user_id, node_id, attempts, correct, score, last_seen_at
+FROM learn.node_mastery
+WHERE user_id = $1 AND attempts >= $2
+ORDER BY score ASC, attempts DESC;
+
+-- name: DeleteNodeMasteryByUser :exec
+DELETE FROM learn.node_mastery
+WHERE user_id = $1;
+
+-- name: ListActiveLearnersSince :many
+SELECT DISTINCT user_id
+FROM learn.attempts
+WHERE created_at >= $1;
+

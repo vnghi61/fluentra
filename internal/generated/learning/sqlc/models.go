@@ -620,6 +620,15 @@ type LearnLessonPrerequisite struct {
 	CreatedAt        time.Time
 }
 
+type LearnNodeMastery struct {
+	UserID     uuid.UUID
+	NodeID     uuid.UUID
+	Attempts   int32
+	Correct    int32
+	Score      pgtype.Numeric
+	LastSeenAt *time.Time
+}
+
 type LearnPlacementResult struct {
 	ID             uuid.UUID
 	UserID         uuid.UUID

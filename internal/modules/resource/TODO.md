@@ -6,9 +6,9 @@ status: IMPLEMENTED
 phase: 4
 owner: "@learning-team"
 schema: resource
-tables: [resources]
-depends_on: [storage, job]
-depended_on_by: []
+tables: [resources, renditions, extractions, classifications]
+depends_on: [storage, job, user]
+depended_on_by: [studio]
 spec_version: 1.0.0
 last_verified: 2026-09-21
 ---
@@ -21,10 +21,13 @@ agent knows what is already handled and what is deliberately deferred.
 <!-- BEGIN GENERATED: todo -->
 ## Next, in order
 
-- [ ] Purge an erased user's resources. Erasure anonymises the user row instead of deleting it, so the FK cascade never runs and both the rows and the files survive; subscribe to user.deleted as speaking does (work order 18, step 1). Done when erasure leaves no row and no object in either bucket
-- [ ] Renditions into fluentra-derived by cmd/media in GitHub Actions (P3, work order 18); done when a validated image has a thumbnail and the original is byte-identical
-- [ ] Extraction and transcription of validated resources (P4, work order 19); done when a validated PDF yields text tagged to spine nodes
-- [ ] Publish resource.validated and resource.rejected through the outbox once P4 exists to consume them
+- [ ] audio_web is transcoded for every audio upload; WO 18 asks for it only when the source is WAV or over 256 kbit/s. Needs an ffprobe bitrate check before the transcode
+- [ ] Video renditions are measured against the 10-minute limit after the transcode, not before it: a long video spends the whole encode budget and is then skipped
+- [ ] classifications.ai_request_id stays null until platform/ai returns the ai_requests row id
+- [ ] OCR for text-heavy images (WO 19 B.1, optional; the first thing cut)
+- [ ] Publish resource.validated and resource.rejected through the outbox once something consumes them
+- [ ] A sweeper for `course-materials/{course_id}` copies no published version references (WO 20 Stage C; out of scope, the copies are cheap and correct to keep)
+- [ ] A DOC/PPT material has no PDF rendition (WO 18 renders only thumbnail and preview), so its card opens the original download; a `pdf` rendition is a future step
 <!-- END GENERATED: todo -->
 
 ## Deferred (deliberately not doing yet)

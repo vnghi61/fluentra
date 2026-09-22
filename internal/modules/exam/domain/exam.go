@@ -36,6 +36,13 @@ const (
 	MaxPracticeDurationMinutes = 180
 	DefaultExamDurationMinutes = 75
 
+	// UnlimitedPracticeDurationMinutes is the backstop deadline for a practice
+	// sitting that opted out of a visible time limit. It is not a real limit — a
+	// learner never sees a countdown toward it — but the sitting still needs a
+	// deadline so the existing auto-submit job and sweep cron can reclaim an
+	// abandoned attempt instead of blocking a future one forever (BR-EXAM-04).
+	UnlimitedPracticeDurationMinutes = 24 * 60
+
 	NetworkGracePeriod = 5 * time.Second
 
 	// SectionCount is how many sections every sitting has.
@@ -140,6 +147,12 @@ func ClampPracticeDuration(d int) int {
 		return MaxPracticeDurationMinutes
 	}
 	return d
+}
+
+// IsUnlimitedPractice reports whether a sitting is a practice sitting running
+// against the unlimited-duration backstop rather than a learner-chosen limit.
+func IsUnlimitedPractice(mode string, durationMinutes int) bool {
+	return mode == ModePractice && durationMinutes == UnlimitedPracticeDurationMinutes
 }
 
 // IsPastDeadline returns true if now exceeds deadlineAt + 5s grace period.

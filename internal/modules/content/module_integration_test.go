@@ -23,6 +23,7 @@ import (
 
 	"github.com/fluentra/fluentra/db/migrations"
 	"github.com/fluentra/fluentra/internal/modules/content"
+	"github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
@@ -135,6 +136,8 @@ type allowAllGuard struct{}
 func (allowAllGuard) Require(_ context.Context, _ string) error { return nil }
 
 const roleAdmin = "admin"
+
+const kindTenseChoice = "grammar_tense_choice"
 
 // Fixture values used across several tests, spelled once.
 const (
@@ -274,6 +277,7 @@ func newAuthoringFixture(ctx context.Context, t *testing.T) *authoringFixture {
 	router := chi.NewRouter()
 	fixture.mod.Routes(router)
 	fixture.mod.AdminRoutes(router)
+	fixture.mod.ReviewRoutes(router)
 	fixture.router = router
 
 	return fixture
@@ -512,6 +516,7 @@ func TestAdminListContentFiltered_Integration(t *testing.T) {
 	mod := content.New(content.Deps{Pool: pool, Guard: allowAllGuard{}})
 	router := chi.NewRouter()
 	mod.AdminRoutes(router)
+	mod.ReviewRoutes(router)
 
 	authorID := uuid.MustParse("018f0000-0000-7000-8000-000000000001")
 	seedUser(ctx, t, authorID, "author@fluentra.test")
@@ -621,8 +626,8 @@ func TestFoundationCounts_CountPublishedOnly_Integration(t *testing.T) {
 		kind   string
 		status string
 	}{
-		{"pp-exercise-published", "grammar_tense_choice", statusPublished},
-		{"pp-exercise-draft", "grammar_tense_choice", statusDraft},
+		{"pp-exercise-published", kindTenseChoice, statusPublished},
+		{"pp-exercise-draft", kindTenseChoice, statusDraft},
 		{"pp-quiz", "foundation_quiz", statusPublished},
 		{"pp-review", "foundation_review", statusPublished},
 	}
@@ -658,4 +663,104 @@ func TestFoundationCounts_CountPublishedOnly_Integration(t *testing.T) {
 	if got.ReviewCount != 1 {
 		t.Errorf("review_count = %d, want 1", got.ReviewCount)
 	}
+}
+
+func TestReviewQueue_Lifecycle_Integration(t *testing.T) {
+	ctx := context.Background()
+	fixture := newAuthoringFixture(ctx, t)
+
+	nodeID := uuid.New()
+	mustExec(ctx, t,
+		`INSERT INTO content.taxonomies (id, namespace, code, label, position)
+		 VALUES ($1, 'grammar', 'PRESENT_PERFECT', 'Present Perfect', 107)`, nodeID)
+
+	body := map[string]any{
+		"prompt":        "She has ___ to Paris.",
+		"options":       []string{"be", "been", "was", "being"},
+		"correct_index": 1,
+		"_provenance": map[string]any{
+			"purpose":            "foundation",
+			"prompt_version":     "v1.0",
+			"model":              "gpt-4o",
+			"ai_request_id":      "req-123",
+			"blind_solve_answer": map[string]any{"selected": 1},
+			"cefr_estimate":      "B1",
+			"cefr_reasoning":     "Standard present perfect tense usage.",
+		},
+	}
+	bodyBytes, _ := json.Marshal(body)
+
+	verID, err := fixture.mod.Author().EnsureDraft(ctx, contract.AuthorSpec{
+		Slug:      "foundation-b1-grammar-tense-choice-test001",
+		Kind:      kindTenseChoice,
+		CEFRLevel: "B1",
+		Body:      bodyBytes,
+		AuthorID:  fixture.authorID,
+		Tags:      []contract.TagRef{{Namespace: "grammar", Code: "PRESENT_PERFECT"}},
+	})
+	if err != nil {
+		t.Fatalf("ensure draft: %v", err)
+	}
+
+	// 1. Appears in GET /admin/review-queue
+	rec := call(ctx, t, fixture.router, http.MethodGet,
+		"/admin/review-queue?purpose=foundation&node=PRESENT_PERFECT", nil, fixture.reviewerID)
+	wantStatus(t, rec, http.StatusOK, "get review queue")
+
+	var qResp struct {
+		Items []struct {
+			ID               uuid.UUID      `json:"id"`
+			ItemID           uuid.UUID      `json:"item_id"`
+			Slug             string         `json:"slug"`
+			Kind             string         `json:"kind"`
+			CEFRLevel        string         `json:"cefr_level"`
+			Status           string         `json:"status"`
+			BlindSolveAnswer map[string]any `json:"blind_solve_answer"`
+			CEFRReasoning    string         `json:"cefr_reasoning"`
+			NodeCodes        []string       `json:"node_codes"`
+		} `json:"items"`
+		Total int `json:"total"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &qResp); err != nil {
+		t.Fatalf("decode queue response: %v", err)
+	}
+	if qResp.Total != 1 || len(qResp.Items) != 1 {
+		t.Fatalf("queue total = %d, items = %d; want 1", qResp.Total, len(qResp.Items))
+	}
+	qItem := qResp.Items[0]
+	if qItem.ID != verID {
+		t.Errorf("version ID = %v, want %v", qItem.ID, verID)
+	}
+	if qItem.CEFRReasoning != "Standard present perfect tense usage." {
+		t.Errorf("cefr reasoning = %q", qItem.CEFRReasoning)
+	}
+	if qItem.BlindSolveAnswer["selected"] != float64(1) {
+		t.Errorf("blind solve answer = %v", qItem.BlindSolveAnswer)
+	}
+	if len(qItem.NodeCodes) != 1 || qItem.NodeCodes[0] != "PRESENT_PERFECT" {
+		t.Errorf("node codes = %v", qItem.NodeCodes)
+	}
+
+	// 2. Submit for review
+	rec = call(ctx, t, fixture.router, http.MethodPost,
+		fmt.Sprintf("/admin/content/%s/submit", qItem.ItemID), nil, fixture.authorID)
+	wantStatus(t, rec, http.StatusOK, "submit for review")
+
+	// 3. Review (Approve)
+	rec = call(ctx, t, fixture.router, http.MethodPost,
+		fmt.Sprintf("/admin/content/%s/review", qItem.ItemID), map[string]any{
+			"decision": "approved",
+			"comments": "Looks good",
+		}, fixture.reviewerID)
+	wantStatus(t, rec, http.StatusOK, "review item")
+
+	// 4. Publish
+	rec = call(ctx, t, fixture.router, http.MethodPost,
+		fmt.Sprintf("/admin/content/%s/publish", qItem.ItemID), nil, fixture.reviewerID)
+	wantStatus(t, rec, http.StatusOK, "publish item")
+
+	// 5. Accessible via GET /content/{slug}
+	rec = call(ctx, t, fixture.router, http.MethodGet,
+		"/content/foundation-b1-grammar-tense-choice-test001", nil, uuid.Nil)
+	wantStatus(t, rec, http.StatusOK, "read published item")
 }

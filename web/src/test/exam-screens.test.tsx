@@ -44,6 +44,7 @@ const attempt: ExamAttempt = {
   exam_title: exam.title_en,
   mode: "exam",
   chosen_duration_minutes: 75,
+  unlimited: false,
   started_at: "2026-09-14T09:00:00Z",
   deadline_at: "2026-09-14T10:15:00Z",
   remaining_seconds: 4500,
@@ -239,6 +240,15 @@ describe("exam screens", () => {
     expect(screen.getAllByText("Not scored").length).toBeGreaterThan(0);
     expect(screen.getByText("1 of 2 questions correct")).toBeInTheDocument();
     expect(screen.getByText("Tab hidden: 2")).toBeInTheDocument();
+    expect(screen.queryByText(/Time taken/)).not.toBeInTheDocument();
+  });
+
+  it("says how long the sitting took", async () => {
+    await renderWithProviders(
+      <ExamReport report={{ ...report, elapsed_seconds: 12 * 60 + 34 }} />,
+    );
+
+    expect(await screen.findByText("Time taken: 12:34")).toBeInTheDocument();
   });
 
   it("reviews each question: what was chosen, the right answer and why", async () => {
@@ -344,6 +354,49 @@ describe("exam screens", () => {
         sections: [2, 4],
       }),
     );
+  });
+
+  it("starts a practice sitting with no time limit", async () => {
+    let body: unknown;
+    server.use(
+      http.post(`/api/v1/exams/${EXAM_ID}/attempts`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json(attempt, { status: 201 });
+      }),
+    );
+    await renderWithProviders(<ExamList userPracticeLevel="B1" />);
+
+    fireEvent.click(await screen.findByText("Practice mode"));
+    fireEvent.click(screen.getByRole("checkbox", { name: "No time limit" }));
+
+    expect(screen.getByLabelText(/^Time limit/)).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+
+    await waitFor(() =>
+      expect(body).toEqual({ mode: "practice", unlimited: true }),
+    );
+  });
+
+  it("counts up the time spent in a practice sitting with no time limit", async () => {
+    const { section_remaining_seconds: _unused, ...rest } = attempt;
+    await renderWithProviders(
+      <ExamSittingRunner
+        attempt={{
+          ...rest,
+          mode: "practice",
+          unlimited: true,
+          chosen_duration_minutes: 24 * 60,
+          remaining_seconds: 24 * 3600 - 125,
+        }}
+        onSubmitted={vi.fn()}
+      />,
+    );
+
+    const timer = await screen.findByRole("timer", { name: "Time elapsed" });
+    expect(timer).toHaveTextContent("02:05");
+    expect(
+      screen.queryByRole("timer", { name: "Time left" }),
+    ).not.toBeInTheDocument();
   });
 
   it("numbers every question and jumps to one in another practice section", async () => {

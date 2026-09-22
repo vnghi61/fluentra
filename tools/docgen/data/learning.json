@@ -58,7 +58,8 @@
       { "method": "GET", "path": "/api/v1/foundation/path", "permission": "content.read.published", "purpose": "Get topologically sorted foundation learning path", "success": "200" },
       { "method": "POST", "path": "/api/v1/admin/foundation/topics", "permission": "content.create", "purpose": "Create a new foundation taxonomy topic", "success": "201", "errors": ["TAXONOMY_CODE_IMMUTABLE", "VALIDATION_FAILED"] },
       { "method": "PATCH", "path": "/api/v1/admin/foundation/topics/{code}", "permission": "content.edit", "purpose": "Update foundation topic metadata", "success": "200", "errors": ["TAXONOMY_CODE_IMMUTABLE", "NOT_FOUND"] },
-      { "method": "PUT", "path": "/api/v1/admin/foundation/topics/{code}/prerequisites", "permission": "content.edit", "purpose": "Replace prerequisites for a foundation topic", "success": "200", "errors": ["TAXONOMY_CYCLE", "CROSS_NAMESPACE_PREREQUISITE"] }
+      { "method": "PUT", "path": "/api/v1/admin/foundation/topics/{code}/prerequisites", "permission": "content.edit", "purpose": "Replace prerequisites for a foundation topic", "success": "200", "errors": ["TAXONOMY_CYCLE", "CROSS_NAMESPACE_PREREQUISITE"] },
+      { "method": "GET", "path": "/api/v1/admin/review-queue", "permission": "content.review", "purpose": "List machine-generated drafts awaiting review", "success": "200" }
     ],
     "contract": [
       { "kind": "interface", "name": "content.Reader", "purpose": "`GetVersion`, `GetManyVersions`, `Browse` — batched to avoid N+1 from lesson rendering" },
@@ -90,7 +91,8 @@
       "CEFR level is required before review; an AI suggestion is a starting point, never the final value.",
       "`body` is validated against a JSON schema chosen by `kind`, so a skill module's payload cannot be malformed.",
       "Publishing invalidates the content cache, enqueues TTS generation, and triggers reindexing — all through the outbox so a failure in one does not roll back the publish.",
-      "Slugs are immutable after first publication; a changed slug would break external links and bookmarks."
+      "Slugs are immutable after first publication; a changed slug would break external links and bookmarks.",
+      "Machine-authored exam and curriculum content enters as a draft (`Author.EnsureDraft`); only practice content may be published without review (`EnsurePublished`)."
     ],
     "cache": [
       { "key": "fluentra:{env}:content:version:{version_id}:v1", "ttl": "24 h", "invalidation": "`content.published` / `content.archived`" },
@@ -231,7 +233,7 @@
       "publishes": [{ "name": "lesson.published", "payload": "`{lesson_id, course_id, skill_focus}`" }],
       "consumes": [{ "name": "content.archived", "reason": "Flag lessons whose content was archived" }]
     },
-    "dependsOn": ["content", "cache"],
+    "dependsOn": ["content", "cache", "storage"],
     "dependedOnBy": ["learning", "admin", "search"],
     "rules": [
       "An activity binds to a **content version**, not a content item — republishing content does not silently change a lesson a learner is halfway through.",
@@ -240,7 +242,8 @@
       "Reordering activities does not affect in-flight attempts; those reference the activity ID.",
       "A published lesson's activity list is versioned — changing it creates a new lesson version rather than mutating the live one.",
       "Estimated duration is the sum of activity estimates and is recalculated on change, because it drives the learner's daily plan.",
-      "Unlocking is evaluated by `learning`, using rules this module defines — the rule lives here, the learner state lives there."
+      "Unlocking is evaluated by `learning`, using rules this module defines — the rule lives here, the learner state lives there.",
+      "Material URLs are issued at read time, after the paywall, and expire; a signed URL is never written into the lesson cache."
     ],
     "cache": [
       { "key": "fluentra:{env}:lesson:detail:{lesson_id}:v1", "ttl": "1 h", "invalidation": "`lesson.published`, structure edit" },
@@ -344,7 +347,8 @@
       { "name": "item_exposures", "purpose": "Learner item exposure log", "notes": "`user_id`, `activity_id`, `first_served_at`. Primary key (user_id, activity_id)." },
       { "name": "daily_sets", "purpose": "Daily practice set cache", "notes": "`user_id`, `local_date`, `activity_ids`. Unique on (user_id, local_date)." },
       { "name": "placement_sessions", "purpose": "One adaptive placement test", "notes": "`user_id`, `status`, `stage`, `started_at`, `deadline_at`, `estimate` jsonb, `items` jsonb (served items with their attempts), `version`, `productive_status`, `productive_deadline_at`, `result_id`, `completed_at`" },
-      { "name": "weekly_plans", "purpose": "A learner's plan for one week", "notes": "`user_id`, `week_start` (Monday, Asia/Ho_Chi_Minh), `minutes_goal`, `items` jsonb. Primary key (user_id, week_start); progress is read, not stored" }
+      { "name": "weekly_plans", "purpose": "A learner's plan for one week", "notes": "`user_id`, `week_start` (Monday, Asia/Ho_Chi_Minh), `minutes_goal`, `items` jsonb. Primary key (user_id, week_start); progress is read, not stored" },
+      { "name": "node_mastery", "purpose": "Per-node spine taxonomy mastery estimate", "notes": "`user_id`, `node_id`, `attempts`, `correct`, `score`, `last_seen_at`. Primary key (user_id, node_id)." }
     ],
     "indexes": [
       "`uq_progress_user_scope` — the read path for every dashboard",
@@ -352,7 +356,8 @@
       "`idx_attempts_activity_time` — item statistics for `questionbank`",
       "`uq_answer_explanations` — unique on (content_version_id, user_answer) for lazy deduplication",
       "`uq_placement_sessions_one_in_progress` — partial unique on (user_id) where the session is in progress",
-      "`idx_placement_sessions_open_deadline` — the expiry sweep"
+      "`idx_placement_sessions_open_deadline` — the expiry sweep",
+      "`idx_node_mastery_user_score` — learner weak node lookup"
     ],
     "endpoints": [
       { "method": "POST", "path": "/api/v1/courses/{id}/enroll", "permission": "self", "purpose": "Enrol", "success": "201", "errors": ["ALREADY_ENROLLED", "COURSE_NOT_FOUND"] },
@@ -371,15 +376,19 @@
       { "method": "POST", "path": "/api/v1/me/placement/sessions/{id}/answers", "permission": "self", "purpose": "Answer the current item; returns the next item or the result", "success": "200", "errors": ["PLACEMENT_SESSION_EXPIRED", "PLACEMENT_NOT_CURRENT_ITEM", "PLACEMENT_SESSION_CHANGED"], "notes": "Requires an `Idempotency-Key`. Every answer is a `learn.attempts` row. After the result the same route answers the writing and speaking items." },
       { "method": "POST", "path": "/api/v1/me/placement/sessions/{id}/productive", "permission": "self", "purpose": "Start or skip the writing and speaking part", "success": "200", "errors": ["PLACEMENT_PRODUCTIVE_UNAVAILABLE"] },
       { "method": "GET", "path": "/api/v1/me/path", "permission": "self", "purpose": "Recommended courses for the learner's level and the lesson to start at in each", "success": "200" },
-      { "method": "GET", "path": "/api/v1/me/weekly-plan", "permission": "self", "purpose": "This week's plan, built on the first request of the week, with progress read now", "success": "200" }
+      { "method": "GET", "path": "/api/v1/me/weekly-plan", "permission": "self", "purpose": "This week's plan, built on the first request of the week, with progress read now", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/foundation/path", "permission": "self", "purpose": "Learning path to a target foundation topic with user mastery", "success": "200", "errors": ["NOT_FOUND", "VALIDATION_FAILED"] },
+      { "method": "GET", "path": "/api/v1/me/foundation/next", "permission": "self", "purpose": "Next foundation topic to learn across strands", "success": "200", "errors": ["NOT_FOUND"] }
     ],
+
     "contract": [
       { "kind": "interface", "name": "learning.ExerciseGrader", "purpose": "`Grade(ctx, GradeRequest) (GradeResult, error)` — **implemented by every skill module**, registered by activity kind" },
       { "kind": "struct", "name": "learning.GradeResult", "purpose": "`{Score, MaxScore, Correct, Feedback, Async, ReviewItems}` — `ReviewItem` is a `learning` type, not an `srs` one, so a grader in any skill module can return it" },
       { "kind": "interface", "name": "learning.ProgressReader", "purpose": "`ProgressOf(ctx, userID, scope)` — used by `gamification`, `admin`, `analytics`" },
       { "kind": "interface", "name": "learning.UnlockChecker", "purpose": "`IsUnlocked(ctx, userID, lessonIDs)` — used by `lesson` (batched to prevent N+1 queries). A prerequisite below the learner's placed level is met without being done" },
       { "kind": "interface", "name": "learning.PlacementListeningPolicy", "purpose": "`PlacementListeningPlays(ctx, userID, sessionID, versionID)` — used by `listening`: one play, only for the current item of the caller's open session" },
-      { "kind": "interface", "name": "learning.ItemVerifier", "purpose": "`VerifyItem(ctx, req)` — six checks for community/generated items before learners can access them" }
+      { "kind": "interface", "name": "learning.ItemVerifier", "purpose": "`VerifyItem(ctx, req)` — six checks for community/generated items before learners can access them" },
+      { "kind": "interface", "name": "learning.Generator", "purpose": "`Generate(ctx, req)` — produces verified, spine-tagged educational content items" }
     ],
     "events": {
       "publishes": [
@@ -417,8 +426,10 @@
       "Attempts older than the activity's time limit are expired by a job and cannot be submitted.",
       "Skill mastery is an exponentially weighted estimate over recent attempts, not a raw average — recent performance must dominate.",
       "The placement test adapts: item difficulty follows the running estimate, and it stops when the confidence interval is narrow enough or the item budget is exhausted.",
-      "Placement completes nothing: no progress row, no `activity.completed`, no review card. A placement opens lessons below the placed level; a declared level opens nothing."
+      "Placement completes nothing: no progress row, no `activity.completed`, no review card. A placement opens lessons below the placed level; a declared level opens nothing.",
+      "A node is weak only after three attempts, and mastered only after five (score >= 0.8)."
     ],
+
     "cache": [
       { "key": "fluentra:{env}:learning:dashboard:{user_id}:v1", "ttl": "2 min", "invalidation": "Any completion event" },
       { "key": "fluentra:{env}:learning:progress:{user_id}:v1", "ttl": "5 min", "invalidation": "`activity.completed`" }
@@ -1423,61 +1434,116 @@
     "group": "modules",
     "schema": "assess",
     "phase": 4,
-    "status": "PLANNED",
+    "status": "IMPLEMENTED",
     "owner": "@learning-team",
-    "purpose": "The reusable item bank: authoring, typing, tagging, difficulty statistics, review workflow, and AI-assisted generation. One item, many uses — in a lesson, in a drill, in an exam.",
+    "purpose": "The exam item bank: generated questions tagged to the spine and to an exam part, each a content version drawn as an activity, with provenance, a fingerprint and empirical statistics.",
     "responsibilities": [
-      "Question items across all supported types",
-      "Options, correct answers and per-option feedback",
-      "Question sets: reusable ordered groups",
-      "Tagging by skill, level, topic and exam relevance",
-      "Difficulty and discrimination statistics from real attempts",
-      "Authoring and review workflow",
-      "AI-assisted item generation for admin review",
-      "Item exposure control so the same items are not overused"
+      "Bank metadata for exam questions: kind, skill, CEFR level, exam part, questions per group, provenance",
+      "Generating draft questions for a part and spine nodes through `learning.Generator`",
+      "A normalised fingerprint per question, unique in the database",
+      "Moving an approved question into the bank course (`pool-bank`) once its content is published",
+      "Answering which published questions an exam can draw for a part",
+      "Holding `question_stats` for empirical difficulty"
     ],
-    "notResponsibilities": ["Delivering an exam — that is `exam`", "Grading a learner's whole attempt — that is the exercise engine"],
+    "notResponsibilities": [
+      "The question's body, options and answer key — that is a `content` version, graded by the existing graders",
+      "Reviewing a question — that is `content`'s review queue (`/admin/review-queue`)",
+      "Composing or delivering a test — that is `exam`",
+      "Question sets — a set is a mock test composition, which `exam` stores"
+    ],
     "tables": [
-      { "name": "questions", "purpose": "One item", "notes": "Content-versioned. `type`, `stem`, `explanation`, `cefr_level`, `skill`, `status`" },
-      { "name": "question_options", "purpose": "Choices and answers", "notes": "`question_id`, `position`, `text`, `is_correct`, `feedback`" },
-      { "name": "question_sets", "purpose": "Reusable group", "notes": "`name`, `purpose`, `shuffle_policy`" },
-      { "name": "question_set_items", "purpose": "Membership", "notes": "`set_id`, `question_id`, `position`" },
-      { "name": "question_stats", "purpose": "Empirical difficulty", "notes": "`question_id`, `attempts`, `p_value`, `discrimination`, `avg_time_ms`, `last_computed_at`" }
+      {
+        "name": "questions",
+        "purpose": "One item",
+        "notes": "Content-versioned. `content_item_id`, `activity_id`, `exam_part_id`, `kind`, `skill`, `cefr_level`, `difficulty`, `question_count`, `fingerprint`, `provenance`, `status`"
+      },
+      {
+        "name": "question_stats",
+        "purpose": "Empirical difficulty",
+        "notes": "`question_id`, `attempts`, `p_value`, `discrimination`, `avg_time_ms`, `last_computed_at`"
+      }
     ],
     "endpoints": [
-      { "method": "GET", "path": "/api/v1/admin/questions", "permission": "questionbank.read", "purpose": "Search and filter items", "success": "200" },
-      { "method": "POST", "path": "/api/v1/admin/questions", "permission": "questionbank.create", "purpose": "Create an item", "success": "201" },
-      { "method": "POST", "path": "/api/v1/admin/questions/{id}/review", "permission": "questionbank.review", "purpose": "Approve or reject", "success": "200", "errors": ["SELF_APPROVAL_FORBIDDEN"] },
-      { "method": "POST", "path": "/api/v1/admin/questions/generate", "permission": "questionbank.create", "purpose": "AI-generate draft items for review", "success": "202" },
-      { "method": "GET", "path": "/api/v1/admin/questions/{id}/stats", "permission": "questionbank.read", "purpose": "Empirical difficulty and discrimination", "success": "200" }
+      {
+        "method": "GET",
+        "path": "/api/v1/admin/questions",
+        "permission": "questionbank.read",
+        "purpose": "Filter by exam part, kind, CEFR, spine node, status. Reachable by moderators",
+        "success": "200"
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/admin/questions/generate",
+        "permission": "questionbank.create",
+        "purpose": "Generate draft questions for a part and nodes; they wait in the review queue",
+        "success": "200"
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/admin/questions/{id}/stats",
+        "permission": "questionbank.read",
+        "purpose": "Empirical difficulty and discrimination. Reachable by moderators",
+        "success": "200"
+      }
     ],
     "contract": [
-      { "kind": "interface", "name": "questionbank.Reader", "purpose": "`GetSet`, `SampleItems(criteria)` — used by `exam` and by skill modules" },
-      { "kind": "struct", "name": "questionbank.Item", "purpose": "`{ID, Type, Stem, Options, CorrectAnswer, Explanation}` — correct answers stripped for learner-facing calls" }
+      {
+        "kind": "interface",
+        "name": "questionbank.Reader",
+        "purpose": "`ListQuestions` (permission-checked) and `DrawableForPart` (system read for `exam`: published questions with an activity, stable order)"
+      },
+      {
+        "kind": "interface",
+        "name": "questionbank.Author",
+        "purpose": "`GenerateQuestions`, `PublishQuestion` (refuses unreviewed content), `RetireQuestion`"
+      },
+      {
+        "kind": "struct",
+        "name": "questionbank.Question",
+        "purpose": "Bank metadata only; the body is the content version it points at"
+      }
     ],
     "events": {
-      "publishes": [{ "name": "questionbank.item_published", "payload": "`{question_id, skill, level}`" }],
-      "consumes": [{ "name": "activity.completed", "reason": "Accumulate attempt statistics for difficulty estimation" }]
+      "publishes": [],
+      "consumes": [
+        {
+          "name": "content.published",
+          "reason": "Approving a bank question's content in the review queue appends it to the bank course and marks it published"
+        }
+      ]
     },
-    "dependsOn": ["content", "ai", "audit", "search"],
-    "dependedOnBy": ["exam", "reading", "listening", "grammar", "learning"],
+    "dependsOn": [
+      "content",
+      "lesson",
+      "learning",
+      "rbac"
+    ],
+    "dependedOnBy": [
+      "exam"
+    ],
     "rules": [
-      "The correct answer is **never** included in a learner-facing payload. The DTO used by learner endpoints does not contain the field at all — it cannot be leaked by an oversight.",
-      "AI-generated items always enter as drafts. They are never published without human review.",
-      "An author cannot approve their own item.",
-      "Difficulty is empirical (p-value from real attempts), with the authored estimate used only until enough attempts exist.",
-      "An item with fewer than 30 attempts has provisional statistics, clearly marked.",
-      "An item with discrimination below a threshold is flagged for review — it is not distinguishing strong from weak learners.",
-      "Exposure control caps how often an item can appear for the same learner within a window.",
-      "Editing a published item creates a new version; statistics do not carry over, because it is effectively a different item.",
-      "Every item states which skill and CEFR level it targets — an untagged item cannot be sampled."
+      "A bank question's body is a content version and it is drawn as an activity. There is no second copy of its answer (no `question_options`).",
+      "The fingerprint is unique; a duplicate is refused by the database.",
+      "Every bank question carries provenance; an item without it is refused.",
+      "A question enters the bank only after its content version is published through the review queue. `PublishQuestion` on unreviewed content fails with `QUESTION_NOT_REVIEWED`.",
+      "Spine tags are `content.content_tags` on the question's content item, resolved through `content.TagIndex` — never joined from this module's SQL.",
+      "The correct answer never reaches a learner: sittings are served through the existing redaction."
     ],
     "errors": [
-      { "code": "SELF_APPROVAL_FORBIDDEN", "status": "403", "meaning": "Author reviewing their own item" },
-      { "code": "INSUFFICIENT_ITEMS", "status": "409", "meaning": "Not enough approved items matching the sampling criteria" },
-      { "code": "ITEM_IN_USE", "status": "409", "meaning": "Cannot archive an item used by a published exam" }
+      {
+        "code": "QUESTION_NOT_FOUND",
+        "status": "404",
+        "meaning": "No such question"
+      },
+      {
+        "code": "QUESTION_NOT_REVIEWED",
+        "status": "409",
+        "meaning": "Its content version is not published yet; approve it in the review queue"
+      }
     ],
-    "security": ["Correct answers are excluded at the DTO level, not filtered at the handler — a leak must be structurally impossible, not merely unlikely."],
+    "security": [
+      "Correct answers are excluded at the DTO level, not filtered at the handler — a leak must be structurally impossible, not merely unlikely."
+    ],
     "flows": [
       {
         "title": "AI-assisted authoring",
@@ -1485,13 +1551,15 @@
       }
     ],
     "tasks": [
-      { "title": "Add a question type", "steps": [
-        "Define the type, its option schema and its answer schema.",
-        "Implement grading in the consuming skill module, not here.",
-        "Add the authoring UI and the learner-facing renderer.",
-        "Confirm the learner DTO for the new type excludes the answer.",
-        "Add generation support to the prompt if AI authoring should cover it."
-      ]}
+      {
+        "title": "Add a question kind",
+        "steps": [
+          "Register the kind's grader and redaction rule in its skill module and in `content/contract/redact.go`.",
+          "Add a runner component on the web.",
+          "Teach `domain.FingerprintFromBody` the kind's question text and options.",
+          "Seed an `assess.exam_parts` row whose `kind` it is."
+        ]
+      }
     ],
     "limitations": [
       "Difficulty is classical test theory (p-value, discrimination), not item response theory — adequate for sampling, not for adaptive certification.",
@@ -1506,28 +1574,44 @@
       "Generated items land as drafts and are deduped"
     ],
     "decisions": [
-      { "question": "Classical statistics or IRT?", "choice": "Classical for now", "why": "IRT needs far more data per item and a calibration process we cannot staff yet; the interface leaves room to upgrade" },
-      { "question": "Allow AI-generated items to auto-publish?", "choice": "Only for generated practice pool", "why": "By the owner's decision on 2026-09-11, generated practice pool items auto-publish with 6-stage verification (including blind solve model agreement) and the learner report queue as compensating controls; exam and authored curriculum items still require human review" }
+      {
+        "question": "Classical statistics or IRT?",
+        "choice": "Classical for now",
+        "why": "IRT needs far more data per item and a calibration process we cannot staff yet; the interface leaves room to upgrade"
+      },
+      {
+        "question": "Allow AI-generated items to auto-publish?",
+        "choice": "Only for generated practice pool",
+        "why": "By the owner's decision on 2026-09-11, generated practice pool items auto-publish with 6-stage verification (including blind solve model agreement) and the learner report queue as compensating controls; exam and authored curriculum items still require human review"
+      }
     ],
     "todo": [
-      { "title": "Phase 4", "items": [
-        "Items, options, sets and tagging",
-        "Authoring and review workflow with self-approval blocking",
-        "Learner DTO without answers, structurally enforced",
-        "Statistics job computing p-value and discrimination",
-        "Sampling with exposure control",
-        "AI generation into the review queue",
-        "Admin authoring UI with bulk import"
-      ]}
+      {
+        "title": "Open",
+        "items": [
+          "A job computing `question_stats` from real attempts (the table exists; nothing writes it)",
+          "Bank course layout per exam part: lessons are per kind today, not per part as WO 19 F.2 describes"
+        ]
+      }
     ],
-    "future": ["Item response theory calibration", "Automatic distractor quality analysis", "Near-duplicate detection by embedding", "Item retirement policy from statistics"],
+    "future": [
+      "Item response theory calibration",
+      "Automatic distractor quality analysis",
+      "Near-duplicate detection by embedding",
+      "Item retirement policy from statistics"
+    ],
     "doNot": [
       "Do not include the correct answer in a learner-facing response.",
       "Do not publish an AI-generated item without review.",
       "Do not carry statistics across a content edit.",
       "Do not sample from unapproved items."
     ],
-    "runtimePrompts": [{ "task": "questionbank.generate_items", "purpose": "Draft items from a topic, level and type, for admin review" }]
+    "runtimePrompts": [
+      {
+        "task": "questionbank.generate_items",
+        "purpose": "Draft items from a topic, level and type, for admin review"
+      }
+    ]
   },
 
   {
@@ -1556,7 +1640,11 @@
       { "name": "exam_sections", "purpose": "Timed part", "notes": "`exam_id`, `position`, `skill`, `minutes`, `question_set_id`, `navigation` (linear/free)" },
       { "name": "exam_attempts", "purpose": "One sitting", "notes": "`user_id`, `exam_id`, `mode`, `chosen_duration_minutes`, `started_at`, `deadline_at`, `status`, `section_activities`, `draft_answers`, `submitted_at`, `submitted_by`" },
       { "name": "score_reports", "purpose": "Learner-facing result", "notes": "`attempt_id`, `overall_band`, `per_section` jsonb, `feedback`, `percentile`" },
-      { "name": "integrity_events", "purpose": "Signals during an attempt", "notes": "`attempt_id`, `kind`, `occurred_at` — informational, never punitive automatically" }
+      { "name": "integrity_events", "purpose": "Signals during an attempt", "notes": "`attempt_id`, `kind`, `occurred_at` — informational, never punitive automatically" },
+      { "name": "exam_versions", "purpose": "Verified exam versions", "notes": "`exam_family`, `code`, `title`, `total_minutes`, `scoring`, `source_url`, `verified_at`, `is_current`" },
+      { "name": "exam_parts", "purpose": "Exam parts per version", "notes": "`version_id`, `section`, `part_number`, `kind`, `question_count`, `group_size`" },
+      { "name": "blueprints", "purpose": "Mock test blueprints", "notes": "`version_id`, `name`, `cefr_distribution`, `node_distribution`" },
+      { "name": "mock_tests", "purpose": "Composed mock tests", "notes": "`blueprint_id`, `mode`, `seed`, `composition`, `owner_id`" }
     ],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/exams", "permission": "content.read.published", "purpose": "Available mock exams", "success": "200" },
@@ -1566,7 +1654,11 @@
       { "method": "PUT", "path": "/api/v1/exam-attempts/{id}/answers", "permission": "self", "purpose": "Save answers (autosave)", "success": "200", "errors": ["ATTEMPT_EXPIRED"] },
       { "method": "POST", "path": "/api/v1/exam-attempts/{id}/sections/{n}/complete", "permission": "self", "purpose": "Finish a section", "success": "200" },
       { "method": "POST", "path": "/api/v1/exam-attempts/{id}/submit", "permission": "self", "purpose": "Submit the whole exam", "success": "202", "notes": "202 because writing and speaking sections grade asynchronously" },
-      { "method": "GET", "path": "/api/v1/exam-attempts/{id}/report", "permission": "self", "purpose": "Score report when ready", "success": "200" }
+      { "method": "GET", "path": "/api/v1/exam-attempts/{id}/report", "permission": "self", "purpose": "Score report when ready", "success": "200" },
+      { "method": "GET", "path": "/api/v1/exam-versions", "permission": "content.read.published", "purpose": "Current verified exam versions and their blueprints", "success": "200" },
+      { "method": "POST", "path": "/api/v1/mock-tests", "permission": "self", "purpose": "Compose a mock test", "success": "201" },
+      { "method": "POST", "path": "/api/v1/mock-tests/{id}/attempts", "permission": "self", "purpose": "Start or retake a mock test attempt", "success": "201" },
+      { "method": "GET", "path": "/api/v1/admin/exams/versions/{id}/coverage", "permission": "questionbank.read", "purpose": "Exam version coverage report", "success": "200" }
     ],
     "contract": [{ "kind": "interface", "name": "exam.Reader", "purpose": "`AttemptHistory`, `LatestBand` — used by `learning` and `analytics`" }],
     "events": {
@@ -1588,7 +1680,13 @@
       "Band conversion uses the published table for the format, versioned so historical reports remain reproducible.",
       "Integrity signals are recorded and shown to the learner as self-awareness information; they never automatically invalidate an attempt.",
       "Items are sampled with exposure control so a learner does not see the same items in consecutive attempts.",
-      "The score report is generated once and stored — it must not change if the scoring table is later revised."
+      "The score report is generated once and stored — it must not change if the scoring table is later revised.",
+      "Exam structures are seeded data with an `https` source and a verification date.",
+      "A retake replays its composition; only a new test draws again.",
+      "A fixed test is one stored composition shared by everyone, composed without anyone's exposures.",
+      "A part is filled with exactly its question count, in whole groups; a part the bank cannot fill is refused with the part named.",
+      "The number of distinct tests shown is the coverage report's number.",
+      "A practice sitting may opt out of a visible time limit; the server still applies a generous backstop deadline so an abandoned sitting cannot block a future attempt indefinitely."
     ],
     "errors": [
       { "code": "ATTEMPT_IN_PROGRESS", "status": "409", "meaning": "Finish or abandon the existing attempt first" },
@@ -1639,7 +1737,7 @@
       { "question": "Auto-invalidate on integrity signals?", "choice": "No — record and show", "why": "False positives (a notification, a second monitor) would penalise honest learners; the signal is more useful as self-awareness feedback than as enforcement" },
       { "question": "Store or recompute score reports?", "choice": "Store", "why": "A learner's past band must not change because we revised a conversion table" },
       { "question": "How are exam timeouts enforced?", "choice": "3-tier expiry: River job at deadline, 1-minute sweep cron, and lazy check on read", "why": "Guarantees attempt finalisation and score reporting even if learner abandons sitting or background workers experience delays" },
-      { "question": "How does practice mode differ from exam mode?", "choice": "Custom duration 10–180 minutes, free section navigation, and re-recordable speaking", "why": "Enables targeted practice without breaking realistic exam constraints" },
+      { "question": "How does practice mode differ from exam mode?", "choice": "Custom duration 10–180 minutes or unlimited (a generous backstop still applies), free section navigation, and re-recordable speaking", "why": "Enables targeted practice without breaking realistic exam constraints" },
       { "question": "How is the exam pool isolated from the practice pool?", "choice": "Distinct pool course pool-exam and strict refusal guards in preview and lessons", "why": "Prevents exam questions from leaking through regular study or practice routes" },
       { "question": "When can a listening item be drawn for an exam sitting?", "choice": "Only when TTS audio has been rendered and object key exists in storage", "why": "A learner cannot be tested on listening audio that does not exist" }
     ],
@@ -1817,12 +1915,15 @@
       "URL validation that stores the page title and never the body, through a client whose dialer refuses non-public addresses",
       "Per-user quotas: 50 resources and 250 MB, counting everything not rejected or failed",
       "Presigned GET for a validated file its owner requests",
-      "Deleting a resource together with its stored object",
-      "A cron sweep that fails abandoned intents and deletes their objects, and fails uploads whose validation never finished"
+      "Derived visual, audio, and video renditions in fluentra-derived for validated file resources",
+      "Extracting text from PDF and Office document resources",
+      "Transcribing audio and video resources via media.HTTPTranscriber",
+      "Grounding and classifying extracted text into CEFR levels, skills, and spine taxonomy nodes",
+      "Deleting a resource together with its stored object, derived renditions, extraction and classification",
+      "A cron sweep that fails abandoned intents and deletes their objects, and fails uploads whose validation never finished",
+      "Reading one resource for its owner and copying its original and ready renditions into a published course's own storage (WO 20)"
     ],
     "notResponsibilities": [
-      "Thumbnails, transcodes and other renditions (P3, work order 18)",
-      "Text extraction, transcription and classification (P4, work order 19)",
       "Generating exercises from a resource (P6)",
       "Byte storage and serving (platform/storage)"
     ],
@@ -1831,6 +1932,21 @@
         "name": "resources",
         "purpose": "One uploaded file or submitted URL",
         "notes": "`user_id`, `kind` (file or url), `title`, `object_key`, `original_filename`, `declared_mime`, `detected_mime`, `byte_size`, `checksum`, `source_url`, `status`, `failure_reason`, `validated_at`. `ck_resources_shape`: a file has an object and no URL, a URL the reverse. `ck_resources_rejected_has_reason`."
+      },
+      {
+        "name": "renditions",
+        "purpose": "Derived visual, audio, and video renditions of validated file resources",
+        "notes": "`resource_id`, `kind`, `status`, `object_key`, `mime_type`, `width`, `height`, `duration_ms`, `byte_size`, `tool_version`, `attempts`, `failure_reason`. `uq_renditions_resource_kind`, `uq_renditions_object_key`."
+      },
+      {
+        "name": "extractions",
+        "purpose": "Extracted text from validated documents and audio/video transcripts",
+        "notes": "`resource_id`, `source` ('pdf_text', 'ocr', 'transcript'), `text`, `char_count` (max 400,000), `truncated`, `language`, `tool_version`."
+      },
+      {
+        "name": "classifications",
+        "purpose": "CEFR estimate, targeted skill, and grounded spine taxonomy node codes",
+        "notes": "`resource_id`, `cefr_estimate`, `skill`, `node_codes`, `prompt_version`, `model`, `ai_request_id`."
       }
     ],
     "indexes": [
@@ -1902,32 +2018,51 @@
         "kind": "struct",
         "name": "resource.Resource",
         "purpose": "`{ID, UserID, Kind, Title, ObjectKey, OriginalFilename, DeclaredMIME, DetectedMIME, ByteSize, Checksum, SourceURL, Status, FailureReason, DownloadURL, CreatedAt, UpdatedAt, ValidatedAt}`"
+      },
+      {
+        "kind": "interface",
+        "name": "resource.MaterialPublisher",
+        "purpose": "`MaterialForOwner(ctx, ownerID, resourceID)` and `CopyForPublication(ctx, resourceID, destPrefix)`: the read-and-copy surface `studio` uses to publish a material into a course"
       }
     ],
     "events": {
       "publishes": [],
-      "consumes": []
+      "consumes": [
+        {
+          "name": "user.deleted",
+          "from": "user",
+          "purpose": "Account erasure: delete all resources, uploads in fluentra-uploads and renditions in fluentra-derived for the user"
+        }
+      ]
     },
     "dependsOn": [
       "storage",
-      "job"
+      "job",
+      "user"
     ],
     "dependsWhy": {
       "storage": "Presigned PUT and GET, stat, read and delete in fluentra-uploads",
-      "job": "The resource.validate River worker and the resource.sweep_pending cron"
+      "job": "The resource.validate River worker and the resource.sweep_pending cron",
+      "user": "Account erasure event user.deleted to purge user resources"
     },
-    "dependedOnBy": [],
+    "dependedOnBy": ["studio"],
     "rules": [
       "**BR-RESOURCE-01**: A resource belongs to one user and is visible only to them. Another user's id answers 404, never 403.",
       "**BR-RESOURCE-02**: The stored original is never modified or replaced. Derived forms go to fluentra-derived (P3).",
       "**BR-RESOURCE-03**: A URL resource keeps its title and metadata, never the fetched body.",
       "**BR-RESOURCE-04**: A file is classified by its bytes. A declared kind that disagrees with the detected kind is a rejection.",
       "**BR-RESOURCE-05**: rejected always carries a reason, and the database enforces it. Reasons are fixed learner-facing sentences; the detail goes to the log.",
+      "**BR-RESOURCE-15**: Erasing an account deletes that user's resources, originals and renditions.",
       "**BR-RESOURCE-06**: Deleting a resource deletes its object. If storage cannot be reached the delete fails and the row stays.",
       "**BR-RESOURCE-07**: An intent never confirmed within 15 minutes is swept to failed and its object removed. The sweeper marks the row before deleting, so a row confirmed meanwhile is left alone.",
       "**BR-RESOURCE-08**: Quotas bound each user to 50 resources and 250 MB, counting everything not rejected or failed.",
       "**BR-RESOURCE-09**: rejected is a verdict on the resource; failed is ours and retryable. A timeout or a 5xx never rejects a link.",
-      "**BR-RESOURCE-10**: The URL fetcher checks the address it is connecting to, in the dialer, on every hop, and never uses a proxy. Checking DNS first and connecting later is not a check."
+      "**BR-RESOURCE-10**: The URL fetcher checks the address it is connecting to, in the dialer, on every hop, and never uses a proxy. Checking DNS first and connecting later is not a check.",
+      "Extracted text and anything generated from it is private to the resource's owner.",
+      "Classification stores only spine codes that exist; the rest are dropped.",
+      "A transcript is queued by cmd/media in the transaction that settles the audio_web rendition, ready or skipped. Video gets an audio_web rendition for its soundtrack.",
+      "An extraction and its classification job are written in one transaction.",
+      "**BR-RESOURCE-16**: A resource leaves its owner's private space only by being copied into a published course, and only its owner can start that copy."
     ],
     "cache": [],
     "errors": [
@@ -2035,10 +2170,13 @@
       {
         "title": "Next, in order",
         "items": [
-          "Purge an erased user's resources. Erasure anonymises the user row instead of deleting it, so the FK cascade never runs and both the rows and the files survive; subscribe to user.deleted as speaking does (work order 18, step 1). Done when erasure leaves no row and no object in either bucket",
-          "Renditions into fluentra-derived by cmd/media in GitHub Actions (P3, work order 18); done when a validated image has a thumbnail and the original is byte-identical",
-          "Extraction and transcription of validated resources (P4, work order 19); done when a validated PDF yields text tagged to spine nodes",
-          "Publish resource.validated and resource.rejected through the outbox once P4 exists to consume them"
+          "audio_web is transcoded for every audio upload; WO 18 asks for it only when the source is WAV or over 256 kbit/s. Needs an ffprobe bitrate check before the transcode",
+          "Video renditions are measured against the 10-minute limit after the transcode, not before it: a long video spends the whole encode budget and is then skipped",
+          "classifications.ai_request_id stays null until platform/ai returns the ai_requests row id",
+          "OCR for text-heavy images (WO 19 B.1, optional; the first thing cut)",
+          "Publish resource.validated and resource.rejected through the outbox once something consumes them",
+          "A sweeper for `course-materials/{course_id}` copies no published version references (WO 20 Stage C; out of scope, the copies are cheap and correct to keep)",
+          "A DOC/PPT material has no PDF rendition (WO 18 renders only thumbnail and preview), so its card opens the original download; a `pdf` rendition is a future step"
         ]
       }
     ],

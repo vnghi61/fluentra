@@ -60,6 +60,8 @@ type ContentService interface {
 	ListFoundationTopics(ctx context.Context, filter service.FoundationTopicFilter) ([]domain.Taxonomy, int64, error)
 	GetFoundationTopicByCode(ctx context.Context, code string) (service.FoundationTopicDetail, error)
 	GetFoundationPath(ctx context.Context, targetCode *string, namespace *string) ([]domain.Taxonomy, error)
+
+	ReviewQueue(ctx context.Context, filter domain.ReviewQueueFilter) ([]domain.ReviewQueueItem, int64, error)
 }
 
 // Handler serves HTTP endpoints for the content module.
@@ -92,6 +94,16 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Get("/foundation/path", h.getFoundationPath)
 }
 
+// ReviewRoutes mounts the review queue and the review and publish decisions.
+// They are mounted outside the admin-only group: a moderator holds
+// content.review and content.publish without being an admin (ADR-0026, WO 19
+// §4.4), and each handler checks its own permission.
+func (h *Handler) ReviewRoutes(router chi.Router) {
+	router.Get("/admin/review-queue", h.adminListReviewQueue)
+	router.Post("/admin/content/{id}/review", h.review)
+	router.Post("/admin/content/{id}/publish", h.publish)
+}
+
 // AdminRoutes mounts staff/authoring content endpoints under the admin router.
 func (h *Handler) AdminRoutes(router chi.Router) {
 	router.Get("/admin/content", h.adminListContent)
@@ -100,8 +112,6 @@ func (h *Handler) AdminRoutes(router chi.Router) {
 	router.Post("/admin/content", h.createItem)
 	router.Put("/admin/content/{id}/draft", h.updateDraft)
 	router.Post("/admin/content/{id}/submit", h.submitForReview)
-	router.Post("/admin/content/{id}/review", h.review)
-	router.Post("/admin/content/{id}/publish", h.publish)
 	router.Post("/admin/content/{id}/archive", h.archive)
 
 	// Foundation Knowledge Spine authoring
@@ -560,6 +570,48 @@ func (h *Handler) adminListReports(w http.ResponseWriter, r *http.Request) {
 		Total:  total,
 		Limit:  limit,
 		Offset: offset,
+	})
+}
+
+// adminListReviewQueue handles GET /admin/review-queue
+func (h *Handler) adminListReviewQueue(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentReview); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	filter := domain.ReviewQueueFilter{}
+	if purpose := r.URL.Query().Get("purpose"); purpose != "" {
+		filter.Purpose = &purpose
+	}
+	if kind := r.URL.Query().Get("kind"); kind != "" {
+		filter.Kind = &kind
+	}
+	if cefr := r.URL.Query().Get("cefr"); cefr != "" {
+		filter.CEFRLevel = &cefr
+	}
+	if node := r.URL.Query().Get("node"); node != "" {
+		filter.NodeCode = &node
+	}
+	limit, offset := adminPaging(r)
+	filter.Limit = limit
+	filter.Offset = offset
+
+	items, total, err := h.service.ReviewQueue(ctx, filter)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	respItems := make([]AdminReviewQueueItemResponse, len(items))
+	for i, it := range items {
+		respItems[i] = toAdminReviewQueueItemResponse(it)
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, AdminReviewQueueResponse{
+		Items: respItems,
+		Total: total,
 	})
 }
 

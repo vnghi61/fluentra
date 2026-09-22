@@ -6,7 +6,7 @@ status: DONE
 phase: 3
 owner: "@learning-team"
 schema: assess
-tables: [exams, exam_sections, exam_attempts, score_reports, integrity_events]
+tables: [exams, exam_sections, exam_attempts, score_reports, integrity_events, exam_versions, exam_parts, blueprints, mock_tests]
 depends_on: [questionbank, job, ai, writing, speaking, learning, lesson, listening]
 depended_on_by: [learning, analytics, admin]
 spec_version: 1.0.0
@@ -100,6 +100,10 @@ Migrations: `db/migrations/exam/` · Queries: `db/queries/exam/`
 | `assess.exam_attempts` | One sitting | `user_id`, `exam_id`, `mode`, `chosen_duration_minutes`, `started_at`, `deadline_at`, `status`, `section_activities`, `draft_answers`, `submitted_at`, `submitted_by` |
 | `assess.score_reports` | Learner-facing result | `attempt_id`, `overall_band`, `per_section` jsonb, `feedback`, `percentile` |
 | `assess.integrity_events` | Signals during an attempt | `attempt_id`, `kind`, `occurred_at` — informational, never punitive automatically |
+| `assess.exam_versions` | Verified exam versions | `exam_family`, `code`, `title`, `total_minutes`, `scoring`, `source_url`, `verified_at`, `is_current` |
+| `assess.exam_parts` | Exam parts per version | `version_id`, `section`, `part_number`, `kind`, `question_count`, `group_size` |
+| `assess.blueprints` | Mock test blueprints | `version_id`, `name`, `cefr_distribution`, `node_distribution` |
+| `assess.mock_tests` | Composed mock tests | `blueprint_id`, `mode`, `seed`, `composition`, `owner_id` |
 
 <!-- END GENERATED: schema -->
 
@@ -119,6 +123,10 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/exam-attempts/{id}/sections/{n}/complete` | `self` | Finish a section |
 | `POST` | `/api/v1/exam-attempts/{id}/submit` | `self` | Submit the whole exam |
 | `GET` | `/api/v1/exam-attempts/{id}/report` | `self` | Score report when ready |
+| `GET` | `/api/v1/exam-versions` | `content.read.published` | Current verified exam versions and their blueprints |
+| `POST` | `/api/v1/mock-tests` | `self` | Compose a mock test |
+| `POST` | `/api/v1/mock-tests/{id}/attempts` | `self` | Start or retake a mock test attempt |
+| `GET` | `/api/v1/admin/exams/versions/{id}/coverage` | `questionbank.read` | Exam version coverage report |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map
@@ -170,6 +178,12 @@ and fails `go-arch-lint` in CI.
 8. **BR-EXAM-08** — Integrity signals are recorded and shown to the learner as self-awareness information; they never automatically invalidate an attempt.
 9. **BR-EXAM-09** — Items are sampled with exposure control so a learner does not see the same items in consecutive attempts.
 10. **BR-EXAM-10** — The score report is generated once and stored — it must not change if the scoring table is later revised.
+11. **BR-EXAM-11** — Exam structures are seeded data with an `https` source and a verification date.
+12. **BR-EXAM-12** — A retake replays its composition; only a new test draws again.
+13. **BR-EXAM-13** — A fixed test is one stored composition shared by everyone, composed without anyone's exposures.
+14. **BR-EXAM-14** — A part is filled with exactly its question count, in whole groups; a part the bank cannot fill is refused with the part named.
+15. **BR-EXAM-15** — The number of distinct tests shown is the coverage report's number.
+16. **BR-EXAM-16** — A practice sitting may opt out of a visible time limit; the server still applies a generous backstop deadline so an abandoned sitting cannot block a future attempt indefinitely.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

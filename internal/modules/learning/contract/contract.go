@@ -340,12 +340,62 @@ type ItemVerifier interface {
 	VerifyItem(ctx context.Context, req VerifyItemRequest) error
 }
 
+// ExamPartConstraints defines structural constraints for an exam part item (Stage E/G).
+type ExamPartConstraints struct {
+	OptionCount       int  `json:"option_count,omitempty"`
+	QuestionsPerGroup int  `json:"questions_per_group,omitempty"`
+	MinWords          int  `json:"min_words,omitempty"`
+	MaxWords          int  `json:"max_words,omitempty"`
+	AudioRequired     bool `json:"audio_required,omitempty"`
+}
+
 // VerifyItemRequest specifies an item to verify through ItemVerifier.
 type VerifyItemRequest struct {
+	Kind            string
+	TaskType        string // read_aloud / respond, for speaking_task
+	CEFRLevel       string
+	Body            json.RawMessage
+	Existing        []json.RawMessage // for the duplicate check
+	BlindSolve      bool
+	CheckCEFR       bool                 // evaluates CEFR calibration through item_level task
+	ExamConstraints *ExamPartConstraints // evaluates exam part structural shape
+	CheckProvenance bool                 // verifies _provenance presence and completeness
+}
+
+const (
+	// KindFoundationTopic is the content kind holding a spine topic's body.
+	KindFoundationTopic = "foundation_topic"
+	// KindFoundationQuiz is a quiz item tagged to a spine node.
+	KindFoundationQuiz = "foundation_quiz"
+	// KindFoundationReview is a review question tagged to a spine node.
+	KindFoundationReview = "foundation_review"
+	// KindLessonMaterial is a non-graded course material — a document or video
+	// a learner opens and marks as done (WO 20).
+	KindLessonMaterial = "lesson_material"
+)
+
+// GenerateRequest specifies parameters for the unified item generator.
+type GenerateRequest struct {
 	Kind       string
-	TaskType   string // read_aloud / respond, for speaking_task
 	CEFRLevel  string
-	Body       json.RawMessage
-	Existing   []json.RawMessage // for the duplicate check
-	BlindSolve bool
+	NodeCodes  []string // spine codes the item must exercise; at least one
+	Count      int
+	Purpose    string     // "practice" | "foundation" | "bank" | "resource"
+	OwnerID    *uuid.UUID // set only for Purpose "resource": private to that learner
+	SourceText string     // Purpose "resource" only: the extraction to generate from
+	SlugPrefix string     // optional deterministic slug prefix for idempotent generation
+}
+
+// GeneratedItem represents a single authored and verified item.
+type GeneratedItem struct {
+	ContentVersionID uuid.UUID
+	Body             json.RawMessage
+	PromptVersion    string
+	Model            string
+	AIRequestID      uuid.UUID
+}
+
+// Generator produces verified, spine-tagged educational content items.
+type Generator interface {
+	Generate(ctx context.Context, req GenerateRequest) ([]GeneratedItem, error)
 }

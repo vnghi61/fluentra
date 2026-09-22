@@ -34,6 +34,7 @@ import {
   ExerciseWriting,
   ExerciseSpeaking,
   ExerciseSentenceTransform,
+  ExerciseMaterial,
   ActivityUnavailable,
   ExitDialog,
   ReportDialog,
@@ -147,6 +148,19 @@ interface SpeakingConfig {
   prompt?: string;
   reference_text?: string;
   speaking_time_seconds?: number;
+}
+
+// A non-graded material. `sources` is issued at read time, after the paywall,
+// and expires; the keys it was built from are never URLs.
+interface MaterialConfig {
+  material_kind?: "document" | "video";
+  title?: string;
+  description?: string;
+  sources?: {
+    poster_url?: string;
+    video?: { url: string; height: number }[];
+    document?: { url: string; preview_url?: string; page_count?: number };
+  };
 }
 
 /**
@@ -709,13 +723,19 @@ export function LessonPage(): React.JSX.Element {
   const listeningConfig = rawConfig as ListeningConfig;
   const writingConfig = rawConfig as WritingConfig;
   const speakingConfig = rawConfig as SpeakingConfig;
+  const materialConfig = rawConfig as MaterialConfig;
 
   // An exercise is renderable only when its config carries the fields it needs.
   // Everything else is ActivityUnavailable — there is no default question,
   // because a default question is somebody else's question.
   const canRenderMultipleChoice =
-    (kind === "vocab_multiple_choice" || kind === "grammar_tense_choice") &&
-    typeof mcConfig.prompt === "string" &&
+    (kind === "vocab_multiple_choice" ||
+      kind === "grammar_tense_choice" ||
+      kind === "mcq_gap" ||
+      kind === "foundation_quiz" ||
+      kind === "foundation_review") &&
+    (typeof mcConfig.prompt === "string" ||
+      typeof (rawConfig as Record<string, unknown>).sentence === "string") &&
     Array.isArray(mcConfig.options) &&
     mcConfig.options.length > 0;
 
@@ -771,7 +791,7 @@ export function LessonPage(): React.JSX.Element {
     contextConfig.options.length > 0;
 
   const canRenderReading =
-    kind === "reading_comprehension" &&
+    (kind === "reading_comprehension" || kind === "text_completion") &&
     typeof readingConfig.passage === "string" &&
     readingConfig.passage !== "" &&
     ((typeof readingConfig.prompt === "string" &&
@@ -799,13 +819,21 @@ export function LessonPage(): React.JSX.Element {
     (typeof speakingConfig.prompt === "string" ||
       typeof speakingConfig.reference_text === "string");
 
+  // A material is renderable when the server issued it sources: a video with at
+  // least one rendition, or a document with a URL to open.
+  const canRenderMaterial =
+    kind === "lesson_material" &&
+    ((Array.isArray(materialConfig.sources?.video) &&
+      materialConfig.sources.video.length > 0) ||
+      Boolean(materialConfig.sources?.document?.url));
+
   const selectedOptId =
     typeof lastSubmittedPayload?.selected_option_id === "string"
       ? lastSubmittedPayload.selected_option_id
       : undefined;
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col justify-between">
+    <div className="min-h-full bg-surface flex flex-col justify-between">
       {/* Runner Header */}
       <RunnerHeader
         lessonTitle={
@@ -871,7 +899,8 @@ export function LessonPage(): React.JSX.Element {
           !canRenderReading &&
           !canRenderListening &&
           !canRenderWriting &&
-          !canRenderSpeaking && (
+          !canRenderSpeaking &&
+          !canRenderMaterial && (
             <ActivityUnavailable
               {...(kind !== undefined && { kind })}
               onSkip={handleContinue}
@@ -880,7 +909,11 @@ export function LessonPage(): React.JSX.Element {
 
         {canRenderMultipleChoice && (
           <ExerciseMultipleChoice
-            prompt={mcConfig.prompt ?? ""}
+            prompt={
+              mcConfig.prompt ||
+              ((rawConfig as Record<string, unknown>).sentence as string) ||
+              ""
+            }
             options={mcConfig.options ?? []}
             correctOptionId={
               submissionResult?.correct
@@ -1188,6 +1221,22 @@ export function LessonPage(): React.JSX.Element {
             onSubmit={(audioObjectKey) =>
               void handleSubmit({ audio_object_key: audioObjectKey })
             }
+            onContinue={handleContinue}
+          />
+        )}
+
+        {canRenderMaterial && (
+          <ExerciseMaterial
+            key={currentActivity?.id}
+            materialKind={materialConfig.material_kind}
+            title={materialConfig.title}
+            description={materialConfig.description}
+            sources={materialConfig.sources}
+            isSubmitted={isSubmitted}
+            isCorrect={submissionResult?.correct}
+            isLoading={isSubmitting || isAttemptPending}
+            onRefetchLesson={() => void refetch()}
+            onSubmit={(done) => void handleSubmit({ done })}
             onContinue={handleContinue}
           />
         )}

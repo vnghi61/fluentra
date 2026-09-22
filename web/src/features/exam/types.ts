@@ -58,6 +58,11 @@ export interface SittingActivityConfig {
   task_type?: "read_aloud" | "respond";
   reference_text?: string;
   speaking_time_seconds?: number;
+  options?: ChoiceOption[];
+  statements?: ChoiceOption[];
+  responses?: ChoiceOption[];
+  sentence?: string;
+  image_url?: string;
 }
 
 export interface SittingActivity {
@@ -78,6 +83,9 @@ export interface SectionActivities {
 export interface ChoiceAnswer {
   answers: Record<string, string>;
 }
+export interface SingleChoiceAnswer {
+  selected_option_id: string;
+}
 export interface EssayAnswer {
   text_answer: string;
 }
@@ -88,8 +96,13 @@ export interface RecordingAnswer {
   audio_object_key: string;
 }
 export type SittingAnswer =
-  ChoiceAnswer | EssayAnswer | RewriteAnswer | RecordingAnswer;
+  | ChoiceAnswer
+  | SingleChoiceAnswer
+  | EssayAnswer
+  | RewriteAnswer
+  | RecordingAnswer;
 export type DraftAnswers = Record<string, SittingAnswer>;
+
 
 export interface ExamAttempt {
   id: string;
@@ -99,6 +112,8 @@ export interface ExamAttempt {
   level?: ExamLevel;
   mode: ExamMode;
   chosen_duration_minutes: number;
+  /** Practice mode only: true when the sitting opted out of a visible time limit. */
+  unlimited: boolean;
   started_at: string;
   deadline_at: string;
   remaining_seconds: number;
@@ -122,6 +137,8 @@ export interface ExamAttemptListResponse {
 export interface StartSittingRequest {
   mode: ExamMode;
   chosen_duration_minutes?: number;
+  /** Practice mode only: skips chosen_duration_minutes and runs without a visible time limit. */
+  unlimited?: boolean;
   /** Practice mode only: the section positions to sit. Omitted means all. */
   sections?: number[];
 }
@@ -215,6 +232,8 @@ export interface ScoreReport {
   per_section: ExamSectionOutcome[];
   integrity_signals: IntegritySignal[];
   disclaimer: string;
+  /** Seconds between started_at and submitted_at — how long the learner took. */
+  elapsed_seconds?: number;
 }
 
 export interface ListeningPlayResult {

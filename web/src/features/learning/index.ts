@@ -1,6 +1,8 @@
 export * from "./api/keys";
 export * from "./api/learningApi";
 export * from "./api/placement";
+export * from "./api/foundation";
+
 export * from "./components/Dashboard/ContinueLearningCard";
 export * from "./components/Dashboard/DailyPracticeCard";
 export * from "./components/Dashboard/PlacementInviteCard";
@@ -24,6 +26,7 @@ export * from "./components/Runner/ExerciseListening";
 export * from "./components/Runner/ExerciseWriting";
 export * from "./components/Runner/ExerciseSpeaking";
 export * from "./components/Runner/ExerciseSentenceTransform";
+export * from "./components/Runner/ExerciseMaterial";
 export * from "./components/Runner/ActivityUnavailable";
 export * from "./components/GuestNotice";
 export * from "./components/Runner/ExitDialog";

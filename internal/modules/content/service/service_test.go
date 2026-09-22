@@ -660,6 +660,10 @@ func (f *fakeRepo) GetTaxonomyByID(_ context.Context, id uuid.UUID) (domain.Taxo
 	return domain.Taxonomy{ID: id, Code: "TOPIC"}, nil
 }
 
+func (f *fakeRepo) ListContentItemIDsForTaxonomy(context.Context, uuid.UUID) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
 func (f *fakeRepo) GetTaxonomyByCode(_ context.Context, code string) (domain.Taxonomy, error) {
 	return domain.Taxonomy{ID: uuid.New(), Code: code, Namespace: domain.NamespaceGrammar}, nil
 }
@@ -734,6 +738,14 @@ func (f *fakeRepo) CountTaggedContentByKindForTaxonomy(_ context.Context, _ uuid
 
 func (f *fakeRepo) GetPublishedTopicBodyByTaxonomyID(_ context.Context, _ uuid.UUID) ([]byte, bool, error) {
 	return nil, false, nil
+}
+
+func (f *fakeRepo) ListReviewQueue(_ context.Context, _ domain.ReviewQueueFilter) ([]domain.ReviewQueueItem, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) CountReviewQueue(_ context.Context, _ domain.ReviewQueueFilter) (int64, error) {
+	return 0, nil
 }
 
 type fakeEvents struct {

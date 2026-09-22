@@ -101,6 +101,24 @@ type Repository interface {
 	UpsertSkillMastery(
 		ctx context.Context, userID uuid.UUID, skill, level string, confidence float64,
 	) (*domain.SkillMastery, error)
+	GetNodeMastery(
+		ctx context.Context, userID, nodeID uuid.UUID,
+	) (*domain.NodeMastery, error)
+	ListNodeMasteryByUser(
+		ctx context.Context, userID uuid.UUID,
+	) ([]domain.NodeMastery, error)
+	UpsertNodeMastery(
+		ctx context.Context, mastery domain.NodeMastery,
+	) (*domain.NodeMastery, error)
+	ListWeakNodesByUser(
+		ctx context.Context, userID uuid.UUID, minAttempts int,
+	) ([]domain.NodeMastery, error)
+	DeleteNodeMasteryByUser(
+		ctx context.Context, userID uuid.UUID,
+	) error
+	ListActiveLearnersSince(
+		ctx context.Context, since time.Time,
+	) ([]uuid.UUID, error)
 	GetAnswerExplanation(
 		ctx context.Context, contentVersionID uuid.UUID, userAnswer string,
 	) (*repository.AnswerExplanationDTO, error)
@@ -257,6 +275,8 @@ type Deps struct {
 	SRSPace srscontract.ReviewPaceReader
 	// StudioAccess evaluates whether a learner may open/enroll in a course (BR-STUDIO-05).
 	StudioAccess studiocontract.AccessReader
+	// Taxonomies resolves spine taxonomy node codes and labels for item generation.
+	Taxonomies contentcontract.TaxonomyResolver
 }
 
 // AudioSynthesiser produces pre-rendered audio for listening exercises.
@@ -287,6 +307,7 @@ type Service struct {
 	courses       lessoncontract.CourseCatalog
 	srsPace       srscontract.ReviewPaceReader
 	studioAccess  studiocontract.AccessReader
+	taxonomies    contentcontract.TaxonomyResolver
 
 	generatorAuthor uuid.UUID
 	authorResolver  contract.AuthorResolver
@@ -342,6 +363,7 @@ func New(deps Deps) *Service {
 		courses:       deps.Courses,
 		srsPace:       deps.SRSPace,
 		studioAccess:  deps.StudioAccess,
+		taxonomies:    deps.Taxonomies,
 
 		generatorAuthor: deps.GeneratorAuthorID,
 		authorResolver:  deps.AuthorResolver,
@@ -1109,6 +1131,13 @@ func (s *Service) executeRollupSteps(
 		return err
 	}
 
+	// 4. Update incremental node mastery from content version tags (Stage I)
+	if err := s.updateNodeMastery(
+		ctx, repo, userID, activity.ContentVersionID, gradeResult, now,
+	); err != nil {
+		return err
+	}
+
 	// An exam pool item is not course material: it counts toward no lesson, unit
 	// or course progress and appears in no "continue learning" (work order 12 §3.6).
 	if activity.CourseSlug == ExamPoolCourseSlug {
@@ -1116,6 +1145,88 @@ func (s *Service) executeRollupSteps(
 	}
 
 	return s.rollupLessonAndAbove(ctx, tx, repo, userID, activity, now)
+}
+
+// DeleteUserData removes all learner data subject to user.deleted erasure (Stage I).
+func (s *Service) DeleteUserData(ctx context.Context, userID uuid.UUID) error {
+	return s.repo.DeleteNodeMasteryByUser(ctx, userID)
+}
+
+// updateNodeMastery folds one attempt score into the learner's estimate for every
+// spine taxonomy node tagged on the activity's content version (Stage I).
+func (s *Service) updateNodeMastery(
+	ctx context.Context,
+	repo Repository,
+	userID uuid.UUID,
+	contentVersionID uuid.UUID,
+	gradeResult contract.GradeResult,
+	now time.Time,
+) error {
+	if contentVersionID == uuid.Nil || s.content == nil || s.taxonomies == nil {
+		return nil
+	}
+	ver, err := s.content.GetVersion(ctx, contentVersionID)
+	if err != nil {
+		return fmt.Errorf("get content version %s: %w", contentVersionID, err)
+	}
+	if ver == nil || len(ver.Tags) == 0 {
+		return nil
+	}
+
+	attemptScore := 0.0
+	if gradeResult.MaxScore > 0 {
+		attemptScore = float64(gradeResult.Score) / float64(gradeResult.MaxScore)
+	}
+	isCorrect := (gradeResult.MaxScore > 0 && gradeResult.Score == gradeResult.MaxScore)
+
+	seenNodes := make(map[uuid.UUID]struct{})
+	for _, tag := range ver.Tags {
+		code := tag
+		if idx := strings.LastIndex(tag, "."); idx >= 0 {
+			code = tag[idx+1:]
+		}
+		node, err := s.taxonomies.GetTaxonomyByCode(ctx, code)
+		if err != nil || node == nil {
+			continue
+		}
+		if _, seen := seenNodes[node.ID]; seen {
+			continue
+		}
+		seenNodes[node.ID] = struct{}{}
+
+		if err := s.applyNodeMasteryUpdate(ctx, repo, userID, node.ID, isCorrect, attemptScore, now); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) applyNodeMasteryUpdate(
+	ctx context.Context,
+	repo Repository,
+	userID, nodeID uuid.UUID,
+	isCorrect bool,
+	attemptScore float64,
+	now time.Time,
+) error {
+	existing, err := repo.GetNodeMastery(ctx, userID, nodeID)
+	if err != nil {
+		return fmt.Errorf("get node mastery %s: %w", nodeID, err)
+	}
+	attempts, correct, newScore := domain.CalculateNodeMasteryUpdate(existing, isCorrect, attemptScore)
+	nowCopy := now
+	m := domain.NodeMastery{
+		UserID:     userID,
+		NodeID:     nodeID,
+		Attempts:   attempts,
+		Correct:    correct,
+		Score:      newScore,
+		LastSeenAt: &nowCopy,
+	}
+	if _, err := repo.UpsertNodeMastery(ctx, m); err != nil {
+		return fmt.Errorf("upsert node mastery %s: %w", nodeID, err)
+	}
+	return nil
 }
 
 // updateSkillMastery folds one attempt score into the learner's estimate for the

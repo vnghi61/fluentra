@@ -118,6 +118,16 @@ func (s *stubContentAuthor) EnsurePublished(
 	return s.id, nil
 }
 
+func (s *stubContentAuthor) EnsureDraft(
+	_ context.Context, spec contentcontract.AuthorSpec,
+) (uuid.UUID, error) {
+	s.published = append(s.published, spec)
+	if s.id == uuid.Nil {
+		s.id = uuid.New()
+	}
+	return s.id, nil
+}
+
 type stubQuotaAI struct {
 	stubAI
 	hasQuota bool

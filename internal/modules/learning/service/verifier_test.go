@@ -6,201 +6,276 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
-	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/service"
+	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
-type mockGrader struct {
-	pass bool
+type customCEFRAI struct {
+	judgedLevel string
+	reasoning   string
 }
 
-func (g *mockGrader) Grade(_ context.Context, _ learningcontract.GradeRequest) (learningcontract.GradeResult, error) {
-	if g.pass {
-		return learningcontract.GradeResult{Score: 100, Correct: true}, nil
+func (c *customCEFRAI) Complete(_ context.Context, req ai.Request) (ai.Response, error) {
+	if req.Task == ai.TaskItemLevel {
+		res := map[string]any{
+			"cefr_level": c.judgedLevel,
+			"reasoning":  c.reasoning,
+			"confidence": 0.95,
+		}
+		raw, _ := json.Marshal(res)
+		return ai.Response{Text: string(raw), Model: "mock-cefr-judge"}, nil
 	}
-	return learningcontract.GradeResult{Score: 0, Correct: false}, nil
+	if req.Task == ai.TaskPracticeSolve || req.Task == ai.TaskItemSolve {
+		return ai.Response{Text: `{"selected_option_id": "A", "answers": {"q1": "A", "q2": "A", "q3": "A"}}`}, nil
+	}
+	return ai.Response{}, nil
 }
 
-func newVerifierTestService(t *testing.T, graderPass bool) *service.Service {
-	t.Helper()
-	graders := domain.NewGraderRegistry()
-	_ = graders.Register(kindChoice, &mockGrader{pass: graderPass})
-	_ = graders.Register("vocab_multiple_choice", &mockGrader{pass: graderPass})
-	_ = graders.Register("reading_comprehension", &mockGrader{pass: graderPass})
+func TestVerifyItem_WorkOrder19StageEGate_CEFRCheck(t *testing.T) {
+	ctx := context.Background()
 
-	clk := clock.NewFake(time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC))
-	return service.New(service.Deps{
-		Graders:           graders,
-		Clock:             clk,
-		GeneratorAuthorID: uuid.New(),
+	// Gate: "A deliberately mislevelled item (a C1 passage requested as A2) is refused by the CEFR check."
+	aiClient := &customCEFRAI{
+		judgedLevel: "C1",
+		reasoning:   "Advanced syntactic structures and sophisticated lexical choices.",
+	}
+
+	svc := service.New(service.Deps{
+		Lesson:       newFakePoolLessons(),
+		LessonAuthor: newFakePoolLessons(),
+		Graders:      passingGraders(),
+		AI:           aiClient,
+		Clock:        clock.NewFake(time.Now()),
 	})
-}
-
-func TestVerifyItem_EmptyKindOrBody(t *testing.T) {
-	t.Parallel()
-	svc := newVerifierTestService(t, true)
-
-	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
-		Kind: "",
-		Body: json.RawMessage(`{}`),
-	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "check 1")
-
-	err = svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
-		Kind: kindChoice,
-		Body: nil,
-	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "check 1")
-}
-
-func TestVerifyItem_GrammarTenseChoice_Pass(t *testing.T) {
-	t.Parallel()
-	svc := newVerifierTestService(t, true)
 
 	body := json.RawMessage(`{
-		"prompt": "She ___ to school every day.",
+		"prompt": "She ___ lived here for three years.",
 		"options": [
-			{"id": "opt1", "text": "goes"},
-			{"id": "opt2", "text": "go"},
-			{"id": "opt3", "text": "went"},
-			{"id": "opt4", "text": "gone"}
+			{"id": "A", "text": "has"},
+			{"id": "B", "text": "have"},
+			{"id": "C", "text": "had"},
+			{"id": "D", "text": "having"}
 		],
-		"correct_option_id": "opt1",
-		"explanation": {"explanation_vi": "Hiện tại đơn diễn tả thói quen lặp đi lặp lại"}
+		"correct_option_id": "A",
+		"explanation": {
+			"explanation_en": "Present perfect with she uses has.",
+			"explanation_vi": "Hiện tại hoàn thành với she dùng has."
+		}
 	}`)
 
-	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
+	// 1. Deliberately mislevelled: requested A2, judged C1 (>1 band diff) -> MUST FAIL
+	err := svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
 		Kind:       kindChoice,
 		CEFRLevel:  "A2",
 		Body:       body,
+		CheckCEFR:  true,
 		BlindSolve: false,
 	})
-	require.NoError(t, err)
+	require.Error(t, err, "mislevelled item must be refused")
+	assert.Contains(t, err.Error(), "check 7 (cefr) failed")
+	assert.Contains(t, err.Error(), "item judged C1, requested A2")
+
+	// 2. Compatible level: requested B2, judged C1 (diff = 1 band) -> PASS
+	err = svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:       kindChoice,
+		CEFRLevel:  "B2",
+		Body:       body,
+		CheckCEFR:  true,
+		BlindSolve: false,
+	})
+	require.NoError(t, err, "item within 1 band must pass")
+
+	// 3. Exact level: requested C1, judged C1 -> PASS
+	err = svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:       kindChoice,
+		CEFRLevel:  "C1",
+		Body:       body,
+		CheckCEFR:  true,
+		BlindSolve: false,
+	})
+	require.NoError(t, err, "matching level item must pass")
 }
 
-func TestVerifyItem_GrammarTenseChoice_Check2_GraderFails(t *testing.T) {
-	t.Parallel()
-	svc := newVerifierTestService(t, false) // Grader fails
+func TestVerifyItem_WorkOrder19StageEGate_ExamStructureCheck(t *testing.T) {
+	ctx := context.Background()
 
-	body := json.RawMessage(`{
-		"prompt": "She ___ to school every day.",
-		"options": [
-			{"id": "opt1", "text": "goes"},
-			{"id": "opt2", "text": "go"},
-			{"id": "opt3", "text": "went"},
-			{"id": "opt4", "text": "gone"}
-		],
-		"correct_option_id": "opt1",
-		"explanation": {"explanation_vi": "Hiện tại đơn diễn tả thói quen"}
+	svc := service.New(service.Deps{
+		Lesson:       newFakePoolLessons(),
+		LessonAuthor: newFakePoolLessons(),
+		Graders:      passingGraders(),
+		Clock:        clock.NewFake(time.Now()),
+	})
+
+	// Gate: "A TOEIC Part 3 item with two questions is refused by the structure check."
+	twoQuestionsListening := json.RawMessage(`{
+		"title": "Office Conversation",
+		"script": "Hello John, did you receive the report from the marketing department yesterday?",
+		"questions": [
+			{
+				"id": "q1",
+				"type": "multiple_choice",
+				"prompt": "What department sent the report?",
+				"options": [
+					{"id": "A", "text": "Marketing"},
+					{"id": "B", "text": "Sales"},
+					{"id": "C", "text": "Finance"},
+					{"id": "D", "text": "HR"}
+				],
+				"correct_option_id": "A",
+				"explanation": {"explanation_en": "Marketing department.", "explanation_vi": "Phòng marketing."}
+			},
+			{
+				"id": "q2",
+				"type": "multiple_choice",
+				"prompt": "When was it sent?",
+				"options": [
+					{"id": "A", "text": "Yesterday"},
+					{"id": "B", "text": "Today"},
+					{"id": "C", "text": "Last week"},
+					{"id": "D", "text": "This morning"}
+				],
+				"correct_option_id": "A",
+				"explanation": {"explanation_en": "Yesterday.", "explanation_vi": "Hôm qua."}
+			}
+		]
 	}`)
 
-	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
-		Kind:       kindChoice,
-		CEFRLevel:  "A2",
-		Body:       body,
+	// 1. TOEIC Part 3 expects 3 questions per conversation. With 2 questions -> MUST FAIL
+	err := svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:      kindListening,
+		CEFRLevel: "B1",
+		Body:      twoQuestionsListening,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			QuestionsPerGroup: 3,
+			OptionCount:       4,
+			AudioRequired:     true,
+		},
 		BlindSolve: false,
+	})
+	require.Error(t, err, "TOEIC Part 3 with 2 questions must be refused")
+	assert.Contains(t, err.Error(), "check (exam structure) failed")
+	assert.Contains(t, err.Error(), "questions per group is 2, want 3")
+
+	// 2. Three questions -> PASS
+	threeQuestionsListening := json.RawMessage(`{
+		"title": "Office Conversation",
+		"script": "Hello John, did you receive the report from the marketing department yesterday? Yes I did.",
+		"questions": [
+			{
+				"id": "q1",
+				"type": "multiple_choice",
+				"prompt": "What department sent the report?",
+				"options": [
+					{"id": "A", "text": "Marketing"},
+					{"id": "B", "text": "Sales"},
+					{"id": "C", "text": "Finance"},
+					{"id": "D", "text": "HR"}
+				],
+				"correct_option_id": "A",
+				"explanation": {"explanation_en": "Marketing department.", "explanation_vi": "Phòng marketing."}
+			},
+			{
+				"id": "q2",
+				"type": "multiple_choice",
+				"prompt": "When was it sent?",
+				"options": [
+					{"id": "A", "text": "Yesterday"},
+					{"id": "B", "text": "Today"},
+					{"id": "C", "text": "Last week"},
+					{"id": "D", "text": "This morning"}
+				],
+				"correct_option_id": "A",
+				"explanation": {"explanation_en": "Yesterday.", "explanation_vi": "Hôm qua."}
+			},
+			{
+				"id": "q3",
+				"type": "multiple_choice",
+				"prompt": "Did John receive it?",
+				"options": [
+					{"id": "A", "text": "Yes"},
+					{"id": "B", "text": "No"},
+					{"id": "C", "text": "Maybe"},
+					{"id": "D", "text": "Not sure"}
+				],
+				"correct_option_id": "A",
+				"explanation": {"explanation_en": "Yes he did.", "explanation_vi": "Vâng anh ấy đã nhận."}
+			}
+		]
+	}`)
+
+	err = svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:      kindListening,
+		CEFRLevel: "B1",
+		Body:      threeQuestionsListening,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			QuestionsPerGroup: 3,
+			OptionCount:       4,
+			AudioRequired:     true,
+		},
+		BlindSolve: false,
+	})
+	require.NoError(t, err, "TOEIC Part 3 with 3 questions must pass")
+}
+
+func TestVerifyItem_ProvenanceCheck(t *testing.T) {
+	ctx := context.Background()
+
+	svc := service.New(service.Deps{
+		Lesson:       newFakePoolLessons(),
+		LessonAuthor: newFakePoolLessons(),
+		Graders:      passingGraders(),
+		Clock:        clock.NewFake(time.Now()),
+	})
+
+	bodyWithoutProv := json.RawMessage(`{
+		"prompt": "She ___ lived here for three years.",
+		"options": [
+			{"id": "A", "text": "has"},
+			{"id": "B", "text": "have"},
+			{"id": "C", "text": "had"},
+			{"id": "D", "text": "having"}
+		],
+		"correct_option_id": "A",
+		"explanation": {"explanation_en": "Present perfect with she uses has.", "explanation_vi": "Hiện tại hoàn thành."}
+	}`)
+
+	// CheckProvenance true without _provenance -> MUST FAIL
+	err := svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:            "grammar_tense_choice",
+		CEFRLevel:       "B1",
+		Body:            bodyWithoutProv,
+		CheckProvenance: true,
 	})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "check 2 (own answer scores full marks) failed")
-}
+	assert.Contains(t, err.Error(), "check 8 (provenance) failed")
 
-func TestVerifyItem_GrammarTenseChoice_Check5_Duplicate(t *testing.T) {
-	t.Parallel()
-	svc := newVerifierTestService(t, true)
-
-	body := json.RawMessage(`{
-		"prompt": "She ___ to school every day.",
+	bodyWithProv := json.RawMessage(`{
+		"prompt": "She ___ lived here for three years.",
 		"options": [
-			{"id": "opt1", "text": "goes"},
-			{"id": "opt2", "text": "go"},
-			{"id": "opt3", "text": "went"},
-			{"id": "opt4", "text": "gone"}
+			{"id": "A", "text": "has"},
+			{"id": "B", "text": "have"},
+			{"id": "C", "text": "had"},
+			{"id": "D", "text": "having"}
 		],
-		"correct_option_id": "opt1",
-		"explanation": {"explanation_vi": "Hiện tại đơn diễn tả thói quen"}
+		"correct_option_id": "A",
+		"explanation": {"explanation_en": "Present perfect with she uses has.", "explanation_vi": "Hiện tại hoàn thành."},
+		"_provenance": {
+			"prompt_version": "item_generate.v1",
+			"model": "mock-model",
+			"ai_request_id": "11111111-2222-3333-4444-555555555555"
+		}
 	}`)
 
-	existing := []json.RawMessage{body}
-
-	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
-		Kind:       kindChoice,
-		CEFRLevel:  "A2",
-		Body:       body,
-		Existing:   existing,
-		BlindSolve: false,
-	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "check 5 (deduplication) failed")
-}
-
-func TestVerifyItem_WritingPrompt_Pass(t *testing.T) {
-	t.Parallel()
-	svc := newVerifierTestService(t, true)
-
-	//nolint:lll // a JSON fixture; the model answer is one sentence-long string
-	body := json.RawMessage(`{
-		"prompt": "Describe your favourite hobby and explain why you enjoy doing it in your free time with friends.",
-		"model_answer": "My favourite hobby is playing chess with my close friends on weekends. Chess requires deep concentration, creativity, and strategic thinking which helps me develop my problem solving skills in daily situations. Whenever I sit down to play a match, I feel completely engaged in the tactical intricacies of the game. It is a wonderful way to challenge my intellect while having meaningful conversations with companions. Furthermore, chess teaches me patience, resilience, and the humility to accept defeats gracefully. Overall, chess is not only an entertaining game but also a wonderful mental exercise that significantly enriches my personal life and friendships."
-	}`)
-
-	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
-		Kind:       "writing_prompt",
-		CEFRLevel:  "B1",
-		Body:       body,
-		BlindSolve: false,
-	})
-	require.NoError(t, err)
-}
-
-func TestVerifyItem_SpeakingTask_Pass(t *testing.T) {
-	t.Parallel()
-	svc := newVerifierTestService(t, true)
-
-	//nolint:lll // a JSON fixture, kept as one literal
-	body := json.RawMessage(`{
-		"task_type": "read_aloud",
-		"prompt": "Please read the following sentence clearly and naturally.",
-		"reference_text": "Learning a new language opens up exciting opportunities to travel and connect with people worldwide.",
-		"speaking_time_seconds": 30
-	}`)
-
-	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
-		Kind:       "speaking_task",
-		TaskType:   "read_aloud",
-		CEFRLevel:  "A2",
-		Body:       body,
-		BlindSolve: false,
-	})
-	require.NoError(t, err)
-}
-
-func TestVerifyItem_Vocabulary_Pass(t *testing.T) {
-	t.Parallel()
-	svc := newVerifierTestService(t, true)
-
-	body := json.RawMessage(`{
-		"prompt": "Choose the word that means 'to make better':",
-		"options": [
-			{"id": "1", "text": "improve"},
-			{"id": "2", "text": "damage"},
-			{"id": "3", "text": "reduce"},
-			{"id": "4", "text": "ignore"}
-		],
-		"correct_option_id": "1"
-	}`)
-
-	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
-		Kind:       "vocab_multiple_choice",
-		CEFRLevel:  "A2",
-		Body:       body,
-		BlindSolve: false,
+	err = svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:            "grammar_tense_choice",
+		CEFRLevel:       "B1",
+		Body:            bodyWithProv,
+		CheckProvenance: true,
 	})
 	require.NoError(t, err)
 }

@@ -24,8 +24,11 @@ import (
 var answerKeys = map[string]struct{}{
 	"correct_answer":     {},
 	"correct_answers":    {},
+	"correct_option":     {},
 	"correct_option_id":  {},
 	"correct_option_ids": {},
+	"key":                {},
+	"keys":               {},
 	// `vocab_match`: word option id against definition option id. Without this
 	// row the whole matching key travelled to the renderer, which is the exact
 	// leak the rest of this list exists to close.
@@ -48,6 +51,8 @@ var answerKeys = map[string]struct{}{
 	"transcript": {},
 	// Writing prompt: the model answer must not leak to the learner before submission.
 	"model_answer": {},
+	// Machine-generated item provenance: prompt version, model, AI request ID.
+	"_provenance": {},
 }
 
 // RedactForLearner strips the answer from a content body.

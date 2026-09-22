@@ -55,6 +55,16 @@ const (
 	TaskPlacementGenerate Task = "placement_generate"
 	// TaskPlacementSolve blind-solves a placement exercise item without answers.
 	TaskPlacementSolve Task = "placement_solve"
+	// TaskResourceClassify classifies extracted text to estimate CEFR level, skill, and spine nodes.
+	TaskResourceClassify Task = "resource_classify"
+	// TaskItemGenerate generates unified learning, foundation, bank, or resource items.
+	TaskItemGenerate Task = "item_generate"
+	// TaskItemSolve blind-solves an item to verify consensus answer key.
+	TaskItemSolve Task = "item_solve"
+	// TaskItemLevel estimates the CEFR level of an item with reasoning.
+	TaskItemLevel Task = "item_level"
+	// TaskFoundationTopicGenerate generates comprehensive foundation topic bodies.
+	TaskFoundationTopicGenerate Task = "foundation_topic_generate"
 )
 
 // Request is one unit of work.

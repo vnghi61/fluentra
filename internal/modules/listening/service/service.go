@@ -108,8 +108,11 @@ type listeningBody struct {
 	AudioObjectKey  string                              `json:"audio_object_key,omitempty"`
 	DurationSeconds int                                 `json:"duration_seconds,omitempty"`
 	Prompt          string                              `json:"prompt,omitempty"`
+	ImageURL        string                              `json:"image_url,omitempty"`
+	AudioURL        string                              `json:"audio_url,omitempty"`
 	CorrectAnswer   string                              `json:"correct_answer,omitempty"`
 	CorrectOptionID string                              `json:"correct_option_id,omitempty"`
+	Key             string                              `json:"key,omitempty"`
 	Acceptable      []string                            `json:"acceptable,omitempty"`
 	Explanation     *learningcontract.AnswerExplanation `json:"explanation,omitempty"`
 	Questions       []contentcontract.QuestionItem      `json:"questions,omitempty"`

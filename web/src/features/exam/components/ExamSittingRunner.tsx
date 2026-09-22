@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { examApi, problemCode } from "../api/examApi";
 import { partOf, questionSlots, slotAnchor, type QuestionSlot } from "../parts";
 import type {
+  ChoiceOption,
   ChoiceQuestion,
   DraftAnswers,
   ExamAttempt,
@@ -37,6 +38,7 @@ import type {
   SittingActivity,
   SittingAnswer,
 } from "../types";
+
 import { ListeningPlayer } from "./ListeningPlayer";
 import { SpeakingRecorder } from "./SpeakingRecorder";
 
@@ -60,10 +62,13 @@ export interface ExamSittingRunnerProps {
 export function isAnswered(answer: SittingAnswer | undefined): boolean {
   if (!answer) return false;
   if ("answers" in answer) return Object.keys(answer.answers).length > 0;
+  if ("selected_option_id" in answer) return answer.selected_option_id.trim() !== "";
   if ("text_answer" in answer) return answer.text_answer.trim() !== "";
   if ("answer" in answer) return answer.answer.trim() !== "";
-  return answer.audio_object_key !== "";
+  if ("audio_object_key" in answer) return answer.audio_object_key !== "";
+  return false;
 }
+
 
 export function formatClock(totalSeconds: number): string {
   const safe = Math.max(0, Math.floor(totalSeconds));
@@ -466,19 +471,33 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
         </nav>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div
-            className={cn(
-              "flex items-center gap-2 rounded-lg border px-3 py-1.5 font-mono text-sm font-bold sm:text-base",
-              remaining < 120
-                ? "border-danger/30 bg-danger/10 text-danger-accent"
-                : "border-border-subtle bg-surface-muted text-text",
-            )}
-            role="timer"
-            aria-label={t("exam.runner.timeLeft")}
-          >
-            <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>{formatClock(remaining)}</span>
-          </div>
+          {attempt.unlimited ? (
+            <div
+              className="flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-muted px-3 py-1.5 font-mono text-sm font-bold text-text sm:text-base"
+              role="timer"
+              aria-label={t("exam.runner.timeElapsed")}
+            >
+              <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {/* Elapsed is the complement of the backstop countdown, which already ticks. */}
+              <span>
+                {formatClock(attempt.chosen_duration_minutes * 60 - remaining)}
+              </span>
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-lg border px-3 py-1.5 font-mono text-sm font-bold sm:text-base",
+                remaining < 120
+                  ? "border-danger/30 bg-danger/10 text-danger-accent"
+                  : "border-border-subtle bg-surface-muted text-text",
+              )}
+              role="timer"
+              aria-label={t("exam.runner.timeLeft")}
+            >
+              <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{formatClock(remaining)}</span>
+            </div>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -853,7 +872,8 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
 
   if (
     activity.kind === "listening_comprehension" ||
-    activity.kind === "reading_comprehension"
+    activity.kind === "reading_comprehension" ||
+    activity.kind === "text_completion"
   ) {
     const selected = answer && "answers" in answer ? answer.answers : {};
     const select = (questionId: string, optionId: string) =>
@@ -884,6 +904,89 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
           selected={selected}
           onSelect={select}
         />
+      </div>
+    );
+  }
+
+  if (
+    activity.kind === "photo_description" ||
+    activity.kind === "question_response" ||
+    activity.kind === "mcq_gap"
+  ) {
+    const selectedOpt =
+      answer && "selected_option_id" in answer && typeof answer.selected_option_id === "string"
+        ? answer.selected_option_id
+        : answer && "answers" in answer && typeof answer.answers === "object"
+          ? Object.values(answer.answers)[0] ?? ""
+          : "";
+    const select = (optionId: string) =>
+      onChange({ selected_option_id: optionId });
+
+
+    const rawOpts: ChoiceOption[] =
+      config.options || config.statements || config.responses || [];
+    const options: ChoiceOption[] = rawOpts.map((o) => ({
+      id: o.id || "",
+      text: o.text || o.id || "",
+    }));
+
+    return (
+      <div className={cardClass} id={anchor}>
+        {heading(
+          config.prompt ||
+            config.sentence ||
+            (activity.kind === "photo_description"
+              ? t("exam.listening.photoDescription", "Photo Description")
+              : activity.kind === "question_response"
+                ? t("exam.listening.questionResponse", "Question-Response")
+                : t("exam.reading.mcqGap", "Incomplete Sentences")),
+        )}
+        {activity.kind === "photo_description" && config.image_url && (
+          <div className="flex justify-center p-4">
+            <img
+              src={config.image_url}
+              alt="Photo Description"
+              className="max-h-72 rounded-xl border border-border-subtle object-contain shadow-sm"
+            />
+          </div>
+        )}
+        {(activity.kind === "photo_description" ||
+          activity.kind === "question_response") && (
+          <ListeningPlayer
+            versionId={activity.content_version_id}
+            sittingId={sittingId}
+            title={config.title}
+          />
+        )}
+        {config.sentence && (
+          <div className="rounded-xl border border-border-subtle bg-surface-muted/60 p-5 text-sm font-medium leading-relaxed text-text sm:text-base">
+            <p>{config.sentence}</p>
+          </div>
+        )}
+        <div className="grid grid-cols-1 gap-2.5 pt-2 sm:grid-cols-2">
+          {options.map((option) => {
+            const isSelected = selectedOpt === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => select(option.id)}
+                className={cn(
+                  "flex min-h-[44px] items-center gap-3 rounded-lg border p-3 text-left text-sm",
+                  isSelected
+                    ? "border-primary bg-primary/10 font-medium text-primary-accent"
+                    : "border-border bg-surface-card text-text hover:bg-surface-muted",
+                )}
+              >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-subtle text-xs font-bold">
+                  {option.id}
+                </span>
+                <span className="min-w-0 flex-1">{option.text}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     );
   }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	paymentcontract "github.com/fluentra/fluentra/internal/modules/payment/contract"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/modules/studio/domain"
 	"github.com/fluentra/fluentra/internal/modules/studio/repository"
 	"github.com/fluentra/fluentra/internal/modules/studio/service"
@@ -847,4 +849,281 @@ func TestEarnings_RequestPayoutAndFulfill(t *testing.T) {
 	if earnings.LifetimeEarningsVND != 1000000 {
 		t.Errorf("expected lifetime earnings unchanged at 1,000,000, got %d", earnings.LifetimeEarningsVND)
 	}
+}
+
+// mockMaterialPublisher stands in for the resource module's read-and-copy
+// surface so Gate 1's material_ready check can be exercised without storage.
+type mockMaterialPublisher struct {
+	material *resourcecontract.Material
+	err      error
+	copied   []string
+	objects  *resourcecontract.PublishedObjects
+}
+
+func (m *mockMaterialPublisher) MaterialForOwner(
+	_ context.Context, _, _ uuid.UUID,
+) (*resourcecontract.Material, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.material, nil
+}
+
+func (m *mockMaterialPublisher) CopyForPublication(
+	_ context.Context, _ uuid.UUID, prefix string,
+) (*resourcecontract.PublishedObjects, error) {
+	m.copied = append(m.copied, prefix)
+	if m.objects != nil {
+		return m.objects, nil
+	}
+	return &resourcecontract.PublishedObjects{Original: prefix + "original.mp4"}, nil
+}
+
+const testSkillVocabulary = "vocabulary"
+
+func materialCourseStructure(resourceID uuid.UUID) []byte {
+	return materialCourseStructureOf(resourceID, "video")
+}
+
+// materialCourseStructureOf builds a three-lesson course whose first lesson is
+// a single material, plus the twenty exercises a course needs. The material
+// kind is a hint only; Gate 1 derives the real kind from the resource MIME.
+func materialCourseStructureOf(resourceID uuid.UUID, materialKind string) []byte {
+	material := domain.ActivityDraft{
+		Kind:   domain.KindLessonMaterial,
+		Weight: 0,
+		Body:   json.RawMessage(`{"resource_id":"` + resourceID.String() + `","title":"Intro"}`),
+		Material: &domain.MaterialDraft{
+			ResourceID:   &resourceID,
+			MaterialKind: materialKind,
+			Title:        "Intro",
+		},
+	}
+	exercises := func() []domain.ActivityDraft {
+		acts := make([]domain.ActivityDraft, 0, 10)
+		for i := 0; i < 10; i++ {
+			acts = append(acts, domain.ActivityDraft{
+				Kind:   "vocab_multiple_choice",
+				Weight: 10,
+				Body:   json.RawMessage(`{"prompt":"Select","answer":"test"}`),
+			})
+		}
+		return acts
+	}
+	structure := domain.CourseStructure{Units: []domain.UnitDraft{{
+		Title: "Unit 1",
+		Lessons: []domain.LessonDraft{
+			{Title: "Watch", SkillFocus: "listening", CEFRLevel: "B1",
+				Activities: []domain.ActivityDraft{material}},
+			{Title: "A", SkillFocus: testSkillVocabulary, CEFRLevel: "B1", Activities: exercises()},
+			{Title: "B", SkillFocus: testSkillVocabulary, CEFRLevel: "B1", Activities: exercises()},
+		},
+	}}}
+	raw, _ := json.Marshal(structure)
+	return raw
+}
+
+func TestGate1_MaterialReady(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockRepo()
+	svc := service.NewService(repo, &mockVerifier{}, &mockLessonAuthor{}, &mockContentAuthor{})
+	resourceID := uuid.New()
+	svc.SetMaterialPublisher(&mockMaterialPublisher{material: &resourcecontract.Material{
+		ID:           resourceID,
+		Status:       resourcecontract.MaterialValidated,
+		DetectedMIME: "video/mp4",
+		Renditions: []resourcecontract.Rendition{
+			{Kind: "video_360p", Status: resourcecontract.RenditionReady},
+		},
+	}})
+
+	creatorID := uuid.New()
+	draft, err := svc.CreateDraft(ctx, creatorID, service.CreateDraftRequest{
+		Title: "With Video", Slug: "with-video", Description: "d", CEFRLevel: "B1",
+		Structure: materialCourseStructure(resourceID),
+	})
+	if err != nil {
+		t.Fatalf("create draft: %v", err)
+	}
+	sub, err := svc.SubmitDraft(ctx, creatorID, draft.ID)
+	if err != nil {
+		t.Fatalf("submit draft: %v", err)
+	}
+	if sub.Status != domain.SubmissionStatusInReview {
+		t.Fatalf("a ready material should pass Gate 1, got %s: %s",
+			sub.Status, string(sub.VerificationReport))
+	}
+}
+
+// A document material passes once its preview rendition is ready; the detected
+// MIME, not the draft's material_kind hint, decides which rendition is needed.
+func TestGate1_DocumentMaterialReady(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockRepo()
+	svc := service.NewService(repo, &mockVerifier{}, &mockLessonAuthor{}, &mockContentAuthor{})
+	resourceID := uuid.New()
+	svc.SetMaterialPublisher(&mockMaterialPublisher{material: &resourcecontract.Material{
+		ID:           resourceID,
+		Status:       resourcecontract.MaterialValidated,
+		DetectedMIME: "application/pdf",
+		Renditions: []resourcecontract.Rendition{
+			{Kind: "preview", Status: resourcecontract.RenditionReady},
+		},
+	}})
+
+	creatorID := uuid.New()
+	draft, err := svc.CreateDraft(ctx, creatorID, service.CreateDraftRequest{
+		Title: "With Document", Slug: "with-document", Description: "d", CEFRLevel: "B1",
+		Structure: materialCourseStructureOf(resourceID, "document"),
+	})
+	if err != nil {
+		t.Fatalf("create draft: %v", err)
+	}
+	sub, err := svc.SubmitDraft(ctx, creatorID, draft.ID)
+	if err != nil {
+		t.Fatalf("submit draft: %v", err)
+	}
+	if sub.Status != domain.SubmissionStatusInReview {
+		t.Fatalf("a ready document should pass Gate 1, got %s: %s",
+			sub.Status, string(sub.VerificationReport))
+	}
+}
+
+// A document whose preview is not ready fails, exactly as a processing video
+// does: the runner's card has no image to show.
+func TestGate1_DocumentPreviewNotReadyFails(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockRepo()
+	svc := service.NewService(repo, &mockVerifier{}, &mockLessonAuthor{}, &mockContentAuthor{})
+	resourceID := uuid.New()
+	svc.SetMaterialPublisher(&mockMaterialPublisher{material: &resourcecontract.Material{
+		ID:           resourceID,
+		Status:       resourcecontract.MaterialValidated,
+		DetectedMIME: "application/pdf",
+		Renditions: []resourcecontract.Rendition{
+			{Kind: "preview", Status: testPayoutPending},
+		},
+	}})
+
+	creatorID := uuid.New()
+	draft, _ := svc.CreateDraft(ctx, creatorID, service.CreateDraftRequest{
+		Title: "Doc Processing", Slug: "doc-processing", Description: "d", CEFRLevel: "B1",
+		Structure: materialCourseStructureOf(resourceID, "document"),
+	})
+	sub, err := svc.SubmitDraft(ctx, creatorID, draft.ID)
+	if err != nil {
+		t.Fatalf("submit draft: %v", err)
+	}
+	if sub.Status != domain.SubmissionStatusChangesRequested {
+		t.Fatalf("a document still processing should fail Gate 1, got %s", sub.Status)
+	}
+}
+
+func TestGate1_MaterialNotOwnedFails(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockRepo()
+	svc := service.NewService(repo, &mockVerifier{}, &mockLessonAuthor{}, &mockContentAuthor{})
+	// MaterialForOwner answers not-found for a resource the draft owner does
+	// not own, which is what a pasted foreign resource id looks like.
+	svc.SetMaterialPublisher(&mockMaterialPublisher{err: errors.New("resource not found")})
+
+	creatorID := uuid.New()
+	draft, err := svc.CreateDraft(ctx, creatorID, service.CreateDraftRequest{
+		Title: "Stolen Video", Slug: "stolen-video", Description: "d", CEFRLevel: "B1",
+		Structure: materialCourseStructure(uuid.New()),
+	})
+	if err != nil {
+		t.Fatalf("create draft: %v", err)
+	}
+	sub, err := svc.SubmitDraft(ctx, creatorID, draft.ID)
+	if err != nil {
+		t.Fatalf("submit draft: %v", err)
+	}
+	if sub.Status != domain.SubmissionStatusChangesRequested {
+		t.Fatalf("a foreign material resource should fail Gate 1, got %s", sub.Status)
+	}
+	found := false
+	for _, f := range decodeFailures(t, sub.VerificationReport) {
+		if f.Check == "material_ready" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected a material_ready failure, report: %s", string(sub.VerificationReport))
+	}
+}
+
+func TestGate1_MaterialStillProcessingFails(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockRepo()
+	svc := service.NewService(repo, &mockVerifier{}, &mockLessonAuthor{}, &mockContentAuthor{})
+	resourceID := uuid.New()
+	svc.SetMaterialPublisher(&mockMaterialPublisher{material: &resourcecontract.Material{
+		ID:           resourceID,
+		Status:       resourcecontract.MaterialValidated,
+		DetectedMIME: "video/mp4",
+		Renditions: []resourcecontract.Rendition{
+			{Kind: "video_360p", Status: testPayoutPending},
+		},
+	}})
+
+	creatorID := uuid.New()
+	draft, _ := svc.CreateDraft(ctx, creatorID, service.CreateDraftRequest{
+		Title: "Processing", Slug: "processing", Description: "d", CEFRLevel: "B1",
+		Structure: materialCourseStructure(resourceID),
+	})
+	sub, err := svc.SubmitDraft(ctx, creatorID, draft.ID)
+	if err != nil {
+		t.Fatalf("submit draft: %v", err)
+	}
+	if sub.Status != domain.SubmissionStatusChangesRequested {
+		t.Fatalf("a video still processing should fail Gate 1, got %s", sub.Status)
+	}
+}
+
+// The resource intake accepts audio and images, which are not lesson materials:
+// they must fail with a message saying so, not wait for a preview forever.
+func TestGate1_MaterialOfUnsupportedTypeFails(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockRepo()
+	svc := service.NewService(repo, &mockVerifier{}, &mockLessonAuthor{}, &mockContentAuthor{})
+	resourceID := uuid.New()
+	svc.SetMaterialPublisher(&mockMaterialPublisher{material: &resourcecontract.Material{
+		ID:           resourceID,
+		Status:       resourcecontract.MaterialValidated,
+		DetectedMIME: "audio/mpeg",
+		Renditions: []resourcecontract.Rendition{
+			{Kind: "audio_web", Status: resourcecontract.RenditionReady},
+		},
+	}})
+
+	creatorID := uuid.New()
+	draft, _ := svc.CreateDraft(ctx, creatorID, service.CreateDraftRequest{
+		Title: "Audio", Slug: "audio", Description: "d", CEFRLevel: "B1",
+		Structure: materialCourseStructure(resourceID),
+	})
+	sub, err := svc.SubmitDraft(ctx, creatorID, draft.ID)
+	if err != nil {
+		t.Fatalf("submit draft: %v", err)
+	}
+	found := false
+	for _, f := range decodeFailures(t, sub.VerificationReport) {
+		if f.Check == "material_ready" && strings.Contains(f.Message, "must be a PDF") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected an unsupported-type failure, report: %s", string(sub.VerificationReport))
+	}
+}
+
+func decodeFailures(t *testing.T, report json.RawMessage) []domain.VerificationFailure {
+	t.Helper()
+	var decoded struct {
+		Failures []domain.VerificationFailure `json:"failures"`
+	}
+	if err := json.Unmarshal(report, &decoded); err != nil {
+		t.Fatalf("decode verification report: %v", err)
+	}
+	return decoded.Failures
 }
