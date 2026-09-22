@@ -287,3 +287,39 @@ func TestValidateStructureAndSafety_Check6_Safety(t *testing.T) {
 		})
 	}
 }
+
+// A material body carries its resource_id. A UUID with a long run of digits
+// read as a phone number and failed a valid course at random; ids are not
+// contact details, but a real phone number next to one still is.
+func TestValidateStructureAndSafety_UUIDIsNotAPhoneNumber(t *testing.T) {
+	material := func(body string) domain.ActivityDraft {
+		return domain.ActivityDraft{Kind: domain.KindLessonMaterial, Body: json.RawMessage(body)}
+	}
+	build := func(act domain.ActivityDraft) []byte {
+		raw, _ := json.Marshal(domain.CourseStructure{Units: []domain.UnitDraft{{
+			Title: testUnitTitle,
+			Lessons: []domain.LessonDraft{
+				{Title: "Read", SkillFocus: testSkillListening, CEFRLevel: "B1",
+					Activities: []domain.ActivityDraft{act}},
+				{Title: "A", SkillFocus: testSkillVocabulary, CEFRLevel: "B1", Activities: exerciseActivities(10)},
+				{Title: "B", SkillFocus: testSkillVocabulary, CEFRLevel: "B1", Activities: exerciseActivities(10)},
+			},
+		}}})
+		return raw
+	}
+
+	_, failures, err := domain.ValidateStructureAndSafety("Course", "Description",
+		build(material(`{"resource_id":"01234567-8901-4234-8567-890123456789","title":"Doc"}`)))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(failures) != 0 {
+		t.Fatalf("a digit-heavy resource id is not a phone number, got: %+v", failures)
+	}
+
+	_, failures, _ = domain.ValidateStructureAndSafety("Course", "Description",
+		build(material(`{"resource_id":"01234567-8901-4234-8567-890123456789","title":"Call 0912345678"}`)))
+	if len(failures) == 0 {
+		t.Fatal("a phone number beside an id must still fail the safety check")
+	}
+}

@@ -88,6 +88,10 @@ var (
 	//nolint:lll // one literal; splitting it would make it unreadable and easy to break
 	phoneRegex = regexp.MustCompile(`(?:\+?84|0)(?:\d{9}|\d{10})\b|\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b`)
 	urlRegex   = regexp.MustCompile(`https?://[^\s]+`)
+	// uuidRegex matches the ids a body may carry (a material's resource_id). A
+	// UUID with a long run of digits reads as a phone number to phoneRegex, which
+	// failed a valid course at random; ids are not contact details.
+	uuidRegex = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
 )
 
 // ValidateStructureAndSafety runs Check 1 (Structure), Check 2 (Minimum size),
@@ -297,7 +301,7 @@ func validateActivity(uIdx, lIdx, aIdx int, act ActivityDraft) []VerificationFai
 			Message:       fmt.Sprintf("Activity kind %q is not supported or permitted", act.Kind),
 		})
 	}
-	if hasContactDetails(string(act.Body)) {
+	if hasContactDetails(uuidRegex.ReplaceAllString(string(act.Body), "")) {
 		failures = append(failures, VerificationFailure{
 			UnitIndex:     uIdx,
 			LessonIndex:   lIdx,
