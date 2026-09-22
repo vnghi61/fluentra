@@ -1,10 +1,11 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ExampleSentences } from "@/components/ui/example-sentences";
 import { PronounceButton } from "@/components/ui/pronounce-button";
 import { readExampleSentences } from "@/lib/examples";
+import { START_TIMEOUT_MS } from "@/lib/speech";
 
 /**
  * The behaviour these cover is the reason the feature exists.
@@ -23,6 +24,8 @@ class FakeUtterance {
   text: string;
   lang = "";
   rate = 1;
+  voice: unknown = undefined;
+  onstart: (() => void) | null = null;
   onend: (() => void) | null = null;
   onerror: (() => void) | null = null;
 
@@ -90,6 +93,83 @@ describe("PronounceButton", () => {
     expect(screen.getByRole("button")).toBeEnabled();
     await userEvent.click(screen.getByRole("button"));
     expect(speak).toHaveBeenCalledTimes(2);
+  });
+
+  describe("when the engine takes the utterance and never speaks", () => {
+    // Chrome on Android: the pinned voice is not installed, so the utterance is
+    // dropped with no error. The icon pulsed and the phone stayed silent.
+    const englishVoice = { lang: "en-US", name: "English" };
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.stubGlobal("speechSynthesis", {
+        speak,
+        cancel,
+        resume: vi.fn(),
+        getVoices: () => [englishVoice],
+        speaking: false,
+        pending: false,
+      });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("retries without the pinned voice, then says what to check", () => {
+      render(<PronounceButton text="delicious" />);
+      fireEvent.click(screen.getByRole("button"));
+
+      expect(speak).toHaveBeenCalledTimes(1);
+      const first = speak.mock.calls[0]?.[0] as FakeUtterance & {
+        voice?: unknown;
+      };
+      expect(first.voice).toBe(englishVoice);
+
+      act(() => {
+        vi.advanceTimersByTime(START_TIMEOUT_MS);
+      });
+      expect(speak).toHaveBeenCalledTimes(2);
+      const retry = speak.mock.calls[1]?.[0] as FakeUtterance & {
+        voice?: unknown;
+      };
+      expect(retry.voice).toBeUndefined();
+      expect(retry.lang).toBe("en-US");
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(START_TIMEOUT_MS);
+      });
+      expect(screen.getByRole("status")).toHaveTextContent(/media volume/i);
+      // Still usable: the fix is on the phone, and the next tap should try again.
+      expect(screen.getByRole("button")).toBeEnabled();
+    });
+
+    it("does not speak the previous card's word after the card changes", () => {
+      const { rerender } = render(<PronounceButton text="delicious" />);
+      fireEvent.click(screen.getByRole("button"));
+      rerender(<PronounceButton text="habit" />);
+
+      act(() => {
+        vi.advanceTimersByTime(START_TIMEOUT_MS * 2);
+      });
+      expect(speak).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("leaves speech alone once the engine has started", () => {
+      render(<PronounceButton text="delicious" />);
+      fireEvent.click(screen.getByRole("button"));
+      const first = speak.mock.calls[0]?.[0] as FakeUtterance & {
+        onstart: (() => void) | null;
+      };
+      act(() => {
+        first.onstart?.();
+        vi.advanceTimersByTime(START_TIMEOUT_MS * 2);
+      });
+      expect(speak).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
   });
 
   it("is disabled when there is nothing to say", () => {

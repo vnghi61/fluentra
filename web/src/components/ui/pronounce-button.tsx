@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Volume2, VolumeX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -52,6 +53,9 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
   const { t } = useTranslation();
   const [isPlaying, setIsPlaying] = useState(false);
   const [failed, setFailed] = useState(false);
+  // The engine took the utterance and never spoke. The button stays usable —
+  // this is usually the phone's media volume or TTS voice, fixable by the user.
+  const [silent, setSilent] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // A card can be advanced mid-utterance. Without this, the previous word keeps
@@ -65,11 +69,13 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
   }, [text, audioUrl]);
 
   const speak = useCallback(() => {
+    setSilent(false);
     speakText(text, {
       lang,
       onStart: () => setIsPlaying(true),
       onEnd: () => setIsPlaying(false),
       onFailure: () => setFailed(true),
+      onSilent: () => setSilent(true),
     });
   }, [text, lang]);
 
@@ -104,6 +110,12 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
     [audioUrl, speak, text],
   );
 
+  useEffect(() => {
+    if (!silent) return undefined;
+    const hide = setTimeout(() => setSilent(false), 6000);
+    return () => clearTimeout(hide);
+  }, [silent]);
+
   const unavailable = failed || !text.trim();
   const title =
     label ??
@@ -112,31 +124,49 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
       : t("pronounce.listen", "Listen to the pronunciation"));
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size={size}
-      disabled={unavailable}
-      onClick={handleClick}
-      onKeyDown={(e) => e.stopPropagation()}
-      title={title}
-      aria-label={title}
-      className={cn(
-        "h-11 w-11 shrink-0 rounded-full p-0 min-h-[44px] min-w-[44px]",
-        className,
-      )}
-    >
-      {unavailable ? (
-        <VolumeX className="h-4 w-4 text-text-muted" aria-hidden="true" />
-      ) : (
-        <Volume2
-          className={cn(
-            "h-4 w-4 text-primary-accent",
-            isPlaying && "animate-pulse",
-          )}
-          aria-hidden="true"
-        />
-      )}
-    </Button>
+    <span className="inline-flex shrink-0">
+      <Button
+        type="button"
+        variant="ghost"
+        size={size}
+        disabled={unavailable}
+        onClick={handleClick}
+        onKeyDown={(e) => e.stopPropagation()}
+        title={title}
+        aria-label={title}
+        className={cn(
+          "h-11 w-11 shrink-0 rounded-full p-0 min-h-[44px] min-w-[44px]",
+          className,
+        )}
+      >
+        {unavailable ? (
+          <VolumeX className="h-4 w-4 text-text-muted" aria-hidden="true" />
+        ) : (
+          <Volume2
+            className={cn(
+              "h-4 w-4 text-primary-accent",
+              isPlaying && "animate-pulse",
+            )}
+            aria-hidden="true"
+          />
+        )}
+      </Button>
+      {silent &&
+        // Portalled to <body>: speakers sit at card edges, inside
+        // overflow-hidden rows and inside the flip card's 3D transform, which
+        // turns `fixed` into "relative to the card". None of those can clip it.
+        createPortal(
+          <span
+            role="status"
+            className="pointer-events-none fixed inset-x-4 bottom-24 z-50 mx-auto max-w-sm rounded-lg border border-border-subtle bg-surface-card px-3 py-2 text-left text-sm text-text shadow-lg"
+          >
+            {t(
+              "pronounce.silent",
+              "No sound? Turn up your phone's media volume, or install an English voice in its text-to-speech settings.",
+            )}
+          </span>,
+          document.body,
+        )}
+    </span>
   );
 };
