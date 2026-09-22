@@ -309,3 +309,28 @@ func TestGenerator_FoundationContentKinds(t *testing.T) {
 	// All 3 items must have landed as drafts
 	assert.Len(t, author.drafts, 3)
 }
+
+// The count sizes an allocation and a loop of model calls, and it arrives from a
+// request body: past the spec's maximum it is refused before anything runs.
+func TestGenerator_RefusesACountPastTheMaximum(t *testing.T) {
+	mockAI := ai.NewMockProvider(nil)
+	svc := service.New(service.Deps{
+		Content:           newFakeContentReader(),
+		ContentAuthor:     &generatorTestAuthor{},
+		AI:                mockAI,
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+	})
+
+	_, err := svc.Generate(context.Background(), learningcontract.GenerateRequest{
+		Kind:      testKindTenseChoice,
+		CEFRLevel: "B1",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1 << 30,
+		Purpose:   testPurposeFoundation,
+	})
+
+	var appErr *apperr.Error
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, "GENERATOR_COUNT_TOO_LARGE", appErr.Code)
+}

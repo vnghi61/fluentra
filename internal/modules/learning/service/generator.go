@@ -45,7 +45,8 @@ func (s *Service) Generate(
 
 	authorID := s.resolveAuthorForRequest(ctx, req)
 	blindSolve := (req.Purpose == purposeBank || req.Purpose == purposeFoundation)
-	results := make([]learningcontract.GeneratedItem, 0, req.Count)
+	// Not preallocated from req.Count: the size would come from a request body.
+	var results []learningcontract.GeneratedItem
 
 	for i := 0; i < req.Count; i++ {
 		authoredItem, err := s.retryGenerateSingleItem(ctx, req, spineNodeStrings, tagRefs, authorID, blindSolve, i)
@@ -58,6 +59,10 @@ func (s *Service) Generate(
 
 	return results, nil
 }
+
+// maxGenerateCount is the most items one Generate call may produce; it matches
+// GenerateQuestionsRequest.count's maximum in the OpenAPI spec.
+const maxGenerateCount = 100
 
 func validateGenerateRequest(req *learningcontract.GenerateRequest) error {
 	if strings.TrimSpace(req.Kind) == "" {
@@ -75,6 +80,13 @@ func validateGenerateRequest(req *learningcontract.GenerateRequest) error {
 	}
 	if req.Count <= 0 {
 		req.Count = 1
+	}
+	// The count reaches here from an admin request body, and it sizes an
+	// allocation and a loop of model calls; the spec's maximum is enforced here
+	// because nothing validates request bodies against the spec.
+	if req.Count > maxGenerateCount {
+		return apperr.New(apperr.Validation, "GENERATOR_COUNT_TOO_LARGE",
+			fmt.Sprintf("At most %d items can be generated per request.", maxGenerateCount))
 	}
 	switch req.Purpose {
 	case purposePractice, purposeFoundation, purposeBank, purposeResource:
