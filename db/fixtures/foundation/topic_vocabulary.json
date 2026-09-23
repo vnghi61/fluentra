@@ -1,0 +1,290 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.3073161Z",
+  "node": {
+    "namespace": "vocabulary",
+    "code": "TOPIC_VOCABULARY",
+    "label": "Topic Vocabulary",
+    "cefr_level": "A2"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-topic-vocabulary-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Every morning, my grandmother ___ fresh vegetables at the market before she cooks lunch.",
+        "options": [
+          {
+            "id": "A",
+            "text": "buys"
+          },
+          {
+            "id": "B",
+            "text": "bought"
+          },
+          {
+            "id": "C",
+            "text": "will buy"
+          },
+          {
+            "id": "D",
+            "text": "is buying"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:TOPIC_VOCABULARY:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:57:29Z"
+          },
+          "ai_request_id": "3b5fb0b9-c967-462c-8673-bd17bb44ee07",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests present simple for habitual actions with a clear time marker 'every morning', using simple everyday vocabulary (vegetables, market, cooks). Distractors include past simple and future forms, appropriate for A2 tense discrimination.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The word 'every morning' shows a daily routine, so we use the present simple tense 'buys' to describe habitual actions, especially with topic vocabulary about food and shopping like 'vegetables' and 'market'.",
+          "explanation_vi": "Cụm 'every morning' (mỗi sáng) chỉ thói quen hàng ngày, nên dùng thì hiện tại đơn 'buys' để diễn tả hành động lặp lại, kết hợp với từ vựng chủ đề thực phẩm và mua sắm như 'vegetables' (rau) và 'market' (chợ)."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:57:29Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-topic-vocabulary-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "At the market, you can buy fresh ___ like tomatoes, carrots, and potatoes.",
+        "options": [
+          {
+            "id": "A",
+            "text": "vegetables"
+          },
+          {
+            "id": "B",
+            "text": "furniture"
+          },
+          {
+            "id": "C",
+            "text": "tickets"
+          },
+          {
+            "id": "D",
+            "text": "shoes"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:TOPIC_VOCABULARY:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:57:18Z"
+          },
+          "ai_request_id": "e092f3f0-1941-4b8e-a475-50ae3391e3f3",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses a simple present sentence with everyday market/food vocabulary ('vegetables', 'tomatoes', 'carrots', 'potatoes') typical of A2. Distractors are common concrete nouns, making the task accessible at A2 rather than A1, where 'vegetables' as a category word may be less familiar.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Vegetables' are plants we eat, such as tomatoes, carrots, and potatoes. The other options do not fit the context of food at a market.",
+          "explanation_vi": "'Vegetables' nghĩa là rau củ, ví dụ như cà chua, cà rốt và khoai tây. Các lựa chọn khác không phù hợp với ngữ cảnh về thực phẩm ở chợ."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:57:18Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-topic-vocabulary",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "My grandmother grows vegetables in the ___, behind her house.",
+        "options": [
+          {
+            "id": "A",
+            "text": "garden"
+          },
+          {
+            "id": "B",
+            "text": "kitchen"
+          },
+          {
+            "id": "C",
+            "text": "bedroom"
+          },
+          {
+            "id": "D",
+            "text": "garage"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:TOPIC_VOCABULARY:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:57:59Z"
+          },
+          "ai_request_id": "bbdf4438-7bca-4f95-a409-f92fdfce18c4",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses a simple present sentence with very common household vocabulary (garden, kitchen, bedroom, garage) and basic context clues, making it appropriate for A1 rather than A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A 'garden' is an area of ground next to a house where people grow flowers, vegetables, or fruit.",
+          "explanation_vi": "'Garden' (vườn) là khu đất cạnh nhà nơi mọi người trồng hoa, rau hoặc cây ăn quả."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:57:59Z"
+      }
+    },
+    {
+      "slug": "foundation-review-topic-vocabulary",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Choose the correct word: 'I need to buy some ___ at the pharmacy because I have a headache.'",
+        "options": [
+          {
+            "id": "A",
+            "text": "medicine"
+          },
+          {
+            "id": "B",
+            "text": "furniture"
+          },
+          {
+            "id": "C",
+            "text": "vegetables"
+          },
+          {
+            "id": "D",
+            "text": "stationery"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:TOPIC_VOCABULARY:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:58:28Z"
+          },
+          "ai_request_id": "3cd448a1-fa94-4b03-b1c5-34c572640247",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses simple present sentences with everyday vocabulary (pharmacy, headache, buy). Distractors like 'stationery' and 'furniture' are common A2-level nouns, and the task of matching a word to a shop context is a routine A2 lexical task.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Medicine' is what you buy at a pharmacy to treat an illness like a headache. The other items are sold in different shops.",
+          "explanation_vi": "'Medicine' (thuốc) là thứ bạn mua ở nhà thuốc để chữa bệnh như đau đầu. Các đồ vật khác được bán ở những cửa hàng khác nhau."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:58:28Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-topic-vocabulary",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "TOPIC_GRAMMAR_PRESENT_SIMPLE",
+          "TOPIC_VOCABULARY_TIME_EXPRESSIONS",
+          "TOPIC_VOCABULARY_FOOD_AND_MEALS"
+        ],
+        "examples": [
+          {
+            "note": "Uses common routine collocations (get up, have breakfast, go to work) linked with 'then' to show sequence.",
+            "text": "I get up at 6:30, have breakfast, and then go to work by bus."
+          },
+          {
+            "note": "Shows 'go + -ing' for activities (go swimming) and a time expression for free time (at the weekend).",
+            "text": "At the weekend, I usually go swimming with my friends and watch TV in the evening."
+          },
+          {
+            "note": "Demonstrates 'do + homework' collocation and sequencing with 'after' and 'before'.",
+            "text": "After dinner, I do my homework and listen to music before I go to bed."
+          }
+        ],
+        "objective": "Understand and use common topic vocabulary for daily routines and free-time activities, including key verbs, nouns, and collocations, to talk about what you do every day and in your free time.",
+        "_provenance": {
+          "batch": "foundation:TOPIC_VOCABULARY:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:58:48Z"
+          },
+          "ai_request_id": "9231a947-e619-49f1-b117-3aaf8b594363",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At A2 level, learners need topic vocabulary to talk about everyday life. This topic focuses on daily routines and free-time activities. Key verb + noun collocations include: get up, have breakfast/lunch/dinner, go to work/school, take a shower, watch TV, do homework, play sports, go shopping, listen to music, meet friends, and go to bed. Notice the pattern: we use 'have' with meals (have breakfast, NOT 'eat breakfast' in natural English, though 'eat' is possible), 'do' with tasks (do homework, do the housework), and 'play' with sports and games (play football, play video games). We use 'go' with activities ending in -ing (go swimming, go running, go shopping). Time expressions help sequence routines: first, then, after that, in the morning/afternoon/evening, at night, every day, on weekdays, at the weekend. Remember: we say 'at the weekend' (British English) or 'on the weekend' (American English), but 'at night' (NOT 'in the night' for routines). Verbs for routines are usually in the present simple because routines are habits.",
+          "vi": "Ở trình độ A2, người học cần từ vựng theo chủ đề để nói về cuộc sống hàng ngày. Chủ đề này tập trung vào thói quen hàng ngày và hoạt động thời gian rảnh. Các cụm động từ + danh từ quan trọng gồm: get up (thức dậy), have breakfast/lunch/dinner (ăn sáng/trưa/tối), go to work/school (đi làm/đi học), take a shower (tắm), watch TV (xem TV), do homework (làm bài tập), play sports (chơi thể thao), go shopping (đi mua sắm), listen to music (nghe nhạc), meet friends (gặp bạn bè), go to bed (đi ngủ). Lưu ý các quy tắc kết hợp từ: dùng 'have' với các bữa ăn (have breakfast, KHÔNG dùng 'eat breakfast' trong tiếng Anh tự nhiên, dù 'eat' vẫn có thể dùng), dùng 'do' với các việc phải làm (do homework, do the housework), dùng 'play' với thể thao và trò chơi (play football, play video games). Dùng 'go' với các hoạt động đuôi -ing (go swimming, go running, go shopping). Các từ chỉ thời gian giúp nối trình tự thói quen: first (đầu tiên), then (sau đó), after that (tiếp đó), in the morning/afternoon/evening, at night, every day, on weekdays, at the weekend. Lưu ý: người Anh nói 'at the weekend', người Mỹ nói 'on the weekend', nhưng luôn nói 'at night' (KHÔNG nói 'in the night' khi nói về thói quen). Động từ chỉ thói quen thường dùng thì hiện tại đơn vì đó là các thói quen lặp lại."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "The collocation is 'do homework', not 'play homework'. 'Play' is used with sports and games (play football, play games), while 'do' is used with tasks and work.",
+            "right": "I do my homework every evening.",
+            "wrong": "I play the homework every evening."
+          },
+          {
+            "why": "The correct time expression for routines is 'at night', not 'in the night'. English uses fixed prepositions with time expressions: in the morning/afternoon/evening, but at night.",
+            "right": "I go to bed at night at 10 o'clock.",
+            "wrong": "I go to bed in the night at 10 o'clock."
+          },
+          {
+            "why": "With he/she/it in the present simple, the verb needs -s/-es. 'Make breakfast' is also a useful collocation for preparing meals.",
+            "right": "She makes breakfast for her family every morning.",
+            "wrong": "She make breakfast for her family every morning."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:58:48Z"
+      }
+    }
+  ]
+}

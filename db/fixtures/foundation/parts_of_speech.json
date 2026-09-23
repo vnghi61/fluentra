@@ -1,0 +1,228 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.2030195Z",
+  "node": {
+    "namespace": "grammar",
+    "code": "PARTS_OF_SPEECH",
+    "label": "Parts of Speech",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-parts-of-speech-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "My sister ___ to music every evening after dinner.",
+        "options": [
+          {
+            "id": "A",
+            "text": "listens"
+          },
+          {
+            "id": "B",
+            "text": "listen"
+          },
+          {
+            "id": "C",
+            "text": "listening"
+          },
+          {
+            "id": "D",
+            "text": "to listen"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PARTS_OF_SPEECH:20260923T141046",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:15:24Z"
+          },
+          "ai_request_id": "b44f44cf-6864-4395-8921-1582a3ef96a5",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests third-person singular -s in the present simple with very common vocabulary ('sister', 'music', 'every evening'), which is core A1 grammar.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'My sister' is a third-person singular subject (she), so the verb in the present simple takes -s: 'listens'. The other options are incorrect verb forms for this subject.",
+          "explanation_vi": "'My sister' là chủ ngữ ngôi thứ ba số ít (she), nên động từ ở thì hiện tại đơn phải thêm -s: 'listens'. Các lựa chọn khác là dạng động từ không đúng với chủ ngữ này."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:15:24Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-parts-of-speech",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Which word in this sentence is an adjective? 'The small dog sleeps on the warm sofa.'",
+        "options": [
+          {
+            "id": "A",
+            "text": "dog"
+          },
+          {
+            "id": "B",
+            "text": "small"
+          },
+          {
+            "id": "C",
+            "text": "sleeps"
+          },
+          {
+            "id": "D",
+            "text": "on"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PARTS_OF_SPEECH:20260923T141046",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:16:20Z"
+          },
+          "ai_request_id": "c3c02885-3b9f-4fa9-aaea-bd70db56ec83",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very simple, high-frequency vocabulary ('small dog sleeps on the warm sofa') and asks learners to identify a basic adjective in a simple present-tense sentence. This matches A1-level grammar awareness tasks.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Small' is an adjective because it describes the noun 'dog'. 'Dog' is a noun, 'sleeps' is a verb, and 'on' is a preposition.",
+          "explanation_vi": "'Small' là tính từ vì nó miêu tả danh từ 'dog'. 'Dog' là danh từ, 'sleeps' là động từ, và 'on' là giới từ."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:16:20Z"
+      }
+    },
+    {
+      "slug": "foundation-review-parts-of-speech",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Which word in this sentence is an ADJECTIVE? 'My sister has a beautiful cat.'",
+        "options": [
+          {
+            "id": "A",
+            "text": "sister"
+          },
+          {
+            "id": "B",
+            "text": "beautiful"
+          },
+          {
+            "id": "C",
+            "text": "has"
+          },
+          {
+            "id": "D",
+            "text": "cat"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PARTS_OF_SPEECH:20260923T141046",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:16:41Z"
+          },
+          "ai_request_id": "956c97e4-c457-4382-ba08-bedb239b69e2",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses a very simple present-tense sentence with high-frequency vocabulary ('sister', 'cat', 'beautiful', 'has') and asks learners to identify a basic part of speech (adjective), which is appropriate for A1-level foundational review.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Beautiful' describes the noun 'cat', so it is an adjective. 'Sister' and 'cat' are nouns, and 'has' is a verb.",
+          "explanation_vi": "'Beautiful' miêu tả danh từ 'cat', nên nó là tính từ. 'Sister' và 'cat' là danh từ, còn 'has' là động từ."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:16:41Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-parts-of-speech",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "NOUNS_BASICS",
+          "VERBS_PRESENT_SIMPLE",
+          "ADJECTIVES_BASICS"
+        ],
+        "examples": [
+          {
+            "note": "'children' = noun (subject), 'happy' = adjective describing the noun, 'play' = verb, 'in' = preposition, 'the park' = noun phrase (place).",
+            "text": "The happy children play in the park."
+          },
+          {
+            "note": "'She' and 'I' = pronouns, 'sings' and 'listen' = verbs, 'beautifully' and 'quietly' = adverbs (describe how the action happens), 'and' = conjunction joining two clauses.",
+            "text": "She sings beautifully and I listen quietly."
+          }
+        ],
+        "objective": "Understand the eight main parts of speech (nouns, verbs, adjectives, adverbs, pronouns, prepositions, conjunctions, and interjections) and identify their roles in simple A1-level sentences.",
+        "_provenance": {
+          "batch": "foundation:PARTS_OF_SPEECH:20260923T141046",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:17:36Z"
+          },
+          "ai_request_id": "8f05c8b7-3e56-495a-967f-abccddc7b626",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Every English word belongs to a part of speech, which tells us how the word works in a sentence. NOUNS name people, places, or things (teacher, city, book). VERBS show actions or states (run, be, have). ADJECTIVES describe nouns (big, happy, red) and usually come before the noun or after the verb 'be'. ADVERBS describe verbs, often ending in -ly (slowly, quickly). PRONOUNS replace nouns (I, you, he, she, it, we, they). PREPOSITIONS show position or relationship (in, on, at, under). CONJUNCTIONS join words or sentences (and, but, or). INTERJECTIONS express feelings (wow, oh). A basic English sentence needs at least a subject (a noun or pronoun) and a verb: 'Birds fly.' Word order matters: subject + verb + object (SVO). Recognizing parts of speech helps you build correct sentences and understand grammar rules later.",
+          "vi": "Mỗi từ trong tiếng Anh thuộc về một 'từ loại' (part of speech), cho biết từ đó hoạt động thế nào trong câu. DANH TỪ (noun) chỉ người, nơi chốn hoặc sự vật (teacher, city, book). ĐỘNG TỪ (verb) diễn tả hành động hoặc trạng thái (run, be, have). TÍNH TỪ (adjective) miêu tả danh từ (big, happy, red), thường đứng trước danh từ hoặc sau động từ 'be'. TRẠNG TỪ (adverb) miêu tả động từ, thường tận cùng bằng -ly (slowly, quickly). ĐẠI TỪ (pronoun) thay thế danh từ (I, you, he, she, it, we, they). GIỚI TỪ (preposition) chỉ vị trí hoặc mối quan hệ (in, on, at, under). LIÊN TỪ (conjunction) nối từ hoặc câu (and, but, or). CẢM THÁN TỪ (interjection) diễn tả cảm xúc (wow, oh). Lưu ý quan trọng: một từ có thể thuộc nhiều từ loại khác nhau tùy ngữ cảnh — ví dụ 'work' vừa là danh từ (công việc) vừa là động từ (làm việc). Người học Việt Nam thường gặp khó vì tiếng Việt không biến đổi từ (không có -ly, -s...), nên cần luyện nhận diện từ loại qua vị trí trong câu: tính từ đứng trước danh từ, trạng từ đứng sau động từ."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'Beauty' is a noun; the adjective form is 'beautiful', which is needed before the noun 'girl'. After an action verb like 'sings', an adverb ('beautifully') is required, not an adjective, because adverbs describe how an action is done.",
+            "right": "She is a very beautiful girl and sings beautifully.",
+            "wrong": "She is a very beauty girl and sings beautiful."
+          },
+          {
+            "why": "English uses subject + verb + object (SVO) word order. The verb must come right after the subject; prepositional phrases like 'in the house' usually go at the end of the sentence.",
+            "right": "I live in the house.",
+            "wrong": "I in the house live."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:17:36Z"
+      }
+    }
+  ]
+}

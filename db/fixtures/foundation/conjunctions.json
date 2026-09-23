@@ -1,0 +1,65 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.1189879Z",
+  "node": {
+    "namespace": "grammar",
+    "code": "CONJUNCTIONS",
+    "label": "Conjunctions",
+    "cefr_level": "A2"
+  },
+  "items": [
+    {
+      "slug": "foundation-review-conjunctions",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "I wanted to go for a walk, ___ it started to rain heavily.",
+        "options": [
+          {
+            "id": "A",
+            "text": "so"
+          },
+          {
+            "id": "B",
+            "text": "but"
+          },
+          {
+            "id": "C",
+            "text": "or"
+          },
+          {
+            "id": "D",
+            "text": "because"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:CONJUNCTIONS:20260923T155218",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T16:08:36Z"
+          },
+          "ai_request_id": "492a3de5-e1cf-4f7b-ab6e-6a6c8ac8f26c",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the basic conjunction 'but' for contrast in a simple past-tense sentence with everyday vocabulary, matching A2 descriptors (simple sentences, past simple, basic conjunctions).",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use the conjunction 'but' to show contrast between two ideas: wanting to go for a walk and the rain stopping it.",
+          "explanation_vi": "Dùng liên từ 'but' để diễn tả sự tương phản giữa hai ý: muốn đi dạo và việc trời mưa to ngăn cản điều đó."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T16:08:36Z"
+      }
+    }
+  ]
+}

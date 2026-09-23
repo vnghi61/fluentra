@@ -1,0 +1,51 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.1979369Z",
+  "node": {
+    "namespace": "pattern",
+    "code": "OFFERING",
+    "label": "Offering",
+    "cefr_level": "A2"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-offering-grammar-sentence-transform-1",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'Would you like': Do you want some tea?",
+        "acceptable": [
+          "Would you like some tea",
+          "Would you like a cup of tea?"
+        ],
+        "_provenance": {
+          "batch": "foundation:OFFERING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T15:48:27Z"
+          },
+          "ai_request_id": "eb5ecf08-931e-4304-8771-362c704db906",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item involves transforming a simple sentence using the polite offer form 'Would you like', which is a common A2-level functional pattern. Vocabulary is basic and the task is a routine sentence transformation.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Would you like some tea?"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Would you like...' is the polite form used to make an offer. It is more courteous than 'Do you want...'.",
+          "explanation_vi": "'Would you like...' là cách lịch sự để đưa ra lời mời hoặc đề nghị. Nó lịch sự hơn 'Do you want...'."
+        },
+        "correct_answer": "Would you like some tea?"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T15:48:27Z"
+      }
+    }
+  ]
+}

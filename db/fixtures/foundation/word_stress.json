@@ -1,0 +1,212 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.3137671Z",
+  "node": {
+    "namespace": "pronunciation",
+    "code": "WORD_STRESS",
+    "label": "Word Stress",
+    "cefr_level": "A2"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-word-stress-speaking-task-2",
+      "kind": "speaking_task",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Talk about your favourite food. What is it, how does it taste, and when do you usually eat it? In your answer, say the words 'delicious', 'vegetable', and 'chocolate' clearly, remembering the word stress: de-LI-cious, VE-ge-ta-ble, CHO-co-late.",
+        "task_type": "respond",
+        "_provenance": {
+          "batch": "foundation:WORD_STRESS:20260923T145900",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:59:43Z"
+          },
+          "ai_request_id": "9d9ca34a-c2bf-4966-bd03-53b02d63ebd6",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The task asks for simple, familiar personal content (favourite food, taste, when eaten) using simple present and basic adjectives, matching A2. The explicit word-stress focus on common vocabulary (delicious, vegetable, chocolate) is appropriate pronunciation practice at A2, though 'delicious' slightly stretches the level.",
+          "prompt_version": "item_generate.v1"
+        },
+        "explanation": {
+          "text": "Name the food, describe its taste with simple adjectives, and say when you eat it. Pay attention to word stress: 'delicious' (de-LI-cious), 'vegetable' (VE-ge-ta-ble), and 'chocolate' (CHO-co-late). Saying stressed syllables clearly will make your answer easier to understand.",
+          "text_vi": "Nêu tên món ăn, miêu tả hương vị bằng tính từ đơn giản và nói rõ bạn thường ăn khi nào. Chú ý trọng âm của từ: 'delicious' (de-LI-cious), 'vegetable' (VE-ge-ta-ble) và 'chocolate' (CHO-co-late). Phát âm rõ âm tiết có trọng âm sẽ giúp câu trả lời dễ hiểu hơn."
+        },
+        "speaking_time_seconds": 45
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:59:43Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-word-stress",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Which word has the stress on the FIRST syllable?",
+        "options": [
+          {
+            "id": "A",
+            "text": "hotel (ho-TEL)"
+          },
+          {
+            "id": "B",
+            "text": "banana (ba-NA-na)"
+          },
+          {
+            "id": "C",
+            "text": "family (FA-mi-ly)"
+          },
+          {
+            "id": "D",
+            "text": "computer (com-PU-ter)"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WORD_STRESS:20260923T145900",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T15:00:52Z"
+          },
+          "ai_request_id": "56884c4d-f2ce-4fb2-98b6-4090c1087ba0",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic word stress recognition using very common, everyday vocabulary (family, hotel, banana, computer). The prompt is a simple question, and the concept of first-syllable stress is a foundational phonics/pronunciation skill appropriate for A2 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Family' is stressed on the first syllable: FA-mi-ly. 'Hotel', 'banana', and 'computer' are all stressed on a later syllable.",
+          "explanation_vi": "Từ 'family' có trọng âm rơi vào âm tiết đầu tiên: FA-mi-ly. Các từ 'hotel', 'banana' và 'computer' đều có trọng âm ở âm tiết sau."
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T15:00:52Z"
+      }
+    },
+    {
+      "slug": "foundation-review-word-stress",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Which word has the stress on the FIRST syllable?",
+        "options": [
+          {
+            "id": "A",
+            "text": "hotel"
+          },
+          {
+            "id": "B",
+            "text": "begin"
+          },
+          {
+            "id": "C",
+            "text": "table"
+          },
+          {
+            "id": "D",
+            "text": "again"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WORD_STRESS:20260923T145900",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T15:01:03Z"
+          },
+          "ai_request_id": "5b82a4b8-2dd8-4894-b36a-ac539e1dfc89",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses very common two-syllable words (table, hotel, begin, again) and a simple prompt about first-syllable stress, matching A2 phonological awareness tasks.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Table' is stressed on the first syllable (TA-ble). 'Hotel', 'begin', and 'again' are all stressed on the second syllable (ho-TEL, be-GIN, a-GAIN).",
+          "explanation_vi": "'Table' có trọng âm ở âm tiết thứ nhất (TA-ble). Trong khi đó 'hotel', 'begin' và 'again' đều có trọng âm ở âm tiết thứ hai (ho-TEL, be-GIN, a-GAIN)."
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T15:01:03Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-word-stress",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "SENTENCE_STRESS",
+          "SCHWA_SOUND",
+          "SYLLABLE_COUNTING"
+        ],
+        "examples": [
+          {
+            "note": "Two-syllable noun 'table' stresses the first syllable /ˈteɪ.bəl/; the second syllable is weak with a schwa.",
+            "text": "I bought a new TA-ble for my room."
+          },
+          {
+            "note": "Two-syllable verb 'begin' stresses the second syllable /bɪˈɡɪn/, a common verb pattern.",
+            "text": "She wants to be-GIN the lesson now."
+          },
+          {
+            "note": "Compound noun 'football' stresses the first part /ˈfʊt.bɔːl/.",
+            "text": "We watched a FOOT-ball match yesterday."
+          }
+        ],
+        "objective": "Understand what word stress is, recognize stressed vs. unstressed syllables in two- and three-syllable English words, and apply basic stress rules to pronounce common words clearly and naturally.",
+        "_provenance": {
+          "batch": "foundation:WORD_STRESS:20260923T145900",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T15:01:29Z"
+          },
+          "ai_request_id": "621f6a72-c64f-4efe-ae6f-765ecedc0bfb",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Word stress means saying one syllable in a word louder, longer, and with a higher pitch than the others. Every English word with two or more syllables has exactly one stressed syllable, e.g., TA-ble, ba-NA-na, com-PU-ter. Stress is important because it helps listeners recognize words quickly; saying the wrong syllable can make a word hard to understand. Some useful patterns: (1) Two-syllable nouns and adjectives usually stress the first syllable (TA-ble, HAP-py), while two-syllable verbs often stress the second (be-GIN, for-GET). (2) Words ending in -tion, -sion, -ic stress the syllable just before the ending (na-TION, e-LEC-tric). (3) Compound nouns usually stress the first part (FOOT-ball, BUS-stop). Unstressed syllables often use the weak vowel /ə/ (schwa), so 'banana' sounds like /bəˈnɑː.nə/. In sentences, content words (nouns, main verbs, adjectives) are stressed, while function words (a, of, to, is) are usually reduced.",
+          "vi": "Trọng âm từ (word stress) là việc phát âm một âm tiết trong từ to, dài và cao hơn các âm tiết còn lại. Mọi từ tiếng Anh có hai âm tiết trở lên đều có đúng một âm tiết được nhấn, ví dụ: TA-ble, ba-NA-na, com-PU-ter. Trọng âm rất quan trọng vì giúp người nghe nhận ra từ nhanh chóng; nhấn sai âm tiết có thể khiến từ khó hiểu. Một số quy tắc hữu ích: (1) Danh từ và tính từ hai âm tiết thường nhấn âm tiết thứ nhất (TA-ble, HAP-py), còn động từ hai âm tiết thường nhấn âm tiết thứ hai (be-GIN, for-GET). (2) Từ kết thúc bằng -tion, -sion, -ic nhấn âm tiết ngay trước đuôi đó (na-TION, e-LEC-tric). (3) Danh từ ghép thường nhấn phần đầu (FOOT-ball, BUS-stop). Âm tiết không được nhấn thường phát âm là /ə/ (schwa), nên 'banana' nghe như /bəˈnɑː.nə/. Trong câu, từ mang nội dung (danh từ, động từ chính, tính từ) được nhấn, còn từ chức năng (a, of, to, is) thường được lướt nhẹ. Người học Việt Nam cần lưu ý: tiếng Việt là ngôn ngữ có thanh điệu, không có trọng âm, nên cần luyện tập kéo dài và to hơn âm tiết nhấn, đồng thời lướt nhẹ các âm tiết còn lại."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'Hotel' is a two-syllable noun borrowed from French that takes second-syllable stress. Placing stress on the wrong syllable can make the word unrecognizable to listeners.",
+            "right": "ho-TEL /həˈtel/ with stress on the second syllable.",
+            "wrong": "Pronouncing 'hotel' as HO-tel /ˈhəʊ.tel/ with stress on the first syllable."
+          },
+          {
+            "why": "English words have one primary stress; unstressed syllables must be reduced (often to schwa /ə/). Giving all syllables equal stress sounds unnatural and can confuse listeners.",
+            "right": "ba-NA-na /bəˈnɑː.nə/, with only the middle syllable stressed.",
+            "wrong": "Saying every syllable of 'banana' with equal force: BA-NA-NA."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T15:01:29Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,290 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.1574939Z",
+  "node": {
+    "namespace": "vocabulary",
+    "code": "HIGH_FREQUENCY_WORDS",
+    "label": "High-Frequency Words",
+    "cefr_level": "A2"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-high-frequency-words-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Every morning, my mother ___ breakfast for the whole family before we go to school.",
+        "options": [
+          {
+            "id": "A",
+            "text": "makes"
+          },
+          {
+            "id": "B",
+            "text": "made"
+          },
+          {
+            "id": "C",
+            "text": "make"
+          },
+          {
+            "id": "D",
+            "text": "is making"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:HIGH_FREQUENCY_WORDS:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:28:36Z"
+          },
+          "ai_request_id": "80973b78-d88e-4e9e-a3d6-6eb8d5a03d85",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests present simple third-person singular -s with a habitual time expression ('every morning'), using very common everyday vocabulary. This is core A2 (arguably A1) grammar; distractors include past simple and present continuous, which are also A2-level forms. The target level A2 is appropriate.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The time expression 'every morning' shows a regular habit, so we use the present simple. 'My mother' is third person singular, so the verb takes -s: 'makes'.",
+          "explanation_vi": "Cụm từ 'every morning' cho thấy thói quen thường xuyên nên dùng thì hiện tại đơn. 'My mother' là ngôi thứ ba số ít nên động từ thêm -s: 'makes'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:28:36Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-high-frequency-words-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "I need to ___ some money from the bank before we go on holiday.",
+        "options": [
+          {
+            "id": "A",
+            "text": "borrow"
+          },
+          {
+            "id": "B",
+            "text": "lend"
+          },
+          {
+            "id": "C",
+            "text": "spend"
+          },
+          {
+            "id": "D",
+            "text": "save"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:HIGH_FREQUENCY_WORDS:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:28:28Z"
+          },
+          "ai_request_id": "e95b5aea-d23d-41dc-a9fa-339ef6f9a31d",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests common money-related verbs (borrow, lend, spend, save) in a simple present-tense sentence about a routine everyday situation. These are high-frequency A2 vocabulary items, and the distractors are distinguishable with basic understanding, matching the target level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Borrow' means to take money from someone (or a bank) and return it later. 'Lend' means to give money to someone else, 'spend' means to use money, and 'save' means to keep money over time.",
+          "explanation_vi": "'Borrow' nghĩa là vay tiền từ ai đó (hoặc từ ngân hàng) và trả lại sau. 'Lend' là cho ai đó vay, 'spend' là tiêu tiền, còn 'save' là tiết kiệm tiền."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:28:28Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-high-frequency-words",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "I need to ___ some milk and bread from the shop.",
+        "options": [
+          {
+            "id": "A",
+            "text": "buy"
+          },
+          {
+            "id": "B",
+            "text": "sleep"
+          },
+          {
+            "id": "C",
+            "text": "listen"
+          },
+          {
+            "id": "D",
+            "text": "drive"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:HIGH_FREQUENCY_WORDS:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:29:02Z"
+          },
+          "ai_request_id": "0f14415b-04e0-421d-92fd-c391dab02e5c",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the high-frequency verb 'buy' in a simple present sentence with basic everyday vocabulary (milk, bread, shop), which is A1 level, slightly below the A2 target.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Buy' is a common high-frequency verb meaning to get something by paying money. You buy milk and bread at a shop.",
+          "explanation_vi": "'Buy' là động từ thông dụng, có nghĩa là mua một thứ gì đó bằng tiền. Bạn mua sữa và bánh mì ở cửa hàng."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:29:02Z"
+      }
+    },
+    {
+      "slug": "foundation-review-high-frequency-words",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Choose the correct word: 'I need to ___ some milk from the shop.'",
+        "options": [
+          {
+            "id": "A",
+            "text": "buy"
+          },
+          {
+            "id": "B",
+            "text": "make"
+          },
+          {
+            "id": "C",
+            "text": "do"
+          },
+          {
+            "id": "D",
+            "text": "take"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:HIGH_FREQUENCY_WORDS:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:29:21Z"
+          },
+          "ai_request_id": "8c90efa5-bb88-4c50-bff2-54040b4c784e",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the high-frequency verb 'buy' in a simple everyday sentence ('I need to ___ some milk from the shop'). Vocabulary and structure are basic, matching A2-level routine tasks and common collocations.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The high-frequency verb 'buy' means to get something by paying money. We say 'buy milk', not 'make' or 'do' milk.",
+          "explanation_vi": "Động từ tần suất cao 'buy' nghĩa là mua thứ gì đó bằng tiền. Ta nói 'buy milk' (sữa mua), không dùng 'make' hay 'do' với sữa."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:29:21Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-high-frequency-words",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "PRESENT_SIMPLE",
+          "ARTICLES_A_AN_THE",
+          "PREPOSITIONS_OF_TIME_PLACE"
+        ],
+        "examples": [
+          {
+            "note": "This single sentence uses six high-frequency words: 'I', 'have', 'to', 'the', 'at', and 'in'. Notice the fixed preposition patterns: 'at 7 o'clock' (exact time) and 'in the morning' (part of day).",
+            "text": "I have to go to the store at 7 o'clock in the morning."
+          },
+          {
+            "note": "Shows 'be' + 'not' for negation, 'at home' for location, and 'on Monday' for days of the week. 'You' and 'he' are subject pronouns replacing names.",
+            "text": "He is not at home, but you can talk to him on Monday."
+          },
+          {
+            "note": "'Do' starts a yes/no question with 'have'; 'a' introduces two first-mentioned nouns; 'and' joins them; 'of' connects 'piece' to 'paper'.",
+            "text": "Do you have a pen and a piece of paper?"
+          }
+        ],
+        "objective": "Understand and correctly use the 20 most common high-frequency English words (the, be, to, of, and, a, in, that, have, I, it, for, not, on, with, he, as, you, do, at) in everyday sentences at CEFR A2 level.",
+        "_provenance": {
+          "batch": "foundation:HIGH_FREQUENCY_WORDS:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:29:55Z"
+          },
+          "ai_request_id": "754adfa4-8313-428b-b74a-90c36dcecb89",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "High-frequency words are the small but essential words that appear most often in English. Studies show that the top 100 words make up about half of all written English, so mastering them is the fastest way to build reading and listening skills. This group includes: (1) Articles 'a/an' and 'the' — 'a/an' introduces a general or first-mentioned noun, 'the' points to a specific or already-known one. (2) Pronouns 'I, it, he, you' — replace nouns; 'I' is always capitalized. (3) Prepositions 'to, of, in, for, on, with, at' — show relationships of direction, possession, place, and time; each has fixed common uses (e.g., 'at 7 o'clock', 'on Monday', 'in the morning'). (4) The verb 'be' (am/is/are/was/were) — the most common verb, used for descriptions, identity, and location. (5) Verbs 'have' and 'do' — 'have' shows possession and forms the perfect; 'do' is used in questions and negatives with other verbs ('Do you like it?'). (6) 'and' joins words or sentences; 'that' introduces clauses or points to something; 'not' makes negatives ('is not', 'do not'). These words rarely appear alone — they combine constantly, e.g., 'I have to go to the store.' Learn them in chunks and sentences, not as isolated lists.",
+          "vi": "Từ tần suất cao (high-frequency words) là những từ nhỏ nhưng cực kỳ quan trọng, xuất hiện thường xuyên nhất trong tiếng Anh. Theo nghiên cứu, 100 từ phổ biến nhất chiếm khoảng một nửa mọi văn bản tiếng Anh, nên nắm vững chúng là cách nhanh nhất để cải thiện kỹ năng đọc và nghe. Nhóm này gồm: (1) Mạo từ 'a/an' và 'the' — 'a/an' dùng khi nhắc đến danh từ chung chung hoặc lần đầu; 'the' dùng khi danh từ đã được xác định hoặc cả hai bên đều biết. (2) Đại từ 'I, it, he, you' — thay thế danh từ; 'I' luôn viết hoa. (3) Giới từ 'to, of, in, for, on, with, at' — chỉ hướng, sở hữu, nơi chốn, thời gian; mỗi giới từ có cách dùng cố định (ví dụ: 'at 7 o'clock', 'on Monday', 'in the morning'). Lưu ý: người Việt thường nhầm 'on/in/at' vì tiếng Việt không phân biệt như vậy. (4) Động từ 'be' (am/is/are/was/were) — động từ phổ biến nhất, dùng để miêu tả, xác định, chỉ vị trí. (5) Động từ 'have' và 'do' — 'have' chỉ sở hữu và tạo thì hoàn thành; 'do' dùng trong câu hỏi và câu phủ định ('Do you like it?'). (6) 'and' nối từ hoặc câu; 'that' dẫn mệnh đề hoặc chỉ vật ở xa; 'not' tạo câu phủ định ('is not', 'do not'). Những từ này hiếm khi đứng một mình — chúng kết hợp liên tục, ví dụ 'I have to go to the store.' Hãy học chúng theo cụm từ và trong câu, đừng học kiểu liệt kê rời rạc."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Days of the week always take 'on' (on Monday, on Friday), while parts of the day take 'in' (in the morning). When both appear together, the day's preposition 'on' governs the phrase: 'on Monday morning'.",
+            "right": "I go to school on Monday morning.",
+            "wrong": "I go to school in Monday morning."
+          },
+          {
+            "why": "In English, a negative statement with an ordinary verb needs the auxiliary 'do/does' + 'not'. Only the verb 'be' and modal verbs can be negated directly with 'not'.",
+            "right": "She does not like coffee.",
+            "wrong": "She not like coffee."
+          },
+          {
+            "why": "After a noun is first mentioned with 'a/an', it becomes known to the listener, so later mentions require the definite article 'the'.",
+            "right": "I have a dog. The dog is very cute.",
+            "wrong": "I have a dog. A dog is very cute."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:29:55Z"
+      }
+    }
+  ]
+}

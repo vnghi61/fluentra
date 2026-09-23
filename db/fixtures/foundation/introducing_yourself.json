@@ -1,0 +1,305 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.1677732Z",
+  "node": {
+    "namespace": "pattern",
+    "code": "INTRODUCING_YOURSELF",
+    "label": "Introducing Yourself",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-introducing-yourself-grammar-sentence-transform-1",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'My name is': I am Anna.",
+        "acceptable": [
+          "My name's Anna."
+        ],
+        "_provenance": {
+          "batch": "foundation:INTRODUCING_YOURSELF:20260923T134506",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:47:28Z"
+          },
+          "ai_request_id": "10a783aa-a4b2-42b8-95ff-f1da9246b1da",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item involves only the most basic self-introduction patterns ('I am' vs 'My name is'), simple present tense, and very common vocabulary, matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "My name is Anna."
+          }
+        },
+        "explanation": {
+          "explanation_en": "When introducing yourself, you can say 'I am + name' or 'My name is + name'. Both patterns are correct and mean the same thing.",
+          "explanation_vi": "Khi giới thiệu bản thân, bạn có thể nói 'I am + tên' hoặc 'My name is + tên'. Cả hai mẫu câu đều đúng và có nghĩa giống nhau."
+        },
+        "correct_answer": "My name is Anna."
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:47:28Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-introducing-yourself-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'Hi, my name is': I am Anna.",
+        "acceptable": [
+          "Hi, my name's Anna.",
+          "Hello, my name is Anna."
+        ],
+        "_provenance": {
+          "batch": "foundation:INTRODUCING_YOURSELF:20260923T134506",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:47:55Z"
+          },
+          "ai_request_id": "dfd3b9e3-03df-40a4-9508-664b76437c0a",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests a basic self-introduction transformation ('I am Anna' → 'Hi, my name is Anna') using the verb 'to be' and very common vocabulary, which matches A1 descriptors. The explanation is simple and bilingual support is provided.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Hi, my name is Anna."
+          }
+        },
+        "explanation": {
+          "explanation_en": "When introducing yourself, you can say 'My name is + your name' instead of 'I am + your name'. Both forms are correct for introductions.",
+          "explanation_vi": "Khi giới thiệu bản thân, bạn có thể dùng 'My name is + tên' thay cho 'I am + tên'. Cả hai cách đều đúng khi giới thiệu."
+        },
+        "correct_answer": "Hi, my name is Anna."
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:47:55Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-introducing-yourself-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Hello, my name is Lan. I ___ from Vietnam.",
+        "options": [
+          {
+            "id": "A",
+            "text": "am"
+          },
+          {
+            "id": "B",
+            "text": "is"
+          },
+          {
+            "id": "C",
+            "text": "are"
+          },
+          {
+            "id": "D",
+            "text": "be"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:INTRODUCING_YOURSELF:20260923T134506",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:47:42Z"
+          },
+          "ai_request_id": "1870257a-c977-42f4-a357-d85167799bbc",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the basic present simple of 'be' with first person 'I am', a core A1 structure. Vocabulary is minimal and everyday (greetings, name, country), and distractors are simple forms of 'be'.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "When introducing yourself, use 'I am' (or 'I'm') with the first person pronoun 'I'. 'Is' is used with he/she/it, and 'are' with you/we/they.",
+          "explanation_vi": "Khi giới thiệu bản thân, dùng 'I am' (hoặc 'I'm') với đại từ ngôi thứ nhất 'I'. 'Is' dùng với he/she/it, còn 'are' dùng với you/we/they."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:47:42Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-introducing-yourself",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Hello! My name is Anna. I ___ from Vietnam.",
+        "options": [
+          {
+            "id": "A",
+            "text": "am"
+          },
+          {
+            "id": "B",
+            "text": "is"
+          },
+          {
+            "id": "C",
+            "text": "are"
+          },
+          {
+            "id": "D",
+            "text": "be"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:INTRODUCING_YOURSELF:20260923T134506",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:48:06Z"
+          },
+          "ai_request_id": "8b4ad330-e480-4e3f-8277-f69bf478accc",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the basic verb 'to be' with 'I am' in a simple self-introduction sentence, using very common vocabulary and simple present structure, which matches A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "When introducing yourself, use 'I am' with the verb 'to be'. 'I' always takes 'am'.",
+          "explanation_vi": "Khi giới thiệu bản thân, dùng 'I am' với động từ 'to be'. Chủ ngữ 'I' luôn đi với 'am'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:48:06Z"
+      }
+    },
+    {
+      "slug": "foundation-review-introducing-yourself",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "You meet a new classmate on the first day of school. Which sentence is the best way to introduce yourself?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Hello, my name is Lan. Nice to meet you."
+          },
+          {
+            "id": "B",
+            "text": "Goodbye, see you tomorrow."
+          },
+          {
+            "id": "C",
+            "text": "Where is the teacher?"
+          },
+          {
+            "id": "D",
+            "text": "I am hungry now."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:INTRODUCING_YOURSELF:20260923T134506",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:48:43Z"
+          },
+          "ai_request_id": "f6df9780-4b82-4cbe-96ae-c2079a6a6253",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses basic greeting and self-introduction phrases ('Hello, my name is...', 'Nice to meet you') with very common vocabulary and simple sentence structures, matching A1 descriptors. The distractors are also simple everyday sentences.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "When introducing yourself, say hello, give your name with 'My name is...', and add a polite phrase like 'Nice to meet you.'",
+          "explanation_vi": "Khi giới thiệu bản thân, hãy chào hỏi, nêu tên với 'My name is...' và thêm câu lịch sự như 'Nice to meet you.'"
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:48:43Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-introducing-yourself",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "VERB_TO_BE",
+          "GREETINGS_AND_FAREWELLS",
+          "POSSESSIVE_ADJECTIVES"
+        ],
+        "examples": [
+          {
+            "note": "A complete self-introduction combining a greeting, name ('My name is...'), and nationality ('I'm from + country').",
+            "text": "Hello! My name is Lan. I'm from Vietnam."
+          },
+          {
+            "note": "Introduces name, age, and occupation. Note the article 'an' before 'engineer' because it starts with a vowel sound.",
+            "text": "Hi, I'm David. I'm 25 years old, and I'm an engineer. Nice to meet you!"
+          }
+        ],
+        "objective": "Understand the formation and core uses of basic self-introduction phrases, including how to state your name, age, nationality, and occupation using the verb 'to be' (am/is/are) and common greeting expressions.",
+        "_provenance": {
+          "batch": "foundation:INTRODUCING_YOURSELF:20260923T134506",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:49:15Z"
+          },
+          "ai_request_id": "7527b5ef-2536-4298-b5f4-52598612173c",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "When introducing yourself in English, you typically use the verb 'to be' (am/is/are) to give basic personal information. Use 'I am' (I'm) + your name ('I'm Anna'), age ('I am 20 years old'), nationality ('I'm Vietnamese'), or occupation ('I'm a student'). Note that in English, we use the verb 'to be' for age and nationality, not 'have'. Common greeting phrases include 'Hello', 'Hi', 'Nice to meet you', and 'How are you?'. When someone introduces themselves, respond with 'Nice to meet you, too.' Remember to use the article 'a/an' before jobs ('I'm a teacher'), and capitalize 'I' always. Contractions like 'I'm' are common in spoken English, while 'I am' is slightly more formal.",
+          "vi": "Khi giới thiệu bản thân bằng tiếng Anh, bạn thường dùng động từ 'to be' (am/is/are) để cung cấp thông tin cá nhân cơ bản. Dùng 'I am' (viết tắt là 'I'm') + tên ('I'm Anna'), tuổi ('I am 20 years old'), quốc tịch ('I'm Vietnamese'), hoặc nghề nghiệp ('I'm a student'). Lưu ý quan trọng: tiếng Anh dùng động từ 'to be' khi nói về tuổi và quốc tịch, KHÔNG dùng 'have' như tiếng Việt ('I am 20' chứ không phải 'I have 20'). Trước nghề nghiệp phải có mạo từ 'a/an' ('I'm a teacher', không được bỏ 'a'). Các câu chào thông dụng gồm 'Hello', 'Hi', 'Nice to meet you'; khi được giới thiệu, hãy đáp lại 'Nice to meet you, too.' Trong văn nói, dạng rút gọn 'I'm' phổ biến hơn, còn 'I am' trang trọng hơn một chút. Luôn viết hoa chữ 'I'."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In English, age is expressed with the verb 'to be', not 'have'. Vietnamese uses 'có' (have) for age, which causes this direct translation error.",
+            "right": "I am 20 years old.",
+            "wrong": "I have 20 years old."
+          },
+          {
+            "why": "Singular countable nouns like 'student' and 'teacher' require the article 'a/an' when stating your occupation.",
+            "right": "I am a student.",
+            "wrong": "I am student."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:49:15Z"
+      }
+    }
+  ]
+}

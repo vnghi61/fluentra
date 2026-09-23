@@ -1,0 +1,11 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.2078184Z",
+  "node": {
+    "namespace": "grammar",
+    "code": "PAST_CONTINUOUS",
+    "label": "Past Continuous",
+    "cefr_level": "A2"
+  },
+  "items": null
+}

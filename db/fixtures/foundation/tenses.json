@@ -1,0 +1,285 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.3040587Z",
+  "node": {
+    "namespace": "grammar",
+    "code": "TENSES",
+    "label": "English Tenses",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-tenses-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, my father ___ coffee before he goes to work.",
+        "options": [
+          {
+            "id": "A",
+            "text": "drinks"
+          },
+          {
+            "id": "B",
+            "text": "drink"
+          },
+          {
+            "id": "C",
+            "text": "drank"
+          },
+          {
+            "id": "D",
+            "text": "is drinking"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:TENSES:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:43:52Z"
+          },
+          "ai_request_id": "ac70dd41-8f8b-4660-8ae1-be31a2426673",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the present simple with a third-person singular -s ending, a core A1 grammar point. The vocabulary (every morning, father, coffee, work) is very common, and the time expression 'every morning' clearly signals daily routine, matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The time expression 'every morning' signals a daily routine, so we use the present simple. With 'my father' (third person singular), the verb takes -s: 'drinks'.",
+          "explanation_vi": "Cụm 'every morning' chỉ thói quen hằng ngày nên dùng thì hiện tại đơn. Với chủ ngữ ngôi thứ ba số ít ('my father'), động từ thêm -s: 'drinks'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:43:52Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-tenses-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, Mai ___ to school by bus.",
+        "options": [
+          {
+            "id": "A",
+            "text": "go"
+          },
+          {
+            "id": "B",
+            "text": "goes"
+          },
+          {
+            "id": "C",
+            "text": "went"
+          },
+          {
+            "id": "D",
+            "text": "going"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:TENSES:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:44:12Z"
+          },
+          "ai_request_id": "362d61d5-0b34-44ce-9046-f730ae633ac5",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the present simple third-person singular -s form ('goes') with a very common time expression ('every morning') and everyday vocabulary (school, bus). This is core A1 grammar.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "With 'every morning' we use the present simple. For third person singular (she/he/it), add -s: 'goes'.",
+          "explanation_vi": "Với 'every morning' ta dùng thì hiện tại đơn. Với ngôi thứ ba số ít (she/he/it), thêm -s: 'goes'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:44:12Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-tenses",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, my father ___ coffee before he goes to work.",
+        "options": [
+          {
+            "id": "A",
+            "text": "drinks"
+          },
+          {
+            "id": "B",
+            "text": "drink"
+          },
+          {
+            "id": "C",
+            "text": "drinking"
+          },
+          {
+            "id": "D",
+            "text": "drank"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:TENSES:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:44:27Z"
+          },
+          "ai_request_id": "fa57805d-e984-4835-9f02-18159225c2ea",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic present simple third-person -s with very common vocabulary ('coffee', 'work', 'morning'), matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The word 'Every morning' shows a daily habit, so we use the present simple tense. With 'he/she/my father', the verb takes -s: 'drinks'.",
+          "explanation_vi": "Cụm 'Every morning' cho thấy thói quen hàng ngày, nên dùng thì hiện tại đơn. Với chủ ngữ 'he/she/my father', động từ thêm -s: 'drinks'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:44:27Z"
+      }
+    },
+    {
+      "slug": "foundation-review-tenses",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, my father ___ coffee before he goes to work.",
+        "options": [
+          {
+            "id": "A",
+            "text": "drinks"
+          },
+          {
+            "id": "B",
+            "text": "drink"
+          },
+          {
+            "id": "C",
+            "text": "drank"
+          },
+          {
+            "id": "D",
+            "text": "is drinking"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:TENSES:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:44:36Z"
+          },
+          "ai_request_id": "c6060133-8cfd-457e-b78b-7703fc32c56f",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the present simple third-person -s rule with everyday vocabulary ('morning', 'father', 'coffee', 'work'), matching A1 descriptors. Distractors include past simple and present continuous, but the core grammar and vocabulary are clearly A1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The phrase 'Every morning' shows a daily habit, so we use the present simple. With 'he' (third person singular), the verb takes -s: 'drinks'.",
+          "explanation_vi": "Cụm 'Every morning' cho thấy thói quen hằng ngày, nên dùng thì hiện tại đơn. Với chủ ngữ 'he' (ngôi thứ ba số ít), động từ thêm -s: 'drinks'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:44:36Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-tenses",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "PRESENT_CONTINUOUS",
+          "ADVERBS_OF_FREQUENCY",
+          "PAST_SIMPLE"
+        ],
+        "examples": [
+          {
+            "note": "Third-person singular subject (she) requires -s on the verb: works.",
+            "text": "She works in a hospital."
+          },
+          {
+            "note": "Negative with 'don't' + base verb; third person 'brother' takes 'drinks' with -s.",
+            "text": "I don't drink coffee, but my brother drinks it every day."
+          },
+          {
+            "note": "Question form: Does + subject + base verb 'live' (no -s after does).",
+            "text": "Does he live in Da Nang?"
+          }
+        ],
+        "objective": "Understand the formation and core uses of the Present Simple tense, including affirmative, negative, and question forms, and the third-person -s rule.",
+        "_provenance": {
+          "batch": "foundation:TENSES:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:45:05Z"
+          },
+          "ai_request_id": "b7bea984-71a1-43c9-91b7-4fbae8a2ec73",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "The Present Simple describes habits, routines, facts, and general truths. Form: subject + base verb (I/you/we/they work); for he/she/it, add -s or -es (he works, she watches). Negatives use do/does not + base verb (I don't work, he doesn't work). Questions use Do/Does + subject + base verb (Does she work?). Use it for routines (I get up at 7), facts (Water boils at 100°C), and permanent situations (She lives in Hanoi). Time markers include: always, usually, often, sometimes, never, every day, on Mondays.",
+          "vi": "Thì hiện tại đơn dùng để diễn tả thói quen, sự việc lặp đi lặp lại, chân lý và sự thật hiển nhiên. Công thức: S + V (nguyên thể) với I/you/we/they; với he/she/it phải thêm -s hoặc -es vào động từ (he works, she watches). Thể phủ định dùng do not (don't) / does not (doesn't) + động từ nguyên thể: I don't work, he doesn't work. Câu hỏi dùng Do/Does + S + V: Does she work?. Lưu ý: khi đã dùng does/doesn't, động từ trở về nguyên thể, không thêm -s. Dùng với các trạng từ tần suất: always, usually, often, sometimes, never và cụm như every day, on Mondays."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "With he/she/it, the negative auxiliary must be 'does not (doesn't)', not 'don't'.",
+            "right": "He doesn't like fish.",
+            "wrong": "He don't like fish."
+          },
+          {
+            "why": "After 'does', the main verb returns to its base form; the -s marker moves to the auxiliary 'does'.",
+            "right": "Does she like music?",
+            "wrong": "Does she likes music?"
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:45:05Z"
+      }
+    }
+  ]
+}

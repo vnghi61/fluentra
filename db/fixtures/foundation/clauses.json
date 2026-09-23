@@ -1,0 +1,232 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.0959888Z",
+  "node": {
+    "namespace": "grammar",
+    "code": "CLAUSES",
+    "label": "Clauses",
+    "cefr_level": "B1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-clauses-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "When the phone rang while she ___ dinner, she ignored it because she was too busy.",
+        "options": [
+          {
+            "id": "A",
+            "text": "cooked"
+          },
+          {
+            "id": "B",
+            "text": "was cooking"
+          },
+          {
+            "id": "C",
+            "text": "has cooked"
+          },
+          {
+            "id": "D",
+            "text": "cooks"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:CLAUSES:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:48:56Z"
+          },
+          "ai_request_id": "367d4d73-d1fb-431e-9227-b6769dbd76dc",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests past continuous vs past simple in interrupted-action contexts, a classic B1 grammar point. Vocabulary is simple, but the tense contrast and distractors (present perfect, present simple) require B1-level control of narrative tenses.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In the time clause 'while she ___ dinner', the past continuous 'was cooking' describes an ongoing background action interrupted by the past simple event 'the phone rang'.",
+          "explanation_vi": "Trong mệnh đề chỉ thời gian 'while she ___ dinner', thì quá khứ tiếp diễn 'was cooking' diễn tả hành động đang diễn ra thì bị sự việc ở quá khứ đơn 'the phone rang' chen vào."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:48:56Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-clauses",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Choose the correct sentence that combines these two clauses: 'It was raining. We went for a walk.'",
+        "options": [
+          {
+            "id": "A",
+            "text": "Although it was raining, we went for a walk."
+          },
+          {
+            "id": "B",
+            "text": "Although it was raining, but we went for a walk."
+          },
+          {
+            "id": "C",
+            "text": "Although was raining, we went for a walk."
+          },
+          {
+            "id": "D",
+            "text": "Although it was raining, we went for a walk but."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:CLAUSES:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:50:21Z"
+          },
+          "ai_request_id": "f3a8cf60-6dc8-4787-823b-c9c51f2fc271",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the complex sentence connector 'although' with a subordinate clause, including the common L1-interference error of combining 'although' with 'but'. Vocabulary is simple (past simple, everyday words), but the subordination and connector-usage awareness required align with B1, where learners work with connectors and clause combining.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A complex sentence with a subordinate clause introduced by 'although' needs a subject and verb in that clause ('it was raining'), and the main clause must not contain 'but' when 'although' is already used.",
+          "explanation_vi": "Câu phức có mệnh đề phụ bắt đầu bằng 'although' cần có chủ ngữ và động từ đầy đủ ('it was raining'), và mệnh đề chính không được dùng 'but' khi đã có 'although'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:50:21Z"
+      }
+    },
+    {
+      "slug": "foundation-review-clauses",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Choose the correct sentence that combines these two clauses: 'The movie was boring. We left early.'",
+        "options": [
+          {
+            "id": "A",
+            "text": "The movie was boring, so we left early."
+          },
+          {
+            "id": "B",
+            "text": "The movie was boring, but we left early."
+          },
+          {
+            "id": "C",
+            "text": "The movie was boring, or we left early."
+          },
+          {
+            "id": "D",
+            "text": "The movie was boring because we left early."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:CLAUSES:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:50:44Z"
+          },
+          "ai_request_id": "f755cb23-3b59-4890-a220-3a4d9606eb73",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic coordinating conjunctions (so, but, or) with simple past-tense clauses and everyday vocabulary ('movie', 'boring', 'left early'). Cause-and-effect linking with 'so' is typically introduced at A2; the distractor analysis involving 'because' clause order adds slight complexity but remains within A2-B1 range. Overall vocabulary and syntax are simple, so A2 is the best fit, though it sits near the A2/B1 boundary.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The two clauses show a cause-and-effect relationship: because the movie was boring, we left early. 'So' correctly links the result clause to the cause clause. 'But' shows contrast, 'or' shows a choice, and 'because' would wrongly make leaving early the cause.",
+          "explanation_vi": "Hai mệnh đề thể hiện quan hệ nhân quả: vì phim nhàm chán nên chúng tôi rời đi sớm. 'So' nối đúng mệnh đề kết quả với mệnh đề nguyên nhân. 'But' diễn tả sự tương phản, 'or' diễn tả sự lựa chọn, còn 'because' sẽ sai vì làm cho việc rời đi sớm trở thành nguyên nhân."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:50:44Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-clauses",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "RELATIVE_CLAUSES",
+          "SUBORDINATING_CONJUNCTIONS",
+          "CONDITIONALS"
+        ],
+        "examples": [
+          {
+            "note": "A complex sentence: the adverbial clause of contrast ('Although she was nervous') comes first and is followed by a comma; the main clause is 'she gave an excellent presentation.'",
+            "text": "Although she was nervous, she gave an excellent presentation."
+          },
+          {
+            "note": "A noun clause ('where he put the keys') acts as the object of 'know'. Note the normal statement word order inside the noun clause, not question order.",
+            "text": "I don't know where he put the keys."
+          },
+          {
+            "note": "A relative clause ('that you lent me') identifies which book is meant; 'that' can often be replaced by 'which' or omitted in defining clauses.",
+            "text": "The book that you lent me was really interesting."
+          }
+        ],
+        "objective": "Understand what clauses are, distinguish independent (main) clauses from dependent (subordinate) clauses, and correctly combine them using subordinating conjunctions and relative pronouns to build complex sentences.",
+        "_provenance": {
+          "batch": "foundation:CLAUSES:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:51:25Z"
+          },
+          "ai_request_id": "a1361db1-5227-4345-b254-7f47d386a32d",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "A clause is a group of words containing a subject and a verb. An independent (main) clause expresses a complete thought and can stand alone as a sentence: 'She works in a bank.' A dependent (subordinate) clause cannot stand alone; it must attach to a main clause. There are three main types of dependent clauses: (1) Noun clauses, which act as the subject or object of a sentence (e.g., 'I know that he is busy.'), often introduced by that, what, whether, if, or wh-words. (2) Adverbial clauses, which describe time, reason, condition, contrast, or purpose (e.g., 'When it rains, we stay home.'), introduced by conjunctions such as when, because, although, if, since, while, before, after. (3) Relative (adjective) clauses, which describe a noun (e.g., 'The man who lives next door is a doctor.'), introduced by who, whom, whose, which, or that. When a dependent clause comes first in the sentence, it is usually followed by a comma: 'Because I was tired, I went to bed early.' When it comes second, no comma is needed: 'I went to bed early because I was tired.' Remember that every clause must have its own subject and finite verb, and a complex sentence must contain at least one main clause — a dependent clause alone is not a complete sentence.",
+          "vi": "Mệnh đề (clause) là nhóm từ có chủ ngữ và động từ. Mệnh đề chính (independent clause) diễn đạt ý trọn vẹn, có thể đứng độc lập thành câu: 'She works in a bank.' Mệnh đề phụ (dependent clause) không thể đứng một mình, phải gắn vào mệnh đề chính. Có ba loại mệnh đề phụ chính: (1) Mệnh đề danh ngữ — làm chủ ngữ hoặc tân ngữ (ví dụ: 'I know that he is busy.'), thường bắt đầu bằng that, what, whether, if hoặc từ để hỏi. (2) Mệnh đề trạng ngữ — chỉ thời gian, lý do, điều kiện, sự tương phản hoặc mục đích (ví dụ: 'When it rains, we stay home.'), bắt đầu bằng when, because, although, if, since, while, before, after. (3) Mệnh đề quan hệ — bổ nghĩa cho danh từ (ví dụ: 'The man who lives next door is a doctor.'), bắt đầu bằng who, whom, whose, which, that. Lưu ý dấu phẩy: khi mệnh đề phụ đứng đầu câu, thường có dấu phẩy phía sau ('Because I was tired, I went to bed early.'); khi đứng sau thì không cần dấu phẩy. Sai lầm phổ biến của người Việt là viết mệnh đề phụ đứng một mình như một câu hoàn chỉnh (comma splice hoặc sentence fragment) — hãy nhớ mỗi câu phức phải có ít nhất một mệnh đề chính, và mỗi mệnh đề phải có chủ ngữ và động từ chia đúng."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'Because I was tired' is a dependent clause and cannot stand alone as a sentence. It must be joined to the main clause; when it comes first, a comma separates the two clauses.",
+            "right": "Because I was tired, I went to bed early.",
+            "wrong": "Because I was tired. I went to bed early."
+          },
+          {
+            "why": "In embedded (noun) clauses after wh-words, use statement word order (subject before verb) and do not add 'do/does' for questions.",
+            "right": "I don't know where he lives.",
+            "wrong": "I don't know where does he live."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:51:25Z"
+      }
+    }
+  ]
+}

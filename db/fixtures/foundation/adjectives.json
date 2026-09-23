@@ -1,0 +1,65 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.0726304Z",
+  "node": {
+    "namespace": "grammar",
+    "code": "ADJECTIVES",
+    "label": "Adjectives",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-quiz-adjectives",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Choose the correct adjective: The coffee is too ___, so I can't drink it now.",
+        "options": [
+          {
+            "id": "A",
+            "text": "hot"
+          },
+          {
+            "id": "B",
+            "text": "cold"
+          },
+          {
+            "id": "C",
+            "text": "sweet"
+          },
+          {
+            "id": "D",
+            "text": "small"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ADJECTIVES:20260923T155218",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T15:56:23Z"
+          },
+          "ai_request_id": "54599b37-8c6e-4395-b058-405ff4249f6c",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very common everyday vocabulary (coffee, hot, cold) and a simple present sentence with basic adjective selection, matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Hot' is an adjective describing temperature. The sentence says the speaker can't drink the coffee now, which means it is too hot.",
+          "explanation_vi": "'Hot' (nóng) là tính từ chỉ nhiệt độ. Câu nói người nói không thể uống cà phê ngay, nghĩa là cà phê quá nóng."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T15:56:23Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,257 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.1239563Z",
+  "node": {
+    "namespace": "pattern",
+    "code": "DAILY_CONVERSATIONS",
+    "label": "Daily Conversations",
+    "cefr_level": "A2"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-daily-conversations-grammar-sentence-transform-1",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'Would you like': Do you want to have dinner with me tonight?",
+        "acceptable": [
+          "Would you like to have dinner with me this evening?",
+          "Would you like to have dinner with me tonight?"
+        ],
+        "_provenance": {
+          "batch": "foundation:DAILY_CONVERSATIONS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:51:37Z"
+          },
+          "ai_request_id": "69372f73-73d9-4ee8-96a1-ef80973c72bc",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the polite invitation form 'Would you like to...' versus 'Do you want to...', a common everyday expression with simple infinitive structure. Vocabulary is basic and the transformation is a routine task, fitting A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Would you like to have dinner with me tonight?"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In daily conversations, 'Would you like to...' is a polite way to invite someone, replacing 'Do you want to...'. It is followed by the infinitive with 'to'.",
+          "explanation_vi": "Trong hội thoại hàng ngày, 'Would you like to...' là cách mời lịch sự, thay cho 'Do you want to...'. Sau nó dùng động từ nguyên mẫu có 'to'."
+        },
+        "correct_answer": "Would you like to have dinner with me tonight?"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:51:37Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-daily-conversations-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'Would you like': 'Do you want to come to my house for dinner tonight?'",
+        "acceptable": [
+          "Would you like to come to my house for dinner this evening?",
+          "Would you like to come over to my house for dinner tonight?"
+        ],
+        "_provenance": {
+          "batch": "foundation:DAILY_CONVERSATIONS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:52:02Z"
+          },
+          "ai_request_id": "84737ab0-7457-40cb-9d27-f1e7aa33c5d7",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests a simple polite invitation transformation ('Do you want to...' → 'Would you like to...') using everyday vocabulary and a fixed, formulaic pattern. This is a common A2-level functional expression, and the transformation requires no complex syntax.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Would you like to come to my house for dinner tonight?"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In daily conversations, 'Would you like to...?' is a polite way to invite someone, replacing the more direct 'Do you want to...?'. The rest of the sentence stays the same.",
+          "explanation_vi": "Trong hội thoại hàng ngày, 'Would you like to...?' là cách mời lịch sự, thay cho cách nói trực tiếp 'Do you want to...?'. Phần còn lại của câu giữ nguyên."
+        },
+        "correct_answer": "Would you like to come to my house for dinner tonight?"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:52:02Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-daily-conversations",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Someone says to you: 'How's it going?' What is the most natural way to reply in a daily conversation?",
+        "options": [
+          {
+            "id": "A",
+            "text": "I am going by bus."
+          },
+          {
+            "id": "B",
+            "text": "Pretty good, thanks! How about you?"
+          },
+          {
+            "id": "C",
+            "text": "Yes, it is going."
+          },
+          {
+            "id": "D",
+            "text": "Goodbye, see you later."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:DAILY_CONVERSATIONS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:52:21Z"
+          },
+          "ai_request_id": "80d5a184-73ea-4b03-820a-04023e919919",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests a common casual greeting 'How's it going?' and a simple conversational reply. Vocabulary and structures are basic everyday expressions; the idiomatic greeting is slightly above A1 but well within A2 social interaction descriptors (routine exchanges, simple phrases). Distractors are simple sentences, keeping overall difficulty at A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'How's it going?' is a casual greeting meaning 'How are you?'. A natural reply is a short positive answer like 'Pretty good, thanks!' followed by returning the question with 'How about you?'.",
+          "explanation_vi": "'How's it going?' là lời chào thân mật nghĩa là 'Bạn thế nào?'. Câu trả lời tự nhiên là một câu trả lời ngắn tích cực như 'Pretty good, thanks!' và hỏi lại 'How about you?'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:52:21Z"
+      }
+    },
+    {
+      "slug": "foundation-review-daily-conversations",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "A friend says: 'How are you today?' What is the best response?",
+        "options": [
+          {
+            "id": "A",
+            "text": "I'm fine, thank you. And you?"
+          },
+          {
+            "id": "B",
+            "text": "Yes, I do."
+          },
+          {
+            "id": "C",
+            "text": "It's on the table."
+          },
+          {
+            "id": "D",
+            "text": "She is my sister."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:DAILY_CONVERSATIONS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:52:33Z"
+          },
+          "ai_request_id": "3f5aa590-d351-47c1-a0f8-f84be2ba9f11",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests a basic greeting exchange ('How are you?' / 'I'm fine, thank you. And you?') with very common vocabulary and simple present forms, which are core A1 descriptors. Distractors are simple sentences too. It is below the target A2 but appropriate as a foundation review item.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "When someone asks 'How are you?', the natural daily conversation response is 'I'm fine, thank you. And you?' The other options answer different questions.",
+          "explanation_vi": "Khi ai đó hỏi 'How are you?', câu trả lời tự nhiên trong hội thoại hằng ngày là 'I'm fine, thank you. And you?' Các đáp án khác trả lời cho những câu hỏi khác."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:52:33Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-daily-conversations",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "GREETINGS_AND_INTRODUCTIONS",
+          "POLITE_REQUESTS",
+          "SMALL_TALK_WEATHER"
+        ],
+        "examples": [
+          {
+            "note": "The most common greeting pattern. 'And you?' politely returns the question without repeating the whole sentence.",
+            "text": "A: Hi, how are you? B: I'm fine, thanks. And you?"
+          },
+          {
+            "note": "'Excuse me' opens a request to a stranger; 'Could you...?' makes the request polite and indirect.",
+            "text": "Excuse me, could you tell me where the bus stop is?"
+          },
+          {
+            "note": "'Would you like...?' is used for offers. The short answers 'Yes, please' and 'No, thanks' are fixed polite responses.",
+            "text": "Would you like some coffee? — Yes, please. / No, thanks."
+          }
+        ],
+        "objective": "Understand and master the core patterns of daily English conversations, including greetings, small talk, asking and answering simple questions, and polite phrases for everyday situations at CEFR A2 level.",
+        "_provenance": {
+          "batch": "foundation:DAILY_CONVERSATIONS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:53:02Z"
+          },
+          "ai_request_id": "8e85790e-be4e-4ee9-a72f-1a5a9894d98b",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Daily conversations in English follow predictable patterns. A typical exchange has three parts: (1) an opening (greeting), e.g. 'Hi, how are you?' or 'Good morning!'; (2) small talk or a request, e.g. 'How was your weekend?', 'Can you help me?'; (3) a closing, e.g. 'See you later!' or 'Have a nice day!'. Use set phrases rather than translating word by word. Common patterns include: 'How + be + you/it...?' for asking about states; 'Can/Could you...?' for polite requests; 'Would you like...?' for offers; and short answers like 'Yes, please.', 'No, thanks.', 'I'm fine, thanks.' Keep responses short and natural. Note that 'How are you?' is a greeting, not a real question about health, so a short positive answer is expected. Politeness markers such as 'please', 'thank you', 'excuse me', and 'sorry' are essential in English daily interaction.",
+          "vi": "Hội thoại hàng ngày trong tiếng Anh theo các mẫu câu khá cố định. Một đoạn hội thoại thường có 3 phần: (1) Mở đầu – chào hỏi: 'Hi, how are you?', 'Good morning!'; (2) Nội dung chính – nói chuyện phiếm hoặc yêu cầu: 'How was your weekend?', 'Can you help me?'; (3) Kết thúc: 'See you later!', 'Have a nice day!'. Người học Việt Nam cần lưu ý: đừng dịch từng chữ từ tiếng Việt, mà hãy dùng nguyên mẫu câu có sẵn. 'How are you?' thực chất là lời chào, không phải câu hỏi thật về sức khỏe, nên chỉ cần trả lời ngắn gọn tích cực như 'I'm fine, thanks. And you?'. Các mẫu hữu ích: 'Can/Could you...?' để yêu cầu lịch sự; 'Would you like...?' để mời/đề nghị; trả lời ngắn như 'Yes, please.', 'No, thanks.'. Các từ lịch sự như 'please', 'thank you', 'excuse me', 'sorry' rất quan trọng và nên dùng thường xuyên."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'How are you?' is a social greeting, not a real question about health. Asking back about health sounds unnatural; the standard reply is a short positive answer plus 'And you?' to return the greeting.",
+            "right": "How are you today? — I'm fine, thanks. And you?",
+            "wrong": "How are you today? — I'm very well, thank you. How about your health?"
+          },
+          {
+            "why": "Direct imperatives like 'Give me...' sound rude in English. Polite request patterns with 'Could I/you...?' and 'please' are expected in daily interactions.",
+            "right": "Could I have the menu, please?",
+            "wrong": "Give me the menu."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:53:02Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.3187685Z",
+  "node": {
+    "namespace": "skill",
+    "code": "WRITING",
+    "label": "Writing Skills",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-writing-writing-prompt-1",
+      "kind": "writing_prompt",
+      "cefr_level": "A1",
+      "body": {
+        "topic": "Family \u0026 Friends",
+        "prompt": "Write about your family. Who is in your family? What do they do? What do you like to do together? Write 5-7 simple sentences.",
+        "min_words": 40,
+        "_provenance": {
+          "batch": "foundation:WRITING:20260923T150704",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T15:10:14Z"
+          },
+          "ai_request_id": "038746a1-8266-4d76-a17f-beb3520ce9bb",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The prompt asks for 5-7 simple sentences about family using simple present tense and very common vocabulary (family members, jobs, shared activities). The 40-word minimum and 15-minute limit are appropriate for A1 writers, and the explanation explicitly targets simple present, short clear sentences.",
+          "prompt_version": "item_generate.v1"
+        },
+        "explanation": {
+          "explanation_en": "A strong A1 response uses simple present tense sentences, names family members, describes their jobs or ages, and includes one sentence about a shared activity. Keep sentences short and clear.",
+          "explanation_vi": "Một bài viết tốt ở trình độ A1 dùng câu đơn với thì hiện tại đơn, nêu tên các thành viên trong gia đình, mô tả công việc hoặc tuổi của họ, và có một câu về hoạt động chung. Giữ câu ngắn và rõ ràng."
+        },
+        "model_answer": "I have a small family. There are four people in my family: my father, my mother, my sister, and me. My father is a teacher. He works at a school near our house. My mother is a nurse. She works at a big hospital. My sister is ten years old. She likes to draw pictures. On the weekend, we go to the park together. We play football and eat ice cream. I love my family very much because they are kind and funny.",
+        "time_limit_minutes": 15
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T15:10:14Z"
+      }
+    }
+  ]
+}

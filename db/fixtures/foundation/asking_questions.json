@@ -1,0 +1,270 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.0932442Z",
+  "node": {
+    "namespace": "pattern",
+    "code": "ASKING_QUESTIONS",
+    "label": "Asking Questions",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-asking-questions-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Rewrite the sentence as a question beginning with 'Where': She lives in Hanoi.",
+        "acceptable": [
+          "Where does she live ?"
+        ],
+        "_provenance": {
+          "batch": "foundation:ASKING_QUESTIONS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:05:07Z"
+          },
+          "ai_request_id": "62499da9-746c-4a1d-abf8-d55b8086df5b",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests forming a simple present 'Where' question with 'does' + base verb, using very common vocabulary ('live', 'Hanoi'), which matches A1 simple present question formation.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Where does she live?"
+          }
+        },
+        "explanation": {
+          "explanation_en": "To ask about a place, start with 'Where' and use the auxiliary 'does' with the base verb 'live' for third person singular.",
+          "explanation_vi": "Để hỏi về nơi chốn, bắt đầu bằng 'Where' và dùng trợ động từ 'does' với động từ nguyên mẫu 'live' cho ngôi thứ ba số ít."
+        },
+        "correct_answer": "Where does she live?"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:05:07Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-asking-questions-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "___ you like coffee in the morning?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Do"
+          },
+          {
+            "id": "B",
+            "text": "Does"
+          },
+          {
+            "id": "C",
+            "text": "Is"
+          },
+          {
+            "id": "D",
+            "text": "Are"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ASKING_QUESTIONS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:04:58Z"
+          },
+          "ai_request_id": "16caad00-1c16-453c-9deb-071592685d19",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the most basic present simple yes/no question with 'Do you like...?', using very common everyday vocabulary ('coffee', 'morning'). This is core A1 grammar.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "To ask a yes/no question in the present simple with 'you', use 'Do' + base verb: 'Do you like...?'",
+          "explanation_vi": "Để hỏi câu hỏi có/không ở thì hiện tại đơn với chủ ngữ 'you', dùng 'Do' + động từ nguyên mẫu: 'Do you like...?'"
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:04:58Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-asking-questions",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Which question is correct for asking about someone's name?",
+        "options": [
+          {
+            "id": "A",
+            "text": "What your name is?"
+          },
+          {
+            "id": "B",
+            "text": "What is your name?"
+          },
+          {
+            "id": "C",
+            "text": "Your name is what?"
+          },
+          {
+            "id": "D",
+            "text": "What name your is?"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ASKING_QUESTIONS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:05:36Z"
+          },
+          "ai_request_id": "3633577b-1bce-432f-ad94-da755fe48fb3",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the basic 'What is your name?' question structure, using very common vocabulary and simple present 'be' — core A1 content. Distractors are simple word-order variations, appropriate for beginner learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "To ask a question with 'what', use question word + verb 'is' + subject: 'What is your name?'",
+          "explanation_vi": "Để đặt câu hỏi với 'what', dùng từ hỏi + động từ 'is' + chủ ngữ: 'What is your name?'"
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:05:36Z"
+      }
+    },
+    {
+      "slug": "foundation-review-asking-questions",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Choose the correct question: '___ your name?'",
+        "options": [
+          {
+            "id": "A",
+            "text": "What is"
+          },
+          {
+            "id": "B",
+            "text": "What are"
+          },
+          {
+            "id": "C",
+            "text": "How is"
+          },
+          {
+            "id": "D",
+            "text": "Who are"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ASKING_QUESTIONS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:05:53Z"
+          },
+          "ai_request_id": "3e97f95c-8879-48c5-993e-96da02060ad8",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the most basic greeting question 'What is your name?' with very common vocabulary and simple present 'is', clearly A1 level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "To ask about someone's name, use 'What is your name?' The verb 'is' agrees with the singular 'your name', and 'What' asks for information about a thing.",
+          "explanation_vi": "Để hỏi tên của ai đó, dùng 'What is your name?'. Động từ 'is' đi với 'your name' (số ít), và 'What' dùng để hỏi thông tin về sự vật."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:05:53Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-asking-questions",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "PRESENT_SIMPLE",
+          "VERB_TO_BE",
+          "WH_QUESTION_WORDS"
+        ],
+        "examples": [
+          {
+            "note": "A yes/no question in the present simple. 'Do' is the auxiliary; the main verb 'speak' stays in its base form. Answer: 'Yes, I do.' or 'No, I don't.'",
+            "text": "Do you speak English?"
+          },
+          {
+            "note": "A wh-question with a third-person subject. Use 'does' for he/she/it, and the main verb 'live' has no -s ending.",
+            "text": "Where does she live?"
+          },
+          {
+            "note": "A yes/no question with the verb 'be'. The subject 'this' and verb 'is' are inverted. Answer: 'Yes, it is.' or 'No, it isn't.'",
+            "text": "Is this your bag?"
+          }
+        ],
+        "objective": "Understand the formation and core uses of basic yes/no and wh-questions in English, including correct word order with auxiliary verbs (do/does/is/are) and question words, at CEFR A1 level.",
+        "_provenance": {
+          "batch": "foundation:ASKING_QUESTIONS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:06:37Z"
+          },
+          "ai_request_id": "f868a396-008f-4772-b3aa-39578b459be2",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "In English, questions follow a different word order from statements. There are two main types at this level: (1) Yes/No questions, which begin with an auxiliary or the verb 'be' (e.g., 'Are you tired?', 'Do you like coffee?'). With the verb 'be', we invert the subject and verb: 'She is a teacher' → 'Is she a teacher?'. With other verbs in the present simple, we use 'do' or 'does': 'You work here' → 'Do you work here?'; 'He works here' → 'Does he work here?' (note: the main verb loses the -s ending after 'does'). (2) Wh-questions, which begin with a question word (What, Where, When, Who, Why, How) followed by the same auxiliary structure: 'Where do you live?', 'What is your name?'. Remember the pattern: Question word + auxiliary + subject + main verb. Do not forget the question mark (?) at the end, and use rising intonation for yes/no questions.",
+          "vi": "Trong tiếng Anh, câu hỏi có trật tự từ khác với câu khẳng định. Ở trình độ cơ bản, có hai loại chính: (1) Câu hỏi Có/Không (Yes/No questions), bắt đầu bằng trợ động từ hoặc động từ 'be' (ví dụ: 'Are you tired?' – Bạn có mệt không?, 'Do you like coffee?' – Bạn có thích cà phê không?). Với động từ 'be', ta đảo chủ ngữ và động từ: 'She is a teacher' → 'Is she a teacher?'. Với các động từ khác ở thì hiện tại đơn, ta dùng 'do' hoặc 'does': 'You work here' → 'Do you work here?'; 'He works here' → 'Does he work here?' (lưu ý: sau 'does', động từ chính bỏ đuôi -s). (2) Câu hỏi với từ để hỏi (Wh-questions), bắt đầu bằng What, Where, When, Who, Why, How, sau đó vẫn giữ cấu trúc trợ động từ như trên: 'Where do you live?' – Bạn sống ở đâu?, 'What is your name?' – Tên bạn là gì? Công thức chung: Từ để hỏi + trợ động từ + chủ ngữ + động từ chính. Đừng quên dấu hỏi (?) ở cuối câu, và giọng đọc lên cao (rising intonation) cho câu hỏi Có/Không."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In wh-questions with ordinary verbs (not 'be'), the auxiliary 'do/does' is required. The pattern is: question word + auxiliary + subject + base verb. Omitting 'do' creates statement word order, which is incorrect in a question.",
+            "right": "Where do you live?",
+            "wrong": "Where you live?"
+          },
+          {
+            "why": "After the auxiliary 'does', the main verb must be in its base form. The third-person -s ending is already shown by 'does', so the verb should be 'like', not 'likes'.",
+            "right": "Does he like pizza?",
+            "wrong": "Does he likes pizza?"
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:06:37Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,281 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.2738778Z",
+  "node": {
+    "namespace": "grammar",
+    "code": "SENTENCE_STRUCTURE",
+    "label": "Sentence Structure",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-sentence-structure-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "My brother ___ to school every morning by bus.",
+        "options": [
+          {
+            "id": "A",
+            "text": "go"
+          },
+          {
+            "id": "B",
+            "text": "goes"
+          },
+          {
+            "id": "C",
+            "text": "going"
+          },
+          {
+            "id": "D",
+            "text": "gone"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SENTENCE_STRUCTURE:20260923T141046",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:13:38Z"
+          },
+          "ai_request_id": "ff55c665-ca45-48d0-8e9e-3e5ef1e2e4c9",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests third-person singular -s in the present simple with very common vocabulary (brother, school, bus, every morning), matching A1 descriptors for simple present and everyday expressions.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "With 'he/she/my brother' in the present simple, add -s to the verb: 'goes'. The sentence describes a daily routine, so present simple is correct.",
+          "explanation_vi": "Với chủ ngữ 'he/she/my brother' ở thì hiện tại đơn, động từ phải thêm -s: 'goes'. Câu mô tả thói quen hàng ngày nên dùng thì hiện tại đơn."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:13:38Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-sentence-structure-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, my father ___ coffee before he goes to work.",
+        "options": [
+          {
+            "id": "A",
+            "text": "drinks"
+          },
+          {
+            "id": "B",
+            "text": "drink"
+          },
+          {
+            "id": "C",
+            "text": "drinking"
+          },
+          {
+            "id": "D",
+            "text": "drank"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SENTENCE_STRUCTURE:20260923T141046",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:13:59Z"
+          },
+          "ai_request_id": "27b30a04-1323-4c3b-8798-6f92c9c343d1",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests third-person singular -s in the present simple with very common vocabulary (coffee, morning, work), matching A1 descriptors. Distractors are simple (base form, gerund, past), and the explanation is basic.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The sentence describes a daily routine, so we use the present simple. With 'my father' (he), the verb takes -s: 'drinks'. The sentence structure requires a subject followed by a verb in the correct form.",
+          "explanation_vi": "Câu diễn tả thói quen hàng ngày nên dùng thì hiện tại đơn. Với chủ ngữ 'my father' (ngôi thứ ba số ít), động từ phải thêm -s: 'drinks'. Cấu trúc câu cần chủ ngữ đi kèm động từ ở dạng đúng."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:13:59Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-sentence-structure",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Choose the correct sentence structure: Which sentence is correct?",
+        "options": [
+          {
+            "id": "A",
+            "text": "She likes very much coffee."
+          },
+          {
+            "id": "B",
+            "text": "She likes coffee very much."
+          },
+          {
+            "id": "C",
+            "text": "She very much likes coffee."
+          },
+          {
+            "id": "D",
+            "text": "She likes very coffee much."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SENTENCE_STRUCTURE:20260923T141046",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:14:45Z"
+          },
+          "ai_request_id": "e2532ef9-c66c-44c7-9ec7-835e05941f0e",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic SVO word order with very common vocabulary (likes, coffee, very much), matching A1 simple present structures. Distractors are simple rearrangements, appropriate for beginner learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In English, the basic sentence structure is Subject + Verb + Object, and adverbs like 'very much' come after the object: 'She likes coffee very much.'",
+          "explanation_vi": "Trong tiếng Anh, cấu trúc câu cơ bản là Chủ ngữ + Động từ + Tân ngữ, và trạng từ như 'very much' đứng sau tân ngữ: 'She likes coffee very much.'"
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:14:45Z"
+      }
+    },
+    {
+      "slug": "foundation-review-sentence-structure",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Choose the correct sentence: Which sentence has the correct word order?",
+        "options": [
+          {
+            "id": "A",
+            "text": "She likes very much coffee."
+          },
+          {
+            "id": "B",
+            "text": "She very much likes coffee."
+          },
+          {
+            "id": "C",
+            "text": "She likes coffee very much."
+          },
+          {
+            "id": "D",
+            "text": "Very much she likes coffee."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SENTENCE_STRUCTURE:20260923T141046",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:14:55Z"
+          },
+          "ai_request_id": "4a2204a8-415e-4b05-b9d2-f70b1394fa0a",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic SVO word order with very common vocabulary ('likes coffee very much'), simple present tense, and everyday expressions, matching A1 descriptors. The distractors test a single elementary grammar rule.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In English sentences, the basic word order is Subject + Verb + Object, and adverbs like 'very much' come after the object: 'She likes coffee very much.'",
+          "explanation_vi": "Trong câu tiếng Anh, trật tự từ cơ bản là Chủ ngữ + Động từ + Tân ngữ, và trạng từ như 'very much' đứng sau tân ngữ: 'She likes coffee very much.'"
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:14:55Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-sentence-structure",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "PRESENT_SIMPLE",
+          "THIRD_PERSON_SINGULAR",
+          "QUESTION_FORMATION"
+        ],
+        "examples": [
+          {
+            "note": "Subject (She) + Verb (drinks, with -s for third person singular) + Object (coffee). This shows the standard SVO order.",
+            "text": "She drinks coffee every morning."
+          },
+          {
+            "note": "A longer SVO sentence with a noun phrase subject (My brother) and a time expression at the end.",
+            "text": "My brother plays football after school."
+          }
+        ],
+        "objective": "Understand the formation and core uses of the basic affirmative sentence structure Subject + Verb + Object in simple present-tense English sentences.",
+        "_provenance": {
+          "batch": "foundation:SENTENCE_STRUCTURE:20260923T141046",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:15:12Z"
+          },
+          "ai_request_id": "563ab5f7-25de-48f8-a822-d097606991eb",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At the A1 level, the foundation of English grammar is the basic word order: Subject + Verb + Object (SVO). The subject is the person or thing doing the action (I, you, he, she, it, we, they, or a noun). The verb shows the action or state. The object receives the action. English sentences almost always follow this fixed order, unlike languages where word order can change freely. In the simple present tense, remember to add -s or -es to the verb when the subject is third person singular (he, she, it). For example: 'I eat rice' but 'She eats rice.' If the verb has no object, the sentence simply ends after the verb: 'Birds fly.' Adjectives and articles come before nouns: 'a red car.' Questions and negatives use auxiliary verbs (do/does), but the SVO order of the main parts stays the same.",
+          "vi": "Ở trình độ A1, nền tảng ngữ pháp tiếng Anh là trật tự từ cơ bản: Chủ ngữ + Động từ + Tân ngữ (SVO). Chủ ngữ là người hoặc vật thực hiện hành động (I, you, he, she, it, we, they, hoặc một danh từ). Động từ thể hiện hành động hoặc trạng thái. Tân ngữ nhận hành động. Câu tiếng Anh hầu như luôn theo trật tự cố định này, khác với tiếng Việt có thể linh hoạt hơn. Ở thì hiện tại đơn, nhớ thêm -s hoặc -es vào động từ khi chủ ngữ là ngôi thứ ba số ít (he, she, it). Ví dụ: 'I eat rice' nhưng 'She eats rice.' Nếu động từ không có tân ngữ, câu kết thúc ngay sau động từ: 'Birds fly.' Tính từ và mạo từ đứng trước danh từ: 'a red car.' Câu hỏi và câu phủ định dùng trợ động từ (do/does), nhưng trật tự SVO của các thành phần chính vẫn giữ nguyên."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "When the subject is third person singular (he, she, it) in the simple present tense, the verb must take -s or -es. 'She like' is missing this ending.",
+            "right": "She likes music.",
+            "wrong": "She like music."
+          },
+          {
+            "why": "English uses fixed Subject + Verb + Object order. The verb must come before the object; putting the object first follows Vietnamese order, not English.",
+            "right": "I eat rice.",
+            "wrong": "I rice eat."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:15:12Z"
+      }
+    }
+  ]
+}

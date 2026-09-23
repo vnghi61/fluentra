@@ -1,0 +1,360 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.1768206Z",
+  "node": {
+    "namespace": "skill",
+    "code": "LISTENING",
+    "label": "Listening Comprehension",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-listening-listening-comprehension-1",
+      "kind": "listening_comprehension",
+      "cefr_level": "A1",
+      "body": {
+        "title": "At the Coffee Shop",
+        "script": "Anna: Hi! Can I have a small coffee, please?\nWaiter: Sure. Anything to eat?\nAnna: Yes, one chocolate cake, please.\nWaiter: OK. That's four dollars, please.\nAnna: Here you are. Oh, and can I sit near the window?\nWaiter: Yes, of course. Table five is free.\nAnna: Thank you! Oh no, I don't have my phone. Can I use your phone? I want to call my friend Ben.\nWaiter: No problem. Here you are.\nAnna: Thanks. Ben is at the bus stop. He is coming in ten minutes.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "What does Anna want to drink?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Tea"
+              },
+              {
+                "id": "B",
+                "text": "A small coffee"
+              },
+              {
+                "id": "C",
+                "text": "Orange juice"
+              },
+              {
+                "id": "D",
+                "text": "Water"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Anna says, 'Can I have a small coffee, please?'",
+              "explanation_vi": "Anna nói: 'Can I have a small coffee, please?' (Cho tôi một cà phê nhỏ)."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "What does Anna want to eat?",
+            "options": [
+              {
+                "id": "A",
+                "text": "A sandwich"
+              },
+              {
+                "id": "B",
+                "text": "An apple"
+              },
+              {
+                "id": "C",
+                "text": "Chocolate cake"
+              },
+              {
+                "id": "D",
+                "text": "Nothing"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Anna asks for 'one chocolate cake, please.'",
+              "explanation_vi": "Anna yêu cầu 'one chocolate cake' (một chiếc bánh sô-cô-la)."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "How much does Anna pay?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Three dollars"
+              },
+              {
+                "id": "B",
+                "text": "Four dollars"
+              },
+              {
+                "id": "C",
+                "text": "Five dollars"
+              },
+              {
+                "id": "D",
+                "text": "Ten dollars"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The waiter says, 'That's four dollars, please.'",
+              "explanation_vi": "Nhân viên nói: 'That's four dollars, please.' (Bốn đô la)."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "Where is Ben?",
+            "options": [
+              {
+                "id": "A",
+                "text": "At the bus stop"
+              },
+              {
+                "id": "B",
+                "text": "At the coffee shop"
+              },
+              {
+                "id": "C",
+                "text": "At home"
+              },
+              {
+                "id": "D",
+                "text": "At the park"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Anna says, 'Ben is at the bus stop.'",
+              "explanation_vi": "Anna nói: 'Ben is at the bus stop.' (Ben đang ở trạm xe buýt)."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "When is Ben coming?",
+            "options": [
+              {
+                "id": "A",
+                "text": "In five minutes"
+              },
+              {
+                "id": "B",
+                "text": "In ten minutes"
+              },
+              {
+                "id": "C",
+                "text": "In one hour"
+              },
+              {
+                "id": "D",
+                "text": "Tomorrow"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Anna says, 'He is coming in ten minutes.'",
+              "explanation_vi": "Anna nói: 'He is coming in ten minutes.' (Anh ấy sẽ đến trong mười phút)."
+            },
+            "correct_option_id": "B"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:58:14Z"
+          },
+          "ai_request_id": "448cf815-2107-4a2c-b0d0-1eff61be966c",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very short, simple sentences with basic everyday vocabulary (coffee, cake, bus stop, minutes) and simple present tense in a familiar café transaction context. Questions and options are single words or short phrases, matching A1 listening comprehension descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "B",
+              "q2": "C",
+              "q3": "B",
+              "q4": "A",
+              "q5": "B"
+            }
+          }
+        }
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:58:14Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-listening",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "title": "Listening Basics - Store Announcement",
+        "prompt": "Listen to the announcement: 'Good afternoon, shoppers. The supermarket will close at nine o'clock tonight. Please finish your shopping before that time. Thank you.' What time does the supermarket close?",
+        "script": "Good afternoon, shoppers. The supermarket will close at nine o'clock tonight. Please finish your shopping before that time. Thank you.",
+        "options": [
+          {
+            "id": "A",
+            "text": "At seven o'clock"
+          },
+          {
+            "id": "B",
+            "text": "At eight o'clock"
+          },
+          {
+            "id": "C",
+            "text": "At nine o'clock"
+          },
+          {
+            "id": "D",
+            "text": "At ten o'clock"
+          }
+        ],
+        "transcript": "Good afternoon, shoppers. The supermarket will close at nine o'clock tonight. Please finish your shopping before that time. Thank you.",
+        "_provenance": {
+          "batch": "foundation:LISTENING:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:00:39Z"
+          },
+          "ai_request_id": "e9548a72-921f-41f3-98a5-aeea6fb14887",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very simple present-tense sentences, common everyday vocabulary (supermarket, close, shopping), and a short announcement asking for a single time detail. This matches A1 listening comprehension of basic phrases and common expressions.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In listening comprehension, listen for key details like times and numbers. The announcement clearly says the supermarket closes 'at nine o'clock tonight'.",
+          "explanation_vi": "Trong nghe hiểu, cần chú ý các chi tiết quan trọng như thời gian và con số. Thông báo nói rõ siêu thị đóng cửa 'vào lúc chín giờ tối nay'."
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:00:39Z"
+      }
+    },
+    {
+      "slug": "foundation-review-listening",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "title": "At the Coffee Shop",
+        "prompt": "Listen to the conversation at the coffee shop. What does Anna want in her coffee?",
+        "script": "Anna: Good morning! Can I have a small coffee, please? Waiter: Sure. Would you like milk or sugar? Anna: Just milk, please. No sugar. Waiter: OK. Anything to eat? Anna: Yes, one piece of chocolate cake, please. Waiter: That's four dollars, please. Anna: Here you are. Thank you!",
+        "options": [
+          {
+            "id": "A",
+            "text": "Milk and sugar"
+          },
+          {
+            "id": "B",
+            "text": "Only milk"
+          },
+          {
+            "id": "C",
+            "text": "Only sugar"
+          },
+          {
+            "id": "D",
+            "text": "Nothing"
+          }
+        ],
+        "transcript": "Anna: Good morning! Can I have a small coffee, please? Waiter: Sure. Would you like milk or sugar? Anna: Just milk, please. No sugar. Waiter: OK. Anything to eat? Anna: Yes, one piece of chocolate cake, please. Waiter: That's four dollars, please. Anna: Here you are. Thank you!",
+        "_provenance": {
+          "batch": "foundation:LISTENING:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:01:16Z"
+          },
+          "ai_request_id": "5e501b00-c5db-45ef-8365-0d10c78b3579",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very common vocabulary (milk, sugar, coffee, please) and simple present comprehension of a short everyday phrase ('Just milk, please. No sugar.'). Options are single basic words/phrases, matching A1 everyday expressions.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Anna says 'Just milk, please. No sugar.' This means she wants only milk in her coffee.",
+          "explanation_vi": "Anna nói 'Just milk, please. No sugar.' Điều này có nghĩa là cô ấy chỉ muốn sữa trong cà phê, không thêm đường."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:01:16Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-listening",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "NUMBERS_AND_TIME",
+          "GREETINGS_AND_INTRODUCTIONS",
+          "QUESTION_WORDS"
+        ],
+        "examples": [
+          {
+            "note": "A typical A1 self-introduction. Key words to catch: 'name', 'Anna', 'Australia'. The contraction 'I'm' sounds like /aɪm/ and means 'I am'.",
+            "text": "Hello! My name is Anna. I'm from Australia."
+          },
+          {
+            "note": "Listening for time expressions. 'Half past nine' = 9:30. Learners should recognize spoken time phrases, which often differ from written forms.",
+            "text": "The train leaves at half past nine."
+          }
+        ],
+        "objective": "Understand and apply basic listening comprehension strategies for short, simple spoken English at CEFR A1 level, including catching key words, numbers, names, and common greetings in slow, clear speech.",
+        "_provenance": {
+          "batch": "foundation:LISTENING:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:01:33Z"
+          },
+          "ai_request_id": "4821f23e-ba0c-4252-a7f5-52a55bca11f7",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At A1 level, listening comprehension focuses on understanding very short, simple spoken texts delivered slowly and clearly: greetings, personal introductions, numbers, prices, times, and simple instructions. Key strategies include: (1) listening for key words (nouns, numbers, names) rather than every word; (2) using context clues to predict what you will hear; (3) recognizing common sound patterns such as contractions ('I'm', 'don't', 'what's') and weak forms; (4) identifying question words (what, where, when, how much) to understand what information is being asked for. Learners should practice listening twice: first for the general idea (gist), then for specific details. Do not worry about understanding every single word — focus on the information needed to answer simple questions.",
+          "vi": "Ở trình độ A1, kỹ năng nghe tập trung vào việc hiểu các đoạn nói ngắn, đơn giản, được đọc chậm và rõ: lời chào, giới thiệu bản thân, số, giá tiền, giờ giấc và hướng dẫn đơn giản. Các chiến lược quan trọng gồm: (1) nghe từ khóa (danh từ, con số, tên riêng) thay vì cố nghe từng từ; (2) dùng ngữ cảnh để đoán trước nội dung sẽ nghe; (3) nhận biết các dạng rút gọn phổ biến như 'I'm', 'don't', 'what's' vì người bản xứ thường nói rút gọn; (4) nhận diện từ để hỏi (what, where, when, how much) để biết người nói đang hỏi thông tin gì. Người học nên nghe hai lần: lần đầu nắm ý chính, lần thứ hai nghe chi tiết cụ thể. Đừng lo nếu không hiểu hết từng từ — chỉ cần tập trung vào thông tin cần thiết để trả lời câu hỏi đơn giản."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "At natural speaking speed, it is impossible to process every word. Focusing on key words (nouns, numbers, names) and the overall context helps learners capture the main message without getting lost.",
+            "right": "Listen for key words and the general idea first, then listen again for specific details.",
+            "wrong": "Trying to translate and understand every single word while listening, and missing the rest of the message."
+          },
+          {
+            "why": "Contractions are extremely common in spoken English and sound different from their written forms. Recognizing them is essential for basic listening comprehension.",
+            "right": "Learn common contractions and their full forms: 'don't' = 'do not', 'I'm' = 'I am', 'what's' = 'what is'.",
+            "wrong": "Hearing 'don't' as 'don' or 'do not' and being confused by contractions in fast speech."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:01:33Z"
+      }
+    }
+  ]
+}

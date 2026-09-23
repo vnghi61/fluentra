@@ -1,0 +1,256 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.227532Z",
+  "node": {
+    "namespace": "grammar",
+    "code": "PRESENT_PERFECT",
+    "label": "Present Perfect",
+    "cefr_level": "B1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-present-perfect-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence using the present perfect, beginning with 'She': She moved to this city in 2019, and she still lives here now.",
+        "acceptable": [
+          "She has lived in this city since 2019 and she still lives here.",
+          "She has been living in this city since 2019.",
+          "She has lived here since 2019."
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_PERFECT:20260923T133300",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:33:47Z"
+          },
+          "ai_request_id": "cb95ee07-97c4-49d4-bce0-048adcacb403",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item targets the present perfect with 'since', a grammar point explicitly listed at B1. The source sentence uses simple past and basic vocabulary, and the transformation requires understanding the connection between past and present, which is typical B1-level work.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "She has lived in this city since 2019."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The present perfect ('has lived') connects a past action to the present. Because she still lives there, we use 'since' + a point in time (2019) to show when the situation started.",
+          "explanation_vi": "Thì hiện tại hoàn thành ('has lived') nối liền hành động trong quá khứ với hiện tại. Vì cô ấy vẫn đang sống ở đó, ta dùng 'since' + mốc thời gian (2019) để chỉ thời điểm bắt đầu."
+        },
+        "correct_answer": "She has lived in this city since 2019."
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:33:47Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-present-perfect-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "I ___ this movie three times, and I still enjoy watching it.",
+        "options": [
+          {
+            "id": "A",
+            "text": "have seen"
+          },
+          {
+            "id": "B",
+            "text": "saw"
+          },
+          {
+            "id": "C",
+            "text": "see"
+          },
+          {
+            "id": "D",
+            "text": "am seeing"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_PERFECT:20260923T133300",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:33:35Z"
+          },
+          "ai_request_id": "1a4389da-850f-4661-9120-10f42f4d7db1",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the present perfect ('have seen') with 'three times' for unspecified past experience, a grammar point explicitly associated with B1. The sentence is simple and vocabulary is everyday, but the tense contrast (present perfect vs. past simple) requires B1-level understanding.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The present perfect 'have seen' is used for an experience that happened at an unspecified time before now, often with 'three times'.",
+          "explanation_vi": "Thì hiện tại hoàn thành 'have seen' dùng để diễn tả trải nghiệm đã xảy ra tại thời điểm không xác định trong quá khứ, thường đi với 'three times'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:33:35Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-present-perfect-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "I ___ this movie three times, and I still love it.",
+        "options": [
+          {
+            "id": "A",
+            "text": "have seen"
+          },
+          {
+            "id": "B",
+            "text": "saw"
+          },
+          {
+            "id": "C",
+            "text": "see"
+          },
+          {
+            "id": "D",
+            "text": "am seeing"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_PERFECT:20260923T133300",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:34:03Z"
+          },
+          "ai_request_id": "2291a8e8-e132-480b-a505-00ec9d15dbe2",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests present perfect vs. past simple choice, a grammar point explicitly listed at B1. Vocabulary is simple, but the tense discrimination requires B1-level understanding of unspecified past time with quantity expressions.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The present perfect 'have seen' is used for an experience that happened at an unspecified time before now, especially with a quantity like 'three times'.",
+          "explanation_vi": "Thì hiện tại hoàn thành 'have seen' dùng để diễn tả một trải nghiệm đã xảy ra tại thời điểm không xác định trong quá khứ, đặc biệt khi có số lần như 'three times'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:34:03Z"
+      }
+    },
+    {
+      "slug": "review-queue-test-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "She ___ lived here for three years.",
+        "options": [
+          {
+            "id": "A",
+            "text": "has"
+          },
+          {
+            "id": "B",
+            "text": "have"
+          },
+          {
+            "id": "C",
+            "text": "had"
+          },
+          {
+            "id": "D",
+            "text": "having"
+          }
+        ],
+        "_provenance": {
+          "model": "test-model",
+          "purpose": "foundation",
+          "ai_request_id": "00000000-0000-0000-0000-000000000001",
+          "cefr_reasoning": "Present perfect corresponds to B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Present perfect with for.",
+          "explanation_vi": "Hien tai hoan thanh voi for."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-present-perfect",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "I ___ this movie three times already, so I don't want to watch it again.",
+        "options": [
+          {
+            "id": "A",
+            "text": "have seen"
+          },
+          {
+            "id": "B",
+            "text": "saw"
+          },
+          {
+            "id": "C",
+            "text": "am seeing"
+          },
+          {
+            "id": "D",
+            "text": "will see"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_PERFECT:20260923T133300",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:34:15Z"
+          },
+          "ai_request_id": "210bf165-8943-4791-9f63-197c8056cc48",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the present perfect tense with 'already', a grammar point explicitly associated with B1. The sentence is simple and vocabulary is common, but distinguishing present perfect from past simple requires B1-level understanding.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The present perfect 'have seen' is used for an action that happened at an unspecified time before now and is connected to the present. The word 'already' is a common signal of the present perfect.",
+          "explanation_vi": "Thì hiện tại hoàn thành 'have seen' dùng để diễn tả hành động đã xảy ra tại thời điểm không xác định trong quá khứ nhưng vẫn liên quan đến hiện tại. Từ 'already' là dấu hiệu thường gặp của thì hiện tại hoàn thành."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:34:15Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.1958039Z",
+  "node": {
+    "namespace": "grammar",
+    "code": "NOUN_CLAUSES",
+    "label": "Noun Clauses",
+    "cefr_level": "B2"
+  },
+  "items": null
+}

@@ -1,0 +1,328 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.2340435Z",
+  "node": {
+    "namespace": "grammar",
+    "code": "PRESENT_SIMPLE",
+    "label": "Present Simple",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-present-simple-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Rewrite the sentence in the negative form: She works in a hospital.",
+        "acceptable": [
+          "She doesn't work in a hospital."
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_SIMPLE:20260923T133600",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:36:20Z"
+          },
+          "ai_request_id": "54a78692-ed0a-44ae-9346-869f7a4203c0",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests a basic Present Simple negative transformation with third-person singular 'does not' + base verb, using very common vocabulary ('work', 'hospital'). This is core A1 grammar.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "She does not work in a hospital."
+          }
+        },
+        "explanation": {
+          "explanation_en": "To make the Present Simple negative with 'she', use 'does not' (doesn't) + the base form of the verb: 'She does not work in a hospital.' The 's' disappears from 'works' because 'does' already carries the third-person marker.",
+          "explanation_vi": "Để chuyển câu sang thể phủ định ở thì hiện tại đơn với chủ ngữ 'she', dùng 'does not' (doesn't) + động từ nguyên mẫu: 'She does not work in a hospital.' Chữ 's' trong 'works' biến mất vì 'does' đã mang dấu hiệu ngôi thứ ba."
+        },
+        "correct_answer": "She does not work in a hospital."
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:36:20Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-present-simple-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "My sister ___ to school by bus every morning.",
+        "options": [
+          {
+            "id": "A",
+            "text": "go"
+          },
+          {
+            "id": "B",
+            "text": "goes"
+          },
+          {
+            "id": "C",
+            "text": "going"
+          },
+          {
+            "id": "D",
+            "text": "gone"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_SIMPLE:20260923T133600",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:36:11Z"
+          },
+          "ai_request_id": "80f3cb37-f799-4118-a80a-c5f2519bbcc3",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the most basic Present Simple third-person -s rule with everyday vocabulary ('sister', 'school', 'bus', 'every morning'), matching A1 descriptors for simple present and common expressions.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "With the Present Simple and a third-person singular subject (my sister = she), we add -s to the verb: 'goes'. The time expression 'every morning' signals a habitual action, so Present Simple is required.",
+          "explanation_vi": "Với thì hiện tại đơn và chủ ngữ ngôi thứ ba số ít (my sister = she), động từ phải thêm -s: 'goes'. Cụm 'every morning' chỉ thói quen hàng ngày, nên phải dùng thì hiện tại đơn."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:36:11Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-present-simple-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, Mai ___ to school by bus.",
+        "options": [
+          {
+            "id": "A",
+            "text": "go"
+          },
+          {
+            "id": "B",
+            "text": "goes"
+          },
+          {
+            "id": "C",
+            "text": "going"
+          },
+          {
+            "id": "D",
+            "text": "went"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_SIMPLE:20260923T133600",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:36:29Z"
+          },
+          "ai_request_id": "14071c89-1c18-4cb9-ac97-49bf2623c6aa",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the third-person singular -s in the present simple with very common vocabulary ('go to school', 'every morning'), which is core A1 grammar. Distractors are simple and the sentence is a basic everyday routine expression.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "With the present simple and a third-person singular subject (she/Mai), we add -s to the verb: 'goes'. The word 'every morning' signals a habitual action, which requires the present simple.",
+          "explanation_vi": "Với thì hiện tại đơn và chủ ngữ ngôi thứ ba số ít (she/Mai), động từ phải thêm -s: 'goes'. Cụm 'every morning' chỉ thói quen hàng ngày, nên phải dùng thì hiện tại đơn."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:36:29Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-present-simple",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "My sister ___ to school every morning at 7 o'clock.",
+        "options": [
+          {
+            "id": "A",
+            "text": "go"
+          },
+          {
+            "id": "B",
+            "text": "goes"
+          },
+          {
+            "id": "C",
+            "text": "going"
+          },
+          {
+            "id": "D",
+            "text": "gone"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_SIMPLE:20260923T133600",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:36:39Z"
+          },
+          "ai_request_id": "22d650bf-1984-4566-98a6-fa04a0d3f15f",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the basic third-person singular -s rule in the present simple, a core A1 grammar point, using very common everyday vocabulary ('sister', 'go to school', 'every morning'). The sentence is short and simple, matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "With the present simple, add -s or -es to the verb when the subject is he, she, or it. 'My sister' is third person singular, so we say 'goes'.",
+          "explanation_vi": "Ở thì hiện tại đơn, ta thêm -s hoặc -es vào động từ khi chủ ngữ là he, she hoặc it. 'My sister' là ngôi thứ ba số ít, nên dùng 'goes'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:36:39Z"
+      }
+    },
+    {
+      "slug": "foundation-review-present-simple",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "My brother ___ to school by bus every morning.",
+        "options": [
+          {
+            "id": "A",
+            "text": "go"
+          },
+          {
+            "id": "B",
+            "text": "goes"
+          },
+          {
+            "id": "C",
+            "text": "going"
+          },
+          {
+            "id": "D",
+            "text": "gone"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_SIMPLE:20260923T133600",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:37:39Z"
+          },
+          "ai_request_id": "8e564e19-7d8e-4499-a6de-8cb08d7b6835",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests third-person singular -s in the present simple with very common vocabulary ('go to school', 'every morning'), matching A1 descriptors. Distractors are basic verb forms.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "With the present simple, add -s or -es to the verb for he/she/it. 'My brother' is third person singular, so we say 'goes'.",
+          "explanation_vi": "Với thì hiện tại đơn, ta thêm -s hoặc -es vào động từ khi chủ ngữ là he/she/it. 'My brother' là ngôi thứ ba số ít, nên dùng 'goes'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:37:39Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-present-simple",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "PRESENT_CONTINUOUS",
+          "ADVERBS_OF_FREQUENCY",
+          "THIRD_PERSON_S"
+        ],
+        "examples": [
+          {
+            "note": "Third-person singular (she) takes -s on the verb. This describes a permanent job/situation.",
+            "text": "She works in a hospital."
+          },
+          {
+            "note": "Affirmative form with the adverb 'usually' for a habit, plus a negative with 'doesn't' for third person.",
+            "text": "I usually get up at 6 a.m., but my brother doesn't like early mornings."
+          },
+          {
+            "note": "Question form with 'Does' + base verb 'speak'; the short answer repeats the auxiliary 'does'.",
+            "text": "Does he speak English? — Yes, he does."
+          }
+        ],
+        "objective": "Understand the formation and core uses of the Present Simple tense, including affirmative, negative, and question forms for all persons, the third-person -s rule, and common time expressions, in order to talk about habits, routines, facts, and permanent situations.",
+        "_provenance": {
+          "batch": "foundation:PRESENT_SIMPLE:20260923T133600",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:38:03Z"
+          },
+          "ai_request_id": "af617de6-9069-4c17-ae68-6246a33fe275",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "The Present Simple describes habits, routines, general facts, and permanent situations. Form: subject + base verb (I/you/we/they work); for he/she/it, add -s or -es (he works, she watches). Verbs ending in -o, -s, -sh, -ch, -x, -z take -es (goes, watches); verbs ending in consonant + y change y to i and add -es (study → studies). Negatives use do/does + not + base verb: I don't work, he doesn't work (the -s disappears because 'does' carries it). Questions use Do/Does + subject + base verb: Do you work? Does she work? Short answers: Yes, I do / No, he doesn't. Common time expressions: every day, usually, often, sometimes, never, on Mondays. Use the Present Simple for: (1) habits — 'I get up at 6 a.m.'; (2) facts — 'Water boils at 100°C'; (3) permanent states — 'She lives in Hanoi'. Do not use it for actions happening right now; use the Present Continuous instead.",
+          "vi": "Thì hiện tại đơn dùng để nói về thói quen, việc lặp đi lặp lại, sự thật hiển nhiên và tình trạng lâu dài. Công thức: I/you/we/they + động từ nguyên mẫu (I work); he/she/it + động từ thêm -s/-es (he works, she watches). Động từ tận cùng là -o, -s, -sh, -ch, -x, -z thêm -es (goes, watches); động từ tận cùng là phụ âm + y thì đổi y thành i rồi thêm -es (study → studies). Thể phủ định dùng do/does + not + động từ nguyên mẫu: I don't work, he doesn't work (lưu ý: khi có 'does' thì động từ mất -s). Thể nghi vấn: Do/Does + chủ ngữ + động từ nguyên mẫu: Do you work? Does she work? Trả lời ngắn: Yes, I do / No, he doesn't. Các trạng từ thường gặp: every day, usually, often, sometimes, never, on Mondays. Lưu ý quan trọng cho người Việt: tiếng Việt không biến đổi động từ theo ngôi, nên dễ quên thêm -s cho ngôi thứ ba số ít (he/she/it). Ngoài ra, đừng dùng hiện tại đơn cho hành động đang diễn ra ngay lúc nói — phải dùng hiện tại tiếp diễn (I am working)."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "With he/she/it, the negative auxiliary must be 'does not (doesn't)', not 'don't'. Also, the main verb stays in base form because 'does' already carries the third-person -s.",
+            "right": "He doesn't like coffee.",
+            "wrong": "He don't like coffee."
+          },
+          {
+            "why": "Third-person singular subjects (he, she, it) require -s or -es on the verb in the affirmative Present Simple. 'Go' becomes 'goes' because it ends in -o.",
+            "right": "She goes to school every day.",
+            "wrong": "She go to school every day."
+          },
+          {
+            "why": "In questions with 'does', the main verb must return to its base form; the -s moves to the auxiliary 'does'.",
+            "right": "Does she like music?",
+            "wrong": "Does she likes music?"
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:38:03Z"
+      }
+    }
+  ]
+}

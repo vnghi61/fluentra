@@ -1,0 +1,281 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.1330481Z",
+  "node": {
+    "namespace": "vocabulary",
+    "code": "ESSENTIAL_EVERYDAY",
+    "label": "Essential Everyday Vocabulary",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-essential-everyday-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, my mother ___ bread and milk from the shop near our house.",
+        "options": [
+          {
+            "id": "A",
+            "text": "buys"
+          },
+          {
+            "id": "B",
+            "text": "buy"
+          },
+          {
+            "id": "C",
+            "text": "bought"
+          },
+          {
+            "id": "D",
+            "text": "is buying"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ESSENTIAL_EVERYDAY:20260923T134506",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:45:36Z"
+          },
+          "ai_request_id": "3a99567f-a0fc-4057-acb9-b54ab449a3ae",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests third-person singular present simple with a daily habit cue ('Every morning'), using very common vocabulary (mother, bread, milk, shop). This matches A1 descriptors: simple present and everyday expressions.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Every morning' shows a daily habit, so we use the present simple. With 'my mother' (he/she/it), the verb takes -s: 'buys'.",
+          "explanation_vi": "'Every morning' (mỗi sáng) chỉ thói quen hàng ngày, nên dùng thì hiện tại đơn. Với chủ ngữ 'my mother' (ngôi thứ ba số ít), động từ thêm -s: 'buys'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:45:36Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-essential-everyday-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "I need to buy some bread and milk, so I will go to the ___ after work.",
+        "options": [
+          {
+            "id": "A",
+            "text": "supermarket"
+          },
+          {
+            "id": "B",
+            "text": "hospital"
+          },
+          {
+            "id": "C",
+            "text": "library"
+          },
+          {
+            "id": "D",
+            "text": "airport"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ESSENTIAL_EVERYDAY:20260923T134506",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:45:19Z"
+          },
+          "ai_request_id": "e6333184-b11a-48b1-81a3-3cafc6fe5392",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very common everyday vocabulary (bread, milk, buy, go) in a simple present sentence with a basic gap-fill. 'Supermarket' is a high-frequency concrete noun taught at A1, and distractors (hospital, library, airport) are also basic-level words. Sentence structure is simple and appropriate for A1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A 'supermarket' is a large shop where people buy food and everyday items like bread and milk.",
+          "explanation_vi": "'Supermarket' là cửa hàng lớn nơi mọi người mua thực phẩm và các đồ dùng hàng ngày như bánh mì và sữa."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:45:19Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-essential-everyday",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, I drink ___ and eat bread for breakfast.",
+        "options": [
+          {
+            "id": "A",
+            "text": "coffee"
+          },
+          {
+            "id": "B",
+            "text": "shoes"
+          },
+          {
+            "id": "C",
+            "text": "a book"
+          },
+          {
+            "id": "D",
+            "text": "a shower"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ESSENTIAL_EVERYDAY:20260923T134506",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:46:40Z"
+          },
+          "ai_request_id": "9d2c2142-5f57-4099-9ea2-e36b2b17797e",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very simple present-tense sentence with everyday vocabulary (drink, breakfast, coffee, bread). Distractors are common concrete nouns. Suitable for A1 beginners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Coffee' is a drink, so it fits with 'drink' and breakfast. The other options are not drinks.",
+          "explanation_vi": "'Coffee' là một loại đồ uống, nên phù hợp với 'drink' và bữa sáng. Các lựa chọn còn lại không phải là đồ uống."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:46:40Z"
+      }
+    },
+    {
+      "slug": "foundation-review-essential-everyday",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "I buy bread and milk at the ___ near my house.",
+        "options": [
+          {
+            "id": "A",
+            "text": "supermarket"
+          },
+          {
+            "id": "B",
+            "text": "hospital"
+          },
+          {
+            "id": "C",
+            "text": "airport"
+          },
+          {
+            "id": "D",
+            "text": "library"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ESSENTIAL_EVERYDAY:20260923T134506",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:46:50Z"
+          },
+          "ai_request_id": "f9e1ca6e-96ac-405e-9a1a-753a5bb601cc",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very common everyday vocabulary (supermarket, bread, milk) and a simple present sentence with basic structure, matching A1 descriptors. The distractors are also basic concrete nouns.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A 'supermarket' is a shop where you buy food and everyday items like bread and milk. Hospitals, airports, and libraries are not places to buy food.",
+          "explanation_vi": "'Supermarket' (siêu thị) là nơi mua thực phẩm và các đồ dùng hàng ngày như bánh mì và sữa. Bệnh viện, sân bay và thư viện không phải là nơi mua đồ ăn."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:46:50Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-essential-everyday",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "ESSENTIAL_NUMBERS_TIME",
+          "GRAMMAR_PRESENT_SIMPLE",
+          "ESSENTIAL_FOOD_DRINK"
+        ],
+        "examples": [
+          {
+            "note": "Uses the everyday verb 'drink' with its common object 'water' in a simple present sentence showing a daily routine.",
+            "text": "I drink water every morning."
+          },
+          {
+            "note": "Uses the everyday verb 'go' with the place 'school'; note the third-person -s ending 'goes' in the simple present.",
+            "text": "She goes to school by bus."
+          }
+        ],
+        "objective": "Understand and use essential everyday vocabulary for common objects, actions, and daily routines (e.g., eat, drink, go, house, food, water) to talk about daily life at CEFR A1 level.",
+        "_provenance": {
+          "batch": "foundation:ESSENTIAL_EVERYDAY:20260923T134506",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T13:47:17Z"
+          },
+          "ai_request_id": "dab3ed2f-5982-4bb1-afe9-cc081f0c5f8b",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Essential everyday vocabulary covers the basic words you need to talk about daily life: people (family, friend), places (home, school, shop), objects (phone, bag, key), food and drink (rice, bread, water, coffee), and common actions (eat, drink, go, sleep, work, study). At A1 level, focus on high-frequency nouns and verbs used in simple present sentences. Learn words in groups (e.g., meals: breakfast, lunch, dinner) and pair verbs with their common objects (eat breakfast, drink water, go to work). Use simple present tense: 'I eat rice every day.' Practice spelling, pronunciation, and using each word in a short sentence.",
+          "vi": "Từ vựng thiết yếu hằng ngày gồm những từ cơ bản để nói về cuộc sống thường ngày: con người (family, friend), nơi chốn (home, school, shop), đồ vật (phone, bag, key), đồ ăn thức uống (rice, bread, water, coffee) và các hành động thường gặp (eat, drink, go, sleep, work, study). Ở trình độ A1, hãy tập trung vào danh từ và động từ tần suất cao dùng trong câu hiện tại đơn. Học từ theo nhóm (ví dụ: các bữa ăn: breakfast, lunch, dinner) và ghép động từ với tân ngữ thường đi kèm (eat breakfast, drink water, go to work). Dùng thì hiện tại đơn: 'I eat rice every day.' Luyện tập chính tả, phát âm và đặt câu ngắn với mỗi từ."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'Home' is used as an adverb of place after 'go', so no preposition 'to' is needed. Say 'go home', not 'go to home'.",
+            "right": "I go home after work.",
+            "wrong": "I go to home after work."
+          },
+          {
+            "why": "In the simple present, third-person singular subjects (he, she, it) require an -s ending on the verb: 'he eats', not 'he eat'.",
+            "right": "He eats breakfast at 7 o'clock.",
+            "wrong": "He eat breakfast at 7 o'clock."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T13:47:17Z"
+      }
+    }
+  ]
+}

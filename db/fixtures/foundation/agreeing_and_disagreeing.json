@@ -1,0 +1,11 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.0818283Z",
+  "node": {
+    "namespace": "pattern",
+    "code": "AGREEING_AND_DISAGREEING",
+    "label": "Agreeing and Disagreeing",
+    "cefr_level": "B1"
+  },
+  "items": null
+}

@@ -1,0 +1,270 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.0860944Z",
+  "node": {
+    "namespace": "pattern",
+    "code": "ANSWERING_QUESTIONS",
+    "label": "Answering Questions",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-answering-questions-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Rewrite the sentence as a question beginning with 'Where': She lives in Hanoi.",
+        "acceptable": [
+          "Where does she live ?"
+        ],
+        "_provenance": {
+          "batch": "foundation:ANSWERING_QUESTIONS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:42:10Z"
+          },
+          "ai_request_id": "3c228c9a-9624-4749-be0e-49f79b18c3b4",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item involves forming a simple present 'Where' question with third-person singular 'does', core A1 grammar with very common vocabulary (live, Hanoi).",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Where does she live?"
+          }
+        },
+        "explanation": {
+          "explanation_en": "To ask about a place, start with 'Where' and use the auxiliary 'does' with the base verb 'live' because the subject is 'she' (third person singular).",
+          "explanation_vi": "Để hỏi về nơi chốn, bắt đầu bằng 'Where' và dùng trợ động từ 'does' với động từ nguyên mẫu 'live' vì chủ ngữ là 'she' (ngôi thứ ba số ít)."
+        },
+        "correct_answer": "Where does she live?"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:42:10Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-answering-questions-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "A: \"Where do you live?\"  B: \"I ___ in Ho Chi Minh City.\"",
+        "options": [
+          {
+            "id": "A",
+            "text": "live"
+          },
+          {
+            "id": "B",
+            "text": "lives"
+          },
+          {
+            "id": "C",
+            "text": "living"
+          },
+          {
+            "id": "D",
+            "text": "am live"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ANSWERING_QUESTIONS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:41:59Z"
+          },
+          "ai_request_id": "e0b7d1b0-7602-45f0-ab29-432f8ad8a23a",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests simple present verb agreement with 'I' in a basic everyday exchange ('Where do you live?'), using very common vocabulary and simple distractors, which matches A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "When answering the question 'Where do you live?', use the simple present 'live' with 'I'. 'Lives' is for he/she/it, and 'am live' is not correct grammar.",
+          "explanation_vi": "Khi trả lời câu hỏi 'Where do you live?', dùng thì hiện tại đơn 'live' với chủ ngữ 'I'. 'Lives' chỉ dùng cho he/she/it, và 'am live' không đúng ngữ pháp."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:41:59Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-answering-questions",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Your friend asks: 'Where do you live?' Which answer is correct?",
+        "options": [
+          {
+            "id": "A",
+            "text": "I live in Hanoi."
+          },
+          {
+            "id": "B",
+            "text": "I am live in Hanoi."
+          },
+          {
+            "id": "C",
+            "text": "I living in Hanoi."
+          },
+          {
+            "id": "D",
+            "text": "I lives in Hanoi."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ANSWERING_QUESTIONS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:42:28Z"
+          },
+          "ai_request_id": "21692da6-0a3c-4d5d-8fa4-764f4a2617a6",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the simple present with 'I live in...', using very common vocabulary and a basic everyday question ('Where do you live?'). Distractors are simple verb-form errors. This matches A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "To answer the question 'Where do you live?', use the simple present: 'I live in...' With 'I', the verb has no -s.",
+          "explanation_vi": "Để trả lời câu hỏi 'Where do you live?', dùng thì hiện tại đơn: 'I live in...'. Với chủ ngữ 'I', động từ không thêm -s."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:42:28Z"
+      }
+    },
+    {
+      "slug": "foundation-review-answering-questions",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Your friend asks: 'Where do you live?' Which answer is correct?",
+        "options": [
+          {
+            "id": "A",
+            "text": "I live in Hanoi."
+          },
+          {
+            "id": "B",
+            "text": "Yes, I do."
+          },
+          {
+            "id": "C",
+            "text": "I am fine, thank you."
+          },
+          {
+            "id": "D",
+            "text": "He lives in Hanoi."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ANSWERING_QUESTIONS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:42:45Z"
+          },
+          "ai_request_id": "e9623ff6-8d5d-496b-af29-1dfe7de4cba3",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses a very common everyday question ('Where do you live?') and simple present tense answers with basic vocabulary, matching A1 descriptors. Distractors are simple fixed phrases, appropriate for beginner learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The question 'Where do you live?' asks about a place, so the answer must name a place with 'I' as the subject: 'I live in Hanoi.'",
+          "explanation_vi": "Câu hỏi 'Where do you live?' hỏi về nơi chốn, nên câu trả lời phải nêu địa điểm với chủ ngữ 'I': 'I live in Hanoi.'"
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:42:45Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-answering-questions",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "PRESENT_SIMPLE",
+          "YES_NO_QUESTIONS",
+          "WH_QUESTIONS"
+        ],
+        "examples": [
+          {
+            "note": "Yes/no question with 'do'. The short answer repeats the auxiliary 'do' matching the subject 'I'.",
+            "text": "Do you speak English? – Yes, I do."
+          },
+          {
+            "note": "A wh-question asking for information; the answer gives the specific detail in a simple full sentence using 'is'.",
+            "text": "Where is she from? – She is from Vietnam."
+          },
+          {
+            "note": "With modal 'can', the short answer uses 'can' or 'can't', not 'do'.",
+            "text": "Can you swim? – No, I can't."
+          }
+        ],
+        "objective": "Understand how to form and use short, correct answers to yes/no and wh-questions in English, including using auxiliary verbs (do, does, is, are, am, can) and avoiding repetition.",
+        "_provenance": {
+          "batch": "foundation:ANSWERING_QUESTIONS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:43:41Z"
+          },
+          "ai_request_id": "524e0fd3-e1d7-4c3b-9dca-81e630b51ad2",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "When answering questions in English, speakers often use short answers instead of repeating the whole sentence. For yes/no questions, the answer uses the same auxiliary or verb from the question: 'Do you like coffee?' – 'Yes, I do.' / 'No, I don't.' With the verb 'be', use am/is/are: 'Are you a student?' – 'Yes, I am.' For wh-questions (what, where, when, who, why, how), give the specific information asked for, usually in a full but simple sentence: 'Where do you live?' – 'I live in Hanoi.' Remember: the auxiliary in the answer must match the tense and subject of the question. Do not add extra information that was not asked about, and do not answer a yes/no question with only 'yes' or 'no' in polite conversation—adding a short answer form is clearer and more natural.",
+          "vi": "Khi trả lời câu hỏi trong tiếng Anh, người bản xứ thường dùng câu trả lời ngắn thay vì lặp lại cả câu. Với câu hỏi Có/Không (yes/no questions), câu trả lời dùng lại trợ động từ hoặc động từ 'be' trong câu hỏi: 'Do you like coffee?' – 'Yes, I do.' / 'No, I don't.' Với động từ 'be', dùng am/is/are: 'Are you a student?' – 'Yes, I am.' Với câu hỏi wh- (what, where, when, who, why, how), hãy đưa ra thông tin cụ thể được hỏi, thường bằng một câu đơn giản đầy đủ: 'Where do you live?' – 'I live in Hà Nội.' Lưu ý quan trọng: trợ động từ trong câu trả lời phải khớp thì và chủ ngữ của câu hỏi. Người học Việt Nam thường sai vì dịch trực tiếp từ tiếng Việt, ví dụ trả lời 'Yes, I like' thay vì 'Yes, I do', hoặc quên trợ động từ trong câu trả lời ngắn. Trong giao tiếp lịch sự, đừng chỉ nói 'yes' hoặc 'no'—hãy thêm phần trả lời ngắn để câu nói tự nhiên và rõ ràng hơn."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In short answers, English does not repeat the main verb. It uses only the auxiliary ('do') that appeared in the question. Saying 'Yes, I like' is a direct translation habit and is incorrect.",
+            "right": "Do you like tea? – Yes, I do.",
+            "wrong": "Do you like tea? – Yes, I like."
+          },
+          {
+            "why": "Contractions like 'he's' cannot be used at the end of a short affirmative answer. The full form 'he is' is required.",
+            "right": "Is he a teacher? – Yes, he is.",
+            "wrong": "Is he a teacher? – Yes, he's."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:43:41Z"
+      }
+    }
+  ]
+}

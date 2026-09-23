@@ -1,0 +1,285 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.1064122Z",
+  "node": {
+    "namespace": "vocabulary",
+    "code": "COMMON_VERBS",
+    "label": "Common Verbs",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-common-verbs-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, my father ___ coffee before he goes to work.",
+        "options": [
+          {
+            "id": "A",
+            "text": "drinks"
+          },
+          {
+            "id": "B",
+            "text": "drink"
+          },
+          {
+            "id": "C",
+            "text": "drinking"
+          },
+          {
+            "id": "D",
+            "text": "drank"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMMON_VERBS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:07:08Z"
+          },
+          "ai_request_id": "9b2f366f-6a9b-4a9a-b190-11c797b63f1b",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests third-person singular -s in the present simple with very common vocabulary ('coffee', 'work', 'drink'), matching A1 descriptors. Distractors are simple forms; the past form 'drank' is the only slightly higher element but does not raise the overall level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Every morning' shows a daily habit, so we use the present simple. With 'my father' (he), the common verb 'drink' takes the -s form: 'drinks'.",
+          "explanation_vi": "'Every morning' cho thấy thói quen hàng ngày, nên dùng thì hiện tại đơn. Với chủ ngữ 'my father' (ngôi thứ ba số ít), động từ thường 'drink' thêm -s thành 'drinks'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:07:08Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-common-verbs-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, I ___ my teeth before breakfast.",
+        "options": [
+          {
+            "id": "A",
+            "text": "brush"
+          },
+          {
+            "id": "B",
+            "text": "drink"
+          },
+          {
+            "id": "C",
+            "text": "watch"
+          },
+          {
+            "id": "D",
+            "text": "listen"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMMON_VERBS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:06:53Z"
+          },
+          "ai_request_id": "cfa5da55-b71f-4f95-b1fc-f4fa8501447d",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the very common daily-routine collocation 'brush my teeth' using simple present and basic everyday vocabulary, all within A1 scope. Distractors are simple high-frequency verbs, making the item accessible to beginners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The verb 'brush' collocates with 'teeth'. We say 'brush my teeth' for daily hygiene.",
+          "explanation_vi": "Động từ 'brush' (chải, đánh) đi với 'teeth' (răng). Ta nói 'brush my teeth' nghĩa là đánh răng, một việc làm vệ sinh hằng ngày."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:06:53Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-common-verbs",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, I ___ my teeth and drink a glass of water.",
+        "options": [
+          {
+            "id": "A",
+            "text": "brush"
+          },
+          {
+            "id": "B",
+            "text": "sleep"
+          },
+          {
+            "id": "C",
+            "text": "cook"
+          },
+          {
+            "id": "D",
+            "text": "drive"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMMON_VERBS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:07:31Z"
+          },
+          "ai_request_id": "11ed1858-5493-4a7c-b67d-8fefe82e92fa",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses simple present tense and very common daily-routine vocabulary ('brush my teeth', 'drink water'). Distractors are basic verbs, making it appropriate for A1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Brush' is the common verb we use with 'teeth' — 'brush my teeth' is a daily routine action.",
+          "explanation_vi": "'Brush' là động từ thông dụng đi với 'teeth' — 'brush my teeth' nghĩa là đánh răng, một hoạt động hằng ngày."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:07:31Z"
+      }
+    },
+    {
+      "slug": "foundation-review-common-verbs",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, I ___ my teeth and wash my face.",
+        "options": [
+          {
+            "id": "A",
+            "text": "brush"
+          },
+          {
+            "id": "B",
+            "text": "eat"
+          },
+          {
+            "id": "C",
+            "text": "drink"
+          },
+          {
+            "id": "D",
+            "text": "sleep"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMMON_VERBS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:07:40Z"
+          },
+          "ai_request_id": "a8e4e2a1-dd3c-40bd-965a-155955bbd82d",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests a very common daily-routine collocation ('brush my teeth') using simple present tense and basic everyday vocabulary, matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The common verb 'brush' is used with 'teeth' to describe this daily routine action.",
+          "explanation_vi": "Động từ thông dụng 'brush' (chải, đánh) đi với 'teeth' (răng) để diễn tả thói quen hằng ngày."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:07:40Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-common-verbs",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "PRESENT_SIMPLE",
+          "THIRD_PERSON_SINGULAR",
+          "DAILY_ROUTINES_VOCAB"
+        ],
+        "examples": [
+          {
+            "note": "Two common verbs ('live', 'work') in the simple present with 'I', using the base form.",
+            "text": "I live in Hanoi and I work in a small shop."
+          },
+          {
+            "note": "Third person singular adds -s ('drinks'); the negative uses 'doesn't' + base verb 'like' (no -s).",
+            "text": "She drinks coffee every morning, but she doesn't like tea."
+          },
+          {
+            "note": "A yes/no question with 'Do' + subject + base verb 'want'.",
+            "text": "Do you want to play football after school?"
+          }
+        ],
+        "objective": "Understand and correctly use 20 essential common verbs (be, have, do, go, come, eat, drink, like, want, need, work, live, speak, see, read, write, play, sleep, walk, buy) in simple present-tense sentences.",
+        "_provenance": {
+          "batch": "foundation:COMMON_VERBS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:07:58Z"
+          },
+          "ai_request_id": "c8820d51-4710-47b3-a093-f24239f51b9a",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Common verbs are the action and state words we use most in everyday English. At A1 level, focus on the simple present tense. Use the base form of the verb with I, you, we, and they (e.g., 'I eat rice'). Use the base form + -s (third person singular) with he, she, and it (e.g., 'She eats rice'). Verbs like 'be' (am/is/are), 'have' (has), and 'do' (does) are irregular, so memorize their forms. Use these verbs to talk about daily routines, likes, needs, and facts. Negative sentences use 'don't' or 'doesn't' + base verb, and questions use 'Do/Does' + subject + base verb.",
+          "vi": "Động từ thông dụng là những từ chỉ hành động và trạng thái được dùng nhiều nhất trong tiếng Anh hằng ngày. Ở trình độ A1, hãy tập trung vào thì hiện tại đơn. Dùng dạng nguyên mẫu của động từ với I, you, we, they (ví dụ: 'I eat rice'). Với he, she, it, thêm -s vào sau động từ (ví dụ: 'She eats rice'). Một số động từ bất quy tắc cần nhớ: be (am/is/are), have → has, do → does. Dùng các động từ này để nói về thói quen hằng ngày, sở thích, nhu cầu và sự thật. Câu phủ định dùng 'don't/doesn't' + động từ nguyên mẫu; câu hỏi dùng 'Do/Does' + chủ ngữ + động từ nguyên mẫu. Lưu ý: sau 'doesn't' hoặc 'Does', động từ KHÔNG thêm -s."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "With he, she, or it in the simple present, the verb must take -s. 'He like' is incorrect.",
+            "right": "He likes playing games.",
+            "wrong": "He like playing games."
+          },
+          {
+            "why": "After 'doesn't', always use the base form of the verb. The -s already appears in 'doesn't', so the main verb stays as 'like'.",
+            "right": "She doesn't like fish.",
+            "wrong": "She doesn't likes fish."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:07:58Z"
+      }
+    }
+  ]
+}

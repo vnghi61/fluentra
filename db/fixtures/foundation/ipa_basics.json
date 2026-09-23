@@ -1,0 +1,325 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.1714638Z",
+  "node": {
+    "namespace": "pronunciation",
+    "code": "IPA_BASICS",
+    "label": "IPA Basics",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-ipa-basics-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Yesterday, I ___ TV with my family. (Note: the -ed ending is pronounced /t/)",
+        "options": [
+          {
+            "id": "A",
+            "text": "watch"
+          },
+          {
+            "id": "B",
+            "text": "watched"
+          },
+          {
+            "id": "C",
+            "text": "am watching"
+          },
+          {
+            "id": "D",
+            "text": "watches"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:IPA_BASICS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:39:14Z"
+          },
+          "ai_request_id": "2f78b6ea-e139-44be-a2b9-6273ed0c257f",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests a very basic past simple choice with a common verb ('watch') and a clear time marker ('Yesterday'), which is typical A1-level grammar practice. The distractors (present simple, present continuous, third-person -s) are elementary forms. The IPA note adds pronunciation support but does not raise the grammatical demand beyond A1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Yesterday' signals past simple, so we use 'watched'. In IPA, 'watched' is /wɒtʃt/ - the -ed ending after the voiceless sound /tʃ/ is pronounced /t/, not /ɪd/ or /d/.",
+          "explanation_vi": "'Yesterday' (hôm qua) cho thấy cần dùng thì quá khứ đơn, nên chọn 'watched'. Về mặt phiên âm IPA, 'watched' đọc là /wɒtʃt/ - đuôi -ed sau âm vô thanh /tʃ/ được phát âm là /t/, không phải /ɪd/ hay /d/."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:39:14Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-ipa-basics-listening-comprehension-3",
+      "kind": "listening_comprehension",
+      "cefr_level": "A1",
+      "body": {
+        "title": "At the Shop - Listen Carefully",
+        "script": "Hello! Welcome to our small shop. My name is Anna. I will help you today. Listen carefully, please. We have three things on the table. First, a white coat. It is over there, near the door. Second, a small goat toy. It is brown and it is for children. Third, a boat picture. It is blue and it hangs on the wall. Can you see them? The coat is big. The goat is small. The boat is in the picture. Now, please tell me: what do you want to buy today? Point to the thing and say the word slowly. Say it clearly: coat, goat, or boat. Good job! Thank you for listening.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "Listen to the first word Anna says near the door. Which word do you hear?",
+            "options": [
+              {
+                "id": "A",
+                "text": "coat /kəʊt/"
+              },
+              {
+                "id": "B",
+                "text": "goat /ɡəʊt/"
+              },
+              {
+                "id": "C",
+                "text": "boat /bəʊt/"
+              },
+              {
+                "id": "D",
+                "text": "note /nəʊt/"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The first sound is /k/, so the word is 'coat' /kəʊt/. 'Goat' starts with /ɡ/ and 'boat' starts with /b/. These are minimal pairs - only the first sound is different.",
+              "explanation_vi": "Âm đầu là /k/, nên từ là 'coat' /kəʊt/. 'Goat' bắt đầu bằng /ɡ/ và 'boat' bắt đầu bằng /b/. Đây là các cặp từ tối thiểu - chỉ khác âm đầu."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "Anna says a word for a brown toy for children. Which word do you hear?",
+            "options": [
+              {
+                "id": "A",
+                "text": "coat /kəʊt/"
+              },
+              {
+                "id": "B",
+                "text": "goat /ɡəʊt/"
+              },
+              {
+                "id": "C",
+                "text": "boat /bəʊt/"
+              },
+              {
+                "id": "D",
+                "text": "gate /ɡeɪt/"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The brown toy is a 'goat' /ɡəʊt/. It starts with the sound /ɡ/, not /k/ or /b/. Listen to the first sound carefully.",
+              "explanation_vi": "Đồ chơi màu nâu là 'goat' /ɡəʊt/. Từ này bắt đầu bằng âm /ɡ/, không phải /k/ hay /b/. Hãy nghe kỹ âm đầu tiên."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "Which word does Anna say for the picture on the wall?",
+            "options": [
+              {
+                "id": "A",
+                "text": "coat /kəʊt/"
+              },
+              {
+                "id": "B",
+                "text": "goat /ɡəʊt/"
+              },
+              {
+                "id": "C",
+                "text": "boat /bəʊt/"
+              },
+              {
+                "id": "D",
+                "text": "code /kəʊd/"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The picture shows a 'boat' /bəʊt/. It starts with /b/. Note the final sound is /t/, not /d/ as in 'code'.",
+              "explanation_vi": "Bức tranh vẽ 'boat' /bəʊt/. Từ này bắt đầu bằng /b/. Chú ý âm cuối là /t/, không phải /d/ như trong 'code'."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "Anna asks you to say the words clearly. Which three words does she ask you to say?",
+            "options": [
+              {
+                "id": "A",
+                "text": "coat, goat, boat"
+              },
+              {
+                "id": "B",
+                "text": "cat, got, bat"
+              },
+              {
+                "id": "C",
+                "text": "coat, gate, boot"
+              },
+              {
+                "id": "D",
+                "text": "cot, got, bite"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Anna says: 'Say it clearly: coat, goat, or boat.' All three words rhyme - they all end in /əʊt/ but start with different sounds: /k/, /ɡ/, /b/.",
+              "explanation_vi": "Anna nói: 'Say it clearly: coat, goat, or boat.' Cả ba từ vần với nhau - đều kết thúc bằng /əʊt/ nhưng bắt đầu bằng âm khác: /k/, /ɡ/, /b/."
+            },
+            "correct_option_id": "A"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:IPA_BASICS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:40:35Z"
+          },
+          "ai_request_id": "2a79dc6f-50a7-4eee-bc05-7e25e46d8512",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very common monosyllabic vocabulary (coat, goat, boat), simple present prompts, and minimal-pair phoneme discrimination, which is typical of A1 listening tasks. Sentence structures are short and simple, matching the A1 target.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "A",
+              "q2": "B",
+              "q3": "C",
+              "q4": "A"
+            }
+          }
+        }
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:40:35Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-ipa-basics",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Which word has the vowel sound /iː/ (like in 'see')?",
+        "options": [
+          {
+            "id": "A",
+            "text": "ship /ʃɪp/"
+          },
+          {
+            "id": "B",
+            "text": "sheep /ʃiːp/"
+          },
+          {
+            "id": "C",
+            "text": "shop /ʃɒp/"
+          },
+          {
+            "id": "D",
+            "text": "shape /ʃeɪp/"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:IPA_BASICS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:40:51Z"
+          },
+          "ai_request_id": "c998c9ee-692a-4153-87f4-37c152aed22d",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests recognition of a basic vowel sound using very common, high-frequency words (ship, sheep, shop, shape) and a simple question. Although IPA symbols are a phonetic tool, the vocabulary and task complexity are minimal, matching A1 phonemic awareness practice.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The IPA symbol /iː/ is a long 'ee' sound, as in 'sheep'. 'Ship' has the short sound /ɪ/, 'shop' has /ɒ/, and 'shape' has /eɪ/.",
+          "explanation_vi": "Ký hiệu IPA /iː/ là âm 'ee' dài, như trong từ 'sheep'. Từ 'ship' có âm ngắn /ɪ/, 'shop' có âm /ɒ/, và 'shape' có âm /eɪ/."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:40:51Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-ipa-basics",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "MINIMAL_PAIRS",
+          "WORD_STRESS",
+          "ENGLISH_SOUNDS_VOWELS"
+        ],
+        "examples": [
+          {
+            "note": "This pair shows the difference between the short vowel /ɪ/ and the long vowel /iː/. The symbol /ʃ/ represents the 'sh' sound.",
+            "text": "The word 'ship' is pronounced /ʃɪp/, but 'sheep' is /ʃiːp/."
+          },
+          {
+            "note": "The full IPA transcription shows /ʃ/ in 'she', /ɒ/ in 'wants', /uː/ in 'to', and /ŋ/ in 'English'. The mark ˈ before a syllable shows the stressed syllable.",
+            "text": "She wants to learn English. /ʃiː wɒnts tuː lɜːn ˈɪŋɡlɪʃ/"
+          }
+        ],
+        "objective": "Understand the basics of the IPA (International Phonetic Alphabet) and use it to read the pronunciation of common English words, recognizing key vowel and consonant symbols.",
+        "_provenance": {
+          "batch": "foundation:IPA_BASICS:20260923T143832",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:41:33Z"
+          },
+          "ai_request_id": "864549e7-3f56-4529-aa78-182457a86f88",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "The IPA is a system of symbols that shows exactly how words are pronounced. In dictionaries, pronunciation appears between slashes, like /kæt/ for 'cat'. Key vowel symbols for A1 learners include /ɪ/ (short i, as in 'sit'), /iː/ (long ee, as in 'see'), /æ/ (as in 'cat'), /e/ (as in 'bed'), /ʌ/ (as in 'cup'), /ɒ/ (as in 'hot'), /uː/ (as in 'food'), and /ə/ (the schwa, a weak sound in unstressed syllables, as in 'about' /əˈbaʊt/). Common consonant symbols match their usual sounds: /p/, /b/, /t/, /d/, /k/, /g/, /f/, /v/, /s/, /z/, /m/, /n/, /l/, /r/, /w/, /j/, /h/. Some symbols differ from English spelling: /θ/ as in 'think', /ð/ as in 'this', /ʃ/ as in 'ship', /ʒ/ as in 'vision', /tʃ/ as in 'chair', /dʒ/ as in 'job', /ŋ/ as in 'sing', and /j/ as in 'yes'. The symbol /ː/ marks a long vowel. Learning IPA helps you pronounce new words correctly without guessing from spelling, because English spelling and pronunciation often do not match.",
+          "vi": "Phiên âm IPA (Bảng ký hiệu ngữ âm quốc tế) là hệ thống các ký hiệu cho biết cách phát âm chính xác của từ. Trong từ điển, phiên âm thường đặt giữa hai dấu gạch chéo, ví dụ /kæt/ cho từ 'cat'. Với người học trình độ A1, cần nhớ một số nguyên âm cơ bản: /ɪ/ (i ngắn, như trong 'sit'), /iː/ (i dài, như trong 'see'), /æ/ (như trong 'cat'), /e/ (như trong 'bed'), /ʌ/ (như trong 'cup'), /ɒ/ (như trong 'hot'), /uː/ (như trong 'food') và /ə/ (âm schwa - âm yếu, nhẹ, xuất hiện trong âm tiết không nhấn, như /əˈbaʊt/ 'about'). Phần lớn phụ âm giống cách viết: /p/, /b/, /t/, /d/, /k/, /g/, /f/, /v/, /s/, /z/, /m/, /n/, /l/, /r/, /w/, /h/. Tuy nhiên, một số ký hiệu khác với chữ viết tiếng Anh: /θ/ trong 'think', /ð/ trong 'this', /ʃ/ trong 'ship', /tʃ/ trong 'chair', /dʒ/ trong 'job', /ŋ/ trong 'sing', và /j/ trong 'yes' (âm này giống 'y' chứ không phải 'j' của tiếng Việt). Dấu /ː/ sau nguyên âm cho biết âm đó được kéo dài. Học IPA giúp bạn phát âm từ mới chính xác thay vì đoán theo cách viết, vì chính tả tiếng Anh thường không khớp với cách đọc. Lưu ý: người Việt thường nhầm /ɪ/ với /iː/, đọc /æ/ thành /e/, và quên rằng /ə/ rất nhẹ và ngắn."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In IPA, /j/ represents the 'y' sound as in 'yes' or 'you'. The 'j' sound (as in 'job') is written /dʒ/ in IPA. Confusing these two symbols leads to wrong pronunciation of words like 'yes', 'you', and 'year'.",
+            "right": "Pronounce /j/ as the English 'y' sound: 'yes' sounds like 'yes', not 'jes'.",
+            "wrong": "Reading /j/ as the 'j' sound, so 'yes' /jes/ is pronounced like 'jes'."
+          },
+          {
+            "why": "The symbol /ː/ shows a long vowel. /ɪ/ is short and slightly relaxed, while /iː/ is long and tense. Vietnamese learners often merge these two sounds, which can change the meaning of words (minimal pairs).",
+            "right": "Use the short, relaxed /ɪ/ for 'sit' and the long /iː/ for 'seat'.",
+            "wrong": "Pronouncing 'sit' /sɪt/ and 'seat' /siːt/ the same way."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:41:33Z"
+      }
+    }
+  ]
+}

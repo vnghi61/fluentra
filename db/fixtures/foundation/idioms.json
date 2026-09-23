@@ -1,0 +1,51 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.1613939Z",
+  "node": {
+    "namespace": "vocabulary",
+    "code": "IDIOMS",
+    "label": "Idioms",
+    "cefr_level": "B1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-idioms-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence using the idiom 'piece of cake': The exam was very easy for me.",
+        "acceptable": [
+          "For me, the exam was a piece of cake.",
+          "The test was a piece of cake for me."
+        ],
+        "_provenance": {
+          "batch": "foundation:IDIOMS:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T16:14:31Z"
+          },
+          "ai_request_id": "d8721301-85af-489a-9da6-2aa9183a548d",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item requires understanding and using a common idiom ('a piece of cake') in a simple sentence transformation. The base sentence is elementary, but idiomatic phrasings are typically introduced at B1/B2; this is a very common, transparent idiom, making it appropriate for B1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "The exam was a piece of cake for me."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The idiom 'a piece of cake' means something is very easy to do. It replaces adjectives like 'easy' and is often used with 'for someone' to show who found it easy.",
+          "explanation_vi": "Thành ngữ 'a piece of cake' nghĩa là điều gì đó rất dễ dàng. Nó thay thế cho các tính từ như 'easy' và thường đi với 'for someone' để chỉ ai đó thấy việc đó dễ."
+        },
+        "correct_answer": "The exam was a piece of cake for me."
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T16:14:31Z"
+      }
+    }
+  ]
+}

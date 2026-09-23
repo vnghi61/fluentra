@@ -1,0 +1,581 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.2438983Z",
+  "node": {
+    "namespace": "skill",
+    "code": "READING",
+    "label": "Reading Comprehension",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-reading-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, Mai ___ to school by bus.",
+        "options": [
+          {
+            "id": "A",
+            "text": "goes"
+          },
+          {
+            "id": "B",
+            "text": "go"
+          },
+          {
+            "id": "C",
+            "text": "going"
+          },
+          {
+            "id": "D",
+            "text": "went"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:25:16Z"
+          },
+          "ai_request_id": "bcea4908-7560-4551-8190-0431ce11d29c",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the present simple third-person -s with very common vocabulary ('go to school', 'every morning'), a core A1 grammar point.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The time expression 'every morning' shows a daily habit, so we use the present simple. With the third-person singular subject 'Mai', the verb takes -s: 'goes'.",
+          "explanation_vi": "Cụm từ 'every morning' (mỗi sáng) chỉ thói quen hàng ngày, nên dùng thì hiện tại đơn. Với chủ ngữ ngôi thứ ba số ít 'Mai', động từ thêm -s: 'goes'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:25:16Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-reading-reading-comprehension-1",
+      "kind": "reading_comprehension",
+      "cefr_level": "A1",
+      "body": {
+        "passage": "Mai is a student. She lives in a small house with her parents and her brother, Nam. On Saturday morning, Mai gets up at seven o'clock. She has breakfast with her family. They eat bread and eggs and drink milk.\n\nAfter breakfast, Mai goes to the market with her mother. They buy fruit, vegetables, and fish. Mai likes the market because it is very busy and colorful. Her mother buys five apples and some oranges. Mai carries the bags for her.\n\nIn the afternoon, Mai does not study. She plays badminton with Nam in the park near their house. Nam is very good at badminton, but Mai is not. She loses every game, but she is happy.\n\nIn the evening, the family watches TV together. Mai's favorite program is a cartoon about animals. She goes to bed at nine o'clock because she has school on Sunday morning.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "Who does Mai live with?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Her friends"
+              },
+              {
+                "id": "B",
+                "text": "Her parents and her brother"
+              },
+              {
+                "id": "C",
+                "text": "Her grandmother"
+              },
+              {
+                "id": "D",
+                "text": "She lives alone"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says Mai lives in a small house with her parents and her brother, Nam.",
+              "explanation_vi": "Bài đọc cho biết Mai sống trong một ngôi nhà nhỏ cùng bố mẹ và anh trai Nam."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "What does the family eat for breakfast?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Rice and fish"
+              },
+              {
+                "id": "B",
+                "text": "Bread, eggs, and milk"
+              },
+              {
+                "id": "C",
+                "text": "Fruit and vegetables"
+              },
+              {
+                "id": "D",
+                "text": "Noodles and tea"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage states they eat bread and eggs and drink milk for breakfast.",
+              "explanation_vi": "Bài đọc nói rằng gia đình ăn bánh mì, trứng và uống sữa vào bữa sáng."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "Why does Mai like the market?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Because it is very busy and colorful"
+              },
+              {
+                "id": "B",
+                "text": "Because it is near her house"
+              },
+              {
+                "id": "C",
+                "text": "Because she can play there"
+              },
+              {
+                "id": "D",
+                "text": "Because the food is cheap"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says Mai likes the market because it is very busy and colorful.",
+              "explanation_vi": "Bài đọc nói Mai thích chợ vì chợ rất đông đúc và nhiều màu sắc."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "What does Mai do in the afternoon?",
+            "options": [
+              {
+                "id": "A",
+                "text": "She studies at school"
+              },
+              {
+                "id": "B",
+                "text": "She goes to the market"
+              },
+              {
+                "id": "C",
+                "text": "She plays badminton with Nam"
+              },
+              {
+                "id": "D",
+                "text": "She watches TV"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "In the afternoon, Mai plays badminton with her brother Nam in the park.",
+              "explanation_vi": "Vào buổi chiều, Mai chơi cầu lông với anh trai Nam ở công viên."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "Why does Mai go to bed at nine o'clock?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Because she is tired after playing"
+              },
+              {
+                "id": "B",
+                "text": "Because she has school on Sunday morning"
+              },
+              {
+                "id": "C",
+                "text": "Because her mother says so"
+              },
+              {
+                "id": "D",
+                "text": "Because she wants to watch TV"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says she goes to bed at nine o'clock because she has school on Sunday morning.",
+              "explanation_vi": "Bài đọc cho biết Mai đi ngủ lúc chín giờ vì sáng Chủ nhật cô ấy phải đi học."
+            },
+            "correct_option_id": "B"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:24:24Z"
+          },
+          "ai_request_id": "ae27ed1e-fadf-4c4b-bf6c-98bbedfb87b6",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The passage uses very short simple sentences, present simple tense, and highly common everyday vocabulary (house, breakfast, market, family). Questions require only literal fact retrieval with minimal inference, matching A1 reading comprehension descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "B",
+              "q2": "B",
+              "q3": "A",
+              "q4": "C",
+              "q5": "B"
+            }
+          }
+        },
+        "passage_title": "Mai's Saturday"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:24:24Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-reading-reading-comprehension-2",
+      "kind": "reading_comprehension",
+      "cefr_level": "A1",
+      "body": {
+        "passage": "Mai lives in a small town with her family. Every Saturday morning, she goes to the market with her mother. They walk there because the market is near their house. At the market, there are many things: fruit, vegetables, fish, and flowers. Mai's mother buys apples, rice, and carrots. Mai's favorite part is the fruit stand. She loves mangoes, but they are expensive, so her mother buys only two. After shopping, they are tired and hungry. Next to the market, there is a small noodle shop. They eat one bowl of noodles each. The noodles are hot and delicious. Mai always says thank you to the shop owner, an old woman with a kind smile. Then they walk home with heavy bags. Mai is happy because she helps her mother carry the apples. In the afternoon, Mai rests and reads a book about animals. She wants to be a doctor one day, but she also loves animals very much.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "When does Mai go to the market?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Every Sunday morning"
+              },
+              {
+                "id": "B",
+                "text": "Every Saturday morning"
+              },
+              {
+                "id": "C",
+                "text": "Every day after school"
+              },
+              {
+                "id": "D",
+                "text": "Every Friday evening"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says Mai goes to the market with her mother every Saturday morning.",
+              "explanation_vi": "Bài đọc cho biết Mai đi chợ với mẹ vào mỗi sáng thứ Bảy."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "How do Mai and her mother go to the market?",
+            "options": [
+              {
+                "id": "A",
+                "text": "They walk"
+              },
+              {
+                "id": "B",
+                "text": "They take a bus"
+              },
+              {
+                "id": "C",
+                "text": "They ride bicycles"
+              },
+              {
+                "id": "D",
+                "text": "They drive a car"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage states they walk because the market is near their house.",
+              "explanation_vi": "Bài đọc nói rằng họ đi bộ vì chợ ở gần nhà."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "Why does Mai's mother buy only two mangoes?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Because the shop is closed"
+              },
+              {
+                "id": "B",
+                "text": "Because mangoes are expensive"
+              },
+              {
+                "id": "C",
+                "text": "Because Mai does not like mangoes"
+              },
+              {
+                "id": "D",
+                "text": "Because they have no money at all"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says Mai loves mangoes but they are expensive, so her mother buys only two.",
+              "explanation_vi": "Bài đọc cho biết Mai thích xoài nhưng xoài đắt, nên mẹ chỉ mua hai quả."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "What do Mai and her mother do after shopping?",
+            "options": [
+              {
+                "id": "A",
+                "text": "They eat noodles at a small shop"
+              },
+              {
+                "id": "B",
+                "text": "They go home and cook rice"
+              },
+              {
+                "id": "C",
+                "text": "They buy flowers for the house"
+              },
+              {
+                "id": "D",
+                "text": "They visit Mai's grandmother"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "After shopping, they eat a bowl of noodles each at a small noodle shop next to the market.",
+              "explanation_vi": "Sau khi mua sắm, họ ăn mỗi người một bát mì ở quán mì nhỏ cạnh chợ."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "What does Mai want to be in the future?",
+            "options": [
+              {
+                "id": "A",
+                "text": "A teacher"
+              },
+              {
+                "id": "B",
+                "text": "A doctor"
+              },
+              {
+                "id": "C",
+                "text": "A shop owner"
+              },
+              {
+                "id": "D",
+                "text": "A fruit seller"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The last sentence says Mai wants to be a doctor one day.",
+              "explanation_vi": "Câu cuối bài cho biết Mai muốn trở thành bác sĩ trong tương lai."
+            },
+            "correct_option_id": "B"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:25:07Z"
+          },
+          "ai_request_id": "6ab5bad2-3b91-430c-add9-6b03afa451da",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The passage uses simple present tense, very common everyday vocabulary (market, fruit, noodles, walk), short simple and compound sentences, and familiar daily-routine content. All five questions require literal retrieval of explicitly stated details with no inference, matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "B",
+              "q2": "A",
+              "q3": "B",
+              "q4": "A",
+              "q5": "B"
+            }
+          }
+        },
+        "passage_title": "Mai's Day at the Market"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:25:07Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-reading",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Read the short text and answer the question: 'My name is Anna. I live in a small house with my sister. Every morning, I get up at 6 o'clock and make breakfast. My sister drinks tea, but I drink coffee. After breakfast, we go to work by bus.' What does Anna drink in the morning?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Tea"
+          },
+          {
+            "id": "B",
+            "text": "Coffee"
+          },
+          {
+            "id": "C",
+            "text": "Milk"
+          },
+          {
+            "id": "D",
+            "text": "Juice"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:25:27Z"
+          },
+          "ai_request_id": "b330141e-1584-4b46-8cc2-58dfd40c24b7",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The passage uses very simple present-tense sentences with common everyday vocabulary (house, breakfast, tea, coffee, bus). The question requires only basic literal comprehension, matching the A1 descriptor of basic phrases and very common vocabulary.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The text says 'My sister drinks tea, but I drink coffee.' Anna is the speaker, so she drinks coffee.",
+          "explanation_vi": "Đoạn văn nói 'Chị tôi uống trà, nhưng tôi uống cà phê.' Anna là người kể, nên cô ấy uống cà phê."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:25:27Z"
+      }
+    },
+    {
+      "slug": "foundation-review-reading",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Read the short text and answer the question: 'Hi, I'm Anna. I live in a small house with my family. Every morning, I get up at six o'clock and have breakfast with my brother. Then I go to school by bus. In the afternoon, I do my homework and play with my dog. What does Anna do in the afternoon?'",
+        "options": [
+          {
+            "id": "A",
+            "text": "She goes to school by bus."
+          },
+          {
+            "id": "B",
+            "text": "She does her homework and plays with her dog."
+          },
+          {
+            "id": "C",
+            "text": "She has breakfast with her brother."
+          },
+          {
+            "id": "D",
+            "text": "She gets up at six o'clock."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:25:41Z"
+          },
+          "ai_request_id": "1a70562a-7503-4d82-9c78-e60574045d55",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The passage uses very simple present-tense sentences, high-frequency everyday vocabulary (house, family, breakfast, school, bus, dog), and basic time expressions. The question requires only locating a directly stated detail, matching A1 reading comprehension descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The text says: 'In the afternoon, I do my homework and play with my dog.' So Anna does her homework and plays with her dog in the afternoon.",
+          "explanation_vi": "Đoạn văn nói: 'In the afternoon, I do my homework and play with my dog.' Vậy Anna làm bài tập và chơi với con chó của mình vào buổi chiều."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:25:41Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-reading",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "GRAMMAR_PRESENT_SIMPLE",
+          "VOCAB_TIME_AND_NUMBERS",
+          "VOCAB_PLACES_IN_TOWN"
+        ],
+        "examples": [
+          {
+            "note": "A typical sign. A reader can answer questions like 'What time does the museum open?' by scanning for numbers, without understanding every word.",
+            "text": "Museum Open 9 a.m. – 5 p.m. Closed Mondays. Ticket: $10"
+          },
+          {
+            "note": "A short message. The reader finds the key facts: who (Tom), where (train station), and when (3:15).",
+            "text": "Hi Anna, I'm at the train station. My train leaves at 3:15. Please call me. — Tom"
+          }
+        ],
+        "objective": "Understand and apply basic reading comprehension strategies at CEFR A1 level: reading short, simple texts (signs, notices, short messages, and simple sentences) to find key information such as names, places, times, and prices.",
+        "_provenance": {
+          "batch": "foundation:READING:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:25:56Z"
+          },
+          "ai_request_id": "95389b1d-4081-4b0f-87a3-e53558ea1a21",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At A1 level, reading comprehension focuses on very short and simple texts: signs, labels, postcards, short emails, and simple sentences about familiar topics. Key strategies: (1) Read the title or look at pictures first to predict the topic. (2) Scan for specific information — look for numbers (times, prices), capital letters (names, places), and question words. (3) Do not translate every word; use context to guess the meaning of unknown words. (4) Read the questions before the text so you know what information to find. (5) Check that your answer matches the text exactly — do not add information that is not written. Common text types include: opening hours ('Open 9 a.m. – 5 p.m.'), warnings ('No smoking'), and short personal messages ('I am at the café. Come at 6.').",
+          "vi": "Ở trình độ A1, kỹ năng đọc hiểu tập trung vào các văn bản rất ngắn và đơn giản: biển báo, nhãn dán, thiệp ngắn, email ngắn và các câu đơn về chủ đề quen thuộc. Các chiến lược quan trọng: (1) Đọc tiêu đề hoặc nhìn hình ảnh trước để đoán chủ đề. (2) Tìm thông tin cụ thể bằng cách chú ý các con số (giờ, giá), chữ cái in hoa (tên riêng, địa danh) và từ để hỏi. (3) Không cần dịch từng từ; hãy dùng ngữ cảnh để đoán nghĩa của từ mới. (4) Đọc câu hỏi trước khi đọc bài để biết mình cần tìm thông tin gì. (5) Kiểm tra câu trả lời phải khớp chính xác với bài đọc — không thêm thông tin không có trong bài. Các dạng văn bản thường gặp: giờ mở cửa ('Open 9 a.m. – 5 p.m.'), biển cảnh báo ('No smoking'), và tin nhắn cá nhân ngắn ('I am at the café. Come at 6.')."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Word-by-word translation is slow and unnecessary at A1 level. Scanning for key words (capital letters, numbers) is faster and helps the learner focus on the information the question asks for.",
+            "right": "Read the questions first, then scan the text for only the key information needed (names, numbers, places).",
+            "wrong": "Reading the text word by word and translating everything before answering the questions."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:25:56Z"
+      }
+    }
+  ]
+}

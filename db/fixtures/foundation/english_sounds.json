@@ -1,0 +1,256 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.1297611Z",
+  "node": {
+    "namespace": "pronunciation",
+    "code": "ENGLISH_SOUNDS",
+    "label": "English Sounds",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-english-sounds-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, she ___ to the sound of birds singing outside her window.",
+        "options": [
+          {
+            "id": "A",
+            "text": "wakes up"
+          },
+          {
+            "id": "B",
+            "text": "woke up"
+          },
+          {
+            "id": "C",
+            "text": "is waking up"
+          },
+          {
+            "id": "D",
+            "text": "wake up"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ENGLISH_SOUNDS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:08:14Z"
+          },
+          "ai_request_id": "671e17c7-8353-457e-994f-05bf6d2ff092",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the present simple third-person -s form with a clear time signal 'Every morning', which is core A1 grammar. Vocabulary is everyday ('wake up', 'morning', 'birds'). Distractors (past simple, present continuous, base form) are simple and typical of A1-level tense choice tasks.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Every morning' signals a daily habit, so the present simple is used. With the third-person subject 'she', the verb takes -s: 'wakes up'. Note the pronunciation of the final -s in 'wakes' as /s/, an unvoiced sound.",
+          "explanation_vi": "'Every morning' chỉ thói quen hàng ngày nên dùng thì hiện tại đơn. Với chủ ngữ ngôi thứ ba 'she', động từ thêm -s: 'wakes up'. Lưu ý cách phát âm đuôi -s trong 'wakes' là âm /s/, một âm vô thanh."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:08:14Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-english-sounds-speaking-task-2",
+      "kind": "speaking_task",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Say these three words aloud, one by one, and then use each word in a short sentence: 'ship', 'sheep', and 'shop'. Speak clearly and slowly.",
+        "task_type": "respond",
+        "_provenance": {
+          "batch": "foundation:ENGLISH_SOUNDS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:08:33Z"
+          },
+          "ai_request_id": "8d075afd-3506-4229-af35-d27cbe2fde44",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The task uses three very common, concrete nouns and asks only for simple sentences in the present tense, matching A1 descriptors. The minimal-pair pronunciation focus (ship/sheep/shop) is basic phonics practice appropriate for beginners.",
+          "prompt_version": "item_generate.v1"
+        },
+        "explanation": {
+          "text": "This task targets the English sounds /ɪ/ and /iː/ and the short /ɒ/. Focus on the vowel difference between 'ship' (short /ɪ/), 'sheep' (long /iː/), and 'shop' (short /ɒ/). Say each word slowly, hold the long vowel in 'sheep', then make a simple sentence for each word.",
+          "text_vi": "Nhiệm vụ này luyện các âm tiếng Anh /ɪ/, /iː/ và /ɒ/. Chú ý sự khác biệt nguyên âm giữa 'ship' (/ɪ/ ngắn), 'sheep' (/iː/ dài) và 'shop' (/ɒ/ ngắn). Nói chậm từng từ, kéo dài nguyên âm trong 'sheep', sau đó đặt một câu đơn giản cho mỗi từ."
+        },
+        "speaking_time_seconds": 45
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:08:33Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-english-sounds",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Which word has the same beginning sound as 'ship'?\n\nA. chair\nB. shop\nC. sip\nD. chip",
+        "options": [
+          {
+            "id": "A",
+            "text": "chair"
+          },
+          {
+            "id": "B",
+            "text": "shop"
+          },
+          {
+            "id": "C",
+            "text": "sip"
+          },
+          {
+            "id": "D",
+            "text": "chip"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ENGLISH_SOUNDS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:09:09Z"
+          },
+          "ai_request_id": "a657e06c-4b3d-4d60-99bd-4e5b679e6327",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic phonemic awareness with very common vocabulary (ship, shop, chair, sip, chip) and a simple question structure, appropriate for A1 beginners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Ship' and 'shop' both begin with the /ʃ/ sound, as in 'sh'. 'Chair' and 'chip' begin with /tʃ/, and 'sip' begins with /s/.",
+          "explanation_vi": "'Ship' và 'shop' đều bắt đầu bằng âm /ʃ/ (đánh vần 'sh'). 'Chair' và 'chip' bắt đầu bằng âm /tʃ/, còn 'sip' bắt đầu bằng âm /s/."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:09:09Z"
+      }
+    },
+    {
+      "slug": "foundation-review-english-sounds",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Which word has the same vowel sound as 'cat'?",
+        "options": [
+          {
+            "id": "A",
+            "text": "hat"
+          },
+          {
+            "id": "B",
+            "text": "sit"
+          },
+          {
+            "id": "C",
+            "text": "bed"
+          },
+          {
+            "id": "D",
+            "text": "cup"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ENGLISH_SOUNDS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:09:36Z"
+          },
+          "ai_request_id": "c5d5cfce-d88d-43be-b3ce-1b329878b286",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses only very common CVC words (cat, hat, sit, bed, cup) and a simple question structure, testing basic phonics/vowel sounds appropriate for A1 beginners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Cat' and 'hat' both use the short vowel sound /æ/. 'Sit' has /ɪ/, 'bed' has /e/, and 'cup' has /ʌ/.",
+          "explanation_vi": "'Cat' và 'hat' đều chứa nguyên âm ngắn /æ/. 'Sit' có âm /ɪ/, 'bed' có âm /e/, và 'cup' có âm /ʌ/."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:09:36Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-english-sounds",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "ENGLISH_SOUNDS_VOWELS",
+          "ENGLISH_SOUNDS_CONSONANTS",
+          "WORD_STRESS_BASICS"
+        ],
+        "examples": [
+          {
+            "note": "Demonstrates the contrast between the short vowel /ɪ/ in 'ship' and the long vowel /iː/ in 'sheep' — two different words with different meanings.",
+            "text": "I want to sit on this ship, not that sheep."
+          },
+          {
+            "note": "Shows word endings: 'watched' ends in /t/ (after the voiceless /tʃ/), 'cats' ends in /s/, and 'three' begins with the /θ/ sound made with the tongue between the teeth.",
+            "text": "She watched three cats yesterday."
+          }
+        ],
+        "objective": "Understand and master the basic English vowel and consonant sounds at CEFR A1 level, including the difference between short and long vowels, key consonant sounds that do not exist in Vietnamese, and how to pronounce common word endings correctly.",
+        "_provenance": {
+          "batch": "foundation:ENGLISH_SOUNDS:20260923T135531",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:10:00Z"
+          },
+          "ai_request_id": "7a0df391-c40d-4b43-9ff6-856a11181d4c",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "English pronunciation is built from 44 sounds: about 20 vowels and 24 consonants. At A1 level, focus on three key areas. (1) Short vs. long vowels: short vowels are quick and relaxed, as in 'ship' /ɪ/, while long vowels are held longer, as in 'sheep' /iː/. Changing the vowel changes the meaning of the word. (2) Consonants not found in Vietnamese: the sounds /θ/ (think) and /ð/ (this) are made by placing the tongue lightly between the teeth; the final consonants /s/, /z/, /t/, /d/ must be clearly pronounced at the end of words, because Vietnamese does not have many final consonants. (3) Word endings: the -ed ending is pronounced three ways — /t/ after voiceless sounds (worked), /d/ after voiced sounds (played), and /ɪd/ after t or d (wanted). Similarly, the -s ending is /s/ (cats), /z/ (dogs), or /ɪz/ (watches). Practicing these sounds slowly and listening to native speakers will build a strong pronunciation foundation.",
+          "vi": "Phát âm tiếng Anh gồm 44 âm: khoảng 20 nguyên âm và 24 phụ âm. Ở trình độ A1, người học Việt Nam cần chú ý ba điểm chính. (1) Nguyên âm ngắn và dài: nguyên âm ngắn phát âm nhanh, nhẹ (ví dụ 'ship' /ɪ/), còn nguyên âm dài được kéo dài hơn (ví dụ 'sheep' /iː/). Thay đổi nguyên âm sẽ làm thay đổi nghĩa của từ. (2) Các âm không có trong tiếng Việt: âm /θ/ (think) và /ð/ (this) được tạo bằng cách đặt nhẹ đầu lưỡi giữa hai răng; các phụ âm cuối như /s/, /z/, /t/, /d/ phải được phát âm rõ, vì tiếng Việt hầu như không có phụ âm cuối — người học Việt thường bỏ quên âm cuối, khiến 'cat' nghe như 'ca'. (3) Đuôi từ: đuôi -ed có ba cách đọc — /t/ sau âm vô thanh (worked), /d/ sau âm hữu thanh (played), và /ɪd/ sau t hoặc d (wanted). Tương tự, đuôi -s đọc là /s/ (cats), /z/ (dogs), hoặc /ɪz/ (watches). Luyện chậm từng âm và nghe người bản xứ thường xuyên sẽ giúp xây dựng nền tảng phát âm vững chắc."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "The -ed ending is only pronounced /ɪd/ after the sounds /t/ and /d/ (as in 'wanted'). After /k/, it is just /t/: 'worked' = /wɜːkt/. Also, final consonants like the /z/ in 'years' must be pronounced clearly; omitting them changes or blurs the meaning, a common habit for Vietnamese speakers because Vietnamese words rarely end in these consonant sounds.",
+            "right": "I worked at a shop for two years.",
+            "wrong": "I work-ed at a shop for two year. (pronouncing 'worked' as /wɜːkɪd/ and dropping the final /s/ in 'years')"
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:10:00Z"
+      }
+    }
+  ]
+}

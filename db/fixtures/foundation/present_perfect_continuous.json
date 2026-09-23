@@ -1,0 +1,11 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.2306612Z",
+  "node": {
+    "namespace": "grammar",
+    "code": "PRESENT_PERFECT_CONTINUOUS",
+    "label": "Present Perfect Continuous",
+    "cefr_level": "B1"
+  },
+  "items": null
+}

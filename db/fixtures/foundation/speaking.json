@@ -1,0 +1,298 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.2771351Z",
+  "node": {
+    "namespace": "skill",
+    "code": "SPEAKING",
+    "label": "Speaking Skills",
+    "cefr_level": "A1"
+  },
+  "items": [
+    {
+      "slug": "foundation-ex-speaking-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "In a conversation, your friend asks: 'What do you do every morning?' You answer: 'I ___ up at six o'clock and drink coffee.'",
+        "options": [
+          {
+            "id": "A",
+            "text": "get"
+          },
+          {
+            "id": "B",
+            "text": "got"
+          },
+          {
+            "id": "C",
+            "text": "am getting"
+          },
+          {
+            "id": "D",
+            "text": "will get"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:31:10Z"
+          },
+          "ai_request_id": "2221bb09-a591-4fee-808c-d59883df49cb",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the present simple for daily routines ('I get up at six o'clock'), which is core A1 grammar. Vocabulary is basic and everyday, the distractors (past simple, present continuous, future) are simple forms, and the context is a basic conversational exchange about habits.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "When speaking about daily routines and habits, use the present simple tense: 'I get up at six o'clock.' This is the natural form for answering questions about what you do every day.",
+          "explanation_vi": "Khi nói về thói quen hàng ngày trong giao tiếp, dùng thì hiện tại đơn: 'I get up at six o'clock.' Đây là cách trả lời tự nhiên cho câu hỏi về việc bạn làm mỗi ngày."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:31:10Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-speaking-speaking-task-1",
+      "kind": "speaking_task",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Talk about your favorite food. What is it, and why do you like it? You have 45 seconds to answer.",
+        "task_type": "respond",
+        "_provenance": {
+          "batch": "foundation:SPEAKING:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:30:12Z"
+          },
+          "ai_request_id": "63b4b10a-66ca-426b-86aa-963ea721312d",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The task asks learners to name a favorite food and give simple reasons using short, clear sentences in the present simple, matching A1 descriptors of basic phrases and very common everyday vocabulary.",
+          "prompt_version": "item_generate.v1"
+        },
+        "explanation": {
+          "text": "Name the food, say when you usually eat it, and give one or two simple reasons why you like it. Speak in short, clear sentences.",
+          "text_vi": "Nêu tên món ăn, nói khi nào bạn thường ăn nó, và đưa ra một hoặc hai lý do đơn giản vì sao bạn thích. Nói bằng những câu ngắn, rõ ràng."
+        },
+        "speaking_time_seconds": 45
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:30:12Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-speaking-speaking-task-2",
+      "kind": "speaking_task",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Talk about your favorite food. What is it, and why do you like it? When do you usually eat it?",
+        "task_type": "respond",
+        "_provenance": {
+          "batch": "foundation:SPEAKING:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:30:59Z"
+          },
+          "ai_request_id": "bb8c210c-48fa-4231-bf2b-41ae113f6c32",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The task asks learners to name a favorite food and give simple reasons using basic sentence patterns ('I like...', 'It is...') in the simple present with very common everyday vocabulary, matching A1 descriptors. The 45-second speaking time and scaffolded explanation further support an A1 level.",
+          "prompt_version": "item_generate.v1"
+        },
+        "explanation": {
+          "text": "Name your favorite food, give simple reasons why you like it (taste, smell), and say when you usually eat it (e.g., at home with family, on weekends). Use simple sentences like 'I like...' and 'It is...'.",
+          "text_vi": "Nêu tên món ăn bạn thích nhất, đưa ra lý do đơn giản vì sao bạn thích (vị, mùi), và nói khi nào bạn thường ăn món đó (ví dụ: ở nhà với gia đình, vào cuối tuần). Dùng câu đơn giản như 'I like...' và 'It is...'."
+        },
+        "speaking_time_seconds": 45
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:30:59Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-speaking",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "When you speak with someone in English, what is the best thing to do?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Speak very fast so you sound fluent"
+          },
+          {
+            "id": "B",
+            "text": "Speak clearly and use simple words"
+          },
+          {
+            "id": "C",
+            "text": "Stay quiet and only write your answer"
+          },
+          {
+            "id": "D",
+            "text": "Use long, difficult words all the time"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:31:26Z"
+          },
+          "ai_request_id": "f304f3c8-34a1-4327-a9a9-cd8f8378aea8",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very simple present-tense sentences, everyday vocabulary (speak, clear, simple words), and short imperative-style options, matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Good speaking at this level means speaking clearly, at a natural pace, and using simple words you know well. Speaking too fast or using difficult words can make your message hard to understand.",
+          "explanation_vi": "Nói tốt ở trình độ này nghĩa là nói rõ ràng, với tốc độ tự nhiên và dùng những từ đơn giản mà bạn biết chắc. Nói quá nhanh hoặc dùng từ khó có thể khiến người nghe khó hiểu thông điệp của bạn."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:31:26Z"
+      }
+    },
+    {
+      "slug": "foundation-review-speaking",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Which sentence is the best way to politely introduce yourself when you meet someone for the first time?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Hello, my name is Anna. Nice to meet you."
+          },
+          {
+            "id": "B",
+            "text": "You! Come here!"
+          },
+          {
+            "id": "C",
+            "text": "I eat rice for lunch."
+          },
+          {
+            "id": "D",
+            "text": "The sky is blue today."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:31:43Z"
+          },
+          "ai_request_id": "fce2110c-53b1-4aab-880d-fbb03d9813f8",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses basic greeting and self-introduction phrases ('Hello, my name is...', 'Nice to meet you') with very common vocabulary and simple sentence structures, matching A1 descriptors. Distractors are also simple sentences.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "When speaking, a polite introduction uses a greeting ('Hello'), states your name ('my name is...'), and adds a friendly phrase ('Nice to meet you'). This is the standard way to introduce yourself in conversation.",
+          "explanation_vi": "Khi nói, lời giới thiệu lịch sự cần có lời chào ('Hello'), nêu tên của bạn ('my name is...') và thêm một câu thân thiện ('Nice to meet you'). Đây là cách giới thiệu bản thân chuẩn mực trong hội thoại."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:31:43Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-speaking",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "GRAMMAR_PRESENT_SIMPLE",
+          "GRAMMAR_QUESTION_FORMS",
+          "VOCAB_GREETINGS"
+        ],
+        "examples": [
+          {
+            "note": "A standard self-introduction: greeting + name + origin + polite closing phrase used when meeting someone for the first time.",
+            "text": "Hello, my name is Lan. I am from Vietnam. Nice to meet you!"
+          },
+          {
+            "note": "A wh-question with 'be' to ask about origin, and a short, natural answer. Note the contraction 'I'm' in everyday speech.",
+            "text": "Where are you from? — I'm from Da Nang."
+          },
+          {
+            "note": "A key survival phrase: politely asking someone to repeat when you did not hear or understand.",
+            "text": "Sorry, can you repeat that, please?"
+          }
+        ],
+        "objective": "Understand and use basic speaking strategies to introduce yourself, ask and answer simple personal questions, and hold a short everyday conversation in English.",
+        "_provenance": {
+          "batch": "foundation:SPEAKING:20260923T142147",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T14:31:57Z"
+          },
+          "ai_request_id": "6b2495f3-b31c-49b5-82a9-bf3a0e65ac4f",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At A1 level, speaking means producing simple, rehearsed and semi-rehearsed phrases to exchange basic personal information. Key skills include: (1) Greetings and introductions — 'Hello, my name is...', 'Nice to meet you.'; (2) Asking simple questions with question words (What, Where, How old) and the verbs 'be' and 'do'; (3) Giving short answers — 'Yes, I am.', 'No, I don't.'; (4) Using polite expressions — 'Please', 'Thank you', 'Excuse me'; (5) Asking for repetition when you don't understand — 'Sorry, can you repeat that, please?' Speak in short, clear sentences, use rising intonation for yes/no questions and falling intonation for wh-questions, and keep a natural pace. Fluency at this level matters more than perfect grammar: communicate your message even if the sentence is simple.",
+          "vi": "Ở trình độ A1, kỹ năng nói tập trung vào việc sử dụng các câu đơn giản, quen thuộc để trao đổi thông tin cá nhân cơ bản. Các điểm quan trọng gồm: (1) Chào hỏi và giới thiệu bản thân — 'Hello, my name is...', 'Nice to meet you.'; (2) Đặt câu hỏi đơn giản với từ để hỏi (What, Where, How old) và động từ 'be', 'do'; (3) Trả lời ngắn gọn — 'Yes, I am.', 'No, I don't.'; (4) Dùng các cách nói lịch sự — 'Please', 'Thank you', 'Excuse me'; (5) Hỏi lại khi chưa nghe rõ — 'Sorry, can you repeat that, please?'. Nói câu ngắn, rõ ràng; giọng đi lên với câu hỏi Yes/No, giọng đi xuống với câu hỏi Wh-. Ở mức này, sự trôi chảy và tự tin quan trọng hơn ngữ pháp hoàn hảo — hãy cứ nói, dù câu đơn giản."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In wh-questions, the verb 'be' must come before the subject (question word + verb + subject). Keeping statement word order is a very common A1 error.",
+            "right": "Where are you from?",
+            "wrong": "Where you are from?"
+          },
+          {
+            "why": "'Very' cannot directly modify a verb; use 'very much' after the verb or object. This keeps the sentence natural and grammatical.",
+            "right": "I like speaking English very much.",
+            "wrong": "I very like speaking English."
+          }
+        ]
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T14:31:57Z"
+      }
+    }
+  ]
+}

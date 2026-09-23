@@ -1,0 +1,65 @@
+{
+  "format": "fluentra.foundation.fixture.v1",
+  "generated_at": "2026-09-23T16:21:51.1409005Z",
+  "node": {
+    "namespace": "grammar",
+    "code": "FUTURE_CONTINUOUS",
+    "label": "Future Continuous",
+    "cefr_level": "B1"
+  },
+  "items": [
+    {
+      "slug": "foundation-quiz-future-continuous",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Don't call me at 8 p.m. tomorrow — I ___ dinner with my family.",
+        "options": [
+          {
+            "id": "A",
+            "text": "will have"
+          },
+          {
+            "id": "B",
+            "text": "will be having"
+          },
+          {
+            "id": "C",
+            "text": "have"
+          },
+          {
+            "id": "D",
+            "text": "am have"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_CONTINUOUS:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-23T16:19:35Z"
+          },
+          "ai_request_id": "161bfa75-f752-4f72-a1e5-82d37eac7e75",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the future continuous ('will be having') for an action in progress at a specific future time, a tense typically introduced at B1. The sentence context is simple everyday vocabulary, but the grammar point goes beyond A2's basic tenses.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The future continuous 'will be having' describes an action that will be in progress at a specific time in the future (8 p.m. tomorrow).",
+          "explanation_vi": "Thì tương lai tiếp diễn 'will be having' diễn tả hành động đang diễn ra tại một thời điểm xác định trong tương lai (8 giờ tối mai)."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-23T16:19:35Z"
+      }
+    }
+  ]
+}
