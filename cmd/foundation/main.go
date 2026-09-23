@@ -172,7 +172,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return errors.New(
 			"no AI provider is configured, so this would fill the database with mock drafts: " +
 				"set AI_PROVIDER_1_NAME and AI_PROVIDER_1_API_KEY " +
-				"(see docs/deployment/configuration.md), or pass -mock to do it anyway")
+				"(see .env.example), or pass -mock to do it anyway")
 	}
 
 	generator, authorID, err := buildGenerator(ctx, cfg, pool)

@@ -62,7 +62,8 @@ afterwards. That is the whole argument for D23-4.
 | D23-6. Decks | **One public deck per CEFR level** (A1 … C1), plus "Top 1,000" by frequency replacing the current curated deck. Nothing enrols a learner in 10,000 cards: they add a deck |
 | D23-7. The thirteen courses | **Built from spine nodes**: each course is a set of nodes, each node one lesson, and every node belongs to exactly one course (table in Stage C). A course's lessons are that node's published Foundation content |
 | D23-8. The five old courses | **Removed from the seed; their content kept.** Reading passages, listening scripts, writing prompts and speaking tasks become lessons of the four skill Foundation courses; Everyday English's flashcards go to Vocabulary Foundations. On a database with real learners they are unpublished, never deleted |
-| D23-9. How Foundation content reaches a fresh database | **The WO 22 pattern**: `cmd/foundation` generates, a person approves in the review queue, an export freezes the published content into `db/fixtures/foundation/*.json`, and `make seed` loads it |
+| D23-9. How Foundation content reaches a fresh database | **The WO 22 pattern**: `cmd/foundation` generates, WO 22 Stage F's independent verifier publishes what it confirms (owner's call 2026-09-23, D22-6), a person reviews only the doubts, an export freezes the published content into `db/fixtures/foundation/*.json`, and `make seed` loads it |
+| D23-10. What "verified" means for a topic | **A topic has no answer key, so its check is a review, not a solve.** A different model from the writer reads the explanation and examples and must find no error of fact or grammar, examples that illustrate the point, and a level within one band of the node's CEFR. The topic's exercises, quiz and review items are choice items and pass WO 22's checklist. A node publishes only when its topic **and** all its items pass; otherwise the node's batch escalates whole |
 
 ---
 
@@ -172,13 +173,16 @@ with "Tiếp tục".
 
 1. `go run ./cmd/foundation -all` (WO 21 fixes applied) for the 70 existing nodes and the Stage C
    additions.
-2. Review in the queue. WO 22 Stage F's batch approval applies: one batch per node.
+2. Verification, then review of the doubts: WO 22 Stage F's verifier with D23-10's topic check; one
+   batch per node, so a doubted node is read as a whole in the queue.
 3. **`cmd/foundation -export`** writes the published topics, exercises and quizzes to
    `db/fixtures/foundation/*.json`.
 4. **`cmd/seed -foundation`** loads them with the approval they already had.
 
-**Trap.** A node whose topic was rejected has no lesson. The export reports every node without
-published content, so a course does not silently lose a lesson.
+**Traps.** (1) A node whose topic was rejected has no lesson. The export reports every node without
+published content, so a course does not silently lose a lesson. (2) A topic explanation that is
+confidently wrong is worse than a wrong quiz key, because it teaches; the verifier's topic prompt asks
+for the specific sentence it doubts, and any doubt escalates.
 
 **Gate.** After a database reset, `make seed` publishes Foundation content for every node without a model
 call.
