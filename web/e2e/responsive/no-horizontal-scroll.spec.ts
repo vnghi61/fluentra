@@ -245,7 +245,8 @@ test.describe("R6/R1 at 320 px", () => {
     });
   }
 
-  test("the account screens fit", async ({ page }) => {    await stubAuthenticated(page);
+  test("the account screens fit", async ({ page }) => {
+    await stubAuthenticated(page);
     await stubAccountApi(page);
 
     await page.goto("/settings");

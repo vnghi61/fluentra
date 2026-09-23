@@ -65,14 +65,14 @@ function modeHintKey(mode: MockMode): string {
   }
 }
 
-function versionLabel(version: ExamVersion, vi: boolean): string {
-  return version.title || (vi ? version.code : version.code);
+/** A version's own title, or its code when it was seeded without one. */
+function versionLabel(version: ExamVersion): string {
+  return version.title || version.code;
 }
 
 export function MockTestComposer(): React.JSX.Element {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const vi = i18n.language.startsWith("vi");
   const versions = useExamVersions();
 
   const [versionId, setVersionId] = useState("");
@@ -200,7 +200,7 @@ export function MockTestComposer(): React.JSX.Element {
           >
             {(versions.data?.items ?? []).map((item) => (
               <option key={item.id} value={item.id}>
-                {versionLabel(item, vi)}
+                {versionLabel(item)}
               </option>
             ))}
           </select>
