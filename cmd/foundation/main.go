@@ -142,6 +142,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		"Only nodes with no published topic yet, so a long run resumes in chunks")
 	afterFlag := flags.String("after", "",
 		"Resume after this node code, so a chunked run advances past a node that keeps failing")
+	draftsFlag := flags.Bool("drafts", false,
+		"With -missing, treat a node that has any topic version (draft too) as done, for a drafts-only run a person reviews later")
 
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -163,7 +165,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	}
 	defer pool.Close()
 
-	nodes, err := querySpineNodes(ctx, pool, targetNode, strings.TrimSpace(*afterFlag), *limitFlag, *missingFlag)
+	nodes, err := querySpineNodes(ctx, pool, targetNode, strings.TrimSpace(*afterFlag), *limitFlag, *missingFlag, *draftsFlag)
 	if err != nil {
 		return fmt.Errorf("query spine nodes: %w", err)
 	}
@@ -261,7 +263,8 @@ func loadFoundationConfig(ctx context.Context) (foundationCLIConfig, error) {
 }
 
 func querySpineNodes(
-	ctx context.Context, pool *pgxpool.Pool, targetNode, after string, limit int, missingOnly bool,
+	ctx context.Context, pool *pgxpool.Pool,
+	targetNode, after string, limit int, missingOnly, includeDrafts bool,
 ) ([]spineNodeRow, error) {
 	// `missingOnly` makes a long generation resumable: the topic is the last
 	// item a node publishes, so "no published foundation_topic tagged to the
@@ -283,6 +286,13 @@ func querySpineNodes(
 		        AND v.kind = 'foundation_topic'
 		  ))
 		ORDER BY t.code ASC`
+	if missingOnly && includeDrafts {
+		// A drafts-only run treats any topic version as done, so it advances
+		// without needing publication (a person reviews the drafts later).
+		query = strings.Replace(query,
+			"AND i.status = 'published' AND v.status = 'published'",
+			"AND (v.status = 'published' OR v.status = 'draft')", 1)
+	}
 	if limit > 0 {
 		query = fmt.Sprintf("%s LIMIT %d", query, limit)
 	}
