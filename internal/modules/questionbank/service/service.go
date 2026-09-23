@@ -214,6 +214,9 @@ func (s *Service) GenerateQuestions(ctx context.Context, req contract.GenerateRe
 		NodeCodes: req.NodeCodes,
 		Count:     count,
 		Purpose:   "bank",
+		// One batch id per run, so the doubts of one generation are reviewed
+		// together (WO 22 Stage A.4).
+		Batch: fmt.Sprintf("bank:%s:%s", req.Kind, time.Now().UTC().Format("20060102T150405")),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("learning generator: %w", err)

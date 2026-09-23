@@ -183,7 +183,10 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return fmt.Errorf("build generator: %w", err)
 	}
 
-	return generateDraftsForNodes(ctx, generator, nodes, authorID, out)
+	// One batch id per run, so a node's doubts are reviewed together and can be
+	// told apart from another run's (WO 22 Stage A.4).
+	runBatch := time.Now().UTC().Format("20060102T150405")
+	return generateDraftsForNodes(ctx, generator, nodes, authorID, runBatch, out)
 }
 
 // loadFoundationConfig reads this command's configuration.
@@ -513,12 +516,15 @@ func generateDraftsForNodes(
 	generator learningcontract.Generator,
 	nodes []spineNodeRow,
 	authorID uuid.UUID,
+	runBatch string,
 	out io.Writer,
 ) error {
 	totalGenerated := 0
 	for i, node := range nodes {
 		_, _ = fmt.Fprintf(out, "[%d/%d] Generating drafts for node %s:%s (%s, level %s)...\n",
 			i+1, len(nodes), node.Namespace, node.Code, node.Label, node.CEFRLevel)
+
+		batch := fmt.Sprintf("foundation:%s:%s", node.Code, runBatch)
 
 		// 1. Foundation topic body
 		topicReq := learningcontract.GenerateRequest{
@@ -529,6 +535,7 @@ func generateDraftsForNodes(
 			Count:      1,
 			OwnerID:    &authorID,
 			SlugPrefix: fmt.Sprintf("foundation-topic-%s", strings.ToLower(node.Code)),
+			Batch:      batch,
 		}
 		topicItems, err := generator.Generate(ctx, topicReq)
 		if err != nil {
@@ -554,6 +561,7 @@ func generateDraftsForNodes(
 				Count:      1,
 				OwnerID:    &authorID,
 				SlugPrefix: exSlug,
+				Batch:      batch,
 			}
 			exItems, err := generator.Generate(ctx, exReq)
 			if err != nil {
@@ -572,6 +580,7 @@ func generateDraftsForNodes(
 			Count:      1,
 			OwnerID:    &authorID,
 			SlugPrefix: fmt.Sprintf("foundation-quiz-%s", strings.ToLower(node.Code)),
+			Batch:      batch,
 		}
 		quizItems, err := generator.Generate(ctx, quizReq)
 		if err != nil {
@@ -589,6 +598,7 @@ func generateDraftsForNodes(
 			Count:      1,
 			OwnerID:    &authorID,
 			SlugPrefix: fmt.Sprintf("foundation-review-%s", strings.ToLower(node.Code)),
+			Batch:      batch,
 		}
 		reviewItems, err := generator.Generate(ctx, reviewReq)
 		if err != nil {
