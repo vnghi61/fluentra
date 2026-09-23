@@ -140,6 +140,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		"Directory an -export writes to and `cmd/seed -foundation` reads")
 	missingFlag := flags.Bool("missing", false,
 		"Only nodes with no published topic yet, so a long run resumes in chunks")
+	afterFlag := flags.String("after", "",
+		"Resume after this node code, so a chunked run advances past a node that keeps failing")
 
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -161,7 +163,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	}
 	defer pool.Close()
 
-	nodes, err := querySpineNodes(ctx, pool, targetNode, *limitFlag, *missingFlag)
+	nodes, err := querySpineNodes(ctx, pool, targetNode, strings.TrimSpace(*afterFlag), *limitFlag, *missingFlag)
 	if err != nil {
 		return fmt.Errorf("query spine nodes: %w", err)
 	}
@@ -259,7 +261,7 @@ func loadFoundationConfig(ctx context.Context) (foundationCLIConfig, error) {
 }
 
 func querySpineNodes(
-	ctx context.Context, pool *pgxpool.Pool, targetNode string, limit int, missingOnly bool,
+	ctx context.Context, pool *pgxpool.Pool, targetNode, after string, limit int, missingOnly bool,
 ) ([]spineNodeRow, error) {
 	// `missingOnly` makes a long generation resumable: the topic is the last
 	// item a node publishes, so "no published foundation_topic tagged to the
@@ -270,6 +272,7 @@ func querySpineNodes(
 		WHERE t.namespace IN ('grammar', 'vocabulary', 'pattern', 'pronunciation', 'skill')
 		  AND t.deprecated_at IS NULL
 		  AND ($1 = '' OR t.code = $1)
+		  AND ($3 = '' OR t.code > $3)
 		  AND (NOT $2::boolean OR NOT EXISTS (
 		      SELECT 1
 		      FROM content.content_tags ct
@@ -279,12 +282,12 @@ func querySpineNodes(
 		        AND i.status = 'published' AND v.status = 'published'
 		        AND v.kind = 'foundation_topic'
 		  ))
-		ORDER BY t.position ASC, t.code ASC`
+		ORDER BY t.code ASC`
 	if limit > 0 {
 		query = fmt.Sprintf("%s LIMIT %d", query, limit)
 	}
 
-	rows, err := pool.Query(ctx, query, targetNode, missingOnly)
+	rows, err := pool.Query(ctx, query, targetNode, missingOnly, after)
 	if err != nil {
 		return nil, err
 	}
