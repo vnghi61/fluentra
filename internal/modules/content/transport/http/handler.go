@@ -66,6 +66,9 @@ type ContentService interface {
 	ApproveReviewBatch(
 		ctx context.Context, reviewerID uuid.UUID, batch string, reject []uuid.UUID, note *string,
 	) (int, error)
+	ReviewSamples(ctx context.Context, limit, offset int) ([]domain.ReviewSample, int64, error)
+	KeepReviewSample(ctx context.Context, reviewerID, versionID uuid.UUID, note *string) error
+	RejectReviewSample(ctx context.Context, reviewerID, versionID uuid.UUID, note *string) error
 }
 
 // Handler serves HTTP endpoints for the content module.
@@ -106,6 +109,8 @@ func (h *Handler) ReviewRoutes(router chi.Router) {
 	router.Get("/admin/review-queue", h.adminListReviewQueue)
 	router.Get("/admin/review-queue/batches", h.adminListReviewBatches)
 	router.Post("/admin/review-queue/batches/{id}/approve", h.adminApproveBatch)
+	router.Get("/admin/review-queue/samples", h.adminListReviewSamples)
+	router.Post("/admin/review-queue/samples/{id}/decide", h.adminDecideReviewSample)
 	router.Post("/admin/content/{id}/review", h.review)
 	router.Post("/admin/content/{id}/publish", h.publish)
 }
@@ -672,6 +677,68 @@ func (h *Handler) adminApproveBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, r, http.StatusOK, AdminApproveBatchResponse{Approved: approved})
+}
+
+// adminListReviewSamples handles GET /admin/review-queue/samples.
+func (h *Handler) adminListReviewSamples(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentReview); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	limit, offset := adminPaging(r)
+	samples, total, err := h.service.ReviewSamples(ctx, limit, offset)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	respItems := make([]AdminReviewSampleResponse, len(samples))
+	for i, sample := range samples {
+		respItems[i] = toAdminReviewSampleResponse(sample)
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, AdminReviewSampleListResponse{Items: respItems, Total: total})
+}
+
+// adminDecideReviewSample handles POST /admin/review-queue/samples/{id}/decide.
+func (h *Handler) adminDecideReviewSample(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentReview); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required."))
+		return
+	}
+
+	versionID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid content version ID."))
+		return
+	}
+	var req AdminDecideSampleRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	switch domain.SampleDecision(req.Decision) {
+	case domain.SampleKept:
+		err = h.service.KeepReviewSample(ctx, actor.UserID, versionID, req.Note)
+	case domain.SampleRejected:
+		err = h.service.RejectReviewSample(ctx, actor.UserID, versionID, req.Note)
+	default:
+		err = apperr.New(apperr.Validation, "INVALID_SAMPLE_DECISION",
+			"Decision must be \"kept\" or \"rejected\".")
+	}
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) listFoundationTopics(w http.ResponseWriter, r *http.Request) {

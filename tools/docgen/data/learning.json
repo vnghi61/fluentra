@@ -34,6 +34,7 @@
       { "name": "content_tags", "purpose": "Item ↔ taxonomy mapping", "notes": "Composite PK; indexed for filtered browsing" },
       { "name": "content_reviews", "purpose": "Review workflow record", "notes": "`version_id`, `reviewer_id`, `decision`, `comments`" },
       { "name": "item_reports", "purpose": "Learner issue reports on content versions", "notes": "`content_version_id`, `user_id`, `reason`, `note`. Unique on (content_version_id, user_id)." },
+      { "name": "review_samples", "purpose": "Auto-published versions drawn for a person to spot-check (WO 22 Stage A.5)", "notes": "`version_id` PK, `batch` (sample/report), `sampled_on`, `decision` (kept/rejected), `decided_by`, `decided_at`" },
       { "name": "tts_cache", "purpose": "Pre-generated synthesised speech audio keyed by text hash and voice", "notes": "`text_hash`, `voice`, `engine`, `engine_version`, `object_key`, `created_at`" },
       { "name": "taxonomy_prerequisites", "purpose": "Prerequisite DAG edges between taxonomy nodes in the same strand", "notes": "`node_id`, `requires_node_id`, `created_at`. Unique on (node_id, requires_node_id)." }
     ],
@@ -59,7 +60,11 @@
       { "method": "POST", "path": "/api/v1/admin/foundation/topics", "permission": "content.create", "purpose": "Create a new foundation taxonomy topic", "success": "201", "errors": ["TAXONOMY_CODE_IMMUTABLE", "VALIDATION_FAILED"] },
       { "method": "PATCH", "path": "/api/v1/admin/foundation/topics/{code}", "permission": "content.edit", "purpose": "Update foundation topic metadata", "success": "200", "errors": ["TAXONOMY_CODE_IMMUTABLE", "NOT_FOUND"] },
       { "method": "PUT", "path": "/api/v1/admin/foundation/topics/{code}/prerequisites", "permission": "content.edit", "purpose": "Replace prerequisites for a foundation topic", "success": "200", "errors": ["TAXONOMY_CYCLE", "CROSS_NAMESPACE_PREREQUISITE"] },
-      { "method": "GET", "path": "/api/v1/admin/review-queue", "permission": "content.review", "purpose": "List machine-generated drafts awaiting review", "success": "200" }
+      { "method": "GET", "path": "/api/v1/admin/review-queue", "permission": "content.review", "purpose": "List machine-generated drafts awaiting review", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/review-queue/batches", "permission": "content.review", "purpose": "List generation runs awaiting review", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/review-queue/batches/{id}/approve", "permission": "content.review", "purpose": "Approve a generation run's doubts in one transaction", "success": "200", "errors": ["CONTENT_BATCH_REQUIRED", "CONTENT_REVIEWER_REQUIRED"] },
+      { "method": "GET", "path": "/api/v1/admin/review-queue/samples", "permission": "content.review", "purpose": "List auto-published items drawn for spot-check", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/review-queue/samples/{id}/decide", "permission": "content.review", "purpose": "Keep or reject an auto-published sample", "success": "204", "errors": ["INVALID_SAMPLE_DECISION"] }
     ],
     "contract": [
       { "kind": "interface", "name": "content.Reader", "purpose": "`GetVersion`, `GetManyVersions`, `Browse` — batched to avoid N+1 from lesson rendering" },

@@ -1513,6 +1513,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/review-queue/samples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List auto-published items drawn for spot-check.
+         * @description Returns a daily random sample of the previous day's auto-published items, oldest first, for a person to keep or reject (WO 22 Stage A.5).
+         */
+        get: operations["adminListReviewSamples"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/review-queue/samples/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Keep or reject an auto-published sample.
+         * @description Kept means the item stands; rejected unpublishes it and stops it being drawn.
+         */
+        post: operations["adminDecideReviewSample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/content": {
         parameters: {
             query?: never;
@@ -5034,6 +5074,37 @@ export interface components {
              * @example 11
              */
             approved: number;
+        };
+        /** @description One auto-published item drawn for a person to spot-check. */
+        AdminReviewSample: {
+            /** Format: uuid */
+            version_id: string;
+            /**
+             * @description Why it was sampled - a daily sample or a learner report.
+             * @example sample
+             */
+            batch: string;
+            /** @example grammar_tense_choice */
+            kind: string;
+            /** @example B1 */
+            cefr_level: string;
+            /** Format: date */
+            sampled_on: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminReviewSampleListResponse: {
+            items: components["schemas"]["AdminReviewSample"][];
+            /**
+             * Format: int64
+             * @example 5
+             */
+            total: number;
+        };
+        AdminDecideSampleRequest: {
+            /** @enum {string} */
+            decision: "kept" | "rejected";
+            note?: string;
         };
         CourseSummary: {
             /** Format: uuid */
@@ -11236,6 +11307,64 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminListReviewSamples: {
+        parameters: {
+            query?: {
+                /** @description Maximum items to return. */
+                limit?: number;
+                /** @description Items to skip before returning. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Samples awaiting a decision. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminReviewSampleListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminDecideReviewSample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The content version id of the sampled item. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminDecideSampleRequest"];
+            };
+        };
+        responses: {
+            /** @description The decision was recorded. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             422: components["responses"]["ValidationFailed"];
             500: components["responses"]["InternalServerError"];
         };

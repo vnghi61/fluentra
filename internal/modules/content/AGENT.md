@@ -6,7 +6,7 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: content
-tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews, item_reports, tts_cache, taxonomy_prerequisites]
+tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews, item_reports, review_samples, tts_cache, taxonomy_prerequisites]
 depends_on: [storage, search, audit, ai, media]
 depended_on_by: [lesson, learning, vocabulary, grammar, reading, listening, speaking, writing, questionbank]
 spec_version: 1.0.0
@@ -105,6 +105,7 @@ Migrations: `db/migrations/content/` · Queries: `db/queries/content/`
 | `content.content_tags` | Item ↔ taxonomy mapping | Composite PK; indexed for filtered browsing |
 | `content.content_reviews` | Review workflow record | `version_id`, `reviewer_id`, `decision`, `comments` |
 | `content.item_reports` | Learner issue reports on content versions | `content_version_id`, `user_id`, `reason`, `note`. Unique on (content_version_id, user_id). |
+| `content.review_samples` | Auto-published versions drawn for a person to spot-check (WO 22 Stage A.5) | `version_id` PK, `batch` (sample/report), `sampled_on`, `decision` (kept/rejected), `decided_by`, `decided_at` |
 | `content.tts_cache` | Pre-generated synthesised speech audio keyed by text hash and voice | `text_hash`, `voice`, `engine`, `engine_version`, `object_key`, `created_at` |
 | `content.taxonomy_prerequisites` | Prerequisite DAG edges between taxonomy nodes in the same strand | `node_id`, `requires_node_id`, `created_at`. Unique on (node_id, requires_node_id). |
 
@@ -139,6 +140,10 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `PATCH` | `/api/v1/admin/foundation/topics/{code}` | `content.edit` | Update foundation topic metadata |
 | `PUT` | `/api/v1/admin/foundation/topics/{code}/prerequisites` | `content.edit` | Replace prerequisites for a foundation topic |
 | `GET` | `/api/v1/admin/review-queue` | `content.review` | List machine-generated drafts awaiting review |
+| `GET` | `/api/v1/admin/review-queue/batches` | `content.review` | List generation runs awaiting review |
+| `POST` | `/api/v1/admin/review-queue/batches/{id}/approve` | `content.review` | Approve a generation run's doubts in one transaction |
+| `GET` | `/api/v1/admin/review-queue/samples` | `content.review` | List auto-published items drawn for spot-check |
+| `POST` | `/api/v1/admin/review-queue/samples/{id}/decide` | `content.review` | Keep or reject an auto-published sample |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

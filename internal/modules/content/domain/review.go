@@ -36,6 +36,28 @@ type ReviewBatch struct {
 	CreatedAt time.Time
 }
 
+// ReviewSample is one auto-published version drawn for a person to spot-check
+// (WO 22 Stage A.5).
+type ReviewSample struct {
+	VersionID uuid.UUID
+	Batch     string
+	Kind      string
+	CEFRLevel string
+	SampledOn time.Time
+	CreatedAt time.Time
+}
+
+// SampleDecision is what a person decided about a sampled item.
+type SampleDecision string
+
+// The two sample decisions.
+const (
+	// SampleKept means the item stands.
+	SampleKept SampleDecision = "kept"
+	// SampleRejected means the item is unpublished and stops being drawn.
+	SampleRejected SampleDecision = "rejected"
+)
+
 // ReviewQueueItem represents a draft item in the editorial review queue.
 type ReviewQueueItem struct {
 	ID        uuid.UUID

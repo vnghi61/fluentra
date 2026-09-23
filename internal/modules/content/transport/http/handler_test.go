@@ -81,6 +81,9 @@ type mockContentService struct {
 	approveBatchFn  func(
 		ctx context.Context, reviewerID uuid.UUID, batch string, reject []uuid.UUID, note *string,
 	) (int, error)
+	reviewSamplesFn func(ctx context.Context, limit, offset int) ([]domain.ReviewSample, int64, error)
+	keepSampleFn    func(ctx context.Context, reviewerID, versionID uuid.UUID, note *string) error
+	rejectSampleFn  func(ctx context.Context, reviewerID, versionID uuid.UUID, note *string) error
 }
 
 func (m *mockContentService) GetPublishedVersionBySlug(ctx context.Context, slug string) (*contract.Version, error) {
@@ -276,6 +279,33 @@ func (m *mockContentService) ApproveReviewBatch(
 		return m.approveBatchFn(ctx, reviewerID, batch, reject, note)
 	}
 	return 0, nil
+}
+
+func (m *mockContentService) ReviewSamples(
+	ctx context.Context, limit, offset int,
+) ([]domain.ReviewSample, int64, error) {
+	if m.reviewSamplesFn != nil {
+		return m.reviewSamplesFn(ctx, limit, offset)
+	}
+	return []domain.ReviewSample{}, 0, nil
+}
+
+func (m *mockContentService) KeepReviewSample(
+	ctx context.Context, reviewerID, versionID uuid.UUID, note *string,
+) error {
+	if m.keepSampleFn != nil {
+		return m.keepSampleFn(ctx, reviewerID, versionID, note)
+	}
+	return nil
+}
+
+func (m *mockContentService) RejectReviewSample(
+	ctx context.Context, reviewerID, versionID uuid.UUID, note *string,
+) error {
+	if m.rejectSampleFn != nil {
+		return m.rejectSampleFn(ctx, reviewerID, versionID, note)
+	}
+	return nil
 }
 
 type mockGuard struct {

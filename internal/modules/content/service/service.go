@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -164,6 +165,15 @@ type Repository interface {
 	ListReviewBatches(ctx context.Context, limit, offset int) ([]domain.ReviewBatch, error)
 	CountReviewBatches(ctx context.Context) (int64, error)
 	ListReviewBatchVersionIDs(ctx context.Context, batch string) ([]uuid.UUID, error)
+	CountAutoPublishedOn(ctx context.Context, day time.Time) (int64, error)
+	ListAutoPublishedOn(ctx context.Context, day time.Time, sampleSize int) ([]uuid.UUID, error)
+	InsertReviewSample(ctx context.Context, versionID uuid.UUID, batch string, sampledOn time.Time) error
+	ListOpenReviewSamples(ctx context.Context, limit, offset int) ([]domain.ReviewSample, error)
+	CountOpenReviewSamples(ctx context.Context) (int64, error)
+	DecideReviewSample(
+		ctx context.Context, versionID uuid.UUID, decision domain.SampleDecision, note *string, decidedBy uuid.UUID,
+	) error
+	IsAutoPublishedVersion(ctx context.Context, versionID uuid.UUID) (bool, error)
 
 	WithTx(tx pgx.Tx) Repository
 }
@@ -1264,7 +1274,8 @@ func (s *Service) ReportItem(
 	}
 
 	// Verify the content version exists
-	if _, err := s.repo.GetVersionByID(ctx, versionID); err != nil {
+	version, err := s.repo.GetVersionByID(ctx, versionID)
+	if err != nil {
 		if errors.Is(err, domain.ErrVersionNotFound) {
 			return domain.ItemReport{}, domain.ErrVersionNotFound
 		}
@@ -1274,6 +1285,14 @@ func (s *Service) ReportItem(
 	report, err := s.repo.InsertItemReport(ctx, versionID, userID, reason, note)
 	if err != nil {
 		return domain.ItemReport{}, fmt.Errorf("record report: %w", err)
+	}
+
+	// A report on an auto-published item pulls it from future draws and queues
+	// it for a person. A failure here must not lose the report, so it is logged
+	// and the report still returns.
+	if err := s.pullAutoPublishedForReview(ctx, userID, version); err != nil {
+		slog.WarnContext(ctx, "content: could not pull a reported auto-published item",
+			"error", err, "version_id", versionID)
 	}
 	return report, nil
 }

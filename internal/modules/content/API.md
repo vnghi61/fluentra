@@ -6,7 +6,7 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: content
-tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews, item_reports, tts_cache, taxonomy_prerequisites]
+tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews, item_reports, review_samples, tts_cache, taxonomy_prerequisites]
 depends_on: [storage, search, audit, ai, media]
 depended_on_by: [lesson, learning, vocabulary, grammar, reading, listening, speaking, writing, questionbank]
 spec_version: 1.0.0
@@ -43,6 +43,10 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `PATCH` | `/api/v1/admin/foundation/topics/{code}` | `content.edit` | Update foundation topic metadata |
 | `PUT` | `/api/v1/admin/foundation/topics/{code}/prerequisites` | `content.edit` | Replace prerequisites for a foundation topic |
 | `GET` | `/api/v1/admin/review-queue` | `content.review` | List machine-generated drafts awaiting review |
+| `GET` | `/api/v1/admin/review-queue/batches` | `content.review` | List generation runs awaiting review |
+| `POST` | `/api/v1/admin/review-queue/batches/{id}/approve` | `content.review` | Approve a generation run's doubts in one transaction |
+| `GET` | `/api/v1/admin/review-queue/samples` | `content.review` | List auto-published items drawn for spot-check |
+| `POST` | `/api/v1/admin/review-queue/samples/{id}/decide` | `content.review` | Keep or reject an auto-published sample |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -207,6 +211,46 @@ List machine-generated drafts awaiting review
 | Permission | `content.review` |
 | Success | 200 |
 | Errors | standard set |
+
+### `GET /api/v1/admin/review-queue/batches`
+
+List generation runs awaiting review
+
+| | |
+|---|---|
+| Permission | `content.review` |
+| Success | 200 |
+| Errors | standard set |
+
+### `POST /api/v1/admin/review-queue/batches/{id}/approve`
+
+Approve a generation run's doubts in one transaction
+
+| | |
+|---|---|
+| Permission | `content.review` |
+| Success | 200 |
+| Errors | `CONTENT_BATCH_REQUIRED`, `CONTENT_REVIEWER_REQUIRED` |
+
+### `GET /api/v1/admin/review-queue/samples`
+
+List auto-published items drawn for spot-check
+
+| | |
+|---|---|
+| Permission | `content.review` |
+| Success | 200 |
+| Errors | standard set |
+
+### `POST /api/v1/admin/review-queue/samples/{id}/decide`
+
+Keep or reject an auto-published sample
+
+| | |
+|---|---|
+| Permission | `content.review` |
+| Success | 204 |
+| Errors | `INVALID_SAMPLE_DECISION` |
 
 <!-- END GENERATED: api-detail -->
 

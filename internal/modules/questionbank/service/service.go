@@ -335,6 +335,29 @@ func (s *Service) HandleContentPublished(ctx context.Context, event contentcontr
 	return err
 }
 
+// HandleContentArchived is the content.archived consumer: an item pulled from
+// publication stops being drawn (WO 22 Stage A.5).
+//
+// A sample a person rejected, or an item a learner reported, is archived in
+// content; this retires the question so no future test draws it. A stored
+// composition is never rewritten — an attempt already built keeps its item.
+func (s *Service) HandleContentArchived(ctx context.Context, event contentcontract.Archived) error {
+	q, err := s.repo.GetQuestionByContentItemID(ctx, event.ItemID)
+	if err != nil {
+		if errors.Is(err, domain.ErrQuestionNotFound) {
+			return nil
+		}
+		return fmt.Errorf("find question for content item %s: %w", event.ItemID, err)
+	}
+	if q.Status == domain.StatusRetired {
+		return nil
+	}
+	if _, err := s.repo.UpdateQuestionStatus(ctx, q.ID, domain.StatusRetired); err != nil {
+		return fmt.Errorf("retire question %s: %w", q.ID, err)
+	}
+	return nil
+}
+
 func (s *Service) publishIntoBank(
 	ctx context.Context, q *domain.Question, versionID uuid.UUID,
 ) (*contract.Question, error) {

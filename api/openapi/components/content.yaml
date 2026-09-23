@@ -608,5 +608,54 @@ AdminApproveBatchResponse:
       description: How many versions the batch approval published.
       example: 11
 
+AdminReviewSample:
+  type: object
+  description: One auto-published item drawn for a person to spot-check.
+  required: [version_id, batch, kind, cefr_level, sampled_on, created_at]
+  properties:
+    version_id:
+      type: string
+      format: uuid
+    batch:
+      type: string
+      description: Why it was sampled - a daily sample or a learner report.
+      example: sample
+    kind:
+      type: string
+      example: grammar_tense_choice
+    cefr_level:
+      type: string
+      example: B1
+    sampled_on:
+      type: string
+      format: date
+    created_at:
+      type: string
+      format: date-time
+
+AdminReviewSampleListResponse:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/AdminReviewSample'
+    total:
+      type: integer
+      format: int64
+      example: 5
+
+AdminDecideSampleRequest:
+  type: object
+  required: [decision]
+  properties:
+    decision:
+      type: string
+      enum: [kept, rejected]
+    note:
+      type: string
+      maxLength: 500
+
 
 

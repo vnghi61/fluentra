@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	sqlccontent "github.com/fluentra/fluentra/internal/generated/content/sqlc"
 	"github.com/fluentra/fluentra/internal/modules/content/domain"
@@ -1031,6 +1032,117 @@ func (r *Repository) ListReviewBatchVersionIDs(ctx context.Context, batch string
 		ids = []uuid.UUID{}
 	}
 	return ids, nil
+}
+
+// CountAutoPublishedOn counts the items a verifier published on a day.
+func (r *Repository) CountAutoPublishedOn(ctx context.Context, day time.Time) (int64, error) {
+	count, err := r.queries.CountAutoPublishedOn(ctx, day)
+	if err != nil {
+		return 0, fmt.Errorf("count auto-published versions: %w", err)
+	}
+	return count, nil
+}
+
+// ListAutoPublishedOn draws up to sampleSize auto-published versions of a day.
+func (r *Repository) ListAutoPublishedOn(
+	ctx context.Context, day time.Time, sampleSize int,
+) ([]uuid.UUID, error) {
+	if sampleSize <= 0 {
+		return []uuid.UUID{}, nil
+	}
+	// Clamped before the narrowing conversion: sampleSize is derived from a row
+	// count, and the driver takes an int32.
+	if sampleSize > math.MaxInt32 {
+		sampleSize = math.MaxInt32
+	}
+	ids, err := r.queries.ListAutoPublishedOn(ctx, sqlccontent.ListAutoPublishedOnParams{
+		Day:        day,
+		SampleSize: int32(sampleSize),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("draw auto-published versions: %w", err)
+	}
+	if ids == nil {
+		ids = []uuid.UUID{}
+	}
+	return ids, nil
+}
+
+// InsertReviewSample queues one version for a person to spot-check.
+func (r *Repository) InsertReviewSample(
+	ctx context.Context, versionID uuid.UUID, batch string, sampledOn time.Time,
+) error {
+	if err := r.queries.InsertReviewSample(ctx, sqlccontent.InsertReviewSampleParams{
+		VersionID: versionID,
+		Batch:     batch,
+		SampledOn: pgtype.Date{Time: sampledOn, Valid: true},
+	}); err != nil {
+		return fmt.Errorf("insert review sample: %w", err)
+	}
+	return nil
+}
+
+// ListOpenReviewSamples lists the samples still waiting for a person.
+func (r *Repository) ListOpenReviewSamples(
+	ctx context.Context, limit, offset int,
+) ([]domain.ReviewSample, error) {
+	rows, err := r.queries.ListOpenReviewSamples(ctx, sqlccontent.ListOpenReviewSamplesParams{
+		ResultLimit:  domain.NormaliseLimit(limit),
+		ResultOffset: domain.NormaliseOffset(offset),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list open review samples: %w", err)
+	}
+	res := make([]domain.ReviewSample, 0, len(rows))
+	for _, row := range rows {
+		res = append(res, domain.ReviewSample{
+			VersionID: row.VersionID,
+			Batch:     row.Batch,
+			Kind:      row.Kind,
+			CEFRLevel: row.CefrLevel,
+			SampledOn: row.SampledOn.Time,
+			CreatedAt: row.CreatedAt,
+		})
+	}
+	return res, nil
+}
+
+// CountOpenReviewSamples counts the samples still waiting for a person.
+func (r *Repository) CountOpenReviewSamples(ctx context.Context) (int64, error) {
+	count, err := r.queries.CountOpenReviewSamples(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count open review samples: %w", err)
+	}
+	return count, nil
+}
+
+// DecideReviewSample records a person's decision on one sample.
+func (r *Repository) DecideReviewSample(
+	ctx context.Context, versionID uuid.UUID, decision domain.SampleDecision, note *string, decidedBy uuid.UUID,
+) error {
+	var by *uuid.UUID
+	if decidedBy != uuid.Nil {
+		by = &decidedBy
+	}
+	if err := r.queries.DecideReviewSample(ctx, sqlccontent.DecideReviewSampleParams{
+		VersionID: versionID,
+		Decision:  string(decision),
+		Note:      note,
+		DecidedBy: by,
+	}); err != nil {
+		return fmt.Errorf("decide review sample: %w", err)
+	}
+	return nil
+}
+
+// IsAutoPublishedVersion reports whether a version was published by the
+// independent verifier.
+func (r *Repository) IsAutoPublishedVersion(ctx context.Context, versionID uuid.UUID) (bool, error) {
+	auto, err := r.queries.IsAutoPublishedVersion(ctx, versionID)
+	if err != nil {
+		return false, fmt.Errorf("check auto-published version: %w", err)
+	}
+	return auto, nil
 }
 
 func toNodeCodes(v interface{}) []string {

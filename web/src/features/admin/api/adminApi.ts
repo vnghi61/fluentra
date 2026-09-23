@@ -38,6 +38,9 @@ export type AdminReviewBatchListResponse =
   components["schemas"]["AdminReviewBatchListResponse"];
 export type AdminApproveBatchResponse =
   components["schemas"]["AdminApproveBatchResponse"];
+export type AdminReviewSample = components["schemas"]["AdminReviewSample"];
+export type AdminReviewSampleListResponse =
+  components["schemas"]["AdminReviewSampleListResponse"];
 export type Question = components["schemas"]["Question"];
 export type QuestionPage = components["schemas"]["QuestionPage"];
 export type QuestionStats = components["schemas"]["QuestionStats"];
@@ -273,6 +276,34 @@ export const adminApi = {
     return apiFetch<AdminApproveBatchResponse>(
       `/api/v1/admin/review-queue/batches/${encodeURIComponent(batch)}/approve`,
       { method: "POST", body: JSON.stringify({ reject, note }) },
+    );
+  },
+
+  /**
+   * The daily sample of auto-published items a person spot-checks (WO 22
+   * Stage A.5). A rejection unpublishes the item.
+   */
+  async listReviewSamples(
+    params: { limit?: number; offset?: number } = {},
+  ): Promise<AdminReviewSampleListResponse> {
+    const sp = new URLSearchParams();
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<AdminReviewSampleListResponse>(
+      `/api/v1/admin/review-queue/samples${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /** Keep or reject a sampled item. */
+  async decideReviewSample(
+    versionId: string,
+    decision: "kept" | "rejected",
+    note?: string,
+  ): Promise<void> {
+    return apiFetch<void>(
+      `/api/v1/admin/review-queue/samples/${encodeURIComponent(versionId)}/decide`,
+      { method: "POST", body: JSON.stringify({ decision, note }) },
     );
   },
 

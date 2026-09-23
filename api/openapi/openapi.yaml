@@ -3705,6 +3705,74 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /admin/review-queue/samples:
+    get:
+      tags: [content]
+      operationId: adminListReviewSamples
+      summary: List auto-published items drawn for spot-check.
+      description: Returns a daily random sample of the previous day's auto-published items, oldest first, for a person to keep or reject (WO 22 Stage A.5).
+      x-permission: content.review
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum items to return.
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          description: Items to skip before returning.
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Samples awaiting a decision.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminReviewSampleListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/review-queue/samples/{id}/decide:
+    post:
+      tags: [content]
+      operationId: adminDecideReviewSample
+      summary: Keep or reject an auto-published sample.
+      description: Kept means the item stands; rejected unpublishes it and stops it being drawn.
+      x-permission: content.review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The content version id of the sampled item.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDecideSampleRequest'
+      responses:
+        '204':
+          description: The decision was recorded.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /admin/content:
     get:
       tags: [content]
@@ -8865,6 +8933,12 @@ components:
       $ref: ./components/content.yaml#/AdminApproveBatchRequest
     AdminApproveBatchResponse:
       $ref: ./components/content.yaml#/AdminApproveBatchResponse
+    AdminReviewSample:
+      $ref: ./components/content.yaml#/AdminReviewSample
+    AdminReviewSampleListResponse:
+      $ref: ./components/content.yaml#/AdminReviewSampleListResponse
+    AdminDecideSampleRequest:
+      $ref: ./components/content.yaml#/AdminDecideSampleRequest
     CourseSummary:
       $ref: ./components/lesson.yaml#/CourseSummary
     CourseList:

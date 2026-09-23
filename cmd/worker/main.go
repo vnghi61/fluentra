@@ -613,6 +613,10 @@ func startLearning(
 		cron.Register(scheduled)
 	}
 
+	// The daily sample of auto-published items a person spot-checks (WO 22
+	// Stage A.5).
+	registerCronJobs(cron, contentModule.CronJobs())
+
 	if err := learningModule.RotatePartitions(ctx); err != nil {
 		slog.ErrorContext(ctx, "could not rotate learning partitions at start-up; the scheduled job will retry",
 			"error", err)

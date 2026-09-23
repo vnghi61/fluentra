@@ -512,6 +512,31 @@ type ClientInterface interface {
 	// Corresponds with POST /admin/review-queue/batches/{id}/approve (the `AdminApproveReviewBatch` operationId).
 	AdminApproveReviewBatch(ctx context.Context, id string, body AdminApproveReviewBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminListReviewSamples List auto-published items drawn for spot-check.
+	//
+	// Returns a daily random sample of the previous day's auto-published items, oldest first, for a person to keep or reject (WO 22 Stage A.5).
+	//
+	// Corresponds with GET /admin/review-queue/samples (the `AdminListReviewSamples` operationId).
+	AdminListReviewSamples(ctx context.Context, params *AdminListReviewSamplesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminDecideReviewSampleWithBody Keep or reject an auto-published sample.
+	//
+	// Kept means the item stands; rejected unpublishes it and stops it being drawn.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/review-queue/samples/{id}/decide (the `AdminDecideReviewSample` operationId).
+	AdminDecideReviewSampleWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminDecideReviewSample Keep or reject an auto-published sample.
+	//
+	// Kept means the item stands; rejected unpublishes it and stops it being drawn.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/review-queue/samples/{id}/decide (the `AdminDecideReviewSample` operationId).
+	AdminDecideReviewSample(ctx context.Context, id openapi_types.UUID, body AdminDecideReviewSampleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RbacListRoles List roles and the permissions they grant.
 	//
 	// The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -3216,6 +3241,61 @@ func (c *Client) AdminApproveReviewBatchWithBody(ctx context.Context, id string,
 // Corresponds with POST /admin/review-queue/batches/{id}/approve (the `AdminApproveReviewBatch` operationId).
 func (c *Client) AdminApproveReviewBatch(ctx context.Context, id string, body AdminApproveReviewBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAdminApproveReviewBatchRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminListReviewSamples List auto-published items drawn for spot-check.
+//
+// Returns a daily random sample of the previous day's auto-published items, oldest first, for a person to keep or reject (WO 22 Stage A.5).
+//
+// Corresponds with GET /admin/review-queue/samples (the `AdminListReviewSamples` operationId).
+func (c *Client) AdminListReviewSamples(ctx context.Context, params *AdminListReviewSamplesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminListReviewSamplesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminDecideReviewSampleWithBody Keep or reject an auto-published sample.
+//
+// Kept means the item stands; rejected unpublishes it and stops it being drawn.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/review-queue/samples/{id}/decide (the `AdminDecideReviewSample` operationId).
+func (c *Client) AdminDecideReviewSampleWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminDecideReviewSampleRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminDecideReviewSample Keep or reject an auto-published sample.
+//
+// Kept means the item stands; rejected unpublishes it and stops it being drawn.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/review-queue/samples/{id}/decide (the `AdminDecideReviewSample` operationId).
+func (c *Client) AdminDecideReviewSample(ctx context.Context, id openapi_types.UUID, body AdminDecideReviewSampleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminDecideReviewSampleRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -8979,6 +9059,119 @@ func NewAdminApproveReviewBatchRequestWithBody(server string, id string, content
 	}
 
 	operationPath := fmt.Sprintf("/admin/review-queue/batches/%s/approve", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminListReviewSamplesRequest constructs an http.Request for the AdminListReviewSamples method
+func NewAdminListReviewSamplesRequest(server string, params *AdminListReviewSamplesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/review-queue/samples")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminDecideReviewSampleRequest calls the generic AdminDecideReviewSample builder with application/json body
+func NewAdminDecideReviewSampleRequest(server string, id openapi_types.UUID, body AdminDecideReviewSampleJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminDecideReviewSampleRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAdminDecideReviewSampleRequestWithBody constructs an http.Request for the AdminDecideReviewSample method, with any body, and a specified content type
+func NewAdminDecideReviewSampleRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/review-queue/samples/%s/decide", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -16056,6 +16249,33 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /admin/review-queue/batches/{id}/approve (the `AdminApproveReviewBatch` operationId).
 	AdminApproveReviewBatchWithResponse(ctx context.Context, id string, body AdminApproveReviewBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminApproveReviewBatchResponse, error)
 
+	// AdminListReviewSamplesWithResponse List auto-published items drawn for spot-check.
+	//
+	// Returns a daily random sample of the previous day's auto-published items, oldest first, for a person to keep or reject (WO 22 Stage A.5).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/review-queue/samples (the `AdminListReviewSamples` operationId).
+	AdminListReviewSamplesWithResponse(ctx context.Context, params *AdminListReviewSamplesParams, reqEditors ...RequestEditorFn) (*AdminListReviewSamplesResponse, error)
+
+	// AdminDecideReviewSampleWithBodyWithResponse Keep or reject an auto-published sample.
+	//
+	// Kept means the item stands; rejected unpublishes it and stops it being drawn.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/review-queue/samples/{id}/decide (the `AdminDecideReviewSample` operationId).
+	AdminDecideReviewSampleWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminDecideReviewSampleResponse, error)
+
+	// AdminDecideReviewSampleWithResponse Keep or reject an auto-published sample.
+	//
+	// Kept means the item stands; rejected unpublishes it and stops it being drawn.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/review-queue/samples/{id}/decide (the `AdminDecideReviewSample` operationId).
+	AdminDecideReviewSampleWithResponse(ctx context.Context, id openapi_types.UUID, body AdminDecideReviewSampleJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminDecideReviewSampleResponse, error)
+
 	// RbacListRolesWithResponse List roles and the permissions they grant.
 	//
 	// The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -20664,6 +20884,137 @@ func (r AdminApproveReviewBatchResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AdminApproveReviewBatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminListReviewSamplesResponse200Headers the declared response headers of an HTTP 200 response for AdminListReviewSamples
+type AdminListReviewSamplesResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminListReviewSamplesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminReviewSampleListResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminListReviewSamplesResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminListReviewSamplesResponse) GetJSON200() *AdminReviewSampleListResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminListReviewSamplesResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminListReviewSamplesResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminListReviewSamplesResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminListReviewSamplesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminListReviewSamplesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminListReviewSamplesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminListReviewSamplesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AdminDecideReviewSampleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminDecideReviewSampleResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminDecideReviewSampleResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminDecideReviewSampleResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminDecideReviewSampleResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminDecideReviewSampleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminDecideReviewSampleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminDecideReviewSampleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminDecideReviewSampleResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -32544,6 +32895,51 @@ func (c *ClientWithResponses) AdminApproveReviewBatchWithResponse(ctx context.Co
 	return ParseAdminApproveReviewBatchResponse(rsp)
 }
 
+// AdminListReviewSamplesWithResponse List auto-published items drawn for spot-check.
+//
+// Returns a daily random sample of the previous day's auto-published items, oldest first, for a person to keep or reject (WO 22 Stage A.5).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/review-queue/samples (the `AdminListReviewSamples` operationId).
+func (c *ClientWithResponses) AdminListReviewSamplesWithResponse(ctx context.Context, params *AdminListReviewSamplesParams, reqEditors ...RequestEditorFn) (*AdminListReviewSamplesResponse, error) {
+	rsp, err := c.AdminListReviewSamples(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminListReviewSamplesResponse(rsp)
+}
+
+// AdminDecideReviewSampleWithBodyWithResponse Keep or reject an auto-published sample.
+//
+// Kept means the item stands; rejected unpublishes it and stops it being drawn.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/review-queue/samples/{id}/decide (the `AdminDecideReviewSample` operationId).
+func (c *ClientWithResponses) AdminDecideReviewSampleWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminDecideReviewSampleResponse, error) {
+	rsp, err := c.AdminDecideReviewSampleWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminDecideReviewSampleResponse(rsp)
+}
+
+// AdminDecideReviewSampleWithResponse Keep or reject an auto-published sample.
+//
+// Kept means the item stands; rejected unpublishes it and stops it being drawn.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/review-queue/samples/{id}/decide (the `AdminDecideReviewSample` operationId).
+func (c *ClientWithResponses) AdminDecideReviewSampleWithResponse(ctx context.Context, id openapi_types.UUID, body AdminDecideReviewSampleJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminDecideReviewSampleResponse, error) {
+	rsp, err := c.AdminDecideReviewSample(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminDecideReviewSampleResponse(rsp)
+}
+
 // RbacListRolesWithResponse List roles and the permissions they grant.
 //
 // The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -38043,6 +38439,116 @@ func ParseAdminApproveReviewBatchResponse(rsp *http.Response) (*AdminApproveRevi
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminListReviewSamplesResponse parses an HTTP response from a AdminListReviewSamplesWithResponse call
+func ParseAdminListReviewSamplesResponse(rsp *http.Response) (*AdminListReviewSamplesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminListReviewSamplesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminReviewSampleListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminListReviewSamplesResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminDecideReviewSampleResponse parses an HTTP response from a AdminDecideReviewSampleWithResponse call
+func ParseAdminDecideReviewSampleResponse(rsp *http.Response) (*AdminDecideReviewSampleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminDecideReviewSampleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
 	}
 
 	return response, nil

@@ -760,6 +760,36 @@ func (f *fakeRepo) ListReviewBatchVersionIDs(_ context.Context, _ string) ([]uui
 	return nil, nil
 }
 
+func (f *fakeRepo) CountAutoPublishedOn(_ context.Context, _ time.Time) (int64, error) {
+	return 0, nil
+}
+
+func (f *fakeRepo) ListAutoPublishedOn(_ context.Context, _ time.Time, _ int) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) InsertReviewSample(_ context.Context, _ uuid.UUID, _ string, _ time.Time) error {
+	return nil
+}
+
+func (f *fakeRepo) ListOpenReviewSamples(_ context.Context, _, _ int) ([]domain.ReviewSample, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) CountOpenReviewSamples(_ context.Context) (int64, error) {
+	return 0, nil
+}
+
+func (f *fakeRepo) DecideReviewSample(
+	_ context.Context, _ uuid.UUID, _ domain.SampleDecision, _ *string, _ uuid.UUID,
+) error {
+	return nil
+}
+
+func (f *fakeRepo) IsAutoPublishedVersion(_ context.Context, _ uuid.UUID) (bool, error) {
+	return false, nil
+}
+
 type fakeEvents struct {
 	events []struct {
 		Aggregate string

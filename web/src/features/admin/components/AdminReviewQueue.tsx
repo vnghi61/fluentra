@@ -441,6 +441,154 @@ function BatchReview(): React.JSX.Element {
   );
 }
 
+/**
+ * The daily sample of auto-published items a person spot-checks (WO 22
+ * Stage A.5). Keeping an item leaves it live; rejecting it unpublishes it and
+ * stops it being drawn.
+ */
+function SampleReview(): React.JSX.Element {
+  const { t, i18n } = useTranslation();
+  const queryClient = useQueryClient();
+  const [offset, setOffset] = useState(0);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin", "review-samples", offset],
+    queryFn: () => adminApi.listReviewSamples({ limit: PAGE_SIZE, offset }),
+  });
+
+  const samples = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
+
+  const decide = async (versionId: string, decision: "kept" | "rejected") => {
+    setBusy(versionId);
+    setError(null);
+    try {
+      await adminApi.decideReviewSample(versionId, decision);
+      await queryClient.invalidateQueries({
+        queryKey: ["admin", "review-samples"],
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : t("adminReview.sampleFailed", "The decision could not be saved."),
+      );
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2
+          className="h-6 w-6 animate-spin text-primary"
+          aria-hidden="true"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {error && (
+        <p
+          role="alert"
+          className="flex items-start gap-2 text-sm text-danger-accent"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
+        </p>
+      )}
+
+      {samples.length === 0 ? (
+        <div className="rounded-xl border border-border bg-card py-12 text-center text-muted-foreground">
+          <ClipboardCheck
+            className="mx-auto mb-2 h-8 w-8 opacity-40"
+            aria-hidden="true"
+          />
+          <p className="text-sm">
+            {t("adminReview.noSamples", "No sample is waiting.")}
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {samples.map((sample) => (
+            <li
+              key={sample.version_id}
+              className="flex flex-col gap-3 rounded-xl border border-border-subtle bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <span className="min-w-0 space-y-1">
+                <span className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary">{sample.kind}</Badge>
+                  <Badge variant="outline">{sample.cefr_level}</Badge>
+                  <Badge variant="outline">{sample.batch}</Badge>
+                </span>
+                <span className="block text-xs text-text-muted">
+                  {new Date(sample.created_at).toLocaleDateString(
+                    i18n.language.startsWith("vi") ? "vi-VN" : "en-US",
+                    { year: "numeric", month: "short", day: "numeric" },
+                  )}
+                </span>
+              </span>
+              <span className="flex shrink-0 gap-2">
+                <Button
+                  variant="outline"
+                  className="h-11"
+                  disabled={busy === sample.version_id}
+                  onClick={() => void decide(sample.version_id, "kept")}
+                >
+                  {t("adminReview.keep", "Keep")}
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="h-11"
+                  disabled={busy === sample.version_id}
+                  onClick={() => void decide(sample.version_id, "rejected")}
+                >
+                  {t("adminReview.rejectSample", "Reject and unpublish")}
+                </Button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {total > PAGE_SIZE && (
+        <div className="flex items-center justify-between text-sm text-text-muted">
+          <span>
+            {t("adminReview.pageOf", {
+              current: currentPage,
+              total: totalPages,
+              defaultValue: `Page ${currentPage} of ${totalPages}`,
+            })}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              disabled={offset === 0}
+              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+            >
+              {t("common.previous", "Previous")}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={currentPage >= totalPages}
+              onClick={() => setOffset(offset + PAGE_SIZE)}
+            >
+              {t("common.next", "Next")}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AdminReviewQueue(): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
@@ -451,7 +599,7 @@ export function AdminReviewQueue(): React.JSX.Element {
   const [note, setNote] = useState("");
   const [isDeciding, setIsDeciding] = useState(false);
   const [decisionError, setDecisionError] = useState<string | null>(null);
-  const [view, setView] = useState<"items" | "batches">("items");
+  const [view, setView] = useState<"items" | "batches" | "samples">("items");
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ["admin", "review-queue", purpose, kind, offset],
@@ -526,14 +674,23 @@ export function AdminReviewQueue(): React.JSX.Element {
       >
         {t("adminReview.batchesView", "Batches")}
       </Button>
+      <Button
+        variant={view === "samples" ? "primary" : "outline"}
+        size="sm"
+        role="tab"
+        aria-selected={view === "samples"}
+        onClick={() => setView("samples")}
+      >
+        {t("adminReview.samplesView", "Samples")}
+      </Button>
     </div>
   );
 
-  if (view === "batches") {
+  if (view !== "items") {
     return (
       <div className="space-y-4">
         {viewToggle}
-        <BatchReview />
+        {view === "batches" ? <BatchReview /> : <SampleReview />}
       </div>
     );
   }

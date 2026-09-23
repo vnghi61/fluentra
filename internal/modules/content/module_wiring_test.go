@@ -117,6 +117,8 @@ func TestRoutesMountTheDocumentedPaths(t *testing.T) {
 		"GET /admin/review-queue":                       false,
 		"GET /admin/review-queue/batches":               false,
 		"POST /admin/review-queue/batches/{id}/approve": false,
+		"GET /admin/review-queue/samples":               false,
+		"POST /admin/review-queue/samples/{id}/decide":  false,
 		"POST /admin/content/{id}/review":               false,
 		"POST /admin/content/{id}/publish":              false,
 	}
