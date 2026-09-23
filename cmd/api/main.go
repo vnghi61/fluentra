@@ -178,7 +178,8 @@ type applicationConfig struct {
 		Provider4APIKey  string        `koanf:"provider_4_api_key"`
 		Provider4Timeout time.Duration `koanf:"provider_4_timeout"`
 
-		WritingDailyLimit int `koanf:"writing_daily_limit"`
+		WritingDailyLimit int  `koanf:"writing_daily_limit"`
+		AutoPublish       bool `koanf:"auto_publish"`
 	} `koanf:"ai"`
 	// WORKER_URL maps to `worker.url` under the first-underscore-becomes-a-dot rule.
 	Worker struct {
@@ -433,6 +434,7 @@ func run(ctx context.Context) error {
 		Mailer:            newAPIMailSender(cfg, pool),
 		WorkerNudger:      workerNudger,
 		WritingDailyLimit: cfg.AI.WritingDailyLimit,
+		AutoPublish:       cfg.AI.AutoPublish,
 		SpeechDailyLimit:  cfg.Speech.DailyRecordingsLimit,
 		SpeechASRModel:    speechASRModelName(cfg.Speech.ASRBaseURL, cfg.Speech.ASRModel),
 		SpeechTTSVoice:    cfg.Speech.TTSVoice,
@@ -585,6 +587,7 @@ func configOptions() config.Options {
 			"ai.provider_4_api_key":          "",
 			"ai.provider_4_timeout":          defaultAITimeout,
 			"ai.writing_daily_limit":         10,
+			"ai.auto_publish":                false,
 			"worker.url":                     "",
 			"speech.tts_engine":              "offline",
 			"speech.tts_voice":               "en_US-lessac-medium",

@@ -154,6 +154,10 @@ type identityDeps struct {
 	// AI is the provider client for AI tasks (explanations, etc.).
 	AI ai.Client
 
+	// AutoPublish publishes generated content an independent verifier confirms
+	// (WO 22 Stage A).
+	AutoPublish bool
+
 	// WorkerNudger signals a background worker to wake up after an upload is committed.
 	WorkerNudger vocabulary.WorkerNudger
 
@@ -366,15 +370,17 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.learning = learning.New(learning.Deps{
-		Pool:          deps.Pool,
-		Caches:        newLearningCaches(deps.Redis),
-		Guard:         lazyGuard{of: assembled},
-		Lesson:        assembled.lesson.Reader(),
-		LessonAuthor:  assembled.lesson.Author(),
-		Content:       assembled.content.Reader(),
-		ContentAuthor: assembled.content.Author(),
-		Taxonomies:    assembled.content.TaxonomyResolver(),
-		SRSDue:        assembled.srs.QueueReader(),
+		Pool:            deps.Pool,
+		Caches:          newLearningCaches(deps.Redis),
+		Guard:           lazyGuard{of: assembled},
+		Lesson:          assembled.lesson.Reader(),
+		LessonAuthor:    assembled.lesson.Author(),
+		Content:         assembled.content.Reader(),
+		ContentAuthor:   assembled.content.Author(),
+		ContentRecorder: assembled.content.VerificationRecorder(),
+		AutoPublish:     deps.AutoPublish,
+		Taxonomies:      assembled.content.TaxonomyResolver(),
+		SRSDue:          assembled.srs.QueueReader(),
 
 		SRSCards: assembled.srs.CardWriter(),
 		Graders: buildGraders(

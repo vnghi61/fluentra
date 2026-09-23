@@ -17,6 +17,9 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
+// testVerifierModel is the model a fake verifier reports.
+const testVerifierModel = "verifier-model"
+
 // independentVerifyConfirmed is the verdict the judge returns when it agrees.
 const independentVerifyConfirmed = "confirmed"
 
@@ -35,12 +38,12 @@ func (a *independentVerifyAI) Complete(_ context.Context, req ai.Request) (ai.Re
 		}
 		return ai.Response{
 			Text:  fmt.Sprintf(`{"selected_option_id": %q}`, a.solveAnswer),
-			Model: "verifier-model",
+			Model: testVerifierModel,
 		}, nil
 	case ai.TaskItemVerify:
 		return ai.Response{
 			Text:  fmt.Sprintf(`{"verdict": %q, "reason": ""}`, a.verdict),
-			Model: "verifier-model",
+			Model: testVerifierModel,
 		}, nil
 	default:
 		return ai.Response{}, nil

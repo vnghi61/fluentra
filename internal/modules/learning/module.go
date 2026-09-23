@@ -45,14 +45,18 @@ type Guard = learninghttp.Guard
 
 // Deps defines dependencies supplied by the composition root.
 type Deps struct {
-	Pool          *pgxpool.Pool
-	Clock         clock.Clock
-	Guard         Guard
-	Lesson        lessoncontract.Reader
-	LessonAuthor  lessoncontract.Author
-	Content       contentcontract.Reader
-	ContentAuthor contentcontract.Author
-	Taxonomies    contentcontract.TaxonomyResolver
+	Pool            *pgxpool.Pool
+	Clock           clock.Clock
+	Guard           Guard
+	Lesson          lessoncontract.Reader
+	LessonAuthor    lessoncontract.Author
+	Content         contentcontract.Reader
+	ContentAuthor   contentcontract.Author
+	ContentRecorder contentcontract.VerificationRecorder
+	Taxonomies      contentcontract.TaxonomyResolver
+	// AutoPublish publishes generated content an independent verifier confirms
+	// (WO 22 Stage A).
+	AutoPublish   bool
 	SRSDue        srscontract.QueueReader
 	SRSCards      srscontract.CardWriter
 	SRSPace       srscontract.ReviewPaceReader
@@ -139,21 +143,23 @@ func New(deps Deps) *Module {
 	events := outboxWriter{Writer: outbox.NewWriter()}
 
 	svc := service.New(service.Deps{
-		Pool:          deps.Pool,
-		Repo:          repo,
-		Lesson:        deps.Lesson,
-		LessonAuthor:  deps.LessonAuthor,
-		Content:       deps.Content,
-		ContentAuthor: deps.ContentAuthor,
-		SRSDue:        deps.SRSDue,
-		SRSCards:      deps.SRSCards,
-		Graders:       registry,
-		Events:        events,
-		Metrics:       deps.Metrics,
-		Clock:         timekeeper,
-		Caches:        deps.Caches,
-		Env:           deps.Env,
-		AI:            deps.AI,
+		Pool:            deps.Pool,
+		Repo:            repo,
+		Lesson:          deps.Lesson,
+		LessonAuthor:    deps.LessonAuthor,
+		Content:         deps.Content,
+		ContentAuthor:   deps.ContentAuthor,
+		ContentRecorder: deps.ContentRecorder,
+		AutoPublish:     deps.AutoPublish,
+		SRSDue:          deps.SRSDue,
+		SRSCards:        deps.SRSCards,
+		Graders:         registry,
+		Events:          events,
+		Metrics:         deps.Metrics,
+		Clock:           timekeeper,
+		Caches:          deps.Caches,
+		Env:             deps.Env,
+		AI:              deps.AI,
 
 		GeneratorAuthorID: deps.GeneratorAuthorID,
 		AuthorResolver:    deps.AuthorResolver,

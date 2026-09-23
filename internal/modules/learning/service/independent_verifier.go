@@ -130,6 +130,32 @@ func (s *Service) judgeItem(
 	return strings.ToLower(strings.TrimSpace(reply.Verdict)), model, nil
 }
 
+// publishVerifiedDraft runs the independent verifier on a freshly authored
+// draft and either publishes it or records the doubt, according to the switch
+// (WO 22 Stage A, D22-1/D22-2).
+//
+// No recorder wired means the deployment does not auto-publish; the draft is
+// left for a person, which is the default.
+func (s *Service) publishVerifiedDraft(
+	ctx context.Context, versionID uuid.UUID, req learningcontract.GenerateRequest, body json.RawMessage,
+) error {
+	if s.contentRecorder == nil {
+		return nil
+	}
+	verification, err := s.VerifyIndependently(ctx, learningcontract.IndependentVerifyRequest{
+		Kind:      req.Kind,
+		CEFRLevel: req.CEFRLevel,
+		Body:      body,
+	})
+	if err != nil {
+		return err
+	}
+	if verification.Confirmed {
+		return s.contentAuthor.ApproveVerified(ctx, versionID, verification)
+	}
+	return s.contentRecorder.RecordVerification(ctx, versionID, verification)
+}
+
 // kindHasAnswerKey reports whether an item kind carries a key the blind solve
 // can be graded against.
 func kindHasAnswerKey(kind string) bool {

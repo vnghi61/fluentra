@@ -243,16 +243,22 @@ type Deps struct {
 	LessonAuthor  lessoncontract.Author
 	Content       contentcontract.Reader
 	ContentAuthor contentcontract.Author
-	SRSDue        srscontract.QueueReader
-	SRSCards      srscontract.CardWriter
-	Graders       *domain.GraderRegistry
-	Events        EventWriter
-	Metrics       telemetry.Instruments
-	Clock         clock.Clock
-	NewID         func() (uuid.UUID, error)
-	Caches        LearningCaches
-	Env           string
-	AI            ai.Client
+	// ContentRecorder records an independent verifier's doubt on a draft.
+	ContentRecorder contentcontract.VerificationRecorder
+	// AutoPublish publishes a generated item the independent verifier confirms,
+	// without a person (WO 22 Stage A). Off unless configured on and at least
+	// two provider models differ.
+	AutoPublish bool
+	SRSDue      srscontract.QueueReader
+	SRSCards    srscontract.CardWriter
+	Graders     *domain.GraderRegistry
+	Events      EventWriter
+	Metrics     telemetry.Instruments
+	Clock       clock.Clock
+	NewID       func() (uuid.UUID, error)
+	Caches      LearningCaches
+	Env         string
+	AI          ai.Client
 	// GeneratorAuthorID owns the content the practice pool generates.
 	// content_items.owner_id is required, and without an owner the top-up stands
 	// down rather than generate items EnsurePublished would refuse.
@@ -291,29 +297,31 @@ type AudioSynthesiser interface {
 
 // Service coordinates attempt execution, grading, progress rollups, and event emission.
 type Service struct {
-	pool          *pgxpool.Pool
-	repo          Repository
-	lesson        lessoncontract.Reader
-	lessonAuthor  lessoncontract.Author
-	content       contentcontract.Reader
-	contentAuthor contentcontract.Author
-	srsDue        srscontract.QueueReader
-	srsCards      srscontract.CardWriter
-	graders       *domain.GraderRegistry
-	events        EventWriter
-	metrics       telemetry.Instruments
-	clock         clock.Clock
-	newID         func() (uuid.UUID, error)
-	caches        LearningCaches
-	env           string
-	ai            ai.Client
-	user          usercontract.LearningProfileReader
-	flags         admincontract.FlagReader
-	courses       lessoncontract.CourseCatalog
-	srsPace       srscontract.ReviewPaceReader
-	studioAccess  studiocontract.AccessReader
-	taxonomies    contentcontract.TaxonomyResolver
-	resource      resourcecontract.ResourceReader
+	pool            *pgxpool.Pool
+	repo            Repository
+	lesson          lessoncontract.Reader
+	lessonAuthor    lessoncontract.Author
+	content         contentcontract.Reader
+	contentAuthor   contentcontract.Author
+	contentRecorder contentcontract.VerificationRecorder
+	autoPublish     bool
+	srsDue          srscontract.QueueReader
+	srsCards        srscontract.CardWriter
+	graders         *domain.GraderRegistry
+	events          EventWriter
+	metrics         telemetry.Instruments
+	clock           clock.Clock
+	newID           func() (uuid.UUID, error)
+	caches          LearningCaches
+	env             string
+	ai              ai.Client
+	user            usercontract.LearningProfileReader
+	flags           admincontract.FlagReader
+	courses         lessoncontract.CourseCatalog
+	srsPace         srscontract.ReviewPaceReader
+	studioAccess    studiocontract.AccessReader
+	taxonomies      contentcontract.TaxonomyResolver
+	resource        resourcecontract.ResourceReader
 	// resourcePractice is nil on deployments without resource intake, and the
 	// feature answers a clear "not configured" rather than panicking.
 	resourcePractice ResourcePracticeStore
@@ -357,6 +365,8 @@ func New(deps Deps) *Service {
 		lessonAuthor:     deps.LessonAuthor,
 		content:          deps.Content,
 		contentAuthor:    deps.ContentAuthor,
+		contentRecorder:  deps.ContentRecorder,
+		autoPublish:      deps.AutoPublish,
 		srsDue:           deps.SRSDue,
 		srsCards:         deps.SRSCards,
 		graders:          deps.Graders,

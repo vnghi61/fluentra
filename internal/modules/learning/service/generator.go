@@ -303,7 +303,32 @@ func (s *Service) generateSingleItem(
 		Tags:      tagRefs,
 	}
 
+	versionID, err := s.authorGeneratedItem(ctx, req, spec, bodyWithProv)
+	if err != nil {
+		return nil, err
+	}
+
+	return &learningcontract.GeneratedItem{
+		ContentVersionID: versionID,
+		Body:             bodyWithProv,
+		PromptVersion:    promptVersion,
+		Model:            model,
+		AIRequestID:      aiRequestID,
+	}, nil
+}
+
+// authorGeneratedItem stores a generated item: practice content publishes
+// directly, everything else enters as a draft, and foundation and bank drafts
+// an independent verifier confirms publish without a person (WO 22 Stage A).
+func (s *Service) authorGeneratedItem(
+	ctx context.Context,
+	req learningcontract.GenerateRequest,
+	spec contentcontract.AuthorSpec,
+	bodyWithProv json.RawMessage,
+) (uuid.UUID, error) {
 	var versionID uuid.UUID
+	var err error
+
 	if req.Purpose == purposePractice {
 		versionID, err = s.contentAuthor.EnsurePublished(ctx, spec)
 		if err == nil && s.lessonAuthor != nil {
@@ -322,16 +347,15 @@ func (s *Service) generateSingleItem(
 		versionID, err = s.contentAuthor.EnsureDraft(ctx, spec)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("author content: %w", err)
+		return uuid.Nil, fmt.Errorf("author content: %w", err)
 	}
 
-	return &learningcontract.GeneratedItem{
-		ContentVersionID: versionID,
-		Body:             bodyWithProv,
-		PromptVersion:    promptVersion,
-		Model:            model,
-		AIRequestID:      aiRequestID,
-	}, nil
+	if s.autoPublish && (req.Purpose == purposeFoundation || req.Purpose == purposeBank) {
+		if err := s.publishVerifiedDraft(ctx, versionID, req, bodyWithProv); err != nil {
+			return uuid.Nil, fmt.Errorf("auto-publish verified item: %w", err)
+		}
+	}
+	return versionID, nil
 }
 
 func (s *Service) prepareCandidateBody(

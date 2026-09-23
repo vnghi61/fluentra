@@ -32,6 +32,7 @@ type generatorTestAuthor struct {
 	mu        sync.Mutex
 	drafts    []contentcontract.AuthorSpec
 	published []contentcontract.AuthorSpec
+	approved  []uuid.UUID
 }
 
 func (a *generatorTestAuthor) EnsurePublished(_ context.Context, spec contentcontract.AuthorSpec) (uuid.UUID, error) {
@@ -61,8 +62,11 @@ func (a *generatorTestAuthor) EnsureDraft(_ context.Context, spec contentcontrac
 }
 
 func (a *generatorTestAuthor) ApproveVerified(
-	_ context.Context, _ uuid.UUID, _ contentcontract.Verification,
+	_ context.Context, versionID uuid.UUID, _ contentcontract.Verification,
 ) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.approved = append(a.approved, versionID)
 	return nil
 }
 
@@ -314,6 +318,125 @@ func TestGenerator_FoundationContentKinds(t *testing.T) {
 
 	// All 3 items must have landed as drafts
 	assert.Len(t, author.drafts, 3)
+}
+
+// autoPublishAI delegates generation and level judging to a real mock provider
+// and answers the independent verifier itself, so a test can force a
+// confirmation or a doubt.
+type autoPublishAI struct {
+	inner   ai.Client
+	solve   string
+	verdict string
+}
+
+func (a *autoPublishAI) Complete(ctx context.Context, req ai.Request) (ai.Response, error) {
+	switch req.Task {
+	case ai.TaskItemSolve:
+		return ai.Response{
+			Text:  fmt.Sprintf(`{"selected_option_id": %q}`, a.solve),
+			Model: testVerifierModel,
+		}, nil
+	case ai.TaskItemVerify:
+		return ai.Response{
+			Text:  fmt.Sprintf(`{"verdict": %q, "reason": ""}`, a.verdict),
+			Model: testVerifierModel,
+		}, nil
+	default:
+		return a.inner.Complete(ctx, req)
+	}
+}
+
+// fakeVerificationRecorder records the doubts a run leaves on its drafts.
+type fakeVerificationRecorder struct {
+	received []contentcontract.Verification
+}
+
+func (f *fakeVerificationRecorder) RecordVerification(
+	_ context.Context, _ uuid.UUID, v contentcontract.Verification,
+) error {
+	f.received = append(f.received, v)
+	return nil
+}
+
+// TestGenerate_AutoPublishPublishesWhatTheVerifierConfirms is the WO 22 Stage A
+// gate: with an independent model confirming, a generated item publishes with
+// no person.
+func TestGenerate_AutoPublishPublishesWhatTheVerifierConfirms(t *testing.T) {
+	author := &generatorTestAuthor{}
+	recorder := &fakeVerificationRecorder{}
+	svc := service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     author,
+		ContentRecorder:   recorder,
+		AutoPublish:       true,
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           passingGraders(),
+		AI:                &autoPublishAI{inner: ai.NewMockProvider(nil), solve: "A", verdict: "confirmed"},
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+		Synthesiser:       &fakeAudioSynthesiser{},
+	})
+
+	items, err := svc.Generate(context.Background(), learningcontract.GenerateRequest{
+		Kind:      testKindTenseChoice,
+		CEFRLevel: "B1",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   testPurposeFoundation,
+	})
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Len(t, author.approved, 1, "a confirmed item publishes through ApproveVerified")
+	assert.Empty(t, recorder.received, "a confirmed item leaves no doubt")
+}
+
+// TestGenerate_AutoPublishLeavesADoubtForAPerson. A verifier that does not
+// confirm records the doubt on the draft instead of publishing it (D22-2).
+func TestGenerate_AutoPublishLeavesADoubtForAPerson(t *testing.T) {
+	author := &generatorTestAuthor{}
+	recorder := &fakeVerificationRecorder{}
+	svc := service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     author,
+		ContentRecorder:   recorder,
+		AutoPublish:       true,
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           passingGraders(),
+		AI:                &autoPublishAI{inner: ai.NewMockProvider(nil), solve: "A", verdict: "doubt"},
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+		Synthesiser:       &fakeAudioSynthesiser{},
+	})
+
+	_, err := svc.Generate(context.Background(), learningcontract.GenerateRequest{
+		Kind:      testKindTenseChoice,
+		CEFRLevel: "B1",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   testPurposeFoundation,
+	})
+	require.NoError(t, err)
+	assert.Empty(t, author.approved, "a doubted item does not publish")
+	require.Len(t, recorder.received, 1, "the doubt is recorded on the draft")
+	assert.False(t, recorder.received[0].Confirmed)
+}
+
+// generatorTestTaxonomySet is the one-node taxonomy the auto-publish tests use.
+func generatorTestTaxonomySet() *generatorTestTaxonomies {
+	return &generatorTestTaxonomies{
+		nodes: map[string]*contentcontract.TaxonomyNode{
+			testNodeCodePresentPerfect: {
+				ID:        uuid.New(),
+				Namespace: testSkillGrammar,
+				Code:      testNodeCodePresentPerfect,
+				Label:     testLabelPresentPerfect,
+			},
+		},
+	}
 }
 
 // The count sizes an allocation and a loop of model calls, and it arrives from a

@@ -147,7 +147,8 @@ type workerConfig struct {
 		Provider4APIKey  string        `koanf:"provider_4_api_key"`
 		Provider4Timeout time.Duration `koanf:"provider_4_timeout"`
 
-		WritingDailyLimit int `koanf:"writing_daily_limit"`
+		WritingDailyLimit int  `koanf:"writing_daily_limit"`
+		AutoPublish       bool `koanf:"auto_publish"`
 	} `koanf:"ai"`
 	OTP struct {
 		HMACKey string `koanf:"hmac_key"`
@@ -298,6 +299,7 @@ func configOptions() config.Options {
 			"ai.provider_4_api_key":          "",
 			"ai.provider_4_timeout":          defaultAITimeout,
 			"ai.writing_daily_limit":         10,
+			"ai.auto_publish":                false,
 			"speech.tts_engine":              "offline",
 			"speech.tts_voice":               "en_US-lessac-medium",
 			"speech.asr_base_url":            "",
@@ -592,14 +594,16 @@ func startLearning(
 	}
 
 	learningModule := learning.New(learning.Deps{
-		Pool:          pool,
-		Lesson:        lessonModule.Reader(),
-		LessonAuthor:  lessonModule.Author(),
-		Content:       contentModule.Reader(),
-		ContentAuthor: contentModule.Author(),
-		Taxonomies:    contentModule.TaxonomyResolver(),
-		Graders:       graders,
-		AI:            aiClient,
+		Pool:            pool,
+		Lesson:          lessonModule.Reader(),
+		LessonAuthor:    lessonModule.Author(),
+		Content:         contentModule.Reader(),
+		ContentAuthor:   contentModule.Author(),
+		ContentRecorder: contentModule.VerificationRecorder(),
+		AutoPublish:     cfg.AI.AutoPublish,
+		Taxonomies:      contentModule.TaxonomyResolver(),
+		Graders:         graders,
+		AI:              aiClient,
 
 		GeneratorAuthorID: generatorAuthor,
 		AuthorResolver:    roleAuthorResolver{members: rbacModule.RoleMembers()},

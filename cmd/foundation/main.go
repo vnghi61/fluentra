@@ -90,6 +90,9 @@ type foundationCLIConfig struct {
 		Provider4Model   string        `koanf:"provider_4_model"`
 		Provider4APIKey  string        `koanf:"provider_4_api_key"`
 		Provider4Timeout time.Duration `koanf:"provider_4_timeout"`
+		// AutoPublish publishes a node's items the independent verifier confirms
+		// (WO 22 Stage A).
+		AutoPublish bool `koanf:"auto_publish"`
 	} `koanf:"ai"`
 }
 
@@ -218,6 +221,7 @@ func loadFoundationConfig(ctx context.Context) (foundationCLIConfig, error) {
 			"ai.provider_4_model":    "",
 			"ai.provider_4_api_key":  "",
 			"ai.provider_4_timeout":  defaultAITimeout,
+			"ai.auto_publish":        false,
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -384,6 +388,8 @@ func assembleGenerator(
 		LessonAuthor:      lessonMod.Author(),
 		Content:           contentMod.Reader(),
 		ContentAuthor:     contentMod.Author(),
+		ContentRecorder:   contentMod.VerificationRecorder(),
+		AutoPublish:       cfg.AI.AutoPublish,
 		Taxonomies:        contentMod.TaxonomyResolver(),
 		Graders:           graders,
 		AI:                aiClient,
