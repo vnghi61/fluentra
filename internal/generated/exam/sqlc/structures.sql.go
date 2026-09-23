@@ -15,7 +15,7 @@ import (
 const createMockTest = `-- name: CreateMockTest :one
 INSERT INTO assess.mock_tests (id, blueprint_id, mode, seed, composition, owner_id, created_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, blueprint_id, mode, seed, composition, owner_id, created_at
+RETURNING id, blueprint_id, mode, seed, composition, owner_id, created_at, number
 `
 
 type CreateMockTestParams struct {
@@ -47,6 +47,7 @@ func (q *Queries) CreateMockTest(ctx context.Context, arg CreateMockTestParams) 
 		&i.Composition,
 		&i.OwnerID,
 		&i.CreatedAt,
+		&i.Number,
 	)
 	return i, err
 }
@@ -190,7 +191,7 @@ func (q *Queries) GetExamVersionByID(ctx context.Context, id uuid.UUID) (AssessE
 }
 
 const getMockTestByID = `-- name: GetMockTestByID :one
-SELECT id, blueprint_id, mode, seed, composition, owner_id, created_at FROM assess.mock_tests
+SELECT id, blueprint_id, mode, seed, composition, owner_id, created_at, number FROM assess.mock_tests
 WHERE id = $1
 `
 
@@ -205,6 +206,7 @@ func (q *Queries) GetMockTestByID(ctx context.Context, id uuid.UUID) (AssessMock
 		&i.Composition,
 		&i.OwnerID,
 		&i.CreatedAt,
+		&i.Number,
 	)
 	return i, err
 }
@@ -353,7 +355,7 @@ func (q *Queries) ListExamVersions(ctx context.Context) ([]AssessExamVersion, er
 }
 
 const listMockTestsByOwner = `-- name: ListMockTestsByOwner :many
-SELECT id, blueprint_id, mode, seed, composition, owner_id, created_at FROM assess.mock_tests
+SELECT id, blueprint_id, mode, seed, composition, owner_id, created_at, number FROM assess.mock_tests
 WHERE owner_id = $1 OR owner_id IS NULL
 ORDER BY created_at DESC
 `
@@ -375,6 +377,7 @@ func (q *Queries) ListMockTestsByOwner(ctx context.Context, ownerID *uuid.UUID) 
 			&i.Composition,
 			&i.OwnerID,
 			&i.CreatedAt,
+			&i.Number,
 		); err != nil {
 			return nil, err
 		}

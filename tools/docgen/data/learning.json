@@ -1655,7 +1655,7 @@
       { "name": "exam_versions", "purpose": "Verified exam versions", "notes": "`exam_family`, `code`, `title`, `total_minutes`, `scoring`, `source_url`, `verified_at`, `is_current`" },
       { "name": "exam_parts", "purpose": "Exam parts per version", "notes": "`version_id`, `section`, `part_number`, `kind`, `question_count`, `group_size`" },
       { "name": "blueprints", "purpose": "Mock test blueprints", "notes": "`version_id`, `name`, `cefr_distribution`, `node_distribution`" },
-      { "name": "mock_tests", "purpose": "Composed mock tests", "notes": "`blueprint_id`, `mode`, `seed`, `composition`, `owner_id`" }
+      { "name": "mock_tests", "purpose": "Composed mock tests", "notes": "`blueprint_id`, `mode`, `number` (fixed only), `seed`, `composition`, `owner_id`" }
     ],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/exams", "permission": "content.read.published", "purpose": "Available mock exams", "success": "200" },
@@ -1694,7 +1694,7 @@
       "The score report is generated once and stored — it must not change if the scoring table is later revised.",
       "Exam structures are seeded data with an `https` source and a verification date.",
       "A retake replays its composition; only a new test draws again.",
-      "A fixed test is one stored composition shared by everyone, composed without anyone's exposures.",
+      "A fixed test is a numbered, stored composition shared by everyone; the fixed tests of one blueprint share no question.",
       "A part is filled with exactly its question count, in whole groups; a part the bank cannot fill is refused with the part named.",
       "The number of distinct tests shown is the coverage report's number.",
       "A mock test's composition is stored on the attempt and served from there, so its activity configs are redacted at composition time: a key that reaches the composition reaches the learner.",

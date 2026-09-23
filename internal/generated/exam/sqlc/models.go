@@ -285,6 +285,7 @@ type AssessMockTest struct {
 	Composition []byte
 	OwnerID     *uuid.UUID
 	CreatedAt   time.Time
+	Number      *int32
 }
 
 type AssessScoreReport struct {

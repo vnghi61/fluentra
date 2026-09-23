@@ -103,7 +103,7 @@ Migrations: `db/migrations/exam/` · Queries: `db/queries/exam/`
 | `assess.exam_versions` | Verified exam versions | `exam_family`, `code`, `title`, `total_minutes`, `scoring`, `source_url`, `verified_at`, `is_current` |
 | `assess.exam_parts` | Exam parts per version | `version_id`, `section`, `part_number`, `kind`, `question_count`, `group_size` |
 | `assess.blueprints` | Mock test blueprints | `version_id`, `name`, `cefr_distribution`, `node_distribution` |
-| `assess.mock_tests` | Composed mock tests | `blueprint_id`, `mode`, `seed`, `composition`, `owner_id` |
+| `assess.mock_tests` | Composed mock tests | `blueprint_id`, `mode`, `number` (fixed only), `seed`, `composition`, `owner_id` |
 
 <!-- END GENERATED: schema -->
 
@@ -180,7 +180,7 @@ and fails `go-arch-lint` in CI.
 10. **BR-EXAM-10** — The score report is generated once and stored — it must not change if the scoring table is later revised.
 11. **BR-EXAM-11** — Exam structures are seeded data with an `https` source and a verification date.
 12. **BR-EXAM-12** — A retake replays its composition; only a new test draws again.
-13. **BR-EXAM-13** — A fixed test is one stored composition shared by everyone, composed without anyone's exposures.
+13. **BR-EXAM-13** — A fixed test is a numbered, stored composition shared by everyone; the fixed tests of one blueprint share no question.
 14. **BR-EXAM-14** — A part is filled with exactly its question count, in whole groups; a part the bank cannot fill is refused with the part named.
 15. **BR-EXAM-15** — The number of distinct tests shown is the coverage report's number.
 16. **BR-EXAM-16** — A mock test's composition is stored on the attempt and served from there, so its activity configs are redacted at composition time: a key that reaches the composition reaches the learner.
