@@ -69,10 +69,18 @@ var demoAccounts = []demoAccount{
 	{email: "nguyenvannghi1110@gmail.com", displayName: "Nguyen Van Nghi", admin: true},
 }
 
+// includeFoundationFixtures is set from -foundation and read by run. Default
+// on: `make seed` is the one command that has to produce a complete catalogue
+// (WO 22 Stage G).
+var includeFoundationFixtures = true
+
 func main() {
 	audio := flag.Bool("audio", false,
 		"backfill recorded pronunciation onto flashcards that have none, then exit")
+	foundation := flag.Bool("foundation", true,
+		"load the frozen Foundation fixtures from db/fixtures/foundation (no model call)")
 	flag.Parse()
+	includeFoundationFixtures = *foundation
 	if *audio {
 		if err := runAudioBackfill(context.Background(), os.Stdout); err != nil {
 			log.Print(err)
@@ -193,6 +201,14 @@ func run(ctx context.Context, out io.Writer) error {
 	}
 	if err := seedAuthoredContent(ctx, pool, adminID, out); err != nil {
 		return err
+	}
+
+	// The frozen Foundation content (WO 22 Stage G): loaded through content's
+	// own state machine, with the approval it already had.
+	if includeFoundationFixtures {
+		if err := seedFoundationFixtures(ctx, pool, adminID, defaultFoundationFixtureDir, out); err != nil {
+			return fmt.Errorf("seed foundation fixtures: %w", err)
+		}
 	}
 
 	_, _ = fmt.Fprintf(out, "\npassword for all: %s\n", demoPassword)

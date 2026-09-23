@@ -96,6 +96,23 @@ type foundationCLIConfig struct {
 	} `koanf:"ai"`
 }
 
+// defaultFixtureDir is where an -export writes the frozen Foundation content
+// the seed loads offline (WO 22 Stage G).
+const defaultFixtureDir = "db/fixtures/foundation"
+
+// printFoundationDryRun lists what a real run would generate for each node.
+func printFoundationDryRun(nodes []spineNodeRow, out io.Writer) {
+	for i, node := range nodes {
+		kinds := exerciseKindsForNode(node.Namespace, node.Code)
+		_, _ = fmt.Fprintf(out, "[dry-run] Node %d/%d: %s:%s (%s, %s)\n",
+			i+1, len(nodes), node.Namespace, node.Code, node.Label, node.CEFRLevel)
+		_, _ = fmt.Fprintf(out, "          - 1x foundation_topic\n")
+		_, _ = fmt.Fprintf(out, "          - 3x exercises: %s\n", strings.Join(kinds, ", "))
+		_, _ = fmt.Fprintf(out, "          - 1x foundation_quiz\n")
+		_, _ = fmt.Fprintf(out, "          - 1x foundation_review\n")
+	}
+}
+
 type spineNodeRow struct {
 	ID        uuid.UUID
 	Namespace string
@@ -118,14 +135,17 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	limitFlag := flags.Int("limit", 0, "Optional limit on number of nodes to process")
 	dryRunFlag := flags.Bool("dry-run", false, "Simulate generation without persisting items")
 	mockFlag := flags.Bool("mock", false, "Generate with the offline mock provider, writing placeholder drafts")
+	exportFlag := flags.Bool("export", false, "Export published Foundation content to fixtures and exit")
+	fixturesFlag := flags.String("fixtures", defaultFixtureDir,
+		"Directory an -export writes to and `cmd/seed -foundation` reads")
 
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 
 	targetNode := strings.TrimSpace(*nodeFlag)
-	if targetNode == "" && !*allFlag {
-		return errors.New("must specify either -node CODE or -all")
+	if targetNode == "" && !*allFlag && !*exportFlag {
+		return errors.New("must specify either -node CODE or -all (or -export)")
 	}
 
 	cfg, err := loadFoundationConfig(ctx)
@@ -153,16 +173,13 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 
 	_, _ = fmt.Fprintf(out, "Found %d spine taxonomy node(s) to process.\n", len(nodes))
 
+	if *exportFlag {
+		_, _ = fmt.Fprintf(out, "Exporting published Foundation content to %s...\n", *fixturesFlag)
+		return exportFoundationFixtures(ctx, pool, nodes, *fixturesFlag, out)
+	}
+
 	if *dryRunFlag {
-		for i, n := range nodes {
-			kinds := exerciseKindsForNode(n.Namespace, n.Code)
-			_, _ = fmt.Fprintf(out, "[dry-run] Node %d/%d: %s:%s (%s, %s)\n",
-				i+1, len(nodes), n.Namespace, n.Code, n.Label, n.CEFRLevel)
-			_, _ = fmt.Fprintf(out, "          - 1x foundation_topic\n")
-			_, _ = fmt.Fprintf(out, "          - 3x exercises: %s\n", strings.Join(kinds, ", "))
-			_, _ = fmt.Fprintf(out, "          - 1x foundation_quiz\n")
-			_, _ = fmt.Fprintf(out, "          - 1x foundation_review\n")
-		}
+		printFoundationDryRun(nodes, out)
 		return nil
 	}
 
