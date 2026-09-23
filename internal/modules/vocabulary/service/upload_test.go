@@ -128,6 +128,12 @@ func (s *stubContentAuthor) EnsureDraft(
 	return s.id, nil
 }
 
+func (s *stubContentAuthor) ApproveVerified(
+	_ context.Context, _ uuid.UUID, _ contentcontract.Verification,
+) error {
+	return nil
+}
+
 type stubQuotaAI struct {
 	stubAI
 	hasQuota bool

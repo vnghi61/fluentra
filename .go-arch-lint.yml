@@ -477,6 +477,9 @@ deps:
   m_learning_http:       { mayDependOn: [m_learning_domain, m_learning_service, c_learning, c_lesson] }
   m_learning_job:        { mayDependOn: [m_learning_domain, p_job, p_telemetry] }
   m_learning:            { mayDependOn: [m_learning_domain, m_learning_repository, m_learning_service, m_learning_http, m_learning_job, c_learning, c_lesson, c_content, c_srs, c_user, c_admin, c_studio, c_resource, g_learning, p_cache, p_job, p_telemetry, p_ai] }
+  # The independent verifier returns a content verification, so the learning
+  # contract names content's Verification type (WO 22 Stage A).
+  c_learning:      { mayDependOn: [c_content] }
   c_srs:           { mayDependOn: [c_learning] }
   c_vocabulary:    { mayDependOn: [c_learning] }
   c_grammar:       { mayDependOn: [c_learning] }

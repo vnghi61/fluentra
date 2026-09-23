@@ -418,6 +418,12 @@ func (f *fakeContentAuthor) EnsureDraft(_ context.Context, spec contentcontract.
 	return uuid.New(), nil
 }
 
+func (f *fakeContentAuthor) ApproveVerified(
+	_ context.Context, _ uuid.UUID, _ contentcontract.Verification,
+) error {
+	return nil
+}
+
 func (f *fakeContentAuthor) published() []contentcontract.AuthorSpec {
 	f.mu.Lock()
 	defer f.mu.Unlock()

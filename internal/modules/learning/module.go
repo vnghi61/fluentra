@@ -246,6 +246,12 @@ func (m *Module) Generator() contract.Generator {
 	return m.service
 }
 
+// IndependentVerifier returns the public IndependentVerifier contract
+// implementation (WO 22 Stage A).
+func (m *Module) IndependentVerifier() contract.IndependentVerifier {
+	return m.service
+}
+
 // Routes mounts learner-facing attempt endpoints under the authenticated router.
 func (m *Module) Routes(router chi.Router) {
 	if m.handler != nil {

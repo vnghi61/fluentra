@@ -146,7 +146,7 @@ and fails `go-arch-lint` in CI.
 1. **BR-QUESTIONBANK-01** — A bank question's body is a content version and it is drawn as an activity. There is no second copy of its answer (no `question_options`).
 2. **BR-QUESTIONBANK-02** — The fingerprint is unique; a duplicate is refused by the database.
 3. **BR-QUESTIONBANK-03** — Every bank question carries provenance; an item without it is refused.
-4. **BR-QUESTIONBANK-04** — A question enters the bank only after its content version is published through the review queue. `PublishQuestion` on unreviewed content fails with `QUESTION_NOT_REVIEWED`.
+4. **BR-QUESTIONBANK-04** — A question enters the bank only after its content version is approved, by a person or by an independent verifier that confirmed it. `PublishQuestion` on unreviewed content fails with `QUESTION_NOT_REVIEWED`.
 5. **BR-QUESTIONBANK-05** — Spine tags are `content.content_tags` on the question's content item, resolved through `content.TagIndex` — never joined from this module's SQL.
 6. **BR-QUESTIONBANK-06** — The correct answer never reaches a learner: sittings are served through the existing redaction.
 <!-- END GENERATED: rules -->

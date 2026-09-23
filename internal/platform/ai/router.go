@@ -90,10 +90,13 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 		return Response{}, ErrDisabled
 	}
 
-	primary, err := r.providers.Primary()
-	if err != nil {
-		return Response{}, err
+	// The exclusion drops the writer's model before anything is called, so an
+	// independent verifier is never answered by the model it is checking.
+	chain := r.providers.Chain(req.ExcludeModel)
+	if len(chain) == 0 {
+		return Response{}, ErrDisabled
 	}
+	primary := chain[0]
 
 	// 2. Try primary provider if budget allows
 	primaryAllowed, primaryBudgetErr := r.budget.CheckQuota(ctx, primary.Name(), req.Task)
@@ -124,7 +127,7 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 		primaryExecErr = err
 	}
 
-	return r.executeFallback(ctx, req, cacheKey, primary, primaryExecErr, primaryVerdict, start)
+	return r.executeFallback(ctx, req, cacheKey, primary, chain[1:], primaryExecErr, primaryVerdict, start)
 }
 
 // cacheGet reads a cached reply; an empty key is a task that is never cached.
@@ -181,11 +184,11 @@ func (r *Router) executeFallback(
 	req Request,
 	cacheKey string,
 	primary Provider,
+	fallbacks []Provider,
 	primaryErr error,
 	primaryVerdict quotaVerdict,
 	start time.Time,
 ) (Response, error) {
-	fallbacks := r.providers.Fallbacks()
 	if len(fallbacks) == 0 {
 		if primaryVerdict == quotaExhausted {
 			r.record(ctx, RequestLog{

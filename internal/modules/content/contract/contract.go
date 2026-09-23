@@ -105,6 +105,29 @@ type Author interface {
 	// EnsureDraft creates or updates the item at this slug and returns the
 	// id of its draft version, without marking it published or approved.
 	EnsureDraft(ctx context.Context, spec AuthorSpec) (uuid.UUID, error)
+
+	// ApproveVerified publishes a draft that an independent verifier confirmed
+	// (WO 22 Stage A). It walks the draft in_review → approved → published in
+	// one transaction, emits content.published through the outbox like any
+	// other publish, and records a content_reviews row naming the verifier. A
+	// verification that is not confirmed is refused: this door publishes, it
+	// never judges.
+	ApproveVerified(ctx context.Context, versionID uuid.UUID, verification Verification) error
+}
+
+// Verification is the outcome of an independent check on a machine-authored
+// version (WO 22 Stage A).
+//
+// Confirmed means a model other than the one that wrote the version solved it,
+// found the key defensible and the explanation sound. Model and CheckedAt are
+// stored so a published item can always be traced to the verifier that let it
+// through. A verification that is not confirmed carries the reason a person
+// needs to look.
+type Verification struct {
+	Confirmed bool
+	Model     string
+	Reason    string
+	CheckedAt time.Time
 }
 
 // Published is emitted when a content version transitions to published.

@@ -1076,38 +1076,8 @@ func (s *Service) Publish(ctx context.Context, actorID, itemID uuid.UUID) (domai
 			return err
 		}
 
-		publishedVersion, err = txRepo.PublishVersion(ctx, draftVersion.ID)
-		if err != nil {
-			return err
-		}
-
-		_, err = txRepo.UpdateItemStatus(ctx, itemID, domain.StatusPublished)
-		if err != nil {
-			return err
-		}
-
-		_, err = txRepo.UpdateItemCurrentVersion(ctx, itemID, &draftVersion.ID)
-		if err != nil {
-			return err
-		}
-
-		// Outbox event: content.published
-		if s.events != nil {
-			now := s.clock.Now().UTC()
-			eventPayload := contract.Published{
-				ItemID:     item.ID,
-				VersionID:  draftVersion.ID,
-				Kind:       draftVersion.Kind,
-				CEFRLevel:  draftVersion.CEFRLevel,
-				OccurredAt: now,
-			}
-			_, err = s.events.Write(ctx, tx, contract.Aggregate, contract.EventContentPublished, eventPayload)
-			if err != nil {
-				return fmt.Errorf("write outbox event %s: %w", contract.EventContentPublished, err)
-			}
-		}
-
-		return nil
+		publishedVersion, err = s.finalizePublished(ctx, tx, txRepo, item, draftVersion)
+		return err
 	})
 
 	if err != nil {
@@ -1115,6 +1085,43 @@ func (s *Service) Publish(ctx context.Context, actorID, itemID uuid.UUID) (domai
 	}
 
 	return publishedVersion, nil
+}
+
+// finalizePublished writes a version to published, links it from its item, and
+// emits content.published through the outbox.
+//
+// Shared by Publish, where a person approved the version, and ApproveVerified,
+// where an independent verifier did. The two differ only in how the version
+// reached `approved`; from there the publish is identical, and duplicating it
+// would be two places to keep the outbox event in step.
+func (s *Service) finalizePublished(
+	ctx context.Context, tx pgx.Tx, txRepo Repository, item domain.Item, version domain.Version,
+) (domain.Version, error) {
+	published, err := txRepo.PublishVersion(ctx, version.ID)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	if _, err := txRepo.UpdateItemStatus(ctx, item.ID, domain.StatusPublished); err != nil {
+		return domain.Version{}, err
+	}
+	if _, err := txRepo.UpdateItemCurrentVersion(ctx, item.ID, &version.ID); err != nil {
+		return domain.Version{}, err
+	}
+
+	if s.events != nil {
+		now := s.clock.Now().UTC()
+		eventPayload := contract.Published{
+			ItemID:     item.ID,
+			VersionID:  version.ID,
+			Kind:       version.Kind,
+			CEFRLevel:  version.CEFRLevel,
+			OccurredAt: now,
+		}
+		if _, err := s.events.Write(ctx, tx, contract.Aggregate, contract.EventContentPublished, eventPayload); err != nil {
+			return domain.Version{}, fmt.Errorf("write outbox event %s: %w", contract.EventContentPublished, err)
+		}
+	}
+	return published, nil
 }
 
 // Archive archives a published content item.

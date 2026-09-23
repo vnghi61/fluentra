@@ -34,6 +34,12 @@ func (p *MockProvider) Name() string {
 	return ProviderMock
 }
 
+// Model returns the model the mock reports. It is the same constant its replies
+// carry, so excluding a stored "mock" provenance also excludes this provider.
+func (p *MockProvider) Model() string {
+	return MockModelName
+}
+
 // MockModelName is what a mocked answer reports as its model, so a stored
 // verification can be told apart from a real one later.
 const MockModelName = "mock"
@@ -51,6 +57,10 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 		if _, err := tmpl.Render(req.Vars); err != nil {
 			return Response{}, err
 		}
+	}
+
+	if resp, handled, err := p.itemTask(req); handled {
+		return resp, err
 	}
 
 	switch req.Task {
@@ -72,12 +82,28 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 		return p.placementGenerate(req)
 	case TaskPlacementSolve:
 		return p.placementSolve(req)
-	case TaskItemLevel:
-		return p.itemLevel(req)
-	case TaskFoundationTopicGenerate:
-		return p.foundationTopicGenerate(req)
 	default:
 		return Response{}, fmt.Errorf("ai: mock provider has no answer for task %q", req.Task)
+	}
+}
+
+// itemTask answers the item-generation, item-level and item-verify tasks.
+//
+// Split out of Complete so the one switch there stays under the complexity
+// ceiling as tasks accumulate; each of these is one call and no branching.
+func (p *MockProvider) itemTask(req Request) (Response, bool, error) {
+	switch req.Task {
+	case TaskItemLevel:
+		resp, err := p.itemLevel(req)
+		return resp, true, err
+	case TaskItemVerify:
+		resp, err := p.itemVerify(req)
+		return resp, true, err
+	case TaskFoundationTopicGenerate:
+		resp, err := p.foundationTopicGenerate(req)
+		return resp, true, err
+	default:
+		return Response{}, false, nil
 	}
 }
 
@@ -693,6 +719,33 @@ func (p *MockProvider) placementSolve(req Request) (Response, error) {
 	}
 	return Response{Text: string(payload), Model: MockModelName}, nil
 }
+
+// itemVerify is the mock's independent-verification answer.
+//
+// It confirms by default, because the mock is what runs when no real provider
+// is configured and a verifier that doubted everything would send the whole
+// catalogue to a person on a development stack. Tests force a doubt by putting
+// mockVerifyDoubtMarker in the item, the same trick itemLevel uses.
+func (p *MockProvider) itemVerify(req Request) (Response, error) {
+	body := stringVar(req.Vars, "RedactedBody")
+	verdict := "confirmed"
+	reason := ""
+	if strings.Contains(body, mockVerifyDoubtMarker) {
+		verdict = "doubt"
+		reason = "mock doubt: second option defensible"
+	}
+	payload, err := json.Marshal(map[string]any{
+		"verdict": verdict,
+		"reason":  reason,
+	})
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock item verify: %w", err)
+	}
+	return Response{Text: string(payload), Model: "mock-verifier"}, nil
+}
+
+// mockVerifyDoubtMarker forces the mock verifier to doubt an item.
+const mockVerifyDoubtMarker = "FORCE_VERIFY_DOUBT"
 
 func (p *MockProvider) itemLevel(req Request) (Response, error) {
 	requested := stringVar(req.Vars, "RequestedLevel")

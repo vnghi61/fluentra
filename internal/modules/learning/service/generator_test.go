@@ -60,6 +60,12 @@ func (a *generatorTestAuthor) EnsureDraft(_ context.Context, spec contentcontrac
 	return uuid.New(), nil
 }
 
+func (a *generatorTestAuthor) ApproveVerified(
+	_ context.Context, _ uuid.UUID, _ contentcontract.Verification,
+) error {
+	return nil
+}
+
 type generatorTestTaxonomies struct {
 	nodes map[string]*contentcontract.TaxonomyNode
 }

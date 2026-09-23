@@ -8,6 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 )
 
 // Aggregate is the outbox aggregate name every event below is written under.
@@ -338,6 +340,36 @@ type ItemVerifier interface {
 	// check that failed. `blindSolve` is optional because check 4 costs an AI
 	// call per item.
 	VerifyItem(ctx context.Context, req VerifyItemRequest) error
+}
+
+// IndependentVerifier is the second, independent check a machine-authored item
+// passes before publication (WO 22 Stage A).
+//
+// It is deliberately separate from ItemVerifier. That one runs inside the
+// generator, answered by the same provider chain that wrote the item — a model
+// grading its own work. This one is answered by a model other than the writer's,
+// read from the item's `_provenance.model`, so a confirmation means a second
+// opinion rather than self-review.
+type IndependentVerifier interface {
+	// VerifyIndependently returns a confirmed verification when an independent
+	// model solves the item and finds its key and explanation sound. Anything it
+	// doubts — including having no independent provider to ask — comes back
+	// unconfirmed with the reason, never as an error: a doubt is a person's
+	// work, not a failure.
+	VerifyIndependently(
+		ctx context.Context, req IndependentVerifyRequest,
+	) (contentcontract.Verification, error)
+}
+
+// IndependentVerifyRequest specifies an item for independent verification.
+type IndependentVerifyRequest struct {
+	Kind      string
+	TaskType  string
+	CEFRLevel string
+	Body      json.RawMessage
+	// OfficialSpec is the exam part's published format, empty for Foundation.
+	// The verifier checks the item against it when it is set.
+	OfficialSpec string
 }
 
 // ExamPartConstraints defines structural constraints for an exam part item (Stage E/G).

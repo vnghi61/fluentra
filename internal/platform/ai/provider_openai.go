@@ -87,6 +87,11 @@ func (p *OpenAICompatibleProvider) Name() string {
 	return ProviderOpenAICompatible
 }
 
+// Model returns the model this provider answers with.
+func (p *OpenAICompatibleProvider) Model() string {
+	return p.config.Model
+}
+
 type chatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`

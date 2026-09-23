@@ -92,7 +92,7 @@
       "`body` is validated against a JSON schema chosen by `kind`, so a skill module's payload cannot be malformed.",
       "Publishing invalidates the content cache, enqueues TTS generation, and triggers reindexing — all through the outbox so a failure in one does not roll back the publish.",
       "Slugs are immutable after first publication; a changed slug would break external links and bookmarks.",
-      "Machine-authored exam and curriculum content enters as a draft (`Author.EnsureDraft`); only practice content may be published without review (`EnsurePublished`).",
+      "Machine-authored exam and curriculum content enters as a draft, and is published by a person or by `ApproveVerified`; practice content may be published directly (`EnsurePublished`).",
       "A machine-authored draft (a body carrying `_provenance`) may be approved directly: the review queue walks it draft → in_review → approved in one transaction, because a generator cannot submit its own output. A human draft still needs its author to submit it. Drafts whose provenance purpose is `resource` never enter the queue: they are a learner's private practice."
     ],
     "cache": [
@@ -1531,7 +1531,7 @@
       "A bank question's body is a content version and it is drawn as an activity. There is no second copy of its answer (no `question_options`).",
       "The fingerprint is unique; a duplicate is refused by the database.",
       "Every bank question carries provenance; an item without it is refused.",
-      "A question enters the bank only after its content version is published through the review queue. `PublishQuestion` on unreviewed content fails with `QUESTION_NOT_REVIEWED`.",
+      "A question enters the bank only after its content version is approved, by a person or by an independent verifier that confirmed it. `PublishQuestion` on unreviewed content fails with `QUESTION_NOT_REVIEWED`.",
       "Spine tags are `content.content_tags` on the question's content item, resolved through `content.TagIndex` — never joined from this module's SQL.",
       "The correct answer never reaches a learner: sittings are served through the existing redaction."
     ],

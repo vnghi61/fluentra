@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -131,6 +132,128 @@ func (s *Service) EnsureDraft(ctx context.Context, spec contract.AuthorSpec) (uu
 		return uuid.Nil, err
 	}
 	return versionID, nil
+}
+
+// ApproveVerified implements contract.Author.
+//
+// The door WO 22 Stage A opens: a draft an independent verifier confirmed is
+// published without a person. It walks the version draft → in_review → approved
+// → published with the same state machine and events as the human path, and
+// records a content_reviews row whose reviewer is the item's owner — the admin
+// the generator authored under. There is no anonymous approval: reviewer_id is
+// NOT NULL and references core.users.
+//
+// A verification that is not confirmed is refused here rather than published;
+// it stays in the review queue for a person. Publishing, not judging, is this
+// door's job.
+func (s *Service) ApproveVerified(
+	ctx context.Context, versionID uuid.UUID, verification contract.Verification,
+) error {
+	if versionID == uuid.Nil {
+		return apperr.New(apperr.Validation, "CONTENT_VERSION_REQUIRED", "A content version is required.")
+	}
+	if !verification.Confirmed {
+		return apperr.New(apperr.Conflict, "CONTENT_VERIFICATION_NOT_CONFIRMED",
+			"The independent verifier did not confirm this version; it stays for a person.")
+	}
+
+	return dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+		repo := s.repo.WithTx(tx)
+
+		version, err := repo.GetVersionByID(txCtx, versionID)
+		if err != nil {
+			return err
+		}
+		item, err := repo.GetItemByID(txCtx, version.ItemID)
+		if err != nil {
+			return err
+		}
+		// Idempotent: a verifier that runs twice publishes once.
+		if version.Status == domain.StatusPublished {
+			return nil
+		}
+
+		approved, err := s.advanceToApproved(txCtx, repo, item, version)
+		if err != nil {
+			return err
+		}
+		if _, err := s.finalizePublished(txCtx, tx, repo, item, approved); err != nil {
+			return err
+		}
+
+		comment := fmt.Sprintf("Approved by independent verifier %s at %s.",
+			verifierName(verification.Model), verification.CheckedAt.UTC().Format(time.RFC3339))
+		if _, err := repo.CreateReview(
+			txCtx, s.newID(), version.ID, item.OwnerID, domain.ReviewDecisionApproved, &comment,
+		); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+// advanceToApproved moves a draft or in-review version to approved, running the
+// same publication gates a person's publish would.
+func (s *Service) advanceToApproved(
+	ctx context.Context, repo Repository, item domain.Item, version domain.Version,
+) (domain.Version, error) {
+	if err := s.verifyMediaAssetsReady(ctx, repo, version.MediaRefs); err != nil {
+		return domain.Version{}, err
+	}
+	if err := verifyFoundationComplete(ctx, repo, item.Kind, item.ID); err != nil {
+		return domain.Version{}, err
+	}
+
+	steps, err := stepsToApproved(version.Status)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	current := version
+	for _, next := range steps {
+		if err := domain.ValidateTransition(current.Status, next); err != nil {
+			return domain.Version{}, err
+		}
+		updated, err := repo.UpdateVersionDraft(
+			ctx, current.ID, current.Kind, []byte(current.Body), current.CEFRLevel, current.MediaRefs, next,
+		)
+		if err != nil {
+			return domain.Version{}, err
+		}
+		current = updated
+	}
+	if _, err := repo.UpdateItemStatus(ctx, item.ID, domain.StatusApproved); err != nil {
+		return domain.Version{}, err
+	}
+	if err := domain.ValidateTransition(current.Status, domain.StatusPublished); err != nil {
+		return domain.Version{}, err
+	}
+	return current, nil
+}
+
+// stepsToApproved is the remaining transitions from a version's status to
+// approved. A version already approved needs none.
+func stepsToApproved(from domain.AuthoringStatus) ([]domain.AuthoringStatus, error) {
+	switch from {
+	case domain.StatusDraft:
+		return []domain.AuthoringStatus{domain.StatusInReview, domain.StatusApproved}, nil
+	case domain.StatusInReview:
+		return []domain.AuthoringStatus{domain.StatusApproved}, nil
+	case domain.StatusApproved:
+		return nil, nil
+	default:
+		return nil, domain.ErrInvalidStateTransition.WithInternal(
+			fmt.Sprintf("cannot approve version in status %q", from),
+		)
+	}
+}
+
+// verifierName is the model recorded on the approval, or a placeholder when the
+// caller did not name one.
+func verifierName(model string) string {
+	if trimmed := strings.TrimSpace(model); trimmed != "" {
+		return trimmed
+	}
+	return "unknown"
 }
 
 // authorFirstVersion creates the item and its published version 1.
