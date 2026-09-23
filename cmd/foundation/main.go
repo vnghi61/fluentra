@@ -310,7 +310,10 @@ func buildGenerator(
 	cfg foundationCLIConfig,
 	pool *pgxpool.Pool,
 ) (learningcontract.Generator, uuid.UUID, error) {
-	authorID := resolveFirstAdminOrNew(ctx, pool)
+	authorID, err := resolveAuthorID(ctx, pool)
+	if err != nil {
+		return nil, uuid.Nil, err
+	}
 	return assembleGenerator(ctx, cfg, pool, authorID), authorID, nil
 }
 
@@ -424,19 +427,33 @@ func assembleGraders(
 	return graders
 }
 
-func resolveFirstAdminOrNew(ctx context.Context, pool *pgxpool.Pool) uuid.UUID {
+// resolveAuthorID is the administrator every generated draft is attributed to.
+//
+// It used to read rbac.user_roles ordered by created_at. There is no rbac
+// schema — the tables are core.roles and core.user_roles, and the column is
+// granted_at — so the query always failed, and the fallback invented a fresh
+// uuid for a user that does not exist. content_items.owner_id references
+// core.users, so the first draft died on the foreign key, one AI call after the
+// money was spent. An author who cannot be found is now an error, because a
+// generated draft with no real owner cannot be stored at all.
+func resolveAuthorID(ctx context.Context, pool *pgxpool.Pool) (uuid.UUID, error) {
 	var adminID uuid.UUID
 	err := pool.QueryRow(ctx, `
 		SELECT ur.user_id
-		FROM rbac.user_roles ur
-		JOIN rbac.roles r ON r.id = ur.role_id
+		FROM core.user_roles ur
+		JOIN core.roles r ON r.id = ur.role_id
 		WHERE r.name = 'admin'
-		ORDER BY ur.created_at ASC
+		ORDER BY ur.granted_at ASC
 		LIMIT 1`).Scan(&adminID)
-	if err == nil && adminID != uuid.Nil {
-		return adminID
+	if err != nil {
+		return uuid.Nil, fmt.Errorf(
+			"find an admin to attribute the drafts to (run `make seed` first): %w", err)
 	}
-	return uuid.New()
+	if adminID == uuid.Nil {
+		return uuid.Nil, errors.New(
+			"no account holds the admin role, so generated drafts would have no owner; run `make seed` first")
+	}
+	return adminID, nil
 }
 
 // aiProviders is every configured provider slot, in order, as the API and the

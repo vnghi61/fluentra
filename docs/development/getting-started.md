@@ -79,7 +79,10 @@ make migrate-up
 make seed
 ```
 
-Demo accounts: `learner@fluentra.dev` / `admin@fluentra.dev` / `moderator@fluentra.dev`, password `Password123!demo`.
+Demo accounts: `nghitienvl@gmail.com` (learner) and `nguyenvannghi1110@gmail.com` (admin),
+password `Password123!demo`. The admin holds every permission, so it is the account for the
+review queue, the question bank and content authoring; the learner holds none, which is what
+makes a paywall or a redaction that only bites a learner visible when it breaks.
 These exist only in the development seed; there is no default password anywhere else.
 
 ## 5. The 15-minute exercise — follow one request

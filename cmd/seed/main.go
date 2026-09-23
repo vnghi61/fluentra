@@ -57,10 +57,16 @@ type demoAccount struct {
 
 // The accounts docs/development/getting-started.md §4 names. Changing one
 // here means changing it there.
+//
+// The admin holds every permission (core.role_permissions grants it the whole
+// set), so one back-office account covers the review queue, the question bank
+// and content authoring. The learner is separate because the learner-facing
+// flows — uploading a resource, sitting a lesson, the daily set — have to be
+// exercised by an account that holds no permissions at all, or a paywall or a
+// redaction that only bites a learner would never be seen failing.
 var demoAccounts = []demoAccount{
-	{email: "learner@fluentra.dev", displayName: "Demo Learner"},
-	{email: "admin@fluentra.dev", displayName: "Demo Operator", admin: true},
-	{email: "moderator@fluentra.dev", displayName: "Demo Reviewer", role: "moderator"},
+	{email: "nghitienvl@gmail.com", displayName: "Nghi Tien"},
+	{email: "nguyenvannghi1110@gmail.com", displayName: "Nguyen Van Nghi", admin: true},
 }
 
 func main() {

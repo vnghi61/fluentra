@@ -21,7 +21,7 @@
 
 \if :{?seed_due_email}
 \else
-\set seed_due_email 'learner@fluentra.dev'
+\set seed_due_email 'nghitienvl@gmail.com'
 \endif
 
 -- The address goes through a session setting rather than being interpolated
