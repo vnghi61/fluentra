@@ -5967,7 +5967,7 @@ export interface components {
              * @description Machine-readable reason or note code for the item.
              * @enum {string|null}
              */
-            note_code?: "spelling_corrected" | "meaning_corrected" | "spelling_suggestion" | "meaning_mismatch" | "already_in_your_words" | "not_a_word" | "proper_noun" | "queued_for_enrichment" | null;
+            note_code?: "spelling_corrected" | "meaning_corrected" | "spelling_suggestion" | "meaning_mismatch" | "already_in_your_words" | "known_word" | "not_a_word" | "proper_noun" | "queued_for_enrichment" | null;
         };
         VocabUploadList: {
             items: components["schemas"]["VocabUpload"][];

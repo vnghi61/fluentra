@@ -93,9 +93,10 @@ type WorkerNudger interface {
 // the verification call and the enrichment call cannot drift to different
 // spellings of the same variable, which the templates would read as absent.
 const (
-	varTerm         = "Term"
-	varPartOfSpeech = "PartOfSpeech"
-	kindVocabQuiz   = "vocabulary_quiz"
+	varTerm            = "Term"
+	varProvidedMeaning = "ProvidedMeaning"
+	varPartOfSpeech    = "PartOfSpeech"
+	kindVocabQuiz      = "vocabulary_quiz"
 )
 
 // UploadDeps are the collaborators the upload pipeline needs beyond the service.
@@ -285,7 +286,47 @@ func (u *Uploads) Submit(ctx context.Context, userID uuid.UUID, rawText string) 
 		ItemCount: stored,
 		Pending:   stored,
 		CreatedAt: upload.CreatedAt,
+		Items:     u.labelSubmittedItems(ctx, entries),
 	}, nil
+}
+
+// labelSubmittedItems marks each pasted word `known` when the database already
+// holds it, and `checking` otherwise, so the list says which within seconds
+// rather than waiting for the job (WO 22 Stage B, step 5). The job resolves the
+// known ones from the database and the rest the usual way.
+func (u *Uploads) labelSubmittedItems(
+	ctx context.Context, entries []domain.UploadEntry,
+) []UploadItem {
+	lemmas := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		lemma := normaliseUploadTerm(entry.Term)
+		if lemma == "" || strings.Contains(lemma, " ") {
+			continue
+		}
+		lemmas = append(lemmas, lemma)
+	}
+	known := map[string]struct{}{}
+	if len(lemmas) > 0 {
+		if rows, err := u.repo.ListWordsWithSensesByLemmas(ctx, lemmas); err == nil {
+			for _, row := range rows {
+				known[row.Lemma] = struct{}{}
+			}
+		}
+	}
+
+	items := make([]UploadItem, 0, len(entries))
+	for _, entry := range entries {
+		status := "checking"
+		if _, ok := known[normaliseUploadTerm(entry.Term)]; ok {
+			status = "known"
+		}
+		items = append(items, UploadItem{
+			Term:            entry.Term,
+			ProvidedMeaning: entry.Meaning,
+			Status:          status,
+		})
+	}
+	return items
 }
 
 // List returns a learner's uploads, newest first.
@@ -680,6 +721,15 @@ func (u *Uploads) resolveKnownWord(
 		chosen = &primary
 	} else if match := matchSenseByVietnamese(rows, meaning); match != nil {
 		chosen = match
+	} else if id, err := u.chooseSense(ctx, item, choicesFromRows(rows)); err != nil {
+		return false, false, err
+	} else if id != uuid.Nil {
+		for i := range rows {
+			if rows[i].SenseID == id {
+				chosen = &rows[i]
+				break
+			}
+		}
 	}
 	if chosen == nil {
 		return false, false, nil
@@ -727,6 +777,109 @@ func (u *Uploads) addKnownSense(
 		return false, fmt.Errorf("mark verified: %w", err)
 	}
 	return inserted, nil
+}
+
+// senseChoice is one stored sense offered to the model when choosing which one
+// a learner means (WO 22 Stage B).
+type senseChoice struct {
+	ID           uuid.UUID `json:"id"`
+	Definition   string    `json:"definition"`
+	DefinitionVi string    `json:"definition_vi"`
+}
+
+// chooseSense asks the model which stored sense the learner means. It returns
+// Nil when the meaning is new, when there is nothing to ask, or when the model
+// is unavailable — all of which fall through to the normal path.
+func (u *Uploads) chooseSense(
+	ctx context.Context, item sqlc.SkillVocabUploadItem, choices []senseChoice,
+) (uuid.UUID, error) {
+	if u.ai == nil || len(choices) == 0 {
+		return uuid.Nil, nil
+	}
+	payload, err := json.Marshal(choices)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	var reply struct {
+		SenseID string `json:"sense_id"`
+		IsNew   bool   `json:"is_new"`
+	}
+	if err := ai.CompleteJSON(ctx, u.ai, ai.Request{
+		Task: ai.TaskChooseVocabularySense,
+		Vars: map[string]any{
+			varTerm:            item.Term,
+			varProvidedMeaning: item.ProvidedMeaning,
+			"Senses":           string(payload),
+		},
+	}, &reply); err != nil {
+		if errors.Is(err, ai.ErrQuotaExhausted) {
+			return uuid.Nil, nil
+		}
+		return uuid.Nil, fmt.Errorf("choose sense: %w", err)
+	}
+	if reply.IsNew || reply.SenseID == "" {
+		return uuid.Nil, nil
+	}
+	wanted, err := uuid.Parse(reply.SenseID)
+	if err != nil {
+		// A malformed id means the model named no real sense; the honest answer
+		// is "new", not an error the caller must handle.
+		return uuid.Nil, nil //nolint:nilerr
+	}
+	for _, choice := range choices {
+		if choice.ID == wanted {
+			return wanted, nil
+		}
+	}
+	return uuid.Nil, nil
+}
+
+// reuseExistingSense asks the model whether the learner means a sense the word
+// already carries, returning it and its content version when it does, and
+// leaving currentVersion untouched otherwise.
+func (u *Uploads) reuseExistingSense(
+	ctx context.Context, item sqlc.SkillVocabUploadItem,
+	senses []sqlc.SkillWordSense, currentVersion uuid.UUID,
+) (uuid.UUID, uuid.UUID) {
+	if len(senses) == 0 {
+		return uuid.Nil, currentVersion
+	}
+	id, err := u.chooseSense(ctx, item, choicesFromSenses(senses))
+	if err != nil || id == uuid.Nil {
+		return uuid.Nil, currentVersion
+	}
+	for _, sense := range senses {
+		if sense.ID == id && sense.ContentVersionID != nil {
+			return id, *sense.ContentVersionID
+		}
+	}
+	return id, currentVersion
+}
+
+// choicesFromRows builds the model's candidate list from lemma rows.
+func choicesFromRows(rows []sqlc.ListWordsWithSensesByLemmasRow) []senseChoice {
+	choices := make([]senseChoice, 0, len(rows))
+	for _, row := range rows {
+		vi := ""
+		if row.DefinitionVi != nil {
+			vi = *row.DefinitionVi
+		}
+		choices = append(choices, senseChoice{ID: row.SenseID, Definition: row.Definition, DefinitionVi: vi})
+	}
+	return choices
+}
+
+// choicesFromSenses builds the model's candidate list from one word's senses.
+func choicesFromSenses(senses []sqlc.SkillWordSense) []senseChoice {
+	choices := make([]senseChoice, 0, len(senses))
+	for _, sense := range senses {
+		vi := ""
+		if sense.DefinitionVi != nil {
+			vi = *sense.DefinitionVi
+		}
+		choices = append(choices, senseChoice{ID: sense.ID, Definition: sense.Definition, DefinitionVi: vi})
+	}
+	return choices
 }
 
 // primarySense picks the sense a learner gets for a known word with no meaning:
@@ -993,7 +1146,7 @@ func (u *Uploads) judge(
 		Task: ai.TaskVerifyVocabulary,
 		Vars: map[string]any{
 			varTerm:                item.Term,
-			"ProvidedMeaning":      item.ProvidedMeaning,
+			varProvidedMeaning:     item.ProvidedMeaning,
 			"DictionaryDefinition": entry.Definition,
 			varPartOfSpeech:        entry.PartOfSpeech,
 			"ExampleCount":         5,
@@ -1064,6 +1217,14 @@ func (u *Uploads) materialise(
 
 	existingSenses, _ := u.repo.ListSensesByWordID(ctx, word.ID)
 	senseID, versionID := matchingSense(existingSenses, definition, item.ProvidedMeaning)
+
+	// The word may already carry the meaning the model just restated in
+	// different words. Asking which stored sense the learner means reuses one
+	// instead of creating a second that says the same thing (WO 22 Stage B,
+	// step 4).
+	if senseID == uuid.Nil {
+		senseID, versionID = u.reuseExistingSense(ctx, item, existingSenses, versionID)
+	}
 
 	topic := normaliseTopic(answer.Topic)
 	if senseID == uuid.Nil {
@@ -1533,7 +1694,7 @@ func (u *Uploads) enrichItem(ctx context.Context, item sqlc.SkillVocabUploadItem
 		Task: ai.TaskVerifyVocabulary,
 		Vars: map[string]any{
 			varTerm:                item.Term,
-			"ProvidedMeaning":      item.ProvidedMeaning,
+			varProvidedMeaning:     item.ProvidedMeaning,
 			"DictionaryDefinition": entry.Definition,
 			varPartOfSpeech:        entry.PartOfSpeech,
 			"ExampleCount":         5,

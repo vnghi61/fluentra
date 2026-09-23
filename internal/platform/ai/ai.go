@@ -70,6 +70,11 @@ const (
 	// item goes through before publication (WO 22 Stage A), and it must not be
 	// answered by the model that wrote the item.
 	TaskItemVerify Task = "item_verify"
+	// TaskChooseVocabularySense asks which of a word's stored senses a learner
+	// means, or whether the meaning is new (WO 22 Stage B). It is how an added
+	// word reuses an existing sense instead of duplicating it when the model
+	// would otherwise word the definition differently.
+	TaskChooseVocabularySense Task = "vocab_choose_sense"
 )
 
 // Request is one unit of work.

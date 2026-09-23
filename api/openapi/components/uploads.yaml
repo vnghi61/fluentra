@@ -71,6 +71,7 @@ VocabUploadItem:
         - spelling_suggestion
         - meaning_mismatch
         - already_in_your_words
+        - known_word
         - not_a_word
         - proper_noun
         - queued_for_enrichment

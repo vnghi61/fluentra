@@ -82,9 +82,41 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 		return p.placementGenerate(req)
 	case TaskPlacementSolve:
 		return p.placementSolve(req)
+	case TaskChooseVocabularySense:
+		return p.chooseSense(req)
 	default:
 		return Response{}, fmt.Errorf("ai: mock provider has no answer for task %q", req.Task)
 	}
+}
+
+// chooseSense picks the first stored sense the mock is given, so a development
+// stack reuses senses rather than duplicating them. It parses the Senses JSON
+// the caller passes; an empty list means the meaning is new.
+func (p *MockProvider) chooseSense(req Request) (Response, error) {
+	var senses []struct {
+		ID string `json:"id"`
+	}
+	if raw := stringVar(req.Vars, "Senses"); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &senses); err != nil {
+			return Response{}, fmt.Errorf("ai: mock choose sense: %w", err)
+		}
+	}
+	payload, err := json.Marshal(map[string]any{
+		"sense_id": "",
+		"is_new":   true,
+		"reason":   "",
+	})
+	if err == nil && len(senses) > 0 {
+		payload, err = json.Marshal(map[string]any{
+			"sense_id": senses[0].ID,
+			"is_new":   false,
+			"reason":   "",
+		})
+	}
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock choose sense: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
 }
 
 // itemTask answers the item-generation, item-level and item-verify tasks.
