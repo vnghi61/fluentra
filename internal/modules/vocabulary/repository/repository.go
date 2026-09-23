@@ -16,6 +16,11 @@ type Repository interface {
 	GetWordByLemmaAndPOS(ctx context.Context, lemma, pos string) (sqlc.SkillWord, error)
 	GetWordByID(ctx context.Context, id uuid.UUID) (sqlc.SkillWord, error)
 	ListWordsByLemma(ctx context.Context, lemma string) ([]sqlc.SkillWord, error)
+	// ListWordsWithSensesByLemmas is the database-first check of WO 22 Stage B:
+	// every word and sense whose lemma is in the set, in one query.
+	ListWordsWithSensesByLemmas(
+		ctx context.Context, lemmas []string,
+	) ([]sqlc.ListWordsWithSensesByLemmasRow, error)
 	SearchWords(ctx context.Context, lemma string, limit, offset int32) ([]sqlc.SkillWord, error)
 	CountSearchWords(ctx context.Context, lemma string) (int64, error)
 	InsertWordSense(ctx context.Context, arg sqlc.InsertWordSenseParams) (sqlc.SkillWordSense, error)
@@ -138,6 +143,12 @@ func (r *pgxRepository) GetWordByID(ctx context.Context, id uuid.UUID) (sqlc.Ski
 
 func (r *pgxRepository) ListWordsByLemma(ctx context.Context, lemma string) ([]sqlc.SkillWord, error) {
 	return r.q.ListWordsByLemma(ctx, lemma)
+}
+
+func (r *pgxRepository) ListWordsWithSensesByLemmas(
+	ctx context.Context, lemmas []string,
+) ([]sqlc.ListWordsWithSensesByLemmasRow, error) {
+	return r.q.ListWordsWithSensesByLemmas(ctx, lemmas)
 }
 
 func (r *pgxRepository) SearchWords(ctx context.Context, lemma string, limit, offset int32) ([]sqlc.SkillWord, error) {

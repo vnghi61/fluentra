@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -493,11 +494,16 @@ const (
 	noteNotAWord           = "not_a_word"
 	noteProperNoun         = "proper_noun"
 	noteQueued             = "queued_for_enrichment"
+	// noteKnownWord marks a word resolved from the database with no dictionary
+	// and no model call (WO 22 Stage B).
+	noteKnownWord = "known_word"
 
 	msgAlreadyInWords  = "This word is already in your words."
 	msgMeaningMismatch = "Added. Your note did not quite match the usual meaning — " +
 		"the definition here is the dictionary's."
-	msgQueued = "Queued for background enrichment. Your flashcard is ready to review."
+	msgQueued  = "Queued for background enrichment. Your flashcard is ready to review."
+	msgKnown   = "Đã có trong kho từ — đã thêm."
+	knownModel = "database"
 
 	// modelQueued is what judge reports when every provider is out of quota and
 	// the word has been degraded to a queued flashcard.
@@ -588,6 +594,14 @@ func (u *Uploads) verifyPhrase(ctx context.Context, item sqlc.SkillVocabUploadIt
 // will confidently invent an entry for a typo — and a correction is only ever a
 // word the dictionary also knows.
 func (u *Uploads) verifySingleWord(ctx context.Context, item sqlc.SkillVocabUploadItem) (bool, error) {
+	// The database first (WO 22 Stage B): a word the database already holds is
+	// added from its stored sense with no dictionary and no model call.
+	if handled, inserted, err := u.resolveKnownWord(ctx, item); err != nil {
+		return false, err
+	} else if handled {
+		return inserted, nil
+	}
+
 	entry, err := u.lookupEntry(ctx, strings.TrimSpace(item.Term))
 	if err != nil {
 		return false, err
@@ -634,6 +648,139 @@ func (u *Uploads) verifyKnownWord(
 		item: item, entry: entry, answer: answer, model: model,
 		noteCode: noteMeaningMismatch, note: msgMeaningMismatch,
 	})
+}
+
+// resolveKnownWord answers a word from the database before the dictionary is
+// asked (WO 22 Stage B, D22-11).
+//
+// A known word with no meaning reuses its primary sense; a known word whose
+// learner meaning matches a stored sense reuses that sense. Either way there is
+// no dictionary and no model call. A meaning that matches no stored sense falls
+// through to the dictionary path, which adds a sense to the existing word
+// rather than duplicating it.
+func (u *Uploads) resolveKnownWord(
+	ctx context.Context, item sqlc.SkillVocabUploadItem,
+) (handled bool, inserted bool, err error) {
+	lemma := normaliseUploadTerm(item.Term)
+	if lemma == "" {
+		return false, false, nil
+	}
+	rows, err := u.repo.ListWordsWithSensesByLemmas(ctx, []string{lemma})
+	if err != nil {
+		return false, false, fmt.Errorf("look up known words: %w", err)
+	}
+	if len(rows) == 0 {
+		return false, false, nil
+	}
+
+	meaning := strings.TrimSpace(item.ProvidedMeaning)
+	var chosen *sqlc.ListWordsWithSensesByLemmasRow
+	if meaning == "" {
+		primary := primarySense(rows)
+		chosen = &primary
+	} else if match := matchSenseByVietnamese(rows, meaning); match != nil {
+		chosen = match
+	}
+	if chosen == nil {
+		return false, false, nil
+	}
+
+	inserted, err = u.addKnownSense(ctx, item, *chosen)
+	return true, inserted, err
+}
+
+// addKnownSense adds a stored sense to the learner's deck and schedules its
+// review card, then marks the upload item verified. It mirrors materialise's
+// idempotency: a sense the learner already has is not added twice and is told
+// apart by its note.
+func (u *Uploads) addKnownSense(
+	ctx context.Context, item sqlc.SkillVocabUploadItem, row sqlc.ListWordsWithSensesByLemmasRow,
+) (bool, error) {
+	versionID := uuid.Nil
+	if row.ContentVersionID != nil {
+		versionID = *row.ContentVersionID
+	}
+
+	stateRow, err := u.repo.UpsertUserWordState(ctx, sqlc.UpsertUserWordStateParams{
+		UserID:      item.UserID,
+		WordSenseID: row.SenseID,
+		Status:      string(domain.StatusLearning),
+	})
+	inserted := true
+	if err == nil {
+		inserted = stateRow.Inserted
+	} else {
+		slog.WarnContext(ctx, "could not upsert user word state for known word",
+			"term", item.Term, "error", err)
+	}
+	if inserted {
+		u.addToLearner(ctx, item, row.SenseID, versionID, "")
+	}
+
+	note, code := msgKnown, noteKnownWord
+	if !inserted {
+		note, code = msgAlreadyInWords, noteAlreadyInWords
+	}
+	if _, err := u.repo.MarkUploadItemVerified(
+		ctx, item.ID, &row.SenseID, knownModel, note, nil, &code,
+	); err != nil {
+		return false, fmt.Errorf("mark verified: %w", err)
+	}
+	return inserted, nil
+}
+
+// primarySense picks the sense a learner gets for a known word with no meaning:
+// the sense a public curated deck carries, otherwise the oldest. The query
+// already orders by frequency, part of speech, deck membership and age.
+func primarySense(rows []sqlc.ListWordsWithSensesByLemmasRow) sqlc.ListWordsWithSensesByLemmasRow {
+	for _, row := range rows {
+		if row.InPublicDeck {
+			return row
+		}
+	}
+	return rows[0]
+}
+
+// matchSenseByVietnamese finds the stored sense whose Vietnamese meaning the
+// learner's own meaning matches, after normalising case, whitespace and
+// punctuation. Diacritics are kept: "ban" and "bàn" are different words.
+func matchSenseByVietnamese(
+	rows []sqlc.ListWordsWithSensesByLemmasRow, meaning string,
+) *sqlc.ListWordsWithSensesByLemmasRow {
+	wanted := normaliseVietnamese(meaning)
+	if wanted == "" {
+		return nil
+	}
+	for i := range rows {
+		if rows[i].DefinitionVi == nil {
+			continue
+		}
+		if normaliseVietnamese(*rows[i].DefinitionVi) == wanted {
+			return &rows[i]
+		}
+	}
+	return nil
+}
+
+// normaliseUploadTerm matches the parser's term normalisation: trim, lower-case,
+// collapse spaces, strip trailing punctuation.
+func normaliseUploadTerm(term string) string {
+	trimmed := strings.ToLower(strings.TrimSpace(term))
+	trimmed = strings.TrimRight(trimmed, ".,;:!?\"'()[]")
+	return strings.Join(strings.Fields(trimmed), " ")
+}
+
+// normaliseVietnamese normalises a Vietnamese meaning for comparison, keeping
+// diacritics.
+func normaliseVietnamese(value string) string {
+	lowered := strings.ToLower(strings.TrimSpace(value))
+	stripped := strings.Map(func(r rune) rune {
+		if unicode.IsPunct(r) {
+			return ' '
+		}
+		return r
+	}, lowered)
+	return strings.Join(strings.Fields(stripped), " ")
 }
 
 // verifyUnknownWordWithMeaning is case 3: "schol: trường học".

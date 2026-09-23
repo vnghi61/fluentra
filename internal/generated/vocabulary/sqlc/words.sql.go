@@ -761,6 +761,98 @@ func (q *Queries) ListWordsByLemma(ctx context.Context, lemma string) ([]SkillWo
 	return items, nil
 }
 
+const listWordsWithSensesByLemmas = `-- name: ListWordsWithSensesByLemmas :many
+SELECT
+    w.id             AS word_id,
+    w.lemma,
+    w.pos,
+    w.cefr_level,
+    w.ipa,
+    w.audio_asset_id,
+    w.frequency_rank,
+    s.id             AS sense_id,
+    s.content_version_id,
+    s.definition,
+    s.definition_vi,
+    s.register,
+    s.domain,
+    s.examples,
+    s.created_at     AS sense_created_at,
+    EXISTS (
+        SELECT 1
+        FROM skill.deck_items di
+        JOIN skill.decks d ON d.id = di.deck_id
+        WHERE di.sense_id = s.id AND d.is_public
+    ) AS in_public_deck
+FROM skill.words w
+JOIN skill.word_senses s ON s.word_id = w.id
+WHERE w.lemma = ANY($1::text[])
+ORDER BY w.frequency_rank ASC NULLS LAST, w.pos ASC, in_public_deck DESC, s.created_at ASC
+`
+
+type ListWordsWithSensesByLemmasRow struct {
+	WordID           uuid.UUID
+	Lemma            string
+	Pos              string
+	CefrLevel        string
+	Ipa              *string
+	AudioAssetID     *uuid.UUID
+	FrequencyRank    *int32
+	SenseID          uuid.UUID
+	ContentVersionID *uuid.UUID
+	Definition       string
+	DefinitionVi     *string
+	Register         *string
+	Domain           *string
+	Examples         []byte
+	SenseCreatedAt   time.Time
+	InPublicDeck     bool
+}
+
+// The database-first check (WO 22 Stage B): every word and sense whose lemma is
+// in the set, in one query, so a word the database already holds costs no
+// dictionary and no model call.
+//
+// `in_public_deck` marks the sense a public curated deck carries, which is the
+// primary sense a learner adding a known word gets. The ordering puts the
+// commonest word first, then a deck sense, then the oldest.
+func (q *Queries) ListWordsWithSensesByLemmas(ctx context.Context, lemmas []string) ([]ListWordsWithSensesByLemmasRow, error) {
+	rows, err := q.db.Query(ctx, listWordsWithSensesByLemmas, lemmas)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWordsWithSensesByLemmasRow
+	for rows.Next() {
+		var i ListWordsWithSensesByLemmasRow
+		if err := rows.Scan(
+			&i.WordID,
+			&i.Lemma,
+			&i.Pos,
+			&i.CefrLevel,
+			&i.Ipa,
+			&i.AudioAssetID,
+			&i.FrequencyRank,
+			&i.SenseID,
+			&i.ContentVersionID,
+			&i.Definition,
+			&i.DefinitionVi,
+			&i.Register,
+			&i.Domain,
+			&i.Examples,
+			&i.SenseCreatedAt,
+			&i.InPublicDeck,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const searchWords = `-- name: SearchWords :many
 SELECT id, lemma, pos, cefr_level, frequency_rank, ipa, audio_asset_id, created_at, updated_at FROM skill.words
 WHERE lemma ILIKE $1 || '%'

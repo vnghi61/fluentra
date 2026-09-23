@@ -106,6 +106,44 @@ func (f *fakeRepo) ListWordsByLemma(_ context.Context, lemma string) ([]sqlc.Ski
 	return result, nil
 }
 
+func (f *fakeRepo) ListWordsWithSensesByLemmas(
+	_ context.Context, lemmas []string,
+) ([]sqlc.ListWordsWithSensesByLemmasRow, error) {
+	wanted := make(map[string]struct{}, len(lemmas))
+	for _, lemma := range lemmas {
+		wanted[lemma] = struct{}{}
+	}
+	var rows []sqlc.ListWordsWithSensesByLemmasRow
+	for _, w := range f.words {
+		if _, ok := wanted[w.Lemma]; !ok {
+			continue
+		}
+		for _, s := range f.senses {
+			if s.WordID != w.ID {
+				continue
+			}
+			rows = append(rows, sqlc.ListWordsWithSensesByLemmasRow{
+				WordID:           w.ID,
+				Lemma:            w.Lemma,
+				Pos:              w.Pos,
+				CefrLevel:        w.CefrLevel,
+				Ipa:              w.Ipa,
+				AudioAssetID:     w.AudioAssetID,
+				FrequencyRank:    w.FrequencyRank,
+				SenseID:          s.ID,
+				ContentVersionID: s.ContentVersionID,
+				Definition:       s.Definition,
+				DefinitionVi:     s.DefinitionVi,
+				Register:         s.Register,
+				Domain:           s.Domain,
+				Examples:         s.Examples,
+				SenseCreatedAt:   s.CreatedAt,
+			})
+		}
+	}
+	return rows, nil
+}
+
 func (f *fakeRepo) SearchWords(_ context.Context, _ string, limit, _ int32) ([]sqlc.SkillWord, error) {
 	var result []sqlc.SkillWord
 	for _, w := range f.words {
