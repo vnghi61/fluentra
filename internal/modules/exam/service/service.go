@@ -37,6 +37,11 @@ const (
 	OfficialDisclaimer        = "Not an official TOEIC score. Pronunciation not assessed."
 
 	kindListeningComprehension = "listening_comprehension"
+	// TOEIC Parts 1 and 2 are spoken only: a photograph with spoken statements,
+	// a question with spoken responses. They carry the same one-play rule as a
+	// comprehension clip (WO 22 I.3.5).
+	kindPhotoDescription = "photo_description"
+	kindQuestionResponse = "question_response"
 
 	// regradeAfter is how old a report must be before the settle sweep submits an
 	// item the submitting request never reached. Younger than this, the request
@@ -1262,7 +1267,7 @@ func (s *Service) ListeningPlayPolicy(ctx context.Context, userID, sittingID, ve
 	current := s.currentSection(attempt, now)
 	for _, sec := range decodeSections(attempt) {
 		for _, act := range sec.Activities {
-			if act.ContentVersionID != versionID || act.Kind != kindListeningComprehension {
+			if act.ContentVersionID != versionID || !isListeningKind(act.Kind) {
 				continue
 			}
 			if attempt.Mode == domain.ModeExam && sec.SectionPosition != current {
@@ -1272,6 +1277,16 @@ func (s *Service) ListeningPlayPolicy(ctx context.Context, userID, sittingID, ve
 		}
 	}
 	return 0, domain.ErrPlayNotAllowed
+}
+
+// isListeningKind reports whether an activity kind is heard rather than read.
+func isListeningKind(kind string) bool {
+	switch kind {
+	case kindListeningComprehension, kindPhotoDescription, kindQuestionResponse:
+		return true
+	default:
+		return false
+	}
 }
 
 // ---------------------------------------------------------------------------

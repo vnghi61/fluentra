@@ -920,3 +920,29 @@ func TestListeningPlayPolicy(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 3, plays)
 }
+
+// TestListeningPlayPolicy_CoversTOEICPartsOneAndTwo. A photograph with spoken
+// statements and a question with spoken responses are heard, not read, and
+// carry the same one-play rule as a comprehension clip (WO 22 I.3.5).
+func TestListeningPlayPolicy_CoversTOEICPartsOneAndTwo(t *testing.T) {
+	for _, kind := range []string{"photo_description", "question_response"} {
+		t.Run(kind, func(t *testing.T) {
+			f := newFixture(t)
+			act := f.sections[0].Activities[0]
+			act.Kind = kind
+			f.learning.kinds[act.ID] = kind
+			f.sections[0].Activities[0] = act
+
+			userID := uuid.New()
+			exam := f.start(t, userID, domain.ModeExam)
+			plays, err := f.svc.ListeningPlayPolicy(
+				context.Background(), userID, exam.ID, act.ContentVersionID)
+			require.NoError(t, err)
+			assert.Equal(t, 1, plays, "TOEIC %s is one play in exam mode", kind)
+
+			_, err = f.svc.ListeningPlayPolicy(
+				context.Background(), uuid.New(), exam.ID, act.ContentVersionID)
+			require.ErrorIs(t, err, domain.ErrPlayNotAllowed, "another learner's sitting")
+		})
+	}
+}
