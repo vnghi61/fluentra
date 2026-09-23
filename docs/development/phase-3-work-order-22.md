@@ -15,7 +15,7 @@ owner described. It has three parts and one piece of shared machinery:
 | **Shared** | Generated content is published when an **independent AI verifier** confirms it; a person sees only what it doubts |
 | **I. Vocabulary** | **10,000 words** with IPA, Vietnamese meaning, examples and a recorded pronunciation stored as a link; and adding a word **checks the database first**, so a known word costs no dictionary or model call |
 | **II. Foundation** | **Thirteen Foundation courses** in place of the five Phase 2 courses |
-| **III. Exams** | Pick an **exam** — TOEIC, IELTS, VSTEP — then **Test 1 … Test N** or a random test, in exam or practice mode; **at least five tests each** from a fresh seed, and **more every day** |
+| **III. Exams** | Pick an **exam** — TOEIC, IELTS, VSTEP — then **Test 1 … Test N** or a random test, in exam or practice mode; **at least five tests each** from a fresh seed, **built to the officially published format** and checked against it, and **more every day** |
 
 Everything a fresh database needs is built **once**, checked, and **frozen into fixtures** in the repo, so
 `make seed` is fast, offline and gives every machine the same data.
@@ -87,6 +87,11 @@ Verified 2026-09-23 against the code, the migrations and the dev database.
 | The exam hub lists `assess.exams`: three `mock-toeic-a2/b1/b2` rows renamed "Mixed-skill practice exam", plus `toeic-lr-2026` and `vstep-3-5` | `1700000860`, `1700000870` |
 | The question bank holds **0 questions**; no job generates any | dev DB |
 | TOEIC Part 1 needs photographs, IELTS Writing Task 1 needs charts; nothing produces either. TTS renders a script in **one voice** | `cmd/tts` |
+| **The official format is stored but never enforced.** `assess.exam_parts` holds counts, minutes and a `constraints` column (option count, questions per group, word limits), and the TOEIC and VSTEP numbers match the published formats. But the question bank asks the generator for items **by kind and CEFR only** — no exam, no part, no constraints — so a "TOEIC Part 2" item may have four options instead of three and a "Part 3" conversation any number of questions | `questionbank/service/service.go` `Generate` |
+| No production code ever fills `VerifyItemRequest.ExamConstraints`, so the structural check the verifier has for exam parts never runs. And the migration writes `options_count` and `sub_questions_per_group` while the Go struct reads `option_count` and `questions_per_group`: even read, they would be dropped | `learning/contract`; `1700000860` |
+| Only multiple choice exists for exam listening and reading. IELTS is mostly **typed answers** — form, note, sentence and summary completion with a word limit — plus True/False/Not Given and matching | `learning` kinds |
+| Exam mode already allows **one play** per clip and opens one section at a time; practice mode allows three. The play policy recognises only `listening_comprehension`, not TOEIC Parts 1–2 (`photo_description`, `question_response`) | `exam/service/service.go` `ListeningPlayPolicy` |
+| VSTEP's version row cites Circular 01/2014/TT-BGDĐT, which is the six-level proficiency framework, not the VSTEP.3-5 test format | `1700000860` |
 
 ### The numbers
 
@@ -146,6 +151,9 @@ else's server does; done once into a fixture it costs nothing afterwards.
 | D22-21. TOEIC Part 1 photos | **Openly licensed photographs by link** (Wikimedia Commons or Openverse, CC0 or CC BY only) with a human-written description; the model writes the statements from the description, never the image |
 | D22-22. IELTS Writing Task 1 charts | **Rendered by our code** from model-generated data to SVG in `fluentra-media`; the data stays in the body for the grader |
 | D22-23. Voices | **Two voices** for conversations: the script carries speaker turns, TTS renders each with its speaker's voice |
+| D22-24. How closely a test follows the official format | **Exactly, on everything published**: parts, question counts, groups and questions per group, options per question, question types and their mix, passage and recording shape, word and time limits, section order and timing, plays per recording, scoring scale. One **format specification per exam version**, each line citing the official source and the date it was checked; the generator is given it, the verifier checks against it, the composer and the runner obey it. What the official source does not publish is not invented |
+| D22-25. IELTS typed answers | **A completion question kind**: typed answer, accepted variants, a word limit ("NO MORE THAN TWO WORDS"), graded by normalised exact match. Without it the tests are "IELTS-style (multiple choice)" and must be labelled so, never "IELTS" |
+| D22-26. Official wording and scores | **Our own directions**, following the format but not copying ETS, IELTS or Ministry wording. Scores are labelled **estimates** where the owner of the exam does not publish a raw-to-score conversion (TOEIC's scaled score); a published conversion is used and cited where one exists |
 
 ---
 
@@ -160,7 +168,7 @@ II       E  spine        23 new nodes; the course ↔ node map                mi
 II       F  topic step   a runner kind that shows a topic's explanation     spec → lesson → web
 II       G  foundation   generate, verify, export, load 93 nodes            cmd/foundation, cmd/seed
 II       H  courses      thirteen courses; the five retired                 cmd/seed via lesson.Author
-III      I  structure    IELTS parts and blueprint; listed flags            migration
+III      I  format       official spec per exam, sourced; enforced end to end spec → exam → learning → web
 III      J  fixed tests  numbered, disjoint; list endpoint                  spec → exam
 III      K  sitting      practice mode for a mock test                      spec → exam → web
 III      L  hub          exam → tests → sit / practise / random             web
@@ -205,7 +213,7 @@ publish time, used by Foundation (G), exams (N, O) and nothing else.
 
 | Kind | Passes when |
 |---|---|
-| Every kind | Gate 1 structure and safety; provenance present; fingerprint unique (BR-QUESTIONBANK-02); the part's structure (question count, group size, option count); CEFR judged within one band of the target |
+| Every kind | Gate 1 structure and safety; provenance present; fingerprint unique (BR-QUESTIONBANK-02); **the part's official specification** (Stage I: questions per group, options, question type, recording or passage shape, word limits); CEFR judged within one band of the target |
 | Choice items (TOEIC Parts 1, 2, 5, 6, 7; IELTS and VSTEP reading and listening; Foundation exercises and quizzes) | The blind answer **equals the key** on every question; **exactly one option defensible** (a second defensible option is the commonest defect of generated distractors); the explanation supports the key and does not contradict the passage or script |
 | Listening | Solved from the **script**; every question answerable from what is said, not from general knowledge |
 | TOEIC Part 1 | Solved from the **human-written photo description** (D22-21) |
@@ -407,18 +415,69 @@ below the placed level (BR-LEARNING-11): check it still finds lessons when cours
 
 ## Part III — Exams
 
-### Stage I — structure
+### Stage I — the official format, sourced and enforced
 
-1. **IELTS, verified.** Read the current format on ielts.org and record URL and date in the migration
-   (brief §11). Add `IELTS_ACADEMIC_2026_R2` with the real parts — Listening Parts 1–4 (10 questions, one
-   recording each), Reading Passages 1–3 (grouped), Writing Tasks 1–2, Speaking Parts 1–3 — and set the
-   coarse `IELTS_ACADEMIC_2026` to `is_current = false`. A new code, not an edit: parts are what tests and
-   attempts point at.
+The tests must be what a learner will sit on the day. Today the numbers are stored and nothing obeys
+them (§1). This stage writes the format down once, from the official sources, and makes every step that
+touches an exam read it.
+
+#### I.1 The specification
+
+- **One schema**, defined in the `exam` contract and used everywhere: per part — section, order, question
+  count, groups and questions per group, options per question (or "typed" with a word limit), the allowed
+  question types and their mix, the recording or passage shape (speakers, length, genre), word or speaking
+  time limits, minutes, plays per recording; per version — section order, total time, scoring scale and
+  the conversion used. The existing `exam_parts.constraints` column holds it; a migration rewrites the
+  stored rows into the one schema (retiring `options_count` and `sub_questions_per_group`).
+- **Every line cites its source** — a URL or handbook section and the date checked — in the migration
+  comment and in `exam_versions.source_url` and `verified_at`. A person checks the finished table against
+  the sources once and signs it off in this work order's handover notes.
+- **Sources, checked before writing** (brief §11): TOEIC — ETS's official test content and examinee
+  handbook; IELTS — ielts.org and the test-format pages of its owners; VSTEP — the Ministry of Education's
+  VSTEP.3-5 format decision (believed to be Quyết định 729/QĐ-BGDĐT, 2015 — confirm the current text), not
+  Circular 01/2014, which the row cites today.
+
+#### I.2 What each exam must specify — to be confirmed against the source, not taken from here
+
+| Exam | Details the spec must carry beyond today's counts |
+|---|---|
+| TOEIC LR | Part 2: three options, question and responses spoken only. Part 3: 13 conversations × 3, some with three speakers, the last sets tied to a graphic. Part 4: 10 talks × 3, some with a graphic. Part 6: 4 texts × 4, one sentence-insertion question per text. Part 7: single passages and double and triple passage sets in the published mix. Listening 45 min driven by the recording, Reading 75 min; one play |
+| IELTS Academic | Listening: four parts of 10 (social conversation, social monologue, educational discussion, academic lecture) — completion, multiple choice, matching, map or plan labelling — 30 min. Reading: three passages, 40 questions, 60 min — True/False/Not Given, matching headings and information, completion, multiple choice. Writing: Task 1 describes a visual in at least 150 words, Task 2 an essay of at least 250. Speaking: Parts 1–3, one minute to prepare Part 2. Band 0–9 in halves |
+| VSTEP 3-5 | Listening: 8 short announcements or messages, 3 conversations × 4, 3 talks × 5, played once, about 40 min. Reading: 4 passages × 10, 60 min. Writing: Task 1 a letter or email of at least 120 words, Task 2 an essay of at least 250. Speaking: social interaction, solution discussion, topic development, about 12 min. Each skill 0–10, the average mapped to level 3, 4 or 5 |
+
+#### I.3 Enforced at every step
+
+1. **Generation.** `questionbank` passes the part's spec to the generator: `GenerateRequest` gains the
+   exam part, and the prompt is built from the spec — so "TOEIC Part 3" asks for a three-question
+   conversation with the right speakers, not a generic listening item.
+2. **Structure check.** `VerifyItemRequest.ExamConstraints` is filled from the spec on every exam item, so
+   the verifier's existing structural checks finally run; Stage A's checklist reads the same spec.
+3. **Question types.** D22-25's completion kind (typed answer, variants, word limit), True/False/Not Given
+   as a fixed three-option choice, and matching — each with a grader and a runner renderer.
+4. **Composition.** The composer fills each part's question-type mix, not just its count.
+5. **Sitting.** In exam mode: section order and each section's time from the spec; one play per
+   recording, **including TOEIC Parts 1–2**; the writing box shows the word count against the minimum;
+   speaking shows preparation and response timers (IELTS Part 2's minute).
+6. **Report.** The score on the published scale, labelled "ước tính" where D22-26 says so.
+
+#### I.4 The rest of the structure
+
+1. `IELTS_ACADEMIC_2026_R2` with the parts of I.2; the coarse `IELTS_ACADEMIC_2026` set
+   `is_current = false`. A new code, not an edit: parts are what tests and attempts point at.
 2. Blueprint `ielts_default`, with a CEFR mix like `toeic_default`.
 3. `listed` on `assess.exams` and `assess.exam_versions` (default `true`); `false` for the three
    `mock-toeic-*` rows and the versions D22-16 leaves out.
 
-**Gate.** `GET /exam-versions` returns TOEIC, IELTS R2 and VSTEP, each with a blueprint and parts.
+**Traps.** (1) Do not copy directions, sample questions or audio from ETS, IELTS, the Ministry, Study4 or
+prep books — the format is followed, the wording is ours (D22-26). (2) A detail the source does not state
+(an exact Part 7 passage mix, a timing the handbook leaves open) is recorded as "not published" and left
+to the blueprint, not guessed as if official. (3) Changing a part's spec after tests exist is a new
+version code, never an edit.
+
+**Gate.** A **format conformance test** per exam composes Test 1 and asserts, part by part, counts,
+groups, options, question-type mix, section order and minutes, and plays per recording against the spec;
+it fails if any generated item deviates. The signed-off spec table is in the handover notes with its
+sources and dates. `GET /exam-versions` returns TOEIC, IELTS R2 and VSTEP with blueprints and parts.
 
 ### Stage J — numbered, disjoint fixed tests
 
@@ -529,12 +588,14 @@ WO 19 §2 in full, plus:
    `make migrate-up && make seed && make tts` finishes offline except TTS and gives: the two accounts,
    10,000 words with audio links, thirteen courses, and five tests each for TOEIC, IELTS and VSTEP.
 2. Stage B's gate: known words cost no dictionary and no model call.
-3. A test that the verifier refuses to publish a choice item whose blind answer differs from its key,
+3. Stage I's format conformance test for TOEIC, IELTS and VSTEP, and the signed-off specification with
+   its sources.
+4. A test that the verifier refuses to publish a choice item whose blind answer differs from its key,
    and escalates everything when only one provider model is configured.
-4. Every new screen at 320 and 390 px in both locales; Playwright paths for "TOEIC → Đề 1 → Thi thử →
+5. Every new screen at 320 and 390 px in both locales; Playwright paths for "TOEIC → Đề 1 → Thi thử →
    submit → report", "IELTS → Đề ngẫu nhiên", a Foundation lesson from explanation to quiz, and pasting a
    known word.
-5. `make gen-check` and `make gen-check-web` after committing; golangci-lint with both build tags;
+6. `make gen-check` and `make gen-check-web` after committing; golangci-lint with both build tags;
    Spectral; `make docs`; `go-arch-lint` in the Linux container.
 
 ## 6. What to cut, in order
@@ -546,6 +607,10 @@ WO 19 §2 in full, plus:
 5. Stage E's skill progressions (one lesson per skill to start).
 6. Stage O itself — five fixed tests per exam still ship.
 
+If D22-25's completion kind has to wait, the IELTS tests ship labelled "IELTS-style (multiple choice)"
+until it lands — never as "IELTS".
+
 Not on this list: Stage A's verifier, checklist, marking and sample (auto-publishing without them is
-publishing unchecked content); Stage B steps 1–5; the 10,000 words; the thirteen courses; five tests per
+publishing unchecked content); Stage I's specification and its enforcement (a test that does not follow
+the format is not the test the learner will sit); Stage B steps 1–5; the 10,000 words; the thirteen courses; five tests per
 exam; the exam hub.
