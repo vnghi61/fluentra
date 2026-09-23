@@ -13,6 +13,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import i18n, { initI18n } from "@/i18n";
 import { ResourceDetailPage } from "@/routes/ResourceDetailPage";
+import { LessonPage } from "@/routes/LessonPage";
 import { MyResourcesPage } from "@/routes/MyResourcesPage";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -187,5 +188,95 @@ describe("ResourceDetailPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       /preparing this file/i,
     );
+  });
+});
+
+/**
+ * The runner a resource practice set opens in.
+ *
+ * Generation is queued, not immediate: the POST answers with a `generating`
+ * set that carries no activities, and a sweep fills it in. The runner has to
+ * say so — rendering its header over an empty canvas looks like a screen that
+ * broke, and a set that failed would otherwise stay blank for good with its
+ * reason unread.
+ */
+describe("resource practice runner", () => {
+  beforeEach(async () => {
+    useAuthStore.getState().setAuthSession({
+      access_token: "valid-test-token",
+      token_type: "Bearer",
+      expires_in: 900,
+      user_id: "user-123",
+      role: "user",
+    });
+    await initI18n("en");
+    await i18n.changeLanguage("en");
+  });
+
+  async function renderRunner(set: Record<string, unknown>) {
+    server.use(
+      http.get("/api/v1/me/resources/:id/practice", () =>
+        HttpResponse.json(set),
+      ),
+    );
+    // LessonPage reads the real pathname to tell its three sources apart.
+    window.history.pushState(
+      {},
+      "",
+      `/practice/resource/${validatedResource.id}`,
+    );
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const rootRoute = createRootRoute();
+    const runnerRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/practice/resource/$resourceId",
+      component: () => (
+        <I18nextProvider i18n={i18n}>
+          <QueryClientProvider client={client}>
+            <LessonPage />
+          </QueryClientProvider>
+        </I18nextProvider>
+      ),
+    });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([runnerRoute]),
+      history: createMemoryHistory({
+        initialEntries: [`/practice/resource/${validatedResource.id}`],
+      }),
+    });
+    await router.load();
+    return render(<RouterProvider router={router} />);
+  }
+
+  it("says the set is still being built instead of showing an empty exercise", async () => {
+    await renderRunner({
+      resource_id: validatedResource.id,
+      status: "generating",
+      generated_on: "2026-09-23",
+      activities: [],
+    });
+
+    expect(
+      await screen.findByText(/Building your practice/i),
+    ).toBeInTheDocument();
+    // The runner's own chrome must not be there: there is nothing to answer.
+    expect(screen.queryByText(/Step 1/i)).not.toBeInTheDocument();
+  });
+
+  it("gives the reason when generation failed", async () => {
+    await renderRunner({
+      resource_id: validatedResource.id,
+      status: "failed",
+      failure_reason: "There is no text to build practice from yet.",
+      generated_on: "2026-09-23",
+      activities: [],
+    });
+
+    expect(
+      await screen.findByText(/no text to build practice from/i),
+    ).toBeInTheDocument();
   });
 });

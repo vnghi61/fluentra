@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { AlertCircle, Flag, RotateCcw } from "lucide-react";
+import { AlertCircle, Flag, Loader2, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useAuthStore } from "@/stores/authStore";
@@ -736,6 +736,71 @@ export function LessonPage(): React.JSX.Element {
                 : isResourcePractice
                   ? t("resources.backToList", "All resources")
                   : t("runner.backToCourseBtn", "Back to Syllabus")}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  // A set arrives `generating` with no activities: the request only queues it
+  // and a sweep turns it into ten items. Without this the runner would render
+  // its header over an empty canvas, which reads as a broken screen rather
+  // than as work in progress — and a set that failed would stay blank for good
+  // while `failure_reason` went unread.
+  if (isResourcePractice && resourcePractice?.status !== "ready") {
+    const buildFailed = resourcePractice?.status === "failed";
+    return (
+      <div className="py-12 max-w-lg mx-auto">
+        <Card
+          className={`text-center p-6 ${buildFailed ? "border-danger/30" : ""}`}
+        >
+          <CardHeader>
+            <div className="flex justify-center mb-2">
+              {buildFailed ? (
+                <AlertCircle className="h-10 w-10 text-danger-accent" />
+              ) : (
+                <Loader2
+                  className="h-10 w-10 animate-spin text-primary"
+                  aria-hidden="true"
+                />
+              )}
+            </div>
+            <CardTitle>
+              {buildFailed
+                ? t(
+                    "resources.practiceFailedTitle",
+                    "Practice could not be built",
+                  )
+                : t(
+                    "resources.practiceBuildingTitle",
+                    "Building your practice",
+                  )}
+            </CardTitle>
+            <CardDescription role="status">
+              {buildFailed
+                ? resourcePractice?.failure_reason ||
+                  t(
+                    "resources.practiceFailedDesc",
+                    "We could not build practice from this file. Try again later.",
+                  )
+                : t(
+                    "resources.practiceBuildingDesc",
+                    "We are writing ten exercises from this file. This takes a minute; the page opens on its own when they are ready.",
+                  )}
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="justify-center">
+            <Button
+              variant={buildFailed ? "primary" : "outline"}
+              onClick={() =>
+                void navigate({
+                  to: "/my-resources/$resourceId",
+                  params: { resourceId },
+                })
+              }
+            >
+              {t("resources.backToFile", "Back to the file")}
             </Button>
           </CardFooter>
         </Card>
