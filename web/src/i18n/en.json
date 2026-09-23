@@ -889,6 +889,10 @@
       "hint": "Open the material, then mark it as done to complete this chapter.",
       "markDone": "Mark as done"
     },
+    "topic": {
+      "label": "Foundation topic",
+      "continue": "Continue"
+    },
     "listening": {
       "audioClip": "Audio clip",
       "instructions": "Listen, then answer the questions below.",
@@ -1212,6 +1216,21 @@
     "allKinds": "All kinds",
     "allPurposes": "All purposes",
     "approveAndPublish": "Approve and publish",
+    "approveBatch": "Approve the batch",
+    "batchFailed": "The batch could not be approved.",
+    "batchHint": "Reject the items a person must read; the rest publish together.",
+    "batchItems": "{{count}} items",
+    "batchesView": "Batches",
+    "doubted": "The verifier doubted it.",
+    "itemsView": "Items",
+    "keep": "Keep",
+    "noBatches": "No generation run is waiting.",
+    "noSamples": "No sample is waiting.",
+    "reject": "Reject",
+    "rejectSample": "Reject and unpublish",
+    "sampleFailed": "The decision could not be saved.",
+    "samplesView": "Samples",
+    "view": "View",
     "blindSolve": "Blind solve",
     "cefrReasoning": "Level check",
     "decisionFailed": "The decision could not be saved.",
@@ -1958,6 +1977,10 @@
     }
   },
   "foundation": {
+    "objective": "Learning objective",
+    "explanation": "Explanation",
+    "examples": "Examples",
+    "commonMistakes": "Common mistakes",
     "path": {
       "empty": "No prerequisite path recorded for this topic.",
       "title": "Prerequisite Learning Path",

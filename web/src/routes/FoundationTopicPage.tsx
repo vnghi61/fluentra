@@ -14,6 +14,10 @@ import {
   type FoundationPathNode,
 } from "@/features/learning/api/foundation";
 import { FoundationPathView } from "@/features/learning/components/Foundation/FoundationPathView";
+import {
+  FoundationTopicBody,
+  type FoundationTopicBodyShape,
+} from "@/features/learning/components/Foundation/FoundationTopicBody";
 
 export function FoundationTopicPage(): React.JSX.Element {
   const { t } = useTranslation();
@@ -93,16 +97,12 @@ export function FoundationTopicPage(): React.JSX.Element {
     );
   }
 
-  // Parse body JSON or markdown text if available
-  let bodyText = "";
-  if (topic.body) {
-    if (typeof topic.body === "string") {
-      bodyText = topic.body;
-    } else if (typeof topic.body === "object") {
-      const b = topic.body as Record<string, unknown>;
-      bodyText = (b["explanation"] || b["text"] || b["content"] || JSON.stringify(b, null, 2)) as string;
-    }
-  }
+  // The structured body renders through the same component the lesson runner
+  // uses, so a topic reads identically in both places (WO 22 Stage F). A plain
+  // string body is the older shape and still renders as prose.
+  const topicBody: FoundationTopicBodyShape | null =
+    topic.body && typeof topic.body === "object" ? topic.body : null;
+  const bodyText = typeof topic.body === "string" ? topic.body : "";
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 p-4 sm:p-6 animate-in fade-in duration-200">
@@ -179,6 +179,11 @@ export function FoundationTopicPage(): React.JSX.Element {
           </div>
 
           {/* Topic Body Content (if published) */}
+          {topicBody && (
+            <div className="border-t border-border-subtle pt-4">
+              <FoundationTopicBody body={topicBody} />
+            </div>
+          )}
           {bodyText && (
             <div className="prose dark:prose-invert max-w-none text-sm text-text border-t border-border-subtle pt-4 whitespace-pre-wrap">
               {bodyText}

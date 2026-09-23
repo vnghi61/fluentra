@@ -28,6 +28,7 @@ export * from "./components/Runner/ExerciseWriting";
 export * from "./components/Runner/ExerciseSpeaking";
 export * from "./components/Runner/ExerciseSentenceTransform";
 export * from "./components/Runner/ExerciseMaterial";
+export * from "./components/Runner/ExerciseTopic";
 export * from "./components/Runner/ActivityUnavailable";
 export * from "./components/GuestNotice";
 export * from "./components/Runner/ExitDialog";

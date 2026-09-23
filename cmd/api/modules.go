@@ -471,6 +471,9 @@ func buildDeclaredKinds() []string {
 	kinds = append(kinds, speakingcontract.GradedKinds()...)
 	kinds = append(kinds, "foundation_quiz", "foundation_review")
 	kinds = append(kinds, learningcontract.KindLessonMaterial)
+	// A foundation topic is a lesson step that teaches and is not graded
+	// (WO 22 Stage F).
+	kinds = append(kinds, learningcontract.KindFoundationTopic)
 	return kinds
 }
 
@@ -494,6 +497,9 @@ func buildGraders(
 	// A lesson_material is not a skill exercise: it is completed by marking it
 	// done, so its grader ships with the engine that dispatches it.
 	graders[learningcontract.KindLessonMaterial] = learningdomain.NewMaterialGrader()
+	// A foundation topic completes the same way: reading it is the whole task
+	// (WO 22 Stage F).
+	graders[learningcontract.KindFoundationTopic] = learningdomain.NewMaterialGrader()
 	return graders
 }
 

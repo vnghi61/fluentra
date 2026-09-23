@@ -889,6 +889,10 @@
       "hint": "Mở tài liệu, sau đó đánh dấu hoàn thành để kết thúc chương này.",
       "markDone": "Đã xem xong"
     },
+    "topic": {
+      "label": "Chủ đề nền tảng",
+      "continue": "Tiếp tục"
+    },
     "listening": {
       "audioClip": "Đoạn ghi âm",
       "instructions": "Nghe xong hãy trả lời các câu hỏi bên dưới.",
@@ -1212,6 +1216,21 @@
     "allKinds": "Tất cả loại",
     "allPurposes": "Tất cả mục đích",
     "approveAndPublish": "Duyệt và xuất bản",
+    "approveBatch": "Duyệt cả lô",
+    "batchFailed": "Không thể duyệt lô này.",
+    "batchHint": "Loại những mục cần người đọc; phần còn lại được duyệt cùng lúc.",
+    "batchItems": "{{count}} mục",
+    "batchesView": "Theo lô",
+    "doubted": "Trình xác minh còn nghi ngờ mục này.",
+    "itemsView": "Từng mục",
+    "keep": "Giữ",
+    "noBatches": "Không có lô nào đang chờ.",
+    "noSamples": "Không có mẫu nào đang chờ.",
+    "reject": "Loại",
+    "rejectSample": "Loại và ngừng phát hành",
+    "sampleFailed": "Không thể lưu quyết định.",
+    "samplesView": "Kiểm tra mẫu",
+    "view": "Chế độ xem",
     "blindSolve": "Máy tự giải",
     "cefrReasoning": "Kiểm tra trình độ",
     "decisionFailed": "Không lưu được quyết định.",
@@ -1958,6 +1977,10 @@
     }
   },
   "foundation": {
+    "objective": "Mục tiêu bài học",
+    "explanation": "Giải thích",
+    "examples": "Ví dụ",
+    "commonMistakes": "Lỗi thường gặp",
     "path": {
       "empty": "Chưa có lộ trình điều kiện tiên quyết cho chủ đề này.",
       "title": "Lộ trình học điều kiện tiên quyết",

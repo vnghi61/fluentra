@@ -92,7 +92,9 @@ LessonActivity:
         material's object keys and, issued at read time after the paywall, a
         `sources` object: `{poster_url?, video: [{url, height}],
         document: {url, preview_url?, page_count?}}`. The URLs expire and are
-        never stored in the lesson cache.
+        never stored in the lesson cache. A `foundation_topic` activity carries
+        the topic's published body: `{objective, explanation: {en, vi},
+        examples, common_mistakes}`.
     weight:
       type: integer
       example: 10

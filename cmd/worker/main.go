@@ -570,8 +570,10 @@ func startLearning(
 		graders[kind] = grader
 	}
 	// A lesson_material completes by being marked done; its grader ships with
-	// the engine (WO 20).
+	// the engine (WO 20). A foundation topic completes the same way (WO 22
+	// Stage F).
 	graders[learningcontract.KindLessonMaterial] = learningdomain.NewMaterialGrader()
+	graders[learningcontract.KindFoundationTopic] = learningdomain.NewMaterialGrader()
 
 	// The owner of generated practice content, resolved the way the vocabulary
 	// generator resolves it. On a database with no administrator yet it is zero,

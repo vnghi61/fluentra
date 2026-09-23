@@ -35,6 +35,7 @@ import {
   ExerciseSpeaking,
   ExerciseSentenceTransform,
   ExerciseMaterial,
+  ExerciseTopic,
   ActivityUnavailable,
   ExitDialog,
   ReportDialog,
@@ -43,6 +44,7 @@ import {
   useDailyPracticeSet,
   RunnerHeader,
 } from "@/features/learning";
+import { type FoundationTopicBodyShape } from "@/features/learning/components/Foundation/FoundationTopicBody";
 import { useLesson } from "@/features/lesson";
 import { useResourcePractice } from "@/features/resource";
 import {
@@ -864,6 +866,9 @@ export function LessonPage(): React.JSX.Element {
   const writingConfig = rawConfig as WritingConfig;
   const speakingConfig = rawConfig as SpeakingConfig;
   const materialConfig = rawConfig as MaterialConfig;
+  const topicConfig = rawConfig as FoundationTopicBodyShape & {
+    title?: string;
+  };
 
   // An exercise is renderable only when its config carries the fields it needs.
   // Everything else is ActivityUnavailable — there is no default question,
@@ -967,6 +972,13 @@ export function LessonPage(): React.JSX.Element {
       materialConfig.sources.video.length > 0) ||
       Boolean(materialConfig.sources?.document?.url));
 
+  // A topic teaches: objective and explanation are what make it renderable.
+  const canRenderTopic =
+    kind === "foundation_topic" &&
+    (typeof topicConfig.objective === "string" ||
+      typeof topicConfig.explanation === "object" ||
+      Array.isArray(topicConfig.examples));
+
   const selectedOptId =
     typeof lastSubmittedPayload?.selected_option_id === "string"
       ? lastSubmittedPayload.selected_option_id
@@ -1061,7 +1073,8 @@ export function LessonPage(): React.JSX.Element {
           !canRenderListening &&
           !canRenderWriting &&
           !canRenderSpeaking &&
-          !canRenderMaterial && (
+          !canRenderMaterial &&
+          !canRenderTopic && (
             <ActivityUnavailable
               {...(kind !== undefined && { kind })}
               onSkip={handleContinue}
@@ -1403,6 +1416,18 @@ export function LessonPage(): React.JSX.Element {
             isLoading={isSubmitting || isAttemptPending}
             onRefetchLesson={() => void refetch()}
             onSubmit={(done) => void handleSubmit({ done })}
+            onContinue={handleContinue}
+          />
+        )}
+
+        {canRenderTopic && (
+          <ExerciseTopic
+            key={currentActivity?.id}
+            title={topicConfig.title}
+            body={topicConfig}
+            isSubmitted={isSubmitted}
+            isLoading={isSubmitting || isAttemptPending}
+            onSubmit={() => void handleSubmit({ done: true })}
             onContinue={handleContinue}
           />
         )}

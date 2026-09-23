@@ -5171,7 +5171,7 @@ export interface components {
             kind: string;
             /** Format: uuid */
             content_version_id: string;
-            /** @description Activity-specific configuration. A `lesson_material` activity carries the material's object keys and, issued at read time after the paywall, a `sources` object: `{poster_url?, video: [{url, height}], document: {url, preview_url?, page_count?}}`. The URLs expire and are never stored in the lesson cache. */
+            /** @description Activity-specific configuration. A `lesson_material` activity carries the material's object keys and, issued at read time after the paywall, a `sources` object: `{poster_url?, video: [{url, height}], document: {url, preview_url?, page_count?}}`. The URLs expire and are never stored in the lesson cache. A `foundation_topic` activity carries the topic's published body: `{objective, explanation: {en, vi}, examples, common_mistakes}`. */
             config?: Record<string, never>;
             /** @example 10 */
             weight: number;
