@@ -56,6 +56,9 @@ const (
 	purposeFoundation            = "foundation"
 )
 
+// defaultAITimeout matches the API and the worker.
+const defaultAITimeout = 120 * time.Second
+
 type foundationCLIConfig struct {
 	App struct {
 		Environment string `koanf:"environment"`
@@ -63,12 +66,30 @@ type foundationCLIConfig struct {
 	Database struct {
 		DSN string `koanf:"dsn"`
 	} `koanf:"db"`
+	// All four provider slots, as the API and the worker read them. Reading
+	// only the first meant a deployment that had put its working key in slot 2
+	// generated with none at all.
 	AI struct {
 		Provider1Name    string        `koanf:"provider_1_name"`
 		Provider1BaseURL string        `koanf:"provider_1_base_url"`
 		Provider1Model   string        `koanf:"provider_1_model"`
 		Provider1APIKey  string        `koanf:"provider_1_api_key"`
 		Provider1Timeout time.Duration `koanf:"provider_1_timeout"`
+		Provider2Name    string        `koanf:"provider_2_name"`
+		Provider2BaseURL string        `koanf:"provider_2_base_url"`
+		Provider2Model   string        `koanf:"provider_2_model"`
+		Provider2APIKey  string        `koanf:"provider_2_api_key"`
+		Provider2Timeout time.Duration `koanf:"provider_2_timeout"`
+		Provider3Name    string        `koanf:"provider_3_name"`
+		Provider3BaseURL string        `koanf:"provider_3_base_url"`
+		Provider3Model   string        `koanf:"provider_3_model"`
+		Provider3APIKey  string        `koanf:"provider_3_api_key"`
+		Provider3Timeout time.Duration `koanf:"provider_3_timeout"`
+		Provider4Name    string        `koanf:"provider_4_name"`
+		Provider4BaseURL string        `koanf:"provider_4_base_url"`
+		Provider4Model   string        `koanf:"provider_4_model"`
+		Provider4APIKey  string        `koanf:"provider_4_api_key"`
+		Provider4Timeout time.Duration `koanf:"provider_4_timeout"`
 	} `koanf:"ai"`
 }
 
@@ -93,6 +114,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	allFlag := flags.Bool("all", false, "Generate drafts for all spine taxonomy nodes")
 	limitFlag := flags.Int("limit", 0, "Optional limit on number of nodes to process")
 	dryRunFlag := flags.Bool("dry-run", false, "Simulate generation without persisting items")
+	mockFlag := flags.Bool("mock", false, "Generate with the offline mock provider, writing placeholder drafts")
 
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -103,16 +125,9 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return errors.New("must specify either -node CODE or -all")
 	}
 
-	var cfg foundationCLIConfig
-	if err := config.Load(ctx, config.Options{
-		Defaults: map[string]any{
-			"app.environment": "local",
-		},
-		Required: []config.RequiredKey{
-			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
-		},
-	}, &cfg); err != nil {
-		return fmt.Errorf("load foundation configuration: %w", err)
+	cfg, err := loadFoundationConfig(ctx)
+	if err != nil {
+		return err
 	}
 
 	pool, err := pgxpool.New(ctx, cfg.Database.DSN)
@@ -148,12 +163,69 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return nil
 	}
 
+	// A run with no provider writes the mock generator's output — six items per
+	// node, indistinguishable from real drafts once they are in the review
+	// queue. That is a worse outcome than not running, so it is refused rather
+	// than warned about. -mock is for trying the plumbing on a throwaway
+	// database.
+	if len(cfg.aiProviders()) == 0 && !*mockFlag {
+		return errors.New(
+			"no AI provider is configured, so this would fill the database with mock drafts: " +
+				"set AI_PROVIDER_1_NAME and AI_PROVIDER_1_API_KEY " +
+				"(see docs/deployment/configuration.md), or pass -mock to do it anyway")
+	}
+
 	generator, authorID, err := buildGenerator(ctx, cfg, pool)
 	if err != nil {
 		return fmt.Errorf("build generator: %w", err)
 	}
 
 	return generateDraftsForNodes(ctx, generator, nodes, authorID, out)
+}
+
+// loadFoundationConfig reads this command's configuration.
+//
+// A function of its own so a test can assert what actually reaches the
+// struct: the keys declared here are the only ones config.Load will read
+// from the environment, which is a rule that is easy to break silently.
+func loadFoundationConfig(ctx context.Context) (foundationCLIConfig, error) {
+	var cfg foundationCLIConfig
+	if err := config.Load(ctx, config.Options{
+		// Every ai.* key is declared, not merely read into the struct. A section
+		// that appears in neither Defaults nor Required is dropped from the
+		// environment entirely — so before this, AI_PROVIDER_1_API_KEY never
+		// reached the struct, initAIClient saw no key, and the command would
+		// have written a database full of mock drafts believing they were real.
+		Defaults: map[string]any{
+			"app.environment":        "local",
+			"ai.provider_1_name":     "",
+			"ai.provider_1_base_url": "",
+			"ai.provider_1_model":    "",
+			"ai.provider_1_api_key":  "",
+			"ai.provider_1_timeout":  defaultAITimeout,
+			"ai.provider_2_name":     "",
+			"ai.provider_2_base_url": "",
+			"ai.provider_2_model":    "",
+			"ai.provider_2_api_key":  "",
+			"ai.provider_2_timeout":  defaultAITimeout,
+			"ai.provider_3_name":     "",
+			"ai.provider_3_base_url": "",
+			"ai.provider_3_model":    "",
+			"ai.provider_3_api_key":  "",
+			"ai.provider_3_timeout":  defaultAITimeout,
+			"ai.provider_4_name":     "",
+			"ai.provider_4_base_url": "",
+			"ai.provider_4_model":    "",
+			"ai.provider_4_api_key":  "",
+			"ai.provider_4_timeout":  defaultAITimeout,
+		},
+		Required: []config.RequiredKey{
+			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
+		},
+	}, &cfg); err != nil {
+		return cfg, fmt.Errorf("load foundation configuration: %w", err)
+	}
+	return cfg, nil
 }
 
 func querySpineNodes(ctx context.Context, pool *pgxpool.Pool, targetNode string, limit int) ([]spineNodeRow, error) {
@@ -239,15 +311,37 @@ func buildGenerator(
 	pool *pgxpool.Pool,
 ) (learningcontract.Generator, uuid.UUID, error) {
 	authorID := resolveFirstAdminOrNew(ctx, pool)
+	return assembleGenerator(ctx, cfg, pool, authorID), authorID, nil
+}
 
-	contentMod := content.New(content.Deps{
+// assembleGenerator is the module wiring alone, with no database read in it.
+//
+// Separate from buildGenerator so a test can assemble it without a database and
+// catch a constructor that fails closed. This command panicked on boot for
+// exactly that reason — content.New refuses a nil guard — and nothing noticed,
+// because assembly only ever ran against a live database with an operator
+// watching.
+func assembleGenerator(
+	ctx context.Context,
+	cfg foundationCLIConfig,
+	pool *pgxpool.Pool,
+	authorID uuid.UUID,
+) learningcontract.Generator {
+	// NewAuthoring, not New: this is a CLI that mounts no routes, so it has no
+	// guard to give and content.New fails closed without one. The worker learned
+	// the same lesson — see content.NewAuthoring's comment.
+	contentMod := content.NewAuthoring(content.Deps{
 		Pool:  pool,
 		Clock: clock.Real{},
 	})
 
 	lessonMod := lesson.New(lesson.Deps{
-		Pool:    pool,
-		Clock:   clock.Real{},
+		Pool:  pool,
+		Clock: clock.Real{},
+		// lesson has no authoring-only constructor, so it takes the permissive
+		// guard the worker gives it. Nothing here serves a request: the only
+		// caller is this command, and it mounts no router to protect.
+		Guard:   offlineGuard{},
 		Content: contentMod.Reader(),
 	})
 
@@ -294,7 +388,7 @@ func buildGenerator(
 		GeneratorAuthorID: authorID,
 	})
 
-	return learningMod.Generator(), authorID, nil
+	return learningMod.Generator()
 }
 
 func assembleGraders(
@@ -345,20 +439,39 @@ func resolveFirstAdminOrNew(ctx context.Context, pool *pgxpool.Pool) uuid.UUID {
 	return uuid.New()
 }
 
+// aiProviders is every configured provider slot, in order, as the API and the
+// worker build it. A slot with no name is not a provider.
+func (cfg foundationCLIConfig) aiProviders() []ai.ProviderConfig {
+	slots := []ai.ProviderConfig{
+		{
+			Name: cfg.AI.Provider1Name, BaseURL: cfg.AI.Provider1BaseURL, Model: cfg.AI.Provider1Model,
+			APIKey: cfg.AI.Provider1APIKey, Timeout: cfg.AI.Provider1Timeout,
+		},
+		{
+			Name: cfg.AI.Provider2Name, BaseURL: cfg.AI.Provider2BaseURL, Model: cfg.AI.Provider2Model,
+			APIKey: cfg.AI.Provider2APIKey, Timeout: cfg.AI.Provider2Timeout,
+		},
+		{
+			Name: cfg.AI.Provider3Name, BaseURL: cfg.AI.Provider3BaseURL, Model: cfg.AI.Provider3Model,
+			APIKey: cfg.AI.Provider3APIKey, Timeout: cfg.AI.Provider3Timeout,
+		},
+		{
+			Name: cfg.AI.Provider4Name, BaseURL: cfg.AI.Provider4BaseURL, Model: cfg.AI.Provider4Model,
+			APIKey: cfg.AI.Provider4APIKey, Timeout: cfg.AI.Provider4Timeout,
+		},
+	}
+	live := make([]ai.ProviderConfig, 0, len(slots))
+	for _, slot := range slots {
+		if strings.TrimSpace(slot.Name) != "" && strings.TrimSpace(slot.APIKey) != "" {
+			live = append(live, slot)
+		}
+	}
+	return live
+}
+
 func initAIClient(ctx context.Context, cfg foundationCLIConfig, pool *pgxpool.Pool) ai.Client {
-	if cfg.AI.Provider1APIKey != "" {
-		aiClient, err := ai.New(ai.Config{
-			Pool: pool,
-			Providers: []ai.ProviderConfig{
-				{
-					Name:    cfg.AI.Provider1Name,
-					BaseURL: cfg.AI.Provider1BaseURL,
-					Model:   cfg.AI.Provider1Model,
-					APIKey:  cfg.AI.Provider1APIKey,
-					Timeout: cfg.AI.Provider1Timeout,
-				},
-			},
-		})
+	if providers := cfg.aiProviders(); len(providers) > 0 {
+		aiClient, err := ai.New(ai.Config{Pool: pool, Providers: providers})
 		if err == nil {
 			return aiClient
 		}
@@ -466,3 +579,11 @@ func generateDraftsForNodes(
 		totalGenerated, len(nodes))
 	return nil
 }
+
+// offlineGuard permits everything, because there is nothing to protect: this
+// command mounts no routes and runs as an operator who already has a shell on
+// the machine. It exists only because lesson's constructor fails closed on a
+// nil guard, which is the right default for a process that does serve HTTP.
+type offlineGuard struct{}
+
+func (offlineGuard) Require(_ context.Context, _ string) error { return nil }
