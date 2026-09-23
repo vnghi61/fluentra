@@ -557,6 +557,10 @@ func generateDraftsForNodes(
 	out io.Writer,
 ) error {
 	totalGenerated := 0
+	// One bad node must not stop a 93-node run: its failure is reported, the
+	// rest continue, and `-missing` picks the failed node up on the next run.
+	var failed []string
+nodeLoop:
 	for i, node := range nodes {
 		_, _ = fmt.Fprintf(out, "[%d/%d] Generating drafts for node %s:%s (%s, level %s)...\n",
 			i+1, len(nodes), node.Namespace, node.Code, node.Label, node.CEFRLevel)
@@ -587,7 +591,9 @@ func generateDraftsForNodes(
 			}
 			exItems, err := generator.Generate(ctx, exReq)
 			if err != nil {
-				return fmt.Errorf("generate exercise %d (%s) for %s: %w", exIdx+1, exKind, node.Code, err)
+				_, _ = fmt.Fprintf(out, "  ✗ exercise %d: %v\n", exIdx+1, err)
+				failed = append(failed, node.Code)
+				continue nodeLoop
 			}
 			totalGenerated += len(exItems)
 			_, _ = fmt.Fprintf(out, "  ✓ exercise %d: %s (version %s)\n", exIdx+1, exKind, exItems[0].ContentVersionID)
@@ -606,7 +612,9 @@ func generateDraftsForNodes(
 		}
 		quizItems, err := generator.Generate(ctx, quizReq)
 		if err != nil {
-			return fmt.Errorf("generate quiz for %s: %w", node.Code, err)
+			_, _ = fmt.Fprintf(out, "  ✗ quiz: %v\n", err)
+			failed = append(failed, node.Code)
+			continue nodeLoop
 		}
 		totalGenerated += len(quizItems)
 		_, _ = fmt.Fprintf(out, "  ✓ quiz (version %s)\n", quizItems[0].ContentVersionID)
@@ -624,7 +632,9 @@ func generateDraftsForNodes(
 		}
 		reviewItems, err := generator.Generate(ctx, reviewReq)
 		if err != nil {
-			return fmt.Errorf("generate review for %s: %w", node.Code, err)
+			_, _ = fmt.Fprintf(out, "  ✗ review: %v\n", err)
+			failed = append(failed, node.Code)
+			continue nodeLoop
 		}
 		totalGenerated += len(reviewItems)
 		_, _ = fmt.Fprintf(out, "  ✓ review (version %s)\n", reviewItems[0].ContentVersionID)
@@ -643,7 +653,9 @@ func generateDraftsForNodes(
 		}
 		topicItems, err := generator.Generate(ctx, topicReq)
 		if err != nil {
-			return fmt.Errorf("generate foundation topic for %s: %w", node.Code, err)
+			_, _ = fmt.Fprintf(out, "  ✗ topic: %v\n", err)
+			failed = append(failed, node.Code)
+			continue nodeLoop
 		}
 		totalGenerated += len(topicItems)
 		_, _ = fmt.Fprintf(out, "  ✓ topic (version %s)\n", topicItems[0].ContentVersionID)
@@ -651,6 +663,10 @@ func generateDraftsForNodes(
 
 	_, _ = fmt.Fprintf(out, "Generated %d item(s) across %d spine nodes.\n",
 		totalGenerated, len(nodes))
+	if len(failed) > 0 {
+		return fmt.Errorf("%d node(s) failed and will be retried by -missing: %s",
+			len(failed), strings.Join(failed, ", "))
+	}
 	return nil
 }
 
