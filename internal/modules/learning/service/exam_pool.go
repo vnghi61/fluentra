@@ -35,6 +35,9 @@ const (
 	kindListeningComprehension = "listening_comprehension"
 	kindWritingPrompt          = "writing_prompt"
 	kindSpeakingTask           = "speaking_task"
+	// kindTypedCompletion is a completion question with a typed answer and a
+	// word limit (WO 22 D22-25).
+	kindTypedCompletion = "typed_completion"
 
 	subTypeReadAloud = "read_aloud"
 	subTypeRespond   = "respond"

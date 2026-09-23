@@ -867,7 +867,8 @@ func buildOwnAnswerPayload(kind string, raw []byte) (json.RawMessage, error) {
 			return nil, err
 		}
 		return json.Marshal(map[string]any{keySelectedOptionID: body.CorrectOptionID})
-	case kindVocabGapFill, kindVocabFlashcard, kindVocabListenType, kindVocabReorder:
+	case kindVocabGapFill, kindVocabFlashcard, kindVocabListenType, kindVocabReorder,
+		kindTypedCompletion:
 		var body struct {
 			CorrectAnswer string `json:"correct_answer"`
 		}
@@ -965,11 +966,47 @@ func validateStructure(kind string, raw []byte) error {
 			return err
 		}
 		return checkOptions(body.Options, body.CorrectOptionID)
+	case kindTypedCompletion:
+		return structureTypedCompletion(raw)
 	case kindVocabGapFill, kindVocabFlashcard, kindVocabListenType, kindVocabReorder, kindVocabMatch:
 		return nil
 	default:
 		return fmt.Errorf("unsupported kind: %s", kind)
 	}
+}
+
+// structureTypedCompletion requires a typed completion to carry its prompt and
+// its answer, and refuses a key or a variant the item's own word limit would
+// mark wrong (WO 22 D22-25).
+func structureTypedCompletion(raw []byte) error {
+	var body struct {
+		Prompt        string   `json:"prompt"`
+		Sentence      string   `json:"sentence"`
+		CorrectAnswer string   `json:"correct_answer"`
+		Acceptable    []string `json:"acceptable"`
+		MaxWords      int      `json:"max_words"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return err
+	}
+	if strings.TrimSpace(body.Prompt) == "" && strings.TrimSpace(body.Sentence) == "" {
+		return errors.New("completion needs a prompt or a sentence")
+	}
+	if strings.TrimSpace(body.CorrectAnswer) == "" {
+		return errors.New("completion needs a correct_answer")
+	}
+	overLimit := func(answer string) bool {
+		return body.MaxWords > 0 && len(strings.Fields(answer)) > body.MaxWords
+	}
+	if overLimit(body.CorrectAnswer) {
+		return fmt.Errorf("correct_answer %q exceeds the %d-word limit", body.CorrectAnswer, body.MaxWords)
+	}
+	for _, variant := range body.Acceptable {
+		if overLimit(variant) {
+			return fmt.Errorf("accepted variant %q exceeds the %d-word limit", variant, body.MaxWords)
+		}
+	}
+	return nil
 }
 
 func structureSentenceTransform(raw []byte) error {
@@ -1038,7 +1075,7 @@ func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 			return nil, errors.New("empty blind solve option ID")
 		}
 		return json.Marshal(map[string]any{keySelectedOptionID: answer})
-	case kindGrammarSentenceTransform:
+	case kindGrammarSentenceTransform, kindTypedCompletion:
 		var resp struct {
 			Answer string `json:"answer"`
 		}

@@ -11,6 +11,10 @@ const (
 	KindMcqGap = "mcq_gap"
 	// KindTextCompletion is a multi-gap text completion exercise (TOEIC Part 6).
 	KindTextCompletion = "text_completion"
+	// KindTypedCompletion is a completion question with a typed answer and a
+	// word limit (WO 22 D22-25). The reading grader already matches a typed
+	// answer against its accepted variants; the added rule is the limit.
+	KindTypedCompletion = learningcontract.KindTypedCompletion
 )
 
 // GradedKinds are the activity kinds this module's grader can score.
@@ -19,6 +23,7 @@ func GradedKinds() []string {
 		KindReadingComprehension,
 		KindMcqGap,
 		KindTextCompletion,
+		KindTypedCompletion,
 	}
 }
 

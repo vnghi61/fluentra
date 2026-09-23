@@ -209,9 +209,31 @@ func validateExamStructure(kind string, raw json.RawMessage, c *learningcontract
 		return validateReadingExamStructure(raw, c)
 	case kindGrammarTenseChoice:
 		return validateGrammarExamStructure(raw, c)
+	case kindTypedCompletion:
+		return validateTypedCompletionExamStructure(raw, c)
 	default:
 		return nil
 	}
+}
+
+// validateTypedCompletionExamStructure checks a completion item against its
+// part: no options, and a word limit within the part's (WO 22 D22-25).
+func validateTypedCompletionExamStructure(raw json.RawMessage, c *learningcontract.ExamPartConstraints) error {
+	var cand struct {
+		MaxWords int `json:"max_words"`
+	}
+	if err := json.Unmarshal(raw, &cand); err != nil {
+		return fmt.Errorf("check (exam structure) failed: %w", err)
+	}
+	if c.OptionCount > 0 {
+		return fmt.Errorf("check (exam structure) failed: a typed completion has no options, want %d",
+			c.OptionCount)
+	}
+	if c.MaxWords > 0 && (cand.MaxWords <= 0 || cand.MaxWords > c.MaxWords) {
+		return fmt.Errorf("check (exam structure) failed: completion word limit is %d, want at most %d",
+			cand.MaxWords, c.MaxWords)
+	}
+	return nil
 }
 
 func (s *Service) validateCEFRLevel(ctx context.Context, kind, requestedLevel string, raw json.RawMessage) error {

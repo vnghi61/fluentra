@@ -409,6 +409,18 @@ func (p *MockProvider) practiceGenerate(req Request) (Response, error) {
 				"explanation_vi": "Bắt đầu với 'Although' và bỏ liên từ 'but'.",
 			},
 		})
+	case "typed_completion":
+		payload, err = json.Marshal(map[string]any{
+			"prompt":         "Complete the note: the museum opens at ___ every day.",
+			"sentence":       "The museum opens at ___ every day.",
+			"correct_answer": "9 a.m.",
+			"acceptable":     []string{"9am", "nine a.m."},
+			"max_words":      2,
+			"explanation": map[string]string{
+				"explanation_en": "The note states the opening time.",
+				"explanation_vi": "Ghi chú nêu giờ mở cửa.",
+			},
+		})
 	case "writing_prompt":
 		payload, err = json.Marshal(map[string]any{
 			"prompt":             "Some people believe that public transportation should be completely free for all citizens. Do you agree or disagree? Give reasons and examples.",
@@ -496,6 +508,10 @@ func (p *MockProvider) practiceSolve(req Request) (Response, error) {
 	case "grammar_sentence_transform":
 		payload, err = json.Marshal(map[string]any{
 			"answer": "Although he was exhausted, he completed the project.",
+		})
+	case "typed_completion":
+		payload, err = json.Marshal(map[string]any{
+			"answer": "9 a.m.",
 		})
 	default:
 		payload, err = json.Marshal(map[string]any{

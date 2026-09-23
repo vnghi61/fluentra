@@ -869,6 +869,11 @@ export function LessonPage(): React.JSX.Element {
   const topicConfig = rawConfig as FoundationTopicBodyShape & {
     title?: string;
   };
+  const typedConfig = rawConfig as {
+    prompt?: string;
+    sentence?: string;
+    max_words?: number;
+  };
 
   // An exercise is renderable only when its config carries the fields it needs.
   // Everything else is ActivityUnavailable — there is no default question,
@@ -979,6 +984,16 @@ export function LessonPage(): React.JSX.Element {
       typeof topicConfig.explanation === "object" ||
       Array.isArray(topicConfig.examples));
 
+  // A typed completion is a gap fill with a typed answer and a word limit
+  // (WO 22 D22-25); it renders with the same component.
+  const typedBlankParts =
+    typeof typedConfig.sentence === "string"
+      ? typedConfig.sentence.split("___")
+      : [];
+  const canRenderTypedCompletion =
+    kind === "typed_completion" &&
+    (typeof typedConfig.prompt === "string" || typedBlankParts.length === 2);
+
   const selectedOptId =
     typeof lastSubmittedPayload?.selected_option_id === "string"
       ? lastSubmittedPayload.selected_option_id
@@ -1074,7 +1089,8 @@ export function LessonPage(): React.JSX.Element {
           !canRenderWriting &&
           !canRenderSpeaking &&
           !canRenderMaterial &&
-          !canRenderTopic && (
+          !canRenderTopic &&
+          !canRenderTypedCompletion && (
             <ActivityUnavailable
               {...(kind !== undefined && { kind })}
               onSkip={handleContinue}
@@ -1111,6 +1127,24 @@ export function LessonPage(): React.JSX.Element {
             prompt={gapConfig.prompt ?? ""}
             sentenceBeforeBlank={gapConfig.sentence_before ?? ""}
             sentenceAfterBlank={gapConfig.sentence_after ?? ""}
+            expectedAnswer={submissionResult?.correct_answer}
+            feedback={submissionResult?.feedback}
+            explanation={submissionResult?.explanation}
+            isSubmitted={isSubmitted}
+            isCorrect={submissionResult?.correct}
+            isLoading={isSubmitting || isAttemptPending}
+            onSubmit={(answerText) =>
+              void handleSubmit({ text_answer: answerText })
+            }
+            onContinue={handleContinue}
+          />
+        )}
+
+        {canRenderTypedCompletion && (
+          <ExerciseGapFill
+            prompt={typedConfig.prompt ?? ""}
+            sentenceBeforeBlank={typedBlankParts[0]?.trim() ?? ""}
+            sentenceAfterBlank={typedBlankParts[1]?.trim() ?? ""}
             expectedAnswer={submissionResult?.correct_answer}
             feedback={submissionResult?.feedback}
             explanation={submissionResult?.explanation}

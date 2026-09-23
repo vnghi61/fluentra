@@ -38,16 +38,20 @@ type (
 )
 
 type readingQuizBody struct {
-	PassageTitle    string                              `json:"passage_title,omitempty"`
-	Passage         string                              `json:"passage"`
-	Sentence        string                              `json:"sentence,omitempty"`
-	Prompt          string                              `json:"prompt,omitempty"`
-	CorrectAnswer   string                              `json:"correct_answer,omitempty"`
-	CorrectOptionID string                              `json:"correct_option_id,omitempty"`
-	Key             string                              `json:"key,omitempty"`
-	Acceptable      []string                            `json:"acceptable,omitempty"`
-	Explanation     *learningcontract.AnswerExplanation `json:"explanation,omitempty"`
-	Questions       []contentcontract.QuestionItem      `json:"questions,omitempty"`
+	PassageTitle    string   `json:"passage_title,omitempty"`
+	Passage         string   `json:"passage"`
+	Sentence        string   `json:"sentence,omitempty"`
+	Prompt          string   `json:"prompt,omitempty"`
+	CorrectAnswer   string   `json:"correct_answer,omitempty"`
+	CorrectOptionID string   `json:"correct_option_id,omitempty"`
+	Key             string   `json:"key,omitempty"`
+	Acceptable      []string `json:"acceptable,omitempty"`
+	// MaxWords is a typed completion's word limit ("NO MORE THAN TWO WORDS").
+	// Zero means no limit. An answer over it is wrong even if the words match
+	// (WO 22 D22-25).
+	MaxWords    int                                 `json:"max_words,omitempty"`
+	Explanation *learningcontract.AnswerExplanation `json:"explanation,omitempty"`
+	Questions   []contentcontract.QuestionItem      `json:"questions,omitempty"`
 }
 
 // Grader implements learningcontract.ExerciseGrader and contract.Grader.
@@ -186,6 +190,9 @@ func gradeQuestionSet(
 
 func gradeSingle(resp contentcontract.ComprehensionResponse, body readingQuizBody) (int, bool) {
 	submitted := contentcontract.SingleSubmittedAnswer(resp)
+	if exceedsWordLimit(submitted, body.MaxWords) {
+		return 0, false
+	}
 	key := body.CorrectOptionID
 	if key == "" {
 		key = body.Key
@@ -194,6 +201,15 @@ func gradeSingle(resp contentcontract.ComprehensionResponse, body readingQuizBod
 		return maxReadingScore, true
 	}
 	return 0, false
+}
+
+// exceedsWordLimit reports whether a typed answer breaks the item's word limit
+// ("NO MORE THAN TWO WORDS"). Zero means no limit.
+func exceedsWordLimit(submitted string, maxWords int) bool {
+	if maxWords <= 0 || strings.TrimSpace(submitted) == "" {
+		return false
+	}
+	return len(strings.Fields(submitted)) > maxWords
 }
 
 func buildSingleResult(

@@ -404,6 +404,10 @@ const (
 	// KindLessonMaterial is a non-graded course material — a document or video
 	// a learner opens and marks as done (WO 20).
 	KindLessonMaterial = "lesson_material"
+	// KindTypedCompletion is a completion question with a typed answer and a
+	// word limit — form, note, sentence and summary completion, which IELTS
+	// listening and reading are mostly made of (WO 22 D22-25).
+	KindTypedCompletion = "typed_completion"
 )
 
 // GenerateRequest specifies parameters for the unified item generator.
