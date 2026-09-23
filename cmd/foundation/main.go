@@ -138,14 +138,16 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	exportFlag := flags.Bool("export", false, "Export published Foundation content to fixtures and exit")
 	fixturesFlag := flags.String("fixtures", defaultFixtureDir,
 		"Directory an -export writes to and `cmd/seed -foundation` reads")
+	missingFlag := flags.Bool("missing", false,
+		"Only nodes with no published topic yet, so a long run resumes in chunks")
 
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 
 	targetNode := strings.TrimSpace(*nodeFlag)
-	if targetNode == "" && !*allFlag && !*exportFlag {
-		return errors.New("must specify either -node CODE or -all (or -export)")
+	if targetNode == "" && !*allFlag && !*exportFlag && !*missingFlag {
+		return errors.New("must specify either -node CODE or -all (or -export, or -missing)")
 	}
 
 	cfg, err := loadFoundationConfig(ctx)
@@ -159,7 +161,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	}
 	defer pool.Close()
 
-	nodes, err := querySpineNodes(ctx, pool, targetNode, *limitFlag)
+	nodes, err := querySpineNodes(ctx, pool, targetNode, *limitFlag, *missingFlag)
 	if err != nil {
 		return fmt.Errorf("query spine nodes: %w", err)
 	}
@@ -167,6 +169,10 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	if len(nodes) == 0 {
 		if targetNode != "" {
 			return fmt.Errorf("spine node %q not found", targetNode)
+		}
+		if *missingFlag {
+			_, _ = fmt.Fprintln(out, "Every spine node already has a published Foundation topic.")
+			return nil
 		}
 		return errors.New("no spine taxonomy nodes found in database")
 	}
@@ -252,19 +258,33 @@ func loadFoundationConfig(ctx context.Context) (foundationCLIConfig, error) {
 	return cfg, nil
 }
 
-func querySpineNodes(ctx context.Context, pool *pgxpool.Pool, targetNode string, limit int) ([]spineNodeRow, error) {
+func querySpineNodes(
+	ctx context.Context, pool *pgxpool.Pool, targetNode string, limit int, missingOnly bool,
+) ([]spineNodeRow, error) {
+	// `missingOnly` makes a long generation resumable: the topic is the last
+	// item a node publishes, so "no published foundation_topic tagged to the
+	// node" is the completion signal, and a chunked run advances.
 	query := `
-		SELECT id, namespace, code, label, COALESCE(cefr_level, 'B1') AS cefr_level
-		FROM content.taxonomies
-		WHERE namespace IN ('grammar', 'vocabulary', 'pattern', 'pronunciation', 'skill')
-		  AND deprecated_at IS NULL
-		  AND ($1 = '' OR code = $1)
-		ORDER BY position ASC, code ASC`
+		SELECT t.id, t.namespace, t.code, t.label, COALESCE(t.cefr_level, 'B1') AS cefr_level
+		FROM content.taxonomies t
+		WHERE t.namespace IN ('grammar', 'vocabulary', 'pattern', 'pronunciation', 'skill')
+		  AND t.deprecated_at IS NULL
+		  AND ($1 = '' OR t.code = $1)
+		  AND (NOT $2::boolean OR NOT EXISTS (
+		      SELECT 1
+		      FROM content.content_tags ct
+		      JOIN content.content_items i ON i.id = ct.item_id
+		      JOIN content.content_versions v ON v.id = i.current_version_id
+		      WHERE ct.taxonomy_id = t.id
+		        AND i.status = 'published' AND v.status = 'published'
+		        AND v.kind = 'foundation_topic'
+		  ))
+		ORDER BY t.position ASC, t.code ASC`
 	if limit > 0 {
 		query = fmt.Sprintf("%s LIMIT %d", query, limit)
 	}
 
-	rows, err := pool.Query(ctx, query, targetNode)
+	rows, err := pool.Query(ctx, query, targetNode, missingOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -543,25 +563,10 @@ func generateDraftsForNodes(
 
 		batch := fmt.Sprintf("foundation:%s:%s", node.Code, runBatch)
 
-		// 1. Foundation topic body
-		topicReq := learningcontract.GenerateRequest{
-			Kind:       learningcontract.KindFoundationTopic,
-			CEFRLevel:  node.CEFRLevel,
-			NodeCodes:  []string{node.Code},
-			Purpose:    purposeFoundation,
-			Count:      1,
-			OwnerID:    &authorID,
-			SlugPrefix: fmt.Sprintf("foundation-topic-%s", strings.ToLower(node.Code)),
-			Batch:      batch,
-		}
-		topicItems, err := generator.Generate(ctx, topicReq)
-		if err != nil {
-			return fmt.Errorf("generate foundation topic for %s: %w", node.Code, err)
-		}
-		totalGenerated += len(topicItems)
-		_, _ = fmt.Fprintf(out, "  ✓ topic (version %s)\n", topicItems[0].ContentVersionID)
-
-		// 2. Three namespace exercises
+		// The exercises, quiz and review come first: a topic does not publish
+		// until its node carries them (BR-FOUNDATION-05), and with auto-publish
+		// on the topic is published in the same run.
+		// 1. Three namespace exercises
 		exKinds := exerciseKindsForNode(node.Namespace, node.Code)
 		for exIdx, exKind := range exKinds {
 			exSlug := fmt.Sprintf(
@@ -588,7 +593,7 @@ func generateDraftsForNodes(
 			_, _ = fmt.Fprintf(out, "  ✓ exercise %d: %s (version %s)\n", exIdx+1, exKind, exItems[0].ContentVersionID)
 		}
 
-		// 3. One foundation_quiz item
+		// 2. One foundation_quiz item
 		quizReq := learningcontract.GenerateRequest{
 			Kind:       learningcontract.KindFoundationQuiz,
 			CEFRLevel:  node.CEFRLevel,
@@ -606,7 +611,7 @@ func generateDraftsForNodes(
 		totalGenerated += len(quizItems)
 		_, _ = fmt.Fprintf(out, "  ✓ quiz (version %s)\n", quizItems[0].ContentVersionID)
 
-		// 4. One foundation_review item
+		// 3. One foundation_review item
 		reviewReq := learningcontract.GenerateRequest{
 			Kind:       learningcontract.KindFoundationReview,
 			CEFRLevel:  node.CEFRLevel,
@@ -623,9 +628,28 @@ func generateDraftsForNodes(
 		}
 		totalGenerated += len(reviewItems)
 		_, _ = fmt.Fprintf(out, "  ✓ review (version %s)\n", reviewItems[0].ContentVersionID)
+
+		// 4. The topic itself, last: it publishes only once its exercises,
+		// quiz and review are published.
+		topicReq := learningcontract.GenerateRequest{
+			Kind:       learningcontract.KindFoundationTopic,
+			CEFRLevel:  node.CEFRLevel,
+			NodeCodes:  []string{node.Code},
+			Purpose:    purposeFoundation,
+			Count:      1,
+			OwnerID:    &authorID,
+			SlugPrefix: fmt.Sprintf("foundation-topic-%s", strings.ToLower(node.Code)),
+			Batch:      batch,
+		}
+		topicItems, err := generator.Generate(ctx, topicReq)
+		if err != nil {
+			return fmt.Errorf("generate foundation topic for %s: %w", node.Code, err)
+		}
+		totalGenerated += len(topicItems)
+		_, _ = fmt.Fprintf(out, "  ✓ topic (version %s)\n", topicItems[0].ContentVersionID)
 	}
 
-	_, _ = fmt.Fprintf(out, "Successfully generated %d draft items across %d spine nodes.\n",
+	_, _ = fmt.Fprintf(out, "Generated %d item(s) across %d spine nodes.\n",
 		totalGenerated, len(nodes))
 	return nil
 }

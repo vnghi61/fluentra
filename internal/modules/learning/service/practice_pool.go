@@ -1059,7 +1059,8 @@ func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 		}
 		return json.Marshal(map[string]any{keyAnswers: resp.Answers})
 	case kindGrammarTenseChoice, kindFoundationQuiz, kindFoundationReview,
-		kindPhotoDescription, kindQuestionResponse, kindMcqGap:
+		kindPhotoDescription, kindQuestionResponse, kindMcqGap,
+		kindVocabMultipleChoice, kindVocabContextChoice:
 		var resp struct {
 			SelectedOptionID string `json:"selected_option_id"`
 			Answer           string `json:"answer"`

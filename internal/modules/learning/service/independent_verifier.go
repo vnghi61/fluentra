@@ -151,7 +151,20 @@ func (s *Service) publishVerifiedDraft(
 		return err
 	}
 	if verification.Confirmed {
-		return s.contentAuthor.ApproveVerified(ctx, versionID, verification)
+		if err := s.contentAuthor.ApproveVerified(ctx, versionID, verification); err != nil {
+			// The verifier confirmed it, but a publication gate did not: the
+			// node lacks its exercises, or a referenced asset is not ready.
+			// Leave it as a draft with the reason, in the batch a person
+			// reviews, rather than failing the whole generation run.
+			doubt := contentcontract.Verification{
+				Confirmed: false,
+				Model:     verification.Model,
+				Reason:    fmt.Sprintf("publication gate: %v", err),
+				CheckedAt: verification.CheckedAt,
+			}
+			return s.contentRecorder.RecordVerification(ctx, versionID, doubt)
+		}
+		return nil
 	}
 	return s.contentRecorder.RecordVerification(ctx, versionID, verification)
 }
