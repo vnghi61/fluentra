@@ -115,6 +115,15 @@ type Author interface {
 	ApproveVerified(ctx context.Context, versionID uuid.UUID, verification Verification) error
 }
 
+// VerificationRecorder records an independent verifier's outcome on a version
+// that is not yet published, so a doubt stays in its batch with its reason.
+//
+// Separate from Author because a doubt changes no state: it writes the marking
+// and leaves the version a draft for a person.
+type VerificationRecorder interface {
+	RecordVerification(ctx context.Context, versionID uuid.UUID, verification Verification) error
+}
+
 // Verification is the outcome of an independent check on a machine-authored
 // version (WO 22 Stage A).
 //

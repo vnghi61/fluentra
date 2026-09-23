@@ -748,6 +748,18 @@ func (f *fakeRepo) CountReviewQueue(_ context.Context, _ domain.ReviewQueueFilte
 	return 0, nil
 }
 
+func (f *fakeRepo) ListReviewBatches(_ context.Context, _, _ int) ([]domain.ReviewBatch, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) CountReviewBatches(_ context.Context) (int64, error) {
+	return 0, nil
+}
+
+func (f *fakeRepo) ListReviewBatchVersionIDs(_ context.Context, _ string) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
 type fakeEvents struct {
 	events []struct {
 		Aggregate string

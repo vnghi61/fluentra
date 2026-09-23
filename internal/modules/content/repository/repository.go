@@ -948,6 +948,7 @@ func (r *Repository) ListReviewQueue(
 		Kind:         filter.Kind,
 		CefrLevel:    filter.CEFRLevel,
 		NodeCode:     filter.NodeCode,
+		Batch:        filter.Batch,
 		ResultOffset: domain.NormaliseOffset(filter.Offset),
 		ResultLimit:  domain.NormaliseLimit(filter.Limit),
 	})
@@ -980,11 +981,56 @@ func (r *Repository) CountReviewQueue(
 		Kind:      filter.Kind,
 		CefrLevel: filter.CEFRLevel,
 		NodeCode:  filter.NodeCode,
+		Batch:     filter.Batch,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("count review queue: %w", err)
 	}
 	return count, nil
+}
+
+// ListReviewBatches returns one row per generation run awaiting review, oldest
+// first (WO 22 Stage A.4).
+func (r *Repository) ListReviewBatches(ctx context.Context, limit, offset int) ([]domain.ReviewBatch, error) {
+	rows, err := r.queries.ListReviewBatches(ctx, sqlccontent.ListReviewBatchesParams{
+		ResultOffset: domain.NormaliseOffset(offset),
+		ResultLimit:  domain.NormaliseLimit(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list review batches: %w", err)
+	}
+	res := make([]domain.ReviewBatch, 0, len(rows))
+	for _, row := range rows {
+		res = append(res, domain.ReviewBatch{
+			Batch:     row.Batch,
+			ItemCount: row.ItemCount,
+			Kinds:     row.Kinds,
+			CreatedAt: row.CreatedAt,
+		})
+	}
+	return res, nil
+}
+
+// CountReviewBatches counts the distinct generation runs awaiting review.
+func (r *Repository) CountReviewBatches(ctx context.Context) (int64, error) {
+	count, err := r.queries.CountReviewBatches(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count review batches: %w", err)
+	}
+	return count, nil
+}
+
+// ListReviewBatchVersionIDs returns every unpublished version of one batch,
+// unbounded so a batch approval is all-or-nothing.
+func (r *Repository) ListReviewBatchVersionIDs(ctx context.Context, batch string) ([]uuid.UUID, error) {
+	ids, err := r.queries.ListReviewBatchVersionIDs(ctx, batch)
+	if err != nil {
+		return nil, fmt.Errorf("list review batch version ids: %w", err)
+	}
+	if ids == nil {
+		ids = []uuid.UUID{}
+	}
+	return ids, nil
 }
 
 func toNodeCodes(v interface{}) []string {

@@ -22,8 +22,18 @@ type ReviewQueueFilter struct {
 	Kind      *string
 	CEFRLevel *string
 	NodeCode  *string
+	Batch     *string
 	Limit     int
 	Offset    int
+}
+
+// ReviewBatch groups the drafts of one generation run awaiting review, so a
+// person can approve the doubts of a run together (WO 22 Stage A.4).
+type ReviewBatch struct {
+	Batch     string
+	ItemCount int64
+	Kinds     []string
+	CreatedAt time.Time
 }
 
 // ReviewQueueItem represents a draft item in the editorial review queue.

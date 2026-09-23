@@ -62,6 +62,10 @@ type ContentService interface {
 	GetFoundationPath(ctx context.Context, targetCode *string, namespace *string) ([]domain.Taxonomy, error)
 
 	ReviewQueue(ctx context.Context, filter domain.ReviewQueueFilter) ([]domain.ReviewQueueItem, int64, error)
+	ReviewBatches(ctx context.Context, limit, offset int) ([]domain.ReviewBatch, int64, error)
+	ApproveReviewBatch(
+		ctx context.Context, reviewerID uuid.UUID, batch string, reject []uuid.UUID, note *string,
+	) (int, error)
 }
 
 // Handler serves HTTP endpoints for the content module.
@@ -100,6 +104,8 @@ func (h *Handler) Routes(router chi.Router) {
 // §4.4), and each handler checks its own permission.
 func (h *Handler) ReviewRoutes(router chi.Router) {
 	router.Get("/admin/review-queue", h.adminListReviewQueue)
+	router.Get("/admin/review-queue/batches", h.adminListReviewBatches)
+	router.Post("/admin/review-queue/batches/{id}/approve", h.adminApproveBatch)
 	router.Post("/admin/content/{id}/review", h.review)
 	router.Post("/admin/content/{id}/publish", h.publish)
 }
@@ -594,6 +600,9 @@ func (h *Handler) adminListReviewQueue(w http.ResponseWriter, r *http.Request) {
 	if node := r.URL.Query().Get("node"); node != "" {
 		filter.NodeCode = &node
 	}
+	if batch := r.URL.Query().Get("batch"); batch != "" {
+		filter.Batch = &batch
+	}
 	limit, offset := adminPaging(r)
 	filter.Limit = limit
 	filter.Offset = offset
@@ -613,6 +622,56 @@ func (h *Handler) adminListReviewQueue(w http.ResponseWriter, r *http.Request) {
 		Items: respItems,
 		Total: total,
 	})
+}
+
+// adminListReviewBatches handles GET /admin/review-queue/batches.
+func (h *Handler) adminListReviewBatches(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentReview); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	limit, offset := adminPaging(r)
+	batches, total, err := h.service.ReviewBatches(ctx, limit, offset)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	respItems := make([]AdminReviewBatchResponse, len(batches))
+	for i, batch := range batches {
+		respItems[i] = toAdminReviewBatchResponse(batch)
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, AdminReviewBatchListResponse{Items: respItems, Total: total})
+}
+
+// adminApproveBatch handles POST /admin/review-queue/batches/{id}/approve.
+func (h *Handler) adminApproveBatch(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentReview); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required."))
+		return
+	}
+
+	batch := chi.URLParam(r, "id")
+	var req AdminApproveBatchRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	approved, err := h.service.ApproveReviewBatch(ctx, actor.UserID, batch, req.Reject, req.Note)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, AdminApproveBatchResponse{Approved: approved})
 }
 
 func (h *Handler) listFoundationTopics(w http.ResponseWriter, r *http.Request) {

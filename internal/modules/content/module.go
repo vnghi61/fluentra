@@ -104,6 +104,10 @@ func (m *Module) Reader() contract.Reader {
 // It is not the review state machine, which models decisions a person makes.
 func (m *Module) Author() contract.Author { return m.service }
 
+// VerificationRecorder records an independent verifier's outcome on an
+// unpublished version (WO 22 Stage A).
+func (m *Module) VerificationRecorder() contract.VerificationRecorder { return m.service }
+
 // TTSCache provides caching and retrieval of synthesised speech audio.
 func (m *Module) TTSCache() contract.TTSCache { return m.service }
 

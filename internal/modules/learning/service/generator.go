@@ -216,7 +216,7 @@ func (s *Service) attachProvenanceAndVerify(
 
 	bodyWithProv, err := injectProvenance(
 		preparedBody, promptVersion, model, aiRequestID,
-		req.Purpose, blindSolvePayload, judgedCEFR, cefrReasoning,
+		req.Purpose, req.Batch, blindSolvePayload, judgedCEFR, cefrReasoning,
 	)
 	if err != nil {
 		bodyWithProv = preparedBody
@@ -373,7 +373,7 @@ func injectProvenance(
 	body json.RawMessage,
 	promptVersion, model string,
 	aiRequestID uuid.UUID,
-	purpose string,
+	purpose, batch string,
 	blindSolveAnswer json.RawMessage,
 	cefrEstimate, cefrReasoning string,
 ) (json.RawMessage, error) {
@@ -388,6 +388,9 @@ func injectProvenance(
 	}
 	if purpose != "" {
 		prov["purpose"] = purpose
+	}
+	if strings.TrimSpace(batch) != "" {
+		prov["batch"] = strings.TrimSpace(batch)
 	}
 	if len(blindSolveAnswer) > 0 {
 		var ans any

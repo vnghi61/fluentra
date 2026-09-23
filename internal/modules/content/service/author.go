@@ -173,6 +173,11 @@ func (s *Service) ApproveVerified(
 			return nil
 		}
 
+		version, err = markVersionVerified(txCtx, repo, version, verification)
+		if err != nil {
+			return err
+		}
+
 		approved, err := s.advanceToApproved(txCtx, repo, item, version)
 		if err != nil {
 			return err
@@ -190,6 +195,74 @@ func (s *Service) ApproveVerified(
 		}
 		return nil
 	})
+}
+
+// RecordVerification implements contract.VerificationRecorder.
+//
+// It writes the verifier's outcome into a version that is still a draft, so a
+// doubt waits in its batch with its reason. A published version is immutable and
+// is refused rather than silently ignored.
+func (s *Service) RecordVerification(
+	ctx context.Context, versionID uuid.UUID, verification contract.Verification,
+) error {
+	if versionID == uuid.Nil {
+		return apperr.New(apperr.Validation, "CONTENT_VERSION_REQUIRED", "A content version is required.")
+	}
+	version, err := s.repo.GetVersionByID(ctx, versionID)
+	if err != nil {
+		return err
+	}
+	if version.Status == domain.StatusPublished {
+		return apperr.New(apperr.Conflict, "CONTENT_VERSION_PUBLISHED",
+			"A published version is immutable; its verification cannot be rewritten.")
+	}
+	_, err = markVersionVerified(ctx, s.repo, version, verification)
+	return err
+}
+
+// markVersionVerified merges the verifier's marking into a version's body and
+// writes it back with its status unchanged.
+func markVersionVerified(
+	ctx context.Context, repo Repository, version domain.Version, verification contract.Verification,
+) (domain.Version, error) {
+	body, err := mergeVerification(version.Body, verification)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	return repo.UpdateVersionDraft(
+		ctx, version.ID, version.Kind, body, version.CEFRLevel, version.MediaRefs, version.Status,
+	)
+}
+
+// mergeVerification writes `_provenance.verification` into a body.
+func mergeVerification(body json.RawMessage, verification contract.Verification) (json.RawMessage, error) {
+	var decoded map[string]any
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		return nil, fmt.Errorf("decode body for verification marking: %w", err)
+	}
+	prov, _ := decoded["_provenance"].(map[string]any)
+	if prov == nil {
+		prov = map[string]any{}
+	}
+	mark := map[string]any{
+		"model":      verifierName(verification.Model),
+		"verdict":    verdictString(verification.Confirmed),
+		"checked_at": verification.CheckedAt.UTC().Format(time.RFC3339),
+	}
+	if strings.TrimSpace(verification.Reason) != "" {
+		mark["reason"] = verification.Reason
+	}
+	prov["verification"] = mark
+	decoded["_provenance"] = prov
+	return json.Marshal(decoded)
+}
+
+// verdictString is the marking's verdict for a verification.
+func verdictString(confirmed bool) string {
+	if confirmed {
+		return "confirmed"
+	}
+	return "doubt"
 }
 
 // advanceToApproved moves a draft or in-review version to approved, running the
@@ -425,3 +498,4 @@ func validateAuthorSpec(spec contract.AuthorSpec) error {
 }
 
 var _ contract.Author = (*Service)(nil)
+var _ contract.VerificationRecorder = (*Service)(nil)

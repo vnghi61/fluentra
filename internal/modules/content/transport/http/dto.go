@@ -385,3 +385,46 @@ func toAdminReviewQueueItemResponse(item domain.ReviewQueueItem) AdminReviewQueu
 
 	return resp
 }
+
+// AdminReviewBatchResponse is one generation run awaiting review.
+type AdminReviewBatchResponse struct {
+	Batch     string    `json:"batch"`
+	ItemCount int64     `json:"item_count"`
+	Kinds     []string  `json:"kinds"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// AdminReviewBatchListResponse is the paginated response for
+// GET /admin/review-queue/batches.
+type AdminReviewBatchListResponse struct {
+	Items []AdminReviewBatchResponse `json:"items"`
+	Total int64                      `json:"total"`
+}
+
+// AdminApproveBatchRequest is the body of
+// POST /admin/review-queue/batches/{id}/approve.
+type AdminApproveBatchRequest struct {
+	// Reject lists version ids in the batch to leave for a person. Every other
+	// item in the batch is approved.
+	Reject []uuid.UUID `json:"reject,omitempty"`
+	Note   *string     `json:"note,omitempty"`
+}
+
+// AdminApproveBatchResponse reports how many versions the batch approval
+// published.
+type AdminApproveBatchResponse struct {
+	Approved int `json:"approved"`
+}
+
+func toAdminReviewBatchResponse(batch domain.ReviewBatch) AdminReviewBatchResponse {
+	kinds := batch.Kinds
+	if kinds == nil {
+		kinds = []string{}
+	}
+	return AdminReviewBatchResponse{
+		Batch:     batch.Batch,
+		ItemCount: batch.ItemCount,
+		Kinds:     kinds,
+		CreatedAt: batch.CreatedAt,
+	}
+}

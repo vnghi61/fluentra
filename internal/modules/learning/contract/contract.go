@@ -416,6 +416,10 @@ type GenerateRequest struct {
 	OwnerID    *uuid.UUID // set only for Purpose "resource": private to that learner
 	SourceText string     // Purpose "resource" only: the extraction to generate from
 	SlugPrefix string     // optional deterministic slug prefix for idempotent generation
+	// Batch groups the drafts of one generation run so a person reviews the
+	// doubts together (WO 22 Stage A). Stored under `_provenance.batch`; empty
+	// means the item is not part of a batch.
+	Batch string
 }
 
 // GeneratedItem represents a single authored and verified item.

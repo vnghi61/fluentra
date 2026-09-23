@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/content/domain"
+	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
 )
@@ -159,6 +161,9 @@ type Repository interface {
 
 	ListReviewQueue(ctx context.Context, filter domain.ReviewQueueFilter) ([]domain.ReviewQueueItem, error)
 	CountReviewQueue(ctx context.Context, filter domain.ReviewQueueFilter) (int64, error)
+	ListReviewBatches(ctx context.Context, limit, offset int) ([]domain.ReviewBatch, error)
+	CountReviewBatches(ctx context.Context) (int64, error)
+	ListReviewBatchVersionIDs(ctx context.Context, batch string) ([]uuid.UUID, error)
 
 	WithTx(tx pgx.Tx) Repository
 }
@@ -1319,4 +1324,95 @@ func (s *Service) ReviewQueue(
 	}
 
 	return items, count, nil
+}
+
+// ReviewBatches lists the generation runs whose drafts await review, oldest
+// first (WO 22 Stage A.4).
+func (s *Service) ReviewBatches(
+	ctx context.Context, limit, offset int,
+) ([]domain.ReviewBatch, int64, error) {
+	batches, err := s.repo.ListReviewBatches(ctx, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	count, err := s.repo.CountReviewBatches(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	return batches, count, nil
+}
+
+// ApproveReviewBatch approves a generation run's doubts in one transaction
+// (BR-CONTENT-11, WO 22 Stage A.4).
+//
+// Every version in the batch except the rejected ones is walked to published
+// with the same gates and outbox event as an individual publish; a rejected
+// version is recorded as changes-requested and left for a person. One
+// transaction, so a batch is approved whole or not at all.
+func (s *Service) ApproveReviewBatch(
+	ctx context.Context,
+	reviewerID uuid.UUID,
+	batch string,
+	reject []uuid.UUID,
+	note *string,
+) (int, error) {
+	if strings.TrimSpace(batch) == "" {
+		return 0, apperr.New(apperr.Validation, "CONTENT_BATCH_REQUIRED", "A batch is required.")
+	}
+	if reviewerID == uuid.Nil {
+		return 0, apperr.New(apperr.Validation, "CONTENT_REVIEWER_REQUIRED", "A reviewer is required.")
+	}
+	rejected := make(map[uuid.UUID]struct{}, len(reject))
+	for _, id := range reject {
+		rejected[id] = struct{}{}
+	}
+
+	approved := 0
+	err := dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+		repo := s.repo.WithTx(tx)
+
+		versionIDs, err := repo.ListReviewBatchVersionIDs(txCtx, batch)
+		if err != nil {
+			return err
+		}
+		for _, versionID := range versionIDs {
+			if _, skip := rejected[versionID]; skip {
+				if _, err := repo.CreateReview(
+					txCtx, s.newID(), versionID, reviewerID, domain.ReviewDecisionChangesRequested, note,
+				); err != nil {
+					return err
+				}
+				continue
+			}
+			version, err := repo.GetVersionByID(txCtx, versionID)
+			if err != nil {
+				return err
+			}
+			item, err := repo.GetItemByID(txCtx, version.ItemID)
+			if err != nil {
+				return err
+			}
+			if version.Status == domain.StatusPublished {
+				continue
+			}
+			ready, err := s.advanceToApproved(txCtx, repo, item, version)
+			if err != nil {
+				return err
+			}
+			if _, err := s.finalizePublished(txCtx, tx, repo, item, ready); err != nil {
+				return err
+			}
+			if _, err := repo.CreateReview(
+				txCtx, s.newID(), versionID, reviewerID, domain.ReviewDecisionApproved, note,
+			); err != nil {
+				return err
+			}
+			approved++
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return approved, nil
 }

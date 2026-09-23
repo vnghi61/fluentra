@@ -487,6 +487,31 @@ type ClientInterface interface {
 	// Corresponds with GET /admin/review-queue (the `AdminListReviewQueue` operationId).
 	AdminListReviewQueue(ctx context.Context, params *AdminListReviewQueueParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminListReviewBatches List generation runs awaiting review.
+	//
+	// Returns one row per generation run whose drafts are still awaiting review, oldest first, so a person can approve a batch at once.
+	//
+	// Corresponds with GET /admin/review-queue/batches (the `AdminListReviewBatches` operationId).
+	AdminListReviewBatches(ctx context.Context, params *AdminListReviewBatchesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminApproveReviewBatchWithBody Approve a generation run's doubts.
+	//
+	// Publishes every draft in the batch except the rejected ones, in one transaction. A rejected version is left for a person.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/review-queue/batches/{id}/approve (the `AdminApproveReviewBatch` operationId).
+	AdminApproveReviewBatchWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminApproveReviewBatch Approve a generation run's doubts.
+	//
+	// Publishes every draft in the batch except the rejected ones, in one transaction. A rejected version is left for a person.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/review-queue/batches/{id}/approve (the `AdminApproveReviewBatch` operationId).
+	AdminApproveReviewBatch(ctx context.Context, id string, body AdminApproveReviewBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RbacListRoles List roles and the permissions they grant.
 	//
 	// The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -3136,6 +3161,61 @@ func (c *Client) GetQuestionStats(ctx context.Context, id openapi_types.UUID, re
 // Corresponds with GET /admin/review-queue (the `AdminListReviewQueue` operationId).
 func (c *Client) AdminListReviewQueue(ctx context.Context, params *AdminListReviewQueueParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAdminListReviewQueueRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminListReviewBatches List generation runs awaiting review.
+//
+// Returns one row per generation run whose drafts are still awaiting review, oldest first, so a person can approve a batch at once.
+//
+// Corresponds with GET /admin/review-queue/batches (the `AdminListReviewBatches` operationId).
+func (c *Client) AdminListReviewBatches(ctx context.Context, params *AdminListReviewBatchesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminListReviewBatchesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminApproveReviewBatchWithBody Approve a generation run's doubts.
+//
+// Publishes every draft in the batch except the rejected ones, in one transaction. A rejected version is left for a person.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/review-queue/batches/{id}/approve (the `AdminApproveReviewBatch` operationId).
+func (c *Client) AdminApproveReviewBatchWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminApproveReviewBatchRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminApproveReviewBatch Approve a generation run's doubts.
+//
+// Publishes every draft in the batch except the rejected ones, in one transaction. A rejected version is left for a person.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/review-queue/batches/{id}/approve (the `AdminApproveReviewBatch` operationId).
+func (c *Client) AdminApproveReviewBatch(ctx context.Context, id string, body AdminApproveReviewBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminApproveReviewBatchRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -8743,6 +8823,18 @@ func NewAdminListReviewQueueRequest(server string, params *AdminListReviewQueueP
 
 		}
 
+		if params.Batch != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "batch", *params.Batch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if params.Cefr != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cefr", *params.Cefr, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
@@ -8789,6 +8881,119 @@ func NewAdminListReviewQueueRequest(server string, params *AdminListReviewQueueP
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewAdminListReviewBatchesRequest constructs an http.Request for the AdminListReviewBatches method
+func NewAdminListReviewBatchesRequest(server string, params *AdminListReviewBatchesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/review-queue/batches")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminApproveReviewBatchRequest calls the generic AdminApproveReviewBatch builder with application/json body
+func NewAdminApproveReviewBatchRequest(server string, id string, body AdminApproveReviewBatchJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminApproveReviewBatchRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAdminApproveReviewBatchRequestWithBody constructs an http.Request for the AdminApproveReviewBatch method, with any body, and a specified content type
+func NewAdminApproveReviewBatchRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/review-queue/batches/%s/approve", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -15824,6 +16029,33 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /admin/review-queue (the `AdminListReviewQueue` operationId).
 	AdminListReviewQueueWithResponse(ctx context.Context, params *AdminListReviewQueueParams, reqEditors ...RequestEditorFn) (*AdminListReviewQueueResponse, error)
 
+	// AdminListReviewBatchesWithResponse List generation runs awaiting review.
+	//
+	// Returns one row per generation run whose drafts are still awaiting review, oldest first, so a person can approve a batch at once.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/review-queue/batches (the `AdminListReviewBatches` operationId).
+	AdminListReviewBatchesWithResponse(ctx context.Context, params *AdminListReviewBatchesParams, reqEditors ...RequestEditorFn) (*AdminListReviewBatchesResponse, error)
+
+	// AdminApproveReviewBatchWithBodyWithResponse Approve a generation run's doubts.
+	//
+	// Publishes every draft in the batch except the rejected ones, in one transaction. A rejected version is left for a person.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/review-queue/batches/{id}/approve (the `AdminApproveReviewBatch` operationId).
+	AdminApproveReviewBatchWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminApproveReviewBatchResponse, error)
+
+	// AdminApproveReviewBatchWithResponse Approve a generation run's doubts.
+	//
+	// Publishes every draft in the batch except the rejected ones, in one transaction. A rejected version is left for a person.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/review-queue/batches/{id}/approve (the `AdminApproveReviewBatch` operationId).
+	AdminApproveReviewBatchWithResponse(ctx context.Context, id string, body AdminApproveReviewBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminApproveReviewBatchResponse, error)
+
 	// RbacListRolesWithResponse List roles and the permissions they grant.
 	//
 	// The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -20280,6 +20512,158 @@ func (r AdminListReviewQueueResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AdminListReviewQueueResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminListReviewBatchesResponse200Headers the declared response headers of an HTTP 200 response for AdminListReviewBatches
+type AdminListReviewBatchesResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminListReviewBatchesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminReviewBatchListResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminListReviewBatchesResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminListReviewBatchesResponse) GetJSON200() *AdminReviewBatchListResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminListReviewBatchesResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminListReviewBatchesResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminListReviewBatchesResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminListReviewBatchesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminListReviewBatchesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminListReviewBatchesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminListReviewBatchesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminApproveReviewBatchResponse200Headers the declared response headers of an HTTP 200 response for AdminApproveReviewBatch
+type AdminApproveReviewBatchResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminApproveReviewBatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminApproveBatchResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminApproveReviewBatchResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminApproveReviewBatchResponse) GetJSON200() *AdminApproveBatchResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminApproveReviewBatchResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminApproveReviewBatchResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AdminApproveReviewBatchResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminApproveReviewBatchResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminApproveReviewBatchResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminApproveReviewBatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminApproveReviewBatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminApproveReviewBatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminApproveReviewBatchResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -32115,6 +32499,51 @@ func (c *ClientWithResponses) AdminListReviewQueueWithResponse(ctx context.Conte
 	return ParseAdminListReviewQueueResponse(rsp)
 }
 
+// AdminListReviewBatchesWithResponse List generation runs awaiting review.
+//
+// Returns one row per generation run whose drafts are still awaiting review, oldest first, so a person can approve a batch at once.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/review-queue/batches (the `AdminListReviewBatches` operationId).
+func (c *ClientWithResponses) AdminListReviewBatchesWithResponse(ctx context.Context, params *AdminListReviewBatchesParams, reqEditors ...RequestEditorFn) (*AdminListReviewBatchesResponse, error) {
+	rsp, err := c.AdminListReviewBatches(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminListReviewBatchesResponse(rsp)
+}
+
+// AdminApproveReviewBatchWithBodyWithResponse Approve a generation run's doubts.
+//
+// Publishes every draft in the batch except the rejected ones, in one transaction. A rejected version is left for a person.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/review-queue/batches/{id}/approve (the `AdminApproveReviewBatch` operationId).
+func (c *ClientWithResponses) AdminApproveReviewBatchWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminApproveReviewBatchResponse, error) {
+	rsp, err := c.AdminApproveReviewBatchWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminApproveReviewBatchResponse(rsp)
+}
+
+// AdminApproveReviewBatchWithResponse Approve a generation run's doubts.
+//
+// Publishes every draft in the batch except the rejected ones, in one transaction. A rejected version is left for a person.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/review-queue/batches/{id}/approve (the `AdminApproveReviewBatch` operationId).
+func (c *ClientWithResponses) AdminApproveReviewBatchWithResponse(ctx context.Context, id string, body AdminApproveReviewBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminApproveReviewBatchResponse, error) {
+	rsp, err := c.AdminApproveReviewBatch(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminApproveReviewBatchResponse(rsp)
+}
+
 // RbacListRolesWithResponse List roles and the permissions they grant.
 //
 // The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -37472,6 +37901,140 @@ func ParseAdminListReviewQueueResponse(rsp *http.Response) (*AdminListReviewQueu
 	switch {
 	case rsp.StatusCode == 200:
 		var headers AdminListReviewQueueResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminListReviewBatchesResponse parses an HTTP response from a AdminListReviewBatchesWithResponse call
+func ParseAdminListReviewBatchesResponse(rsp *http.Response) (*AdminListReviewBatchesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminListReviewBatchesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminReviewBatchListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminListReviewBatchesResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminApproveReviewBatchResponse parses an HTTP response from a AdminApproveReviewBatchWithResponse call
+func ParseAdminApproveReviewBatchResponse(rsp *http.Response) (*AdminApproveReviewBatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminApproveReviewBatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminApproveBatchResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminApproveReviewBatchResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

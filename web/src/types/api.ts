@@ -1473,6 +1473,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/review-queue/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List generation runs awaiting review.
+         * @description Returns one row per generation run whose drafts are still awaiting review, oldest first, so a person can approve a batch at once.
+         */
+        get: operations["adminListReviewBatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/review-queue/batches/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a generation run's doubts.
+         * @description Publishes every draft in the batch except the rejected ones, in one transaction. A rejected version is left for a person.
+         */
+        post: operations["adminApproveReviewBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/content": {
         parameters: {
             query?: never;
@@ -4956,6 +4996,44 @@ export interface components {
             items: components["schemas"]["AdminReviewQueueItem"][];
             /** @example 1 */
             total: number;
+        };
+        /** @description One generation run whose drafts are still awaiting review. */
+        AdminReviewBatch: {
+            /** @example foundation:PRESENT_PERFECT:2026-09-23 */
+            batch: string;
+            /**
+             * Format: int64
+             * @example 12
+             */
+            item_count: number;
+            /**
+             * @example [
+             *       "grammar_tense_choice"
+             *     ]
+             */
+            kinds: string[];
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminReviewBatchListResponse: {
+            items: components["schemas"]["AdminReviewBatch"][];
+            /**
+             * Format: int64
+             * @example 1
+             */
+            total: number;
+        };
+        /** @description The version ids in the batch to leave for a person; the rest are approved. */
+        AdminApproveBatchRequest: {
+            reject?: string[];
+            note?: string;
+        };
+        AdminApproveBatchResponse: {
+            /**
+             * @description How many versions the batch approval published.
+             * @example 11
+             */
+            approved: number;
         };
         CourseSummary: {
             /** Format: uuid */
@@ -11020,6 +11098,8 @@ export interface operations {
                 kind?: string;
                 /** @description Filter by spine node code. */
                 node?: string;
+                /** @description Filter by generation batch id. */
+                batch?: string;
                 /** @description Filter by CEFR level. */
                 cefr?: components["schemas"]["CEFRLevel"];
                 /** @description Maximum items to return. */
@@ -11095,6 +11175,68 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminListReviewBatches: {
+        parameters: {
+            query?: {
+                /** @description Maximum items to return. */
+                limit?: number;
+                /** @description Items to skip before returning. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Batches awaiting review. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminReviewBatchListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminApproveReviewBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The generation batch id. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminApproveBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description The batch was approved. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminApproveBatchResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
             500: components["responses"]["InternalServerError"];
         };
     };

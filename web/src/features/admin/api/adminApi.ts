@@ -33,6 +33,11 @@ export type AdminReviewQueueResponse =
   components["schemas"]["AdminReviewQueueResponse"];
 export type AdminReviewQueueItem =
   components["schemas"]["AdminReviewQueueItem"];
+export type AdminReviewBatch = components["schemas"]["AdminReviewBatch"];
+export type AdminReviewBatchListResponse =
+  components["schemas"]["AdminReviewBatchListResponse"];
+export type AdminApproveBatchResponse =
+  components["schemas"]["AdminApproveBatchResponse"];
 export type Question = components["schemas"]["Question"];
 export type QuestionPage = components["schemas"]["QuestionPage"];
 export type QuestionStats = components["schemas"]["QuestionStats"];
@@ -230,12 +235,44 @@ export const adminApi = {
     if (params.purpose) sp.set("purpose", params.purpose);
     if (params.kind) sp.set("kind", params.kind);
     if (params.node) sp.set("node", params.node);
+    if (params.batch) sp.set("batch", params.batch);
     if (params.cefr) sp.set("cefr", params.cefr);
     if (params.limit !== undefined) sp.set("limit", params.limit.toString());
     if (params.offset !== undefined) sp.set("offset", params.offset.toString());
     const qs = sp.toString();
     return apiFetch<AdminReviewQueueResponse>(
       `/api/v1/admin/review-queue${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /**
+   * The generation runs whose drafts are still awaiting review (WO 22 Stage A).
+   *
+   * A run is approved as a batch: every item except the rejected ones publishes
+   * in one transaction, so a person reads the doubts together instead of one at
+   * a time.
+   */
+  async listReviewBatches(
+    params: { limit?: number; offset?: number } = {},
+  ): Promise<AdminReviewBatchListResponse> {
+    const sp = new URLSearchParams();
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<AdminReviewBatchListResponse>(
+      `/api/v1/admin/review-queue/batches${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /** Approve a batch, leaving the rejected version ids for a person. */
+  async approveReviewBatch(
+    batch: string,
+    reject: string[] = [],
+    note?: string,
+  ): Promise<AdminApproveBatchResponse> {
+    return apiFetch<AdminApproveBatchResponse>(
+      `/api/v1/admin/review-queue/batches/${encodeURIComponent(batch)}/approve`,
+      { method: "POST", body: JSON.stringify({ reject, note }) },
     );
   },
 
@@ -480,6 +517,7 @@ export interface ReviewQueueParams {
   purpose?: string | undefined;
   kind?: string | undefined;
   node?: string | undefined;
+  batch?: string | undefined;
   cefr?: string | undefined;
   limit?: number | undefined;
   offset?: number | undefined;

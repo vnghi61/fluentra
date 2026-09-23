@@ -90,6 +90,24 @@ func (q *Queries) CountPublishedContentVersions(ctx context.Context, arg CountPu
 	return column_1, err
 }
 
+const countReviewBatches = `-- name: CountReviewBatches :one
+SELECT COUNT(*)::bigint FROM (
+    SELECT 1
+    FROM content.content_versions v
+    WHERE v.status IN ('draft', 'in_review')
+      AND COALESCE(v.body->'_provenance'->>'purpose', '') <> 'resource'
+      AND COALESCE(v.body->'_provenance'->>'batch', '') <> ''
+    GROUP BY v.body->'_provenance'->>'batch'
+) batches
+`
+
+func (q *Queries) CountReviewBatches(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countReviewBatches)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countReviewQueue = `-- name: CountReviewQueue :one
 SELECT COUNT(*)::bigint
 FROM content.content_versions v
@@ -107,6 +125,7 @@ WHERE v.status IN ('draft', 'in_review')
       JOIN content.taxonomies t ON t.id = ct.taxonomy_id
       WHERE ct.item_id = v.item_id AND t.code = $4
   ))
+  AND ($5::text IS NULL OR v.body->'_provenance'->>'batch' = $5)
 `
 
 type CountReviewQueueParams struct {
@@ -114,6 +133,7 @@ type CountReviewQueueParams struct {
 	Kind      *string
 	CefrLevel *string
 	NodeCode  *string
+	Batch     *string
 }
 
 func (q *Queries) CountReviewQueue(ctx context.Context, arg CountReviewQueueParams) (int64, error) {
@@ -122,6 +142,7 @@ func (q *Queries) CountReviewQueue(ctx context.Context, arg CountReviewQueuePara
 		arg.Kind,
 		arg.CefrLevel,
 		arg.NodeCode,
+		arg.Batch,
 	)
 	var column_1 int64
 	err := row.Scan(&column_1)
@@ -376,6 +397,92 @@ func (q *Queries) ListContentVersionsByItemID(ctx context.Context, itemID uuid.U
 	return items, nil
 }
 
+const listReviewBatchVersionIDs = `-- name: ListReviewBatchVersionIDs :many
+SELECT v.id
+FROM content.content_versions v
+WHERE v.status IN ('draft', 'in_review')
+  AND COALESCE(v.body->'_provenance'->>'purpose', '') <> 'resource'
+  AND v.body->'_provenance'->>'batch' = $1::text
+ORDER BY v.created_at ASC, v.id ASC
+`
+
+// Every draft of one batch, unbounded: approving a batch must publish all of it
+// or none, and the queue's page ceiling would silently approve only the first
+// hundred (WO 22 Stage A.4).
+func (q *Queries) ListReviewBatchVersionIDs(ctx context.Context, batch string) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listReviewBatchVersionIDs, batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReviewBatches = `-- name: ListReviewBatches :many
+SELECT
+    (v.body->'_provenance'->>'batch')::text AS batch,
+    COUNT(*)::bigint AS item_count,
+    MIN(v.created_at)::timestamptz AS created_at,
+    COALESCE(array_agg(DISTINCT v.kind ORDER BY v.kind), '{}'::text[])::text[] AS kinds
+FROM content.content_versions v
+WHERE v.status IN ('draft', 'in_review')
+  AND COALESCE(v.body->'_provenance'->>'purpose', '') <> 'resource'
+  AND COALESCE(v.body->'_provenance'->>'batch', '') <> ''
+GROUP BY v.body->'_provenance'->>'batch'
+ORDER BY MIN(v.created_at) ASC, batch ASC
+LIMIT $2 OFFSET $1
+`
+
+type ListReviewBatchesParams struct {
+	ResultOffset int32
+	ResultLimit  int32
+}
+
+type ListReviewBatchesRow struct {
+	Batch     string
+	ItemCount int64
+	CreatedAt time.Time
+	Kinds     []string
+}
+
+// One row per generation run whose drafts are still awaiting review, so a person
+// can approve a whole batch at once (WO 22 Stage A.4).
+func (q *Queries) ListReviewBatches(ctx context.Context, arg ListReviewBatchesParams) ([]ListReviewBatchesRow, error) {
+	rows, err := q.db.Query(ctx, listReviewBatches, arg.ResultOffset, arg.ResultLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReviewBatchesRow
+	for rows.Next() {
+		var i ListReviewBatchesRow
+		if err := rows.Scan(
+			&i.Batch,
+			&i.ItemCount,
+			&i.CreatedAt,
+			&i.Kinds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listReviewQueue = `-- name: ListReviewQueue :many
 SELECT
     v.id,
@@ -408,8 +515,9 @@ WHERE v.status IN ('draft', 'in_review')
       JOIN content.taxonomies t ON t.id = ct.taxonomy_id
       WHERE ct.item_id = v.item_id AND t.code = $4
   ))
+  AND ($5::text IS NULL OR v.body->'_provenance'->>'batch' = $5)
 ORDER BY v.created_at ASC, v.id ASC
-LIMIT $6 OFFSET $5
+LIMIT $7 OFFSET $6
 `
 
 type ListReviewQueueParams struct {
@@ -417,6 +525,7 @@ type ListReviewQueueParams struct {
 	Kind         *string
 	CefrLevel    *string
 	NodeCode     *string
+	Batch        *string
 	ResultOffset int32
 	ResultLimit  int32
 }
@@ -439,6 +548,7 @@ func (q *Queries) ListReviewQueue(ctx context.Context, arg ListReviewQueueParams
 		arg.Kind,
 		arg.CefrLevel,
 		arg.NodeCode,
+		arg.Batch,
 		arg.ResultOffset,
 		arg.ResultLimit,
 	)

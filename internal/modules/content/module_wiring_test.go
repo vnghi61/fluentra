@@ -114,9 +114,11 @@ func TestRoutesMountTheDocumentedPaths(t *testing.T) {
 	// Mounted outside the admin-only group so a moderator reaches them; each
 	// handler checks its own permission.
 	wantReview := map[string]bool{
-		"GET /admin/review-queue":          false,
-		"POST /admin/content/{id}/review":  false,
-		"POST /admin/content/{id}/publish": false,
+		"GET /admin/review-queue":                       false,
+		"GET /admin/review-queue/batches":               false,
+		"POST /admin/review-queue/batches/{id}/approve": false,
+		"POST /admin/content/{id}/review":               false,
+		"POST /admin/content/{id}/publish":              false,
 	}
 
 	collect(learner, wantLearner, "learner")
