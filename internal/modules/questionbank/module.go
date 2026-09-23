@@ -27,7 +27,10 @@ type Deps struct {
 	TagIndex      contentcontract.TagIndex
 	LessonAuthor  lessoncontract.Author
 	Generator     learningcontract.Generator
-	Events        eventbus.EventBus
+	// ExamParts reads an exam part's published format for the generator's
+	// structural check (WO 22 Stage I). The exam module implements it.
+	ExamParts service.ExamPartSpecReader
+	Events    eventbus.EventBus
 }
 
 // Module wires questionbank domain, repository, service, and HTTP transport.
@@ -47,6 +50,7 @@ func New(deps Deps) *Module {
 		TagIndex:      deps.TagIndex,
 		LessonAuthor:  deps.LessonAuthor,
 		Generator:     deps.Generator,
+		ExamParts:     deps.ExamParts,
 		Events:        deps.Events,
 	})
 	handler := questionbankhttp.NewHandler(svc)

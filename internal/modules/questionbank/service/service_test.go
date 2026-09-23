@@ -19,12 +19,28 @@ import (
 type mockGenerator struct {
 	items []learningcontract.GeneratedItem
 	err   error
+	// lastRequest is the request the service passed, so a test can assert what
+	// reached the generator.
+	lastRequest *learningcontract.GenerateRequest
 }
 
 func (m *mockGenerator) Generate(
-	_ context.Context, _ learningcontract.GenerateRequest,
+	_ context.Context, req learningcontract.GenerateRequest,
 ) ([]learningcontract.GeneratedItem, error) {
+	m.lastRequest = &req
 	return m.items, m.err
+}
+
+// mockExamParts answers questionbank's exam-part lookup with one constraint.
+type mockExamParts struct {
+	constraints *learningcontract.ExamPartConstraints
+	err         error
+}
+
+func (m *mockExamParts) PartConstraints(
+	_ context.Context, _ uuid.UUID,
+) (*learningcontract.ExamPartConstraints, error) {
+	return m.constraints, m.err
 }
 
 type mockLessonAuthor struct {
@@ -91,4 +107,31 @@ func TestQuestionbank_ServiceInitialization(t *testing.T) {
 		Generator:    &mockGenerator{},
 	})
 	assert.NotNil(t, svc)
+}
+
+// TestGenerateQuestions_PassesTheExamPartConstraintsToTheGenerator is the
+// questionbank half of WO 22 Stage I enforcement: the part's published format
+// reaches the generator.
+func TestGenerateQuestions_PassesTheExamPartConstraintsToTheGenerator(t *testing.T) {
+	gen := &mockGenerator{}
+	parts := &mockExamParts{constraints: &learningcontract.ExamPartConstraints{
+		OptionCount:       3,
+		QuestionsPerGroup: 1,
+		AudioRequired:     true,
+	}}
+	svc := service.New(service.Config{Generator: gen, ExamParts: parts})
+
+	partID := uuid.New()
+	_, err := svc.GenerateQuestions(context.Background(), contract.GenerateRequest{
+		ExamPartID: &partID,
+		Kind:       "question_response",
+		CEFRLevel:  "B1",
+		NodeCodes:  []string{"PRESENT_SIMPLE"},
+		Count:      1,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, gen.lastRequest, "the generator must be called")
+	require.NotNil(t, gen.lastRequest.ExamConstraints, "the part's spec must reach the generator")
+	assert.Equal(t, 3, gen.lastRequest.ExamConstraints.OptionCount)
+	assert.True(t, gen.lastRequest.ExamConstraints.AudioRequired)
 }

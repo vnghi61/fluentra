@@ -425,6 +425,36 @@ func TestGenerate_AutoPublishLeavesADoubtForAPerson(t *testing.T) {
 	assert.False(t, recorder.received[0].Confirmed)
 }
 
+// TestGenerate_AppliesTheExamPartConstraints is the WO 22 Stage I enforcement
+// at the generator: an exam part's option count reaches the structure check, so
+// a four-option item cannot be generated for a three-option part.
+func TestGenerate_AppliesTheExamPartConstraints(t *testing.T) {
+	svc := service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     &generatorTestAuthor{},
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           passingGraders(),
+		AI:                ai.NewMockProvider(nil),
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+		Synthesiser:       &fakeAudioSynthesiser{},
+	})
+
+	_, err := svc.Generate(context.Background(), learningcontract.GenerateRequest{
+		Kind:      testKindTenseChoice,
+		CEFRLevel: "B1",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   testPurposeFoundation,
+		// The mock writes four options; TOEIC Part 2 has three.
+		ExamConstraints: &learningcontract.ExamPartConstraints{OptionCount: 3},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exam structure")
+}
+
 // generatorTestTaxonomySet is the one-node taxonomy the auto-publish tests use.
 func generatorTestTaxonomySet() *generatorTestTaxonomies {
 	return &generatorTestTaxonomies{

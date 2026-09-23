@@ -229,6 +229,9 @@ func (s *Service) attachProvenanceAndVerify(
 		BlindSolve:      blindSolve && !isTopic,
 		CheckCEFR:       checkCEFR,
 		CheckProvenance: true,
+		// The exam part's published format, when the caller supplied it: the
+		// structural check finally runs (WO 22 Stage I).
+		ExamConstraints: req.ExamConstraints,
 	}
 	if req.Kind == kindSpeakingTask {
 		vReq.TaskType = subTypeRespond

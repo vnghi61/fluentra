@@ -448,10 +448,25 @@ func newIdentity(deps identityDeps) *identity {
 		TagIndex:      assembled.content.TagIndex(),
 		LessonAuthor:  assembled.lesson.Author(),
 		Generator:     assembled.learning.Generator(),
+		ExamParts:     lazyExamPartSpec{of: assembled},
 		Events:        nil,
 	})
 
 	return assembled
+}
+
+// lazyExamPartSpec answers questionbank's exam-part lookup. Exam is assembled
+// after questionbank (exam depends on questionbank's reader), so the adapter
+// resolves it at call time rather than at construction.
+type lazyExamPartSpec struct{ of *identity }
+
+func (l lazyExamPartSpec) PartConstraints(
+	ctx context.Context, partID uuid.UUID,
+) (*learningcontract.ExamPartConstraints, error) {
+	if l.of.exam == nil {
+		return nil, fmt.Errorf("exam module is not assembled")
+	}
+	return l.of.exam.Service().PartConstraints(ctx, partID)
 }
 
 // buildDeclaredKinds returns all activity kinds declared across skill modules.

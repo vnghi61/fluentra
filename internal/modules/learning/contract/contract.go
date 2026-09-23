@@ -420,6 +420,11 @@ type GenerateRequest struct {
 	// doubts together (WO 22 Stage A). Stored under `_provenance.batch`; empty
 	// means the item is not part of a batch.
 	Batch string
+	// ExamConstraints is the exam part's published format, when the item
+	// belongs to one (WO 22 Stage I). The generator puts it on the structure
+	// check, so a "TOEIC Part 3" item cannot be composed with the wrong
+	// question count or option count.
+	ExamConstraints *ExamPartConstraints
 }
 
 // GeneratedItem represents a single authored and verified item.

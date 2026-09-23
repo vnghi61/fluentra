@@ -22,6 +22,29 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/eventbus"
 )
 
+// examPartConstraints reads the part's published format, when the request names
+// one and a reader is wired.
+func (s *Service) examPartConstraints(
+	ctx context.Context, req contract.GenerateRequest,
+) (*learningcontract.ExamPartConstraints, error) {
+	if req.ExamPartID == nil || s.examParts == nil {
+		return nil, nil
+	}
+	constraints, err := s.examParts.PartConstraints(ctx, *req.ExamPartID)
+	if err != nil {
+		return nil, fmt.Errorf("read exam part constraints: %w", err)
+	}
+	return constraints, nil
+}
+
+// ExamPartSpecReader reads an exam part's published format, so the generator's
+// structural check runs on every exam item (WO 22 Stage I). The exam module
+// implements it; the interface lives here because exam depends on questionbank,
+// and the other direction would be a cycle.
+type ExamPartSpecReader interface {
+	PartConstraints(ctx context.Context, partID uuid.UUID) (*learningcontract.ExamPartConstraints, error)
+}
+
 // Service implements the questionbank Author and Reader interfaces.
 type Service struct {
 	repo          *repository.Repository
@@ -30,6 +53,7 @@ type Service struct {
 	tagIndex      contentcontract.TagIndex
 	lessonAuthor  lessoncontract.Author
 	generator     learningcontract.Generator
+	examParts     ExamPartSpecReader
 	events        eventbus.EventBus
 	bankCourses   *bankCourseManager
 }
@@ -42,6 +66,7 @@ type Config struct {
 	TagIndex      contentcontract.TagIndex
 	LessonAuthor  lessoncontract.Author
 	Generator     learningcontract.Generator
+	ExamParts     ExamPartSpecReader
 	Events        eventbus.EventBus
 }
 
@@ -58,6 +83,7 @@ func New(cfg Config) *Service {
 		tagIndex:      cfg.TagIndex,
 		lessonAuthor:  cfg.LessonAuthor,
 		generator:     cfg.Generator,
+		examParts:     cfg.ExamParts,
 		events:        cfg.Events,
 		bankCourses:   bm,
 	}
@@ -208,6 +234,14 @@ func (s *Service) GenerateQuestions(ctx context.Context, req contract.GenerateRe
 		skill = determineSkill(req.Kind)
 	}
 
+	// The part's published format reaches the generator, so a "TOEIC Part 3"
+	// item is asked for as a three-question conversation and checked for it
+	// (WO 22 Stage I).
+	examConstraints, err := s.examPartConstraints(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
 	genItems, err := s.generator.Generate(ctx, learningcontract.GenerateRequest{
 		Kind:      req.Kind,
 		CEFRLevel: req.CEFRLevel,
@@ -216,7 +250,8 @@ func (s *Service) GenerateQuestions(ctx context.Context, req contract.GenerateRe
 		Purpose:   "bank",
 		// One batch id per run, so the doubts of one generation are reviewed
 		// together (WO 22 Stage A.4).
-		Batch: fmt.Sprintf("bank:%s:%s", req.Kind, time.Now().UTC().Format("20060102T150405")),
+		Batch:           fmt.Sprintf("bank:%s:%s", req.Kind, time.Now().UTC().Format("20060102T150405")),
+		ExamConstraints: examConstraints,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("learning generator: %w", err)
