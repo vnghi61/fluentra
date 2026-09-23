@@ -767,3 +767,62 @@ func assertContentObjectsExist(t *testing.T, pool *pgxpool.Pool, want bool) {
 		}
 	}
 }
+
+// TestFoundationSpine_EveryNodeIsInExactlyOneCourse is the WO 22 Stage E gate:
+// every spine node belongs to exactly one course, and there are thirteen
+// courses. A node in no course or in two fails here.
+func TestFoundationSpine_EveryNodeIsInExactlyOneCourse(t *testing.T) {
+	pool := migratedPool(t)
+	ctx := context.Background()
+
+	rows, err := pool.Query(ctx, `
+		SELECT n.namespace, n.code, COUNT(m.node_id)::int AS courses
+		FROM content.taxonomies n
+		LEFT JOIN content.foundation_course_nodes m ON m.node_id = n.id
+		WHERE n.namespace IN ('grammar', 'vocabulary', 'pattern', 'pronunciation', 'skill')
+		  AND n.deprecated_at IS NULL
+		GROUP BY n.id, n.namespace, n.code
+		HAVING COUNT(m.node_id) <> 1
+		ORDER BY n.namespace, n.code`)
+	if err != nil {
+		t.Fatalf("list spine nodes without exactly one course: %v", err)
+	}
+	defer rows.Close()
+
+	bad := 0
+	for rows.Next() {
+		var namespace, code string
+		var courses int
+		if err := rows.Scan(&namespace, &code, &courses); err != nil {
+			t.Fatalf("scan spine node: %v", err)
+		}
+		t.Errorf("spine node %s:%s is in %d courses, want exactly 1", namespace, code, courses)
+		bad++
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate spine nodes: %v", err)
+	}
+	if bad > 0 {
+		return
+	}
+
+	var nodeCount int
+	if err := pool.QueryRow(ctx, `
+		SELECT COUNT(*)::int FROM content.taxonomies
+		WHERE namespace IN ('grammar', 'vocabulary', 'pattern', 'pronunciation', 'skill')
+		  AND deprecated_at IS NULL`).Scan(&nodeCount); err != nil {
+		t.Fatalf("count spine nodes: %v", err)
+	}
+	if nodeCount != 93 {
+		t.Errorf("spine nodes = %d, want 93", nodeCount)
+	}
+
+	var courseCount int
+	if err := pool.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT course_slug)::int FROM content.foundation_course_nodes`).Scan(&courseCount); err != nil {
+		t.Fatalf("count foundation courses: %v", err)
+	}
+	if courseCount != 13 {
+		t.Errorf("foundation courses = %d, want 13", courseCount)
+	}
+}
