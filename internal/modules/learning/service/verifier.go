@@ -75,14 +75,15 @@ func (s *Service) dispatchItemVerification(
 		}
 		_, err := s.verifyListeningCandidateWithMin(ctx, req.CEFRLevel, req.Body, existing, req.BlindSolve, minQ)
 		return err
-	case kindReadingComprehension:
-		minQ := 4
+	case kindReadingComprehension, kindTextCompletion:
+		// An exam part names an exact questions-per-group; without one the
+		// default 4-6 range applies, because a generated passage with five
+		// questions is a valid item (found in the live run).
+		minQ := 0
 		if req.ExamConstraints != nil && req.ExamConstraints.QuestionsPerGroup > 0 {
 			minQ = req.ExamConstraints.QuestionsPerGroup
 		}
 		return s.checkReadingCandidateWithMin(ctx, req.CEFRLevel, req.Body, existing, req.BlindSolve, minQ)
-	case kindTextCompletion:
-		return s.checkReadingCandidateWithMin(ctx, req.CEFRLevel, req.Body, existing, req.BlindSolve, 4)
 	case kindPhotoDescription, kindQuestionResponse, kindMcqGap,
 		kindGrammarTenseChoice, kindGrammarSentenceTransform, kindFoundationQuiz, kindFoundationReview:
 		return s.checkCandidateWithBlindSolve(ctx, req.CEFRLevel, req.Kind, req.Body, existing, req.BlindSolve)
