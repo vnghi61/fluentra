@@ -59,6 +59,26 @@ func (q *Queries) DeleteResourcePracticeSetsForUser(ctx context.Context, userID 
 	return err
 }
 
+const getResourcePracticeCourseAnchor = `-- name: GetResourcePracticeCourseAnchor :one
+SELECT activity_ids[1]::uuid AS activity_id
+FROM learn.resource_practice_sets
+WHERE user_id = $1 AND cardinality(activity_ids) > 0
+LIMIT 1
+`
+
+// Any one activity from this learner's resource practice.
+//
+// The sets live in a hidden per-learner course, and the dashboard and progress
+// page must leave it out exactly as they leave the practice pool out. Nothing
+// stores the course id, but every activity resolves to it and every set of this
+// learner's shares it, so one row is enough to name the course to drop.
+func (q *Queries) GetResourcePracticeCourseAnchor(ctx context.Context, userID uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getResourcePracticeCourseAnchor, userID)
+	var activity_id uuid.UUID
+	err := row.Scan(&activity_id)
+	return activity_id, err
+}
+
 const getResourcePracticeSet = `-- name: GetResourcePracticeSet :one
 SELECT resource_id, user_id, lesson_id, activity_ids, status, failure_reason, generated_on, created_at, updated_at
 FROM learn.resource_practice_sets

@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
+	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/clock"
@@ -90,6 +91,15 @@ func (s *stubPracticeStore) ClaimGeneratingResourcePracticeSets(
 func (s *stubPracticeStore) DeleteResourcePracticeSetsForUser(context.Context, uuid.UUID) error {
 	s.deleted++
 	return nil
+}
+
+func (s *stubPracticeStore) ResourcePracticeCourseAnchor(
+	context.Context, uuid.UUID,
+) (uuid.UUID, error) {
+	if s.set == nil || len(s.set.ActivityIDs) == 0 {
+		return uuid.Nil, nil
+	}
+	return s.set.ActivityIDs[0], nil
 }
 
 func resourcePracticeService(
@@ -250,5 +260,106 @@ func TestWeakNodeMatches_FindsTheNodeInTheVersionsTags(t *testing.T) {
 	}
 	if weakNodeMatches([]string{"SENTENCE_STRUCTURE"}, weak) {
 		t.Error("a version without the weak node was matched")
+	}
+}
+
+// stubActivityResolver answers ResolveActivity and nothing else. The rest of
+// lesson's Reader is unused by the course filter, so it stays unimplemented
+// rather than faked into looking meaningful.
+type stubActivityResolver struct {
+	courseID uuid.UUID
+}
+
+func (stubActivityResolver) GetLesson(
+	context.Context, uuid.UUID,
+) (*lessoncontract.Lesson, error) {
+	return nil, errors.New("not used")
+}
+
+func (stubActivityResolver) ListLessons(
+	context.Context, uuid.UUID,
+) ([]*lessoncontract.Lesson, error) {
+	return nil, errors.New("not used")
+}
+
+func (stubActivityResolver) ListUnitsByCourseID(
+	context.Context, uuid.UUID,
+) ([]*lessoncontract.Unit, error) {
+	return nil, errors.New("not used")
+}
+
+func (stubActivityResolver) ListPrerequisitesForLessons(
+	context.Context, []uuid.UUID,
+) ([]lessoncontract.PrerequisiteItem, error) {
+	return nil, errors.New("not used")
+}
+
+func (stubActivityResolver) ListActivitiesByCourseIDs(
+	context.Context, []uuid.UUID,
+) (map[uuid.UUID][]uuid.UUID, error) {
+	return nil, errors.New("not used")
+}
+
+func (stubActivityResolver) NextLesson(
+	context.Context, uuid.UUID, *uuid.UUID,
+) (*lessoncontract.Lesson, error) {
+	return nil, errors.New("not used")
+}
+
+func (s stubActivityResolver) ResolveActivity(
+	_ context.Context, id uuid.UUID,
+) (*lessoncontract.ActivityHierarchy, error) {
+	return &lessoncontract.ActivityHierarchy{ActivityID: id, CourseID: s.courseID}, nil
+}
+
+// The hidden course a learner's resource practice lives in must not reach the
+// dashboard or the progress page. It is a course they never chose — the
+// generator made it to hold their private set — and the dashboard continues
+// the newest active enrolment, so leaving it in would turn "continue learning"
+// into a drill built from their own upload and list "Practice from my files"
+// among their courses. This is the guard the practice pool already has.
+func TestWithoutPoolCourse_DropsTheResourcePracticeCourse(t *testing.T) {
+	hiddenCourse := uuid.New()
+	chosenCourse := uuid.New()
+	activityID := uuid.New()
+
+	svc := New(Deps{
+		Clock:  clock.NewFake(time.Date(2026, 9, 22, 8, 0, 0, 0, time.UTC)),
+		Lesson: stubActivityResolver{courseID: hiddenCourse},
+		ResourcePractice: &stubPracticeStore{
+			set: &domain.ResourcePracticeSet{ActivityIDs: []uuid.UUID{activityID}},
+		},
+	})
+
+	kept := svc.withoutPoolCourse(context.Background(), uuid.New(), []domain.Enrollment{
+		{CourseID: chosenCourse},
+		{CourseID: hiddenCourse},
+	})
+
+	if len(kept) != 1 {
+		t.Fatalf("expected one enrolment to survive, got %d", len(kept))
+	}
+	if kept[0].CourseID != chosenCourse {
+		t.Errorf("the wrong course survived: want %s, got %s", chosenCourse, kept[0].CourseID)
+	}
+}
+
+// A learner who has generated nothing has no hidden course, and their real
+// enrolments must survive untouched.
+func TestWithoutPoolCourse_KeepsEverythingWithoutResourcePractice(t *testing.T) {
+	chosenCourse := uuid.New()
+
+	svc := New(Deps{
+		Clock:            clock.NewFake(time.Date(2026, 9, 22, 8, 0, 0, 0, time.UTC)),
+		Lesson:           stubActivityResolver{courseID: uuid.New()},
+		ResourcePractice: &stubPracticeStore{},
+	})
+
+	kept := svc.withoutPoolCourse(context.Background(), uuid.New(), []domain.Enrollment{
+		{CourseID: chosenCourse},
+	})
+
+	if len(kept) != 1 || kept[0].CourseID != chosenCourse {
+		t.Fatalf("a learner with no generated practice lost an enrolment: %+v", kept)
 	}
 }

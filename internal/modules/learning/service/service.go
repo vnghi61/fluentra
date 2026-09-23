@@ -1788,7 +1788,7 @@ func (s *Service) activeEnrollment(
 	if err != nil {
 		return nil, "", fmt.Errorf("list enrollments: %w", err)
 	}
-	enrollments = s.withoutPoolCourse(ctx, enrollments)
+	enrollments = s.withoutPoolCourse(ctx, userID, enrollments)
 	if len(enrollments) == 0 {
 		return nil, domain.StateNotStarted, nil
 	}
@@ -2097,7 +2097,7 @@ func (s *Service) loadProgress(ctx context.Context, userID uuid.UUID) (*domain.P
 	if err != nil {
 		return nil, fmt.Errorf("list enrollments: %w", err)
 	}
-	enrollments = s.withoutPoolCourse(ctx, enrollments)
+	enrollments = s.withoutPoolCourse(ctx, userID, enrollments)
 
 	masteries, err := s.repo.ListSkillMasteryByUser(ctx, userID)
 	if err != nil {

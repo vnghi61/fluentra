@@ -63,6 +63,10 @@ type ResourcePracticeStore interface {
 		ctx context.Context, limit int32,
 	) ([]domain.ResourcePracticeSet, error)
 	DeleteResourcePracticeSetsForUser(ctx context.Context, userID uuid.UUID) error
+	// ResourcePracticeCourseAnchor names one activity of this learner's, so the
+	// read path can resolve the hidden course their sets live in. uuid.Nil when
+	// they have no sets.
+	ResourcePracticeCourseAnchor(ctx context.Context, userID uuid.UUID) (uuid.UUID, error)
 }
 
 // resourcePracticeCourseSlug is one hidden course per learner.

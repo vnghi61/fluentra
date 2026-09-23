@@ -1687,25 +1687,58 @@ func (s *Service) ensurePoolEnrollment(ctx context.Context, userID, courseID uui
 	}
 }
 
-// withoutPoolCourse drops the practice pool's enrolment. The dashboard continues
-// the newest active enrolment, so without this, opening today's practice turned
-// "continue learning" into a machine-made drill and put "Practice Pool" among the
-// learner's courses.
-func (s *Service) withoutPoolCourse(ctx context.Context, enrollments []domain.Enrollment) []domain.Enrollment {
-	if s.lessonAuthor == nil {
+// withoutPoolCourse drops the enrolments in courses the learner never chose.
+//
+// Two of them now. The dashboard continues the newest active enrolment, so
+// without this, opening today's practice turned "continue learning" into a
+// machine-made drill and put "Practice Pool" among the learner's courses —
+// and generating practice from an upload would do the same with
+// "Practice from my files", which is the same kind of course by the same
+// author for the same reason.
+func (s *Service) withoutPoolCourse(
+	ctx context.Context, userID uuid.UUID, enrollments []domain.Enrollment,
+) []domain.Enrollment {
+	hidden := map[uuid.UUID]struct{}{}
+	if s.lessonAuthor != nil {
+		if layout, err := s.practicePool(ctx); err == nil {
+			hidden[layout.courseID] = struct{}{}
+		}
+	}
+	if courseID := s.resourcePracticeCourse(ctx, userID); courseID != uuid.Nil {
+		hidden[courseID] = struct{}{}
+	}
+	if len(hidden) == 0 {
 		return enrollments
 	}
-	layout, err := s.practicePool(ctx)
-	if err != nil {
-		return enrollments
-	}
+
 	kept := make([]domain.Enrollment, 0, len(enrollments))
 	for _, enrollment := range enrollments {
-		if enrollment.CourseID != layout.courseID {
+		if _, isHidden := hidden[enrollment.CourseID]; !isHidden {
 			kept = append(kept, enrollment)
 		}
 	}
 	return kept
+}
+
+// resourcePracticeCourse is the hidden course a learner's resource practice
+// lives in, or uuid.Nil when they have generated none.
+//
+// Nothing stores the course id: the row holds activities, and an activity
+// resolves to its course. One read answers for a learner with forty files,
+// because every set of theirs shares the one course.
+func (s *Service) resourcePracticeCourse(ctx context.Context, userID uuid.UUID) uuid.UUID {
+	if s.resourcePractice == nil || s.lesson == nil {
+		return uuid.Nil
+	}
+	activityID, err := s.resourcePractice.ResourcePracticeCourseAnchor(ctx, userID)
+	if err != nil || activityID == uuid.Nil {
+		return uuid.Nil
+	}
+	activity, err := s.lesson.ResolveActivity(ctx, activityID)
+	if err != nil || activity == nil {
+		return uuid.Nil
+	}
+	return activity.CourseID
 }
 
 // --------------------------------------------------------------------------

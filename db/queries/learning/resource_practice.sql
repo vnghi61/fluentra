@@ -51,3 +51,15 @@ LIMIT $1;
 
 -- name: DeleteResourcePracticeSetsForUser :exec
 DELETE FROM learn.resource_practice_sets WHERE user_id = $1;
+
+-- name: GetResourcePracticeCourseAnchor :one
+-- Any one activity from this learner's resource practice.
+--
+-- The sets live in a hidden per-learner course, and the dashboard and progress
+-- page must leave it out exactly as they leave the practice pool out. Nothing
+-- stores the course id, but every activity resolves to it and every set of this
+-- learner's shares it, so one row is enough to name the course to drop.
+SELECT activity_ids[1]::uuid AS activity_id
+FROM learn.resource_practice_sets
+WHERE user_id = $1 AND cardinality(activity_ids) > 0
+LIMIT 1;

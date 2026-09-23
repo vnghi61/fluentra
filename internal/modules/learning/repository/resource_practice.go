@@ -114,3 +114,21 @@ func (r *Repository) DeleteResourcePracticeSetsForUser(ctx context.Context, user
 	}
 	return nil
 }
+
+// ResourcePracticeCourseAnchor returns any one activity from this learner's
+// resource practice, or uuid.Nil when they have none.
+//
+// It is how the read path names the hidden course their sets live in: nothing
+// stores the course id, but every activity resolves to it.
+func (r *Repository) ResourcePracticeCourseAnchor(
+	ctx context.Context, userID uuid.UUID,
+) (uuid.UUID, error) {
+	activityID, err := r.queries.GetResourcePracticeCourseAnchor(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, nil
+		}
+		return uuid.Nil, fmt.Errorf("read resource practice anchor: %w", mapPgError(err))
+	}
+	return activityID, nil
+}
