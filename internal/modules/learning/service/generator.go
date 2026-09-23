@@ -196,7 +196,10 @@ func (s *Service) attachProvenanceAndVerify(
 	}
 
 	var blindSolvePayload json.RawMessage
-	if blindSolve && !isTopic {
+	// A prompt or a task has no answer key to blind-solve against: asking the
+	// model to solve it and parsing the reply fails, and it failed every
+	// generated writing and speaking item (found in the live run).
+	if blindSolve && !isTopic && kindHasAnswerKey(req.Kind) {
 		var err error
 		blindSolvePayload, err = s.blindSolveItem(ctx, req.Kind, preparedBody)
 		if err != nil {
@@ -226,7 +229,7 @@ func (s *Service) attachProvenanceAndVerify(
 		Kind:            req.Kind,
 		CEFRLevel:       req.CEFRLevel,
 		Body:            bodyWithProv,
-		BlindSolve:      blindSolve && !isTopic,
+		BlindSolve:      blindSolve && !isTopic && kindHasAnswerKey(req.Kind),
 		CheckCEFR:       checkCEFR,
 		CheckProvenance: true,
 		// The exam part's published format, when the caller supplied it: the

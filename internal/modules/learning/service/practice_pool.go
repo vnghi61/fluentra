@@ -1047,7 +1047,7 @@ func checkOptions(options []candOption, correctOptionID string) error {
 
 func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 	switch kind {
-	case kindReadingComprehension, kindTextCompletion:
+	case kindReadingComprehension, kindListeningComprehension, kindTextCompletion:
 		var resp struct {
 			Answers map[string]string `json:"answers"`
 		}
