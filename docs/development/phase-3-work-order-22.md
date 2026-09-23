@@ -5,354 +5,547 @@ status: planned
 last_verified: 2026-09-23
 ---
 
-# Phase 3 — work order 22: real mock tests — TOEIC, IELTS, VSTEP, five tests each, and more every day
+# Phase 3 — work order 22: the content a learner needs — words, Foundation courses, mock tests
 
-**Purpose.** Work order 19 built the exam machinery — versions, parts, blueprints, a question bank, a
-composer — and work order 21 put a screen on it. A learner still cannot sit a TOEIC test: the bank holds
-no questions, a blueprint may store only one fixed test, IELTS has no blueprint, and the exam hub lists
-three generic "Mixed-skill practice exam" entries told apart by level. This work order makes the exam hub
-what the owner asked for:
+**Purpose.** One work order, handed over once, that turns the development dataset into the product the
+owner described. It has three parts and one piece of shared machinery:
 
-1. The learner picks an **exam** (TOEIC, IELTS, VSTEP), not a level.
-2. Each exam has **at least five complete tests** from a fresh `make seed`.
-3. The learner picks **which test** to sit — Test 1 to Test N — or a **random** one, in exam mode or
-   practice mode.
-4. **New tests appear over time**: a daily job generates questions, an **independent AI verification
-   publishes the ones it confirms** and sends only the doubtful ones to a person, and each time a full
-   test's worth is published the next numbered test is composed.
+| Part | What the learner gets |
+|---|---|
+| **Shared** | Generated content is published when an **independent AI verifier** confirms it; a person sees only what it doubts |
+| **I. Vocabulary** | **10,000 words** with IPA, Vietnamese meaning, examples and a recorded pronunciation stored as a link; and adding a word **checks the database first**, so a known word costs no dictionary or model call |
+| **II. Foundation** | **Thirteen Foundation courses** in place of the five Phase 2 courses |
+| **III. Exams** | Pick an **exam** — TOEIC, IELTS, VSTEP — then **Test 1 … Test N** or a random test, in exam or practice mode; **at least five tests each** from a fresh seed, and **more every day** |
 
-**Owner's decision, 2026-09-23.** "Tôi cho phép public duyệt nếu AI xác minh đúng" — a generated question
-may be published without a person when AI verification confirms it. This changes BR-QUESTIONBANK-04 and
-BR-CONTENT-10 (Stage F amends both) and supersedes the brief's "human reviewed" state for items that pass.
-It does not remove the person: they review what the verifier doubts and a sample of what it passed.
+Everything a fresh database needs is built **once**, checked, and **frozen into fixtures** in the repo, so
+`make seed` is fast, offline and gives every machine the same data.
 
-**Read first.** WO 19 §§F–H; WO 21 Stage E; `exam`, `questionbank` and `content` `AGENT.md` (BR-EXAM-12
-to 16, BR-QUESTIONBANK-01 to 05, BR-CONTENT-10); the owner's content-system brief of 2026-09-20 §§5–8
-and §11 (verify exam formats from official sources). The brief's "never silently publish AI exam
-questions" still holds in spirit: an auto-published item is marked, sampled and pullable (D22-14).
+**Owner's decisions, 2026-09-23** (quoted so no later reader has to reconstruct them):
+
+1. "Tôi cho phép public duyệt nếu AI xác minh đúng" — a generated question or Foundation item is published
+   without a person when AI verification confirms it (Stage A). This amends BR-QUESTIONBANK-04 and
+   BR-CONTENT-10.
+2. Adding vocabulary must check the database before any AI call, because most words already exist
+   (Stage B).
+3. The seed accounts are `nguyenvannghi1110@gmail.com` (admin) and `nghitienvl@gmail.com` (learner) —
+   already done in `6ec61f8`.
+
+**Read first.** WO 19 §§D, F–H; WO 21 Stages C, E, G and D21-6 to D21-8; `vocabulary`, `content`,
+`lesson`, `learning`, `questionbank` and `exam` `AGENT.md`; the owner's content-system brief of 2026-09-20
+§1 (Foundation coverage, "CEFR is metadata, not the course structure"), §§5–8 (exams, bank, mock tests,
+quality) and §11 (verify exam formats from official sources; record every source and licence).
+
+**How to run it.** One branch, stages in the order of §3, one commit per stage:
+`feat(<module>): wo22 stage X — …`. A stage's gate passes before the next stage starts.
 
 ---
 
 ## 1. What exists today
 
-Verified 2026-09-23 against the code and migrations.
+Verified 2026-09-23 against the code, the migrations and the dev database.
+
+### Shared
 
 | Fact | Where |
 |---|---|
-| Six exam versions: TOEIC LR, VSTEP 3-5, IELTS Academic, Cambridge B2 First, THPT 2026 (current), TOEFL iBT (not current) | `db/migrations/exam/1700000860_create_exam_structures.sql` |
-| Two blueprints only: `toeic_default`, `vstep_default`. **IELTS has none**, so no IELTS test can be composed | same |
-| IELTS parts are coarse: Listening is one 40-question part with group size 1, Reading likewise. The real test has four recorded parts and three passages | same |
-| **One fixed test per blueprint.** `ComposeMockTest` with `mode=fixed` returns the stored row if one exists (`findFixedMockTest(blueprint.ID)`) | `exam/service/composer.go` |
-| No endpoint lists a version's fixed tests. `POST /mock-tests` composes; `POST /mock-tests/{id}/attempts` starts one | `api/openapi/openapi.yaml` |
-| `StartMockTestAttempt` takes no body: a mock test is always sat in exam mode — no practice mode, no section choice, no "no time limit" (BR-EXAM-17) | `composer.go` |
-| The exam hub (`ExamList`, first tab of `/exams`) lists `assess.exams`: three `mock-toeic-a2/b1/b2` rows renamed "Mixed-skill practice exam", plus `toeic-lr-2026` and `vstep-3-5` | `1700000860`, `1700000870` |
-| The question bank holds **0 questions**; no job generates any. Generation is `POST /admin/questions/generate`, one part at a time | dev DB; `questionbank` |
-| A generated question is a draft until a person approves it (BR-QUESTIONBANK-04, BR-CONTENT-10). The review queue approves **one item at a time** | WO 21 Stage C |
-| Generation already verifies every item before storing it — structure, provenance, CEFR, and a **blind solve** — through `learning.VerifyItem`. The blind solve uses the **same provider chain that wrote the item**: a model grading its own question | `learning/service/generator.go`, `verifier.go` |
-| `content.Author` offers `EnsurePublished` and `EnsureDraft` only; approval exists only as the reviewer's HTTP route | `content/contract/contract.go` |
+| Generation already verifies each item before storing it — structure, provenance, CEFR and a **blind solve** — via `learning.VerifyItem`. The blind solve uses the **same provider chain that wrote the item**: a model grading its own work | `learning/service/generator.go`, `verifier.go` |
+| `content.Author` offers `EnsurePublished` and `EnsureDraft` only; approval exists only as the reviewer's HTTP route. The review queue approves **one item at a time** | `content/contract/contract.go`; WO 21 Stage C |
 | Learner reports on an item already have a table | `content.item_reports` (`1700000510`) |
-| Config keys are listed in `.env.example`. `docs/deployment/configuration.md`, which CLAUDE.md names as the registry, does not exist | repo root |
-| TOEIC Part 1 (`photo_description`) needs a photograph; IELTS Writing Task 1 needs a chart. Nothing produces either | — |
-| TTS renders a listening script in **one voice** (`-voice`, `speech.tts_voice`); no speaker turns | `cmd/tts` |
+| The worker resolves the admin that owns generated content with `RoleMembers().FirstHolderOf(RoleAdmin)` | `cmd/worker/main.go` |
+| Config keys are listed in `.env.example`. `docs/deployment/configuration.md`, which CLAUDE.md names as the registry, does not exist. `config.Load` **drops any env section a command does not declare** — `cmd/foundation` read none of its AI keys for that reason (fixed in `302c025`) | repo root; `internal/shared/config` |
 
-### How many questions "five tests" is
+### I. Vocabulary
 
-Five tests that share no question — otherwise Test 3 is partly Test 1 again.
+| Fact | Where |
+|---|---|
+| 200 word senses, written by hand, one curated public deck; `skill.words` has `frequency_rank`; `(lemma, pos)` is unique | `cmd/seed/content_data.go`; `1700000230` |
+| Recorded pronunciation arrives by `seed -audio`, which looks each lemma up **after** the seed and publishes a **second version** of every sense to hold the link | `cmd/seed/audio.go` |
+| **Adding words never checks the database first.** The search field above the box only *appends the lemma* to the text; pasted text and picked words are submitted identically to `POST /me/vocabulary/uploads` | `web/src/features/vocabulary/components/UploadForm.tsx` |
+| For every term the job calls the **dictionary** (external), then the **model** (`TaskVerifyVocabulary`), and only then touches the database (`sharedWord`, `matchingSense`) | `vocabulary/service/upload.go` `verifySingleWord`, `judge`, `materialise` |
+| `matchingSense` reuses an existing sense only when the English definition is **character-for-character equal** (case aside) or the learner's Vietnamese matches exactly. The model rewrites the definition each time, so a word already in the database gets a **new duplicate sense and content version** on nearly every upload | same |
+| The learner's own meaning is kept on the upload item (`provided_meaning`) | `skill.vocab_upload_items` |
 
-| Exam | Per test | Five tests | With a 20 % rejection margin |
-|---|---|---|---|
-| TOEIC LR | 200 (Part 1 6, Part 2 25, Part 3 13×3, Part 4 10×3, Part 5 30, Part 6 4×4, Part 7 54) | 1,000 | ~1,200 |
-| IELTS Academic | 40 listening + 40 reading + 2 writing + 3 speaking | 425 | ~510 |
-| VSTEP 3-5 | 35 listening + 40 reading + 2 writing + 3 speaking | 400 | ~480 |
-| **Total** | | **1,825** | **~2,200 generated items** |
+### II. Foundation
 
-That is too many to hand-author and too many to generate on every `make seed`. Hence D22-3.
+| Fact | Where |
+|---|---|
+| Five courses: Everyday English A2–B1 (8 lessons), Reading, Writing, Speaking, Listening (6 each) | `cmd/seed/*_data.go` |
+| 70 spine nodes: grammar 37, pattern 13, vocabulary 8, pronunciation 8, skill 4 | `db/migrations/content/*seed*` |
+| No nodes for word formation, idioms or fixed expressions; each skill has one node and no progression | same |
+| `cmd/foundation -all` drafts a topic, three exercises, a quiz and a review item per node. Before `302c025` and `6ec61f8` it could not run at all (guard panic, no AI keys read, wrong admin query) | WO 19 §D |
+| The lesson runner has **no kind for a topic's explanation**; a topic renders only on `/foundation/topics/{code}` | `web/src/routes/LessonPage.tsx` |
+
+### III. Exams
+
+| Fact | Where |
+|---|---|
+| Six exam versions: TOEIC LR, VSTEP 3-5, IELTS Academic, Cambridge B2 First, THPT 2026 (current), TOEFL iBT (not current) | `1700000860_create_exam_structures.sql` |
+| Two blueprints: `toeic_default`, `vstep_default`. **IELTS has none**, so no IELTS test can be composed | same |
+| IELTS parts are coarse: Listening is one 40-question part with group size 1, Reading likewise | same |
+| **One fixed test per blueprint**: `mode=fixed` returns the stored row if one exists (`findFixedMockTest`) | `exam/service/composer.go` |
+| No endpoint lists a version's fixed tests; `StartMockTestAttempt` takes no body, so a mock test is always sat in exam mode | `openapi.yaml`; `composer.go` |
+| The exam hub lists `assess.exams`: three `mock-toeic-a2/b1/b2` rows renamed "Mixed-skill practice exam", plus `toeic-lr-2026` and `vstep-3-5` | `1700000860`, `1700000870` |
+| The question bank holds **0 questions**; no job generates any | dev DB |
+| TOEIC Part 1 needs photographs, IELTS Writing Task 1 needs charts; nothing produces either. TTS renders a script in **one voice** | `cmd/tts` |
+
+### The numbers
+
+| | Count |
+|---|---|
+| Words | 10,000 headwords, one primary sense each |
+| Foundation nodes | 70 today + 23 added in Stage E = **93**, each one lesson |
+| Exam questions for five disjoint tests | TOEIC 1,000 (200 per test) · IELTS 425 · VSTEP 400 = **1,825**, ~2,200 generated with a 20 % margin |
+
+At the dictionary's courtesy pace (four a second), 10,000 lookups take about 45 minutes, and the service
+was down for a day in September. Inside `make seed` that is a 45-minute seed that fails whenever someone
+else's server does; done once into a fixture it costs nothing afterwards.
 
 ---
 
 ## 2. Decisions
 
+### Shared
+
 | Question | Default |
 |---|---|
-| D22-1. What the learner chooses first | **The exam** — TOEIC, IELTS, VSTEP — as cards. Level is metadata shown on the card, never the choice. The three "Mixed-skill practice exam" rows leave the hub (D22-7) |
-| D22-2. Which exams are in scope | **TOEIC LR, IELTS Academic, VSTEP 3-5.** Cambridge B2 First, THPT and TOEFL keep their version rows but are not listed to learners until they get the same treatment |
-| D22-3. How five tests reach a fresh database | **Generate once, verify once, freeze into fixtures.** The questions are generated on a dev database, published by verification (D22-6) or by a person, and exported to `db/fixtures/exams/*.json`. `make seed` loads the fixtures offline and records the approval they already had. No model call and no network on `make seed` |
-| D22-4. Are fixed tests disjoint | **Yes.** Fixed test N draws only from questions no earlier fixed test of the same blueprint uses. A bank that cannot fill the next test does not get one |
-| D22-5. What "random" means | **A freshly composed test** (existing `mode=random`), preferring questions the learner has not seen. Not "pick one of Test 1–5 at random", which is one tap of the learner's own |
-| D22-6. Who approves generated questions | **An independent AI verifier, owner's call 2026-09-23.** A draft is published without a person when a **different model from the one that wrote it** solves it blind and agrees on every point of Stage F's checklist. Anything it doubts, or cannot check, goes to a person, who reviews by **batch**. The verifier can publish or escalate; it never rejects, so a false alarm costs a look, not a question |
-| D22-7. The three old "Mixed-skill" exams | **Unlisted, not deleted.** Attempts reference them; a `listed` flag hides them from the hub |
-| D22-8. Practice mode for a mock test | **Yes, with the exam hub's settings**: sections, duration, no time limit (BR-EXAM-17). Exam mode stays full-length and timed |
-| D22-9. Daily generation | **One test's worth per day, rotating** TOEIC → IELTS → VSTEP. Each item goes through verification (D22-6): confirmed items publish, doubtful ones join the review queue as one batch per part. Off unless enabled; bounded by the existing AI budget. When published questions complete a disjoint test, the next numbered test is composed automatically — with no person involved on a day the verifier confirms everything |
-| D22-10. Photos for TOEIC Part 1 | **Openly licensed photographs by link**, the D21-6 pattern: Wikimedia Commons or Openverse, CC0 or CC BY only, stored as `image_url` + `image_attribution` + `image_licence`. A person writes a one-line description of each photo; the model writes the four statements from the description, never from the image |
-| D22-11. Charts for IELTS Writing Task 1 | **Rendered by our code** from model-generated data (bar, line, pie, table) to SVG, stored in `fluentra-media`. No licence question, and the data behind the chart is the answer key a grader can read |
-| D22-12. Voices in listening | **Two voices** for conversations: the script carries speaker turns and TTS renders each turn with its speaker's voice. Monologues keep one voice |
-| D22-13. When auto-publish is off | **When only one provider is configured** (nothing independent to ask), when the switch is off, or when the day's verification budget is spent. Then every draft escalates, which is today's behaviour |
-| D22-14. How auto-published items stay honest | **Marked, sampled, and pullable.** The approval says who verified it; a daily random sample of auto-published items goes to a person; an item a learner reports stops being drawn until someone looks |
+| D22-1. Who approves generated content | **An independent AI verifier** (owner's decision 1). A draft is published without a person when a **different model from the one that wrote it** confirms it on every line of Stage A's checklist. Anything it doubts or cannot check goes to a person, who reviews by **batch**. The verifier can publish or escalate; it never rejects, so a false alarm costs a look, not an item |
+| D22-2. When auto-publish is off | When only one provider model is configured (nothing independent to ask), when its switch is off (the default), or when the day's AI budget is spent. Then everything escalates — today's behaviour |
+| D22-3. How auto-published items stay honest | **Marked, sampled, pullable.** The approval names the verifier; a daily random sample goes to a person; an item a learner reports stops being drawn until someone looks |
+| D22-4. How content reaches a fresh database | **Generate once, verify once, freeze into fixtures** under `db/fixtures/`. `make seed` loads them offline and records the approval each item already had. No model call on `make seed` |
+
+### I. Vocabulary
+
+| Question | Default |
+|---|---|
+| D22-5. What "10,000 words" counts | **10,000 headwords (lemmas)**, one primary sense each, ranked by frequency. Inflections fold into their lemma ("went" is "go") |
+| D22-6. Where the list comes from | **An openly licensed frequency list**, licence verified and recorded in the fixture header. Candidates to check: the `wordfreq` data, Wiktionary frequency lists. **Not** Oxford 3000/5000 or English Vocabulary Profile: both are proprietary |
+| D22-7. Who writes meanings and examples | **The model, 50 lemmas per call**: part of speech, CEFR estimate, a simple English definition, the Vietnamese meaning, two examples with translations. Original text, so no dictionary's definitions are copied |
+| D22-8. Pronunciation | **Looked up once by the build tool and written into the fixture** (`audio_url`, `audio_attribution`, `audio_licence`, US recording first per D21-6). Version 1 carries the link; no second version. `seed -audio` becomes a repair only |
+| D22-9. How the words are checked | Automatic checks on all 10,000 (schema, lemma in both examples, Vietnamese present, CEFR in range, unique lemma) plus a person reading a random 2 % and every flagged word. Vocabulary is practice content, which BR-CONTENT-10 allows to publish directly |
+| D22-10. Decks | One public deck per CEFR level (A1 … C1) plus "Top 1,000" replacing the curated deck. Nothing enrols a learner in 10,000 cards |
+| D22-11. Adding a word the database already has | **Database first** (owner's decision 2). A known word is added from the database with no dictionary and no model call; a known word with a learner's meaning costs at most one model call choosing among its existing senses; only an unknown word takes today's path. The learner's own meaning never overwrites a shared sense |
+
+### II. Foundation
+
+| Question | Default |
+|---|---|
+| D22-12. The thirteen courses | **Built from spine nodes**: each course a set of nodes, each node one lesson, every node in exactly one course (map in Stage E). CEFR is metadata on the card, not the grouping |
+| D22-13. What "verified" means for a topic | A topic has no key, so its check is a **review, not a solve**: a different model must find no error of fact or grammar, examples that illustrate the point, and a level within one band of the node's. The node's exercises and quiz pass the choice-item checklist. A node publishes only when its topic **and** all its items pass; otherwise its batch escalates whole |
+| D22-14. The five old courses | **Removed from the seed; their content kept**: reading passages, listening scripts, writing prompts and speaking tasks become lessons of the four skill courses; Everyday English's flashcards go to Vocabulary Foundations. On a database with real learners they are unpublished, never deleted |
+
+### III. Exams
+
+| Question | Default |
+|---|---|
+| D22-15. What the learner chooses first | **The exam** — TOEIC, IELTS, VSTEP — as cards; level is shown on the card, never chosen. The three "Mixed-skill practice exam" rows are **unlisted, not deleted** (attempts point at them) |
+| D22-16. Exams in scope | **TOEIC LR, IELTS Academic, VSTEP 3-5.** Cambridge B2 First, THPT and TOEFL keep their rows, unlisted |
+| D22-17. Fixed tests | **Numbered and disjoint**: Test N draws only questions no earlier fixed test of the blueprint uses. A bank that cannot fill the next test does not get one |
+| D22-18. What "random" means | **A freshly composed test** (existing `mode=random`), preferring questions the learner has not seen |
+| D22-19. Practice mode | **Yes**, with the exam hub's settings: sections, duration, no time limit (BR-EXAM-17). Exam mode stays full-length and timed |
+| D22-20. Daily generation | **One test's worth per day, rotating** TOEIC → IELTS → VSTEP, through the verifier. When published questions complete a disjoint test, the next numbered test is composed — with no person involved on a day the verifier confirms everything. Off by default |
+| D22-21. TOEIC Part 1 photos | **Openly licensed photographs by link** (Wikimedia Commons or Openverse, CC0 or CC BY only) with a human-written description; the model writes the statements from the description, never the image |
+| D22-22. IELTS Writing Task 1 charts | **Rendered by our code** from model-generated data to SVG in `fluentra-media`; the data stays in the body for the grader |
+| D22-23. Voices | **Two voices** for conversations: the script carries speaker turns, TTS renders each with its speaker's voice |
 
 ---
 
 ## 3. Order
 
 ```text
-A  structure     IELTS parts, IELTS blueprint, the listed flag           migration only
-B  fixed tests   numbered, disjoint fixed tests; list endpoint           spec → exam
-C  sitting       practice mode for a mock test                           spec → exam → web
-D  hub           exam cards → test list → sit / practise / random        web
-E  media         Part 1 photos, Task 1 charts, two-voice listening       questionbank, media, tts
-F  verify        independent verifier publishes; batch review for doubts spec → content → questionbank → web
-G  fixtures      generate, review, export, and load in make seed         cmd/seed, cmd/examgen
-H  daily         the daily job and auto-composed next test               questionbank, exam
+Shared   A  verify       independent verifier; batch review of doubts      spec → content → learning → web
+I        B  db-first     known words need no dictionary and no model       spec → vocabulary → web
+I        C  word list    build tool → 10,000-word fixture with audio links  cmd/vocabgen
+I        D  load words   seed reads the fixture; decks by level             cmd/seed
+II       E  spine        23 new nodes; the course ↔ node map                migration
+II       F  topic step   a runner kind that shows a topic's explanation     spec → lesson → web
+II       G  foundation   generate, verify, export, load 93 nodes            cmd/foundation, cmd/seed
+II       H  courses      thirteen courses; the five retired                 cmd/seed via lesson.Author
+III      I  structure    IELTS parts and blueprint; listed flags            migration
+III      J  fixed tests  numbered, disjoint; list endpoint                  spec → exam
+III      K  sitting      practice mode for a mock test                      spec → exam → web
+III      L  hub          exam → tests → sit / practise / random             web
+III      M  media        Part 1 photos, Task 1 charts, two voices           questionbank, media, tts
+III      N  five tests   generate, verify, export, load; compose 1–5        cmd/examgen, cmd/seed
+III      O  daily        generation job; next test appears on its own       questionbank, exam
 ```
 
-A–D can ship on an empty bank: the hub then shows each exam with "no tests yet". E–G is the content;
-H is what keeps it growing. One commit per stage: `feat(exam): wo22 stage X — …`.
+**Dependencies.** A before G, N and O (they publish through it). B stands alone and ships first as a
+quick win. C before D. E and F before H; G before H. I and J before L and N; M before N; N before O.
+Parts I, II and III are otherwise independent.
 
 ## 4. Numbers reserved
 
 | | Range |
 |---|---|
-| Migrations | `1700000940`–`1700000959` |
-| Advisory lock IDs | `1_700_000_940`–`0959` |
+| Migrations | `1700000940`–`1700000979` |
+| Advisory lock IDs | `1_700_000_940`–`0979` |
 
 ---
 
-## Stage A — structure
+## Shared
 
-1. **IELTS, verified.** Before writing a row, read the current format on ielts.org and record source URL
-   and date in the migration comment (brief §11). Add a new version `IELTS_ACADEMIC_2026_R2` with the real
-   parts — Listening Parts 1–4 (10 questions each, one recording per part), Reading Passages 1–3 (grouped
-   by passage), Writing Task 1 and Task 2, Speaking Parts 1–3 — and set the coarse
-   `IELTS_ACADEMIC_2026` to `is_current = false`. A new code rather than an edit: parts are what fixed
-   tests and attempts point at.
-2. **Blueprint** `ielts_default` for the new version, with a CEFR mix the way `toeic_default` has one.
-3. **`listed`** on `assess.exams` and on `assess.exam_versions` (default `true`); `false` for the three
-   `mock-toeic-*` rows and for the versions D22-2 leaves out.
+### Stage A — independent verification publishes; people see only the doubts
 
-**Gate.** `GET /exam-versions` returns TOEIC, IELTS R2 and VSTEP, each with a blueprint and its parts.
-
-## Stage B — numbered, disjoint fixed tests
-
-- **Schema.** `assess.mock_tests` gains `number int` (null unless `mode = 'fixed'`) and a partial unique
-  index on `(blueprint_id, number) WHERE mode = 'fixed'`.
-- **Composer.** `ComposeFixedTest(blueprint, number)`: returns the stored test if it exists; otherwise
-  draws each part **excluding every activity used by fixed tests 1 … number−1**, with a seed derived from
-  `(blueprint, number)` so a re-run composes the same test. A part the bank cannot fill refuses with that
-  part named (BR-EXAM-14) and no row is written.
-- **`ComposeNextFixedTests(blueprint)`**: composes numbers `max+1, max+2, …` until the bank cannot fill
-  one. Called by the fixture loader (G) and the daily job (H).
-- **Spec first.** `GET /exam-versions/{id}/tests` → the version's fixed tests in number order: `id`,
-  `number`, `title` ("Test 3" / "Đề 3"), question count, minutes, and the caller's latest attempt on it
-  (status, score) so the list can say "done — 710".
-- **Coverage.** `distinct_tests_possible` stays the coverage report's number; the list shows fixed tests
-  that exist. The two must not be confused in copy (WO 21 Stage E trap).
-- **Rules.** Amend BR-EXAM-13: "A fixed test is a numbered, stored composition shared by everyone; the
-  fixed tests of one blueprint share no question." Through `tools/docgen/data`, then `make docs`.
-
-**Traps.** (1) The disjoint draw must exclude by **question group**, not by activity: a Part 3
-conversation is three activities that travel together. (2) `ON CONFLICT` on the unique index, so two
-workers composing Test 6 at once end with one row.
-
-**Gate.** With a bank that holds exactly five tests' worth, `ComposeNextFixedTests` makes Tests 1–5 and
-refuses Test 6 naming the short part; no activity appears in two tests.
-
-## Stage C — practice mode for a mock test
-
-- Spec first: `POST /mock-tests/{id}/attempts` accepts the body `POST /exams/{id}/attempts` already does —
-  `mode`, `chosen_duration_minutes`, `unlimited`, `sections`.
-- `StartMockTestAttempt` reuses `sittingDuration` and the section narrowing of `StartSitting`, so the two
-  paths cannot drift. Exam mode ignores the practice fields, as it does today.
-- The report of a mock-test attempt carries `elapsed_seconds` like any other.
-
-**Gate.** A practice sitting of Test 2 with only Reading and no time limit starts, counts up, and reports
-the time taken.
-
-## Stage D — the hub
-
-`/exams` becomes three levels, replacing the level-labelled list:
-
-1. **Exams** — cards for the listed families: name, format line ("200 câu · 120 phút"), how many tests
-   exist, the learner's best score.
-2. **Tests of one exam** — Test 1 … Test N with done/score, plus two actions at the top: **"Đề ngẫu
-   nhiên"** (D22-5) and **"Tạo đề tùy chọn"** (the WO 21 composer's custom mode, moved here).
-3. **One test** — "Thi thử" (exam mode, full length, timed) or "Luyện tập" (the existing settings sheet:
-   sections, duration, no time limit), then `ExamSittingRunner` as today.
-
-The WO 21 "Đề thi thử" tab is absorbed: one place to choose an exam. Empty states say what is missing
-("IELTS chưa có đề — đang được biên soạn") rather than showing an error. Vietnamese and English, 320 px
-and 390 px.
-
-**Gate.** From `/exams`, a learner reaches TOEIC → Test 3 → Luyện tập (Reading only, no limit) in four
-taps, and TOEIC → Đề ngẫu nhiên in two.
-
-## Stage E — media the parts need
-
-- **Part 1 photos (D22-10).** A curated list `db/fixtures/exams/toeic-part1-photos.json`: URL, credit
-  page, licence, and a human-written description. Only CC0 and CC BY. The generator's
-  `photo_description` prompt receives the description, never the image. The card shows the credit line
-  whenever the photo is shown.
-- **Task 1 charts (D22-11).** The generator returns `{chart_type, title, series}`; a renderer in `media`
-  draws the SVG, stores it in `fluentra-media`, and the body carries `image_url`. The series stays in the
-  body for the writing grader.
-- **Two voices (D22-12).** A listening script carries `turns: [{speaker, text}]`; `cmd/tts` and the render
-  job synthesise each turn with its speaker's voice (`speech.tts_voice` plus a second key, added to
-  `.env.example` and to every command's declared defaults **before** the code reads it) and concatenate.
-  Scripts without turns render as today.
-
-**Traps.** A photo whose licence is not CC0 or CC BY is refused at load, not at display. A chart whose
-data does not add up (a pie over 100 %) fails Gate 1.
-
-**Gate.** A TOEIC Part 1 item shows a credited photo; an IELTS Task 1 item shows a rendered chart; a Part
-3 conversation plays in two voices.
-
-## Stage F — independent verification publishes; people see only the doubts
-
-The generator's own check (§1) stays as a first filter. It is not the verification D22-6 means, because
+The generator's own check (§1) stays as a first filter. It is not the verification D22-1 means, because
 the model that solves the item is the one that wrote it. This stage adds a second, independent pass at
-publish time.
+publish time, used by Foundation (G), exams (N, O) and nothing else.
 
-### F.1 The verifier
+#### A.1 The verifier
 
-- **A different model.** The verifier reads the writer's model from `_provenance.model` and asks the
-  **next configured provider whose model differs**. `platform/ai` gains a request option to exclude a
-  model from the fallback chain; no new provider config — the four `AI_PROVIDER_*` slots already exist.
-  No such provider → the item escalates (D22-13).
-- **Blind.** The verifier sees the item redacted (`contentcontract.RedactForLearner`) — no key, no
-  explanation — and answers it. Then, separately, it is shown the key and the explanation and asked to
-  judge them.
-- **One call per group.** A Part 3 conversation, a Part 6 text or an IELTS passage is verified as a whole:
-  every question in the group must pass, or the whole group escalates.
+- **A different model.** It reads the writer's model from `_provenance.model` and asks the **next
+  configured provider whose model differs**. `platform/ai` gains a request option to exclude a model from
+  the fallback chain; no new provider config — the four `AI_PROVIDER_*` slots exist. No such provider →
+  escalate (D22-2).
+- **Blind.** It sees the item redacted (`contentcontract.RedactForLearner`) — no key, no explanation — and
+  answers it. Separately, it is then shown the key and explanation and asked to judge them.
+- **One call per group.** A Part 3 conversation, a Part 6 text or an IELTS passage is verified whole:
+  every question must pass or the whole group escalates.
 
-### F.2 The checklist — every line must pass to publish
+#### A.2 The checklist — every line must pass to publish
 
 | Kind | Passes when |
 |---|---|
 | Every kind | Gate 1 structure and safety; provenance present; fingerprint unique (BR-QUESTIONBANK-02); the part's structure (question count, group size, option count); CEFR judged within one band of the target |
-| Choice items (Part 1, 2, 5, 6, 7; VSTEP and IELTS reading and listening) | The blind answer **equals the key** on every question; the verifier judges **exactly one option defensible** (a second defensible option is the commonest defect of generated distractors); the explanation supports the key and does not contradict the passage or script |
-| Listening | Solved from the **script**, which the learner hears but the verifier reads; every question answerable from what is said, not from general knowledge |
-| TOEIC Part 1 | Solved from the **human-written photo description** (D22-10); a statement that needs something the description does not say is a doubt |
-| Writing and speaking prompts (no key) | The task matches the part's specification — task type, word or time limit, required visual for IELTS Task 1 — and is answerable at the target level; the chart data behind a Task 1 visual is internally consistent |
+| Choice items (TOEIC Parts 1, 2, 5, 6, 7; IELTS and VSTEP reading and listening; Foundation exercises and quizzes) | The blind answer **equals the key** on every question; **exactly one option defensible** (a second defensible option is the commonest defect of generated distractors); the explanation supports the key and does not contradict the passage or script |
+| Listening | Solved from the **script**; every question answerable from what is said, not from general knowledge |
+| TOEIC Part 1 | Solved from the **human-written photo description** (D22-21) |
+| Writing and speaking prompts | The task matches the part's specification — task type, word or time limit, the visual an IELTS Task 1 needs — and is answerable at the target level; chart data internally consistent |
+| Foundation topic | D22-13: no error of fact or grammar, illustrative examples, level within one band; the verifier names the sentence it doubts |
 
 Anything else — a parse failure, a timeout, a verifier that answers "unsure" — is a **doubt**, not a
 failure.
 
-### F.3 Publishing without a person
+#### A.3 Publishing without a person
 
 - **Contract.** `content.Author` gains `ApproveVerified(ctx, versionID, verification)`: walks the draft
-  through `in_review → approved → published` with the existing state machine and events (TTS, reindex,
+  `in_review → approved → published` with the existing state machine and events (TTS, reindex,
   `content.published` through the outbox, BR-CONTENT-08), and writes a `content_reviews` row whose
-  reviewer is the content's owning admin (resolved the way the worker already does,
-  `RoleMembers().FirstHolderOf(RoleAdmin)`) and whose comment names the verifier model and time.
-  `reviewer_id` is `NOT NULL` and references `core.users`, so there is no anonymous approval.
-- **Marking.** The body's `_provenance` gains `verification: {model, verdict, checked_at}`. The admin
-  question list filters on it: auto-published, human-approved, escalated.
-- **Bank.** `questionbank` then publishes the question as today; `PublishQuestion` accepts a version
-  approved by verification.
-- **Rules.** Amend, through `tools/docgen/data` and `make docs`:
+  reviewer is the owning admin (`RoleMembers().FirstHolderOf(RoleAdmin)`) and whose comment names the
+  verifier model and time. `reviewer_id` is `NOT NULL` and references `core.users`: there is no anonymous
+  approval.
+- **Marking.** `_provenance.verification = {model, verdict, checked_at}`. The admin lists filter on it:
+  auto-published, human-approved, escalated.
+- **Bank.** `PublishQuestion` accepts a version approved by verification.
+- **Rules**, through `tools/docgen/data` and `make docs`:
   BR-QUESTIONBANK-04 — "A question enters the bank only after its content version is approved, by a
-  person or by an independent verifier that confirmed it (WO 22 D22-6)."
+  person or by an independent verifier that confirmed it."
   BR-CONTENT-10 — "Machine-authored exam and curriculum content enters as a draft, and is published by a
   person or by `ApproveVerified`; practice content may be published directly (`EnsurePublished`)."
 
-### F.4 The doubts: batch review
+#### A.4 The doubts: batch review
 
-- A generation run tags its drafts with a **batch id** in `_provenance` (exam version, part, run); the
-  verifier leaves its doubts in their batch, each with the reason ("second option defensible", "blind
-  answer B, key C").
-- Spec first: `GET /admin/review-queue/batches` (batch, part, count, how many decided) and
-  `POST /admin/review-queue/batches/{id}/approve` with an optional `reject: [ids]` list and a note.
-- The WO 21 review screen gains a batch view: items one under another, each with its key, the verifier's
-  reason, and a reject toggle; one approve button for the rest. One transaction per batch
-  (BR-CONTENT-11).
+- A generation run tags its drafts with a **batch id** in `_provenance` (exam version and part, or spine
+  node; run). The verifier leaves its doubts in their batch with the reason ("second option defensible",
+  "blind answer B, key C").
+- Spec first: `GET /admin/review-queue/batches` and `POST /admin/review-queue/batches/{id}/approve` with an
+  optional `reject: [ids]` and a note.
+- The WO 21 review screen gains a batch view: each item with its key, the verifier's reason and a reject
+  toggle; one approve button for the rest. One transaction per batch (BR-CONTENT-11).
 
-### F.5 Keeping it honest (D22-14)
+#### A.5 Keeping it honest (D22-3)
 
-- **Switch.** A config key turns auto-publish on (default **off**), added to `.env.example` and the
-  declared defaults of every command that reads it before any code does.
-- **Sample.** Each day a random 2 % of the previous day's auto-published items, at least five, appear in
-  the review queue under "Kiểm tra mẫu". A reviewer who rejects one unpublishes it: it stops being drawn
-  and fixed tests keep their stored composition (BR-EXAM-12), so a sitting in progress is not changed.
-- **Reports.** A learner report on an auto-published item (`content.item_reports`) removes it from future
-  draws and puts it in the queue.
-- **Rate.** The admin question screen shows, per exam and kind, the share of items escalated and the
-  share of sampled items a person rejected. A sampled-rejection rate above 5 % for a kind is shown in red:
-  the verifier is not trustworthy for that kind, and the switch for it should go off.
+- **Switch**, default **off**, in `.env.example` and the declared defaults of every command that reads it.
+- **Sample.** Daily, a random 2 % (at least five) of the previous day's auto-published items appear in the
+  queue under "Kiểm tra mẫu". A rejection unpublishes the item: it stops being drawn, and stored mock-test
+  compositions are not rewritten (BR-EXAM-12).
+- **Reports.** A learner report on an auto-published item removes it from future draws and queues it.
+- **Rate.** The admin screens show, per kind, the share escalated and the share of sampled items a
+  person rejected; above 5 % the kind shows red — the verifier is not trustworthy for it.
 
-**Traps.** (1) Same model twice: if providers 1 and 2 are configured with one model name, they are not
-independent — compare models, not slot numbers. (2) A group verified question by question can pass as
-pieces and fail as a whole (two questions answered by one sentence); verify the group. (3) Unpublishing
-must never rewrite a stored mock-test composition.
+**Traps.** (1) Two slots with one model name are not independent: compare models, not slot numbers.
+(2) A group verified question by question can pass in pieces and fail whole; verify the group.
+(3) Unpublishing never rewrites a stored composition.
 
-**Gate.** With two providers of different models: of a 30-item Part 5 batch, the confirmed items are in
-the bank without a person; the doubted ones sit in one batch with reasons; approving that batch publishes
-them; a sampled item rejected by a person stops being drawn. With one provider, every item escalates.
+**Gate.** With two providers of different models, a 30-item batch publishes its confirmed items with no
+person, leaves the doubted ones in one batch with reasons, and a sampled item a person rejects stops being
+drawn. With one provider, everything escalates.
 
-## Stage G — five tests per exam, frozen
+---
 
-1. **`cmd/examgen`** (new command, its own config section declared — see WO 21's `cmd/foundation`
-   fixes): `-exam TOEIC -tests 5` generates each part's questions for five tests plus the margin and
-   sends every item through Stage F's verifier.
-2. The verifier publishes what it confirms; a person works through the escalated batches (Stage F.4).
-   With a verifier confirming most items, that is tens or hundreds of items to read, not ~2,200.
-   `-tests 5` repeats generation for any part still short until five disjoint tests can be composed.
-3. **`cmd/examgen -export`** writes every published bank question of the three exams, with its content
-   body, tags, group id and media links, to `db/fixtures/exams/{toeic,ielts,vstep}.json`.
-4. **`cmd/seed -exams`** loads the fixtures: content items and published versions with the approval they
-   had — a person's, or the verifier's with its model and date — bank questions, activities in the bank
-   course, and then
-   `ComposeNextFixedTests` for each blueprint. Idempotent on the question fingerprint (BR-QUESTIONBANK-02).
-   `make seed` runs it.
-5. Listening audio is rendered after the load by `make tts`, as for the seeded listening course.
+## Part I — Vocabulary
 
-**Traps.** (1) The fixtures are original generated items; do not paste questions from real TOEIC, IELTS
-or VSTEP papers, Study4, or prep books (brief §11). (2) The fixture file must not carry answer keys into
-anything the web bundle imports. (3) ~2,000 items through a pooled Supabase connection one row at a time
-is slow; load in `pgx.Batch` chunks.
+### Stage B — the database first
 
-**Gate.** On a database reset with `scripts/reset-dev-database.sql`, `make migrate-up && make seed &&
-make tts` gives TOEIC, IELTS and VSTEP five tests each, sittable in both modes, with no network call
-besides TTS.
+Today a learner who pastes "time" — a word the database already holds — waits for a dictionary call and
+a model call, and then receives a **second "time" sense** because the model worded the definition
+differently from the stored one (§1). After Stage D the database holds 10,000 words: nearly every word a
+learner adds will already be there.
 
-## Stage H — more every day
+1. **Resolve known words in one query.** At the start of `VerifyUpload`, normalise every item's term the
+   way the parser does (trim, lower-case, collapse spaces, strip trailing punctuation) and read the words
+   with those lemmas, and their senses, in **one** `lemma = ANY($1)` query. Phrases the same way.
+2. **Known word, no meaning given** → reuse its **primary sense** (the sense in a public curated deck,
+   otherwise the oldest); add it to the learner's deck and schedule its review card. **No dictionary, no
+   model.** Item note `known_word`: "Đã có trong kho từ — đã thêm".
+3. **Known word, meaning given** → compare the meaning with each sense's `definition_vi` after
+   normalising case, whitespace and punctuation (diacritics kept: "ban" and "bàn" are different words). A
+   match reuses that sense. No match → **one** model call with the existing senses as candidates: "which
+   of these does the learner mean, or is it a new meaning?" A candidate → reuse it. New meaning → today's
+   path adds a sense to the **existing** word. No dictionary call either way.
+4. **Unknown word** → today's path (dictionary → model → materialise), then **check again**: the model's
+   lemma ("went" → "go") is looked up before any sense is created, and the judge prompt receives the
+   existing senses of that lemma so a restated meaning reuses one instead of duplicating it.
+5. **Tell the learner at once.** `Submit` runs the same single query and returns each item marked
+   `known` or `checking`, so the list says which words are already in the database before the job runs;
+   the existing worker nudge then finishes known words within seconds.
+6. **Optional, in the box.** Spec first: `POST /vocabulary/words/lookup` with up to 200 terms returns which
+   are known; the form marks pasted lines "đã có" as the learner types.
 
-- **Job** `questionbank.generate_daily`, in the worker's cron (lock in §4). Each day it picks the next
-  exam in the rotation (D22-9), generates one test's worth of every part, sends every item through Stage
-  F's verifier — which publishes what it confirms and batches the rest for review — and stops.
-- **Switch and bounds.** A config key for enabling it and one for the per-run cap, added to
-  `.env.example` and the worker's declared defaults first (CLAUDE.md rule 3). Spend goes through the
-  existing AI budget, so an exhausted budget skips the day rather than failing it.
-- **Next test.** After any publish — by the verifier or by a batch approval — call
-  `ComposeNextFixedTests` for that blueprint: the day a full disjoint test's worth is published, Test N+1
-  appears in the hub.
-- **Admin line.** The question-bank screen shows, per exam, "tests published / published today by the
-  verifier / waiting review / parts short for the next test", so the operator sees why Test 6 has not
-  appeared.
+**Traps.** (1) The learner's own meaning stays on their upload item (`provided_meaning`) and is **never
+written onto a shared sense**: that sense belongs to every learner. (2) A word with senses in several
+parts of speech ("book") and no meaning given takes the primary sense; do not ask the model to guess.
+(3) A known word must not wait behind the AI quota: when the model is exhausted (`queued` path), known
+words still resolve from the database.
 
-**Traps.** (1) Idle generation: if an exam's escalated batches from two earlier days are still
-unreviewed, skip it — escalations are what the verifier could not settle, and generating faster than
-anyone reads them only grows a backlog. Days the verifier confirms everything never trip this. (2) Duplicates across days: the
-fingerprint catches exact ones; the prompt receives recent stems of the same part to steer away from
-near-duplicates.
+**Gate.** A test with counting fakes: pasting 30 words, 25 of them in the database, makes **zero**
+dictionary and **zero** model calls for the 25, adds them to the learner's deck, and creates no second
+sense for any of them; the 5 unknown words take the old path. In the browser, the 25 show "Đã có trong kho
+từ" within seconds.
 
-**Gate.** With the job and auto-publish enabled and two providers of different models, each exam gains
-a test on its day **without anyone opening the review queue** when every item is confirmed; when some
-are escalated, the test appears the moment that batch is approved.
+### Stage C — the word list, built once
+
+**`cmd/vocabgen`**, a command of its own that **declares its config sections** (§1). Four resumable
+steps, each caching to the scratch directory so a crash at word 7,000 does not start over:
+
+1. **List.** Read the source list (D22-6), lemmatise, drop proper nouns, abbreviations, profanity and
+   non-words, keep the first 10,000 by rank.
+2. **Meanings.** 50 lemmas per model call (D22-7). Anything failing D22-9's checks is retried once, then
+   listed for a person.
+3. **Pronunciation.** IPA and the recording link from the dictionary, then Wikimedia Commons by file name —
+   the sources and order of `cmd/seed/audio.go`, **reusing** its code. No recording, no link; the browser
+   falls back as today (D21-8).
+4. **Write** `db/fixtures/vocabulary/words-{a1,a2,b1,b2,c1}.json`, each headed with every source, licence
+   and date.
+
+**Traps.** (1) A recording without its credit page is not written. (2) Clamp model CEFR to A1–C1 and
+flag disagreements with the list's rank band for the reviewer. (3) About 5 MB of JSON in total; keep
+each file to a few MB.
+
+**Gate.** 10,000 unique lemmas; at least 80 % with a credited audio link; the 2 % sample read and its
+corrections applied.
+
+### Stage D — loading 10,000 words
+
+- `seedVocabularyWords` reads the fixtures instead of `content_data.go` and writes `audio_url`,
+  `audio_attribution` and `audio_licence` into **version 1** of each sense.
+- `pgx.Batch` in chunks of a few hundred: the Supabase pooler is a network hop per statement, and row by
+  row this is tens of minutes.
+- Decks per D22-10, idempotent on slug. `make seed` drops the `seed -audio` line.
+
+**Gate.** A fresh `make seed` loads 10,000 words in minutes with no network call; any seeded word's
+flashcard plays its recording and shows the credit.
+
+---
+
+## Part II — Foundation
+
+### Stage E — the spine the courses need
+
+New nodes (migration, `ON CONFLICT (namespace, code)` like `1700000781`), each with label, description,
+CEFR and prerequisite — **23** in all:
+
+- **Word formation** (vocabulary, 5): prefixes, suffixes, word families, conversion, compound words.
+- **Expressions** (vocabulary, 3): idioms, fixed expressions, common spoken expressions.
+- **Skill progressions** (skill, 15): Listening — words, phrases, sentences, conversations. Speaking —
+  words, phrases, sentences, paragraphs. Reading — sentences, paragraphs, vocabulary in context, main idea
+  and detail. Writing — sentences, paragraphs, linking words.
+
+**Course map** — every node in exactly one course, kept in one table the seed reads:
+
+| Course | Nodes |
+|---|---|
+| Grammar Foundations | parts of speech, nouns, articles, pronouns, adjectives, adverbs, prepositions, conjunctions, modal verbs, comparatives and superlatives, passive voice, conditionals, reported speech, gerunds and infinitives, participles, common grammar mistakes |
+| English Tenses | tenses and the twelve tense nodes |
+| Sentence Structure | sentence structure, subject–verb–object, questions and negatives |
+| Clauses | clauses, relative clauses, noun clauses, adverbial clauses |
+| Sentence Patterns | the thirteen pattern nodes |
+| Vocabulary Foundations | essential everyday, common verbs, high-frequency words, topic vocabulary, collocations, synonyms and antonyms, academic, workplace |
+| Word Formation | the five word-formation nodes |
+| Phrasal Verbs & Expressions | phrasal verbs (grammar namespace) and the three expression nodes |
+| Pronunciation Foundations | the eight pronunciation nodes |
+| Reading, Listening, Speaking, Writing Foundations | each skill's node and its progression |
+
+**Gate.** A test fails if any spine node is in no course or in two.
+
+### Stage F — a lesson step that teaches
+
+- Spec first: a `foundation_topic` activity kind, ungraded, weight 0 like `lesson_material` (WO 20),
+  whose config is the topic's published body: objective, explanation, examples.
+- `lesson` registers the kind; the web renders it with the component `/foundation/topics/{code}` already
+  uses, not a copy.
+
+**Gate.** A lesson opening with a topic shows the explanation and moves on with "Tiếp tục".
+
+### Stage G — Foundation content for 93 nodes
+
+1. `go run ./cmd/foundation -all` for the 70 existing and 23 new nodes.
+2. Stage A verifies (D22-13): confirmed nodes publish; doubted nodes wait as one batch each.
+3. **`cmd/foundation -export`** writes the published topics, exercises and quizzes to
+   `db/fixtures/foundation/*.json`.
+4. **`cmd/seed -foundation`** loads them with the approval they already had.
+
+**Traps.** (1) The export lists every node without published content, so a course does not silently lose
+a lesson. (2) A confidently wrong explanation is worse than a wrong quiz key because it teaches; any doubt
+escalates.
+
+**Gate.** After a reset, `make seed` publishes Foundation content for every node without a model call.
+
+### Stage H — thirteen courses, five retired
+
+- `cmd/seed` builds each course **only** through `lesson`'s `Author` contract (`EnsureCourse`,
+  `EnsureUnit`, `EnsureLesson`, `SyncActivities`): units of related nodes, one lesson per node in
+  prerequisite order, activities = topic step (F), exercises, quiz.
+- The five old courses leave the seed; their content moves per D22-14. Retired slugs are not reused.
+- Titles and cards in Vietnamese and English.
+
+**Traps.** (1) No direct inserts into `learn.*` as the old course seed did. (2) Placement opens lessons
+below the placed level (BR-LEARNING-11): check it still finds lessons when courses span several levels.
+
+**Gate.** The catalogue shows thirteen courses in both locales; a lesson runs from explanation to quiz.
+
+---
+
+## Part III — Exams
+
+### Stage I — structure
+
+1. **IELTS, verified.** Read the current format on ielts.org and record URL and date in the migration
+   (brief §11). Add `IELTS_ACADEMIC_2026_R2` with the real parts — Listening Parts 1–4 (10 questions, one
+   recording each), Reading Passages 1–3 (grouped), Writing Tasks 1–2, Speaking Parts 1–3 — and set the
+   coarse `IELTS_ACADEMIC_2026` to `is_current = false`. A new code, not an edit: parts are what tests and
+   attempts point at.
+2. Blueprint `ielts_default`, with a CEFR mix like `toeic_default`.
+3. `listed` on `assess.exams` and `assess.exam_versions` (default `true`); `false` for the three
+   `mock-toeic-*` rows and the versions D22-16 leaves out.
+
+**Gate.** `GET /exam-versions` returns TOEIC, IELTS R2 and VSTEP, each with a blueprint and parts.
+
+### Stage J — numbered, disjoint fixed tests
+
+- `assess.mock_tests` gains `number int` (null unless `mode = 'fixed'`) and a partial unique index on
+  `(blueprint_id, number) WHERE mode = 'fixed'`.
+- `ComposeFixedTest(blueprint, number)` returns the stored test, or draws each part **excluding every
+  question group used by tests 1 … number−1**, seeded from `(blueprint, number)`. A part the bank cannot
+  fill refuses with that part named (BR-EXAM-14); no row is written.
+- `ComposeNextFixedTests(blueprint)` composes `max+1, max+2, …` until one cannot be filled. Called by
+  Stages N and O.
+- Spec first: `GET /exam-versions/{id}/tests` → fixed tests in order: `id`, `number`, `title` ("Đề 3"),
+  question count, minutes, the caller's latest attempt (status, score).
+- `distinct_tests_possible` stays the coverage number and is not confused with tests that exist.
+- Amend BR-EXAM-13: "A fixed test is a numbered, stored composition shared by everyone; the fixed tests of
+  one blueprint share no question."
+
+**Traps.** (1) Exclude by **group**, not activity: a Part 3 conversation is three activities together.
+(2) `ON CONFLICT` on the unique index, so two workers composing Test 6 end with one row.
+
+**Gate.** A bank holding exactly five tests' worth yields Tests 1–5, refuses Test 6 naming the short part,
+and no question appears twice.
+
+### Stage K — practice mode for a mock test
+
+- Spec first: `POST /mock-tests/{id}/attempts` accepts the body `POST /exams/{id}/attempts` does — `mode`,
+  `chosen_duration_minutes`, `unlimited`, `sections`.
+- `StartMockTestAttempt` reuses `sittingDuration` and `StartSitting`'s section narrowing, so the two
+  paths cannot drift. The report carries `elapsed_seconds`.
+
+**Gate.** Practising Test 2, Reading only, no time limit: it counts up and reports the time taken.
+
+### Stage L — the hub
+
+`/exams` becomes three levels:
+
+1. **Exams** — cards: name, format ("200 câu · 120 phút"), how many tests, the learner's best score.
+2. **Tests of one exam** — Đề 1 … Đề N with done and score, plus **"Đề ngẫu nhiên"** (D22-18) and
+   **"Tạo đề tùy chọn"** (the WO 21 composer's custom mode, moved here).
+3. **One test** — "Thi thử" (full, timed) or "Luyện tập" (the settings sheet: sections, duration, no
+   limit), then `ExamSittingRunner`.
+
+The WO 21 "Đề thi thử" tab is absorbed. Empty states say what is missing ("IELTS chưa có đề — đang được
+biên soạn"). Both locales, 320 and 390 px.
+
+**Gate.** TOEIC → Đề 3 → Luyện tập (Reading only, no limit) in four taps; TOEIC → Đề ngẫu nhiên in two.
+
+### Stage M — media the parts need
+
+- **Part 1 photos (D22-21).** `db/fixtures/exams/toeic-part1-photos.json`: URL, credit page, licence,
+  human description; CC0 and CC BY only, refused at load otherwise. The prompt gets the description, never
+  the image. The credit shows whenever the photo does.
+- **Task 1 charts (D22-22).** The generator returns `{chart_type, title, series}`; a renderer in `media`
+  draws the SVG into `fluentra-media`; the body carries `image_url` and keeps the series. A chart whose
+  data does not add up fails Gate 1.
+- **Two voices (D22-23).** Scripts carry `turns: [{speaker, text}]`; `cmd/tts` and the render job voice
+  each turn by speaker (`speech.tts_voice` plus a second key, added to `.env.example` and every command's
+  declared defaults first) and concatenate. Scripts without turns render as today.
+
+**Gate.** A Part 1 item shows a credited photo; a Task 1 item a rendered chart; a Part 3 conversation
+plays in two voices.
+
+### Stage N — five tests per exam, frozen
+
+1. **`cmd/examgen`** (declares its config sections): `-exam TOEIC -tests 5` generates each part's
+   questions for five tests plus the margin, sends every item through Stage A, and repeats for any part
+   still short until five disjoint tests can be composed.
+2. A person works through the escalated batches only — tens or hundreds of items, not ~2,200.
+3. **`cmd/examgen -export`** writes every published question of the three exams — body, tags, group id,
+   media links, the approval it had — to `db/fixtures/exams/{toeic,ielts,vstep}.json`.
+4. **`cmd/seed -exams`** loads them (versions, approvals, bank questions, activities in the bank course),
+   then runs `ComposeNextFixedTests` per blueprint. Idempotent on the fingerprint (BR-QUESTIONBANK-02).
+5. Listening audio renders afterwards with `make tts`.
+
+**Traps.** (1) Original generated items only — nothing from real TOEIC, IELTS or VSTEP papers, Study4 or
+prep books (brief §11). (2) Fixtures must not reach anything the web bundle imports: they hold keys.
+(3) Load in `pgx.Batch` chunks.
+
+**Gate.** After a reset, `make migrate-up && make seed && make tts` gives TOEIC, IELTS and VSTEP five
+tests each, sittable in both modes, with no network call besides TTS.
+
+### Stage O — more every day
+
+- Job `questionbank.generate_daily` in the worker's cron (lock in §4): picks the next exam in the rotation
+  (D22-20), generates one test's worth, sends it through Stage A, stops.
+- Switch and per-run cap in `.env.example` and the worker's declared defaults, off by default. Spend goes
+  through the AI budget; an exhausted budget skips the day.
+- After **any** publish — by the verifier or a batch approval — call `ComposeNextFixedTests`: Test N+1
+  appears the day a full disjoint test's worth exists.
+- The admin question screen shows, per exam: tests published, published today by the verifier, waiting
+  review, parts short for the next test.
+
+**Traps.** (1) If an exam's escalated batches from two earlier days are unreviewed, skip it: generating
+faster than anyone reads the doubts only grows a backlog. Days the verifier confirms everything never trip
+this. (2) The fingerprint catches exact duplicates; the prompt receives recent stems of the part to steer
+away from near-duplicates.
+
+**Gate.** With the job and auto-publish on and two providers of different models, each exam gains a test
+on its day **without anyone opening the review queue** when every item is confirmed; with doubts, the
+test appears when that batch is approved.
 
 ---
 
 ## 5. Final gate
 
-WO 19 §2 in full, plus: the hub at 320 and 390 px in both locales; a test that the verifier refuses to
-publish a choice item whose blind answer differs from its key, and one that it escalates when only one
-provider is configured; Playwright paths for "TOEIC → Test 1 →
-Thi thử → submit → report" and "IELTS → Đề ngẫu nhiên"; `make gen-check` and `make gen-check-web` after
-committing; `go-arch-lint` in the Linux container.
+WO 19 §2 in full, plus:
+
+1. **The whole flow from nothing**, on a database reset with `scripts/reset-dev-database.sql`:
+   `make migrate-up && make seed && make tts` finishes offline except TTS and gives: the two accounts,
+   10,000 words with audio links, thirteen courses, and five tests each for TOEIC, IELTS and VSTEP.
+2. Stage B's gate: known words cost no dictionary and no model call.
+3. A test that the verifier refuses to publish a choice item whose blind answer differs from its key,
+   and escalates everything when only one provider model is configured.
+4. Every new screen at 320 and 390 px in both locales; Playwright paths for "TOEIC → Đề 1 → Thi thử →
+   submit → report", "IELTS → Đề ngẫu nhiên", a Foundation lesson from explanation to quiz, and pasting a
+   known word.
+5. `make gen-check` and `make gen-check-web` after committing; golangci-lint with both build tags;
+   Spectral; `make docs`; `go-arch-lint` in the Linux container.
 
 ## 6. What to cut, in order
 
-1. Stage H's admin line (the job works without it).
-2. Stage F.5's rate display (the sample and the reports still run).
-3. Stage E's two-voice listening (one voice is intelligible, just less real).
-4. Stage H itself — five fixed tests per exam still ship.
+1. Stage B step 6 (the live "đã có" marks in the box; the list still says it within seconds).
+2. Stage O's admin line, then Stage A.5's rate display (the sample and reports still run).
+3. D22-10's per-level decks (one "all words" deck works).
+4. Stage M's two voices (one voice is intelligible, just less real).
+5. Stage E's skill progressions (one lesson per skill to start).
+6. Stage O itself — five fixed tests per exam still ship.
 
-Stages A–D and G are the owner's ask and are not on this list, and neither are F.1–F.3 and the F.5
-sample: auto-publishing without them is publishing unchecked questions.
+Not on this list: Stage A's verifier, checklist, marking and sample (auto-publishing without them is
+publishing unchecked content); Stage B steps 1–5; the 10,000 words; the thirteen courses; five tests per
+exam; the exam hub.

@@ -290,6 +290,12 @@ weak-node generation uses it, but the practice, exam and placement pools still g
 paths. P9's `weak_topic` mode draws like `random`; nothing weights it by node mastery yet. P3 renders a
 video only after transcoding it, so the 10-minute limit is checked late.
 
+**The work-order column below is the plan of 2026-09-20, not what happened.** WO 19 built P3–P12 in one
+work order; WO 20 became lesson materials, WO 21 the screens over WO 19, and **WO 22 is the content work
+order** — 10,000 words, thirteen Foundation courses, five mock tests each for TOEIC, IELTS and VSTEP, and
+publishing on independent AI verification, which is the owner's answer (2026-09-23) to §10's review
+bottleneck. See [phase-3-work-order-22.md](phase-3-work-order-22.md).
+
 The brief's P1-P12, mapped to work orders. Each is independently testable and leaves the system working.
 
 | Step | Work order | Delivers | Gate |
