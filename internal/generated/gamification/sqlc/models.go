@@ -359,6 +359,12 @@ type ContentContentVersion struct {
 	UpdatedAt   time.Time
 }
 
+type ContentFoundationCourseNode struct {
+	CourseSlug string
+	NodeID     uuid.UUID
+	Position   int32
+}
+
 type ContentItemReport struct {
 	ID               uuid.UUID
 	ContentVersionID uuid.UUID

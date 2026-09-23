@@ -330,7 +330,7 @@ func (q *Queries) GetExamAttemptForUser(ctx context.Context, arg GetExamAttemptF
 }
 
 const getExamByID = `-- name: GetExamByID :one
-SELECT id, slug, title_en, title_vi, description_en, description_vi, level, format, total_minutes, created_at, updated_at, version_id
+SELECT id, slug, title_en, title_vi, description_en, description_vi, level, format, total_minutes, created_at, updated_at, version_id, listed
 FROM assess.exams
 WHERE id = $1
 `
@@ -351,12 +351,13 @@ func (q *Queries) GetExamByID(ctx context.Context, id uuid.UUID) (AssessExam, er
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VersionID,
+		&i.Listed,
 	)
 	return i, err
 }
 
 const getExamBySlug = `-- name: GetExamBySlug :one
-SELECT id, slug, title_en, title_vi, description_en, description_vi, level, format, total_minutes, created_at, updated_at, version_id
+SELECT id, slug, title_en, title_vi, description_en, description_vi, level, format, total_minutes, created_at, updated_at, version_id, listed
 FROM assess.exams
 WHERE slug = $1
 `
@@ -377,6 +378,7 @@ func (q *Queries) GetExamBySlug(ctx context.Context, slug string) (AssessExam, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VersionID,
+		&i.Listed,
 	)
 	return i, err
 }
@@ -444,7 +446,7 @@ func (q *Queries) ListExamSections(ctx context.Context, examID uuid.UUID) ([]Ass
 }
 
 const listExams = `-- name: ListExams :many
-SELECT id, slug, title_en, title_vi, description_en, description_vi, level, format, total_minutes, created_at, updated_at, version_id
+SELECT id, slug, title_en, title_vi, description_en, description_vi, level, format, total_minutes, created_at, updated_at, version_id, listed
 FROM assess.exams
 ORDER BY level ASC, slug ASC
 `
@@ -472,6 +474,7 @@ func (q *Queries) ListExams(ctx context.Context) ([]AssessExam, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.VersionID,
+			&i.Listed,
 		); err != nil {
 			return nil, err
 		}

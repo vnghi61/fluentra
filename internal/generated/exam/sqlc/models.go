@@ -210,6 +210,7 @@ type AssessExam struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	VersionID     *uuid.UUID
+	Listed        bool
 }
 
 type AssessExamAttempt struct {
@@ -265,6 +266,7 @@ type AssessExamVersion struct {
 	VerifiedAt   pgtype.Date
 	IsCurrent    bool
 	Notes        string
+	Listed       bool
 }
 
 type AssessIntegrityEvent struct {

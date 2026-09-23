@@ -93,7 +93,7 @@ func (q *Queries) GetBlueprintByName(ctx context.Context, arg GetBlueprintByName
 }
 
 const getExamByVersionID = `-- name: GetExamByVersionID :one
-SELECT id, slug, title_en, title_vi, description_en, description_vi, level, format, total_minutes, created_at, updated_at, version_id FROM assess.exams
+SELECT id, slug, title_en, title_vi, description_en, description_vi, level, format, total_minutes, created_at, updated_at, version_id, listed FROM assess.exams
 WHERE version_id = $1
 LIMIT 1
 `
@@ -114,6 +114,7 @@ func (q *Queries) GetExamByVersionID(ctx context.Context, versionID *uuid.UUID) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VersionID,
+		&i.Listed,
 	)
 	return i, err
 }
@@ -141,7 +142,7 @@ func (q *Queries) GetExamPartByID(ctx context.Context, id uuid.UUID) (AssessExam
 }
 
 const getExamVersionByCode = `-- name: GetExamVersionByCode :one
-SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes FROM assess.exam_versions
+SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, listed FROM assess.exam_versions
 WHERE code = $1
 `
 
@@ -159,12 +160,13 @@ func (q *Queries) GetExamVersionByCode(ctx context.Context, code string) (Assess
 		&i.VerifiedAt,
 		&i.IsCurrent,
 		&i.Notes,
+		&i.Listed,
 	)
 	return i, err
 }
 
 const getExamVersionByID = `-- name: GetExamVersionByID :one
-SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes FROM assess.exam_versions
+SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, listed FROM assess.exam_versions
 WHERE id = $1
 `
 
@@ -182,6 +184,7 @@ func (q *Queries) GetExamVersionByID(ctx context.Context, id uuid.UUID) (AssessE
 		&i.VerifiedAt,
 		&i.IsCurrent,
 		&i.Notes,
+		&i.Listed,
 	)
 	return i, err
 }
@@ -239,7 +242,7 @@ func (q *Queries) ListBlueprintsByVersionID(ctx context.Context, versionID uuid.
 }
 
 const listCurrentExamVersions = `-- name: ListCurrentExamVersions :many
-SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes FROM assess.exam_versions
+SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, listed FROM assess.exam_versions
 WHERE is_current = true
 ORDER BY code ASC
 `
@@ -264,6 +267,7 @@ func (q *Queries) ListCurrentExamVersions(ctx context.Context) ([]AssessExamVers
 			&i.VerifiedAt,
 			&i.IsCurrent,
 			&i.Notes,
+			&i.Listed,
 		); err != nil {
 			return nil, err
 		}
@@ -312,7 +316,7 @@ func (q *Queries) ListExamPartsByVersionID(ctx context.Context, versionID uuid.U
 }
 
 const listExamVersions = `-- name: ListExamVersions :many
-SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes FROM assess.exam_versions
+SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, listed FROM assess.exam_versions
 ORDER BY is_current DESC, code ASC
 `
 
@@ -336,6 +340,7 @@ func (q *Queries) ListExamVersions(ctx context.Context) ([]AssessExamVersion, er
 			&i.VerifiedAt,
 			&i.IsCurrent,
 			&i.Notes,
+			&i.Listed,
 		); err != nil {
 			return nil, err
 		}
