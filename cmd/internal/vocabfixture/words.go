@@ -109,6 +109,10 @@ func ReadAll(dir string) ([]*File, error) {
 	return files, nil
 }
 
+// ValidateWord checks one word against the format's rules, so the build tool
+// can flag a bad word before it writes a whole file.
+func ValidateWord(w Word, fileLevel string) error { return w.validate(fileLevel) }
+
 func (w Word) validate(fileLevel string) error {
 	if strings.TrimSpace(w.Lemma) == "" {
 		return fmt.Errorf("needs a lemma")

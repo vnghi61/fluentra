@@ -62,7 +62,11 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 	if resp, handled, err := p.itemTask(req); handled {
 		return resp, err
 	}
+	return p.reply(req)
+}
 
+// reply answers the tasks that are not item generation.
+func (p *MockProvider) reply(req Request) (Response, error) {
 	switch req.Task {
 	case TaskVerifyVocabulary:
 		return p.verifyVocabulary(req)
@@ -84,9 +88,53 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 		return p.placementSolve(req)
 	case TaskChooseVocabularySense:
 		return p.chooseSense(req)
+	case TaskVocabMeanings:
+		return p.vocabMeanings(req)
 	default:
 		return Response{}, fmt.Errorf("ai: mock provider has no answer for task %q", req.Task)
 	}
+}
+
+// vocabMeanings answers the word-list build tool with placeholder meanings, so
+// the offline stack can exercise the pipeline. The output is deliberately
+// marked as the mock provider's and must never be frozen into a fixture.
+func (p *MockProvider) vocabMeanings(req Request) (Response, error) {
+	type example struct {
+		Sentence   string `json:"sentence"`
+		SentenceVi string `json:"sentence_vi"`
+	}
+	type meaning struct {
+		Lemma        string    `json:"lemma"`
+		POS          string    `json:"pos"`
+		CEFRLevel    string    `json:"cefr_level"`
+		Definition   string    `json:"definition"`
+		DefinitionVI string    `json:"definition_vi"`
+		Examples     []example `json:"examples"`
+	}
+
+	var out []meaning
+	for _, raw := range strings.Split(stringVar(req.Vars, "Lemmas"), "\n") {
+		lemma := strings.TrimSpace(raw)
+		if lemma == "" {
+			continue
+		}
+		out = append(out, meaning{
+			Lemma:        lemma,
+			POS:          "noun",
+			CEFRLevel:    "A2",
+			Definition:   "The mock meaning of " + lemma + ".",
+			DefinitionVI: "Nghĩa thử nghiệm của " + lemma,
+			Examples: []example{
+				{Sentence: "This is an example with " + lemma + ".", SentenceVi: "Đây là ví dụ với " + lemma + "."},
+				{Sentence: "We use " + lemma + " every day.", SentenceVi: "Chúng ta dùng " + lemma + " mỗi ngày."},
+			},
+		})
+	}
+	encoded, err := json.Marshal(out)
+	if err != nil {
+		return Response{}, err
+	}
+	return Response{Text: string(encoded), Model: MockModelName}, nil
 }
 
 // chooseSense picks the first stored sense the mock is given, so a development

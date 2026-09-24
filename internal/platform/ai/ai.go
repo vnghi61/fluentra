@@ -75,6 +75,11 @@ const (
 	// word reuses an existing sense instead of duplicating it when the model
 	// would otherwise word the definition differently.
 	TaskChooseVocabularySense Task = "vocab_choose_sense"
+	// TaskVocabMeanings writes a frequency list's meanings: part of speech, CEFR,
+	// an English definition, the Vietnamese meaning and two examples, fifty
+	// lemmas per call (WO 22 D22-7). The build tool freezes the reply into the
+	// vocabulary fixture.
+	TaskVocabMeanings Task = "vocab_word_meanings"
 )
 
 // Request is one unit of work.

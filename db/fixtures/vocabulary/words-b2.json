@@ -1,0 +1,400 @@
+{
+  "format": "fluentra.vocabulary.fixture.v1",
+  "source": "wordfreq 3.1.1 (top_n_list, English)",
+  "licence": "wordfreq data: MIT package; frequency data from the listed open sources",
+  "checked_at": "2026-09-24",
+  "level": "B2",
+  "words": [
+    {
+      "lemma": "given",
+      "pos": "preposition",
+      "cefr_level": "B2",
+      "definition": "considering something; because of that situation",
+      "definition_vi": "xét đến, với điều kiện",
+      "examples": [
+        {
+          "sentence": "Given the bad weather, we cancelled the trip.",
+          "sentence_vi": "Xét đến thời tiết xấu, chúng tôi đã hủy chuyến đi."
+        },
+        {
+          "sentence": "Given his experience, he should get the job.",
+          "sentence_vi": "Với kinh nghiệm của anh ấy, anh ấy nên được nhận việc."
+        }
+      ]
+    },
+    {
+      "lemma": "former",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "having had a job or position in the past but not now",
+      "definition_vi": "cựu, trước đây",
+      "examples": [
+        {
+          "sentence": "The former president now lives in a small village.",
+          "sentence_vi": "Cựu tổng thống nay sống ở một ngôi làng nhỏ."
+        },
+        {
+          "sentence": "She met her former teacher at the shopping mall.",
+          "sentence_vi": "Cô ấy gặp giáo viên cũ của mình ở trung tâm thương mại."
+        }
+      ]
+    },
+    {
+      "lemma": "self",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the person you really are, your own character",
+      "definition_vi": "bản thân",
+      "examples": [
+        {
+          "sentence": "Meditation helped her understand her true self.",
+          "sentence_vi": "Thiền giúp cô ấy hiểu được bản thân thật của mình."
+        },
+        {
+          "sentence": "He wrote a book about self and identity.",
+          "sentence_vi": "Anh ấy viết một cuốn sách về bản thân và bản sắc."
+        }
+      ]
+    },
+    {
+      "lemma": "de",
+      "pos": "preposition",
+      "cefr_level": "B2",
+      "definition": "a word from French or Spanish meaning of or from",
+      "definition_vi": "của, từ (tiếng Pháp/Tây Ban Nha)",
+      "examples": [
+        {
+          "sentence": "Her full name is Maria de la Cruz.",
+          "sentence_vi": "Tên đầy đủ của cô ấy là Maria de la Cruz."
+        },
+        {
+          "sentence": "The phrase 'de facto' comes from Latin through French.",
+          "sentence_vi": "Cụm từ 'de facto' đến từ tiếng Latin qua tiếng Pháp."
+        }
+      ]
+    },
+    {
+      "lemma": "re",
+      "pos": "preposition",
+      "cefr_level": "B2",
+      "definition": "about or concerning, used in formal writing",
+      "definition_vi": "về việc, liên quan đến",
+      "examples": [
+        {
+          "sentence": "Re your last email, I agree with your plan.",
+          "sentence_vi": "Về email gần nhất của anh, tôi đồng ý với kế hoạch của anh."
+        },
+        {
+          "sentence": "The letter was re the new school rules.",
+          "sentence_vi": "Bức thư nói về các quy định mới của trường."
+        }
+      ]
+    },
+    {
+      "lemma": "co",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a short word for company, used in business names",
+      "definition_vi": "công ty (viết tắt)",
+      "examples": [
+        {
+          "sentence": "She works for Smith \u0026 Co in the city.",
+          "sentence_vi": "Cô ấy làm việc cho Smith \u0026 Co ở thành phố."
+        },
+        {
+          "sentence": "The shop is called Green Co.",
+          "sentence_vi": "Cửa hàng có tên là Green Co."
+        }
+      ]
+    },
+    {
+      "lemma": "al",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "short for aluminium, a light silver metal",
+      "definition_vi": "nhôm (viết tắt)",
+      "examples": [
+        {
+          "sentence": "The window frame is made of al.",
+          "sentence_vi": "Khung cửa sổ được làm bằng nhôm."
+        },
+        {
+          "sentence": "Al is light, so it is used in aircraft.",
+          "sentence_vi": "Nhôm nhẹ nên được dùng trong máy bay."
+        }
+      ]
+    },
+    {
+      "lemma": "evidence",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "facts or objects that show something is true",
+      "definition_vi": "bằng chứng",
+      "examples": [
+        {
+          "sentence": "The police found evidence at the scene.",
+          "sentence_vi": "Cảnh sát tìm thấy bằng chứng hiện trường."
+        },
+        {
+          "sentence": "There is strong evidence that exercise improves health.",
+          "sentence_vi": "Có bằng chứng mạnh rằng tập thể dục tốt cho sức khỏe."
+        }
+      ]
+    },
+    {
+      "lemma": "federal",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "relating to a national government, not a state one",
+      "definition_vi": "thuộc chính phủ liên bang",
+      "examples": [
+        {
+          "sentence": "The federal government pays for the new road.",
+          "sentence_vi": "Chính phủ liên bang trả tiền cho con đường mới."
+        },
+        {
+          "sentence": "She works for a federal agency in Washington.",
+          "sentence_vi": "Cô ấy làm việc cho một cơ quan liên bang ở Washington."
+        }
+      ]
+    },
+    {
+      "lemma": "upon",
+      "pos": "preposition",
+      "cefr_level": "B2",
+      "definition": "on; a formal word for 'on'",
+      "definition_vi": "trên",
+      "examples": [
+        {
+          "sentence": "The book lay upon the desk all morning.",
+          "sentence_vi": "Cuốn sách nằm trên bàn suốt buổi sáng."
+        },
+        {
+          "sentence": "Once upon a time, there was a small village.",
+          "sentence_vi": "Ngày xửa ngày xưa, có một ngôi làng nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "chief",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the person who leads a group or organization",
+      "definition_vi": "thủ lĩnh, người đứng đầu",
+      "examples": [
+        {
+          "sentence": "The chief of the village made an important decision.",
+          "sentence_vi": "Thủ lĩnh của làng đã đưa ra một quyết định quan trọng."
+        },
+        {
+          "sentence": "She spoke to the fire chief about safety.",
+          "sentence_vi": "Cô ấy đã nói chuyện với trưởng phòng cứu hỏa về an toàn."
+        }
+      ]
+    },
+    {
+      "lemma": "property",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "land, buildings, or things that someone owns",
+      "definition_vi": "tài sản, bất động sản",
+      "examples": [
+        {
+          "sentence": "They bought a property near the beach.",
+          "sentence_vi": "Họ đã mua một bất động sản gần bãi biển."
+        },
+        {
+          "sentence": "Please do not touch other people's property.",
+          "sentence_vi": "Xin đừng chạm vào tài sản của người khác."
+        }
+      ]
+    },
+    {
+      "lemma": "economic",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "relating to money, business, and trade",
+      "definition_vi": "thuộc kinh tế",
+      "examples": [
+        {
+          "sentence": "The country faces serious economic problems.",
+          "sentence_vi": "Đất nước đang đối mặt với những vấn đề kinh tế nghiêm trọng."
+        },
+        {
+          "sentence": "The government made a new economic plan.",
+          "sentence_vi": "Chính phủ đã đưa ra một kế hoạch kinh tế mới."
+        }
+      ]
+    },
+    {
+      "lemma": "lord",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a man of high rank in old times, or a title for God",
+      "definition_vi": "chúa tể; Chúa (tôn giáo)",
+      "examples": [
+        {
+          "sentence": "The lord of the castle owned all the land nearby.",
+          "sentence_vi": "Chúa tể của lâu đài sở hữu toàn bộ đất đai gần đó."
+        },
+        {
+          "sentence": "They prayed to the Lord every Sunday.",
+          "sentence_vi": "Họ cầu nguyện với Chúa mỗi Chủ nhật."
+        }
+      ]
+    },
+    {
+      "lemma": "release",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to let a person or animal go free",
+      "definition_vi": "thả, phát hành",
+      "examples": [
+        {
+          "sentence": "They will release the birds into the forest.",
+          "sentence_vi": "Họ sẽ thả những con chim vào rừng."
+        },
+        {
+          "sentence": "The police released him after two days.",
+          "sentence_vi": "Cảnh sát thả anh ta sau hai ngày."
+        }
+      ]
+    },
+    {
+      "lemma": "union",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a group of workers who protect their rights together",
+      "definition_vi": "công đoàn, liên minh",
+      "examples": [
+        {
+          "sentence": "The union asked for higher pay for its members.",
+          "sentence_vi": "Công đoàn yêu cầu trả lương cao hơn cho các thành viên."
+        },
+        {
+          "sentence": "Several small countries formed a union to trade together.",
+          "sentence_vi": "Một số quốc gia nhỏ thành lập một liên minh để cùng buôn bán."
+        }
+      ]
+    },
+    {
+      "lemma": "released",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "let something go free, or made something available to the public",
+      "definition_vi": "đã phát hành, đã thả",
+      "examples": [
+        {
+          "sentence": "The band released a new song last week.",
+          "sentence_vi": "Ban nhạc đã phát hành một bài hát mới tuần trước."
+        },
+        {
+          "sentence": "They released the birds back into the wild.",
+          "sentence_vi": "Họ đã thả những con chim trở về tự nhiên."
+        }
+      ]
+    },
+    {
+      "lemma": "growth",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the process of increasing in size, amount, or development",
+      "definition_vi": "sự tăng trưởng, sự phát triển",
+      "examples": [
+        {
+          "sentence": "The country's economic growth has been very fast.",
+          "sentence_vi": "Tăng trưởng kinh tế của đất nước rất nhanh."
+        },
+        {
+          "sentence": "Good soil is important for the growth of plants.",
+          "sentence_vi": "Đất tốt rất quan trọng cho sự phát triển của cây."
+        }
+      ]
+    },
+    {
+      "lemma": "moving",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "making you feel strong emotions",
+      "definition_vi": "cảm động",
+      "examples": [
+        {
+          "sentence": "The film's ending was deeply moving.",
+          "sentence_vi": "Phần kết của bộ phim thật cảm động sâu sắc."
+        },
+        {
+          "sentence": "She gave a moving speech at the school event.",
+          "sentence_vi": "Cô ấy đã có một bài phát biểu cảm động tại sự kiện của trường."
+        }
+      ]
+    },
+    {
+      "lemma": "provided",
+      "pos": "conjunction",
+      "cefr_level": "B2",
+      "definition": "if; only on the condition that",
+      "definition_vi": "với điều kiện là",
+      "examples": [
+        {
+          "sentence": "You can borrow my car provided you drive carefully.",
+          "sentence_vi": "Bạn có thể mượn xe của tôi với điều kiện là lái cẩn thận."
+        },
+        {
+          "sentence": "We will go hiking tomorrow, provided the weather is good.",
+          "sentence_vi": "Chúng ta sẽ đi leo núi ngày mai, với điều kiện thời tiết tốt."
+        }
+      ]
+    },
+    {
+      "lemma": "anti",
+      "pos": "preposition",
+      "cefr_level": "B2",
+      "definition": "opposed to something or against it",
+      "definition_vi": "chống, phản đối",
+      "examples": [
+        {
+          "sentence": "He is anti smoking and never lets people smoke near him.",
+          "sentence_vi": "Anh ấy chống hút thuốc và không bao giờ cho người khác hút thuốc gần mình."
+        },
+        {
+          "sentence": "The anti war protest attracted thousands of students.",
+          "sentence_vi": "Cuộc biểu tình chống chiến tranh thu hút hàng nghìn sinh viên."
+        }
+      ]
+    },
+    {
+      "lemma": "association",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a group of people joined for a shared purpose",
+      "definition_vi": "hiệp hội, hội",
+      "examples": [
+        {
+          "sentence": "She joined the teachers' association last year.",
+          "sentence_vi": "Cô ấy đã gia nhập hiệp hội giáo viên năm ngoái."
+        },
+        {
+          "sentence": "The word 'rain' has a sad association for me.",
+          "sentence_vi": "Từ 'mưa' gợi cho tôi một cảm giác buồn."
+        }
+      ]
+    },
+    {
+      "lemma": "potential",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "possible in the future, though not certain",
+      "definition_vi": "tiềm năng, có thể xảy ra",
+      "examples": [
+        {
+          "sentence": "The company talked to several potential buyers.",
+          "sentence_vi": "Công ty đã nói chuyện với một số người mua tiềm năng."
+        },
+        {
+          "sentence": "There are potential risks in this new plan.",
+          "sentence_vi": "Có những rủi ro tiềm ẩn trong kế hoạch mới này."
+        }
+      ]
+    }
+  ]
+}
