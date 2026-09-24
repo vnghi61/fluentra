@@ -178,7 +178,41 @@ func buildGenerateVars(req learningcontract.GenerateRequest, spineNodes []string
 	if req.Kind == kindSpeakingTask {
 		vars["TaskType"] = subTypeRespond
 	}
+	if format := examFormat(req.ExamConstraints); format != "" {
+		vars["ExamFormat"] = format
+	}
 	return vars
+}
+
+// examFormat renders an exam part's published format for the generation prompt,
+// so "TOEIC Part 3" asks for the right shape rather than a generic item
+// (WO 22 Stage I.3.1).
+func examFormat(c *learningcontract.ExamPartConstraints) string {
+	if c == nil {
+		return ""
+	}
+	var lines []string
+	if len(c.AllowedTypes) > 0 {
+		lines = append(lines, "Allowed question types: "+strings.Join(c.AllowedTypes, ", ")+".")
+	}
+	if c.QuestionsPerGroup > 0 {
+		lines = append(lines, fmt.Sprintf("Questions in this group: exactly %d.", c.QuestionsPerGroup))
+	}
+	if c.OptionCount > 0 {
+		lines = append(lines, fmt.Sprintf("Options per question: exactly %d.", c.OptionCount))
+	} else {
+		lines = append(lines, "Questions are typed (no options); each answer is a short text.")
+	}
+	if c.MaxWords > 0 {
+		lines = append(lines, fmt.Sprintf("No answer may exceed %d words.", c.MaxWords))
+	}
+	if c.MinWords > 0 {
+		lines = append(lines, fmt.Sprintf("The response must be at least %d words.", c.MinWords))
+	}
+	if c.Plays > 0 {
+		lines = append(lines, fmt.Sprintf("The recording is played %d time(s).", c.Plays))
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (s *Service) attachProvenanceAndVerify(

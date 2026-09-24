@@ -55,6 +55,7 @@ export interface SittingActivityConfig {
   prompt?: string;
   topic?: string;
   min_words?: number;
+  max_words?: number;
   task_type?: "read_aloud" | "respond";
   reference_text?: string;
   speaking_time_seconds?: number;

@@ -1374,7 +1374,10 @@
     },
     "reading": {
       "passage": "Bài đọc",
-      "mcqGap": "Điền vào chỗ trống"
+      "mcqGap": "Điền vào chỗ trống",
+      "completion": "Điền từ",
+      "maxWords": "{{count}} / {{max}} từ",
+      "answerLabel": "Câu trả lời của bạn"
     },
     "writing": {
       "essay": "Bài luận",

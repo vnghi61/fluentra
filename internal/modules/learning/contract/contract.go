@@ -379,6 +379,13 @@ type ExamPartConstraints struct {
 	MinWords          int  `json:"min_words,omitempty"`
 	MaxWords          int  `json:"max_words,omitempty"`
 	AudioRequired     bool `json:"audio_required,omitempty"`
+	// AllowedTypes is the question types this part may draw ("multiple_choice",
+	// "completion", "true_false_not_given", "matching", …). Empty means the part
+	// does not constrain them. TypeMix is the share each type should hold.
+	AllowedTypes []string           `json:"allowed_types,omitempty"`
+	TypeMix      map[string]float64 `json:"type_mix,omitempty"`
+	// Plays is how many times a recording may be played; 0 means not stated.
+	Plays int `json:"plays,omitempty"`
 }
 
 // VerifyItemRequest specifies an item to verify through ItemVerifier.

@@ -157,7 +157,7 @@ func validateListeningExamStructure(raw json.RawMessage, c *learningcontract.Exa
 	if c.MaxWords > 0 && wc > c.MaxWords {
 		return fmt.Errorf("check (exam structure) failed: script has %d words, want at most %d", wc, c.MaxWords)
 	}
-	return nil
+	return checkAllowedQuestionTypes(cand.Questions, c)
 }
 
 func validateReadingExamStructure(raw json.RawMessage, c *learningcontract.ExamPartConstraints) error {
@@ -183,6 +183,29 @@ func validateReadingExamStructure(raw json.RawMessage, c *learningcontract.ExamP
 	}
 	if c.MaxWords > 0 && wc > c.MaxWords {
 		return fmt.Errorf("check (exam structure) failed: passage has %d words, want at most %d", wc, c.MaxWords)
+	}
+	return checkAllowedQuestionTypes(cand.Questions, c)
+}
+
+// checkAllowedQuestionTypes enforces a part's allowed question types (Stage I):
+// an item whose type the part does not permit is refused before it is stored, so
+// an IELTS Reading part cannot arrive full of multiple choice.
+func checkAllowedQuestionTypes(questions []candQuestion, c *learningcontract.ExamPartConstraints) error {
+	if len(c.AllowedTypes) == 0 {
+		return nil
+	}
+	allowed := make(map[string]bool, len(c.AllowedTypes))
+	for _, t := range c.AllowedTypes {
+		allowed[t] = true
+	}
+	for i, q := range questions {
+		if q.Type == "" {
+			continue
+		}
+		if !allowed[q.Type] {
+			return fmt.Errorf("check (exam structure) failed: question %d type %q is not allowed by this part",
+				i+1, q.Type)
+		}
 	}
 	return nil
 }

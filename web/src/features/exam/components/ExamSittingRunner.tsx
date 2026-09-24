@@ -777,6 +777,15 @@ interface ChoiceQuestionsProps {
   onSelect: (questionId: string, optionId: string) => void;
 }
 
+// trueFalseOptions is the fixed three-option choice a true/false/not-given
+// question uses (WO 22 D22-25). The option ids are the answer the grader
+// compares against.
+const TRUE_FALSE_OPTIONS: ChoiceOption[] = [
+  { id: "True", text: "True" },
+  { id: "False", text: "False" },
+  { id: "Not Given", text: "Not Given" },
+];
+
 const ChoiceQuestions: React.FC<ChoiceQuestionsProps> = ({
   questions,
   firstNumber,
@@ -784,41 +793,57 @@ const ChoiceQuestions: React.FC<ChoiceQuestionsProps> = ({
   onSelect,
 }) => (
   <div className="space-y-6 pt-2">
-    {questions.map((question, qIndex) => (
-      <fieldset
-        key={question.id}
-        id={slotAnchor({ number: firstNumber + qIndex })}
-        className="scroll-mt-28 space-y-3 rounded-xl border border-border-subtle bg-surface-muted/30 p-4"
-      >
-        <legend className="text-sm font-semibold text-text">
-          {firstNumber + qIndex}. {question.prompt}
-        </legend>
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          {(question.options ?? []).map((option) => {
-            const isSelected = selected[question.id] === option.id;
-            return (
-              <button
-                key={option.id}
-                type="button"
-                aria-pressed={isSelected}
-                onClick={() => onSelect(question.id, option.id)}
-                className={cn(
-                  "flex min-h-[44px] items-center gap-3 rounded-lg border p-3 text-left text-sm",
-                  isSelected
-                    ? "border-primary bg-primary/10 font-medium text-primary-accent"
-                    : "border-border bg-surface-card text-text hover:bg-surface-muted",
-                )}
-              >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-subtle text-xs font-bold">
-                  {option.id}
-                </span>
-                <span className="min-w-0 flex-1">{option.text}</span>
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
-    ))}
+    {questions.map((question, qIndex) => {
+      const options =
+        question.type === "true_false_not_given"
+          ? TRUE_FALSE_OPTIONS
+          : (question.options ?? []);
+      return (
+        <fieldset
+          key={question.id}
+          id={slotAnchor({ number: firstNumber + qIndex })}
+          className="scroll-mt-28 space-y-3 rounded-xl border border-border-subtle bg-surface-muted/30 p-4"
+        >
+          <legend className="text-sm font-semibold text-text">
+            {firstNumber + qIndex}. {question.prompt}
+          </legend>
+          {options.length > 0 ? (
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {options.map((option) => {
+                const isSelected = selected[question.id] === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => onSelect(question.id, option.id)}
+                    className={cn(
+                      "flex min-h-[44px] items-center gap-3 rounded-lg border p-3 text-left text-sm",
+                      isSelected
+                        ? "border-primary bg-primary/10 font-medium text-primary-accent"
+                        : "border-border bg-surface-card text-text hover:bg-surface-muted",
+                    )}
+                  >
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-subtle text-xs font-bold">
+                      {option.id}
+                    </span>
+                    <span className="min-w-0 flex-1">{option.text}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            // A completion question has no options: the answer is typed.
+            <input
+              type="text"
+              value={selected[question.id] ?? ""}
+              onChange={(e) => onSelect(question.id, e.target.value)}
+              className="min-h-[44px] w-full rounded-lg border border-border bg-surface-card px-3 py-2 text-base text-text focus:outline-hidden focus:ring-2 focus:ring-primary"
+            />
+          )}
+        </fieldset>
+      );
+    })}
   </div>
 );
 
@@ -987,6 +1012,47 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
             );
           })}
         </div>
+      </div>
+    );
+  }
+
+  if (activity.kind === "typed_completion") {
+    const value = answer && "answer" in answer ? answer.answer : "";
+    const maxWords = config.max_words ?? 0;
+    const words = value.trim() ? value.trim().split(/\s+/).length : 0;
+    const inputId = `completion-${activity.id}`;
+    return (
+      <div className={cardClass} id={anchor}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {heading(config.title || t("exam.reading.completion", "Completion"))}
+          {maxWords > 0 && (
+            <Badge variant={words <= maxWords ? "success" : "outline"}>
+              {t("exam.reading.maxWords", {
+                count: words,
+                max: maxWords,
+                defaultValue: `${words} / ${maxWords} words`,
+              })}
+            </Badge>
+          )}
+        </div>
+        {(config.prompt || config.sentence) && (
+          <p className="rounded-xl border border-border-subtle bg-surface-muted p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
+            {config.prompt || config.sentence}
+          </p>
+        )}
+        <label
+          htmlFor={inputId}
+          className="text-xs font-medium text-text-muted"
+        >
+          {t("exam.reading.answerLabel", "Your answer")}
+        </label>
+        <input
+          id={inputId}
+          type="text"
+          value={value}
+          onChange={(e) => onChange({ answer: e.target.value })}
+          className="min-h-[44px] w-full rounded-xl border border-border bg-surface-card px-4 py-3 text-base text-text focus:outline-hidden focus:ring-2 focus:ring-primary"
+        />
       </div>
     );
   }

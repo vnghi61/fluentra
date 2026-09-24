@@ -222,6 +222,65 @@ func TestVerifyItem_WorkOrder19StageEGate_ExamStructureCheck(t *testing.T) {
 	require.NoError(t, err, "TOEIC Part 3 with 3 questions must pass")
 }
 
+// TestVerifyItem_ExamStructure_QuestionTypesMustBeAllowed is Stage I: an item
+// whose question type the part does not permit is refused.
+func TestVerifyItem_ExamStructure_QuestionTypesMustBeAllowed(t *testing.T) {
+	ctx := context.Background()
+
+	svc := service.New(service.Deps{
+		Lesson:       newFakePoolLessons(),
+		LessonAuthor: newFakePoolLessons(),
+		Graders:      passingGraders(),
+		Clock:        clock.NewFake(time.Now()),
+	})
+
+	passage := "The city opened a new library in 2020. It holds ten thousand books and a reading room."
+	question := func(id string) string {
+		return `{
+			"id": "` + id + `",
+			"type": "multiple_choice",
+			"prompt": "When did the library open?",
+			"options": [
+				{"id": "A", "text": "2020"},
+				{"id": "B", "text": "2019"},
+				{"id": "C", "text": "2021"},
+				{"id": "D", "text": "2018"}
+			],
+			"correct_option_id": "A",
+			"explanation": {"explanation_en": "It opened in 2020.", "explanation_vi": "Mở năm 2020."}
+		}`
+	}
+	body := json.RawMessage(`{
+		"passage": "` + passage + `",
+		"questions": [` + question("q1") + `,` + question("q2") + `,` + question("q3") + `,` + question("q4") + `]
+	}`)
+
+	// A part that allows only completion and true/false/not given refuses it.
+	err := svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:      "reading_comprehension",
+		CEFRLevel: "B1",
+		Body:      body,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			QuestionsPerGroup: 4,
+			AllowedTypes:      []string{"completion", "true_false_not_given"},
+		},
+	})
+	require.Error(t, err, "a disallowed question type must be refused")
+	assert.Contains(t, err.Error(), "is not allowed by this part")
+
+	// Allowing multiple choice lets the same item through.
+	err = svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:      "reading_comprehension",
+		CEFRLevel: "B1",
+		Body:      body,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			QuestionsPerGroup: 4,
+			AllowedTypes:      []string{"multiple_choice"},
+		},
+	})
+	require.NoError(t, err, "an allowed question type must pass")
+}
+
 func TestVerifyItem_ProvenanceCheck(t *testing.T) {
 	ctx := context.Background()
 

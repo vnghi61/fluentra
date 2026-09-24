@@ -449,6 +449,7 @@ export const ExamItemReview: React.FC<{
     case "question_response":
       return <ComprehensionReview item={item} firstNumber={firstNumber} />;
     case "grammar_sentence_transform":
+    case "typed_completion":
       return <RewriteReview item={item} />;
     case "writing_prompt":
       return <WritingReview item={item} />;
