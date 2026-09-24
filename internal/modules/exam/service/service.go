@@ -135,11 +135,14 @@ type Deps struct {
 	Exposures    learningcontract.ItemExposureRecorder
 	Lesson       lessoncontract.Reader
 	Questionbank questionbankcontract.Reader
-	Drawer       PoolDrawer
-	Clock        clock.Clock
-	DailyLimit   int
-	Enqueuer     platformjob.Enqueuer
-	Nudger       WorkerNudger
+	// BankAuthor generates the questions the daily job adds to the bank
+	// (WO 22 Stage O). Nil disables the job.
+	BankAuthor questionbankcontract.Author
+	Drawer     PoolDrawer
+	Clock      clock.Clock
+	DailyLimit int
+	Enqueuer   platformjob.Enqueuer
+	Nudger     WorkerNudger
 }
 
 // Service orchestrates exam sittings, timing, auto-submission, and scoring.
@@ -151,6 +154,7 @@ type Service struct {
 	exposures    learningcontract.ItemExposureRecorder
 	lesson       lessoncontract.Reader
 	questionbank questionbankcontract.Reader
+	bankAuthor   questionbankcontract.Author
 	drawer       PoolDrawer
 	clock        clock.Clock
 	dailyLimit   int
@@ -176,6 +180,7 @@ func New(deps Deps) *Service {
 		exposures:    deps.Exposures,
 		lesson:       deps.Lesson,
 		questionbank: deps.Questionbank,
+		bankAuthor:   deps.BankAuthor,
 		drawer:       deps.Drawer,
 		clock:        clk,
 		dailyLimit:   dailyLimit,

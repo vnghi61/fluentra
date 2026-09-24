@@ -32,6 +32,7 @@ type mockExamRepo struct {
 	mockTests  []*domain.MockTest
 	blueprint  *domain.Blueprint
 	parts      []*domain.ExamPart
+	version    *domain.ExamVersion
 	attempts   map[uuid.UUID]sqlc.AssessExamAttempt
 	reports    map[uuid.UUID]sqlc.AssessScoreReport
 	events     []sqlc.RecordIntegrityEventParams
@@ -316,11 +317,11 @@ func (m *mockExamRepo) ListCurrentExamVersions(_ context.Context) ([]*domain.Exa
 }
 
 func (m *mockExamRepo) GetExamVersionByID(_ context.Context, _ uuid.UUID) (*domain.ExamVersion, error) {
-	return nil, nil
+	return m.version, nil
 }
 
 func (m *mockExamRepo) GetExamVersionByCode(_ context.Context, _ string) (*domain.ExamVersion, error) {
-	return nil, nil
+	return m.version, nil
 }
 
 func (m *mockExamRepo) ListExamPartsByVersionID(_ context.Context, _ uuid.UUID) ([]*domain.ExamPart, error) {
@@ -332,7 +333,10 @@ func (m *mockExamRepo) GetExamPartByID(_ context.Context, _ uuid.UUID) (*domain.
 }
 
 func (m *mockExamRepo) ListBlueprintsByVersionID(_ context.Context, _ uuid.UUID) ([]*domain.Blueprint, error) {
-	return nil, nil
+	if m.blueprint == nil {
+		return nil, nil
+	}
+	return []*domain.Blueprint{m.blueprint}, nil
 }
 
 func (m *mockExamRepo) GetBlueprintByID(_ context.Context, _ uuid.UUID) (*domain.Blueprint, error) {
@@ -516,7 +520,7 @@ func newFixture(t *testing.T) *fixture {
 		skill string
 		kind  string
 	}{
-		{"listening", "listening_comprehension"},
+		{testSkillListening, "listening_comprehension"},
 		{"reading", "reading_comprehension"},
 		{"writing", "writing_prompt"},
 		{"speaking", "speaking_task"},

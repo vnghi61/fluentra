@@ -17,6 +17,9 @@ import (
 // kindListeningComprehension is the part kind this gate's bank holds.
 const kindListeningComprehension = "listening_comprehension"
 
+// testSkillListening is the section the composer tests draw from.
+const testSkillListening = "listening"
+
 // fakeQuestionbank answers DrawableForPart from a fixed per-part list.
 type fakeQuestionbank struct {
 	byPart map[uuid.UUID][]*questionbankcontract.Question
@@ -63,7 +66,7 @@ func TestComposeNextFixedTests_DisjointAndStopsWhenShort(t *testing.T) {
 	part := &domain.ExamPart{
 		ID:            partID,
 		VersionID:     versionID,
-		Section:       "listening",
+		Section:       testSkillListening,
 		PartNumber:    1,
 		Kind:          kindListeningComprehension,
 		QuestionCount: 3,

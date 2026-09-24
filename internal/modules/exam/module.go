@@ -42,6 +42,9 @@ type Deps struct {
 	WorkerNudger WorkerNudger
 	Clock        clock.Clock
 	DailyLimit   int
+	// BankAuthor generates the daily job's questions (WO 22 Stage O). Nil
+	// leaves the daily generation job a no-op.
+	BankAuthor questionbankcontract.Author
 }
 
 // Module represents the wired exam module.
@@ -67,6 +70,7 @@ func New(deps Deps) *Module {
 		DailyLimit:   deps.DailyLimit,
 		Enqueuer:     deps.Enqueuer,
 		Nudger:       deps.WorkerNudger,
+		BankAuthor:   deps.BankAuthor,
 	})
 
 	handler := examhttp.NewHandler(svc)
@@ -109,4 +113,9 @@ func (m *Module) ExpireAttemptWorker() *examjob.ExpireAttemptWorker {
 // SweepJob returns the scheduled 1-minute sweep cron job.
 func (m *Module) SweepJob() platformjob.CronJob {
 	return examjob.SweepExpiredJob(m.service)
+}
+
+// DailyGenerationJob returns the daily generation cron job (WO 22 Stage O).
+func (m *Module) DailyGenerationJob() platformjob.CronJob {
+	return examjob.DailyGenerationJob(m.service)
 }

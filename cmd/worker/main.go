@@ -189,7 +189,8 @@ type workerConfig struct {
 		TTSDispatchToken      string `koanf:"tts_dispatch_token"`
 	} `koanf:"speech"`
 	Exam struct {
-		DailySittingsLimit int `koanf:"daily_sittings_limit"`
+		DailySittingsLimit int  `koanf:"daily_sittings_limit"`
+		DailyGeneration    bool `koanf:"daily_generation"`
 	} `koanf:"exam"`
 	SePay struct {
 		WebhookAPIKey string        `koanf:"webhook_api_key"`
@@ -313,6 +314,7 @@ func configOptions() config.Options {
 			"speech.tts_dispatch_ref":        "main",
 			"speech.tts_dispatch_token":      "",
 			"exam.daily_sittings_limit":      5,
+			"exam.daily_generation":          false,
 			"sepay.webhook_api_key":          "",
 			"sepay.api_token":                "",
 			"sepay.account_number":           "",
@@ -1139,7 +1141,8 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 	}
 
 	if err := startSkills(
-		d.pool, d.bus, d.cron, d.workers, d.lesson, learningModule, writingModule, speakingModule,
+		d.pool, d.bus, d.cron, d.workers, d.content, d.lesson, learningModule,
+		writingModule, speakingModule, d.cfg.Exam.DailyGeneration,
 	); err != nil {
 		return err
 	}
@@ -1264,8 +1267,8 @@ func newWorkerTranscriber(cfg workerConfig) media.Transcriber {
 // consumer, and the exam's expiry job and sweep.
 func startSkills(
 	pool *pgxpool.Pool, bus *eventbus.InProcessBus, cron *job.CronScheduler, workers *river.Workers,
-	lessonModule *lesson.Module, learningModule *learning.Module,
-	writingModule *writing.Module, speakingModule *speaking.Module,
+	contentModule *content.Module, lessonModule *lesson.Module, learningModule *learning.Module,
+	writingModule *writing.Module, speakingModule *speaking.Module, dailyGeneration bool,
 ) error {
 	river.AddWorker(workers, writingModule.GradeSubmissionWorker())
 	river.AddWorker(workers, speakingModule.GradeRecordingWorker())
@@ -1274,16 +1277,44 @@ func startSkills(
 		return err
 	}
 
-	examModule := exam.New(exam.Deps{
-		Pool:      pool,
-		Learning:  learningModule.SittingAnswerSubmitter(),
-		Attempts:  learningModule.AttemptOutcomeReader(),
-		Exposures: learningModule.ItemExposureRecorder(),
-		Lesson:    lessonModule.Reader(),
+	// Questionbank is built first, so the exam module can generate through it;
+	// the lazy adapter closes the loop back to the exam part spec (WO 22 Stage O).
+	var examModule *exam.Module
+	questionbankModule := questionbank.New(questionbank.Deps{
+		Pool:          pool,
+		ContentReader: contentModule.Reader(),
+		LessonAuthor:  lessonModule.Author(),
+		Generator:     learningModule.Generator(),
+		ExamParts:     lazyExamParts{of: &examModule},
+	})
+	examModule = exam.New(exam.Deps{
+		Pool:       pool,
+		Learning:   learningModule.SittingAnswerSubmitter(),
+		Attempts:   learningModule.AttemptOutcomeReader(),
+		Exposures:  learningModule.ItemExposureRecorder(),
+		Lesson:     lessonModule.Reader(),
+		BankAuthor: questionbankModule.Author(),
 	})
 	river.AddWorker(workers, examModule.ExpireAttemptWorker())
 	cron.Register(examModule.SweepJob())
+	if dailyGeneration {
+		cron.Register(examModule.DailyGenerationJob())
+	}
 	return nil
+}
+
+// lazyExamParts answers questionbank's exam-part lookup after the exam module is
+// assembled: questionbank is built first so the exam module can generate through
+// it, and this closes the loop (WO 22 Stage O).
+type lazyExamParts struct{ of **exam.Module }
+
+func (l lazyExamParts) PartConstraints(
+	ctx context.Context, partID uuid.UUID,
+) (*learningcontract.ExamPartConstraints, error) {
+	if l.of == nil || *l.of == nil {
+		return nil, nil
+	}
+	return (*l.of).Service().PartConstraints(ctx, partID)
 }
 
 // mockName selects the offline AI provider, TTS engine or transcriber.
