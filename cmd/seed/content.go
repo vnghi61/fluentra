@@ -63,12 +63,22 @@ func seedContentAndCurriculum(ctx context.Context, pool *pgxpool.Pool, adminID u
 	_, _ = fmt.Fprintf(out, "  ✓ Course: %s (6 lessons, %d units) — run `make tts` to render the audio\n",
 		listeningCourseSeedData.Title, len(listeningCourseSeedData.Units))
 
-	// 2. Seed 200 Word Senses and Public Deck
-	count, err := seedVocabularyWords(ctx, pool, adminID, wordSenseSeedData)
+	// 2. Seed vocabulary: the frozen 10,000-word fixture when it is there, the
+	// curated 200 when it is not.
+	count, fromFixture, err := seedVocabularyFromFixture(
+		ctx, pool, adminID, defaultVocabularyFixtureDir, out)
 	if err != nil {
-		return fmt.Errorf("seed vocabulary words: %w", err)
+		return fmt.Errorf("seed vocabulary fixtures: %w", err)
 	}
-	_, _ = fmt.Fprintf(out, "  ✓ Vocabulary: %d word senses seeded & linked into curated deck\n", count)
+	if fromFixture {
+		_, _ = fmt.Fprintf(out, "  ✓ Vocabulary: %d words loaded from the frozen fixture\n", count)
+	} else {
+		count, err = seedVocabularyWords(ctx, pool, adminID, wordSenseSeedData)
+		if err != nil {
+			return fmt.Errorf("seed vocabulary words: %w", err)
+		}
+		_, _ = fmt.Fprintf(out, "  ✓ Vocabulary: %d word senses seeded & linked into curated deck\n", count)
+	}
 
 	// 3. The thirteen Foundation courses (WO 22 Stage H), built from the course
 	// map through lesson's Author. This also archives the five Phase 2 courses
@@ -365,6 +375,11 @@ func seedVocabularyWords(
 			// before the list existed reads.
 			body[bodyKeyExampleSentence] = s.Examples[0].Sentence
 			body[bodyKeyExampleSentences] = s.Examples
+		}
+		if s.AudioURL != "" {
+			body["audio_url"] = s.AudioURL
+			body["audio_attribution"] = s.AudioAttribution
+			body["audio_licence"] = s.AudioLicence
 		}
 		versionID, err := ensureContentItemAndVersion(ctx, pool, adminID, slug, "vocabulary_quiz", s.CEFRLevel, body)
 		if err != nil {
