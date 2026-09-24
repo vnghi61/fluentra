@@ -242,6 +242,261 @@
           "sentence_vi": "Hai thành phố có dân số lần lượt là 3 và 5 triệu người."
         }
       ]
+    },
+    {
+      "lemma": "trans",
+      "pos": "prefix",
+      "cefr_level": "C1",
+      "definition": "a prefix meaning across or beyond something",
+      "definition_vi": "tiền tố nghĩa là xuyên qua, vượt qua",
+      "examples": [
+        {
+          "sentence": "The transatlantic flight took nine hours.",
+          "sentence_vi": "Chuyến bay xuyên Đại Tây Dương mất chín giờ."
+        },
+        {
+          "sentence": "She works in the transport business.",
+          "sentence_vi": "Cô ấy làm trong ngành vận tải."
+        }
+      ]
+    },
+    {
+      "lemma": "elite",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the most powerful or best group in a society",
+      "definition_vi": "tầng lớp ưu tú, tinh hoa",
+      "examples": [
+        {
+          "sentence": "Only the elite could afford houses in that area.",
+          "sentence_vi": "Chỉ tầng lớp ưu tú mới mua nổi nhà ở khu đó."
+        },
+        {
+          "sentence": "She trained with the country's elite athletes.",
+          "sentence_vi": "Cô ấy tập luyện với các vận động viên tinh hoa của đất nước."
+        }
+      ]
+    },
+    {
+      "lemma": "mortgage",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a bank loan used to buy a house",
+      "definition_vi": "khoản vay mua nhà, thế chấp",
+      "examples": [
+        {
+          "sentence": "They took out a mortgage to buy their first home.",
+          "sentence_vi": "Họ đã vay thế chấp để mua ngôi nhà đầu tiên."
+        },
+        {
+          "sentence": "It will take twenty years to pay off the mortgage.",
+          "sentence_vi": "Sẽ mất hai mươi năm để trả hết khoản vay mua nhà."
+        }
+      ]
+    },
+    {
+      "lemma": "narrative",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a story or an account of events",
+      "definition_vi": "câu chuyện, bản tường thuật",
+      "examples": [
+        {
+          "sentence": "The film's narrative moves between past and present.",
+          "sentence_vi": "Cốt truyện của bộ phim chuyển giữa quá khứ và hiện tại."
+        },
+        {
+          "sentence": "The newspaper offered a different narrative of the protest.",
+          "sentence_vi": "Tờ báo đưa ra một cách kể chuyện khác về cuộc biểu tình."
+        }
+      ]
+    },
+    {
+      "lemma": "subsequent",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "happening after something else in time",
+      "definition_vi": "tiếp theo, sau đó",
+      "examples": [
+        {
+          "sentence": "The storm damaged the roof, and subsequent repairs took months.",
+          "sentence_vi": "Cơn bão làm hỏng mái nhà, và các cuộc sửa chữa sau đó mất nhiều tháng."
+        },
+        {
+          "sentence": "Subsequent meetings were held in a smaller room.",
+          "sentence_vi": "Các cuộc họp tiếp theo được tổ chức trong một phòng nhỏ hơn."
+        }
+      ]
+    },
+    {
+      "lemma": "hence",
+      "pos": "adverb",
+      "cefr_level": "C1",
+      "definition": "for that reason; therefore",
+      "definition_vi": "do đó, vì vậy",
+      "examples": [
+        {
+          "sentence": "The road was flooded; hence we took another route.",
+          "sentence_vi": "Đường bị ngập, do đó chúng tôi đi đường khác."
+        },
+        {
+          "sentence": "He was ill, hence his absence from the meeting.",
+          "sentence_vi": "Anh ấy bị ốm, vì vậy anh ấy vắng mặt trong cuộc họp."
+        }
+      ]
+    },
+    {
+      "lemma": "mo",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a short informal word for a moment",
+      "definition_vi": "một chút, một lát (khẩu ngữ)",
+      "examples": [
+        {
+          "sentence": "Wait a mo, I'll be right back.",
+          "sentence_vi": "Chờ một lát, tôi sẽ quay lại ngay."
+        },
+        {
+          "sentence": "Can you hold my bag for a mo?",
+          "sentence_vi": "Bạn giữ giùm túi của tôi một chút được không?"
+        }
+      ]
+    },
+    {
+      "lemma": "whilst",
+      "pos": "conjunction",
+      "cefr_level": "C1",
+      "definition": "a formal word meaning 'while' or 'although'",
+      "definition_vi": "trong khi; mặc dù (trang trọng)",
+      "examples": [
+        {
+          "sentence": "He read a book whilst waiting for the train.",
+          "sentence_vi": "Anh ấy đọc sách trong khi chờ tàu."
+        },
+        {
+          "sentence": "Whilst I agree with the plan, I have some doubts.",
+          "sentence_vi": "Mặc dù tôi đồng ý với kế hoạch, tôi vẫn có vài nghi ngờ."
+        }
+      ]
+    },
+    {
+      "lemma": "glory",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "great fame and honour earned by success",
+      "definition_vi": "vinh quang",
+      "examples": [
+        {
+          "sentence": "The team fought hard to win glory for their country.",
+          "sentence_vi": "Đội đã chiến đấu hết mình để mang vinh quang về cho đất nước."
+        },
+        {
+          "sentence": "The old soldier often spoke of the glory of his youth.",
+          "sentence_vi": "Lão binh già thường kể về vinh quang thời trẻ của mình."
+        }
+      ]
+    },
+    {
+      "lemma": "cant",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "special words used by a small group, or empty talk",
+      "definition_vi": "tiếng riêng của nhóm người; lời nói sáo rỗng",
+      "examples": [
+        {
+          "sentence": "The thieves used a secret cant that nobody understood.",
+          "sentence_vi": "Những kẻ trộm dùng một tiếng riêng bí mật mà không ai hiểu."
+        },
+        {
+          "sentence": "His speech was full of cant and empty promises.",
+          "sentence_vi": "Bài phát biểu của anh ta đầy lời sáo rỗng và hứa hẹn vô nghĩa."
+        }
+      ]
+    },
+    {
+      "lemma": "asshole",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a rude word for an unpleasant or mean person",
+      "definition_vi": "kẻ khốn nạn (từ thô tục)",
+      "examples": [
+        {
+          "sentence": "Don't be such an asshole; apologize to her now.",
+          "sentence_vi": "Đừng có khốn nạn thế; xin lỗi cô ấy ngay đi."
+        },
+        {
+          "sentence": "Everyone hated the new boss because he was a real asshole.",
+          "sentence_vi": "Ai cũng ghét ông sếp mới vì ông ta đúng là một kẻ khốn nạn."
+        }
+      ]
+    },
+    {
+      "lemma": "commonwealth",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a group of countries with shared political or economic interests",
+      "definition_vi": "khối thịnh vượng chung",
+      "examples": [
+        {
+          "sentence": "Australia is a member of the Commonwealth.",
+          "sentence_vi": "Úc là thành viên của Khối Thịnh vượng chung."
+        },
+        {
+          "sentence": "The Commonwealth holds a games event every four years.",
+          "sentence_vi": "Khối Thịnh vượng chung tổ chức sự kiện thể thao bốn năm một lần."
+        }
+      ]
+    },
+    {
+      "lemma": "progressive",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "supporting new ideas and social change",
+      "definition_vi": "tiến bộ",
+      "examples": [
+        {
+          "sentence": "The city has a progressive policy on recycling.",
+          "sentence_vi": "Thành phố có chính sách tiến bộ về tái chế."
+        },
+        {
+          "sentence": "She is known for her progressive views on education.",
+          "sentence_vi": "Cô ấy nổi tiếng với quan điểm tiến bộ về giáo dục."
+        }
+      ]
+    },
+    {
+      "lemma": "constitutional",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "relating to the basic laws and rules of a country",
+      "definition_vi": "thuộc về hiến pháp",
+      "examples": [
+        {
+          "sentence": "Free speech is a constitutional right in many countries.",
+          "sentence_vi": "Tự do phát biểu là một quyền hiến pháp ở nhiều quốc gia."
+        },
+        {
+          "sentence": "The court decided that the new law was not constitutional.",
+          "sentence_vi": "Tòa án quyết định rằng luật mới không phù hợp với hiến pháp."
+        }
+      ]
+    },
+    {
+      "lemma": "fuckin",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "a rude swear word used to make another word stronger",
+      "definition_vi": "từ chửi thề nhấn mạnh (thô tục)",
+      "examples": [
+        {
+          "sentence": "He was so fuckin angry that he left the room.",
+          "sentence_vi": "Anh ta tức điên lên nên rời khỏi phòng."
+        },
+        {
+          "sentence": "That was a fuckin great movie, honestly.",
+          "sentence_vi": "Thật ra bộ phim đó hay vãi."
+        }
+      ]
     }
   ]
 }
