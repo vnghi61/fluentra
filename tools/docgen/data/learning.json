@@ -1667,6 +1667,7 @@
       { "method": "POST", "path": "/api/v1/exam-attempts/{id}/submit", "permission": "self", "purpose": "Submit the whole exam", "success": "202", "notes": "202 because writing and speaking sections grade asynchronously" },
       { "method": "GET", "path": "/api/v1/exam-attempts/{id}/report", "permission": "self", "purpose": "Score report when ready", "success": "200" },
       { "method": "GET", "path": "/api/v1/exam-versions", "permission": "content.read.published", "purpose": "Current verified exam versions and their blueprints", "success": "200" },
+      { "method": "GET", "path": "/api/v1/exam-versions/{id}/tests", "permission": "content.read.published", "purpose": "The numbered fixed tests of one exam version", "success": "200" },
       { "method": "POST", "path": "/api/v1/mock-tests", "permission": "self", "purpose": "Compose a mock test", "success": "201" },
       { "method": "POST", "path": "/api/v1/mock-tests/{id}/attempts", "permission": "self", "purpose": "Start or retake a mock test attempt", "success": "201" },
       { "method": "GET", "path": "/api/v1/admin/exams/versions/{id}/coverage", "permission": "questionbank.read", "purpose": "Exam version coverage report", "success": "200" }

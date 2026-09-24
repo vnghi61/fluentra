@@ -53,6 +53,15 @@ SELECT *
 FROM assess.exam_attempts
 WHERE id = $1;
 
+-- name: GetLatestUserMockTestAttempt :one
+-- The caller's most recent sitting of one fixed test, with its report if any.
+SELECT a.id, a.status, a.started_at, r.overall_score, r.overall_band
+FROM assess.exam_attempts a
+LEFT JOIN assess.score_reports r ON r.attempt_id = a.id
+WHERE a.user_id = $1 AND a.mock_test_id = $2
+ORDER BY a.started_at DESC
+LIMIT 1;
+
 -- name: GetExamAttemptForUser :one
 SELECT *
 FROM assess.exam_attempts

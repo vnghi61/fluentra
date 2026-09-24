@@ -6953,6 +6953,51 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /exam-versions/{id}/tests:
+    get:
+      tags: [exam]
+      operationId: listExamVersionTests
+      summary: The numbered fixed tests of one exam version
+      description: >-
+        Lists the version's fixed tests in order. Each is a stored, numbered
+        composition shared by everyone; the fixed tests of one blueprint share
+        no question. The caller's latest attempt at each test is included.
+      x-permission: content.read.published
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Fixed tests in order.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              example:
+                items:
+                  - id: "30000000-0000-0000-0000-000000000001"
+                    number: 1
+                    title: "Đề 1"
+                    question_count: 200
+                    minutes: 120
+                    latest_attempt:
+                      attempt_id: "60000000-0000-0000-0000-000000000001"
+                      status: "submitted"
+                      score: 750
+                      band: null
+              schema:
+                $ref: '#/components/schemas/FixedTestListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /mock-tests:
     post:
       tags: [exam]
@@ -9129,6 +9174,12 @@ components:
       $ref: ./components/exam.yaml#/MockTestPartComposition
     MockTest:
       $ref: ./components/exam.yaml#/MockTest
+    FixedTestSummary:
+      $ref: ./components/exam.yaml#/FixedTestSummary
+    FixedTestAttemptSummary:
+      $ref: ./components/exam.yaml#/FixedTestAttemptSummary
+    FixedTestListResponse:
+      $ref: ./components/exam.yaml#/FixedTestListResponse
     ExamPartCoverage:
       $ref: ./components/exam.yaml#/ExamPartCoverage
     ExamCoverageReport:

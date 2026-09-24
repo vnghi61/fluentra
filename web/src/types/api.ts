@@ -2811,6 +2811,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/exam-versions/{id}/tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The numbered fixed tests of one exam version
+         * @description Lists the version's fixed tests in order. Each is a stored, numbered composition shared by everyone; the fixed tests of one blueprint share no question. The caller's latest attempt at each test is included.
+         */
+        get: operations["listExamVersionTests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mock-tests": {
         parameters: {
             query?: never;
@@ -6587,6 +6607,11 @@ export interface components {
             /** @enum {string} */
             mode: "fixed" | "random" | "weak_topic" | "full" | "custom";
             /**
+             * @description The fixed test's number ("Đề 3"); null unless mode is fixed.
+             * @example 3
+             */
+            number?: number | null;
+            /**
              * Format: int64
              * @example 1234567890
              */
@@ -6596,6 +6621,36 @@ export interface components {
             owner_id?: string | null;
             /** Format: date-time */
             created_at: string;
+        };
+        FixedTestSummary: {
+            /** Format: uuid */
+            id: string;
+            /** @example 3 */
+            number: number;
+            /**
+             * @description The test's display title, in Vietnamese ("Đề 3").
+             * @example Đề 3
+             */
+            title: string;
+            /** @example 200 */
+            question_count: number;
+            /** @example 120 */
+            minutes: number;
+            /** @description The calling learner's most recent attempt at this test, if any. */
+            latest_attempt?: components["schemas"]["FixedTestAttemptSummary"] | null;
+        };
+        FixedTestAttemptSummary: {
+            /** Format: uuid */
+            attempt_id: string;
+            /** @example submitted */
+            status: string;
+            /** @example 750 */
+            score?: number | null;
+            /** @example 6.5 */
+            band?: string | null;
+        };
+        FixedTestListResponse: {
+            items: components["schemas"]["FixedTestSummary"][];
         };
         ExamPartCoverage: {
             /** Format: uuid */
@@ -14529,6 +14584,51 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listExamVersionTests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fixed tests in order. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "30000000-0000-0000-0000-000000000001",
+                     *           "number": 1,
+                     *           "title": "Đề 1",
+                     *           "question_count": 200,
+                     *           "minutes": 120,
+                     *           "latest_attempt": {
+                     *             "attempt_id": "60000000-0000-0000-0000-000000000001",
+                     *             "status": "submitted",
+                     *             "score": 750,
+                     *             "band": null
+                     *           }
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FixedTestListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
         };
     };

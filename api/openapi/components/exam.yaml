@@ -433,6 +433,12 @@ MockTest:
     mode:
       type: string
       enum: [fixed, random, weak_topic, full, custom]
+    number:
+      type: integer
+      nullable: true
+      description: >-
+        The fixed test's number ("Đề 3"); null unless mode is fixed.
+      example: 3
     seed:
       type: integer
       format: int64
@@ -448,6 +454,60 @@ MockTest:
     created_at:
       type: string
       format: date-time
+
+FixedTestSummary:
+  type: object
+  required: [id, number, title, question_count, minutes]
+  properties:
+    id:
+      type: string
+      format: uuid
+    number:
+      type: integer
+      example: 3
+    title:
+      type: string
+      description: The test's display title, in Vietnamese ("Đề 3").
+      example: "Đề 3"
+    question_count:
+      type: integer
+      example: 200
+    minutes:
+      type: integer
+      example: 120
+    latest_attempt:
+      nullable: true
+      description: The calling learner's most recent attempt at this test, if any.
+      allOf:
+        - $ref: '#/FixedTestAttemptSummary'
+
+FixedTestAttemptSummary:
+  type: object
+  required: [attempt_id, status]
+  properties:
+    attempt_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      example: submitted
+    score:
+      type: number
+      nullable: true
+      example: 750
+    band:
+      type: string
+      nullable: true
+      example: "6.5"
+
+FixedTestListResponse:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/FixedTestSummary'
 
 ExamPartCoverage:
   type: object

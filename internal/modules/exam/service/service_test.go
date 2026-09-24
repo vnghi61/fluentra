@@ -30,6 +30,8 @@ type mockExamRepo struct {
 	mu         sync.Mutex
 	exams      []sqlc.AssessExam
 	mockTests  []*domain.MockTest
+	blueprint  *domain.Blueprint
+	parts      []*domain.ExamPart
 	attempts   map[uuid.UUID]sqlc.AssessExamAttempt
 	reports    map[uuid.UUID]sqlc.AssessScoreReport
 	events     []sqlc.RecordIntegrityEventParams
@@ -322,7 +324,7 @@ func (m *mockExamRepo) GetExamVersionByCode(_ context.Context, _ string) (*domai
 }
 
 func (m *mockExamRepo) ListExamPartsByVersionID(_ context.Context, _ uuid.UUID) ([]*domain.ExamPart, error) {
-	return nil, nil
+	return m.parts, nil
 }
 
 func (m *mockExamRepo) GetExamPartByID(_ context.Context, _ uuid.UUID) (*domain.ExamPart, error) {
@@ -334,7 +336,7 @@ func (m *mockExamRepo) ListBlueprintsByVersionID(_ context.Context, _ uuid.UUID)
 }
 
 func (m *mockExamRepo) GetBlueprintByID(_ context.Context, _ uuid.UUID) (*domain.Blueprint, error) {
-	return nil, nil
+	return m.blueprint, nil
 }
 
 func (m *mockExamRepo) GetBlueprintByName(_ context.Context, _ uuid.UUID, _ string) (*domain.Blueprint, error) {
@@ -358,6 +360,12 @@ func (m *mockExamRepo) ListMockTestsByOwner(_ context.Context, _ *uuid.UUID) ([]
 
 func (m *mockExamRepo) ListFixedMockTests(_ context.Context, _ uuid.UUID) ([]*domain.MockTest, error) {
 	return m.mockTests, nil
+}
+
+func (m *mockExamRepo) GetLatestUserMockTestAttempt(
+	_ context.Context, _, _ uuid.UUID,
+) (*sqlc.GetLatestUserMockTestAttemptRow, error) {
+	return nil, nil
 }
 
 func (m *mockExamRepo) GetExamByVersionID(_ context.Context, _ uuid.UUID) (*sqlc.AssessExam, error) {

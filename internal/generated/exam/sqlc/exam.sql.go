@@ -383,6 +383,42 @@ func (q *Queries) GetExamBySlug(ctx context.Context, slug string) (AssessExam, e
 	return i, err
 }
 
+const getLatestUserMockTestAttempt = `-- name: GetLatestUserMockTestAttempt :one
+SELECT a.id, a.status, a.started_at, r.overall_score, r.overall_band
+FROM assess.exam_attempts a
+LEFT JOIN assess.score_reports r ON r.attempt_id = a.id
+WHERE a.user_id = $1 AND a.mock_test_id = $2
+ORDER BY a.started_at DESC
+LIMIT 1
+`
+
+type GetLatestUserMockTestAttemptParams struct {
+	UserID     uuid.UUID
+	MockTestID *uuid.UUID
+}
+
+type GetLatestUserMockTestAttemptRow struct {
+	ID           uuid.UUID
+	Status       string
+	StartedAt    time.Time
+	OverallScore pgtype.Numeric
+	OverallBand  *string
+}
+
+// The caller's most recent sitting of one fixed test, with its report if any.
+func (q *Queries) GetLatestUserMockTestAttempt(ctx context.Context, arg GetLatestUserMockTestAttemptParams) (GetLatestUserMockTestAttemptRow, error) {
+	row := q.db.QueryRow(ctx, getLatestUserMockTestAttempt, arg.UserID, arg.MockTestID)
+	var i GetLatestUserMockTestAttemptRow
+	err := row.Scan(
+		&i.ID,
+		&i.Status,
+		&i.StartedAt,
+		&i.OverallScore,
+		&i.OverallBand,
+	)
+	return i, err
+}
+
 const getScoreReportByAttemptID = `-- name: GetScoreReportByAttemptID :one
 SELECT id, attempt_id, user_id, exam_id, overall_score, overall_band, status, per_section, feedback, integrity_signals, created_at, updated_at
 FROM assess.score_reports

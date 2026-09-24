@@ -124,6 +124,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/exam-attempts/{id}/submit` | `self` | Submit the whole exam |
 | `GET` | `/api/v1/exam-attempts/{id}/report` | `self` | Score report when ready |
 | `GET` | `/api/v1/exam-versions` | `content.read.published` | Current verified exam versions and their blueprints |
+| `GET` | `/api/v1/exam-versions/{id}/tests` | `content.read.published` | The numbered fixed tests of one exam version |
 | `POST` | `/api/v1/mock-tests` | `self` | Compose a mock test |
 | `POST` | `/api/v1/mock-tests/{id}/attempts` | `self` | Start or retake a mock test attempt |
 | `GET` | `/api/v1/admin/exams/versions/{id}/coverage` | `questionbank.read` | Exam version coverage report |

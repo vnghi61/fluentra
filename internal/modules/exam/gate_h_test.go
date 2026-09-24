@@ -369,6 +369,12 @@ func (r *inMemoryGateRepo) ListFixedMockTests(_ context.Context, blueprintID uui
 	return out, nil
 }
 
+func (r *inMemoryGateRepo) GetLatestUserMockTestAttempt(
+	_ context.Context, _, _ uuid.UUID,
+) (*sqlc.GetLatestUserMockTestAttemptRow, error) {
+	return nil, nil
+}
+
 func (r *inMemoryGateRepo) ListMockTestsByOwner(_ context.Context, ownerID *uuid.UUID) ([]*domain.MockTest, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

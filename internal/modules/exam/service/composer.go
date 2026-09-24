@@ -79,6 +79,29 @@ type ExamVersionListResponseDTO struct {
 	Items []ExamVersionDTO `json:"items"`
 }
 
+// FixedTestAttemptSummaryDTO is the caller's latest attempt at a fixed test.
+type FixedTestAttemptSummaryDTO struct {
+	AttemptID uuid.UUID `json:"attempt_id"`
+	Status    string    `json:"status"`
+	Score     *float64  `json:"score"`
+	Band      *string   `json:"band"`
+}
+
+// FixedTestSummaryDTO is one numbered fixed test in a version's list.
+type FixedTestSummaryDTO struct {
+	ID            uuid.UUID                   `json:"id"`
+	Number        int                         `json:"number"`
+	Title         string                      `json:"title"`
+	QuestionCount int                         `json:"question_count"`
+	Minutes       int                         `json:"minutes"`
+	LatestAttempt *FixedTestAttemptSummaryDTO `json:"latest_attempt,omitempty"`
+}
+
+// FixedTestListResponseDTO wraps the list of fixed tests.
+type FixedTestListResponseDTO struct {
+	Items []FixedTestSummaryDTO `json:"items"`
+}
+
 // ComposeMockTestRequest holds the parameters to compose a mock test.
 type ComposeMockTestRequest struct {
 	BlueprintID uuid.UUID `json:"blueprint_id"`
@@ -171,6 +194,73 @@ func (s *Service) ListCurrentExamVersions(ctx context.Context) ([]ExamVersionDTO
 		})
 	}
 	return out, nil
+}
+
+// ListFixedTests returns a version's numbered fixed tests in order, with the
+// caller's latest attempt at each (WO 22 Stage J).
+func (s *Service) ListFixedTests(
+	ctx context.Context, userID, versionID uuid.UUID,
+) (*FixedTestListResponseDTO, error) {
+	if s.repo == nil {
+		return nil, errors.New("repository not configured")
+	}
+	version, err := s.repo.GetExamVersionByID(ctx, versionID)
+	if err != nil || version == nil {
+		return nil, apperr.New(apperr.NotFound, "EXAM_VERSION_NOT_FOUND", "exam version not found")
+	}
+
+	blueprints, err := s.repo.ListBlueprintsByVersionID(ctx, versionID)
+	if err != nil {
+		return nil, fmt.Errorf("list blueprints for version %s: %w", versionID, err)
+	}
+	parts, err := s.repo.ListExamPartsByVersionID(ctx, versionID)
+	if err != nil {
+		return nil, fmt.Errorf("list parts for version %s: %w", versionID, err)
+	}
+	questionCount := 0
+	for _, p := range parts {
+		questionCount += p.QuestionCount
+	}
+
+	items := []FixedTestSummaryDTO{}
+	for _, bp := range blueprints {
+		tests, err := s.repo.ListFixedMockTests(ctx, bp.ID)
+		if err != nil {
+			return nil, fmt.Errorf("list fixed tests for blueprint %s: %w", bp.ID, err)
+		}
+		for _, mt := range tests {
+			if mt.Number == nil {
+				continue
+			}
+			dto := FixedTestSummaryDTO{
+				ID:            mt.ID,
+				Number:        *mt.Number,
+				Title:         fmt.Sprintf("Đề %d", *mt.Number),
+				QuestionCount: questionCount,
+				Minutes:       version.TotalMinutes,
+			}
+			attempt, err := s.repo.GetLatestUserMockTestAttempt(ctx, userID, mt.ID)
+			if err != nil {
+				return nil, fmt.Errorf("latest attempt for test %s: %w", mt.ID, err)
+			}
+			if attempt != nil {
+				summary := &FixedTestAttemptSummaryDTO{
+					AttemptID: attempt.ID,
+					Status:    attempt.Status,
+					Band:      attempt.OverallBand,
+				}
+				if attempt.OverallScore.Valid {
+					if f, ferr := attempt.OverallScore.Float64Value(); ferr == nil {
+						score := f.Float64
+						summary.Score = &score
+					}
+				}
+				dto.LatestAttempt = summary
+			}
+			items = append(items, dto)
+		}
+	}
+	return &FixedTestListResponseDTO{Items: items}, nil
 }
 
 // GetExamVersionCoverage calculates published item coverage and distinct tests possible.
@@ -593,9 +683,14 @@ func (s *Service) ComposeMockTest(
 		return nil, domain.ErrInvalidMockMode
 	}
 
-	if mode == domain.MockModeFixed && len(req.Parts) > 0 {
-		return nil, apperr.New(apperr.Validation, "FIXED_TEST_HAS_NO_PART_SELECTION",
-			"A fixed test is the whole blueprint; choose custom to pick parts.")
+	if mode == domain.MockModeFixed {
+		if len(req.Parts) > 0 {
+			return nil, apperr.New(apperr.Validation, "FIXED_TEST_HAS_NO_PART_SELECTION",
+				"A fixed test is the whole blueprint; choose custom to pick parts.")
+		}
+		// Fixed tests are numbered and disjoint (Stage J); this path is Đề 1.
+		// A random or custom test is one learner's, drawn with their exposures.
+		return s.ComposeFixedTest(ctx, req.BlueprintID, 1)
 	}
 
 	blueprint, parts, err := s.resolveMockTestParts(ctx, req.BlueprintID, req.Parts)
@@ -603,24 +698,8 @@ func (s *Service) ComposeMockTest(
 		return nil, err
 	}
 
-	// A fixed test is one stored composition everyone shares (H.2). It is
-	// composed once, without anyone's exposures — otherwise the "same" test would
-	// differ by who asked first — and every later request returns that row.
-	var drawFor *uuid.UUID
-	var seed int64
-	if mode == domain.MockModeFixed {
-		existing, findErr := s.findFixedMockTest(ctx, blueprint.ID)
-		if findErr != nil {
-			return nil, findErr
-		}
-		if existing != nil {
-			return existing, nil
-		}
-		seed = hashUUID(blueprint.ID)
-	} else {
-		drawFor = userID
-		seed = time.Now().UnixNano()
-	}
+	drawFor := userID
+	seed := time.Now().UnixNano()
 
 	cefrMix := parseCEFRMix(blueprint.CefrDistribution)
 	compositions := make([]domain.MockTestPartComposition, 0, len(parts))
@@ -635,10 +714,7 @@ func (s *Service) ComposeMockTest(
 		})
 	}
 
-	var ownerID *uuid.UUID
-	if mode != domain.MockModeFixed {
-		ownerID = userID
-	}
+	ownerID := userID
 
 	mt := &domain.MockTest{
 		ID:          uuid.New(),
@@ -655,24 +731,6 @@ func (s *Service) ComposeMockTest(
 		return nil, fmt.Errorf("create mock test: %w", err)
 	}
 	return saved, nil
-}
-
-// findFixedMockTest returns the earliest fixed test composed for a blueprint.
-func (s *Service) findFixedMockTest(ctx context.Context, blueprintID uuid.UUID) (*domain.MockTest, error) {
-	public, err := s.repo.ListMockTestsByOwner(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("list public mock tests: %w", err)
-	}
-	var found *domain.MockTest
-	for _, mt := range public {
-		if mt.OwnerID != nil || mt.BlueprintID != blueprintID || mt.Mode != domain.MockModeFixed {
-			continue
-		}
-		if found == nil || mt.CreatedAt.Before(found.CreatedAt) {
-			found = mt
-		}
-	}
-	return found, nil
 }
 
 // ComposeFixedTest returns the blueprint's stored fixed Test `number`, or

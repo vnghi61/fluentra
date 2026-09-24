@@ -1240,6 +1240,13 @@ type ClientInterface interface {
 	// Corresponds with GET /exam-versions (the `ListExamVersions` operationId).
 	ListExamVersions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListExamVersionTests The numbered fixed tests of one exam version
+	//
+	// Lists the version's fixed tests in order. Each is a stored, numbered composition shared by everyone; the fixed tests of one blueprint share no question. The caller's latest attempt at each test is included.
+	//
+	// Corresponds with GET /exam-versions/{id}/tests (the `ListExamVersionTests` operationId).
+	ListExamVersionTests(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListExams Available mock exams
 	//
 	// Lists active mock exam templates available to learners.
@@ -4709,6 +4716,23 @@ func (c *Client) SubmitExamAttempt(ctx context.Context, id openapi_types.UUID, r
 // Corresponds with GET /exam-versions (the `ListExamVersions` operationId).
 func (c *Client) ListExamVersions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListExamVersionsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListExamVersionTests The numbered fixed tests of one exam version
+//
+// Lists the version's fixed tests in order. Each is a stored, numbered composition shared by everyone; the fixed tests of one blueprint share no question. The caller's latest attempt at each test is included.
+//
+// Corresponds with GET /exam-versions/{id}/tests (the `ListExamVersionTests` operationId).
+func (c *Client) ListExamVersionTests(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExamVersionTestsRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -11593,6 +11617,40 @@ func NewListExamVersionsRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewListExamVersionTestsRequest constructs an http.Request for the ListExamVersionTests method
+func NewListExamVersionTestsRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/exam-versions/%s/tests", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListExamsRequest constructs an http.Request for the ListExams method
 func NewListExamsRequest(server string) (*http.Request, error) {
 	var err error
@@ -17044,6 +17102,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /exam-versions (the `ListExamVersions` operationId).
 	ListExamVersionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExamVersionsResponse, error)
+
+	// ListExamVersionTestsWithResponse The numbered fixed tests of one exam version
+	//
+	// Lists the version's fixed tests in order. Each is a stored, numbered composition shared by everyone; the fixed tests of one blueprint share no question. The caller's latest attempt at each test is included.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /exam-versions/{id}/tests (the `ListExamVersionTests` operationId).
+	ListExamVersionTestsWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*ListExamVersionTestsResponse, error)
 
 	// ListExamsWithResponse Available mock exams
 	//
@@ -25002,6 +25069,75 @@ func (r ListExamVersionsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListExamVersionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ListExamVersionTestsResponse200Headers the declared response headers of an HTTP 200 response for ListExamVersionTests
+type ListExamVersionTestsResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListExamVersionTestsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FixedTestListResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListExamVersionTestsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListExamVersionTestsResponse) GetJSON200() *FixedTestListResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListExamVersionTestsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ListExamVersionTestsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ListExamVersionTestsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListExamVersionTestsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListExamVersionTestsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListExamVersionTestsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListExamVersionTestsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -34135,6 +34271,21 @@ func (c *ClientWithResponses) ListExamVersionsWithResponse(ctx context.Context, 
 	return ParseListExamVersionsResponse(rsp)
 }
 
+// ListExamVersionTestsWithResponse The numbered fixed tests of one exam version
+//
+// Lists the version's fixed tests in order. Each is a stored, numbered composition shared by everyone; the fixed tests of one blueprint share no question. The caller's latest attempt at each test is included.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /exam-versions/{id}/tests (the `ListExamVersionTests` operationId).
+func (c *ClientWithResponses) ListExamVersionTestsWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*ListExamVersionTestsResponse, error) {
+	rsp, err := c.ListExamVersionTests(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListExamVersionTestsResponse(rsp)
+}
+
 // ListExamsWithResponse Available mock exams
 //
 // Lists active mock exam templates available to learners.
@@ -42440,6 +42591,66 @@ func ParseListExamVersionsResponse(rsp *http.Response) (*ListExamVersionsRespons
 	switch {
 	case rsp.StatusCode == 200:
 		var headers ListExamVersionsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseListExamVersionTestsResponse parses an HTTP response from a ListExamVersionTestsWithResponse call
+func ParseListExamVersionTestsResponse(rsp *http.Response) (*ListExamVersionTestsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListExamVersionTestsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FixedTestListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListExamVersionTestsResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

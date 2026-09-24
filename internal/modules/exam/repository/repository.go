@@ -4,9 +4,11 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/fluentra/fluentra/internal/generated/exam/sqlc"
@@ -586,6 +588,27 @@ func (r *Repository) ListFixedMockTests(ctx context.Context, blueprintID uuid.UU
 		res = append(res, item)
 	}
 	return res, nil
+}
+
+// GetLatestUserMockTestAttempt returns the caller's most recent sitting of a
+// mock test with its score report, or nil when the caller has not sat it.
+func (r *Repository) GetLatestUserMockTestAttempt(
+	ctx context.Context, userID, mockTestID uuid.UUID,
+) (*sqlc.GetLatestUserMockTestAttemptRow, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.GetLatestUserMockTestAttempt(ctx, sqlc.GetLatestUserMockTestAttemptParams{
+		UserID:     userID,
+		MockTestID: &mockTestID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &row, nil
 }
 
 // GetExamByVersionID finds an exam template linked to this version.

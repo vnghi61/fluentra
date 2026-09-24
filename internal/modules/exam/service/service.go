@@ -118,6 +118,9 @@ type ExamRepository interface {
 	GetMockTestByID(ctx context.Context, id uuid.UUID) (*domain.MockTest, error)
 	ListMockTestsByOwner(ctx context.Context, ownerID *uuid.UUID) ([]*domain.MockTest, error)
 	ListFixedMockTests(ctx context.Context, blueprintID uuid.UUID) ([]*domain.MockTest, error)
+	GetLatestUserMockTestAttempt(
+		ctx context.Context, userID, mockTestID uuid.UUID,
+	) (*sqlc.GetLatestUserMockTestAttemptRow, error)
 	GetExamByVersionID(ctx context.Context, versionID uuid.UUID) (*sqlc.AssessExam, error)
 	CreateMockTestAttempt(ctx context.Context, arg sqlc.CreateMockTestAttemptParams) (*sqlc.AssessExamAttempt, error)
 	CountUserMockTestAttempts(ctx context.Context, userID, mockTestID uuid.UUID) (int64, error)
