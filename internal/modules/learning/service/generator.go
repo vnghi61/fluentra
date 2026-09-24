@@ -154,12 +154,17 @@ func (s *Service) retryGenerateSingleItem(
 	itemIndex int,
 ) (*learningcontract.GeneratedItem, error) {
 	var lastErr error
+	var retryNote string
 	for attempt := 0; attempt <= maxRetriesPerItem; attempt++ {
-		item, err := s.generateSingleItem(ctx, req, spineNodeStrings, tagRefs, authorID, blindSolve, itemIndex)
+		item, err := s.generateSingleItem(ctx, req, spineNodeStrings, tagRefs, authorID, blindSolve, itemIndex, retryNote)
 		if err == nil {
 			return item, nil
 		}
 		lastErr = err
+		// The next attempt is told why the last one was rejected. Without this
+		// the model repeated the same defect three times — a duplicate option,
+		// an answer in the prompt — and the item was lost.
+		retryNote = err.Error()
 		slog.WarnContext(ctx, "generator candidate rejected",
 			"purpose", req.Purpose, "kind", req.Kind, "level", req.CEFRLevel,
 			"attempt", attempt+1, "reason", err)
@@ -167,11 +172,14 @@ func (s *Service) retryGenerateSingleItem(
 	return nil, lastErr
 }
 
-func buildGenerateVars(req learningcontract.GenerateRequest, spineNodes []string) map[string]any {
+func buildGenerateVars(req learningcontract.GenerateRequest, spineNodes []string, retryNote string) map[string]any {
 	vars := map[string]any{
 		varKind:      req.Kind,
 		"CEFRLevel":  req.CEFRLevel,
 		"SpineNodes": strings.Join(spineNodes, ", "),
+	}
+	if retryNote != "" {
+		vars["RetryNote"] = retryNote
 	}
 	if req.Purpose == purposeResource && req.SourceText != "" {
 		vars["SourceText"] = req.SourceText
@@ -332,8 +340,9 @@ func (s *Service) generateSingleItem(
 	authorID uuid.UUID,
 	blindSolve bool,
 	itemIndex int,
+	retryNote string,
 ) (*learningcontract.GeneratedItem, error) {
-	vars := buildGenerateVars(req, spineNodeStrings)
+	vars := buildGenerateVars(req, spineNodeStrings, retryNote)
 
 	var candidateBody json.RawMessage
 	task := ai.TaskItemGenerate
