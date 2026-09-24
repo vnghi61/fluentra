@@ -162,6 +162,26 @@ func lemmaAppearsInAnExample(lemma string, examples []Example) bool {
 	return false
 }
 
+// WriteFile writes one level's words to dir as words-<level>.json, headed with
+// the sources and licences the build tool recorded.
+func WriteFile(dir string, file *File) (string, error) {
+	if file.Format == "" {
+		file.Format = Format
+	}
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return "", fmt.Errorf("create vocabulary fixtures directory: %w", err)
+	}
+	raw, err := json.MarshalIndent(file, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("encode vocabulary fixture: %w", err)
+	}
+	path := filepath.Join(dir, "words-"+strings.ToLower(file.Level)+".json")
+	if err := os.WriteFile(path, append(raw, '\n'), 0o600); err != nil {
+		return "", fmt.Errorf("write vocabulary fixture: %w", err)
+	}
+	return path, nil
+}
+
 // SortedLemmas returns every lemma across the files, sorted, for the seed and
 // for a person reading the 2 % sample.
 func SortedLemmas(files []*File) []string {

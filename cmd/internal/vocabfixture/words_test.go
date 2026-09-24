@@ -85,6 +85,31 @@ func TestLoadWords_RefusesWhatWouldBeWrong(t *testing.T) {
 	}
 }
 
+func TestWriteFile_RoundTrips(t *testing.T) {
+	dir := t.TempDir()
+	file := &File{
+		Source: "wordfreq", Licence: "CC-BY-4.0", CheckedAt: "2026-09-24", Level: "A2",
+		Words: []Word{
+			{
+				Lemma: "study", POS: "verb", CEFRLevel: "A2",
+				Definition: "To learn about a subject.", DefinitionVI: "Học",
+				Examples: []Example{{Sentence: "She studies English every evening."}},
+			},
+		},
+	}
+	path, err := WriteFile(dir, file)
+	if err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	loaded, err := LoadWords(path)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(loaded.Words) != 1 || loaded.Words[0].Lemma != "study" {
+		t.Fatalf("words = %+v", loaded.Words)
+	}
+}
+
 func TestReadAll_ReadsOnlyWordsFiles(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "words-a2.json"), []byte(wrap(validWord)), 0o600); err != nil {
