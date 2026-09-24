@@ -6,6 +6,9 @@ import (
 	"testing"
 )
 
+// testLemma is the headword the acceptance tests use.
+const testLemma = "study"
+
 func writeWords(t *testing.T, name, body string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), name)
@@ -36,7 +39,7 @@ func TestLoadWords_AcceptsACreditedWord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("a valid word must load: %v", err)
 	}
-	if len(file.Words) != 1 || file.Words[0].Lemma != "study" {
+	if len(file.Words) != 1 || file.Words[0].Lemma != testLemma {
 		t.Fatalf("words = %+v", file.Words)
 	}
 }
@@ -91,7 +94,7 @@ func TestWriteFile_RoundTrips(t *testing.T) {
 		Source: "wordfreq", Licence: "CC-BY-4.0", CheckedAt: "2026-09-24", Level: "A2",
 		Words: []Word{
 			{
-				Lemma: "study", POS: "verb", CEFRLevel: "A2",
+				Lemma: testLemma, POS: "verb", CEFRLevel: "A2",
 				Definition: "To learn about a subject.", DefinitionVI: "Học",
 				Examples: []Example{{Sentence: "She studies English every evening."}},
 			},
@@ -105,7 +108,7 @@ func TestWriteFile_RoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if len(loaded.Words) != 1 || loaded.Words[0].Lemma != "study" {
+	if len(loaded.Words) != 1 || loaded.Words[0].Lemma != testLemma {
 		t.Fatalf("words = %+v", loaded.Words)
 	}
 }
