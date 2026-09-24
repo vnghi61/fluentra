@@ -7756,6 +7756,4477 @@
           "sentence_vi": "Một luồng không khí lạnh thổi qua cánh cửa mở."
         }
       ]
+    },
+    {
+      "lemma": "communist",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a person who supports a system where the state owns everything",
+      "definition_vi": "người cộng sản",
+      "examples": [
+        {
+          "sentence": "My grandfather was a communist when he was young.",
+          "sentence_vi": "Ông tôi từng là một người cộng sản khi còn trẻ."
+        },
+        {
+          "sentence": "The communist party won the election in that country.",
+          "sentence_vi": "Đảng cộng sản đã thắng cử ở quốc gia đó."
+        }
+      ]
+    },
+    {
+      "lemma": "component",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "one part that something is made from",
+      "definition_vi": "bộ phận, thành phần",
+      "examples": [
+        {
+          "sentence": "Each component of the machine must work correctly.",
+          "sentence_vi": "Mỗi bộ phận của máy phải hoạt động chính xác."
+        },
+        {
+          "sentence": "Trust is an important component of a good friendship.",
+          "sentence_vi": "Sự tin tưởng là một thành phần quan trọng của tình bạn tốt."
+        }
+      ]
+    },
+    {
+      "lemma": "desperate",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "feeling that you will do anything to change a bad situation",
+      "definition_vi": "tuyệt vọng, liều lĩnh",
+      "examples": [
+        {
+          "sentence": "He was desperate to find a job before the rent was due.",
+          "sentence_vi": "Anh ấy tuyệt vọng tìm việc trước khi đến hạn trả tiền nhà."
+        },
+        {
+          "sentence": "The desperate family asked everyone for help.",
+          "sentence_vi": "Gia đình tuyệt vọng ấy đã cầu xin mọi người giúp đỡ."
+        }
+      ]
+    },
+    {
+      "lemma": "diversity",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the fact of having many different kinds of people or things",
+      "definition_vi": "sự đa dạng",
+      "examples": [
+        {
+          "sentence": "The city is famous for the diversity of its food.",
+          "sentence_vi": "Thành phố nổi tiếng nhờ sự đa dạng ẩm thực."
+        },
+        {
+          "sentence": "Cultural diversity makes the school more interesting.",
+          "sentence_vi": "Sự đa dạng văn hóa khiến trường học thú vị hơn."
+        }
+      ]
+    },
+    {
+      "lemma": "faculty",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "all the teachers at a school or university",
+      "definition_vi": "toàn thể giảng viên; khoa",
+      "examples": [
+        {
+          "sentence": "The faculty met to discuss the new exam rules.",
+          "sentence_vi": "Toàn thể giảng viên đã họp để thảo luận quy định thi mới."
+        },
+        {
+          "sentence": "She joined the faculty of the science department last year.",
+          "sentence_vi": "Cô ấy gia nhập khoa khoa học vào năm ngoái."
+        }
+      ]
+    },
+    {
+      "lemma": "humanity",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "all people in the world, or kindness toward others",
+      "definition_vi": "nhân loại; lòng nhân ái",
+      "examples": [
+        {
+          "sentence": "The new medicine could save humanity from the disease.",
+          "sentence_vi": "Loại thuốc mới có thể cứu nhân loại khỏi căn bệnh này."
+        },
+        {
+          "sentence": "She treated the poor refugees with great humanity.",
+          "sentence_vi": "Cô ấy đối xử với những người tị nạn nghèo khó bằng lòng nhân ái lớn lao."
+        }
+      ]
+    },
+    {
+      "lemma": "il",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a short written form used for the US state Illinois",
+      "definition_vi": "viết tắt của bang Illinois (Mỹ)",
+      "examples": [
+        {
+          "sentence": "She moved to Chicago, IL, for a new job.",
+          "sentence_vi": "Cô ấy chuyển đến Chicago, IL, cho một công việc mới."
+        },
+        {
+          "sentence": "The letter's address ended with IL 60601.",
+          "sentence_vi": "Địa chỉ trên lá thư kết thúc bằng IL 60601."
+        }
+      ]
+    },
+    {
+      "lemma": "innovation",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a new idea, method, or product that improves something",
+      "definition_vi": "sự đổi mới, sáng kiến",
+      "examples": [
+        {
+          "sentence": "The company's latest innovation changed how people shop online.",
+          "sentence_vi": "Sáng kiến mới nhất của công ty đã thay đổi cách mọi người mua sắm trực tuyến."
+        },
+        {
+          "sentence": "Innovation is important for a business to grow.",
+          "sentence_vi": "Đổi mới rất quan trọng để một doanh nghiệp phát triển."
+        }
+      ]
+    },
+    {
+      "lemma": "murdered",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "killed a person on purpose and illegally",
+      "definition_vi": "bị sát hại",
+      "examples": [
+        {
+          "sentence": "The detective believed the man was murdered at night.",
+          "sentence_vi": "Thám tử tin rằng người đàn ông bị sát hại vào ban đêm."
+        },
+        {
+          "sentence": "In the story, the king is murdered by his brother.",
+          "sentence_vi": "Trong truyện, nhà vua bị anh trai sát hại."
+        }
+      ]
+    },
+    {
+      "lemma": "ongoing",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "continuing to happen or exist right now",
+      "definition_vi": "đang diễn ra, đang tiếp tục",
+      "examples": [
+        {
+          "sentence": "The ongoing repair work has blocked the main road.",
+          "sentence_vi": "Công việc sửa chữa đang diễn ra đã chặn con đường chính."
+        },
+        {
+          "sentence": "Talks between the two companies are still ongoing.",
+          "sentence_vi": "Các cuộc đàm phán giữa hai công ty vẫn đang tiếp tục."
+        }
+      ]
+    },
+    {
+      "lemma": "romance",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a feeling of love, or a story about love",
+      "definition_vi": "tình lãng mạn, chuyện tình",
+      "examples": [
+        {
+          "sentence": "Their romance began during a trip to the sea.",
+          "sentence_vi": "Chuyện tình của họ bắt đầu trong một chuyến đi biển."
+        },
+        {
+          "sentence": "She enjoys reading a light romance on weekends.",
+          "sentence_vi": "Cô thích đọc một cuốn tiểu thuyết lãng mạn nhẹ nhàng vào cuối tuần."
+        }
+      ]
+    },
+    {
+      "lemma": "sufficient",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "enough for a particular purpose",
+      "definition_vi": "đủ, đầy đủ",
+      "examples": [
+        {
+          "sentence": "We have sufficient food for all the guests.",
+          "sentence_vi": "Chúng tôi có đủ thức ăn cho tất cả khách."
+        },
+        {
+          "sentence": "Her savings were not sufficient to buy a car.",
+          "sentence_vi": "Tiền tiết kiệm của cô không đủ để mua xe."
+        }
+      ]
+    },
+    {
+      "lemma": "suspended",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "stopped something for a time, or hung something up",
+      "definition_vi": "đình chỉ, treo lên",
+      "examples": [
+        {
+          "sentence": "The school suspended him for fighting.",
+          "sentence_vi": "Trường đã đình chỉ học anh ấy vì đánh nhau."
+        },
+        {
+          "sentence": "Flights were suspended because of the storm.",
+          "sentence_vi": "Các chuyến bay đã bị đình chỉ vì bão."
+        }
+      ]
+    },
+    {
+      "lemma": "tissue",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "soft paper for wiping the nose; the material of body parts",
+      "definition_vi": "giấy ăn; mô (cơ thể)",
+      "examples": [
+        {
+          "sentence": "Could you give me a tissue? My nose is running.",
+          "sentence_vi": "Bạn cho tôi một tờ giấy ăn được không? Tôi đang sổ mũi."
+        },
+        {
+          "sentence": "The doctor examined the tissue under a microscope.",
+          "sentence_vi": "Bác sĩ kiểm tra mô dưới kính hiển vi."
+        }
+      ]
+    },
+    {
+      "lemma": "trials",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "tests to see if something works; court cases",
+      "definition_vi": "các cuộc thử nghiệm; phiên tòa",
+      "examples": [
+        {
+          "sentence": "The new drug passed all its trials safely.",
+          "sentence_vi": "Loại thuốc mới đã vượt qua an toàn tất cả các cuộc thử nghiệm."
+        },
+        {
+          "sentence": "The trials in court lasted for several months.",
+          "sentence_vi": "Các phiên tòa kéo dài trong nhiều tháng."
+        }
+      ]
+    },
+    {
+      "lemma": "versus",
+      "pos": "preposition",
+      "cefr_level": "B2",
+      "definition": "used to show two sides competing or being compared",
+      "definition_vi": "đấu với; so với",
+      "examples": [
+        {
+          "sentence": "Tomorrow's match is Vietnam versus Thailand.",
+          "sentence_vi": "Trận đấu ngày mai là Việt Nam đấu với Thái Lan."
+        },
+        {
+          "sentence": "The debate is about quality versus price.",
+          "sentence_vi": "Cuộc tranh luận là về chất lượng so với giá cả."
+        }
+      ]
+    },
+    {
+      "lemma": "wounded",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "injured, especially by a weapon in a fight",
+      "definition_vi": "bị thương",
+      "examples": [
+        {
+          "sentence": "The wounded soldiers were taken to hospital.",
+          "sentence_vi": "Những người lính bị thương được đưa đến bệnh viện."
+        },
+        {
+          "sentence": "A wounded bird lay quietly under the tree.",
+          "sentence_vi": "Một con chim bị thương nằm yên lặng dưới gốc cây."
+        }
+      ]
+    },
+    {
+      "lemma": "amongst",
+      "pos": "preposition",
+      "cefr_level": "B2",
+      "definition": "in the middle of or surrounded by people or things",
+      "definition_vi": "giữa, ở giữa (nhiều người/vật)",
+      "examples": [
+        {
+          "sentence": "She felt happy amongst her old friends.",
+          "sentence_vi": "Cô ấy cảm thấy vui khi ở giữa những người bạn cũ."
+        },
+        {
+          "sentence": "The small house stood amongst tall trees.",
+          "sentence_vi": "Ngôi nhà nhỏ nằm giữa những cây cao."
+        }
+      ]
+    },
+    {
+      "lemma": "biological",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "related to living things or to the science of life",
+      "definition_vi": "thuộc về sinh học",
+      "examples": [
+        {
+          "sentence": "Scientists studied the biological effects of the drug.",
+          "sentence_vi": "Các nhà khoa học nghiên cứu tác động sinh học của thuốc."
+        },
+        {
+          "sentence": "He is her biological father, not her stepfather.",
+          "sentence_vi": "Ông ấy là cha đẻ của cô ấy, không phải cha dượng."
+        }
+      ]
+    },
+    {
+      "lemma": "concerning",
+      "pos": "preposition",
+      "cefr_level": "B2",
+      "definition": "about or relating to a particular subject",
+      "definition_vi": "về, liên quan đến",
+      "examples": [
+        {
+          "sentence": "He asked a question concerning the new rules.",
+          "sentence_vi": "Anh ấy hỏi một câu liên quan đến quy định mới."
+        },
+        {
+          "sentence": "The report gives information concerning air pollution.",
+          "sentence_vi": "Báo cáo cung cấp thông tin về ô nhiễm không khí."
+        }
+      ]
+    },
+    {
+      "lemma": "dare",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to be brave enough to do something risky",
+      "definition_vi": "dám",
+      "examples": [
+        {
+          "sentence": "She didn't dare to jump from the high wall.",
+          "sentence_vi": "Cô ấy không dám nhảy từ bức tường cao."
+        },
+        {
+          "sentence": "How dare you speak to me like that!",
+          "sentence_vi": "Sao cậu dám nói với tôi như thế!"
+        }
+      ]
+    },
+    {
+      "lemma": "discrimination",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "unfair treatment of people because of their group or race",
+      "definition_vi": "sự phân biệt đối xử",
+      "examples": [
+        {
+          "sentence": "Discrimination at work is against the law.",
+          "sentence_vi": "Phân biệt đối xử nơi làm việc là trái pháp luật."
+        },
+        {
+          "sentence": "She fought against racial discrimination all her life.",
+          "sentence_vi": "Cô ấy đấu tranh chống phân biệt chủng tộc suốt đời."
+        }
+      ]
+    },
+    {
+      "lemma": "disorder",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a medical or mental condition in which part of the body or mind does not work normally",
+      "definition_vi": "rối loạn",
+      "examples": [
+        {
+          "sentence": "He has a sleep disorder, so he often wakes up at night.",
+          "sentence_vi": "Anh ấy bị rối loạn giấc ngủ, nên thường thức dậy vào ban đêm."
+        },
+        {
+          "sentence": "Doctors are still studying this rare eating disorder.",
+          "sentence_vi": "Các bác sĩ vẫn đang nghiên chứng chứng rối loạn ăn uống hiếm này."
+        }
+      ]
+    },
+    {
+      "lemma": "domain",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "an area of activity, knowledge, or control",
+      "definition_vi": "lĩnh vực, phạm vi",
+      "examples": [
+        {
+          "sentence": "This question is outside my domain; ask the manager.",
+          "sentence_vi": "Câu hỏi này nằm ngoài phạm vi của tôi; hãy hỏi quản lý."
+        },
+        {
+          "sentence": "She is an expert in the domain of computer science.",
+          "sentence_vi": "Cô ấy là chuyên gia trong lĩnh vực khoa học máy tính."
+        }
+      ]
+    },
+    {
+      "lemma": "dynamic",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "full of energy and always changing or developing",
+      "definition_vi": "năng động, luôn thay đổi",
+      "examples": [
+        {
+          "sentence": "She is a dynamic leader who brings new ideas to the team.",
+          "sentence_vi": "Cô ấy là một lãnh đạo năng động, mang nhiều ý tưởng mới cho nhóm."
+        },
+        {
+          "sentence": "The city has a dynamic economy that grows every year.",
+          "sentence_vi": "Thành phố có nền kinh tế năng động, tăng trưởng hằng năm."
+        }
+      ]
+    },
+    {
+      "lemma": "engagement",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "an agreement to marry, or active interest and involvement in something",
+      "definition_vi": "sự đính hôn; sự tham gia",
+      "examples": [
+        {
+          "sentence": "They announced their engagement at a family dinner.",
+          "sentence_vi": "Họ đã công bố lễ đính hôn trong bữa tối gia đình."
+        },
+        {
+          "sentence": "Student engagement increases when lessons are fun.",
+          "sentence_vi": "Sự tham gia của học sinh tăng lên khi bài học thú vị."
+        }
+      ]
+    },
+    {
+      "lemma": "footage",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "recorded video or film of real events",
+      "definition_vi": "phim quay, video ghi hình",
+      "examples": [
+        {
+          "sentence": "The news showed footage of the flood.",
+          "sentence_vi": "Bản tin đã chiếu đoạn phim quay về trận lũ."
+        },
+        {
+          "sentence": "Police checked camera footage from the street.",
+          "sentence_vi": "Cảnh sát đã kiểm tra video từ camera trên phố."
+        }
+      ]
+    },
+    {
+      "lemma": "grave",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "very serious and worrying; also a place where a dead person is buried",
+      "definition_vi": "nghiêm trọng; nấm mộ",
+      "examples": [
+        {
+          "sentence": "The doctor made a grave mistake during the operation.",
+          "sentence_vi": "Bác sĩ đã mắc một sai lầm nghiêm trọng trong ca phẫu thuật."
+        },
+        {
+          "sentence": "They placed flowers on the grave of their grandfather.",
+          "sentence_vi": "Họ đặt hoa lên nấm mộ của ông nội."
+        }
+      ]
+    },
+    {
+      "lemma": "literary",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "connected with books, poems and serious writing",
+      "definition_vi": "thuộc về văn chương",
+      "examples": [
+        {
+          "sentence": "She won a prize for her literary work.",
+          "sentence_vi": "Cô ấy giành giải thưởng cho tác phẩm văn chương của mình."
+        },
+        {
+          "sentence": "The city has a strong literary tradition.",
+          "sentence_vi": "Thành phố này có truyền thống văn chương mạnh mẽ."
+        }
+      ]
+    },
+    {
+      "lemma": "praise",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to say good things about someone or their work",
+      "definition_vi": "khen ngợi",
+      "examples": [
+        {
+          "sentence": "The teacher praised her for the excellent essay.",
+          "sentence_vi": "Giáo viên khen cô ấy vì bài luận xuất sắc."
+        },
+        {
+          "sentence": "Critics praised the young actor's performance.",
+          "sentence_vi": "Các nhà phê bình khen màn trình diễn của diễn viên trẻ."
+        }
+      ]
+    },
+    {
+      "lemma": "psychology",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the study of the mind and how people behave",
+      "definition_vi": "tâm lý học",
+      "examples": [
+        {
+          "sentence": "She is studying psychology at university.",
+          "sentence_vi": "Cô ấy đang học tâm lý học ở trường đại học."
+        },
+        {
+          "sentence": "Psychology helps us understand why people act this way.",
+          "sentence_vi": "Tâm lý học giúp chúng ta hiểu vì sao con người hành động như vậy."
+        }
+      ]
+    },
+    {
+      "lemma": "relation",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the way two people, groups or things are connected",
+      "definition_vi": "mối quan hệ",
+      "examples": [
+        {
+          "sentence": "The two countries have good trade relations.",
+          "sentence_vi": "Hai nước có quan hệ thương mại tốt đẹp."
+        },
+        {
+          "sentence": "There is a close relation between diet and health.",
+          "sentence_vi": "Có mối quan hệ chặt chẽ giữa chế độ ăn và sức khỏe."
+        }
+      ]
+    },
+    {
+      "lemma": "restrictions",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "rules that limit what people are allowed to do",
+      "definition_vi": "sự hạn chế, giới hạn",
+      "examples": [
+        {
+          "sentence": "New travel restrictions started last month.",
+          "sentence_vi": "Các hạn chế đi lại mới bắt đầu từ tháng trước."
+        },
+        {
+          "sentence": "The city lifted restrictions on parking at night.",
+          "sentence_vi": "Thành phố đã bỏ hạn chế đỗ xe ban đêm."
+        }
+      ]
+    },
+    {
+      "lemma": "stability",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a state of being steady and not likely to change",
+      "definition_vi": "sự ổn định",
+      "examples": [
+        {
+          "sentence": "Economic stability is important for every country.",
+          "sentence_vi": "Ổn định kinh tế rất quan trọng đối với mọi quốc gia."
+        },
+        {
+          "sentence": "A good job gave her financial stability.",
+          "sentence_vi": "Một công việc tốt mang lại cho cô sự ổn định tài chính."
+        }
+      ]
+    },
+    {
+      "lemma": "treaty",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a formal agreement between two or more countries",
+      "definition_vi": "hiệp ước",
+      "examples": [
+        {
+          "sentence": "The two countries signed a peace treaty.",
+          "sentence_vi": "Hai nước đã ký một hiệp ước hòa bình."
+        },
+        {
+          "sentence": "The treaty was broken after only two years.",
+          "sentence_vi": "Hiệp ước bị phá vỡ chỉ sau hai năm."
+        }
+      ]
+    },
+    {
+      "lemma": "triple",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to become or make something three times bigger",
+      "definition_vi": "tăng gấp ba",
+      "examples": [
+        {
+          "sentence": "House prices tripled in ten years.",
+          "sentence_vi": "Giá nhà tăng gấp ba trong mười năm."
+        },
+        {
+          "sentence": "The company wants to triple its sales this year.",
+          "sentence_vi": "Công ty muốn tăng gấp ba doanh số năm nay."
+        }
+      ]
+    },
+    {
+      "lemma": "affair",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a matter or event, often a private or secret one",
+      "definition_vi": "vụ việc, chuyện riêng",
+      "examples": [
+        {
+          "sentence": "The wedding was a private family affair.",
+          "sentence_vi": "Đám cưới là một chuyện riêng của gia đình."
+        },
+        {
+          "sentence": "The government should not interfere in that affair.",
+          "sentence_vi": "Chính phủ không nên can thiệp vào vụ việc đó."
+        }
+      ]
+    },
+    {
+      "lemma": "bow",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a knot with two loops made with string or ribbon",
+      "definition_vi": "cái nơ",
+      "examples": [
+        {
+          "sentence": "She tied a pretty red bow on the gift box.",
+          "sentence_vi": "Cô ấy thắt một chiếc nơ đỏ xinh xắn trên hộp quà."
+        },
+        {
+          "sentence": "The little girl's shoes have bows on them.",
+          "sentence_vi": "Đôi giày của bé gái có nơ trên đó."
+        }
+      ]
+    },
+    {
+      "lemma": "cape",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a piece of land surrounded by water on three sides",
+      "definition_vi": "mũi đất",
+      "examples": [
+        {
+          "sentence": "The ship sailed around the cape during the storm.",
+          "sentence_vi": "Con tàu đã đi vòng qua mũi đất trong cơn bão."
+        },
+        {
+          "sentence": "They built a small lighthouse on the rocky cape.",
+          "sentence_vi": "Họ xây một ngọn hải đăng nhỏ trên mũi đất đá."
+        }
+      ]
+    },
+    {
+      "lemma": "collective",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "shared or done by all the members of a group",
+      "definition_vi": "tập thể, chung",
+      "examples": [
+        {
+          "sentence": "The team made a collective decision to change the plan.",
+          "sentence_vi": "Nhóm đã đưa ra quyết định tập thể là thay đổi kế hoạch."
+        },
+        {
+          "sentence": "Cleaning the park was a collective effort by the whole class.",
+          "sentence_vi": "Dọn dẹp công viên là nỗ lực tập thể của cả lớp."
+        }
+      ]
+    },
+    {
+      "lemma": "devil",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "in some religions, the most powerful evil spirit",
+      "definition_vi": "quỷ, ma quỷ",
+      "examples": [
+        {
+          "sentence": "In the story, the devil offers the man a deal.",
+          "sentence_vi": "Trong truyện, quỷ dâng cho người đàn ông một thỏa thuận."
+        },
+        {
+          "sentence": "Old paintings often show the devil with horns and wings.",
+          "sentence_vi": "Những bức tranh cổ thường vẽ quỷ có sừng và cánh."
+        }
+      ]
+    },
+    {
+      "lemma": "enable",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to make it possible for someone to do something",
+      "definition_vi": "cho phép, làm cho có thể",
+      "examples": [
+        {
+          "sentence": "The new software will enable faster communication between offices.",
+          "sentence_vi": "Phần mềm mới sẽ cho phép giao tiếp nhanh hơn giữa các văn phòng."
+        },
+        {
+          "sentence": "A scholarship enabled her to study abroad for a year.",
+          "sentence_vi": "Học bổng đã cho phép cô ấy du học một năm."
+        }
+      ]
+    },
+    {
+      "lemma": "failing",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a weakness or fault in someone's character or ability",
+      "definition_vi": "điểm yếu, khuyết điểm",
+      "examples": [
+        {
+          "sentence": "His main failing is that he never listens to advice.",
+          "sentence_vi": "Khuyết điểm chính của anh ấy là không bao giờ nghe lời khuyên."
+        },
+        {
+          "sentence": "Everyone has failings, so we should be patient with each other.",
+          "sentence_vi": "Ai cũng có khuyết điểm, nên chúng ta nên kiên nhẫn với nhau."
+        }
+      ]
+    },
+    {
+      "lemma": "graham",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a type of whole wheat flour used in some breads and crackers",
+      "definition_vi": "bột mì nguyên cám (graham)",
+      "examples": [
+        {
+          "sentence": "This bread is made with graham flour and honey.",
+          "sentence_vi": "Bánh mì này được làm từ bột graham và mật ong."
+        },
+        {
+          "sentence": "She crushed graham crackers to make the pie base.",
+          "sentence_vi": "Cô ấy nghiền bánh quy graham để làm đế bánh."
+        }
+      ]
+    },
+    {
+      "lemma": "intellectual",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "relating to thinking, learning, and using the mind",
+      "definition_vi": "thuộc trí tuệ",
+      "examples": [
+        {
+          "sentence": "Chess is an intellectual game.",
+          "sentence_vi": "Cờ vua là một trò chơi trí tuệ."
+        },
+        {
+          "sentence": "She enjoys intellectual discussions about books.",
+          "sentence_vi": "Cô ấy thích những cuộc thảo luận trí tuệ về sách."
+        }
+      ]
+    },
+    {
+      "lemma": "involvement",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the act of taking part in an activity",
+      "definition_vi": "sự tham gia",
+      "examples": [
+        {
+          "sentence": "Her involvement in the project helped it succeed.",
+          "sentence_vi": "Sự tham gia của cô ấy giúp dự án thành công."
+        },
+        {
+          "sentence": "Parents' involvement improves children's learning.",
+          "sentence_vi": "Sự tham gia của cha mẹ giúp việc học của trẻ tốt hơn."
+        }
+      ]
+    },
+    {
+      "lemma": "petition",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a written request signed by many people",
+      "definition_vi": "đơn thỉnh cầu",
+      "examples": [
+        {
+          "sentence": "Thousands of people signed the petition against the new law.",
+          "sentence_vi": "Hàng nghìn người ký vào đơn thỉnh cầu chống luật mới."
+        },
+        {
+          "sentence": "She started a petition to save the old library.",
+          "sentence_vi": "Cô ấy bắt đầu một đơn thỉnh cầu để cứu thư viện cũ."
+        }
+      ]
+    },
+    {
+      "lemma": "racial",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "relating to different human races or ethnic groups",
+      "definition_vi": "thuộc chủng tộc",
+      "examples": [
+        {
+          "sentence": "The country has made progress in reducing racial inequality.",
+          "sentence_vi": "Đất nước đã tiến bộ trong việc giảm bất bình đẳng chủng tộc."
+        },
+        {
+          "sentence": "Racial discrimination is against the law.",
+          "sentence_vi": "Phân biệt chủng tộc là trái pháp luật."
+        }
+      ]
+    },
+    {
+      "lemma": "rounds",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "regular visits a doctor or nurse makes to patients",
+      "definition_vi": "lượt thăm khám bệnh định kỳ",
+      "examples": [
+        {
+          "sentence": "The doctor does her rounds at the hospital every morning.",
+          "sentence_vi": "Bác sĩ làm vòng thăm bệnh ở bệnh viện mỗi sáng."
+        },
+        {
+          "sentence": "The nurse finished his rounds before lunch.",
+          "sentence_vi": "Y tá hoàn thành lượt thăm bệnh trước bữa trưa."
+        }
+      ]
+    },
+    {
+      "lemma": "similarly",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "in almost the same way as something else",
+      "definition_vi": "tương tự như vậy",
+      "examples": [
+        {
+          "sentence": "The north was cold; similarly, the south had heavy rain.",
+          "sentence_vi": "Miền Bắc lạnh; tương tự, miền Nam cũng mưa lớn."
+        },
+        {
+          "sentence": "She studied hard and, similarly, her brother passed all his exams.",
+          "sentence_vi": "Cô ấy học chăm chỉ và tương tự, anh trai cô cũng đỗ tất cả các kỳ thi."
+        }
+      ]
+    },
+    {
+      "lemma": "summit",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the highest point of a mountain, or an important meeting of leaders",
+      "definition_vi": "đỉnh núi; hội nghị thượng đỉnh",
+      "examples": [
+        {
+          "sentence": "It took us six hours to reach the summit of the mountain.",
+          "sentence_vi": "Chúng tôi mất sáu giờ để lên đến đỉnh núi."
+        },
+        {
+          "sentence": "World leaders will meet at a summit in Paris next month.",
+          "sentence_vi": "Các nhà lãnh đạo thế giới sẽ gặp nhau tại một hội nghị thượng đỉnh ở Paris vào tháng sau."
+        }
+      ]
+    },
+    {
+      "lemma": "wisdom",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the ability to use knowledge and experience to make good decisions",
+      "definition_vi": "trí tuệ, sự khôn ngoan",
+      "examples": [
+        {
+          "sentence": "With age comes wisdom, as my grandfather often says.",
+          "sentence_vi": "Tuổi tác mang lại sự khôn ngoan, như ông tôi thường nói."
+        },
+        {
+          "sentence": "She shared her wisdom with the younger students.",
+          "sentence_vi": "Cô ấy chia sẻ sự khôn ngoan của mình với các học sinh nhỏ tuổi hơn."
+        }
+      ]
+    },
+    {
+      "lemma": "beast",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a large dangerous animal, or a very strong person",
+      "definition_vi": "con thú, quái vật",
+      "examples": [
+        {
+          "sentence": "The hunters followed the beast deep into the forest.",
+          "sentence_vi": "Những người thợ săn đuổi con thú sâu vào rừng."
+        },
+        {
+          "sentence": "He is a beast at the gym, lifting huge weights.",
+          "sentence_vi": "Anh ấy như một con quái vật ở phòng gym, nâng tạ cực nặng."
+        }
+      ]
+    },
+    {
+      "lemma": "cited",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "mentioned a source or example as proof",
+      "definition_vi": "trích dẫn, dẫn chứng",
+      "examples": [
+        {
+          "sentence": "The lawyer cited two similar cases in court.",
+          "sentence_vi": "Luật sư đã trích dẫn hai vụ án tương tự ở tòa."
+        },
+        {
+          "sentence": "The report cited several studies about sleep.",
+          "sentence_vi": "Báo cáo đã dẫn chứng một số nghiên cứu về giấc ngủ."
+        }
+      ]
+    },
+    {
+      "lemma": "dated",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "old-fashioned and no longer modern",
+      "definition_vi": "lỗi thời, cũ kỹ",
+      "examples": [
+        {
+          "sentence": "The kitchen looks dated with its old tiles.",
+          "sentence_vi": "Căn bếp trông lỗi thời với những viên gạch cũ."
+        },
+        {
+          "sentence": "His jokes feel dated to young people.",
+          "sentence_vi": "Những câu đùa của anh ấy nghe cũ kỹ với người trẻ."
+        }
+      ]
+    },
+    {
+      "lemma": "default",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the usual setting or choice used when nothing is changed",
+      "definition_vi": "cài đặt mặc định",
+      "examples": [
+        {
+          "sentence": "The default language of the app is English.",
+          "sentence_vi": "Ngôn ngữ mặc định của ứng dụng là tiếng Anh."
+        },
+        {
+          "sentence": "You can change the default settings in the menu.",
+          "sentence_vi": "Bạn có thể thay đổi cài đặt mặc định trong menu."
+        }
+      ]
+    },
+    {
+      "lemma": "distinct",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "clearly different and easy to tell apart",
+      "definition_vi": "khác biệt, rõ ràng",
+      "examples": [
+        {
+          "sentence": "The twins have distinct voices.",
+          "sentence_vi": "Hai anh em sinh đôi có giọng nói khác biệt."
+        },
+        {
+          "sentence": "There are two distinct ways to solve this problem.",
+          "sentence_vi": "Có hai cách khác biệt để giải quyết vấn đề này."
+        }
+      ]
+    },
+    {
+      "lemma": "eligible",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "allowed to do or receive something because you qualify",
+      "definition_vi": "đủ điều kiện, đủ tư cách",
+      "examples": [
+        {
+          "sentence": "Only students over 18 are eligible for the scholarship.",
+          "sentence_vi": "Chỉ học sinh trên 18 tuổi mới đủ điều kiện nhận học bổng."
+        },
+        {
+          "sentence": "Check if you are eligible to vote in the election.",
+          "sentence_vi": "Hãy kiểm tra xem bạn có đủ tư cách bỏ phiếu trong cuộc bầu cử không."
+        }
+      ]
+    },
+    {
+      "lemma": "framework",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a basic set of ideas or rules that supports something",
+      "definition_vi": "khung, khuôn khổ",
+      "examples": [
+        {
+          "sentence": "The government created a framework for new environmental laws.",
+          "sentence_vi": "Chính phủ đã tạo ra một khuôn khổ cho các luật môi trường mới."
+        },
+        {
+          "sentence": "This theory gives us a framework for understanding language.",
+          "sentence_vi": "Lý thuyết này cho chúng ta một khung để hiểu ngôn ngữ."
+        }
+      ]
+    },
+    {
+      "lemma": "funded",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "gave money to pay for a project or activity",
+      "definition_vi": "được tài trợ, cấp vốn",
+      "examples": [
+        {
+          "sentence": "The new library was funded by a rich businessman.",
+          "sentence_vi": "Thư viện mới được tài trợ bởi một doanh nhân giàu có."
+        },
+        {
+          "sentence": "The government funded research into clean energy.",
+          "sentence_vi": "Chính phủ đã cấp vốn cho nghiên cứu năng lượng sạch."
+        }
+      ]
+    },
+    {
+      "lemma": "integrated",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "joined together to work as one complete system",
+      "definition_vi": "hợp nhất, tích hợp",
+      "examples": [
+        {
+          "sentence": "The phone has an integrated camera and music player.",
+          "sentence_vi": "Chiếc điện thoại có máy ảnh và trình phát nhạc tích hợp."
+        },
+        {
+          "sentence": "The school has an integrated program for local and foreign students.",
+          "sentence_vi": "Trường có chương trình hợp nhất cho học sinh trong nước và nước ngoài."
+        }
+      ]
+    },
+    {
+      "lemma": "lighting",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the lights in a room or on a stage",
+      "definition_vi": "ánh sáng, hệ thống chiếu sáng",
+      "examples": [
+        {
+          "sentence": "The lighting in this café is too dark.",
+          "sentence_vi": "Ánh sáng trong quán cà phê này quá tối."
+        },
+        {
+          "sentence": "Good lighting makes photos look much better.",
+          "sentence_vi": "Ánh sáng tốt làm cho ảnh trông đẹp hơn nhiều."
+        }
+      ]
+    },
+    {
+      "lemma": "loop",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a shape like a circle, or something that repeats",
+      "definition_vi": "vòng lặp",
+      "examples": [
+        {
+          "sentence": "The road makes a loop around the lake.",
+          "sentence_vi": "Con đường tạo thành một vòng quanh hồ."
+        },
+        {
+          "sentence": "The song got stuck in a loop in my head.",
+          "sentence_vi": "Bài hát bị lặp đi lặp lại trong đầu tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "regarded",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "thought about or considered in a certain way",
+      "definition_vi": "được coi là, được xem là",
+      "examples": [
+        {
+          "sentence": "She is regarded as one of the best teachers in the school.",
+          "sentence_vi": "Cô được coi là một trong những giáo viên giỏi nhất trường."
+        },
+        {
+          "sentence": "The film is widely regarded as his greatest work.",
+          "sentence_vi": "Bộ phim được rộng rãi xem là tác phẩm vĩ đại nhất của ông."
+        }
+      ]
+    },
+    {
+      "lemma": "remarkable",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "very unusual or surprising in a good way",
+      "definition_vi": "phi thường, đáng chú ý",
+      "examples": [
+        {
+          "sentence": "She made remarkable progress in just two months.",
+          "sentence_vi": "Cô ấy tiến bộ đáng kinh ngạc chỉ trong hai tháng."
+        },
+        {
+          "sentence": "The team showed remarkable courage in the final match.",
+          "sentence_vi": "Đội đã thể hiện lòng dũng cảm phi thường trong trận chung kết."
+        }
+      ]
+    },
+    {
+      "lemma": "ruling",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "an official decision made by a judge or court",
+      "definition_vi": "phán quyết",
+      "examples": [
+        {
+          "sentence": "The court's ruling surprised everyone in the room.",
+          "sentence_vi": "Phán quyết của tòa làm mọi người trong phòng ngạc nhiên."
+        },
+        {
+          "sentence": "They disagreed with the ruling and decided to appeal.",
+          "sentence_vi": "Họ không đồng ý với phán quyết và quyết định kháng cáo."
+        }
+      ]
+    },
+    {
+      "lemma": "sacrifice",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "giving up something valuable to help or achieve something",
+      "definition_vi": "sự hy sinh",
+      "examples": [
+        {
+          "sentence": "Her parents made a big sacrifice to pay for her studies.",
+          "sentence_vi": "Cha mẹ cô đã hy sinh rất nhiều để trả tiền học cho cô."
+        },
+        {
+          "sentence": "Winning the gold medal required years of sacrifice.",
+          "sentence_vi": "Việc giành huy chương vàng đòi hỏi nhiều năm hy sinh."
+        }
+      ]
+    },
+    {
+      "lemma": "sole",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "only one; single and nothing else",
+      "definition_vi": "duy nhất",
+      "examples": [
+        {
+          "sentence": "She was the sole survivor of the accident.",
+          "sentence_vi": "Cô là người sống sót duy nhất trong vụ tai nạn."
+        },
+        {
+          "sentence": "Money was his sole reason for taking the job.",
+          "sentence_vi": "Tiền là lý do duy nhất khiến anh nhận công việc đó."
+        }
+      ]
+    },
+    {
+      "lemma": "timing",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "choosing or judging the right moment to do something",
+      "definition_vi": "sự chọn thời điểm",
+      "examples": [
+        {
+          "sentence": "His timing was perfect; he arrived just before the rain.",
+          "sentence_vi": "Anh chọn thời điểm hoàn hảo; anh đến ngay trước cơn mưa."
+        },
+        {
+          "sentence": "Good timing is important when you tell a joke.",
+          "sentence_vi": "Chọn đúng thời điểm rất quan trọng khi bạn kể chuyện cười."
+        }
+      ]
+    },
+    {
+      "lemma": "witnesses",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "people who see an event happen, especially a crime",
+      "definition_vi": "nhân chứng",
+      "examples": [
+        {
+          "sentence": "The police asked witnesses to describe the man.",
+          "sentence_vi": "Cảnh sát yêu cầu các nhân chứng mô tả người đàn ông."
+        },
+        {
+          "sentence": "Two witnesses said the car was moving very fast.",
+          "sentence_vi": "Hai nhân chứng nói chiếc xe chạy rất nhanh."
+        }
+      ]
+    },
+    {
+      "lemma": "worship",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to show strong respect and love for a god",
+      "definition_vi": "thờ cúng, tôn thờ",
+      "examples": [
+        {
+          "sentence": "Villagers gather at the temple to worship.",
+          "sentence_vi": "Dân làng tụ tập ở đền để thờ cúng."
+        },
+        {
+          "sentence": "They worship every morning before work.",
+          "sentence_vi": "Họ thờ cúng mỗi sáng trước khi đi làm."
+        }
+      ]
+    },
+    {
+      "lemma": "bloody",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "covered with blood, or used to show anger",
+      "definition_vi": "đẫm máu; (nhấn mạnh, chỉ sự khó chịu)",
+      "examples": [
+        {
+          "sentence": "He had a bloody nose after falling off his bike.",
+          "sentence_vi": "Cậu ấy bị chảy máu mũi sau khi ngã xe đạp."
+        },
+        {
+          "sentence": "This bloody computer keeps crashing!",
+          "sentence_vi": "Cái máy tính chết tiệt này cứ bị treo!"
+        }
+      ]
+    },
+    {
+      "lemma": "collaboration",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "working together with others to make or do something",
+      "definition_vi": "sự cộng tác, hợp tác",
+      "examples": [
+        {
+          "sentence": "The song was written in collaboration with a famous producer.",
+          "sentence_vi": "Bài hát được viết với sự cộng tác của một nhà sản xuất nổi tiếng."
+        },
+        {
+          "sentence": "Good collaboration makes a team stronger.",
+          "sentence_vi": "Sự hợp tác tốt làm cho đội nhóm mạnh hơn."
+        }
+      ]
+    },
+    {
+      "lemma": "consideration",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "careful thought about something, or care for others",
+      "definition_vi": "sự cân nhắc; sự quan tâm, chu đáo",
+      "examples": [
+        {
+          "sentence": "After much consideration, she accepted the job.",
+          "sentence_vi": "Sau nhiều lần cân nhắc, cô ấy nhận công việc đó."
+        },
+        {
+          "sentence": "He shows consideration for older people on the bus.",
+          "sentence_vi": "Anh ấy thể hiện sự quan tâm với người lớn tuổi trên xe buýt."
+        }
+      ]
+    },
+    {
+      "lemma": "crucial",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "extremely important because it affects the result",
+      "definition_vi": "then chốt, cực kỳ quan trọng",
+      "examples": [
+        {
+          "sentence": "Water is crucial for all living things.",
+          "sentence_vi": "Nước là điều then chốt cho mọi sinh vật sống."
+        },
+        {
+          "sentence": "Her advice was crucial to our success.",
+          "sentence_vi": "Lời khuyên của cô ấy rất quan trọng đối với thành công của chúng tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "dual",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "having two parts, uses, or sides",
+      "definition_vi": "kép, đôi",
+      "examples": [
+        {
+          "sentence": "She has dual nationality because her parents come from two countries.",
+          "sentence_vi": "Cô ấy có quốc tịch kép vì cha mẹ cô đến từ hai nước."
+        },
+        {
+          "sentence": "The phone has a dual camera for better photos.",
+          "sentence_vi": "Chiếc điện thoại có camera kép để chụp ảnh đẹp hơn."
+        }
+      ]
+    },
+    {
+      "lemma": "experimental",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "used to test a new idea or method",
+      "definition_vi": "thử nghiệm",
+      "examples": [
+        {
+          "sentence": "The doctors tried an experimental treatment on the patient.",
+          "sentence_vi": "Các bác sĩ đã thử một phương pháp điều trị thử nghiệm trên bệnh nhân."
+        },
+        {
+          "sentence": "The band released an experimental album last year.",
+          "sentence_vi": "Ban nhạc đã phát hành một album thử nghiệm năm ngoái."
+        }
+      ]
+    },
+    {
+      "lemma": "intent",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "what someone plans or means to do",
+      "definition_vi": "ý định, mục đích",
+      "examples": [
+        {
+          "sentence": "He entered the meeting with the intent to close the deal.",
+          "sentence_vi": "Anh ấy vào cuộc họp với ý định chốt hợp đồng."
+        },
+        {
+          "sentence": "Her intent was to help, not to cause trouble.",
+          "sentence_vi": "Ý định của cô là giúp đỡ, không phải gây rắc rối."
+        }
+      ]
+    },
+    {
+      "lemma": "judgment",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "an opinion or decision formed after thinking carefully",
+      "definition_vi": "sự phán đoán, đánh giá; phán quyết",
+      "examples": [
+        {
+          "sentence": "Trust your own judgment when choosing a job.",
+          "sentence_vi": "Hãy tin vào phán đoán của chính mình khi chọn việc."
+        },
+        {
+          "sentence": "The court announced its judgment this morning.",
+          "sentence_vi": "Tòa án đã công bố phán quyết vào sáng nay."
+        }
+      ]
+    },
+    {
+      "lemma": "nazi",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a member of the German political party led by Hitler",
+      "definition_vi": "thành viên Đảng Quốc xã (Đức)",
+      "examples": [
+        {
+          "sentence": "The nazis took power in Germany in 1933.",
+          "sentence_vi": "Đảng Quốc xã lên nắm quyền ở Đức năm 1933."
+        },
+        {
+          "sentence": "Many people suffered under nazi rule during the war.",
+          "sentence_vi": "Nhiều người đã chịu khổ dưới ách cai trị của phát xít trong chiến tranh."
+        }
+      ]
+    },
+    {
+      "lemma": "odds",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the chances that something will happen or not happen",
+      "definition_vi": "khả năng, cơ hội (xảy ra)",
+      "examples": [
+        {
+          "sentence": "The odds of winning the lottery are very small.",
+          "sentence_vi": "Khả năng trúng số là rất nhỏ."
+        },
+        {
+          "sentence": "Against all odds, he finished the race first.",
+          "sentence_vi": "Trái với mọi dự đoán, anh ấy về đích đầu tiên."
+        }
+      ]
+    },
+    {
+      "lemma": "publicly",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "in a way that all people can see or know",
+      "definition_vi": "công khai",
+      "examples": [
+        {
+          "sentence": "She publicly apologized for her mistake.",
+          "sentence_vi": "Cô ấy công khai xin lỗi về sai lầm của mình."
+        },
+        {
+          "sentence": "The minister publicly supported the new law.",
+          "sentence_vi": "Bộ trưởng công khai ủng hộ luật mới."
+        }
+      ]
+    },
+    {
+      "lemma": "revenge",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "hurting someone back because they hurt you first",
+      "definition_vi": "sự trả thù",
+      "examples": [
+        {
+          "sentence": "He wanted revenge after his brother was cheated.",
+          "sentence_vi": "Anh ấy muốn trả thù sau khi em trai bị lừa."
+        },
+        {
+          "sentence": "In the story, the hero takes revenge on his enemy.",
+          "sentence_vi": "Trong truyện, người anh hùng trả thù kẻ thù của mình."
+        }
+      ]
+    },
+    {
+      "lemma": "stocks",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "shares in companies that people buy to make money",
+      "definition_vi": "cổ phiếu",
+      "examples": [
+        {
+          "sentence": "He lost money when the stocks fell last month.",
+          "sentence_vi": "Anh ấy mất tiền khi cổ phiếu giảm giá tháng trước."
+        },
+        {
+          "sentence": "She buys stocks in small companies and waits for them to grow.",
+          "sentence_vi": "Cô ấy mua cổ phiếu của các công ty nhỏ và chờ chúng phát triển."
+        }
+      ]
+    },
+    {
+      "lemma": "acceptable",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "good enough to be allowed or agreed to",
+      "definition_vi": "chấp nhận được",
+      "examples": [
+        {
+          "sentence": "Wearing jeans to the office is acceptable on Fridays.",
+          "sentence_vi": "Mặc quần jeans đến văn phòng được chấp nhận vào các ngày thứ Sáu."
+        },
+        {
+          "sentence": "His answer was not acceptable, so he had to try again.",
+          "sentence_vi": "Câu trả lời của anh ấy không được chấp nhận, nên anh ấy phải thử lại."
+        }
+      ]
+    },
+    {
+      "lemma": "allies",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "countries or people that help and support each other",
+      "definition_vi": "đồng minh",
+      "examples": [
+        {
+          "sentence": "The two countries became strong allies after signing the agreement.",
+          "sentence_vi": "Hai nước trở thành đồng minh mạnh mẽ sau khi ký hiệp định."
+        },
+        {
+          "sentence": "In the fight for equal rights, she found many allies.",
+          "sentence_vi": "Trong cuộc đấu tranh vì quyền bình đẳng, cô ấy tìm được nhiều đồng minh."
+        }
+      ]
+    },
+    {
+      "lemma": "auction",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a public sale where items go to the highest bidder",
+      "definition_vi": "cuộc đấu giá",
+      "examples": [
+        {
+          "sentence": "The old painting sold for a million dollars at the auction.",
+          "sentence_vi": "Bức tranh cổ bán được một triệu đô la trong cuộc đấu giá."
+        },
+        {
+          "sentence": "He raised his hand at the auction to make a bid.",
+          "sentence_vi": "Anh ấy giơ tay trong cuộc đấu giá để trả giá."
+        }
+      ]
+    },
+    {
+      "lemma": "bonds",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "official papers that pay back money with interest, or close links between people",
+      "definition_vi": "trái phiếu; mối liên kết",
+      "examples": [
+        {
+          "sentence": "Many people buy government bonds because they are safe.",
+          "sentence_vi": "Nhiều người mua trái phiếu chính phủ vì chúng an toàn."
+        },
+        {
+          "sentence": "Working together for years created strong bonds between the team members.",
+          "sentence_vi": "Làm việc cùng nhau nhiều năm tạo nên mối liên kết chặt chẽ giữa các thành viên nhóm."
+        }
+      ]
+    },
+    {
+      "lemma": "chaos",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a situation of complete disorder and confusion",
+      "definition_vi": "sự hỗn loạn",
+      "examples": [
+        {
+          "sentence": "The sudden storm caused chaos at the airport.",
+          "sentence_vi": "Cơn bão bất ngờ gây ra sự hỗn loạn ở sân bay."
+        },
+        {
+          "sentence": "When the power went out, the whole city fell into chaos.",
+          "sentence_vi": "Khi mất điện, cả thành phố rơi vào hỗn loạn."
+        }
+      ]
+    },
+    {
+      "lemma": "composed",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "wrote or created a piece of music or writing",
+      "definition_vi": "sáng tác; viết nên",
+      "examples": [
+        {
+          "sentence": "She composed a beautiful song for her mother.",
+          "sentence_vi": "Cô ấy đã sáng tác một bài hát đẹp cho mẹ."
+        },
+        {
+          "sentence": "Mozart composed his first symphony when he was very young.",
+          "sentence_vi": "Mozart sáng tác giao hưởng đầu tiên khi ông còn rất trẻ."
+        }
+      ]
+    },
+    {
+      "lemma": "corp",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "short form of corporation, a large company",
+      "definition_vi": "công ty (viết tắt của corporation)",
+      "examples": [
+        {
+          "sentence": "She got a job at a big tech corp in Seattle.",
+          "sentence_vi": "Cô ấy có việc ở một công ty công nghệ lớn ở Seattle."
+        },
+        {
+          "sentence": "The corp plans to open offices in three countries.",
+          "sentence_vi": "Công ty dự định mở văn phòng ở ba nước."
+        }
+      ]
+    },
+    {
+      "lemma": "corps",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "an organized military group or trained team",
+      "definition_vi": "binh đoàn; đoàn (quân đội)",
+      "examples": [
+        {
+          "sentence": "He joined the marine corps after finishing school.",
+          "sentence_vi": "Anh ấy gia nhập binh đoàn thủy quân sau khi học xong."
+        },
+        {
+          "sentence": "A medical corps was sent to help after the flood.",
+          "sentence_vi": "Một đoàn y tế được cử đi cứu trợ sau trận lụt."
+        }
+      ]
+    },
+    {
+      "lemma": "dispute",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a serious argument or disagreement between people",
+      "definition_vi": "tranh chấp, tranh luận",
+      "examples": [
+        {
+          "sentence": "The two countries settled their border dispute peacefully.",
+          "sentence_vi": "Hai nước đã giải quyết tranh chấp biên giới một cách hòa bình."
+        },
+        {
+          "sentence": "There was a dispute about who should pay the bill.",
+          "sentence_vi": "Có một cuộc tranh luận về việc ai nên trả hóa đơn."
+        }
+      ]
+    },
+    {
+      "lemma": "earnings",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the money a person or company receives for work or business",
+      "definition_vi": "thu nhập, lợi nhuận",
+      "examples": [
+        {
+          "sentence": "His earnings increased after he changed jobs.",
+          "sentence_vi": "Thu nhập của anh ấy tăng sau khi đổi việc."
+        },
+        {
+          "sentence": "The company reported higher earnings this year.",
+          "sentence_vi": "Công ty báo cáo lợi nhuận cao hơn năm nay."
+        }
+      ]
+    },
+    {
+      "lemma": "executed",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "killed someone as an official legal punishment",
+      "definition_vi": "xử tử, hành quyết",
+      "examples": [
+        {
+          "sentence": "The prisoner was executed for his serious crime.",
+          "sentence_vi": "Tù nhân bị xử tử vì tội nghiêm trọng của hắn."
+        },
+        {
+          "sentence": "In the past, some people were executed in public.",
+          "sentence_vi": "Ngày xưa, một số người bị hành quyết trước công chúng."
+        }
+      ]
+    },
+    {
+      "lemma": "investments",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "money put into something to earn more money later",
+      "definition_vi": "những khoản đầu tư",
+      "examples": [
+        {
+          "sentence": "His investments in stocks grew quickly last year.",
+          "sentence_vi": "Những khoản đầu tư vào cổ phiếu của anh ấy tăng nhanh năm ngoái."
+        },
+        {
+          "sentence": "The company made large investments in new technology.",
+          "sentence_vi": "Công ty đã thực hiện những khoản đầu tư lớn vào công nghệ mới."
+        }
+      ]
+    },
+    {
+      "lemma": "isis",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "an ancient Egyptian goddess, wife of Osiris",
+      "definition_vi": "nữ thần Isis (Ai Cập cổ đại)",
+      "examples": [
+        {
+          "sentence": "Isis was worshipped as a goddess of magic in Egypt.",
+          "sentence_vi": "Isis được thờ cúng như nữ thần ma thuật ở Ai Cập."
+        },
+        {
+          "sentence": "The temple of Isis attracts many tourists every year.",
+          "sentence_vi": "Đền thờ Isis thu hút nhiều du khách mỗi năm."
+        }
+      ]
+    },
+    {
+      "lemma": "margin",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the empty space at the side of a page, or an amount of difference",
+      "definition_vi": "lề (trang giấy); biên độ, chênh lệch",
+      "examples": [
+        {
+          "sentence": "She wrote notes in the margin of the book.",
+          "sentence_vi": "Cô ấy ghi chú ở lề của cuốn sách."
+        },
+        {
+          "sentence": "The team won by a narrow margin of two points.",
+          "sentence_vi": "Đội thắng với biên độ hẹp chỉ hai điểm."
+        }
+      ]
+    },
+    {
+      "lemma": "mechanism",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a system of parts that work together, or the way something works",
+      "definition_vi": "cơ chế; bộ máy",
+      "examples": [
+        {
+          "sentence": "The clock has a simple mechanism inside it.",
+          "sentence_vi": "Chiếc đồng hồ có một bộ máy đơn giản bên trong."
+        },
+        {
+          "sentence": "Scientists studied the mechanism of the disease.",
+          "sentence_vi": "Các nhà khoa học nghiên cứu cơ chế của căn bệnh."
+        }
+      ]
+    },
+    {
+      "lemma": "moderate",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "not too big, not too small; staying in the middle",
+      "definition_vi": "vừa phải, trung bình",
+      "examples": [
+        {
+          "sentence": "The weather was moderate, not too hot or cold.",
+          "sentence_vi": "Thời tiết vừa phải, không quá nóng hay quá lạnh."
+        },
+        {
+          "sentence": "He holds moderate views on most political issues.",
+          "sentence_vi": "Anh ấy giữ quan điểm ôn hòa về hầu hết các vấn đề chính trị."
+        }
+      ]
+    },
+    {
+      "lemma": "opera",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a play in which the actors sing their words with music",
+      "definition_vi": "nhạc kịch, opera",
+      "examples": [
+        {
+          "sentence": "We watched a famous opera in the city theater.",
+          "sentence_vi": "Chúng tôi xem một vở opera nổi tiếng ở nhà hát thành phố."
+        },
+        {
+          "sentence": "She has loved opera since she was a child.",
+          "sentence_vi": "Cô ấy yêu opera từ khi còn nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "overcome",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to succeed in dealing with a problem or difficulty",
+      "definition_vi": "vượt qua, khắc phục",
+      "examples": [
+        {
+          "sentence": "She worked hard to overcome her fear of speaking.",
+          "sentence_vi": "Cô ấy làm việc chăm chỉ để vượt qua nỗi sợ nói trước đám đông."
+        },
+        {
+          "sentence": "The team overcame many problems to finish the project.",
+          "sentence_vi": "Nhóm đã vượt qua nhiều vấn đề để hoàn thành dự án."
+        }
+      ]
+    },
+    {
+      "lemma": "parallel",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "two lines or things that are always the same distance apart",
+      "definition_vi": "song song",
+      "examples": [
+        {
+          "sentence": "The two roads run parallel for several miles.",
+          "sentence_vi": "Hai con đường chạy song song trong vài dặm."
+        },
+        {
+          "sentence": "Draw two parallel lines on your paper.",
+          "sentence_vi": "Vẽ hai đường thẳng song song trên giấy của bạn."
+        }
+      ]
+    },
+    {
+      "lemma": "passage",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a short part of a text, or a way through a place",
+      "definition_vi": "đoạn văn; lối đi",
+      "examples": [
+        {
+          "sentence": "Read the passage and answer the questions below.",
+          "sentence_vi": "Đọc đoạn văn và trả lời các câu hỏi bên dưới."
+        },
+        {
+          "sentence": "There is a narrow passage between the two buildings.",
+          "sentence_vi": "Có một lối đi hẹp giữa hai tòa nhà."
+        }
+      ]
+    },
+    {
+      "lemma": "psychological",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "connected to the mind and how people think or feel",
+      "definition_vi": "thuộc tâm lý",
+      "examples": [
+        {
+          "sentence": "Stress can have serious psychological effects on health.",
+          "sentence_vi": "Căng thẳng có thể có tác động tâm lý nghiêm trọng đến sức khỏe."
+        },
+        {
+          "sentence": "The film explores the psychological reasons behind his actions.",
+          "sentence_vi": "Bộ phim khám phá những lý do tâm lý đằng sau hành động của anh ấy."
+        }
+      ]
+    },
+    {
+      "lemma": "publications",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "books, magazines, or articles that have been printed",
+      "definition_vi": "các ấn phẩm",
+      "examples": [
+        {
+          "sentence": "Her publications include three books on history.",
+          "sentence_vi": "Các ấn phẩm của cô ấy gồm ba cuốn sách về lịch sử."
+        },
+        {
+          "sentence": "The library keeps all the university's scientific publications.",
+          "sentence_vi": "Thư viện lưu giữ tất cả các ấn phẩm khoa học của trường đại học."
+        }
+      ]
+    },
+    {
+      "lemma": "quest",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a long search for something important or difficult to find",
+      "definition_vi": "cuộc truy tìm, hành trình tìm kiếm",
+      "examples": [
+        {
+          "sentence": "The knight went on a quest to find the lost treasure.",
+          "sentence_vi": "Hiệp sĩ lên đường truy tìm kho báu bị mất."
+        },
+        {
+          "sentence": "Her quest for the truth lasted many years.",
+          "sentence_vi": "Cuộc tìm kiếm sự thật của cô ấy kéo dài nhiều năm."
+        }
+      ]
+    },
+    {
+      "lemma": "radiation",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "energy that comes from a radioactive source and can be harmful",
+      "definition_vi": "bức xạ",
+      "examples": [
+        {
+          "sentence": "Doctors use radiation to treat some types of cancer.",
+          "sentence_vi": "Bác sĩ dùng bức xạ để điều trị một số loại ung thư."
+        },
+        {
+          "sentence": "The workers wore special suits to protect themselves from radiation.",
+          "sentence_vi": "Các công nhân mặc đồ bảo hộ đặc biệt để tự bảo vệ khỏi bức xạ."
+        }
+      ]
+    },
+    {
+      "lemma": "stroke",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a sudden illness that happens when blood stops reaching the brain",
+      "definition_vi": "đột quỵ",
+      "examples": [
+        {
+          "sentence": "My grandfather had a stroke last year and cannot walk well now.",
+          "sentence_vi": "Ông tôi bị đột quỵ năm ngoái và giờ đi lại không tốt."
+        },
+        {
+          "sentence": "Quick treatment after a stroke can save a person's life.",
+          "sentence_vi": "Điều trị nhanh sau đột quỵ có thể cứu mạng người."
+        }
+      ]
+    },
+    {
+      "lemma": "stunning",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "extremely beautiful or impressive",
+      "definition_vi": "lộng lẫy, tuyệt đẹp",
+      "examples": [
+        {
+          "sentence": "The bride looked stunning in her white dress.",
+          "sentence_vi": "Cô dâu trông lộng lẫy trong chiếc váy trắng."
+        },
+        {
+          "sentence": "We enjoyed a stunning view of the mountains from our hotel.",
+          "sentence_vi": "Chúng tôi tận hưởng khung cảnh núi non tuyệt đẹp từ khách sạn."
+        }
+      ]
+    },
+    {
+      "lemma": "utility",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a company that provides water, gas, or electricity to homes",
+      "definition_vi": "công ty tiện ích (điện, nước, gas)",
+      "examples": [
+        {
+          "sentence": "Our utility charges more for electricity in the summer.",
+          "sentence_vi": "Công ty điện của chúng tôi thu phí cao hơn vào mùa hè."
+        },
+        {
+          "sentence": "Call the utility if your power goes out.",
+          "sentence_vi": "Hãy gọi công ty điện nếu nhà bạn mất điện."
+        }
+      ]
+    },
+    {
+      "lemma": "vessel",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a large ship or boat used on the sea",
+      "definition_vi": "tàu thuyền",
+      "examples": [
+        {
+          "sentence": "A fishing vessel returned to port with a full load.",
+          "sentence_vi": "Một tàu đánh cá trở về cảng với đầy tải."
+        },
+        {
+          "sentence": "The navy sent a vessel to explore the area.",
+          "sentence_vi": "Hải quân cử một tàu đi thăm dò khu vực."
+        }
+      ]
+    },
+    {
+      "lemma": "addressed",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "dealt with a problem or spoke to a person or group",
+      "definition_vi": "đã giải quyết; đã phát biểu",
+      "examples": [
+        {
+          "sentence": "The manager addressed the workers' concerns at the meeting.",
+          "sentence_vi": "Quản lý đã giải quyết những lo ngại của công nhân trong cuộc họp."
+        },
+        {
+          "sentence": "She addressed the audience in a calm, clear voice.",
+          "sentence_vi": "Cô ấy phát biểu trước khán giả bằng giọng bình tĩnh, rõ ràng."
+        }
+      ]
+    },
+    {
+      "lemma": "backed",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "supported a person, plan, or idea",
+      "definition_vi": "ủng hộ, hậu thuẫn",
+      "examples": [
+        {
+          "sentence": "The manager backed her idea for a new project.",
+          "sentence_vi": "Quản lý đã ủng hộ ý tưởng dự án mới của cô ấy."
+        },
+        {
+          "sentence": "Most workers backed the strike last month.",
+          "sentence_vi": "Đa số công nhân đã ủng hộ cuộc đình công tháng trước."
+        }
+      ]
+    },
+    {
+      "lemma": "bold",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "brave and not afraid to take risks",
+      "definition_vi": "táo bạo, mạnh dạn",
+      "examples": [
+        {
+          "sentence": "It was a bold decision to move abroad alone.",
+          "sentence_vi": "Đó là một quyết định táo bạo khi chuyển ra nước ngoài một mình."
+        },
+        {
+          "sentence": "She made a bold speech in front of the whole company.",
+          "sentence_vi": "Cô ấy đã có bài phát biểu mạnh dạn trước toàn công ty."
+        }
+      ]
+    },
+    {
+      "lemma": "classified",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "kept secret by a government or organization",
+      "definition_vi": "mật, được xếp loại bí mật",
+      "examples": [
+        {
+          "sentence": "The report about the mission was classified for twenty years.",
+          "sentence_vi": "Báo cáo về nhiệm vụ được giữ mật trong hai mươi năm."
+        },
+        {
+          "sentence": "Only top officials can read classified documents.",
+          "sentence_vi": "Chỉ các quan chức cấp cao mới được đọc tài liệu mật."
+        }
+      ]
+    },
+    {
+      "lemma": "controversy",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "strong public disagreement about something",
+      "definition_vi": "tranh cãi, tranh luận gay gắt",
+      "examples": [
+        {
+          "sentence": "The new law caused a lot of controversy.",
+          "sentence_vi": "Luật mới gây ra nhiều tranh cãi."
+        },
+        {
+          "sentence": "There was controversy over the judge's final decision.",
+          "sentence_vi": "Đã có tranh cãi về quyết định cuối cùng của trọng tài."
+        }
+      ]
+    },
+    {
+      "lemma": "eh",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "a sound used to ask someone to repeat or agree",
+      "definition_vi": "hả? (dùng để hỏi lại hoặc xin xác nhận)",
+      "examples": [
+        {
+          "sentence": "Sorry, eh? I did not hear what you said.",
+          "sentence_vi": "Xin lỗi, hả? Tôi không nghe thấy bạn nói gì."
+        },
+        {
+          "sentence": "It is a lovely day, eh?",
+          "sentence_vi": "Hôm nay thời tiết đẹp, phải không?"
+        }
+      ]
+    },
+    {
+      "lemma": "encounter",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to meet someone or experience something, often unexpectedly",
+      "definition_vi": "gặp phải, chạm trán",
+      "examples": [
+        {
+          "sentence": "We encountered many problems during the trip.",
+          "sentence_vi": "Chúng tôi gặp phải nhiều vấn đề trong chuyến đi."
+        },
+        {
+          "sentence": "I encountered an old friend at the market yesterday.",
+          "sentence_vi": "Hôm qua tôi tình cờ gặp một người bạn cũ ở chợ."
+        }
+      ]
+    },
+    {
+      "lemma": "equality",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the state of everyone having the same rights and chances",
+      "definition_vi": "sự bình đẳng",
+      "examples": [
+        {
+          "sentence": "The new law supports equality between men and women.",
+          "sentence_vi": "Luật mới ủng hộ sự bình đẳng giữa nam và nữ."
+        },
+        {
+          "sentence": "Equality in education is important for every child.",
+          "sentence_vi": "Bình đẳng trong giáo dục rất quan trọng với mọi đứa trẻ."
+        }
+      ]
+    },
+    {
+      "lemma": "guardian",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a person legally responsible for a child",
+      "definition_vi": "người giám hộ",
+      "examples": [
+        {
+          "sentence": "Her aunt became her legal guardian after the accident.",
+          "sentence_vi": "Dì của cô ấy trở thành người giám hộ hợp pháp sau tai nạn."
+        },
+        {
+          "sentence": "A parent or guardian must sign this form.",
+          "sentence_vi": "Cha mẹ hoặc người giám hộ phải ký vào mẫu đơn này."
+        }
+      ]
+    },
+    {
+      "lemma": "lover",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a person you have a romantic relationship with",
+      "definition_vi": "người tình",
+      "examples": [
+        {
+          "sentence": "She wrote a long letter to her secret lover.",
+          "sentence_vi": "Cô ấy viết một lá thư dài cho người tình bí mật của mình."
+        },
+        {
+          "sentence": "They met as lovers but stayed friends after they separated.",
+          "sentence_vi": "Họ gặp nhau với tư cách người tình nhưng vẫn là bạn sau khi chia tay."
+        }
+      ]
+    },
+    {
+      "lemma": "mainstream",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the ideas and styles that most people accept",
+      "definition_vi": "xu hướng chính, dòng chính",
+      "examples": [
+        {
+          "sentence": "Online shopping has now entered the mainstream.",
+          "sentence_vi": "Mua sắm trực tuyến nay đã trở thành xu hướng chính."
+        },
+        {
+          "sentence": "Her music was strange at first but later joined the mainstream.",
+          "sentence_vi": "Âm nhạc của cô ấy lúc đầu lạ lẫm nhưng sau đó đã vào dòng chính."
+        }
+      ]
+    },
+    {
+      "lemma": "mounted",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "fixed something on a support, or got onto a horse",
+      "definition_vi": "gắn lên; cưỡi (ngựa)",
+      "examples": [
+        {
+          "sentence": "The workers mounted the new sign on the wall.",
+          "sentence_vi": "Các công nhân gắn biển hiệu mới lên tường."
+        },
+        {
+          "sentence": "She mounted her horse and rode away.",
+          "sentence_vi": "Cô ấy cưỡi ngựa và đi khỏi đó."
+        }
+      ]
+    },
+    {
+      "lemma": "mutual",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "felt or shared by two or more people",
+      "definition_vi": "lẫn nhau, chung",
+      "examples": [
+        {
+          "sentence": "Their mutual respect made the partnership strong.",
+          "sentence_vi": "Sự tôn trọng lẫn nhau làm cho mối quan hệ hợp tác vững mạnh."
+        },
+        {
+          "sentence": "We have a mutual friend in London.",
+          "sentence_vi": "Chúng tôi có một người bạn chung ở London."
+        }
+      ]
+    },
+    {
+      "lemma": "offense",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a crime, or something that makes people upset",
+      "definition_vi": "tội phạm; sự xúc phạm",
+      "examples": [
+        {
+          "sentence": "Stealing a car is a serious offense.",
+          "sentence_vi": "Trộm ô tô là một tội nghiêm trọng."
+        },
+        {
+          "sentence": "I meant no offense by my comment.",
+          "sentence_vi": "Tôi không có ý xúc phạm ai với lời bình luận của mình."
+        }
+      ]
+    },
+    {
+      "lemma": "peoples",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "groups of humans with their own culture or nation",
+      "definition_vi": "các dân tộc, các dân cư",
+      "examples": [
+        {
+          "sentence": "The museum shows the art of ancient peoples.",
+          "sentence_vi": "Bảo tàng trưng bày nghệ thuật của các dân tộc cổ đại."
+        },
+        {
+          "sentence": "Many peoples live together in this country.",
+          "sentence_vi": "Nhiều dân tộc cùng sống trong đất nước này."
+        }
+      ]
+    },
+    {
+      "lemma": "pursue",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to follow or try to achieve something over time",
+      "definition_vi": "theo đuổi",
+      "examples": [
+        {
+          "sentence": "She wants to pursue a career in medicine.",
+          "sentence_vi": "Cô ấy muốn theo đuổi sự nghiệp y khoa."
+        },
+        {
+          "sentence": "The police pursued the thief through the streets.",
+          "sentence_vi": "Cảnh sát đuổi theo tên trộm qua các con phố."
+        }
+      ]
+    },
+    {
+      "lemma": "scope",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the range of things a subject or activity covers",
+      "definition_vi": "phạm vi",
+      "examples": [
+        {
+          "sentence": "The scope of the project includes all schools in the city.",
+          "sentence_vi": "Phạm vi của dự án bao gồm tất cả các trường trong thành phố."
+        },
+        {
+          "sentence": "That question is outside the scope of this report.",
+          "sentence_vi": "Câu hỏi đó nằm ngoài phạm vi của báo cáo này."
+        }
+      ]
+    },
+    {
+      "lemma": "segment",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "one part of something larger, cut or divided",
+      "definition_vi": "phân khúc, đoạn",
+      "examples": [
+        {
+          "sentence": "The orange was cut into six segments.",
+          "sentence_vi": "Quả cam được cắt thành sáu múi."
+        },
+        {
+          "sentence": "The company targets the young customer segment.",
+          "sentence_vi": "Công ty nhắm vào phân khúc khách hàng trẻ."
+        }
+      ]
+    },
+    {
+      "lemma": "terror",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a very strong feeling of fear",
+      "definition_vi": "sự khiếp sợ, nỗi kinh hoàng",
+      "examples": [
+        {
+          "sentence": "She screamed in terror when she saw the snake.",
+          "sentence_vi": "Cô ấy hét lên kinh hoàng khi nhìn thấy con rắn."
+        },
+        {
+          "sentence": "The terror of the storm kept everyone awake.",
+          "sentence_vi": "Nỗi khiếp sợ vì cơn bão khiến mọi người không ngủ được."
+        }
+      ]
+    },
+    {
+      "lemma": "venture",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a business project that involves some risk",
+      "definition_vi": "dự án kinh doanh mạo hiểm",
+      "examples": [
+        {
+          "sentence": "Their new venture opened a small coffee shop.",
+          "sentence_vi": "Dự án mới của họ mở một quán cà phê nhỏ."
+        },
+        {
+          "sentence": "Starting a business abroad is a risky venture.",
+          "sentence_vi": "Khởi nghiệp ở nước ngoài là một dự án rủi ro."
+        }
+      ]
+    },
+    {
+      "lemma": "virtually",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "almost, but not completely or exactly",
+      "definition_vi": "gần như, hầu như",
+      "examples": [
+        {
+          "sentence": "The two cars are virtually the same size.",
+          "sentence_vi": "Hai chiếc xe gần như cùng kích cỡ."
+        },
+        {
+          "sentence": "Virtually all the students passed the exam.",
+          "sentence_vi": "Gần như tất cả học sinh đều đỗ kỳ thi."
+        }
+      ]
+    },
+    {
+      "lemma": "warren",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a network of holes where rabbits live underground",
+      "definition_vi": "hang thỏ (nơi thỏ sống dưới lòng đất)",
+      "examples": [
+        {
+          "sentence": "The rabbits disappeared into their warren.",
+          "sentence_vi": "Những con thỏ biến mất vào hang của chúng."
+        },
+        {
+          "sentence": "We found a warren at the edge of the field.",
+          "sentence_vi": "Chúng tôi tìm thấy một hang thỏ ở rìa cánh đồng."
+        }
+      ]
+    },
+    {
+      "lemma": "alpha",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the first letter of the Greek alphabet; the first or strongest one",
+      "definition_vi": "chữ cái đầu bảng Hy Lạp; cái đầu tiên, mạnh nhất",
+      "examples": [
+        {
+          "sentence": "Alpha is the first letter in the Greek alphabet.",
+          "sentence_vi": "Alpha là chữ cái đầu tiên trong bảng chữ cái Hy Lạp."
+        },
+        {
+          "sentence": "The alpha male wolf leads the rest of the group.",
+          "sentence_vi": "Con sói đầu đàn dẫn dắt phần còn lại của bầy."
+        }
+      ]
+    },
+    {
+      "lemma": "boundaries",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "lines or limits that show where something ends",
+      "definition_vi": "ranh giới",
+      "examples": [
+        {
+          "sentence": "The river forms the boundaries between the two farms.",
+          "sentence_vi": "Con sông tạo thành ranh giới giữa hai trang trại."
+        },
+        {
+          "sentence": "Good friends respect each other's boundaries.",
+          "sentence_vi": "Bạn tốt tôn trọng ranh giới của nhau."
+        }
+      ]
+    },
+    {
+      "lemma": "considerable",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "large in amount or important enough to notice",
+      "definition_vi": "đáng kể, đáng kể về số lượng",
+      "examples": [
+        {
+          "sentence": "The project required a considerable amount of money.",
+          "sentence_vi": "Dự án đòi hỏi một khoản tiền đáng kể."
+        },
+        {
+          "sentence": "She has considerable experience in teaching children.",
+          "sentence_vi": "Cô ấy có kinh nghiệm đáng kể trong việc dạy trẻ em."
+        }
+      ]
+    },
+    {
+      "lemma": "conventional",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "usual and accepted by most people, not new",
+      "definition_vi": "truyền thống, theo thông lệ",
+      "examples": [
+        {
+          "sentence": "He chose a conventional job instead of starting a business.",
+          "sentence_vi": "Anh chọn một công việc truyền thống thay vì khởi nghiệp."
+        },
+        {
+          "sentence": "The house looks modern but uses conventional heating.",
+          "sentence_vi": "Ngôi nhà trông hiện đại nhưng dùng hệ thống sưởi truyền thống."
+        }
+      ]
+    },
+    {
+      "lemma": "designated",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "officially chosen for a special purpose",
+      "definition_vi": "được chỉ định, được quy định",
+      "examples": [
+        {
+          "sentence": "Please park your car in the designated area.",
+          "sentence_vi": "Vui lòng đậu xe trong khu vực được quy định."
+        },
+        {
+          "sentence": "Smoking is allowed only in designated places.",
+          "sentence_vi": "Hút thuốc chỉ được phép ở những nơi được chỉ định."
+        }
+      ]
+    },
+    {
+      "lemma": "gains",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "amounts of money or improvement that you get",
+      "definition_vi": "lợi nhuận, sự tăng lên",
+      "examples": [
+        {
+          "sentence": "The company reported big gains this year.",
+          "sentence_vi": "Công ty báo cáo lợi nhuận lớn năm nay."
+        },
+        {
+          "sentence": "Daily practice led to clear gains in his English.",
+          "sentence_vi": "Luyện tập hàng ngày mang lại sự tiến bộ rõ rệt trong tiếng Anh của anh ấy."
+        }
+      ]
+    },
+    {
+      "lemma": "guidelines",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "official advice telling people how to do something",
+      "definition_vi": "hướng dẫn, nguyên tắc chỉ đạo",
+      "examples": [
+        {
+          "sentence": "The school gave us clear guidelines for writing the report.",
+          "sentence_vi": "Trường đưa cho chúng tôi hướng dẫn rõ ràng để viết báo cáo."
+        },
+        {
+          "sentence": "Please follow the safety guidelines when using the machine.",
+          "sentence_vi": "Vui lòng làm theo hướng dẫn an toàn khi sử dụng máy."
+        }
+      ]
+    },
+    {
+      "lemma": "inquiry",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "an official investigation or a question about something",
+      "definition_vi": "sự điều tra, câu hỏi tra cứu",
+      "examples": [
+        {
+          "sentence": "The government opened an inquiry into the accident.",
+          "sentence_vi": "Chính phủ mở cuộc điều tra về vụ tai nạn."
+        },
+        {
+          "sentence": "For any inquiry about prices, call our office.",
+          "sentence_vi": "Mọi câu hỏi về giá, hãy gọi văn phòng của chúng tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "khan",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a historical title for a ruler in Central Asia",
+      "definition_vi": "hãn (vua của các bộ tộc du mục)",
+      "examples": [
+        {
+          "sentence": "The khan ruled a vast empire in the thirteenth century.",
+          "sentence_vi": "Vị hãn cai trị một đế quốc rộng lớn vào thế kỷ mười ba."
+        },
+        {
+          "sentence": "Stories about the great khan are still told today.",
+          "sentence_vi": "Những câu chuyện về vị đại hãn vẫn được kể đến ngày nay."
+        }
+      ]
+    },
+    {
+      "lemma": "li",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "an old Chinese unit of distance, about half a kilometre",
+      "definition_vi": "dặm Trung Quốc (khoảng nửa km)",
+      "examples": [
+        {
+          "sentence": "The village was ten li from the mountain.",
+          "sentence_vi": "Ngôi làng cách ngọn núi mười dặm."
+        },
+        {
+          "sentence": "They walked several li before stopping to rest.",
+          "sentence_vi": "Họ đi bộ vài dặm trước khi dừng nghỉ."
+        }
+      ]
+    },
+    {
+      "lemma": "maintaining",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "keeping something in good condition or continuing it",
+      "definition_vi": "bảo trì, duy trì",
+      "examples": [
+        {
+          "sentence": "Maintaining the old bridge costs a lot of money.",
+          "sentence_vi": "Việc bảo trì cây cầu cũ tốn rất nhiều tiền."
+        },
+        {
+          "sentence": "She is good at maintaining friendships over many years.",
+          "sentence_vi": "Cô ấy giỏi duy trì tình bạn qua nhiều năm."
+        }
+      ]
+    },
+    {
+      "lemma": "mercy",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "kindness shown to someone you could punish",
+      "definition_vi": "lòng nhân từ, sự khoan dung",
+      "examples": [
+        {
+          "sentence": "The judge showed mercy and gave a light sentence.",
+          "sentence_vi": "Thẩm phán thể hiện lòng nhân từ và đưa ra án nhẹ."
+        },
+        {
+          "sentence": "They begged the king for mercy.",
+          "sentence_vi": "Họ cầu xin nhà vua tha thứ."
+        }
+      ]
+    },
+    {
+      "lemma": "nevertheless",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "in spite of that; however",
+      "definition_vi": "tuy nhiên, dù vậy",
+      "examples": [
+        {
+          "sentence": "It was raining; nevertheless, we went for a walk.",
+          "sentence_vi": "Trời mưa; tuy vậy, chúng tôi vẫn đi dạo."
+        },
+        {
+          "sentence": "The task was hard; nevertheless, she finished it.",
+          "sentence_vi": "Công việc khó; dù vậy, cô ấy vẫn hoàn thành."
+        }
+      ]
+    },
+    {
+      "lemma": "pissed",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "very angry (informal, often considered rude)",
+      "definition_vi": "tức giận (thông tục)",
+      "examples": [
+        {
+          "sentence": "He was really pissed when his team lost.",
+          "sentence_vi": "Anh ấy rất tức giận khi đội của anh thua."
+        },
+        {
+          "sentence": "Don't get pissed at me for a small mistake.",
+          "sentence_vi": "Đừng giận tôi vì một lỗi nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "racism",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "unfair treatment of people because of their race",
+      "definition_vi": "chủ nghĩa phân biệt chủng tộc",
+      "examples": [
+        {
+          "sentence": "Racism is a serious problem in many countries.",
+          "sentence_vi": "Phân biệt chủng tộc là một vấn đề nghiêm trọng ở nhiều nước."
+        },
+        {
+          "sentence": "The new law aims to fight racism at work.",
+          "sentence_vi": "Luật mới nhằm chống phân biệt chủng tộc nơi làm việc."
+        }
+      ]
+    },
+    {
+      "lemma": "refers",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "mentions or points to something; talks about",
+      "definition_vi": "đề cập đến",
+      "examples": [
+        {
+          "sentence": "The word 'it' refers to the cat in the sentence.",
+          "sentence_vi": "Từ 'it' đề cập đến con mèo trong câu."
+        },
+        {
+          "sentence": "In her speech, she refers to her childhood often.",
+          "sentence_vi": "Trong bài phát biểu, cô ấy thường đề cập đến tuổi thơ của mình."
+        }
+      ]
+    },
+    {
+      "lemma": "tribute",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "something said or done to show respect for a person",
+      "definition_vi": "lời tri ân, sự tôn vinh",
+      "examples": [
+        {
+          "sentence": "The band played a song as a tribute to their old teacher.",
+          "sentence_vi": "Ban nhạc hát một bài để tri ân người thầy cũ."
+        },
+        {
+          "sentence": "Fans paid tribute to the singer after her death.",
+          "sentence_vi": "Người hâm mộ tưởng nhớ ca sĩ sau khi bà qua đời."
+        }
+      ]
+    },
+    {
+      "lemma": "trigger",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the part of a gun you press to fire it",
+      "definition_vi": "cò súng",
+      "examples": [
+        {
+          "sentence": "He pulled the trigger and the gun fired.",
+          "sentence_vi": "Anh ấy bóp cò và khẩu súng nổ."
+        },
+        {
+          "sentence": "Keep your finger away from the trigger.",
+          "sentence_vi": "Đừng để ngón tay gần cò súng."
+        }
+      ]
+    },
+    {
+      "lemma": "venue",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the place where an event or meeting happens",
+      "definition_vi": "địa điểm tổ chức",
+      "examples": [
+        {
+          "sentence": "The concert venue holds five thousand people.",
+          "sentence_vi": "Địa điểm tổ chức buổi hòa nhạc chứa năm nghìn người."
+        },
+        {
+          "sentence": "We changed the venue because of the rain.",
+          "sentence_vi": "Chúng tôi đổi địa điểm vì trời mưa."
+        }
+      ]
+    },
+    {
+      "lemma": "abortion",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a medical operation that ends a pregnancy",
+      "definition_vi": "phá thai",
+      "examples": [
+        {
+          "sentence": "The country changed its laws about abortion.",
+          "sentence_vi": "Quốc gia đã thay đổi luật về phá thai."
+        },
+        {
+          "sentence": "They discussed abortion in the health class.",
+          "sentence_vi": "Họ thảo luận về phá thai trong lớp sức khỏe."
+        }
+      ]
+    },
+    {
+      "lemma": "accuracy",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the quality of being correct and without mistakes",
+      "definition_vi": "độ chính xác",
+      "examples": [
+        {
+          "sentence": "Check the accuracy of your answers before you finish.",
+          "sentence_vi": "Kiểm tra độ chính xác của câu trả lời trước khi nộp."
+        },
+        {
+          "sentence": "The new machine improved the accuracy of the test.",
+          "sentence_vi": "Máy mới cải thiện độ chính xác của phép thử."
+        }
+      ]
+    },
+    {
+      "lemma": "beneath",
+      "pos": "preposition",
+      "cefr_level": "B2",
+      "definition": "in or to a lower position than something",
+      "definition_vi": "dưới, bên dưới",
+      "examples": [
+        {
+          "sentence": "The keys were hidden beneath a pile of papers.",
+          "sentence_vi": "Chìa khóa được giấu dưới một chồng giấy."
+        },
+        {
+          "sentence": "We heard water running beneath the floor.",
+          "sentence_vi": "Chúng tôi nghe thấy tiếng nước chảy dưới sàn."
+        }
+      ]
+    },
+    {
+      "lemma": "bitcoin",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a digital money that people use online without a bank",
+      "definition_vi": "tiền điện tử Bitcoin",
+      "examples": [
+        {
+          "sentence": "He paid for the laptop with bitcoin.",
+          "sentence_vi": "Anh ấy trả tiền cho chiếc laptop bằng bitcoin."
+        },
+        {
+          "sentence": "The price of bitcoin changes every day.",
+          "sentence_vi": "Giá của bitcoin thay đổi mỗi ngày."
+        }
+      ]
+    },
+    {
+      "lemma": "bullet",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a small piece of metal shot from a gun",
+      "definition_vi": "viên đạn",
+      "examples": [
+        {
+          "sentence": "The bullet hit the wall behind him.",
+          "sentence_vi": "Viên đạn trúng bức tường sau lưng anh ấy."
+        },
+        {
+          "sentence": "Police found a bullet at the scene.",
+          "sentence_vi": "Cảnh sát tìm thấy một viên đạn tại hiện trường."
+        }
+      ]
+    },
+    {
+      "lemma": "consistently",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "in the same good way every time, without changing",
+      "definition_vi": "một cách ổn định, đều đặn",
+      "examples": [
+        {
+          "sentence": "She consistently gets high marks in math.",
+          "sentence_vi": "Cô ấy luôn đạt điểm cao môn toán một cách ổn định."
+        },
+        {
+          "sentence": "The restaurant consistently serves fresh food.",
+          "sentence_vi": "Nhà hàng luôn phục vụ đồ ăn tươi một cách đều đặn."
+        }
+      ]
+    },
+    {
+      "lemma": "conversion",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the act of changing something into another form",
+      "definition_vi": "sự chuyển đổi",
+      "examples": [
+        {
+          "sentence": "The conversion of the garage into an office took a month.",
+          "sentence_vi": "Việc chuyển đổi nhà để xe thành văn phòng mất một tháng."
+        },
+        {
+          "sentence": "This app does a quick conversion from dollars to euros.",
+          "sentence_vi": "Ứng dụng này chuyển đổi nhanh từ đô la sang euro."
+        }
+      ]
+    },
+    {
+      "lemma": "copyright",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the legal right to control copies of your own work",
+      "definition_vi": "bản quyền",
+      "examples": [
+        {
+          "sentence": "The author holds the copyright to her novel.",
+          "sentence_vi": "Tác giả giữ bản quyền cho cuốn tiểu thuyết của cô ấy."
+        },
+        {
+          "sentence": "Copying the song breaks copyright law.",
+          "sentence_vi": "Sao chép bài hát vi phạm luật bản quyền."
+        }
+      ]
+    },
+    {
+      "lemma": "counties",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "large areas of land divided for local government",
+      "definition_vi": "hạt (đơn vị hành chính)",
+      "examples": [
+        {
+          "sentence": "The state is divided into 82 counties.",
+          "sentence_vi": "Bang được chia thành 82 hạt."
+        },
+        {
+          "sentence": "Heavy rain flooded several counties last week.",
+          "sentence_vi": "Mưa lớn làm ngập vài hạt tuần trước."
+        }
+      ]
+    },
+    {
+      "lemma": "democrat",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a person who supports democracy or a member of the US Democratic Party",
+      "definition_vi": "người theo chủ nghĩa dân chủ; đảng viên Dân chủ",
+      "examples": [
+        {
+          "sentence": "She is a democrat who believes everyone should vote.",
+          "sentence_vi": "Cô ấy là một người theo chủ nghĩa dân chủ, tin rằng ai cũng nên đi bầu."
+        },
+        {
+          "sentence": "The democrat won the election by a small margin.",
+          "sentence_vi": "Đảng viên Dân chủ thắng cử với cách biệt nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "diverse",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "including many different kinds of people or things",
+      "definition_vi": "đa dạng",
+      "examples": [
+        {
+          "sentence": "New York is a very diverse city.",
+          "sentence_vi": "New York là một thành phố rất đa dạng."
+        },
+        {
+          "sentence": "The museum has a diverse collection of art.",
+          "sentence_vi": "Bảo tàng có một bộ sưu tập nghệ thuật đa dạng."
+        }
+      ]
+    },
+    {
+      "lemma": "exclusively",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "only, and nothing or no one else",
+      "definition_vi": "độc quyền, chỉ",
+      "examples": [
+        {
+          "sentence": "This parking space is exclusively for staff.",
+          "sentence_vi": "Chỗ đậu xe này chỉ dành cho nhân viên."
+        },
+        {
+          "sentence": "She works exclusively with young children.",
+          "sentence_vi": "Cô ấy chỉ làm việc với trẻ nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "formerly",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "in the past, but not now",
+      "definition_vi": "trước đây",
+      "examples": [
+        {
+          "sentence": "This building was formerly a school.",
+          "sentence_vi": "Tòa nhà này trước đây là một trường học."
+        },
+        {
+          "sentence": "She was formerly the manager of the shop.",
+          "sentence_vi": "Cô ấy trước đây là quản lý của cửa hàng."
+        }
+      ]
+    },
+    {
+      "lemma": "functional",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "working correctly or made to be useful, not decorative",
+      "definition_vi": "có chức năng, hữu dụng",
+      "examples": [
+        {
+          "sentence": "The old radio is still functional after fifty years.",
+          "sentence_vi": "Chiếc radio cũ vẫn hoạt động tốt sau năm mươi năm."
+        },
+        {
+          "sentence": "The kitchen design is simple and functional.",
+          "sentence_vi": "Thiết kế nhà bếp đơn giản và hữu dụng."
+        }
+      ]
+    },
+    {
+      "lemma": "isolated",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "far from other places or people; alone",
+      "definition_vi": "cô lập, hẻo lánh",
+      "examples": [
+        {
+          "sentence": "They live in an isolated house in the mountains.",
+          "sentence_vi": "Họ sống trong một ngôi nhà hẻo lánh trên núi."
+        },
+        {
+          "sentence": "After the storm, the village was isolated for days.",
+          "sentence_vi": "Sau cơn bão, ngôi làng bị cô lập nhiều ngày."
+        }
+      ]
+    },
+    {
+      "lemma": "modified",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "changed something a little to improve it",
+      "definition_vi": "sửa đổi, điều chỉnh",
+      "examples": [
+        {
+          "sentence": "The recipe was modified to use less sugar.",
+          "sentence_vi": "Công thức đã được điều chỉnh để dùng ít đường hơn."
+        },
+        {
+          "sentence": "They modified the plan after hearing our ideas.",
+          "sentence_vi": "Họ đã sửa đổi kế hoạch sau khi nghe ý kiến của chúng tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "municipal",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "connected to a city or town government",
+      "definition_vi": "thuộc thành phố, đô thị",
+      "examples": [
+        {
+          "sentence": "The municipal library is free for all city residents.",
+          "sentence_vi": "Thư viện thành phố miễn phí cho mọi cư dân."
+        },
+        {
+          "sentence": "Municipal workers repaired the road near my house.",
+          "sentence_vi": "Công nhân thành phố đã sửa con đường gần nhà tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "naval",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "belonging to or connected with a country's navy",
+      "definition_vi": "thuộc hải quân",
+      "examples": [
+        {
+          "sentence": "He joined the naval academy to become an officer.",
+          "sentence_vi": "Anh ấy vào học viện hải quân để trở thành sĩ quan."
+        },
+        {
+          "sentence": "The country built a new naval base near the coast.",
+          "sentence_vi": "Quốc gia đó xây một căn cứ hải quân mới gần bờ biển."
+        }
+      ]
+    },
+    {
+      "lemma": "nelson",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a wrestling hold used to control an opponent's arms and head",
+      "definition_vi": "cú kẹp nelson (đấu vật)",
+      "examples": [
+        {
+          "sentence": "The wrestler used a nelson to pin his opponent down.",
+          "sentence_vi": "Võ sĩ dùng cú nelson để ghim đối thủ xuống."
+        },
+        {
+          "sentence": "He escaped from the nelson and pushed back against the ropes.",
+          "sentence_vi": "Anh ấy thoát khỏi cú nelson và đẩy ngược lại về phía dây."
+        }
+      ]
+    },
+    {
+      "lemma": "neutral",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "not supporting either side in a disagreement or war",
+      "definition_vi": "trung lập",
+      "examples": [
+        {
+          "sentence": "The country stayed neutral during the long war.",
+          "sentence_vi": "Quốc gia đó giữ trung lập trong suốt cuộc chiến dài."
+        },
+        {
+          "sentence": "Try to remain neutral when your friends argue.",
+          "sentence_vi": "Hãy cố giữ trung lập khi bạn bè cãi nhau."
+        }
+      ]
+    },
+    {
+      "lemma": "noble",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "honest, kind and deserving respect",
+      "definition_vi": "cao quý, cao thượng",
+      "examples": [
+        {
+          "sentence": "It was a noble act to give all his money to charity.",
+          "sentence_vi": "Đó là một hành động cao quý khi anh ấy cho hết tiền từ thiện."
+        },
+        {
+          "sentence": "She has noble ideas about helping poor people.",
+          "sentence_vi": "Cô ấy có những ý tưởng cao quý về việc giúp người nghèo."
+        }
+      ]
+    },
+    {
+      "lemma": "sacred",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "holy and connected with religion",
+      "definition_vi": "thiêng liêng",
+      "examples": [
+        {
+          "sentence": "The temple is a sacred place for local people.",
+          "sentence_vi": "Ngôi đền là nơi thiêng liêng đối với người dân địa phương."
+        },
+        {
+          "sentence": "They sang sacred songs during the ceremony.",
+          "sentence_vi": "Họ hát những bài hát thiêng liêng trong buổi lễ."
+        }
+      ]
+    },
+    {
+      "lemma": "spy",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a person who secretly gets information about another country or group",
+      "definition_vi": "điệp viên, gián điệp",
+      "examples": [
+        {
+          "sentence": "The spy sent secret papers to his government.",
+          "sentence_vi": "Điệp viên gửi tài liệu bí mật cho chính phủ của anh ta."
+        },
+        {
+          "sentence": "They arrested a spy working inside the company.",
+          "sentence_vi": "Họ bắt một điệp viên hoạt động bên trong công ty."
+        }
+      ]
+    },
+    {
+      "lemma": "suspension",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a period when someone is temporarily not allowed to work or play",
+      "definition_vi": "sự tạm đình chỉ, tạm ngưng",
+      "examples": [
+        {
+          "sentence": "The player received a two-week suspension for fighting.",
+          "sentence_vi": "Cầu thủ bị treo giò hai tuần vì đánh nhau."
+        },
+        {
+          "sentence": "His suspension from school ended last Monday.",
+          "sentence_vi": "Buổi tạm đình chỉ học của anh ấy kết thúc thứ Hai vừa rồi."
+        }
+      ]
+    },
+    {
+      "lemma": "terrorism",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the use of violence to create fear for political aims",
+      "definition_vi": "khủng bố",
+      "examples": [
+        {
+          "sentence": "The government made new laws to fight terrorism.",
+          "sentence_vi": "Chính phủ ban hành luật mới để chống khủng bố."
+        },
+        {
+          "sentence": "Terrorism causes fear and harm to ordinary people.",
+          "sentence_vi": "Khủng bố gây sợ hãi và tổn hại cho người dân thường."
+        }
+      ]
+    },
+    {
+      "lemma": "toxic",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "poisonous; able to make people, animals, or nature sick",
+      "definition_vi": "độc, có độc tính",
+      "examples": [
+        {
+          "sentence": "Do not touch that plant; its leaves are toxic.",
+          "sentence_vi": "Đừng chạm vào cây đó; lá của nó có độc."
+        },
+        {
+          "sentence": "The factory released toxic gas into the air.",
+          "sentence_vi": "Nhà máy thải khí độc ra không khí."
+        }
+      ]
+    },
+    {
+      "lemma": "unions",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "groups of workers who join together to protect their rights",
+      "definition_vi": "các công đoàn",
+      "examples": [
+        {
+          "sentence": "The unions asked for higher pay for all members.",
+          "sentence_vi": "Các công đoàn yêu cầu tăng lương cho tất cả thành viên."
+        },
+        {
+          "sentence": "Unions played a big role in improving working conditions.",
+          "sentence_vi": "Các công đoàn đóng vai trò lớn trong việc cải thiện điều kiện làm việc."
+        }
+      ]
+    },
+    {
+      "lemma": "warrant",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "an official paper that lets police do something, such as search a house",
+      "definition_vi": "lệnh (của tòa án, cảnh sát)",
+      "examples": [
+        {
+          "sentence": "The police needed a warrant to enter the building.",
+          "sentence_vi": "Cảnh sát cần có lệnh để vào tòa nhà."
+        },
+        {
+          "sentence": "A judge signed the warrant this morning.",
+          "sentence_vi": "Thẩm phán đã ký lệnh sáng nay."
+        }
+      ]
+    },
+    {
+      "lemma": "asset",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "something valuable that a person or company owns",
+      "definition_vi": "tài sản",
+      "examples": [
+        {
+          "sentence": "Her house is her most valuable asset.",
+          "sentence_vi": "Ngôi nhà là tài sản quý giá nhất của cô ấy."
+        },
+        {
+          "sentence": "Good language skills are a real asset in business.",
+          "sentence_vi": "Kỹ năng ngôn ngữ tốt là một tài sản thực sự trong kinh doanh."
+        }
+      ]
+    },
+    {
+      "lemma": "assuming",
+      "pos": "conjunction",
+      "cefr_level": "B2",
+      "definition": "used to say something is true before making a decision",
+      "definition_vi": "giả sử rằng",
+      "examples": [
+        {
+          "sentence": "Assuming the weather is good, we will walk to school.",
+          "sentence_vi": "Giả sử thời tiết tốt, chúng ta sẽ đi bộ đến trường."
+        },
+        {
+          "sentence": "You can finish early, assuming your boss agrees.",
+          "sentence_vi": "Bạn có thể về sớm, giả sử sếp của bạn đồng ý."
+        }
+      ]
+    },
+    {
+      "lemma": "backing",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "support or help given to a person, plan, or idea",
+      "definition_vi": "sự ủng hộ, hậu thuẫn",
+      "examples": [
+        {
+          "sentence": "The new project has the backing of the whole team.",
+          "sentence_vi": "Dự án mới có sự ủng hộ của cả nhóm."
+        },
+        {
+          "sentence": "Without financial backing, the small shop could not open.",
+          "sentence_vi": "Không có sự hậu thuẫn tài chính, cửa hàng nhỏ không thể mở."
+        }
+      ]
+    },
+    {
+      "lemma": "blessed",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "lucky or made happy by God",
+      "definition_vi": "may mắn, được ban phước",
+      "examples": [
+        {
+          "sentence": "She feels blessed to have such kind friends.",
+          "sentence_vi": "Cô ấy cảm thấy may mắn khi có những người bạn tốt bụng."
+        },
+        {
+          "sentence": "They believe the old tree is blessed with special power.",
+          "sentence_vi": "Họ tin rằng cây cổ thụ được ban phước với sức mạnh đặc biệt."
+        }
+      ]
+    },
+    {
+      "lemma": "burden",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a heavy load or a difficult problem to carry",
+      "definition_vi": "gánh nặng",
+      "examples": [
+        {
+          "sentence": "Debt became a heavy burden on the family.",
+          "sentence_vi": "Khoản nợ trở thành gánh nặng lớn cho gia đình."
+        },
+        {
+          "sentence": "He did not want to be a burden to his children.",
+          "sentence_vi": "Anh không muốn trở thành gánh nặng cho các con mình."
+        }
+      ]
+    },
+    {
+      "lemma": "certified",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "officially checked and given a document to prove quality",
+      "definition_vi": "được chứng nhận",
+      "examples": [
+        {
+          "sentence": "She is a certified teacher with ten years of experience.",
+          "sentence_vi": "Cô ấy là giáo viên được chứng nhận với mười năm kinh nghiệm."
+        },
+        {
+          "sentence": "Buy only certified organic fruit from this shop.",
+          "sentence_vi": "Chỉ mua trái cây hữu cơ được chứng nhận ở cửa hàng này."
+        }
+      ]
+    },
+    {
+      "lemma": "charter",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a written statement of the main rules or rights of a group",
+      "definition_vi": "điều lệ, hiến chương",
+      "examples": [
+        {
+          "sentence": "The club wrote a charter describing its main goals.",
+          "sentence_vi": "Câu lạc bộ đã viết điều lệ mô tả các mục tiêu chính."
+        },
+        {
+          "sentence": "Every member must follow the rules in the charter.",
+          "sentence_vi": "Mọi thành viên phải tuân theo các quy tắc trong điều lệ."
+        }
+      ]
+    },
+    {
+      "lemma": "civilian",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a person who is not a soldier or police officer",
+      "definition_vi": "thường dân",
+      "examples": [
+        {
+          "sentence": "Civilians were moved to a safe place before the fighting.",
+          "sentence_vi": "Thường dân được di chuyển đến nơi an toàn trước khi chiến đấu."
+        },
+        {
+          "sentence": "After leaving the army, he lived as a civilian.",
+          "sentence_vi": "Sau khi rời quân đội, anh sống như một thường dân."
+        }
+      ]
+    },
+    {
+      "lemma": "controversial",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "causing strong public disagreement or debate",
+      "definition_vi": "gây tranh cãi",
+      "examples": [
+        {
+          "sentence": "The new law is very controversial.",
+          "sentence_vi": "Luật mới gây tranh cãi rất nhiều."
+        },
+        {
+          "sentence": "He wrote a controversial article about education.",
+          "sentence_vi": "Anh ấy viết một bài báo gây tranh cãi về giáo dục."
+        }
+      ]
+    },
+    {
+      "lemma": "discipline",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the ability to control yourself and work hard",
+      "definition_vi": "kỷ luật, tính kỷ luật",
+      "examples": [
+        {
+          "sentence": "Learning a language takes discipline.",
+          "sentence_vi": "Học một ngôn ngữ đòi hỏi tính kỷ luật."
+        },
+        {
+          "sentence": "Good discipline helps students succeed.",
+          "sentence_vi": "Kỷ luật tốt giúp học sinh thành công."
+        }
+      ]
+    },
+    {
+      "lemma": "dominant",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "stronger, more important, or more powerful than others",
+      "definition_vi": "trội, chiếm ưu thế",
+      "examples": [
+        {
+          "sentence": "The team has a dominant position in the league.",
+          "sentence_vi": "Đội bóng có vị trí trội trong giải đấu."
+        },
+        {
+          "sentence": "English is the dominant language online.",
+          "sentence_vi": "Tiếng Anh là ngôn ngữ chiếm ưu thế trên mạng."
+        }
+      ]
+    },
+    {
+      "lemma": "furthermore",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "used to add one more reason or point",
+      "definition_vi": "hơn nữa, ngoài ra",
+      "examples": [
+        {
+          "sentence": "The plan is cheap; furthermore, it is easy to use.",
+          "sentence_vi": "Kế hoạch này rẻ; hơn nữa, nó dễ sử dụng."
+        },
+        {
+          "sentence": "He was late. Furthermore, he forgot the tickets.",
+          "sentence_vi": "Anh ấy đến muộn. Hơn nữa, anh ấy quên vé."
+        }
+      ]
+    },
+    {
+      "lemma": "graphic",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "showing something in a very clear, often shocking way",
+      "definition_vi": "rõ ràng, sống động (đôi khi gây sốc)",
+      "examples": [
+        {
+          "sentence": "The film contains graphic scenes of violence.",
+          "sentence_vi": "Bộ phim có những cảnh bạo lực rất rõ ràng và gay gắt."
+        },
+        {
+          "sentence": "She gave a graphic description of the accident.",
+          "sentence_vi": "Cô ấy mô tả vụ tai nạn một cách sống động."
+        }
+      ]
+    },
+    {
+      "lemma": "implemented",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "put a plan or new system into action",
+      "definition_vi": "triển khai, thực hiện",
+      "examples": [
+        {
+          "sentence": "The school implemented a new rule about mobile phones.",
+          "sentence_vi": "Trường đã triển khai quy định mới về điện thoại di động."
+        },
+        {
+          "sentence": "The company implemented the changes within one month.",
+          "sentence_vi": "Công ty đã thực hiện các thay đổi trong vòng một tháng."
+        }
+      ]
+    },
+    {
+      "lemma": "invasion",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "when an army enters a country by force to take it",
+      "definition_vi": "sự xâm lược",
+      "examples": [
+        {
+          "sentence": "The invasion began early in the morning.",
+          "sentence_vi": "Cuộc xâm lược bắt đầu vào sáng sớm."
+        },
+        {
+          "sentence": "History books describe the invasion in great detail.",
+          "sentence_vi": "Sách lịch sử mô tả cuộc xâm lược rất chi tiết."
+        }
+      ]
+    },
+    {
+      "lemma": "legendary",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "very famous, or known only in old stories",
+      "definition_vi": "huyền thoại, nổi tiếng",
+      "examples": [
+        {
+          "sentence": "The legendary hero appears in many old tales.",
+          "sentence_vi": "Người anh hùng huyền thoại xuất hiện trong nhiều truyện cổ."
+        },
+        {
+          "sentence": "That singer is legendary in the world of music.",
+          "sentence_vi": "Ca sĩ đó là huyền thoại trong thế giới âm nhạc."
+        }
+      ]
+    },
+    {
+      "lemma": "opponents",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "people who compete against you or disagree with you",
+      "definition_vi": "đối thủ, người phản đối",
+      "examples": [
+        {
+          "sentence": "Our team defeated its opponents three to one.",
+          "sentence_vi": "Đội của chúng tôi đánh bại đối thủ ba tỉ một."
+        },
+        {
+          "sentence": "The new law has many strong opponents in parliament.",
+          "sentence_vi": "Luật mới có nhiều người phản đối mạnh mẽ trong quốc hội."
+        }
+      ]
+    },
+    {
+      "lemma": "quarters",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "rooms where people live, or coins worth 25 cents",
+      "definition_vi": "chỗ ở, phòng ở; đồng xu 25 cent",
+      "examples": [
+        {
+          "sentence": "The sailors returned to their quarters after dinner.",
+          "sentence_vi": "Các thủy thủ trở về phòng ở của họ sau bữa tối."
+        },
+        {
+          "sentence": "He paid for the parking meter with two quarters.",
+          "sentence_vi": "Anh ấy trả tiền đỗ xe bằng hai đồng xu 25 cent."
+        }
+      ]
+    },
+    {
+      "lemma": "ranks",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "positions in a group or organization, from low to high",
+      "definition_vi": "hạng, cấp bậc",
+      "examples": [
+        {
+          "sentence": "He joined the army and quickly rose through the ranks.",
+          "sentence_vi": "Anh ấy nhập ngũ và nhanh chóng thăng tiến qua các cấp bậc."
+        },
+        {
+          "sentence": "The team moved up in the ranks after winning the match.",
+          "sentence_vi": "Đội đã tăng hạng sau khi thắng trận đấu."
+        }
+      ]
+    },
+    {
+      "lemma": "secured",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "obtained or fastened something firmly",
+      "definition_vi": "đã giành được; đã cố định",
+      "examples": [
+        {
+          "sentence": "She secured a job at a famous company.",
+          "sentence_vi": "Cô ấy đã giành được việc làm ở một công ty nổi tiếng."
+        },
+        {
+          "sentence": "The workers secured the boxes to the truck with ropes.",
+          "sentence_vi": "Công nhân đã cố định các thùng hàng lên xe tải bằng dây."
+        }
+      ]
+    },
+    {
+      "lemma": "serial",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a story shown or printed in regular parts",
+      "definition_vi": "phim/truyện nhiều tập",
+      "examples": [
+        {
+          "sentence": "The new serial starts on television next week.",
+          "sentence_vi": "Bộ phim nhiều tập mới bắt đầu phát trên truyền hình tuần sau."
+        },
+        {
+          "sentence": "I read the serial in the newspaper every Sunday.",
+          "sentence_vi": "Tôi đọc truyện nhiều tập trên báo mỗi chủ nhật."
+        }
+      ]
+    },
+    {
+      "lemma": "sponsored",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "paid for an event or person to advertise a brand",
+      "definition_vi": "đã tài trợ",
+      "examples": [
+        {
+          "sentence": "A big company sponsored the football match.",
+          "sentence_vi": "Một công ty lớn đã tài trợ trận bóng đá."
+        },
+        {
+          "sentence": "The team was sponsored by a local bank.",
+          "sentence_vi": "Đội bóng được một ngân hàng địa phương tài trợ."
+        }
+      ]
+    },
+    {
+      "lemma": "substance",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a particular kind of material or matter",
+      "definition_vi": "chất, chất liệu",
+      "examples": [
+        {
+          "sentence": "Water is a substance found in every living thing.",
+          "sentence_vi": "Nước là một chất có trong mọi sinh vật sống."
+        },
+        {
+          "sentence": "Scientists tested the strange substance in the lab.",
+          "sentence_vi": "Các nhà khoa học đã thử nghiệm chất lạ trong phòng thí nghiệm."
+        }
+      ]
+    },
+    {
+      "lemma": "syndrome",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a set of medical signs that appear together as one condition",
+      "definition_vi": "hội chứng",
+      "examples": [
+        {
+          "sentence": "The doctor said his symptoms match a rare syndrome.",
+          "sentence_vi": "Bác sĩ nói rằng các triệu chứng của anh ấy giống một hội chứng hiếm."
+        },
+        {
+          "sentence": "This syndrome affects mostly older people.",
+          "sentence_vi": "Hội chứng này chủ yếu ảnh hưởng đến người lớn tuổi."
+        }
+      ]
+    },
+    {
+      "lemma": "ultra",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "extreme; more than usual",
+      "definition_vi": "cực kỳ, siêu",
+      "examples": [
+        {
+          "sentence": "He bought an ultra light laptop for travel.",
+          "sentence_vi": "Anh ấy mua một chiếc laptop siêu nhẹ để đi du lịch."
+        },
+        {
+          "sentence": "The water there is ultra clean.",
+          "sentence_vi": "Nước ở đó cực kỳ sạch."
+        }
+      ]
+    },
+    {
+      "lemma": "appeals",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "serious requests for help, money, or support",
+      "definition_vi": "các lời kêu gọi, khẩn cầu",
+      "examples": [
+        {
+          "sentence": "The charity made appeals for donations after the flood.",
+          "sentence_vi": "Tổ chức từ thiện kêu gọi quyên góp sau trận lũ."
+        },
+        {
+          "sentence": "The court rejected his appeals last week.",
+          "sentence_vi": "Tòa án đã bác các đơn kháng cáo của anh ấy tuần trước."
+        }
+      ]
+    },
+    {
+      "lemma": "bearing",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the direction or position of something, or a machine part",
+      "definition_vi": "hướng, vị trí; vòng bi",
+      "examples": [
+        {
+          "sentence": "The compass showed our bearing to the north.",
+          "sentence_vi": "La bàn chỉ hướng bắc của chúng tôi."
+        },
+        {
+          "sentence": "A broken bearing made the engine noisy.",
+          "sentence_vi": "Một vòng bi hỏng làm động cơ kêu ồn."
+        }
+      ]
+    },
+    {
+      "lemma": "completion",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the act of finishing something completely",
+      "definition_vi": "sự hoàn thành",
+      "examples": [
+        {
+          "sentence": "The bridge is close to completion after two years.",
+          "sentence_vi": "Cây cầu gần hoàn thành sau hai năm."
+        },
+        {
+          "sentence": "You get a certificate on completion of the course.",
+          "sentence_vi": "Bạn nhận chứng chỉ khi hoàn thành khóa học."
+        }
+      ]
+    },
+    {
+      "lemma": "demonstrated",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "showed clearly that something is true, or showed how to do something",
+      "definition_vi": "đã chứng minh, đã minh họa",
+      "examples": [
+        {
+          "sentence": "The study demonstrated that exercise improves sleep.",
+          "sentence_vi": "Nghiên cứu đã chứng minh rằng tập thể dục cải thiện giấc ngủ."
+        },
+        {
+          "sentence": "The teacher demonstrated the experiment to the class.",
+          "sentence_vi": "Giáo viên đã minh họa thí nghiệm cho cả lớp."
+        }
+      ]
+    },
+    {
+      "lemma": "developments",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "new events or changes in a situation",
+      "definition_vi": "các diễn biến mới",
+      "examples": [
+        {
+          "sentence": "We will report new developments in the case tomorrow.",
+          "sentence_vi": "Chúng tôi sẽ đưa tin về các diễn biến mới của vụ việc vào ngày mai."
+        },
+        {
+          "sentence": "Recent developments in technology have changed our lives.",
+          "sentence_vi": "Những phát triển gần đây của công nghệ đã thay đổi cuộc sống chúng ta."
+        }
+      ]
+    },
+    {
+      "lemma": "fluid",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a liquid substance that flows easily",
+      "definition_vi": "chất lỏng, dịch",
+      "examples": [
+        {
+          "sentence": "Drink plenty of fluids when you are sick.",
+          "sentence_vi": "Hãy uống nhiều chất lỏng khi bạn bị bệnh."
+        },
+        {
+          "sentence": "The machine needs a special cleaning fluid.",
+          "sentence_vi": "Máy cần một loại dung dịch làm sạch đặc biệt."
+        }
+      ]
+    },
+    {
+      "lemma": "folk",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "people in general, or traditional music of ordinary people",
+      "definition_vi": "người dân; nhạc dân gian",
+      "examples": [
+        {
+          "sentence": "The old folk of the village remember the flood well.",
+          "sentence_vi": "Những người già trong làng còn nhớ rõ trận lụt."
+        },
+        {
+          "sentence": "He plays folk songs on his guitar.",
+          "sentence_vi": "Anh ấy chơi các bài hát dân gian trên đàn guitar."
+        }
+      ]
+    },
+    {
+      "lemma": "interpretation",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "an explanation of the meaning of something",
+      "definition_vi": "sự giải thích, cách hiểu",
+      "examples": [
+        {
+          "sentence": "My interpretation of the poem differs from hers.",
+          "sentence_vi": "Cách hiểu bài thơ của tôi khác với của cô ấy."
+        },
+        {
+          "sentence": "The lawyer gave a new interpretation of the law.",
+          "sentence_vi": "Luật sư đưa ra một cách giải thích mới về luật."
+        }
+      ]
+    },
+    {
+      "lemma": "pension",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "money paid regularly to someone who has stopped working",
+      "definition_vi": "tiền lương hưu",
+      "examples": [
+        {
+          "sentence": "My grandfather receives a pension every month.",
+          "sentence_vi": "Ông tôi nhận lương hưu mỗi tháng."
+        },
+        {
+          "sentence": "She saved money for years to have a good pension.",
+          "sentence_vi": "Cô ấy tiết kiệm tiền nhiều năm để có lương hưu tốt."
+        }
+      ]
+    },
+    {
+      "lemma": "productive",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "achieving a lot in the time you work",
+      "definition_vi": "hiệu quả, năng suất",
+      "examples": [
+        {
+          "sentence": "It was a productive day; I finished three reports.",
+          "sentence_vi": "Đó là một ngày hiệu quả; tôi hoàn thành ba báo cáo."
+        },
+        {
+          "sentence": "A quiet room helps me stay productive while studying.",
+          "sentence_vi": "Một căn phòng yên tĩnh giúp tôi học tập hiệu quả."
+        }
+      ]
+    },
+    {
+      "lemma": "reserves",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "supplies of something kept for future use",
+      "definition_vi": "nguồn dự trữ",
+      "examples": [
+        {
+          "sentence": "The country keeps large oil reserves for emergencies.",
+          "sentence_vi": "Đất nước giữ nguồn dự trữ dầu lớn cho tình huống khẩn cấp."
+        },
+        {
+          "sentence": "Our food reserves will last until the end of winter.",
+          "sentence_vi": "Nguồn dự trữ thức ăn của chúng tôi sẽ đủ đến cuối mùa đông."
+        }
+      ]
+    },
+    {
+      "lemma": "slight",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "very small in size or amount",
+      "definition_vi": "nhỏ, nhẹ, không đáng kể",
+      "examples": [
+        {
+          "sentence": "There was a slight change in the plan.",
+          "sentence_vi": "Kế hoạch có một thay đổi nhỏ."
+        },
+        {
+          "sentence": "She felt a slight pain in her back.",
+          "sentence_vi": "Cô ấy cảm thấy hơi đau lưng."
+        }
+      ]
+    },
+    {
+      "lemma": "socialist",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a person who believes the government should share wealth fairly",
+      "definition_vi": "người theo chủ nghĩa xã hội",
+      "examples": [
+        {
+          "sentence": "He became a socialist after reading many books about equality.",
+          "sentence_vi": "Anh ấy trở thành người theo chủ nghĩa xã hội sau khi đọc nhiều sách về bình đẳng."
+        },
+        {
+          "sentence": "Many socialists want free healthcare for everyone.",
+          "sentence_vi": "Nhiều người theo chủ nghĩa xã hội muốn chăm sóc sức khỏe miễn phí cho mọi người."
+        }
+      ]
+    },
+    {
+      "lemma": "sue",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to take legal action against someone in court",
+      "definition_vi": "kiện, khởi kiện",
+      "examples": [
+        {
+          "sentence": "She decided to sue the company for unfair treatment.",
+          "sentence_vi": "Cô ấy quyết định kiện công ty vì đối xử bất công."
+        },
+        {
+          "sentence": "If they damage your property, you can sue them.",
+          "sentence_vi": "Nếu họ làm hỏng tài sản của bạn, bạn có thể kiện họ."
+        }
+      ]
+    },
+    {
+      "lemma": "targeted",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "aimed at a specific person or group",
+      "definition_vi": "nhắm đến, có mục tiêu cụ thể",
+      "examples": [
+        {
+          "sentence": "The police launched a targeted operation against drug sellers.",
+          "sentence_vi": "Cảnh sát triển khai chiến dịch nhắm vào những kẻ bán ma túy."
+        },
+        {
+          "sentence": "The ads were targeted at young people.",
+          "sentence_vi": "Những quảng cáo nhắm vào giới trẻ."
+        }
+      ]
+    },
+    {
+      "lemma": "tension",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a feeling of worry or unfriendliness between people",
+      "definition_vi": "sự căng thẳng",
+      "examples": [
+        {
+          "sentence": "There was tension in the room before the results were announced.",
+          "sentence_vi": "Có sự căng thẳng trong phòng trước khi kết quả được công bố."
+        },
+        {
+          "sentence": "The tension between the two teams grew after the argument.",
+          "sentence_vi": "Sự căng thẳng giữa hai đội tăng lên sau cuộc tranh cãi."
+        }
+      ]
+    },
+    {
+      "lemma": "transactions",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "acts of buying, selling, or moving money",
+      "definition_vi": "các giao dịch",
+      "examples": [
+        {
+          "sentence": "All bank transactions are recorded in your account history.",
+          "sentence_vi": "Mọi giao dịch ngân hàng đều được ghi lại trong lịch sử tài khoản."
+        },
+        {
+          "sentence": "The shop made over a thousand transactions last week.",
+          "sentence_vi": "Cửa hàng thực hiện hơn một nghìn giao dịch tuần trước."
+        }
+      ]
+    },
+    {
+      "lemma": "twist",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "an unexpected change in a story or situation",
+      "definition_vi": "cú xoay chuyển bất ngờ",
+      "examples": [
+        {
+          "sentence": "The movie had a twist at the end that surprised everyone.",
+          "sentence_vi": "Bộ phim có một cú xoay chuyển ở cuối khiến mọi người bất ngờ."
+        },
+        {
+          "sentence": "The story took an unexpected twist when the hero disappeared.",
+          "sentence_vi": "Câu chuyện có bước ngoặt bất ngờ khi anh hùng biến mất."
+        }
+      ]
+    },
+    {
+      "lemma": "unity",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the state of being joined together as one",
+      "definition_vi": "sự đoàn kết, thống nhất",
+      "examples": [
+        {
+          "sentence": "The team showed great unity during the difficult match.",
+          "sentence_vi": "Đội thể hiện sự đoàn kết tuyệt vời trong trận đấu khó khăn."
+        },
+        {
+          "sentence": "The leader called for unity among all the members.",
+          "sentence_vi": "Nhà lãnh đạo kêu gọi sự đoàn kết giữa tất cả các thành viên."
+        }
+      ]
+    },
+    {
+      "lemma": "arc",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a curved shape or part of a circle",
+      "definition_vi": "hình cung, cung tròn",
+      "examples": [
+        {
+          "sentence": "The ball flew in a high arc over the fence.",
+          "sentence_vi": "Quả bay theo một cung cao qua hàng rào."
+        },
+        {
+          "sentence": "A bright arc of light appeared in the sky.",
+          "sentence_vi": "Một cung sáng xuất hiện trên bầu trời."
+        }
+      ]
+    },
+    {
+      "lemma": "beaten",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "hit many times, or mixed fast with a fork",
+      "definition_vi": "bị đánh; đã được đánh (trứng) đều",
+      "examples": [
+        {
+          "sentence": "The beaten eggs were poured into the hot pan.",
+          "sentence_vi": "Trứng đã đánh đều được đổ vào chảo nóng."
+        },
+        {
+          "sentence": "The old beaten door showed signs of many fights.",
+          "sentence_vi": "Cánh cửa cũ đầy vết đánh cho thấy nhiều lần ẩu đả."
+        }
+      ]
+    },
+    {
+      "lemma": "blown",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "moved by wind, or broken by too much air or power",
+      "definition_vi": "bị gió thổi; bị hỏng (đứt, nổ)",
+      "examples": [
+        {
+          "sentence": "The blown leaves covered the garden path.",
+          "sentence_vi": "Lá bị gió thổi phủ kín lối đi trong vườn."
+        },
+        {
+          "sentence": "We replaced the blown fuse in the kitchen.",
+          "sentence_vi": "Chúng tôi thay cầu chì bị cháy trong bếp."
+        }
+      ]
+    },
+    {
+      "lemma": "cia",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the US government agency that gathers secret information",
+      "definition_vi": "Cơ quan Tình báo Trung ương Mỹ",
+      "examples": [
+        {
+          "sentence": "He joined the CIA after finishing university.",
+          "sentence_vi": "Anh ấy gia nhập CIA sau khi tốt nghiệp đại học."
+        },
+        {
+          "sentence": "The movie was about a CIA agent in Europe.",
+          "sentence_vi": "Bộ phim kể về một điệp viên CIA ở châu Âu."
+        }
+      ]
+    },
+    {
+      "lemma": "criteria",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the standards used to judge or choose something",
+      "definition_vi": "tiêu chí",
+      "examples": [
+        {
+          "sentence": "The main criteria for the job are experience and skill.",
+          "sentence_vi": "Tiêu chí chính cho công việc là kinh nghiệm và kỹ năng."
+        },
+        {
+          "sentence": "Judges use clear criteria to score each performance.",
+          "sentence_vi": "Ban giám khảo dùng tiêu chí rõ ràng để chấm điểm mỗi màn trình diễn."
+        }
+      ]
+    },
+    {
+      "lemma": "disability",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a physical or mental condition that limits what a person can do",
+      "definition_vi": "khuyết tật",
+      "examples": [
+        {
+          "sentence": "He has a disability that affects his hearing.",
+          "sentence_vi": "Anh ấy có khuyết tật ảnh hưởng đến thính giác."
+        },
+        {
+          "sentence": "The school supports students with a disability.",
+          "sentence_vi": "Trường học hỗ trợ học sinh có khuyết tật."
+        }
+      ]
+    },
+    {
+      "lemma": "ep",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a short music record with a few songs, shorter than an album",
+      "definition_vi": "đĩa nhạc ngắn (EP)",
+      "examples": [
+        {
+          "sentence": "The band released a new EP in June.",
+          "sentence_vi": "Ban nhạc phát hành một EP mới vào tháng Sáu."
+        },
+        {
+          "sentence": "Her first EP sold very well online.",
+          "sentence_vi": "EP đầu tiên của cô ấy bán rất chạy trên mạng."
+        }
+      ]
+    },
+    {
+      "lemma": "evaluation",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the act of judging the value or quality of something",
+      "definition_vi": "sự đánh giá",
+      "examples": [
+        {
+          "sentence": "Teachers gave a careful evaluation of each student.",
+          "sentence_vi": "Giáo viên đánh giá cẩn thận từng học sinh."
+        },
+        {
+          "sentence": "The evaluation of the project took two weeks.",
+          "sentence_vi": "Việc đánh giá dự án mất hai tuần."
+        }
+      ]
+    },
+    {
+      "lemma": "excess",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "an amount that is more than what is needed",
+      "definition_vi": "sự dư thừa",
+      "examples": [
+        {
+          "sentence": "Cut off any excess before you wrap the gift.",
+          "sentence_vi": "Cắt phần thừa trước khi gói quà."
+        },
+        {
+          "sentence": "Excess sugar in your diet is bad for health.",
+          "sentence_vi": "Đường dư thừa trong chế độ ăn có hại cho sức khỏe."
+        }
+      ]
+    },
+    {
+      "lemma": "highlight",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to make something easy to notice or emphasize it",
+      "definition_vi": "làm nổi bật, nhấn mạnh",
+      "examples": [
+        {
+          "sentence": "The teacher used colors to highlight the key words.",
+          "sentence_vi": "Giáo viên dùng màu sắc để làm nổi bật các từ khóa."
+        },
+        {
+          "sentence": "The report highlights the need for better safety rules.",
+          "sentence_vi": "Báo cáo nhấn mạnh sự cần thiết của các quy định an toàn tốt hơn."
+        }
+      ]
+    },
+    {
+      "lemma": "identical",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "exactly the same in every way",
+      "definition_vi": "giống hệt nhau",
+      "examples": [
+        {
+          "sentence": "The twins wore identical dresses to the party.",
+          "sentence_vi": "Hai chị em sinh đôi mặc những chiếc váy giống hệt nhau dự tiệc."
+        },
+        {
+          "sentence": "The two answers were identical, which surprised the teacher.",
+          "sentence_vi": "Hai câu trả lời giống hệt nhau, điều đó làm giáo viên ngạc nhiên."
+        }
+      ]
+    },
+    {
+      "lemma": "investigations",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "careful searches for facts about something, often a crime",
+      "definition_vi": "các cuộc điều tra",
+      "examples": [
+        {
+          "sentence": "Police investigations into the fire lasted several months.",
+          "sentence_vi": "Các cuộc điều tra của cảnh sát về vụ hỏa hoạn kéo dài vài tháng."
+        },
+        {
+          "sentence": "Scientific investigations showed the water was safe to drink.",
+          "sentence_vi": "Các cuộc nghiên cứu khoa học cho thấy nước an toàn để uống."
+        }
+      ]
+    },
+    {
+      "lemma": "legally",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "in a way that is allowed by the law",
+      "definition_vi": "về mặt pháp lý, hợp pháp",
+      "examples": [
+        {
+          "sentence": "You must be eighteen to legally drive a car here.",
+          "sentence_vi": "Bạn phải đủ mười tám tuổi mới được lái xe hợp pháp ở đây."
+        },
+        {
+          "sentence": "The company legally owns the land near the river.",
+          "sentence_vi": "Công ty hợp pháp sở hữu mảnh đất gần con sông."
+        }
+      ]
+    },
+    {
+      "lemma": "manufacturer",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a company that makes products in large quantities",
+      "definition_vi": "nhà sản xuất, hãng sản xuất",
+      "examples": [
+        {
+          "sentence": "The manufacturer recalled the phones because of a battery problem.",
+          "sentence_vi": "Nhà sản xuất thu hồi điện thoại vì lỗi pin."
+        },
+        {
+          "sentence": "This car manufacturer builds over a million vehicles a year.",
+          "sentence_vi": "Hãng xe này sản xuất hơn một triệu xe mỗi năm."
+        }
+      ]
+    },
+    {
+      "lemma": "negotiations",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "formal talks between groups trying to reach an agreement",
+      "definition_vi": "cuộc đàm phán",
+      "examples": [
+        {
+          "sentence": "The negotiations between the two companies lasted three weeks.",
+          "sentence_vi": "Cuộc đàm phán giữa hai công ty kéo dài ba tuần."
+        },
+        {
+          "sentence": "Peace negotiations finally ended the long war.",
+          "sentence_vi": "Các cuộc đàm phán hòa bình cuối cùng đã chấm dứt cuộc chiến dài."
+        }
+      ]
+    },
+    {
+      "lemma": "operational",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "working and ready to be used",
+      "definition_vi": "đang hoạt động, sẵn sàng sử dụng",
+      "examples": [
+        {
+          "sentence": "The new airport will be fully operational next year.",
+          "sentence_vi": "Sân bay mới sẽ hoạt động hoàn toàn vào năm sau."
+        },
+        {
+          "sentence": "The system is operational again after the repair.",
+          "sentence_vi": "Hệ thống hoạt động trở lại sau khi sửa chữa."
+        }
+      ]
+    },
+    {
+      "lemma": "phoenix",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a mythical bird that is born again from fire",
+      "definition_vi": "phượng hoàng (chim thần tái sinh)",
+      "examples": [
+        {
+          "sentence": "In old stories, the phoenix rises again from its ashes.",
+          "sentence_vi": "Trong truyện cổ, phượng hoàng sống lại từ tro tàn của mình."
+        },
+        {
+          "sentence": "The team made a phoenix-like comeback after losing every game.",
+          "sentence_vi": "Đội đã trở lại như phượng hoàng sau khi thua mọi trận."
+        }
+      ]
+    },
+    {
+      "lemma": "quoted",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "repeated someone's exact words",
+      "definition_vi": "trích dẫn",
+      "examples": [
+        {
+          "sentence": "She quoted a famous line from Shakespeare in her essay.",
+          "sentence_vi": "Cô trích dẫn một câu nổi tiếng của Shakespeare trong bài luận."
+        },
+        {
+          "sentence": "The reporter quoted the minister's answer in the article.",
+          "sentence_vi": "Phóng viên trích dẫn câu trả lời của bộ trưởng trong bài báo."
+        }
+      ]
+    },
+    {
+      "lemma": "souls",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the spiritual part of a person, or people themselves",
+      "definition_vi": "linh hồn; con người",
+      "examples": [
+        {
+          "sentence": "Many people believe souls live on after death.",
+          "sentence_vi": "Nhiều người tin rằng linh hồn tồn tại sau cái chết."
+        },
+        {
+          "sentence": "There was not a single soul on the empty beach.",
+          "sentence_vi": "Không một bóng người nào trên bãi biển vắng tanh."
+        }
+      ]
+    },
+    {
+      "lemma": "transaction",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "an act of buying, selling or exchanging something",
+      "definition_vi": "giao dịch",
+      "examples": [
+        {
+          "sentence": "The bank confirmed the transaction by email.",
+          "sentence_vi": "Ngân hàng xác nhận giao dịch qua email."
+        },
+        {
+          "sentence": "Each transaction at the store is recorded.",
+          "sentence_vi": "Mỗi giao dịch tại cửa hàng đều được ghi lại."
+        }
+      ]
+    },
+    {
+      "lemma": "transformation",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a complete change in appearance or form",
+      "definition_vi": "sự biến đổi hoàn toàn",
+      "examples": [
+        {
+          "sentence": "The old factory's transformation into a museum took two years.",
+          "sentence_vi": "Việc chuyển nhà máy cũ thành bảo tàng mất hai năm."
+        },
+        {
+          "sentence": "Her transformation after the training was amazing.",
+          "sentence_vi": "Sự thay đổi của cô ấy sau khóa đào tạo thật đáng kinh ngạc."
+        }
+      ]
+    },
+    {
+      "lemma": "veteran",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a person with long experience, especially a former soldier",
+      "definition_vi": "cựu binh; người kỳ cựu",
+      "examples": [
+        {
+          "sentence": "The veteran told stories about the war.",
+          "sentence_vi": "Ông cựu binh kể những câu chuyện về chiến tranh."
+        },
+        {
+          "sentence": "She is a veteran teacher with thirty years of experience.",
+          "sentence_vi": "Cô ấy là một giáo viên kỳ cựu với ba mươi năm kinh nghiệm."
+        }
+      ]
+    },
+    {
+      "lemma": "vulnerable",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "easily hurt or attacked, physically or emotionally",
+      "definition_vi": "dễ bị tổn thương",
+      "examples": [
+        {
+          "sentence": "Old people are vulnerable to cold weather.",
+          "sentence_vi": "Người già dễ bị ảnh hưởng bởi thời tiết lạnh."
+        },
+        {
+          "sentence": "He felt vulnerable when talking about his feelings.",
+          "sentence_vi": "Anh ấy cảm thấy dễ bị tổn thương khi nói về cảm xúc của mình."
+        }
+      ]
+    },
+    {
+      "lemma": "beta",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the second letter of the Greek alphabet; an early test version",
+      "definition_vi": "chữ cái Hy Lạp thứ hai; bản thử nghiệm",
+      "examples": [
+        {
+          "sentence": "The app is still in its beta version.",
+          "sentence_vi": "Ứng dụng vẫn đang ở bản beta."
+        },
+        {
+          "sentence": "Beta is the second letter of the Greek alphabet.",
+          "sentence_vi": "Beta là chữ cái thứ hai trong bảng chữ cái Hy Lạp."
+        }
+      ]
+    },
+    {
+      "lemma": "chronic",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "lasting a long time or happening again and again",
+      "definition_vi": "mạn tính, kinh niên",
+      "examples": [
+        {
+          "sentence": "He suffers from chronic back pain after the accident.",
+          "sentence_vi": "Anh ấy bị đau lưng mạn tính sau tai nạn."
+        },
+        {
+          "sentence": "The city faces chronic water shortages every summer.",
+          "sentence_vi": "Thành phố đối mặt với tình trạng thiếu nước kinh niên mỗi mùa hè."
+        }
+      ]
+    },
+    {
+      "lemma": "convicted",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "past tense of convict; found guilty of a crime in court",
+      "definition_vi": "bị kết tội",
+      "examples": [
+        {
+          "sentence": "He was convicted of stealing money from the bank.",
+          "sentence_vi": "Anh ta bị kết tội đánh cắp tiền từ ngân hàng."
+        },
+        {
+          "sentence": "The court convicted her after two weeks of evidence.",
+          "sentence_vi": "Tòa án kết tội cô ta sau hai tuần chứng cứ."
+        }
+      ]
+    },
+    {
+      "lemma": "demonstrate",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to show clearly how something works or is true",
+      "definition_vi": "chứng minh, minh họa",
+      "examples": [
+        {
+          "sentence": "The teacher will demonstrate the experiment in front of the class.",
+          "sentence_vi": "Giáo viên sẽ minh họa thí nghiệm trước lớp."
+        },
+        {
+          "sentence": "Her results demonstrate that the new method works better.",
+          "sentence_vi": "Kết quả của cô ấy chứng minh phương pháp mới hiệu quả hơn."
+        }
+      ]
+    },
+    {
+      "lemma": "diagnosis",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a doctor's opinion about what illness a person has",
+      "definition_vi": "chẩn đoán",
+      "examples": [
+        {
+          "sentence": "The doctor gave a diagnosis of pneumonia after the tests.",
+          "sentence_vi": "Bác sĩ chẩn đoán viêm phổi sau các xét nghiệm."
+        },
+        {
+          "sentence": "An early diagnosis can make treatment much easier.",
+          "sentence_vi": "Chẩn đoán sớm có thể giúp việc điều trị dễ dàng hơn nhiều."
+        }
+      ]
+    },
+    {
+      "lemma": "dismissed",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "past tense of dismiss; removed someone from a job or idea",
+      "definition_vi": "đã sa thải; đã bác bỏ",
+      "examples": [
+        {
+          "sentence": "He was dismissed from his job for being late every day.",
+          "sentence_vi": "Anh ấy bị sa thải vì đi làm muộn mỗi ngày."
+        },
+        {
+          "sentence": "The judge dismissed the case because there was no evidence.",
+          "sentence_vi": "Thẩm phán bác bỏ vụ án vì không có bằng chứng."
+        }
+      ]
+    },
+    {
+      "lemma": "flesh",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the soft part of a body or fruit under the skin",
+      "definition_vi": "thịt; cùi (quả)",
+      "examples": [
+        {
+          "sentence": "The flesh of the mango is sweet and yellow.",
+          "sentence_vi": "Cùi quả xoài ngọt và có màu vàng."
+        },
+        {
+          "sentence": "A cut in the flesh usually heals quickly.",
+          "sentence_vi": "Vết cắt trên thịt thường lành nhanh."
+        }
+      ]
+    },
+    {
+      "lemma": "implement",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to put a plan or decision into action",
+      "definition_vi": "thực hiện, triển khai",
+      "examples": [
+        {
+          "sentence": "The school will implement new rules next month.",
+          "sentence_vi": "Trường sẽ thực hiện quy định mới vào tháng tới."
+        },
+        {
+          "sentence": "It is easy to plan but hard to implement.",
+          "sentence_vi": "Lập kế hoạch dễ nhưng thực hiện khó."
+        }
+      ]
+    },
+    {
+      "lemma": "incorporated",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "included something as part of a larger whole",
+      "definition_vi": "đã kết hợp, đưa vào",
+      "examples": [
+        {
+          "sentence": "The new design incorporated ideas from students.",
+          "sentence_vi": "Thiết kế mới đã kết hợp ý tưởng của học sinh."
+        },
+        {
+          "sentence": "The recipe incorporated herbs from her garden.",
+          "sentence_vi": "Công thức đã đưa các loại rau thơm từ vườn của cô vào."
+        }
+      ]
+    },
+    {
+      "lemma": "marijuana",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a drug made from dried leaves of a plant, often illegal",
+      "definition_vi": "cần sa",
+      "examples": [
+        {
+          "sentence": "Marijuana is illegal in most countries.",
+          "sentence_vi": "Cần sa là bất hợp pháp ở hầu hết các nước."
+        },
+        {
+          "sentence": "The police found marijuana in the car.",
+          "sentence_vi": "Cảnh sát phát hiện cần sa trong xe."
+        }
+      ]
+    },
+    {
+      "lemma": "mentally",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "in a way connected with the mind",
+      "definition_vi": "về mặt tinh thần, trí óc",
+      "examples": [
+        {
+          "sentence": "Chess keeps you mentally active.",
+          "sentence_vi": "Cờ vua giúp trí óc bạn hoạt động."
+        },
+        {
+          "sentence": "She was mentally tired after the long exam.",
+          "sentence_vi": "Cô ấy mệt mỏi tinh thần sau kỳ thi dài."
+        }
+      ]
+    },
+    {
+      "lemma": "precisely",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "exactly, with no mistake or difference",
+      "definition_vi": "chính xác",
+      "examples": [
+        {
+          "sentence": "The train arrived at precisely nine o'clock.",
+          "sentence_vi": "Tàu đến đúng lúc chín giờ chính xác."
+        },
+        {
+          "sentence": "That is precisely what I wanted to say.",
+          "sentence_vi": "Đó chính xác là điều tôi muốn nói."
+        }
+      ]
+    },
+    {
+      "lemma": "privilege",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a special right or advantage that only some people have",
+      "definition_vi": "đặc quyền, đặc lợi",
+      "examples": [
+        {
+          "sentence": "It is a privilege to work with such talented people.",
+          "sentence_vi": "Đó là một đặc quyền khi được làm việc với những người tài năng như vậy."
+        },
+        {
+          "sentence": "Members of the club enjoy the privilege of free parking.",
+          "sentence_vi": "Thành viên câu lạc bộ được hưởng đặc lợi đỗ xe miễn phí."
+        }
+      ]
+    },
+    {
+      "lemma": "proposals",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "plans or suggestions offered for people to consider",
+      "definition_vi": "các đề xuất, đề nghị",
+      "examples": [
+        {
+          "sentence": "The committee discussed several proposals for the new park.",
+          "sentence_vi": "Ủy ban đã thảo luận một số đề xuất cho công viên mới."
+        },
+        {
+          "sentence": "We received three proposals from different companies.",
+          "sentence_vi": "Chúng tôi nhận được ba đề nghị từ ba công ty khác nhau."
+        }
+      ]
+    },
+    {
+      "lemma": "punk",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a young person who likes loud rock music and unusual clothes",
+      "definition_vi": "người theo phong cách punk",
+      "examples": [
+        {
+          "sentence": "In the 1970s, many punks wore spiky hair and leather jackets.",
+          "sentence_vi": "Vào thập niên 1970, nhiều người punk để tóc dựng và mặc áo da."
+        },
+        {
+          "sentence": "He became a punk after hearing that music.",
+          "sentence_vi": "Anh ấy trở thành người punk sau khi nghe loại nhạc đó."
+        }
+      ]
     }
   ]
 }

@@ -497,6 +497,669 @@
           "sentence_vi": "Thật ra bộ phim đó hay vãi."
         }
       ]
+    },
+    {
+      "lemma": "legislative",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "relating to the group that makes a country's laws",
+      "definition_vi": "thuộc lập pháp",
+      "examples": [
+        {
+          "sentence": "The new legislative session begins next month.",
+          "sentence_vi": "Kỳ họp lập pháp mới sẽ bắt đầu vào tháng tới."
+        },
+        {
+          "sentence": "She works on a legislative committee in the capital.",
+          "sentence_vi": "Cô ấy làm việc trong một ủy ban lập pháp ở thủ đô."
+        }
+      ]
+    },
+    {
+      "lemma": "rick",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a large pile of hay or straw stored on a farm",
+      "definition_vi": "đống cỏ khô",
+      "examples": [
+        {
+          "sentence": "The farmer built a rick of hay behind the barn.",
+          "sentence_vi": "Người nông dân dựng một đống cỏ khô sau chuồng."
+        },
+        {
+          "sentence": "Rain damaged the rick before we could cover it.",
+          "sentence_vi": "Mưa làm hỏng đống cỏ khô trước khi chúng tôi kịp che nó."
+        }
+      ]
+    },
+    {
+      "lemma": "arsenal",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a place where weapons are stored, or a set of resources",
+      "definition_vi": "kho vũ khí; bộ công cụ sẵn có",
+      "examples": [
+        {
+          "sentence": "The army kept its weapons in the arsenal.",
+          "sentence_vi": "Quân đội giữ vũ khí trong kho vũ khí."
+        },
+        {
+          "sentence": "She used every tool in her arsenal to win the debate.",
+          "sentence_vi": "Cô ấy dùng mọi công cụ sẵn có để thắng cuộc tranh luận."
+        }
+      ]
+    },
+    {
+      "lemma": "implementation",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the act of putting a plan or system into action",
+      "definition_vi": "việc triển khai, thực hiện",
+      "examples": [
+        {
+          "sentence": "The implementation of the new law starts next month.",
+          "sentence_vi": "Việc triển khai luật mới bắt đầu vào tháng sau."
+        },
+        {
+          "sentence": "Poor planning delayed the implementation of the project.",
+          "sentence_vi": "Kế hoạch kém đã làm chậm việc thực hiện dự án."
+        }
+      ]
+    },
+    {
+      "lemma": "equity",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "fair treatment for everyone according to their different needs",
+      "definition_vi": "sự công bằng",
+      "examples": [
+        {
+          "sentence": "The school promotes equity by giving extra help to weaker students.",
+          "sentence_vi": "Trường thúc đẩy sự công bằng bằng cách hỗ trợ thêm cho học sinh yếu hơn."
+        },
+        {
+          "sentence": "The new policy aims to bring equity to healthcare in rural areas.",
+          "sentence_vi": "Chính sách mới nhằm mang lại sự công bằng cho y tế ở vùng nông thôn."
+        }
+      ]
+    },
+    {
+      "lemma": "regime",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a government or system of rule, often an unwanted one",
+      "definition_vi": "chế độ (cầm quyền)",
+      "examples": [
+        {
+          "sentence": "The old regime was replaced after the election.",
+          "sentence_vi": "Chế độ cũ bị thay thế sau cuộc bầu cử."
+        },
+        {
+          "sentence": "People suffered greatly under the military regime.",
+          "sentence_vi": "Dân chúng chịu nhiều khổ đau dưới chế độ quân sự."
+        }
+      ]
+    },
+    {
+      "lemma": "sa",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "abbreviation for a company owned by its shareholders",
+      "definition_vi": "viết tắt của công ty cổ phần (société anonyme)",
+      "examples": [
+        {
+          "sentence": "The factory belongs to a French SA.",
+          "sentence_vi": "Nhà máy thuộc về một công ty cổ phần của Pháp."
+        },
+        {
+          "sentence": "They registered the business as an SA last year.",
+          "sentence_vi": "Họ đăng ký doanh nghiệp dưới hình thức công ty cổ phần năm ngoái."
+        }
+      ]
+    },
+    {
+      "lemma": "derived",
+      "pos": "verb",
+      "cefr_level": "C1",
+      "definition": "got something from another source or origin",
+      "definition_vi": "bắt nguồn từ, được suy ra",
+      "examples": [
+        {
+          "sentence": "Many English words are derived from Latin.",
+          "sentence_vi": "Nhiều từ tiếng Anh bắt nguồn từ tiếng Latinh."
+        },
+        {
+          "sentence": "The company derived most of its income from advertising.",
+          "sentence_vi": "Công ty thu được phần lớn thu nhập từ quảng cáo."
+        }
+      ]
+    },
+    {
+      "lemma": "execution",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the act of carrying out a plan, task, or legal punishment",
+      "definition_vi": "sự thực hiện; sự hành hình",
+      "examples": [
+        {
+          "sentence": "The plan was good, but its execution was poor.",
+          "sentence_vi": "Kế hoạch hay, nhưng việc thực hiện thì kém."
+        },
+        {
+          "sentence": "Careful execution of each step is important in cooking.",
+          "sentence_vi": "Việc thực hiện cẩn thận từng bước rất quan trọng khi nấu ăn."
+        }
+      ]
+    },
+    {
+      "lemma": "franchise",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "permission to sell a company's products using its name",
+      "definition_vi": "nhượng quyền thương hiệu",
+      "examples": [
+        {
+          "sentence": "She bought a fast-food franchise in her city.",
+          "sentence_vi": "Cô ấy đã mua một nhượng quyền đồ ăn nhanh ở thành phố."
+        },
+        {
+          "sentence": "The movie franchise has earned billions of dollars.",
+          "sentence_vi": "Chuỗi phim nhượng quyền đã kiếm được hàng tỷ đô la."
+        }
+      ]
+    },
+    {
+      "lemma": "worthy",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "deserving respect, attention, or support",
+      "definition_vi": "xứng đáng",
+      "examples": [
+        {
+          "sentence": "The charity supports a worthy cause.",
+          "sentence_vi": "Tổ chức từ thiện ủng hộ một mục đích xứng đáng."
+        },
+        {
+          "sentence": "Her effort made the prize worthy of her name.",
+          "sentence_vi": "Nỗ lực của cô khiến giải thưởng xứng đáng với tên tuổi của cô."
+        }
+      ]
+    },
+    {
+      "lemma": "con",
+      "pos": "verb",
+      "cefr_level": "C1",
+      "definition": "to trick someone to get money or something valuable",
+      "definition_vi": "lừa đảo",
+      "examples": [
+        {
+          "sentence": "They tried to con the old man out of his savings.",
+          "sentence_vi": "Chúng cố lừa đảo lấy tiền tiết kiệm của ông lão."
+        },
+        {
+          "sentence": "Don't trust him; he will con you.",
+          "sentence_vi": "Đừng tin anh ta; anh ta sẽ lừa bạn."
+        }
+      ]
+    },
+    {
+      "lemma": "acquisition",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the act of buying a company or getting something new",
+      "definition_vi": "sự mua lại, thu nhận",
+      "examples": [
+        {
+          "sentence": "The company announced the acquisition of a smaller rival.",
+          "sentence_vi": "Công ty công bố việc mua lại một đối thủ nhỏ hơn."
+        },
+        {
+          "sentence": "Language acquisition is easier for young children.",
+          "sentence_vi": "Việc thu nhận ngôn ngữ dễ hơn với trẻ nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "conspiracy",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a secret plan by people to do something bad",
+      "definition_vi": "âm mưu, kế hoạch bí mật",
+      "examples": [
+        {
+          "sentence": "The group was arrested for a conspiracy to steal money.",
+          "sentence_vi": "Nhóm người bị bắt vì âm mưu đánh cắp tiền."
+        },
+        {
+          "sentence": "Many conspiracy theories spread quickly on the internet.",
+          "sentence_vi": "Nhiều thuyết âm mưu lan truyền nhanh trên internet."
+        }
+      ]
+    },
+    {
+      "lemma": "cooper",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a person whose job is making wooden barrels",
+      "definition_vi": "thợ làm thùng gỗ",
+      "examples": [
+        {
+          "sentence": "The cooper made strong barrels for storing wine.",
+          "sentence_vi": "Thợ làm thùng đã làm những chiếc thùng chắc để chứa rượu vang."
+        },
+        {
+          "sentence": "My grandfather worked as a cooper in a small village.",
+          "sentence_vi": "Ông tôi từng làm thợ đóng thùng gỗ ở một ngôi làng nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "federation",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a group of states or organizations joined under one government",
+      "definition_vi": "liên bang; liên đoàn",
+      "examples": [
+        {
+          "sentence": "The country became a federation of ten states.",
+          "sentence_vi": "Quốc gia đó trở thành một liên bang gồm mười bang."
+        },
+        {
+          "sentence": "The football federation organized a big tournament.",
+          "sentence_vi": "Liên đoàn bóng đá đã tổ chức một giải đấu lớn."
+        }
+      ]
+    },
+    {
+      "lemma": "fi",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the musical note between do and sol in some scales",
+      "definition_vi": "nốt nhạc \"fa thăng\" (trong âm nhạc)",
+      "examples": [
+        {
+          "sentence": "The song starts on the note fi.",
+          "sentence_vi": "Bài hát bắt đầu bằng nốt fi."
+        },
+        {
+          "sentence": "Sing do, re, mi, fi for me, please.",
+          "sentence_vi": "Hãy hát cho tôi nghe do, re, mi, fi."
+        }
+      ]
+    },
+    {
+      "lemma": "fiscal",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "relating to money and government budgets",
+      "definition_vi": "thuộc về tài chính, ngân sách",
+      "examples": [
+        {
+          "sentence": "The government announced a new fiscal policy.",
+          "sentence_vi": "Chính phủ công bố một chính sách tài chính mới."
+        },
+        {
+          "sentence": "The fiscal year ends in December.",
+          "sentence_vi": "Năm tài chính kết thúc vào tháng Mười Hai."
+        }
+      ]
+    },
+    {
+      "lemma": "intervention",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the act of getting involved to change a situation",
+      "definition_vi": "sự can thiệp",
+      "examples": [
+        {
+          "sentence": "Quick intervention by the teachers stopped the fight.",
+          "sentence_vi": "Sự can thiệp nhanh chóng của các giáo viên đã ngăn được trận đánh nhau."
+        },
+        {
+          "sentence": "The country needed military intervention to end the crisis.",
+          "sentence_vi": "Quốc gia đó cần sự can thiệp quân sự để chấm dứt khủng hoảng."
+        }
+      ]
+    },
+    {
+      "lemma": "jerry",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a large can with a handle for carrying fuel or water",
+      "definition_vi": "can (dùng đựng xăng, nước)",
+      "examples": [
+        {
+          "sentence": "He filled the jerry with petrol for the generator.",
+          "sentence_vi": "Anh ấy đổ xăng vào can cho máy phát điện."
+        },
+        {
+          "sentence": "We carried water from the river in a jerry.",
+          "sentence_vi": "Chúng tôi mang nước từ sông về bằng một chiếc can."
+        }
+      ]
+    },
+    {
+      "lemma": "spectrum",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a full range of related things, or the range of colors in light",
+      "definition_vi": "phổ, dải rộng",
+      "examples": [
+        {
+          "sentence": "A rainbow shows the spectrum of visible light.",
+          "sentence_vi": "Cầu vồng cho thấy phổ của ánh sáng nhìn thấy được."
+        },
+        {
+          "sentence": "Opinions on the issue cover the whole political spectrum.",
+          "sentence_vi": "Các ý kiến về vấn đề này trải khắp toàn bộ phổ chính trị."
+        }
+      ]
+    },
+    {
+      "lemma": "va",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a short form of volt-ampere, a unit of electrical power",
+      "definition_vi": "viết tắt của volt-ampe (đơn vị công suất điện)",
+      "examples": [
+        {
+          "sentence": "This small generator produces 500 va of power.",
+          "sentence_vi": "Máy phát nhỏ này tạo ra công suất 500 va."
+        },
+        {
+          "sentence": "Check the va rating before plugging in the device.",
+          "sentence_vi": "Hãy kiểm tra chỉ số va trước khi cắm thiết bị vào."
+        }
+      ]
+    },
+    {
+      "lemma": "yea",
+      "pos": "adverb",
+      "cefr_level": "C1",
+      "definition": "an old word meaning yes, used in voting",
+      "definition_vi": "có, tán thành (từ cổ, dùng khi bỏ phiếu)",
+      "examples": [
+        {
+          "sentence": "The council voted yea on the new park plan.",
+          "sentence_vi": "Hội đồng bỏ phiếu tán thành kế hoạch công viên mới."
+        },
+        {
+          "sentence": "Twelve members said yea and five said nay.",
+          "sentence_vi": "Mười hai thành viên nói tán thành và năm người nói phản đối."
+        }
+      ]
+    },
+    {
+      "lemma": "ye",
+      "pos": "pronoun",
+      "cefr_level": "C1",
+      "definition": "an old word meaning 'you' used for more than one person",
+      "definition_vi": "các bạn (từ cổ, nghĩa là 'you')",
+      "examples": [
+        {
+          "sentence": "Hear ye the words of the king.",
+          "sentence_vi": "Hãy nghe lời nhà vua."
+        },
+        {
+          "sentence": "The old poem says, 'Rise up, ye brave men.'",
+          "sentence_vi": "Bài thơ cũ viết: 'Hãy đứng lên, hỡi những người dũng cảm.'"
+        }
+      ]
+    },
+    {
+      "lemma": "divine",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "connected with a god, or extremely good",
+      "definition_vi": "thuộc về thần thánh; tuyệt vời",
+      "examples": [
+        {
+          "sentence": "In old stories, kings received divine power from the gods.",
+          "sentence_vi": "Trong truyện cổ, vua nhận quyền năng thần thánh từ các vị thần."
+        },
+        {
+          "sentence": "The chocolate cake was simply divine.",
+          "sentence_vi": "Chiếc bánh sô-cô-la thật tuyệt vời."
+        }
+      ]
+    },
+    {
+      "lemma": "securities",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "financial products like stocks and bonds that can be traded",
+      "definition_vi": "chứng khoán",
+      "examples": [
+        {
+          "sentence": "Investors buy securities hoping their value will rise.",
+          "sentence_vi": "Nhà đầu tư mua chứng khoán hy vọng giá trị sẽ tăng."
+        },
+        {
+          "sentence": "The bank sells securities to large companies and funds.",
+          "sentence_vi": "Ngân hàng bán chứng khoán cho các công ty lớn và quỹ."
+        }
+      ]
+    },
+    {
+      "lemma": "treasury",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the government department that manages a country's money",
+      "definition_vi": "bộ tài chính, kho bạc",
+      "examples": [
+        {
+          "sentence": "The treasury announced new taxes on imported goods.",
+          "sentence_vi": "Bộ tài chính công bố thuế mới với hàng nhập khẩu."
+        },
+        {
+          "sentence": "She works as an economist in the treasury.",
+          "sentence_vi": "Cô ấy làm kinh tế học viên ở kho bạc."
+        }
+      ]
+    },
+    {
+      "lemma": "coalition",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a group of parties or countries working together",
+      "definition_vi": "liên minh, liên hiệp",
+      "examples": [
+        {
+          "sentence": "Two small parties formed a coalition to govern the country.",
+          "sentence_vi": "Hai đảng nhỏ lập liên minh để cai trị đất nước."
+        },
+        {
+          "sentence": "The coalition agreed on a plan to reduce pollution.",
+          "sentence_vi": "Liên minh đã đồng ý về kế hoạch giảm ô nhiễm."
+        }
+      ]
+    },
+    {
+      "lemma": "regulatory",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "connected to official rules that control how things are done",
+      "definition_vi": "thuộc về quy định, quản lý",
+      "examples": [
+        {
+          "sentence": "The new drug must pass regulatory checks before it is sold.",
+          "sentence_vi": "Loại thuốc mới phải qua kiểm tra quy định trước khi bán."
+        },
+        {
+          "sentence": "Banks face strict regulatory requirements in most countries.",
+          "sentence_vi": "Ngân hàng phải đáp ứng các yêu cầu quy định nghiêm ngặt ở hầu hết các nước."
+        }
+      ]
+    },
+    {
+      "lemma": "subsequently",
+      "pos": "adverb",
+      "cefr_level": "C1",
+      "definition": "after that; later in time",
+      "definition_vi": "sau đó",
+      "examples": [
+        {
+          "sentence": "The company lost money and subsequently closed two factories.",
+          "sentence_vi": "Công ty thua lỗ và sau đó đóng cửa hai nhà máy."
+        },
+        {
+          "sentence": "He was warned once and was subsequently fired for the same mistake.",
+          "sentence_vi": "Anh ta bị cảnh cáo một lần và sau đó bị sa thải vì cùng một lỗi."
+        }
+      ]
+    },
+    {
+      "lemma": "custody",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the state of being kept by the police, or legal care of a child",
+      "definition_vi": "sự giam giữ; quyền nuôi con",
+      "examples": [
+        {
+          "sentence": "The suspect was taken into custody last night.",
+          "sentence_vi": "Nghi phạm đã bị bắt giam tối qua."
+        },
+        {
+          "sentence": "After the divorce, she got custody of the children.",
+          "sentence_vi": "Sau khi ly hôn, cô ấy được quyền nuôi các con."
+        }
+      ]
+    },
+    {
+      "lemma": "gop",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "short name for the US Republican Party",
+      "definition_vi": "tên viết tắt của Đảng Cộng hòa Mỹ",
+      "examples": [
+        {
+          "sentence": "The GOP won several seats in the election.",
+          "sentence_vi": "Đảng Cộng hòa giành được nhiều ghế trong cuộc bầu cử."
+        },
+        {
+          "sentence": "She has been a GOP member for ten years.",
+          "sentence_vi": "Cô ấy đã là thành viên của Đảng Cộng hòa mười năm."
+        }
+      ]
+    },
+    {
+      "lemma": "integration",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the process of joining or mixing groups into one whole",
+      "definition_vi": "sự hội nhập, sự hợp nhất",
+      "examples": [
+        {
+          "sentence": "The country supports the integration of immigrant families.",
+          "sentence_vi": "Đất nước ủng hộ sự hội nhập của các gia đình nhập cư."
+        },
+        {
+          "sentence": "Economic integration between the two regions is growing.",
+          "sentence_vi": "Sự hợp nhất kinh tế giữa hai vùng đang phát triển."
+        }
+      ]
+    },
+    {
+      "lemma": "integrity",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the quality of being honest and having strong morals",
+      "definition_vi": "tính chính trực",
+      "examples": [
+        {
+          "sentence": "The judge is known for her integrity.",
+          "sentence_vi": "Vị thẩm phán nổi tiếng vì sự chính trực."
+        },
+        {
+          "sentence": "He refused the money because of his integrity.",
+          "sentence_vi": "Anh ấy từ chối tiền vì sự chính trực của mình."
+        }
+      ]
+    },
+    {
+      "lemma": "legitimate",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "allowed by law, or fair and reasonable",
+      "definition_vi": "hợp pháp; chính đáng",
+      "examples": [
+        {
+          "sentence": "Only legitimate businesses can operate here.",
+          "sentence_vi": "Chỉ những doanh nghiệp hợp pháp mới được hoạt động ở đây."
+        },
+        {
+          "sentence": "She has a legitimate reason for missing the meeting.",
+          "sentence_vi": "Cô ấy có lý do chính đáng để vắng mặt trong cuộc họp."
+        }
+      ]
+    },
+    {
+      "lemma": "advocate",
+      "pos": "verb",
+      "cefr_level": "C1",
+      "definition": "to publicly support an idea or a change",
+      "definition_vi": "đề xuất, ủng hộ công khai",
+      "examples": [
+        {
+          "sentence": "Many doctors advocate a diet with more vegetables.",
+          "sentence_vi": "Nhiều bác sĩ đề xuất chế độ ăn nhiều rau hơn."
+        },
+        {
+          "sentence": "The group advocates stronger laws to protect the environment.",
+          "sentence_vi": "Nhóm này ủng hộ luật mạnh hơn để bảo vệ môi trường."
+        }
+      ]
+    },
+    {
+      "lemma": "imperial",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "relating to an empire or its emperor",
+      "definition_vi": "thuộc về đế quốc, hoàng gia",
+      "examples": [
+        {
+          "sentence": "The imperial palace attracts millions of visitors each year.",
+          "sentence_vi": "Cung điện hoàng gia thu hút hàng triệu du khách mỗi năm."
+        },
+        {
+          "sentence": "Imperial rule ended in the country over a century ago.",
+          "sentence_vi": "Chế độ đế quốc chấm dứt ở nước này hơn một thế kỷ trước."
+        }
+      ]
+    },
+    {
+      "lemma": "distinguished",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "famous, respected and successful in a particular field",
+      "definition_vi": "đáng kính, uy tín",
+      "examples": [
+        {
+          "sentence": "She is a distinguished scientist with many international awards.",
+          "sentence_vi": "Cô ấy là một nhà khoa học uy tín với nhiều giải thưởng quốc tế."
+        },
+        {
+          "sentence": "The university invited a distinguished professor to give the lecture.",
+          "sentence_vi": "Trường đại học mời một giáo sư danh tiếng đến giảng bài."
+        }
+      ]
+    },
+    {
+      "lemma": "solely",
+      "pos": "adverb",
+      "cefr_level": "C1",
+      "definition": "only, and nothing or no one else",
+      "definition_vi": "chỉ, duy nhất",
+      "examples": [
+        {
+          "sentence": "She was chosen solely because of her experience.",
+          "sentence_vi": "Cô ấy được chọn chỉ vì kinh nghiệm của mình."
+        },
+        {
+          "sentence": "The project was funded solely by the government.",
+          "sentence_vi": "Dự án được tài trợ duy nhất bởi chính phủ."
+        }
+      ]
     }
   ]
 }
