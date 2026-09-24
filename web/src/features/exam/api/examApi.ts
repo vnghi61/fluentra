@@ -26,6 +26,9 @@ export type ExamVersion = components["schemas"]["ExamVersion"];
 export type MockTest = components["schemas"]["MockTest"];
 export type ComposeMockTestRequest =
   components["schemas"]["ComposeMockTestRequest"];
+export type FixedTestSummary = components["schemas"]["FixedTestSummary"];
+export type FixedTestListResponse =
+  components["schemas"]["FixedTestListResponse"];
 
 /** The problem code of a failed request, if the server sent one. */
 export function problemCode(err: unknown): string | undefined {
@@ -160,10 +163,30 @@ export const examApi = {
     });
   },
 
-  /** Start or retake a composed test; a retake replays the same composition. */
-  async startMockTestAttempt(mockTestId: string): Promise<ExamAttempt> {
+  /**
+   * The numbered fixed tests of one exam version, in order, each with the
+   * caller's latest attempt (WO 22 Stage J).
+   */
+  async listExamVersionTests(
+    versionId: string,
+  ): Promise<FixedTestListResponse> {
+    return apiFetch<FixedTestListResponse>(
+      `/api/v1/exam-versions/${versionId}/tests`,
+    );
+  },
+
+  /**
+   * Start or retake a composed test; a retake replays the same composition. The
+   * body is the same one a sitting start accepts, so a mock test can be sat in
+   * exam or practice mode (WO 22 Stage K).
+   */
+  async startMockTestAttempt(
+    mockTestId: string,
+    req: StartSittingRequest = { mode: "exam" },
+  ): Promise<ExamAttempt> {
     return apiFetch<ExamAttempt>(`/api/v1/mock-tests/${mockTestId}/attempts`, {
       method: "POST",
+      body: JSON.stringify(req),
     });
   },
 };
@@ -182,6 +205,15 @@ export function useExamVersions(enabled = true) {
     queryKey: examKeys.versions(),
     queryFn: () => examApi.listExamVersions(),
     enabled,
+  });
+}
+
+/** The numbered fixed tests of one exam version, in order. */
+export function useExamVersionTests(versionId: string, enabled = true) {
+  return useQuery({
+    queryKey: examKeys.versionTests(versionId),
+    queryFn: () => examApi.listExamVersionTests(versionId),
+    enabled: enabled && !!versionId,
   });
 }
 
