@@ -70,6 +70,13 @@ func seedContentAndCurriculum(ctx context.Context, pool *pgxpool.Pool, adminID u
 	}
 	_, _ = fmt.Fprintf(out, "  ✓ Vocabulary: %d word senses seeded & linked into curated deck\n", count)
 
+	// 3. The thirteen Foundation courses (WO 22 Stage H), built from the course
+	// map through lesson's Author. This also archives the five Phase 2 courses
+	// the block above authored, so the catalogue shows thirteen.
+	if err := seedFoundationCourses(ctx, pool, adminID, out); err != nil {
+		return fmt.Errorf("seed Foundation courses: %w", err)
+	}
+
 	return nil
 }
 
