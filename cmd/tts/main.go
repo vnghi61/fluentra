@@ -41,6 +41,9 @@ type ttsCLIConfig struct {
 	} `koanf:"s3"`
 	Speech struct {
 		TTSVoice string `koanf:"tts_voice"`
+		// TTSVoiceB is the second voice a conversation's other speaker is
+		// rendered in (WO 22 D22-23). Empty means one voice.
+		TTSVoiceB string `koanf:"tts_voice_b"`
 		// Where piper and its voice models are, so `make tts` needs no flags.
 		PiperBinary string `koanf:"piper_binary"`
 		PiperModels string `koanf:"piper_models"`
@@ -109,7 +112,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		_, _ = fmt.Fprintf(out, "Rendered clip: %s\n", key)
 	}
 	if *allFlag {
-		count, err := processAll(ctx, db, uploader, engine, voice, out)
+		count, err := processAll(ctx, db, uploader, engine, voice, cfg.Speech.TTSVoiceB, out)
 		if err != nil {
 			return err
 		}
@@ -133,6 +136,7 @@ func loadTTSConfig(ctx context.Context) (ttsCLIConfig, error) {
 		Defaults: map[string]any{
 			"app.environment":     "development",
 			"speech.tts_voice":    media.DefaultVoice,
+			"speech.tts_voice_b":  "",
 			"speech.piper_binary": "",
 			"speech.piper_models": "",
 			"s3.endpoint":         "localhost:9000",
@@ -248,7 +252,72 @@ func processItem(
 }
 
 type listeningBody struct {
-	Script string `json:"script"`
+	Script string             `json:"script"`
+	Turns  []media.ScriptTurn `json:"turns"`
+}
+
+// processItemTurns renders a conversation turn by turn, each in its speaker's
+// voice, and stores the concatenated clip under one cache row (WO 22 D22-23).
+// The first speaker heard is voiceA; anyone else is voiceB.
+func processItemTurns(
+	ctx context.Context,
+	db *sql.DB,
+	uploader storage.Store,
+	engine media.SynthesiserEngine,
+	turns []media.ScriptTurn,
+	voiceA, voiceB string,
+) (string, error) {
+	textHash := media.HashText(media.JoinScriptTurns(turns))
+	combinedVoice := voiceA + "+" + voiceB
+
+	var existingKey string
+	err := db.QueryRowContext(ctx,
+		"SELECT object_key FROM content.tts_cache WHERE text_hash = $1 AND voice = $2",
+		textHash, combinedVoice,
+	).Scan(&existingKey)
+	if err == nil && existingKey != "" {
+		return existingKey, nil
+	}
+
+	firstSpeaker := strings.TrimSpace(turns[0].Speaker)
+	var audio bytes.Buffer
+	mimeType := "audio/mpeg"
+	for _, turn := range turns {
+		voice := voiceB
+		if strings.EqualFold(strings.TrimSpace(turn.Speaker), firstSpeaker) {
+			voice = voiceA
+		}
+		data, mime, renderErr := engine.Render(ctx, turn.Text, voice)
+		if renderErr != nil {
+			return "", fmt.Errorf("render audio turn: %w", renderErr)
+		}
+		if mime != "" {
+			mimeType = mime
+		}
+		audio.Write(data)
+	}
+
+	objectKey := media.ObjectKey(combinedVoice, textHash, mimeType)
+	if err := uploader.Put(
+		ctx, storage.BucketMedia, objectKey, bytes.NewReader(audio.Bytes()), int64(audio.Len()), mimeType,
+	); err != nil {
+		return "", fmt.Errorf("upload audio to storage: %w", err)
+	}
+
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO content.tts_cache (text_hash, voice, engine, engine_version, object_key, created_at)
+		VALUES ($1, $2, $3, $4, $5, clock_timestamp())
+		ON CONFLICT (text_hash, voice) DO UPDATE
+		SET engine = EXCLUDED.engine,
+		    engine_version = EXCLUDED.engine_version,
+		    object_key = EXCLUDED.object_key,
+		    created_at = clock_timestamp()`,
+		textHash, combinedVoice, engine.EngineName(), engine.EngineVersion(), objectKey,
+	)
+	if err != nil {
+		return "", fmt.Errorf("save tts cache record: %w", err)
+	}
+	return objectKey, nil
 }
 
 func processAll(
@@ -256,7 +325,7 @@ func processAll(
 	db *sql.DB,
 	uploader storage.Store,
 	engine media.SynthesiserEngine,
-	defaultVoice string,
+	defaultVoice, secondVoice string,
 	out io.Writer,
 ) (int, error) {
 	rows, err := db.QueryContext(ctx,
@@ -280,12 +349,21 @@ func processAll(
 			continue
 		}
 
-		if strings.TrimSpace(body.Script) == "" {
+		if strings.TrimSpace(body.Script) == "" && len(body.Turns) < 2 {
 			continue
 		}
 
-		// The configured voice, never the item's: see media.ConfiguredVoice.
-		key, err := processItem(ctx, db, uploader, engine, body.Script, media.ConfiguredVoice(defaultVoice))
+		// A conversation renders turn by turn, each in its speaker's voice; a
+		// monologue in the one configured voice. The voice is configuration,
+		// never the item's: see media.ConfiguredVoice.
+		var key string
+		var err error
+		if len(body.Turns) >= 2 {
+			key, err = processItemTurns(ctx, db, uploader, engine,
+				body.Turns, media.ConfiguredVoice(defaultVoice), media.ConfiguredVoice(secondVoice))
+		} else {
+			key, err = processItem(ctx, db, uploader, engine, body.Script, media.ConfiguredVoice(defaultVoice))
+		}
 		if err != nil {
 			_, _ = fmt.Fprintf(out, "Warning: failed to synthesise item %s: %v\n", id, err)
 			continue

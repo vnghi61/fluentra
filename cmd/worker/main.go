@@ -302,6 +302,7 @@ func configOptions() config.Options {
 			"ai.auto_publish":                false,
 			"speech.tts_engine":              "offline",
 			"speech.tts_voice":               "en_US-lessac-medium",
+			"speech.tts_voice_b":             "",
 			"speech.asr_base_url":            "",
 			"speech.asr_model":               "whisper-large-v3",
 			"speech.asr_api_key":             "",
