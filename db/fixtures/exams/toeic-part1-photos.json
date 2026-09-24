@@ -1,0 +1,7 @@
+{
+  "format": "fluentra.exam.part1photos.fixture.v1",
+  "source": "Wikimedia Commons and Openverse, photographs by link only",
+  "checked_at": "2026-09-24",
+  "licence_note": "CC0-1.0 and CC-BY only. A photograph without a credit page, or under any other licence, is refused at load. The model writes the Part 1 statements from the human description and never sees the image (WO 22 D22-21).",
+  "photos": []
+}
