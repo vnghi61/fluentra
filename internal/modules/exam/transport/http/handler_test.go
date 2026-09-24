@@ -138,7 +138,7 @@ func (f *fakeExamService) ComposeMockTest(
 }
 
 func (f *fakeExamService) StartMockTestAttempt(
-	_ context.Context, _, _ uuid.UUID,
+	_ context.Context, _, _ uuid.UUID, _ service.StartAttemptRequest,
 ) (*service.ExamAttemptDTO, error) {
 	return nil, nil
 }

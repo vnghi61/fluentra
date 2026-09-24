@@ -7047,7 +7047,10 @@ paths:
       tags: [exam]
       operationId: startMockTestAttempt
       summary: Start or retake a mock test attempt
-      description: Starts a sitting from a composed mock test.
+      description: >-
+        Starts a sitting from a composed mock test, in exam mode (full length,
+        timed) or practice mode with the same body a sitting start accepts:
+        chosen sections, a duration, or no limit.
       x-permission: self
       parameters:
         - name: id
@@ -7057,6 +7060,12 @@ paths:
           schema:
             type: string
             format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartAttemptRequest'
       responses:
         '201':
           description: Created sitting attempt.
@@ -7237,32 +7246,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [mode]
-              properties:
-                mode:
-                  type: string
-                  enum: [exam, practice]
-                chosen_duration_minutes:
-                  type: integer
-                  minimum: 10
-                  maximum: 180
-                unlimited:
-                  type: boolean
-                  description: >-
-                    Practice mode only. Skips chosen_duration_minutes and runs the sitting without
-                    a visible time limit. The server still applies a generous backstop deadline so
-                    an abandoned sitting cannot block a future one indefinitely.
-                sections:
-                  type: array
-                  description: >-
-                    Practice mode only: the sections to sit, by position. Omitted or empty means
-                    all four. A position outside 1–4 or repeated is 400 EXAM_INVALID_SECTIONS.
-                  maxItems: 4
-                  items:
-                    type: integer
-                    minimum: 1
-                    maximum: 4
+              $ref: '#/components/schemas/StartAttemptRequest'
       responses:
         '201':
           description: Sitting started.
@@ -9168,6 +9152,8 @@ components:
       $ref: ./components/exam.yaml#/ExamVersion
     ExamVersionListResponse:
       $ref: ./components/exam.yaml#/ExamVersionListResponse
+    StartAttemptRequest:
+      $ref: ./components/exam.yaml#/StartAttemptRequest
     ComposeMockTestRequest:
       $ref: ./components/exam.yaml#/ComposeMockTestRequest
     MockTestPartComposition:

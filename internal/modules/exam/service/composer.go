@@ -994,9 +994,11 @@ func (s *Service) validateMockTestAttempt(
 	return mockTest, version, partMap, nil
 }
 
-// StartMockTestAttempt starts or retakes a sitting for a composed mock test.
+// StartMockTestAttempt starts or retakes a sitting for a composed mock test,
+// in exam mode or practice mode, sharing StartSitting's duration and section
+// rules so the two paths cannot drift (WO 22 Stage K).
 func (s *Service) StartMockTestAttempt(
-	ctx context.Context, userID, mockTestID uuid.UUID,
+	ctx context.Context, userID, mockTestID uuid.UUID, req StartAttemptRequest,
 ) (*ExamAttemptDTO, error) {
 	if s.repo == nil {
 		return nil, errors.New("repository not configured")
@@ -1007,12 +1009,22 @@ func (s *Service) StartMockTestAttempt(
 		return nil, err
 	}
 
+	var chosen map[int]bool
+	if req.Mode == domain.ModePractice {
+		if chosen, err = domain.ChosenSections(req.Sections); err != nil {
+			return nil, err
+		}
+	}
+
 	now := s.clock.Now().UTC()
 	if err := s.checkCanStart(ctx, userID, now); err != nil {
 		return nil, err
 	}
 
-	drawn, allActivityIDs := s.compositionToSectionActivities(ctx, mockTest.Composition, partMap)
+	drawn, _ := s.compositionToSectionActivities(ctx, mockTest.Composition, partMap)
+	// A practice sitting keeps only the sections chosen, before anything is
+	// marked seen: an item the learner never sits is not spent.
+	drawn = keepSections(drawn, chosen)
 	if len(drawn) == 0 {
 		return nil, domain.ErrInsufficientItems
 	}
@@ -1022,14 +1034,20 @@ func (s *Service) StartMockTestAttempt(
 		return nil, fmt.Errorf("serialize section activities: %w", err)
 	}
 
+	// Only the kept sections' activities are exposed.
+	var activityIDsToExpose []uuid.UUID
+	for _, sec := range drawn {
+		for _, act := range sec.Activities {
+			activityIDsToExpose = append(activityIDsToExpose, act.ID)
+		}
+	}
+
 	attemptsCount, err := s.repo.CountUserMockTestAttempts(ctx, userID, mockTestID)
 	if err != nil {
 		return nil, fmt.Errorf("count user mock test attempts: %w", err)
 	}
-
-	var activityIDsToExpose []uuid.UUID
-	if attemptsCount == 0 {
-		activityIDsToExpose = allActivityIDs
+	if attemptsCount > 0 {
+		activityIDsToExpose = nil
 	}
 
 	exam, err := s.resolveExamForVersion(ctx, version.ID)
@@ -1038,10 +1056,11 @@ func (s *Service) StartMockTestAttempt(
 	}
 	examID := exam.ID
 
-	duration := version.TotalMinutes
-	if duration <= 0 {
-		duration = domain.DefaultExamDurationMinutes
+	examMinutes := version.TotalMinutes
+	if examMinutes <= 0 {
+		examMinutes = domain.DefaultExamDurationMinutes
 	}
+	mode, duration := sittingDuration(req, examMinutes)
 	deadlineAt := now.Add(time.Duration(duration) * time.Minute)
 
 	params := sqlc.CreateMockTestAttemptParams{
@@ -1049,7 +1068,7 @@ func (s *Service) StartMockTestAttempt(
 		UserID:                userID,
 		ExamID:                examID,
 		MockTestID:            &mockTestID,
-		Mode:                  domain.ModeExam,
+		Mode:                  mode,
 		ChosenDurationMinutes: clampInt32(duration),
 		StartedAt:             now,
 		DeadlineAt:            deadlineAt,

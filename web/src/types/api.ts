@@ -2862,7 +2862,7 @@ export interface paths {
         put?: never;
         /**
          * Start or retake a mock test attempt
-         * @description Starts a sitting from a composed mock test.
+         * @description Starts a sitting from a composed mock test, in exam mode (full length, timed) or practice mode with the same body a sitting start accepts: chosen sections, a duration, or no limit.
          */
         post: operations["startMockTestAttempt"];
         delete?: never;
@@ -6582,6 +6582,16 @@ export interface components {
         };
         ExamVersionListResponse: {
             items: components["schemas"]["ExamVersion"][];
+        };
+        /** @description The body both a sitting start (POST /exams/{id}/attempts) and a mock test start (POST /mock-tests/{id}/attempts) accept, so the two cannot drift. */
+        StartAttemptRequest: {
+            /** @enum {string} */
+            mode: "exam" | "practice";
+            chosen_duration_minutes?: number;
+            /** @description Practice mode only. Skips chosen_duration_minutes and runs the sitting without a visible time limit. The server still applies a generous backstop deadline so an abandoned sitting cannot block a future one. */
+            unlimited?: boolean;
+            /** @description Practice mode only: the sections to sit, by position. Omitted or empty means all four. A position outside 1–4 or repeated is 400 EXAM_INVALID_SECTIONS. */
+            sections?: number[];
         };
         ComposeMockTestRequest: {
             /** Format: uuid */
@@ -14695,7 +14705,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartAttemptRequest"];
+            };
+        };
         responses: {
             /** @description Created sitting attempt. */
             201: {
@@ -14855,15 +14869,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @enum {string} */
-                    mode: "exam" | "practice";
-                    chosen_duration_minutes?: number;
-                    /** @description Practice mode only. Skips chosen_duration_minutes and runs the sitting without a visible time limit. The server still applies a generous backstop deadline so an abandoned sitting cannot block a future one indefinitely. */
-                    unlimited?: boolean;
-                    /** @description Practice mode only: the sections to sit, by position. Omitted or empty means all four. A position outside 1–4 or repeated is 400 EXAM_INVALID_SECTIONS. */
-                    sections?: number[];
-                };
+                "application/json": components["schemas"]["StartAttemptRequest"];
             };
         };
         responses: {

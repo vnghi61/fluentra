@@ -44,7 +44,7 @@ type ExamService interface {
 		ctx context.Context, userID *uuid.UUID, req service.ComposeMockTestRequest,
 	) (*domain.MockTest, error)
 	StartMockTestAttempt(
-		ctx context.Context, userID, mockTestID uuid.UUID,
+		ctx context.Context, userID, mockTestID uuid.UUID, req service.StartAttemptRequest,
 	) (*service.ExamAttemptDTO, error)
 	GetExamVersionCoverage(ctx context.Context, versionID uuid.UUID) (*service.ExamCoverageReportDTO, error)
 }
@@ -388,7 +388,15 @@ func (h *Handler) startMockTestAttempt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	attempt, err := h.service.StartMockTestAttempt(ctx, actor.UserID, mockTestID)
+	var req service.StartAttemptRequest
+	if r.Body != nil {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+			httpx.WriteProblem(w, r, apperr.New(apperr.BadRequest, "INVALID_REQUEST_BODY", "failed to parse request body"))
+			return
+		}
+	}
+
+	attempt, err := h.service.StartMockTestAttempt(ctx, actor.UserID, mockTestID, req)
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return

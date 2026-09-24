@@ -390,6 +390,38 @@ ExamVersionListResponse:
       items:
         $ref: '#/ExamVersion'
 
+StartAttemptRequest:
+  type: object
+  description: >-
+    The body both a sitting start (POST /exams/{id}/attempts) and a mock test
+    start (POST /mock-tests/{id}/attempts) accept, so the two cannot drift.
+  required: [mode]
+  properties:
+    mode:
+      type: string
+      enum: [exam, practice]
+    chosen_duration_minutes:
+      type: integer
+      minimum: 10
+      maximum: 180
+    unlimited:
+      type: boolean
+      description: >-
+        Practice mode only. Skips chosen_duration_minutes and runs the sitting
+        without a visible time limit. The server still applies a generous
+        backstop deadline so an abandoned sitting cannot block a future one.
+    sections:
+      type: array
+      description: >-
+        Practice mode only: the sections to sit, by position. Omitted or empty
+        means all four. A position outside 1–4 or repeated is 400
+        EXAM_INVALID_SECTIONS.
+      maxItems: 4
+      items:
+        type: integer
+        minimum: 1
+        maximum: 4
+
 ComposeMockTestRequest:
   type: object
   required: [blueprint_id, mode]

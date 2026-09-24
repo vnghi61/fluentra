@@ -1855,12 +1855,23 @@ type ClientInterface interface {
 	// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
 	ComposeMockTest(ctx context.Context, body ComposeMockTestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// StartMockTestAttempt Start or retake a mock test attempt
+	// StartMockTestAttemptWithBody Start or retake a mock test attempt
 	//
-	// Starts a sitting from a composed mock test.
+	// Starts a sitting from a composed mock test, in exam mode (full length, timed) or practice mode with the same body a sitting start accepts: chosen sections, a duration, or no limit.
+	//
+	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
-	StartMockTestAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StartMockTestAttemptWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartMockTestAttempt Start or retake a mock test attempt
+	//
+	// Starts a sitting from a composed mock test, in exam mode (full length, timed) or practice mode with the same body a sitting start accepts: chosen sections, a duration, or no limit.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
+	StartMockTestAttempt(ctx context.Context, id openapi_types.UUID, body StartMockTestAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ModerationListCoursesQueue List course submissions in review queue.
 	//
@@ -6111,13 +6122,34 @@ func (c *Client) ComposeMockTest(ctx context.Context, body ComposeMockTestJSONRe
 	return c.Client.Do(req)
 }
 
-// StartMockTestAttempt Start or retake a mock test attempt
+// StartMockTestAttemptWithBody Start or retake a mock test attempt
 //
-// Starts a sitting from a composed mock test.
+// Starts a sitting from a composed mock test, in exam mode (full length, timed) or practice mode with the same body a sitting start accepts: chosen sections, a duration, or no limit.
+//
+// Takes any type of body and a specified content type.
 //
 // Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
-func (c *Client) StartMockTestAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStartMockTestAttemptRequest(c.Server, id)
+func (c *Client) StartMockTestAttemptWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartMockTestAttemptRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartMockTestAttempt Start or retake a mock test attempt
+//
+// Starts a sitting from a composed mock test, in exam mode (full length, timed) or practice mode with the same body a sitting start accepts: chosen sections, a duration, or no limit.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
+func (c *Client) StartMockTestAttempt(ctx context.Context, id openapi_types.UUID, body StartMockTestAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartMockTestAttemptRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -13891,8 +13923,19 @@ func NewComposeMockTestRequestWithBody(server string, contentType string, body i
 	return req, nil
 }
 
-// NewStartMockTestAttemptRequest constructs an http.Request for the StartMockTestAttempt method
-func NewStartMockTestAttemptRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+// NewStartMockTestAttemptRequest calls the generic StartMockTestAttempt builder with application/json body
+func NewStartMockTestAttemptRequest(server string, id openapi_types.UUID, body StartMockTestAttemptJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStartMockTestAttemptRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewStartMockTestAttemptRequestWithBody constructs an http.Request for the StartMockTestAttempt method, with any body, and a specified content type
+func NewStartMockTestAttemptRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13917,10 +13960,12 @@ func NewStartMockTestAttemptRequest(server string, id openapi_types.UUID) (*http
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -17800,14 +17845,23 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /mock-tests (the `ComposeMockTest` operationId).
 	ComposeMockTestWithResponse(ctx context.Context, body ComposeMockTestJSONRequestBody, reqEditors ...RequestEditorFn) (*ComposeMockTestResponse, error)
 
-	// StartMockTestAttemptWithResponse Start or retake a mock test attempt
+	// StartMockTestAttemptWithBodyWithResponse Start or retake a mock test attempt
 	//
-	// Starts a sitting from a composed mock test.
+	// Starts a sitting from a composed mock test, in exam mode (full length, timed) or practice mode with the same body a sitting start accepts: chosen sections, a duration, or no limit.
 	//
-	// Returns a wrapper object for the known response body format(s).
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
-	StartMockTestAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StartMockTestAttemptResponse, error)
+	StartMockTestAttemptWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartMockTestAttemptResponse, error)
+
+	// StartMockTestAttemptWithResponse Start or retake a mock test attempt
+	//
+	// Starts a sitting from a composed mock test, in exam mode (full length, timed) or practice mode with the same body a sitting start accepts: chosen sections, a duration, or no limit.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
+	StartMockTestAttemptWithResponse(ctx context.Context, id openapi_types.UUID, body StartMockTestAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*StartMockTestAttemptResponse, error)
 
 	// ModerationListCoursesQueueWithResponse List course submissions in review queue.
 	//
@@ -35430,15 +35484,30 @@ func (c *ClientWithResponses) ComposeMockTestWithResponse(ctx context.Context, b
 	return ParseComposeMockTestResponse(rsp)
 }
 
-// StartMockTestAttemptWithResponse Start or retake a mock test attempt
+// StartMockTestAttemptWithBodyWithResponse Start or retake a mock test attempt
 //
-// Starts a sitting from a composed mock test.
+// Starts a sitting from a composed mock test, in exam mode (full length, timed) or practice mode with the same body a sitting start accepts: chosen sections, a duration, or no limit.
 //
-// Returns a wrapper object for the known response body format(s).
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
-func (c *ClientWithResponses) StartMockTestAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StartMockTestAttemptResponse, error) {
-	rsp, err := c.StartMockTestAttempt(ctx, id, reqEditors...)
+func (c *ClientWithResponses) StartMockTestAttemptWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartMockTestAttemptResponse, error) {
+	rsp, err := c.StartMockTestAttemptWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartMockTestAttemptResponse(rsp)
+}
+
+// StartMockTestAttemptWithResponse Start or retake a mock test attempt
+//
+// Starts a sitting from a composed mock test, in exam mode (full length, timed) or practice mode with the same body a sitting start accepts: chosen sections, a duration, or no limit.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /mock-tests/{id}/attempts (the `StartMockTestAttempt` operationId).
+func (c *ClientWithResponses) StartMockTestAttemptWithResponse(ctx context.Context, id openapi_types.UUID, body StartMockTestAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*StartMockTestAttemptResponse, error) {
+	rsp, err := c.StartMockTestAttempt(ctx, id, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
