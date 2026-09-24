@@ -140,17 +140,20 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	if batchSize <= 0 {
 		batchSize = 50
 	}
-	if err := generateMissing(ctx, client, cache, *cacheFlag, lemmas, batchSize, *dryRunFlag, out); err != nil {
+	flagged, err := generateMissing(ctx, client, cache, *cacheFlag, lemmas, batchSize, *dryRunFlag, out)
+	if err != nil {
 		return err
 	}
 	if *dryRunFlag {
 		return nil
 	}
-	return writeFixtures(*fixturesFlag, lemmas, cache, out)
+	return writeFixtures(*fixturesFlag, lemmas, cache, flagged, out)
 }
 
 // generateMissing asks the model for every lemma the cache does not hold, one
-// batch at a time, saving the cache after each so a failure resumes here.
+// batch at a time, saving the cache after each so a failure resumes here. A
+// lemma the model cannot answer is flagged, not fatal: one bad word must not
+// stop a 10,000-word run.
 func generateMissing(
 	ctx context.Context,
 	client ai.Client,
@@ -160,7 +163,8 @@ func generateMissing(
 	batchSize int,
 	dryRun bool,
 	out io.Writer,
-) error {
+) ([]flaggedWord, error) {
+	var flagged []flaggedWord
 	for start := 0; start < len(lemmas); start += batchSize {
 		end := min(start+batchSize, len(lemmas))
 		batch := missingFromCache(lemmas[start:end], cache)
@@ -172,24 +176,27 @@ func generateMissing(
 				len(batch), strings.Join(batch, ", "))
 			continue
 		}
-		meanings, genErr := generateMeanings(ctx, client, batch)
+		meanings, failed, genErr := generateMeanings(ctx, client, batch)
 		if genErr != nil {
 			// The cache is saved up to the last complete batch, so the next run
 			// resumes here.
 			if saveErr := writeCache(cacheFile, cache); saveErr != nil {
-				return saveErr
+				return flagged, saveErr
 			}
-			return fmt.Errorf("generate meanings for %d lemma(s): %w", len(batch), genErr)
+			return flagged, fmt.Errorf("generate meanings for %d lemma(s): %w", len(batch), genErr)
 		}
 		for _, meaning := range meanings {
 			cache[strings.ToLower(meaning.Lemma)] = meaning
 		}
+		for _, lemma := range failed {
+			flagged = append(flagged, flaggedWord{Lemma: lemma, Reason: "the model's reply could not be parsed"})
+		}
 		if err := writeCache(cacheFile, cache); err != nil {
-			return err
+			return flagged, err
 		}
 		_, _ = fmt.Fprintf(out, "  ✓ %d/%d lemma(s) written\n", min(end, len(lemmas)), len(lemmas))
 	}
-	return nil
+	return flagged, nil
 }
 
 // readSource reads the frequency list, keeping the first limit headwords that
@@ -243,7 +250,21 @@ func isWord(word string) bool {
 			return false
 		}
 	}
-	return !profanity[word]
+	if profanity[word] || abbreviation[word] {
+		return false
+	}
+	// A word with no vowel is an acronym or a keyboard artefact ("http", "www",
+	// "nth"), not a headword a course teaches.
+	return strings.ContainsAny(word, "aeiouy")
+}
+
+// abbreviation drops the non-words a frequency list carries: acronyms, internet
+// forms and the like (WO 22 D22-6, "drop ... abbreviations").
+var abbreviation = map[string]bool{
+	"etc": true, "http": true, "https": true, "www": true, "url": true,
+	"html": true, "php": true, "tv": true, "vs": true, "ceo": true,
+	"usa": true, "uk": true, "pc": true, "dvd": true, "gps": true,
+	"sms": true, "eu": true, "us": true,
 }
 
 // profanity is dropped from the list: a learner's deck is not the place for it
@@ -257,29 +278,40 @@ var profanity = map[string]bool{
 	"whore": true,
 }
 
-// generateMeanings asks the model for one batch, fifty lemmas per call.
-func generateMeanings(ctx context.Context, client ai.Client, lemmas []string) ([]modelMeaning, error) {
+// generateMeanings asks the model for one batch. The model's reply is a JSON
+// object; when it is truncated or malformed the batch is split and retried in
+// halves, and a single lemma that still fails is reported rather than aborting
+// the run.
+func generateMeanings(
+	ctx context.Context, client ai.Client, lemmas []string,
+) ([]modelMeaning, []string, error) {
 	response, err := client.Complete(ctx, ai.Request{
 		Task: ai.TaskVocabMeanings,
 		Vars: map[string]any{"Lemmas": strings.Join(lemmas, "\n")},
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var payload struct {
 		Words []modelMeaning `json:"words"`
 	}
 	if err := json.Unmarshal([]byte(extractJSONObject(response.Text)), &payload); err != nil {
-		// The reply is echoed on a parse failure: a model that changed its
-		// shape is diagnosable from the run, not from a second run.
-		preview := response.Text
-		if len(preview) > 400 {
-			preview = preview[:400]
+		if len(lemmas) > 1 {
+			middle := len(lemmas) / 2
+			first, firstFailed, firstErr := generateMeanings(ctx, client, lemmas[:middle])
+			if firstErr != nil {
+				return nil, nil, firstErr
+			}
+			second, secondFailed, secondErr := generateMeanings(ctx, client, lemmas[middle:])
+			if secondErr != nil {
+				return nil, nil, secondErr
+			}
+			return append(first, second...), append(firstFailed, secondFailed...), nil
 		}
-		return nil, fmt.Errorf("parse meanings: %w (reply: %s)", err, preview)
+		return nil, lemmas, nil
 	}
-	return payload.Words, nil
+	return payload.Words, nil, nil
 }
 
 // extractJSONObject returns the span from the first "{" to the last "}", so a
@@ -303,9 +335,15 @@ type flaggedWord struct {
 // writeFixtures groups the meanings by CEFR level and writes one file per level.
 // A word that fails the checks is flagged rather than written, and listed in
 // flagged.json for a person.
-func writeFixtures(dir string, lemmas []string, cache map[string]modelMeaning, out io.Writer) error {
+func writeFixtures(
+	dir string,
+	lemmas []string,
+	cache map[string]modelMeaning,
+	extraFlagged []flaggedWord,
+	out io.Writer,
+) error {
 	byLevel := map[string][]vocabfixture.Word{}
-	var flagged []flaggedWord
+	flagged := append([]flaggedWord(nil), extraFlagged...)
 	for _, lemma := range lemmas {
 		meaning, ok := cache[lemma]
 		if !ok {

@@ -2505,23 +2505,6 @@
       ]
     },
     {
-      "lemma": "dr",
-      "pos": "noun",
-      "cefr_level": "A2",
-      "definition": "short for doctor, a title for a medical person",
-      "definition_vi": "bác sĩ (viết tắt)",
-      "examples": [
-        {
-          "sentence": "Dr. Smith will see you at three o'clock.",
-          "sentence_vi": "Bác sĩ Smith sẽ gặp bạn lúc ba giờ."
-        },
-        {
-          "sentence": "You should visit Dr. Lee if your head hurts.",
-          "sentence_vi": "Bạn nên gặp bác sĩ Lee nếu đầu bạn đau."
-        }
-      ]
-    },
-    {
       "lemma": "field",
       "pos": "noun",
       "cefr_level": "A2",
@@ -3895,23 +3878,6 @@
         {
           "sentence": "She loves science and wants to be a doctor.",
           "sentence_vi": "Cô ấy yêu thích khoa học và muốn trở thành bác sĩ."
-        }
-      ]
-    },
-    {
-      "lemma": "uk",
-      "pos": "noun",
-      "cefr_level": "A2",
-      "definition": "short for the United Kingdom, a country in Europe",
-      "definition_vi": "Vương quốc Anh",
-      "examples": [
-        {
-          "sentence": "She moved to the UK for her studies.",
-          "sentence_vi": "Cô ấy chuyển đến Vương quốc Anh để học."
-        },
-        {
-          "sentence": "The UK has four countries inside it.",
-          "sentence_vi": "Vương quốc Anh có bốn nước bên trong."
         }
       ]
     },
@@ -7635,6 +7601,3032 @@
         {
           "sentence": "He showed his ticket to the man at the door.",
           "sentence_vi": "Anh ấy đã đưa vé cho người đàn ông ở cửa xem."
+        }
+      ]
+    },
+    {
+      "lemma": "accept",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to agree to take or receive something offered",
+      "definition_vi": "chấp nhận, nhận",
+      "examples": [
+        {
+          "sentence": "She was happy to accept the job offer.",
+          "sentence_vi": "Cô ấy rất vui khi chấp nhận lời mời làm việc."
+        },
+        {
+          "sentence": "I cannot accept this gift; it is too expensive.",
+          "sentence_vi": "Tôi không thể nhận món quà này; nó quá đắt."
+        }
+      ]
+    },
+    {
+      "lemma": "appear",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to become visible or start to be seen",
+      "definition_vi": "xuất hiện",
+      "examples": [
+        {
+          "sentence": "A rainbow will appear after the rain stops.",
+          "sentence_vi": "Cầu vồng sẽ xuất hiện sau khi mưa tạnh."
+        },
+        {
+          "sentence": "The singer will appear on TV tonight.",
+          "sentence_vi": "Ca sĩ sẽ xuất hiện trên truyền hình tối nay."
+        }
+      ]
+    },
+    {
+      "lemma": "broke",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "past tense of break; damaged or separated into pieces",
+      "definition_vi": "đã làm vỡ, làm gãy",
+      "examples": [
+        {
+          "sentence": "He broke the window with a ball.",
+          "sentence_vi": "Anh ấy đã làm vỡ cửa sổ bằng quả bóng."
+        },
+        {
+          "sentence": "She broke her leg while skiing.",
+          "sentence_vi": "Cô ấy đã gãy chân khi trượt tuyết."
+        }
+      ]
+    },
+    {
+      "lemma": "channel",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a TV station or a narrow water path",
+      "definition_vi": "kênh (truyền hình); kênh đào",
+      "examples": [
+        {
+          "sentence": "My favorite channel shows cartoons all day.",
+          "sentence_vi": "Kênh yêu thích của tôi chiếu hoạt hình cả ngày."
+        },
+        {
+          "sentence": "The ship sailed through the channel slowly.",
+          "sentence_vi": "Con tàu đi chậm qua kênh đào."
+        }
+      ]
+    },
+    {
+      "lemma": "distance",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "how far away one place is from another",
+      "definition_vi": "khoảng cách",
+      "examples": [
+        {
+          "sentence": "The distance from my house to school is two kilometers.",
+          "sentence_vi": "Khoảng cách từ nhà tôi đến trường là hai cây số."
+        },
+        {
+          "sentence": "We could see the mountains in the distance.",
+          "sentence_vi": "Chúng tôi có thể thấy những ngọn núi ở xa."
+        }
+      ]
+    },
+    {
+      "lemma": "learned",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "past tense of learn; got knowledge or a new skill",
+      "definition_vi": "đã học (quá khứ của learn)",
+      "examples": [
+        {
+          "sentence": "I learned to swim when I was seven.",
+          "sentence_vi": "Tôi học bơi khi bảy tuổi."
+        },
+        {
+          "sentence": "She learned many new words last week.",
+          "sentence_vi": "Cô ấy đã học nhiều từ mới tuần trước."
+        }
+      ]
+    },
+    {
+      "lemma": "losing",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "not winning; no longer having something",
+      "definition_vi": "đang thua; đang mất",
+      "examples": [
+        {
+          "sentence": "Our team is losing the game right now.",
+          "sentence_vi": "Đội của chúng tôi đang thua trận đấu lúc này."
+        },
+        {
+          "sentence": "He is losing his memory as he gets older.",
+          "sentence_vi": "Anh ấy đang mất trí nhớ khi già đi."
+        }
+      ]
+    },
+    {
+      "lemma": "mobile",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "able to move easily; also a phone you carry",
+      "definition_vi": "di động; điện thoại di động",
+      "examples": [
+        {
+          "sentence": "I left my mobile phone at home today.",
+          "sentence_vi": "Hôm nay tôi để quên điện thoại di động ở nhà."
+        },
+        {
+          "sentence": "Old people may find it hard to stay mobile.",
+          "sentence_vi": "Người già có thể thấy khó để di chuyển dễ dàng."
+        }
+      ]
+    },
+    {
+      "lemma": "northern",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "in or from the north part of a place",
+      "definition_vi": "thuộc phía bắc",
+      "examples": [
+        {
+          "sentence": "They live in a small northern village.",
+          "sentence_vi": "Họ sống trong một ngôi làng nhỏ ở phía bắc."
+        },
+        {
+          "sentence": "Northern Vietnam is cold in winter.",
+          "sentence_vi": "Miền Bắc Việt Nam lạnh vào mùa đông."
+        }
+      ]
+    },
+    {
+      "lemma": "placed",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "past tense of place; put something somewhere carefully",
+      "definition_vi": "đã đặt (quá khứ của place)",
+      "examples": [
+        {
+          "sentence": "He placed the keys on the table.",
+          "sentence_vi": "Anh ấy đặt chìa khóa lên bàn."
+        },
+        {
+          "sentence": "The books were placed on the top shelf.",
+          "sentence_vi": "Những cuốn sách được đặt lên kệ trên cùng."
+        }
+      ]
+    },
+    {
+      "lemma": "reached",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "past tense of reach; arrived at a place or level",
+      "definition_vi": "đã đến, đã đạt tới (quá khứ của reach)",
+      "examples": [
+        {
+          "sentence": "We reached the top of the mountain at noon.",
+          "sentence_vi": "Chúng tôi lên đến đỉnh núi vào buổi trưa."
+        },
+        {
+          "sentence": "The news reached us very quickly.",
+          "sentence_vi": "Tin tức đến với chúng tôi rất nhanh."
+        }
+      ]
+    },
+    {
+      "lemma": "receive",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to get something that someone gives or sends you",
+      "definition_vi": "nhận",
+      "examples": [
+        {
+          "sentence": "Did you receive my email this morning?",
+          "sentence_vi": "Bạn có nhận được email của tôi sáng nay không?"
+        },
+        {
+          "sentence": "She will receive a prize for her hard work.",
+          "sentence_vi": "Cô ấy sẽ nhận một giải thưởng vì sự chăm chỉ của mình."
+        }
+      ]
+    },
+    {
+      "lemma": "screen",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the flat glass part of a phone, TV, or computer",
+      "definition_vi": "màn hình",
+      "examples": [
+        {
+          "sentence": "The screen of my phone is broken.",
+          "sentence_vi": "Màn hình điện thoại của tôi bị vỡ."
+        },
+        {
+          "sentence": "Please turn off the screen before you sleep.",
+          "sentence_vi": "Vui lòng tắt màn hình trước khi bạn ngủ."
+        }
+      ]
+    },
+    {
+      "lemma": "serve",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to give people food, drinks, or help",
+      "definition_vi": "phục vụ",
+      "examples": [
+        {
+          "sentence": "They serve breakfast from seven to ten.",
+          "sentence_vi": "Họ phục vụ bữa sáng từ bảy giờ đến mười giờ."
+        },
+        {
+          "sentence": "The waiter will serve you in a minute.",
+          "sentence_vi": "Người bồi bàn sẽ phục vụ bạn trong một phút nữa."
+        }
+      ]
+    },
+    {
+      "lemma": "signed",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "past form of sign; wrote your name on a paper",
+      "definition_vi": "đã ký",
+      "examples": [
+        {
+          "sentence": "She signed the paper with a black pen.",
+          "sentence_vi": "Cô ấy đã ký giấy tờ bằng bút đen."
+        },
+        {
+          "sentence": "He signed his name at the bottom of the page.",
+          "sentence_vi": "Anh ấy đã ký tên ở cuối trang."
+        }
+      ]
+    },
+    {
+      "lemma": "traffic",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "all the cars and vehicles moving on roads",
+      "definition_vi": "giao thông",
+      "examples": [
+        {
+          "sentence": "There is a lot of traffic in the city center.",
+          "sentence_vi": "Có rất nhiều xe cộ ở trung tâm thành phố."
+        },
+        {
+          "sentence": "We were late because of heavy traffic.",
+          "sentence_vi": "Chúng tôi đến muộn vì kẹt xe."
+        }
+      ]
+    },
+    {
+      "lemma": "types",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "kinds or groups of similar things",
+      "definition_vi": "các loại",
+      "examples": [
+        {
+          "sentence": "There are many types of fruit in this shop.",
+          "sentence_vi": "Có nhiều loại trái cây trong cửa hàng này."
+        },
+        {
+          "sentence": "She likes all types of music, even opera.",
+          "sentence_vi": "Cô ấy thích mọi loại nhạc, kể cả opera."
+        }
+      ]
+    },
+    {
+      "lemma": "wonderful",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "very good or making you feel happy",
+      "definition_vi": "tuyệt vời, tuyệt diệu",
+      "examples": [
+        {
+          "sentence": "We had a wonderful time at the beach.",
+          "sentence_vi": "Chúng tôi đã có một khoảng thời gian tuyệt vời ở bãi biển."
+        },
+        {
+          "sentence": "She cooked a wonderful dinner for us.",
+          "sentence_vi": "Cô ấy đã nấu một bữa tối tuyệt vời cho chúng tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "bottom",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the lowest part of something",
+      "definition_vi": "đáy, phần dưới cùng",
+      "examples": [
+        {
+          "sentence": "There is sand at the bottom of the lake.",
+          "sentence_vi": "Có cát ở đáy hồ."
+        },
+        {
+          "sentence": "Write your name at the bottom of the page.",
+          "sentence_vi": "Viết tên của bạn ở cuối trang."
+        }
+      ]
+    },
+    {
+      "lemma": "cities",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "large and important towns where many people live",
+      "definition_vi": "các thành phố",
+      "examples": [
+        {
+          "sentence": "Hanoi and Ho Chi Minh City are big cities.",
+          "sentence_vi": "Hà Nội và Thành phố Hồ Chí Minh là những thành phố lớn."
+        },
+        {
+          "sentence": "Many cities have problems with heavy traffic.",
+          "sentence_vi": "Nhiều thành phố gặp vấn đề về giao thông đông đúc."
+        }
+      ]
+    },
+    {
+      "lemma": "engine",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the machine that makes a car or plane move",
+      "definition_vi": "động cơ, máy",
+      "examples": [
+        {
+          "sentence": "The car will not start because the engine is broken.",
+          "sentence_vi": "Chiếc xe không nổ được vì động cơ bị hỏng."
+        },
+        {
+          "sentence": "He cleaned the engine of his old motorbike.",
+          "sentence_vi": "Anh ấy đã vệ sinh động cơ chiếc xe máy cũ."
+        }
+      ]
+    },
+    {
+      "lemma": "famous",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "known by many people",
+      "definition_vi": "nổi tiếng",
+      "examples": [
+        {
+          "sentence": "Ha Long Bay is famous for its beautiful islands.",
+          "sentence_vi": "Vịnh Hạ Long nổi tiếng với những hòn đảo tuyệt đẹp."
+        },
+        {
+          "sentence": "She became famous after singing on television.",
+          "sentence_vi": "Cô ấy trở nên nổi tiếng sau khi hát trên truyền hình."
+        }
+      ]
+    },
+    {
+      "lemma": "ideas",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "thoughts or plans in your mind",
+      "definition_vi": "ý tưởng, ý nghĩ",
+      "examples": [
+        {
+          "sentence": "Please share your ideas with the group.",
+          "sentence_vi": "Hãy chia sẻ ý tưởng của bạn với nhóm."
+        },
+        {
+          "sentence": "She always has good ideas for the school project.",
+          "sentence_vi": "Cô ấy luôn có ý tưởng hay cho dự án ở trường."
+        }
+      ]
+    },
+    {
+      "lemma": "lie",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to say something untrue, or to be in a flat position",
+      "definition_vi": "nói dối; nằm",
+      "examples": [
+        {
+          "sentence": "Don't lie to your friends about your marks.",
+          "sentence_vi": "Đừng nói dối bạn bè về điểm của bạn."
+        },
+        {
+          "sentence": "The cat likes to lie on the warm floor.",
+          "sentence_vi": "Con mèo thích nằm trên sàn ấm."
+        }
+      ]
+    },
+    {
+      "lemma": "notes",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "short pieces of writing to help you remember things",
+      "definition_vi": "ghi chú, bản ghi nhớ",
+      "examples": [
+        {
+          "sentence": "I wrote notes during the teacher's talk.",
+          "sentence_vi": "Tôi ghi chú trong khi thầy nói."
+        },
+        {
+          "sentence": "Please read my notes before the test.",
+          "sentence_vi": "Hãy đọc ghi chú của tôi trước khi thi."
+        }
+      ]
+    },
+    {
+      "lemma": "partner",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a person you work, play, or dance with",
+      "definition_vi": "đối tác, bạn đồng hành",
+      "examples": [
+        {
+          "sentence": "My partner in the game is my cousin.",
+          "sentence_vi": "Đối tác của tôi trong trò chơi là anh họ tôi."
+        },
+        {
+          "sentence": "She asked me to be her dance partner.",
+          "sentence_vi": "Cô ấy mời tôi làm bạn nhảy."
+        }
+      ]
+    },
+    {
+      "lemma": "square",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a shape with four equal sides, or an open town space",
+      "definition_vi": "hình vuông; quảng trường",
+      "examples": [
+        {
+          "sentence": "Draw a square with a ruler.",
+          "sentence_vi": "Vẽ một hình vuông bằng thước kẻ."
+        },
+        {
+          "sentence": "People meet in the main square on weekends.",
+          "sentence_vi": "Mọi người gặp nhau ở quảng trường chính vào cuối tuần."
+        }
+      ]
+    },
+    {
+      "lemma": "twice",
+      "pos": "adverb",
+      "cefr_level": "A2",
+      "definition": "two times",
+      "definition_vi": "hai lần",
+      "examples": [
+        {
+          "sentence": "I brush my teeth twice a day.",
+          "sentence_vi": "Tôi đánh răng hai lần một ngày."
+        },
+        {
+          "sentence": "She called me twice last night.",
+          "sentence_vi": "Cô ấy gọi cho tôi hai lần tối qua."
+        }
+      ]
+    },
+    {
+      "lemma": "wind",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "air that moves outside, often strongly",
+      "definition_vi": "gió",
+      "examples": [
+        {
+          "sentence": "The wind blew my hat off.",
+          "sentence_vi": "Cơn gió thổi bay chiếc mũ của tôi."
+        },
+        {
+          "sentence": "A cold wind came from the sea.",
+          "sentence_vi": "Một cơn gió lạnh thổi từ biển đến."
+        }
+      ]
+    },
+    {
+      "lemma": "worry",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to feel nervous because you think something bad may happen",
+      "definition_vi": "lo lắng",
+      "examples": [
+        {
+          "sentence": "Don't worry about the test; you studied hard.",
+          "sentence_vi": "Đừng lo lắng về bài kiểm tra; bạn đã học chăm chỉ rồi."
+        },
+        {
+          "sentence": "Parents often worry when their children are late.",
+          "sentence_vi": "Cha mẹ thường lo lắng khi con về muộn."
+        }
+      ]
+    },
+    {
+      "lemma": "americans",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "people from the United States",
+      "definition_vi": "người Mỹ",
+      "examples": [
+        {
+          "sentence": "Many Americans celebrate Thanksgiving in November.",
+          "sentence_vi": "Nhiều người Mỹ ăn mừng Lễ Tạ ơn vào tháng Mười Một."
+        },
+        {
+          "sentence": "Some Americans travel to Vietnam every year.",
+          "sentence_vi": "Một số người Mỹ đi du lịch đến Việt Nam mỗi năm."
+        }
+      ]
+    },
+    {
+      "lemma": "cent",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a small unit of money in the US, worth one hundredth of a dollar",
+      "definition_vi": "xu (một phần trăm đô la)",
+      "examples": [
+        {
+          "sentence": "This pen costs only fifty cents.",
+          "sentence_vi": "Cây bút này chỉ giá năm mươi xu."
+        },
+        {
+          "sentence": "He gave me a one-cent coin as a joke.",
+          "sentence_vi": "Anh ấy đưa tôi một đồng xu một cent để đùa."
+        }
+      ]
+    },
+    {
+      "lemma": "chicago",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a large city in the United States",
+      "definition_vi": "Chicago (thành phố ở Mỹ)",
+      "examples": [
+        {
+          "sentence": "Chicago is famous for its tall buildings.",
+          "sentence_vi": "Chicago nổi tiếng với những tòa nhà cao tầng."
+        },
+        {
+          "sentence": "My cousin moved to Chicago last year.",
+          "sentence_vi": "Anh họ của tôi chuyển đến Chicago năm ngoái."
+        }
+      ]
+    },
+    {
+      "lemma": "count",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to say numbers in order to find how many things there are",
+      "definition_vi": "đếm",
+      "examples": [
+        {
+          "sentence": "Please count the students in the classroom.",
+          "sentence_vi": "Hãy đếm số học sinh trong lớp học."
+        },
+        {
+          "sentence": "She can count to one hundred in English.",
+          "sentence_vi": "Cô ấy có thể đếm đến một trăm bằng tiếng Anh."
+        }
+      ]
+    },
+    {
+      "lemma": "digital",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "using computers or electronic technology, not paper or film",
+      "definition_vi": "thuộc về công nghệ số",
+      "examples": [
+        {
+          "sentence": "I keep all my digital photos on my phone.",
+          "sentence_vi": "Tôi giữ tất cả ảnh số của mình trên điện thoại."
+        },
+        {
+          "sentence": "Most people now read digital news instead of newspapers.",
+          "sentence_vi": "Hầu hết mọi người bây giờ đọc tin tức số thay vì báo giấy."
+        }
+      ]
+    },
+    {
+      "lemma": "fourth",
+      "pos": "determiner",
+      "cefr_level": "A2",
+      "definition": "coming after third in order; number four in a series",
+      "definition_vi": "thứ tư",
+      "examples": [
+        {
+          "sentence": "My birthday is on the fourth of July.",
+          "sentence_vi": "Sinh nhật của tôi vào ngày mùng bốn tháng bảy."
+        },
+        {
+          "sentence": "She finished fourth in the race.",
+          "sentence_vi": "Cô ấy về đích thứ tư trong cuộc đua."
+        }
+      ]
+    },
+    {
+      "lemma": "fresh",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "newly made or picked; not old or spoiled",
+      "definition_vi": "tươi, mới",
+      "examples": [
+        {
+          "sentence": "We bought fresh vegetables at the market this morning.",
+          "sentence_vi": "Chúng tôi mua rau tươi ở chợ sáng nay."
+        },
+        {
+          "sentence": "Open the window and let some fresh air in.",
+          "sentence_vi": "Mở cửa sổ cho không khí trong lành vào."
+        }
+      ]
+    },
+    {
+      "lemma": "missed",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "did not catch or attend something; felt sad about being away from someone",
+      "definition_vi": "lỡ, nhớ",
+      "examples": [
+        {
+          "sentence": "I missed the bus, so I was late for school.",
+          "sentence_vi": "Tôi lỡ xe buýt nên đến trường muộn."
+        },
+        {
+          "sentence": "She missed her family while studying abroad.",
+          "sentence_vi": "Cô ấy nhớ gia đình khi du học."
+        }
+      ]
+    },
+    {
+      "lemma": "mostly",
+      "pos": "adverb",
+      "cefr_level": "A2",
+      "definition": "mainly; most of the time or in most cases",
+      "definition_vi": "chủ yếu, phần lớn",
+      "examples": [
+        {
+          "sentence": "The students here are mostly from small towns.",
+          "sentence_vi": "Học sinh ở đây chủ yếu đến từ các thị trấn nhỏ."
+        },
+        {
+          "sentence": "I cook at home mostly on weekends.",
+          "sentence_vi": "Tôi chủ yếu nấu ăn ở nhà vào cuối tuần."
+        }
+      ]
+    },
+    {
+      "lemma": "owner",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the person who legally has something",
+      "definition_vi": "chủ sở hữu, chủ nhân",
+      "examples": [
+        {
+          "sentence": "The owner of this shop is very friendly.",
+          "sentence_vi": "Chủ cửa hàng này rất thân thiện."
+        },
+        {
+          "sentence": "Are you the owner of that red motorbike?",
+          "sentence_vi": "Bạn có phải là chủ của chiếc xe máy đỏ đó không?"
+        }
+      ]
+    },
+    {
+      "lemma": "score",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the number of points a player or team gets",
+      "definition_vi": "tỷ số, điểm số",
+      "examples": [
+        {
+          "sentence": "The final score was two to one.",
+          "sentence_vi": "Tỷ số cuối cùng là hai trên một."
+        },
+        {
+          "sentence": "She got a high score on the test.",
+          "sentence_vi": "Cô ấy đạt điểm cao trong bài kiểm tra."
+        }
+      ]
+    },
+    {
+      "lemma": "smart",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "good at learning and thinking quickly",
+      "definition_vi": "thông minh",
+      "examples": [
+        {
+          "sentence": "My little sister is very smart for her age.",
+          "sentence_vi": "Em gái tôi rất thông minh so với tuổi của nó."
+        },
+        {
+          "sentence": "That was a smart answer to a hard question.",
+          "sentence_vi": "Đó là một câu trả lời thông minh cho một câu hỏi khó."
+        }
+      ]
+    },
+    {
+      "lemma": "throw",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to send something through the air with your hand",
+      "definition_vi": "ném, quăng",
+      "examples": [
+        {
+          "sentence": "Can you throw me the ball?",
+          "sentence_vi": "Bạn có thể ném quả bóng cho tôi không?"
+        },
+        {
+          "sentence": "Don't throw rubbish on the ground.",
+          "sentence_vi": "Đừng ném rác xuống đất."
+        }
+      ]
+    },
+    {
+      "lemma": "wedding",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a ceremony where two people get married",
+      "definition_vi": "đám cưới",
+      "examples": [
+        {
+          "sentence": "Their wedding was on a sunny day in June.",
+          "sentence_vi": "Đám cưới của họ vào một ngày tháng Sáu nắng đẹp."
+        },
+        {
+          "sentence": "We wore nice clothes to the wedding.",
+          "sentence_vi": "Chúng tôi mặc đẹp đến đám cưới."
+        }
+      ]
+    },
+    {
+      "lemma": "african",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "relating to Africa or its people",
+      "definition_vi": "thuộc về châu Phi",
+      "examples": [
+        {
+          "sentence": "We ate delicious African food at the festival.",
+          "sentence_vi": "Chúng tôi ăn món ăn châu Phi ngon tại lễ hội."
+        },
+        {
+          "sentence": "She studies African history at university.",
+          "sentence_vi": "Cô ấy nghiên cứu lịch sử châu Phi ở trường đại học."
+        }
+      ]
+    },
+    {
+      "lemma": "click",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to press a button on a computer mouse",
+      "definition_vi": "nhấp chuột",
+      "examples": [
+        {
+          "sentence": "Click on the link to open the page.",
+          "sentence_vi": "Nhấp vào đường liên kết để mở trang."
+        },
+        {
+          "sentence": "She clicked the wrong button and lost her work.",
+          "sentence_vi": "Cô ấy nhấp nhầm nút và mất bài làm."
+        }
+      ]
+    },
+    {
+      "lemma": "failed",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "did not succeed in doing something",
+      "definition_vi": "thất bại",
+      "examples": [
+        {
+          "sentence": "He failed the driving test twice last year.",
+          "sentence_vi": "Anh ấy trượt bài thi lái xe hai lần năm ngoái."
+        },
+        {
+          "sentence": "The company failed because it had no customers.",
+          "sentence_vi": "Công ty thất bại vì không có khách hàng."
+        }
+      ]
+    },
+    {
+      "lemma": "larger",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "bigger than something else; the comparative of large",
+      "definition_vi": "lớn hơn",
+      "examples": [
+        {
+          "sentence": "This bag is larger than the one I bought last week.",
+          "sentence_vi": "Chiếc túi này lớn hơn chiếc tôi mua tuần trước."
+        },
+        {
+          "sentence": "They moved to a larger apartment after the baby was born.",
+          "sentence_vi": "Họ chuyển đến căn hộ lớn hơn sau khi em bé chào đời."
+        }
+      ]
+    },
+    {
+      "lemma": "metal",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a hard shiny material like iron or gold",
+      "definition_vi": "kim loại",
+      "examples": [
+        {
+          "sentence": "The door is made of metal.",
+          "sentence_vi": "Cánh cửa được làm bằng kim loại."
+        },
+        {
+          "sentence": "This metal gets very hot in the sun.",
+          "sentence_vi": "Kim loại này rất nóng dưới ánh nắng."
+        }
+      ]
+    },
+    {
+      "lemma": "returned",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "came or went back to a place",
+      "definition_vi": "đã trở về",
+      "examples": [
+        {
+          "sentence": "He returned home after two years abroad.",
+          "sentence_vi": "Anh ấy trở về nhà sau hai năm ở nước ngoài."
+        },
+        {
+          "sentence": "She returned the book to the library.",
+          "sentence_vi": "Cô ấy đã trả sách lại cho thư viện."
+        }
+      ]
+    },
+    {
+      "lemma": "seemed",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "appeared to be true or likely",
+      "definition_vi": "dường như",
+      "examples": [
+        {
+          "sentence": "She seemed very happy at the party.",
+          "sentence_vi": "Cô ấy dường như rất vui trong bữa tiệc."
+        },
+        {
+          "sentence": "It seemed like a good idea at the time.",
+          "sentence_vi": "Lúc đó nó có vẻ là một ý tưởng hay."
+        }
+      ]
+    },
+    {
+      "lemma": "village",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a very small town in the countryside",
+      "definition_vi": "làng, thôn",
+      "examples": [
+        {
+          "sentence": "My grandmother lives in a small village.",
+          "sentence_vi": "Bà tôi sống ở một ngôi làng nhỏ."
+        },
+        {
+          "sentence": "The village has only one shop and a school.",
+          "sentence_vi": "Ngôi làng chỉ có một cửa hàng và một trường học."
+        }
+      ]
+    },
+    {
+      "lemma": "becoming",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "growing or changing into something; starting to be",
+      "definition_vi": "trở thành, đang trở nên",
+      "examples": [
+        {
+          "sentence": "The weather is becoming colder every day.",
+          "sentence_vi": "Thời tiết ngày càng trở nên lạnh hơn."
+        },
+        {
+          "sentence": "After years of study, he is becoming a doctor.",
+          "sentence_vi": "Sau nhiều năm học, anh ấy đang trở thành bác sĩ."
+        }
+      ]
+    },
+    {
+      "lemma": "employees",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "people who work for a company and get paid",
+      "definition_vi": "nhân viên",
+      "examples": [
+        {
+          "sentence": "The company has fifty employees in this office.",
+          "sentence_vi": "Công ty có năm mươi nhân viên ở văn phòng này."
+        },
+        {
+          "sentence": "All employees must wear a badge at work.",
+          "sentence_vi": "Tất cả nhân viên phải đeo thẻ khi làm việc."
+        }
+      ]
+    },
+    {
+      "lemma": "enter",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to go or come into a place",
+      "definition_vi": "vào, đi vào",
+      "examples": [
+        {
+          "sentence": "Please enter the room quietly, the baby is sleeping.",
+          "sentence_vi": "Xin hãy vào phòng một cách yên lặng, em bé đang ngủ."
+        },
+        {
+          "sentence": "She entered the building through the back door.",
+          "sentence_vi": "Cô ấy đã vào tòa nhà qua cửa sau."
+        }
+      ]
+    },
+    {
+      "lemma": "follows",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "comes or goes after someone or something",
+      "definition_vi": "theo sau, đi theo",
+      "examples": [
+        {
+          "sentence": "The little dog follows its owner everywhere.",
+          "sentence_vi": "Chú chó con đi theo chủ ở khắp mọi nơi."
+        },
+        {
+          "sentence": "A short break follows each lesson.",
+          "sentence_vi": "Một giờ nghỉ ngắn theo sau mỗi tiết học."
+        }
+      ]
+    },
+    {
+      "lemma": "japanese",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "coming from or relating to Japan",
+      "definition_vi": "thuộc về Nhật Bản; tiếng Nhật",
+      "examples": [
+        {
+          "sentence": "She is learning Japanese at an evening class.",
+          "sentence_vi": "Cô ấy đang học tiếng Nhật ở lớp học buổi tối."
+        },
+        {
+          "sentence": "We ate Japanese food for dinner last night.",
+          "sentence_vi": "Tối qua chúng tôi đã ăn món Nhật cho bữa tối."
+        }
+      ]
+    },
+    {
+      "lemma": "memory",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the ability to remember things, or something you remember",
+      "definition_vi": "trí nhớ; ký ức",
+      "examples": [
+        {
+          "sentence": "My grandmother has a very good memory for names.",
+          "sentence_vi": "Bà tôi có trí nhớ rất tốt về tên tuổi."
+        },
+        {
+          "sentence": "That summer at the beach is a happy memory for me.",
+          "sentence_vi": "Mùa hè ở bãi biển năm đó là một ký ức hạnh phúc đối với tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "projects",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "pieces of planned work with a clear goal",
+      "definition_vi": "dự án",
+      "examples": [
+        {
+          "sentence": "The students presented their science projects to the class.",
+          "sentence_vi": "Học sinh đã trình bày các dự án khoa học của mình trước lớp."
+        },
+        {
+          "sentence": "The company finished two big building projects this year.",
+          "sentence_vi": "Công ty đã hoàn thành hai dự án xây dựng lớn trong năm nay."
+        }
+      ]
+    },
+    {
+      "lemma": "rise",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to move up or go to a higher level",
+      "definition_vi": "tăng lên; đi lên",
+      "examples": [
+        {
+          "sentence": "Prices rise every year before the holidays.",
+          "sentence_vi": "Giá cả tăng lên mỗi năm trước kỳ nghỉ lễ."
+        },
+        {
+          "sentence": "We watched the sun rise over the mountains.",
+          "sentence_vi": "Chúng tôi ngắm mặt trời mọc trên dãy núi."
+        }
+      ]
+    },
+    {
+      "lemma": "selling",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "giving something to someone in exchange for money",
+      "definition_vi": "bán",
+      "examples": [
+        {
+          "sentence": "The shop is selling fresh bread every morning.",
+          "sentence_vi": "Cửa hàng bán bánh mì tươi mỗi sáng."
+        },
+        {
+          "sentence": "They are selling their old car to buy a new one.",
+          "sentence_vi": "Họ đang bán chiếc xe cũ để mua một chiếc mới."
+        }
+      ]
+    },
+    {
+      "lemma": "served",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "past of serve; gave food or help to people",
+      "definition_vi": "đã phục vụ, đã mang (đồ ăn) ra",
+      "examples": [
+        {
+          "sentence": "The waiter served us coffee very quickly.",
+          "sentence_vi": "Người phục vụ mang cà phê ra cho chúng tôi rất nhanh."
+        },
+        {
+          "sentence": "She served dinner to her family at seven o'clock.",
+          "sentence_vi": "Cô ấy dọn bữa tối cho gia đình lúc bảy giờ."
+        }
+      ]
+    },
+    {
+      "lemma": "silver",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a shiny grey-white metal used for jewellery and coins",
+      "definition_vi": "bạc",
+      "examples": [
+        {
+          "sentence": "She wears a beautiful silver ring on her finger.",
+          "sentence_vi": "Cô ấy đeo một chiếc nhẫn bạc đẹp trên ngón tay."
+        },
+        {
+          "sentence": "The old spoon was made of real silver.",
+          "sentence_vi": "Chiếc thìa cũ được làm bằng bạc thật."
+        }
+      ]
+    },
+    {
+      "lemma": "adult",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a fully grown person, not a child",
+      "definition_vi": "người trưởng thành",
+      "examples": [
+        {
+          "sentence": "Children must be with an adult at the pool.",
+          "sentence_vi": "Trẻ em phải đi cùng người lớn ở hồ bơi."
+        },
+        {
+          "sentence": "The ticket costs less for an adult than a child.",
+          "sentence_vi": "Vé cho người trưởng thành đắt hơn vé cho trẻ em."
+        }
+      ]
+    },
+    {
+      "lemma": "artist",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a person who makes paintings, music, or other art",
+      "definition_vi": "họa sĩ, nghệ sĩ",
+      "examples": [
+        {
+          "sentence": "The artist painted a picture of the sea.",
+          "sentence_vi": "Họa sĩ vẽ một bức tranh về biển."
+        },
+        {
+          "sentence": "My sister wants to become a famous artist one day.",
+          "sentence_vi": "Chị tôi muốn trở thành một nghệ sĩ nổi tiếng một ngày nào đó."
+        }
+      ]
+    },
+    {
+      "lemma": "grade",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a mark showing how good a student's work is",
+      "definition_vi": "điểm, xếp loại",
+      "examples": [
+        {
+          "sentence": "She got a good grade on her English test.",
+          "sentence_vi": "Cô ấy được điểm cao trong bài kiểm tra tiếng Anh."
+        },
+        {
+          "sentence": "His grade in maths improved after extra lessons.",
+          "sentence_vi": "Điểm toán của cậu ấy được cải thiện sau các buổi học thêm."
+        }
+      ]
+    },
+    {
+      "lemma": "mike",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a short word for a microphone, used to make sound louder",
+      "definition_vi": "micrô (cách nói ngắn)",
+      "examples": [
+        {
+          "sentence": "Please speak into the mike so everyone can hear you.",
+          "sentence_vi": "Xin hãy nói vào micrô để mọi người nghe được bạn."
+        },
+        {
+          "sentence": "The singer held the mike close to her mouth.",
+          "sentence_vi": "Ca sĩ giữ micrô sát gần miệng."
+        }
+      ]
+    },
+    {
+      "lemma": "prison",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a building where people are kept as punishment for crimes",
+      "definition_vi": "nhà tù",
+      "examples": [
+        {
+          "sentence": "He spent five years in prison for stealing.",
+          "sentence_vi": "Anh ấy ngồi tù năm năm vì tội trộm cắp."
+        },
+        {
+          "sentence": "The old prison is now a museum.",
+          "sentence_vi": "Nhà tù cũ nay là một bảo tàng."
+        }
+      ]
+    },
+    {
+      "lemma": "stone",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a small piece of rock; also a hard mineral material",
+      "definition_vi": "đá, hòn đá",
+      "examples": [
+        {
+          "sentence": "He threw a stone into the river.",
+          "sentence_vi": "Anh ấy ném một hòn đá xuống sông."
+        },
+        {
+          "sentence": "The old bridge is made of stone.",
+          "sentence_vi": "Cây cầu cổ được làm bằng đá."
+        }
+      ]
+    },
+    {
+      "lemma": "strength",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the power or energy in your body or mind",
+      "definition_vi": "sức mạnh, sức mạnh thể chất hoặc tinh thần",
+      "examples": [
+        {
+          "sentence": "She used all her strength to lift the heavy box.",
+          "sentence_vi": "Cô ấy dùng hết sức mạnh để nhấc chiếc hộp nặng."
+        },
+        {
+          "sentence": "This team has great strength in defense.",
+          "sentence_vi": "Đội này có sức mạnh lớn trong phòng ngự."
+        }
+      ]
+    },
+    {
+      "lemma": "users",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "people who use something, like a phone or website",
+      "definition_vi": "người dùng",
+      "examples": [
+        {
+          "sentence": "The app has millions of users around the world.",
+          "sentence_vi": "Ứng dụng có hàng triệu người dùng trên toàn thế giới."
+        },
+        {
+          "sentence": "New users must create an account first.",
+          "sentence_vi": "Người dùng mới phải tạo tài khoản trước."
+        }
+      ]
+    },
+    {
+      "lemma": "wild",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "living free in nature, not controlled by people",
+      "definition_vi": "hoang dã",
+      "examples": [
+        {
+          "sentence": "We saw wild horses on the mountain.",
+          "sentence_vi": "Chúng tôi thấy những con ngựa hoang trên núi."
+        },
+        {
+          "sentence": "These flowers grow wild near the river.",
+          "sentence_vi": "Những bông hoa này mọc hoang gần con sông."
+        }
+      ]
+    },
+    {
+      "lemma": "winner",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the person or team that wins a game or race",
+      "definition_vi": "người chiến thắng",
+      "examples": [
+        {
+          "sentence": "The winner of the race gets a gold medal.",
+          "sentence_vi": "Người chiến thắng cuộc đua nhận huy chương vàng."
+        },
+        {
+          "sentence": "Everyone cheered when the winner crossed the line.",
+          "sentence_vi": "Mọi người reo hò khi người chiến thắng vượt vạch đích."
+        }
+      ]
+    },
+    {
+      "lemma": "camp",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a place with tents where people stay for a short time",
+      "definition_vi": "trại, chỗ cắm trại",
+      "examples": [
+        {
+          "sentence": "We set up our camp near the lake.",
+          "sentence_vi": "Chúng tôi dựng trại gần hồ."
+        },
+        {
+          "sentence": "The children sang songs around the camp fire.",
+          "sentence_vi": "Lũ trẻ hát quanh đống lửa trại."
+        }
+      ]
+    },
+    {
+      "lemma": "continues",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "keeps happening or going on without stopping",
+      "definition_vi": "tiếp tục",
+      "examples": [
+        {
+          "sentence": "The rain continues all day long.",
+          "sentence_vi": "Mưa tiếp tục suốt cả ngày."
+        },
+        {
+          "sentence": "She continues to study English every evening.",
+          "sentence_vi": "Cô ấy tiếp tục học tiếng Anh mỗi tối."
+        }
+      ]
+    },
+    {
+      "lemma": "correct",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "right, without any mistakes",
+      "definition_vi": "đúng, chính xác",
+      "examples": [
+        {
+          "sentence": "Your answer is correct; well done!",
+          "sentence_vi": "Câu trả lời của bạn đúng; làm tốt lắm!"
+        },
+        {
+          "sentence": "Please write the correct address on the form.",
+          "sentence_vi": "Vui lòng ghi địa chỉ chính xác vào mẫu đơn."
+        }
+      ]
+    },
+    {
+      "lemma": "dangerous",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "able to cause harm or injury",
+      "definition_vi": "nguy hiểm",
+      "examples": [
+        {
+          "sentence": "It is dangerous to swim in this river.",
+          "sentence_vi": "Bơi ở con sông này rất nguy hiểm."
+        },
+        {
+          "sentence": "That dog looks dangerous, so stay away.",
+          "sentence_vi": "Con chó đó trông nguy hiểm, nên tránh xa."
+        }
+      ]
+    },
+    {
+      "lemma": "greatest",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "the most good, big, or important of all",
+      "definition_vi": "vĩ đại nhất, lớn nhất",
+      "examples": [
+        {
+          "sentence": "He is the greatest football player in the world.",
+          "sentence_vi": "Anh ấy là cầu thủ bóng đá vĩ đại nhất thế giới."
+        },
+        {
+          "sentence": "That was the greatest day of my life.",
+          "sentence_vi": "Đó là ngày tuyệt vời nhất trong đời tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "improve",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to make or become better",
+      "definition_vi": "cải thiện, tiến bộ",
+      "examples": [
+        {
+          "sentence": "I want to improve my English this year.",
+          "sentence_vi": "Tôi muốn cải thiện tiếng Anh của mình trong năm nay."
+        },
+        {
+          "sentence": "Her health improved after the holiday.",
+          "sentence_vi": "Sức khỏe của cô ấy đã tốt hơn sau kỳ nghỉ."
+        }
+      ]
+    },
+    {
+      "lemma": "till",
+      "pos": "preposition",
+      "cefr_level": "A2",
+      "definition": "up to a time; until",
+      "definition_vi": "cho đến khi",
+      "examples": [
+        {
+          "sentence": "The shop is open till nine o'clock.",
+          "sentence_vi": "Cửa hàng mở cửa đến chín giờ."
+        },
+        {
+          "sentence": "We waited till the rain stopped.",
+          "sentence_vi": "Chúng tôi đợi cho đến khi mưa tạnh."
+        }
+      ]
+    },
+    {
+      "lemma": "trouble",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a problem or difficult situation that makes you worried",
+      "definition_vi": "rắc rối, vấn đề khó khăn",
+      "examples": [
+        {
+          "sentence": "She had trouble finding her keys this morning.",
+          "sentence_vi": "Sáng nay cô ấy gặp rắc rối khi tìm chìa khóa."
+        },
+        {
+          "sentence": "The new car caused a lot of trouble for us.",
+          "sentence_vi": "Chiếc xe mới gây ra rất nhiều rắc rối cho chúng tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "customers",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "people who buy things from a shop or business",
+      "definition_vi": "khách hàng",
+      "examples": [
+        {
+          "sentence": "The shop serves hundreds of customers every day.",
+          "sentence_vi": "Cửa hàng phục vụ hàng trăm khách hàng mỗi ngày."
+        },
+        {
+          "sentence": "Happy customers often come back again.",
+          "sentence_vi": "Khách hàng hài lòng thường quay lại."
+        }
+      ]
+    },
+    {
+      "lemma": "decide",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to choose what to do after thinking about it",
+      "definition_vi": "quyết định",
+      "examples": [
+        {
+          "sentence": "We must decide where to eat tonight.",
+          "sentence_vi": "Chúng ta phải quyết định tối nay ăn ở đâu."
+        },
+        {
+          "sentence": "She decided to study English in London.",
+          "sentence_vi": "Cô ấy quyết định học tiếng Anh ở London."
+        }
+      ]
+    },
+    {
+      "lemma": "fifth",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "coming after four others in order",
+      "definition_vi": "thứ năm",
+      "examples": [
+        {
+          "sentence": "My birthday is on the fifth of June.",
+          "sentence_vi": "Sinh nhật của tôi vào ngày mùng năm tháng Sáu."
+        },
+        {
+          "sentence": "She finished fifth in the race.",
+          "sentence_vi": "Cô ấy về đích thứ năm trong cuộc đua."
+        }
+      ]
+    },
+    {
+      "lemma": "gift",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "something you give to someone for free",
+      "definition_vi": "món quà",
+      "examples": [
+        {
+          "sentence": "She gave me a lovely gift for my birthday.",
+          "sentence_vi": "Cô ấy tặng tôi một món quà dễ thương vào sinh nhật."
+        },
+        {
+          "sentence": "We wrapped the gift in colorful paper.",
+          "sentence_vi": "Chúng tôi gói món quà bằng giấy nhiều màu."
+        }
+      ]
+    },
+    {
+      "lemma": "impossible",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "not able to happen or be done",
+      "definition_vi": "không thể, bất khả thi",
+      "examples": [
+        {
+          "sentence": "It is impossible to finish this work in one day.",
+          "sentence_vi": "Thật không thể hoàn thành công việc này trong một ngày."
+        },
+        {
+          "sentence": "Nothing is impossible if you try hard.",
+          "sentence_vi": "Không có gì là bất khả thi nếu bạn cố gắng."
+        }
+      ]
+    },
+    {
+      "lemma": "items",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "single things in a list or group",
+      "definition_vi": "các mục, món đồ",
+      "examples": [
+        {
+          "sentence": "Please check all the items in your bag.",
+          "sentence_vi": "Vui lòng kiểm tra tất cả các món đồ trong túi của bạn."
+        },
+        {
+          "sentence": "The shop sells many items at low prices.",
+          "sentence_vi": "Cửa hàng bán nhiều mặt hàng với giá thấp."
+        }
+      ]
+    },
+    {
+      "lemma": "proud",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "feeling happy about something you or someone did well",
+      "definition_vi": "tự hào",
+      "examples": [
+        {
+          "sentence": "Her parents are proud of her good grades.",
+          "sentence_vi": "Cha mẹ cô ấy tự hào về điểm số tốt của cô."
+        },
+        {
+          "sentence": "I felt proud when I finished the race.",
+          "sentence_vi": "Tôi cảm thấy tự hào khi hoàn thành cuộc đua."
+        }
+      ]
+    },
+    {
+      "lemma": "van",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a large vehicle used for carrying things",
+      "definition_vi": "xe tải nhỏ",
+      "examples": [
+        {
+          "sentence": "The workers loaded the boxes into the van.",
+          "sentence_vi": "Những người công nhân chất các thùng hàng lên xe tải nhỏ."
+        },
+        {
+          "sentence": "A white van stopped in front of our house.",
+          "sentence_vi": "Một chiếc xe tải nhỏ màu trắng dừng trước nhà chúng tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "wood",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the hard material that comes from trees",
+      "definition_vi": "gỗ",
+      "examples": [
+        {
+          "sentence": "The table is made of wood.",
+          "sentence_vi": "Chiếc bàn được làm bằng gỗ."
+        },
+        {
+          "sentence": "We collected wood to make a fire.",
+          "sentence_vi": "Chúng tôi nhặt gỗ để đốt lửa."
+        }
+      ]
+    },
+    {
+      "lemma": "birth",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the moment when a baby is born",
+      "definition_vi": "sự ra đời, sinh",
+      "examples": [
+        {
+          "sentence": "The baby's birth was on a cold night in March.",
+          "sentence_vi": "Em bé chào đời vào một đêm lạnh tháng Ba."
+        },
+        {
+          "sentence": "She wrote her date of birth on the form.",
+          "sentence_vi": "Cô ấy ghi ngày sinh của mình vào mẫu đơn."
+        }
+      ]
+    },
+    {
+      "lemma": "bridge",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a structure that carries a road or path over a river",
+      "definition_vi": "cây cầu",
+      "examples": [
+        {
+          "sentence": "We walked across the bridge to reach the village.",
+          "sentence_vi": "Chúng tôi đi qua cây cầu để đến ngôi làng."
+        },
+        {
+          "sentence": "The old bridge over the river is two hundred years old.",
+          "sentence_vi": "Cây cầu cổ bắc qua sông đã hai trăm năm tuổi."
+        }
+      ]
+    },
+    {
+      "lemma": "carried",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "held something and moved it from place to place",
+      "definition_vi": "mang, vác, khiêng",
+      "examples": [
+        {
+          "sentence": "She carried the heavy bag up the stairs.",
+          "sentence_vi": "Cô ấy mang chiếc túi nặng lên cầu thang."
+        },
+        {
+          "sentence": "The father carried his sleeping child to bed.",
+          "sentence_vi": "Người cha bế đứa con đang ngủ ra giường."
+        }
+      ]
+    },
+    {
+      "lemma": "charles",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a male first name used for people",
+      "definition_vi": "tên riêng Charles",
+      "examples": [
+        {
+          "sentence": "Charles is my oldest friend from school.",
+          "sentence_vi": "Charles là người bạn lâu năm nhất của tôi từ thời đi học."
+        },
+        {
+          "sentence": "I met Charles at the library yesterday.",
+          "sentence_vi": "Tôi gặp Charles ở thư viện hôm qua."
+        }
+      ]
+    },
+    {
+      "lemma": "copy",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a thing made to look exactly like another thing",
+      "definition_vi": "bản sao, bản chép",
+      "examples": [
+        {
+          "sentence": "Can you make a copy of this document for me?",
+          "sentence_vi": "Bạn có thể làm một bản sao tài liệu này cho tôi không?"
+        },
+        {
+          "sentence": "I bought a copy of the painting for my office.",
+          "sentence_vi": "Tôi mua một bản sao của bức tranh cho văn phòng."
+        }
+      ]
+    },
+    {
+      "lemma": "dear",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "loved or important to you; also used to start a letter",
+      "definition_vi": "thân mến; yêu quý",
+      "examples": [
+        {
+          "sentence": "My dear friend helped me when I was sick.",
+          "sentence_vi": "Người bạn thân yêu của tôi đã giúp tôi khi tôi bị ốm."
+        },
+        {
+          "sentence": "Dear Mr. Smith, thank you for your letter.",
+          "sentence_vi": "Kính gửi ông Smith, cảm ơn ông về lá thư."
+        }
+      ]
+    },
+    {
+      "lemma": "length",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "how long something is from one end to the other",
+      "definition_vi": "chiều dài",
+      "examples": [
+        {
+          "sentence": "Please measure the length of the table.",
+          "sentence_vi": "Hãy đo chiều dài của cái bàn."
+        },
+        {
+          "sentence": "The bridge has a length of two kilometers.",
+          "sentence_vi": "Cây cầu có chiều dài hai ki-lô-mét."
+        }
+      ]
+    },
+    {
+      "lemma": "lucky",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "having good things happen by chance",
+      "definition_vi": "may mắn, may mắn thay",
+      "examples": [
+        {
+          "sentence": "I was lucky to find a seat on the crowded bus.",
+          "sentence_vi": "Tôi may mắn tìm được chỗ ngồi trên xe buýt đông đúc."
+        },
+        {
+          "sentence": "She feels lucky to have such kind friends.",
+          "sentence_vi": "Cô ấy cảm thấy may mắn khi có những người bạn tốt bụng."
+        }
+      ]
+    },
+    {
+      "lemma": "onto",
+      "pos": "preposition",
+      "cefr_level": "A2",
+      "definition": "used to show movement to a surface or position",
+      "definition_vi": "lên trên",
+      "examples": [
+        {
+          "sentence": "The cat jumped onto the table.",
+          "sentence_vi": "Con mèo nhảy lên bàn."
+        },
+        {
+          "sentence": "She put the books onto the shelf.",
+          "sentence_vi": "Cô ấy đặt những cuốn sách lên kệ."
+        }
+      ]
+    },
+    {
+      "lemma": "patient",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a person who is being treated by a doctor",
+      "definition_vi": "bệnh nhân",
+      "examples": [
+        {
+          "sentence": "The patient needs to take this medicine twice a day.",
+          "sentence_vi": "Bệnh nhân cần uống thuốc này hai lần một ngày."
+        },
+        {
+          "sentence": "The doctor visited each patient in the morning.",
+          "sentence_vi": "Bác sĩ thăm từng bệnh nhân vào buổi sáng."
+        }
+      ]
+    },
+    {
+      "lemma": "skills",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the abilities you need to do something well",
+      "definition_vi": "kỹ năng",
+      "examples": [
+        {
+          "sentence": "She has excellent computer skills.",
+          "sentence_vi": "Cô ấy có kỹ năng máy tính tuyệt vời."
+        },
+        {
+          "sentence": "You can improve your speaking skills by practising every day.",
+          "sentence_vi": "Bạn có thể cải thiện kỹ năng nói bằng cách luyện tập mỗi ngày."
+        }
+      ]
+    },
+    {
+      "lemma": "software",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "programs that make a computer work or do tasks",
+      "definition_vi": "phần mềm",
+      "examples": [
+        {
+          "sentence": "I need to install new software on my laptop.",
+          "sentence_vi": "Tôi cần cài phần mềm mới trên máy tính xách tay."
+        },
+        {
+          "sentence": "This software helps you edit photos easily.",
+          "sentence_vi": "Phần mềm này giúp bạn chỉnh sửa ảnh dễ dàng."
+        }
+      ]
+    },
+    {
+      "lemma": "thousands",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "very large numbers, from one thousand to many more",
+      "definition_vi": "hàng nghìn",
+      "examples": [
+        {
+          "sentence": "Thousands of people watched the football match.",
+          "sentence_vi": "Hàng nghìn người đã xem trận bóng đá."
+        },
+        {
+          "sentence": "The library has thousands of books for children.",
+          "sentence_vi": "Thư viện có hàng nghìn sách cho trẻ em."
+        }
+      ]
+    },
+    {
+      "lemma": "ad",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a short message that tells people about a product or service",
+      "definition_vi": "quảng cáo",
+      "examples": [
+        {
+          "sentence": "I saw an ad for a new phone on TV.",
+          "sentence_vi": "Tôi thấy một quảng cáo điện thoại mới trên TV."
+        },
+        {
+          "sentence": "She put an ad online to sell her old bike.",
+          "sentence_vi": "Cô ấy đăng một quảng cáo trên mạng để bán chiếc xe đạp cũ."
+        }
+      ]
+    },
+    {
+      "lemma": "alive",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "living; not dead",
+      "definition_vi": "còn sống",
+      "examples": [
+        {
+          "sentence": "The doctors worked hard to keep the old man alive.",
+          "sentence_vi": "Các bác sĩ đã làm việc hết sức để giữ cho ông già còn sống."
+        },
+        {
+          "sentence": "After the earthquake, many people were still alive under the buildings.",
+          "sentence_vi": "Sau trận động đất, nhiều người vẫn còn sống dưới các tòa nhà."
+        }
+      ]
+    },
+    {
+      "lemma": "boss",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the person who tells workers what to do",
+      "definition_vi": "ông chủ, sếp",
+      "examples": [
+        {
+          "sentence": "My boss asked me to finish the report today.",
+          "sentence_vi": "Sếp của tôi yêu cầu tôi hoàn thành báo cáo hôm nay."
+        },
+        {
+          "sentence": "She became the boss of a small company last year.",
+          "sentence_vi": "Cô ấy trở thành sếp của một công ty nhỏ năm ngoái."
+        }
+      ]
+    },
+    {
+      "lemma": "cards",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "small pieces of stiff paper used for games or greetings",
+      "definition_vi": "thẻ, thiệp",
+      "examples": [
+        {
+          "sentence": "We played cards together after dinner.",
+          "sentence_vi": "Chúng tôi chơi bài cùng nhau sau bữa tối."
+        },
+        {
+          "sentence": "I sent birthday cards to all my friends.",
+          "sentence_vi": "Tôi đã gửi thiệp sinh nhật cho tất cả bạn bè."
+        }
+      ]
+    },
+    {
+      "lemma": "changing",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "becoming or making something different",
+      "definition_vi": "đang thay đổi",
+      "examples": [
+        {
+          "sentence": "The weather is changing quickly today.",
+          "sentence_vi": "Thời tiết hôm nay thay đổi nhanh."
+        },
+        {
+          "sentence": "He is changing his clothes before the party.",
+          "sentence_vi": "Anh ấy đang thay quần áo trước buổi tiệc."
+        }
+      ]
+    },
+    {
+      "lemma": "easier",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "not as difficult as something else",
+      "definition_vi": "dễ hơn",
+      "examples": [
+        {
+          "sentence": "This exercise is easier than the last one.",
+          "sentence_vi": "Bài tập này dễ hơn bài trước."
+        },
+        {
+          "sentence": "Speaking English gets easier with practice.",
+          "sentence_vi": "Nói tiếng Anh trở nên dễ hơn khi luyện tập."
+        }
+      ]
+    },
+    {
+      "lemma": "florida",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a warm state in the southeast of the USA",
+      "definition_vi": "bang Florida (Mỹ)",
+      "examples": [
+        {
+          "sentence": "My family goes to Florida every winter to enjoy the sun.",
+          "sentence_vi": "Gia đình tôi đến Florida mỗi mùa đông để tận hưởng nắng."
+        },
+        {
+          "sentence": "Florida is famous for its beaches and theme parks.",
+          "sentence_vi": "Florida nổi tiếng với những bãi biển và công viên giải trí."
+        }
+      ]
+    },
+    {
+      "lemma": "knowing",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "having information or understanding about something",
+      "definition_vi": "biết, hiểu",
+      "examples": [
+        {
+          "sentence": "Knowing the answer made her feel confident.",
+          "sentence_vi": "Biết câu trả lời khiến cô ấy cảm thấy tự tin."
+        },
+        {
+          "sentence": "He smiled, knowing that everything was fine.",
+          "sentence_vi": "Anh ấy mỉm cười, biết rằng mọi thứ đều ổn."
+        }
+      ]
+    },
+    {
+      "lemma": "magic",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "special powers that make impossible things happen",
+      "definition_vi": "phép thuật, ma thuật",
+      "examples": [
+        {
+          "sentence": "The wizard used magic to open the door.",
+          "sentence_vi": "Phù thủy dùng phép thuật để mở cánh cửa."
+        },
+        {
+          "sentence": "The children watched a magic show at the party.",
+          "sentence_vi": "Những đứa trẻ xem một buổi biểu diễn ảo thuật tại bữa tiệc."
+        }
+      ]
+    },
+    {
+      "lemma": "net",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "material with small holes, used to catch fish or balls",
+      "definition_vi": "lưới",
+      "examples": [
+        {
+          "sentence": "The fisherman threw his net into the river.",
+          "sentence_vi": "Người đánh cá ném chiếc lưới xuống sông."
+        },
+        {
+          "sentence": "The ball hit the net and fell down.",
+          "sentence_vi": "Quả bóng chạm lưới và rơi xuống."
+        }
+      ]
+    },
+    {
+      "lemma": "stick",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a thin piece of wood from a tree",
+      "definition_vi": "cây gậy, thanh gỗ nhỏ",
+      "examples": [
+        {
+          "sentence": "The dog picked up a stick in the park.",
+          "sentence_vi": "Con chó nhặt một cây gậy trong công viên."
+        },
+        {
+          "sentence": "He used a long stick to reach the ball.",
+          "sentence_vi": "Anh ấy dùng một cây gậy dài để lấy quả bóng."
+        }
+      ]
+    },
+    {
+      "lemma": "wake",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to stop sleeping, or make someone stop sleeping",
+      "definition_vi": "thức dậy; đánh thức",
+      "examples": [
+        {
+          "sentence": "I wake up at six o'clock every day.",
+          "sentence_vi": "Tôi thức dậy lúc sáu giờ mỗi ngày."
+        },
+        {
+          "sentence": "Please don't wake the baby during her nap.",
+          "sentence_vi": "Đừng đánh thức em bé trong lúc bé ngủ trưa."
+        }
+      ]
+    },
+    {
+      "lemma": "conversation",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a talk between two or more people",
+      "definition_vi": "cuộc trò chuyện",
+      "examples": [
+        {
+          "sentence": "We had a long conversation about our plans.",
+          "sentence_vi": "Chúng tôi đã có một cuộc trò chuyện dài về kế hoạch của mình."
+        },
+        {
+          "sentence": "She started a conversation with the new student.",
+          "sentence_vi": "Cô ấy bắt đầu trò chuyện với học sinh mới."
+        }
+      ]
+    },
+    {
+      "lemma": "corner",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the place where two lines, walls or streets meet",
+      "definition_vi": "góc, khúc quanh",
+      "examples": [
+        {
+          "sentence": "The shop is on the corner of the street.",
+          "sentence_vi": "Cửa hàng nằm ở góc đường."
+        },
+        {
+          "sentence": "Put the chair in the corner of the room.",
+          "sentence_vi": "Đặt chiếc ghế vào góc phòng."
+        }
+      ]
+    },
+    {
+      "lemma": "driver",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a person who drives a car, bus or taxi",
+      "definition_vi": "tài xế",
+      "examples": [
+        {
+          "sentence": "The bus driver stopped at every station.",
+          "sentence_vi": "Tài xế xe buýt dừng ở mỗi trạm."
+        },
+        {
+          "sentence": "Our taxi driver was very friendly.",
+          "sentence_vi": "Tài xế taxi của chúng tôi rất thân thiện."
+        }
+      ]
+    },
+    {
+      "lemma": "ends",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the last parts or points of something",
+      "definition_vi": "phần cuối, đầu mút",
+      "examples": [
+        {
+          "sentence": "Hold the two ends of the rope tightly.",
+          "sentence_vi": "Cầm chặt hai đầu sợi dây."
+        },
+        {
+          "sentence": "The film ends with a happy scene.",
+          "sentence_vi": "Bộ phim kết thúc bằng một cảnh vui vẻ."
+        }
+      ]
+    },
+    {
+      "lemma": "file",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a document or folder that stores information on a computer",
+      "definition_vi": "tệp, hồ sơ",
+      "examples": [
+        {
+          "sentence": "I saved the file on my computer.",
+          "sentence_vi": "Tôi đã lưu tệp trên máy tính."
+        },
+        {
+          "sentence": "Please send me the file by email.",
+          "sentence_vi": "Hãy gửi cho tôi tệp qua email."
+        }
+      ]
+    },
+    {
+      "lemma": "fix",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to repair something that is broken",
+      "definition_vi": "sửa chữa",
+      "examples": [
+        {
+          "sentence": "Can you fix my broken bike?",
+          "sentence_vi": "Bạn có thể sửa chiếc xe đạp hỏng của tôi không?"
+        },
+        {
+          "sentence": "Dad will fix the leaking tap tomorrow.",
+          "sentence_vi": "Bố sẽ sửa vòi nước bị rò rỉ vào ngày mai."
+        }
+      ]
+    },
+    {
+      "lemma": "guide",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a person who shows visitors around a place",
+      "definition_vi": "hướng dẫn viên",
+      "examples": [
+        {
+          "sentence": "Our guide showed us the old temple.",
+          "sentence_vi": "Hướng dẫn viên đã cho chúng tôi xem ngôi đền cổ."
+        },
+        {
+          "sentence": "The guide explained the history of the museum.",
+          "sentence_vi": "Hướng dẫn viên giải thích lịch sử của bảo tàng."
+        }
+      ]
+    },
+    {
+      "lemma": "images",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "pictures of people or things",
+      "definition_vi": "hình ảnh",
+      "examples": [
+        {
+          "sentence": "The website uses images to show the new products.",
+          "sentence_vi": "Trang web dùng hình ảnh để giới thiệu sản phẩm mới."
+        },
+        {
+          "sentence": "She took many images of the mountains on her trip.",
+          "sentence_vi": "Cô ấy đã chụp nhiều hình ảnh về núi trong chuyến đi."
+        }
+      ]
+    },
+    {
+      "lemma": "raise",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to lift something up or make it higher",
+      "definition_vi": "nâng lên, tăng lên",
+      "examples": [
+        {
+          "sentence": "Please raise your hand if you have a question.",
+          "sentence_vi": "Xin hãy giơ tay nếu bạn có câu hỏi."
+        },
+        {
+          "sentence": "They want to raise the price of coffee again.",
+          "sentence_vi": "Họ muốn tăng giá cà phê lần nữa."
+        }
+      ]
+    },
+    {
+      "lemma": "roll",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to move by turning over and over",
+      "definition_vi": "lăn, cuộn",
+      "examples": [
+        {
+          "sentence": "The ball will roll down the hill.",
+          "sentence_vi": "Quả bóng sẽ lăn xuống đồi."
+        },
+        {
+          "sentence": "Can you roll the dough into a circle?",
+          "sentence_vi": "Bạn có thể cuộn bột thành hình tròn không?"
+        }
+      ]
+    },
+    {
+      "lemma": "suggest",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to tell someone your idea about what to do",
+      "definition_vi": "gợi ý, đề nghị",
+      "examples": [
+        {
+          "sentence": "I suggest we take the bus instead of walking.",
+          "sentence_vi": "Tôi gợi ý chúng ta đi xe buýt thay vì đi bộ."
+        },
+        {
+          "sentence": "What restaurant would you suggest for dinner?",
+          "sentence_vi": "Bạn gợi ý nhà hàng nào cho bữa tối?"
+        }
+      ]
+    },
+    {
+      "lemma": "surprise",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a feeling you get when something unexpected happens",
+      "definition_vi": "sự ngạc nhiên",
+      "examples": [
+        {
+          "sentence": "Her visit was a big surprise for everyone.",
+          "sentence_vi": "Cuộc thăm của cô ấy là một sự ngạc nhiên lớn với mọi người."
+        },
+        {
+          "sentence": "We planned a surprise party for my brother.",
+          "sentence_vi": "Chúng tôi tổ chức một bữa tiệc bất ngờ cho anh trai tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "thoughts",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "ideas that you have in your mind",
+      "definition_vi": "suy nghĩ",
+      "examples": [
+        {
+          "sentence": "Please share your thoughts about the new plan.",
+          "sentence_vi": "Hãy chia sẻ suy nghĩ của bạn về kế hoạch mới."
+        },
+        {
+          "sentence": "My thoughts were far away during the long meeting.",
+          "sentence_vi": "Suy nghĩ của tôi bay xa trong cuộc họp dài."
+        }
+      ]
+    },
+    {
+      "lemma": "treat",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to act toward someone in a certain way",
+      "definition_vi": "đối xử",
+      "examples": [
+        {
+          "sentence": "You should treat older people with respect.",
+          "sentence_vi": "Bạn nên đối xử tôn trọng với người lớn tuổi."
+        },
+        {
+          "sentence": "The doctor will treat your illness with medicine.",
+          "sentence_vi": "Bác sĩ sẽ chữa bệnh của bạn bằng thuốc."
+        }
+      ]
+    },
+    {
+      "lemma": "breaking",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "making something separate into pieces, or damaging it",
+      "definition_vi": "làm vỡ, làm gãy",
+      "examples": [
+        {
+          "sentence": "Be careful not to break the glass when you are washing it.",
+          "sentence_vi": "Cẩn thận đừng làm vỡ ly khi bạn rửa nó."
+        },
+        {
+          "sentence": "He was breaking the chocolate into small pieces for the cake.",
+          "sentence_vi": "Anh ấy đang bẻ sô-cô-la thành những mảnh nhỏ cho chiếc bánh."
+        }
+      ]
+    },
+    {
+      "lemma": "excited",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "feeling very happy and interested about something",
+      "definition_vi": "hào hứng, phấn khích",
+      "examples": [
+        {
+          "sentence": "The children were excited about the trip to the zoo.",
+          "sentence_vi": "Bọn trẻ rất phấn khích về chuyến đi sở thú."
+        },
+        {
+          "sentence": "I felt excited when I opened my birthday presents.",
+          "sentence_vi": "Tôi cảm thấy háo hức khi mở quà sinh nhật của mình."
+        }
+      ]
+    },
+    {
+      "lemma": "forever",
+      "pos": "adverb",
+      "cefr_level": "A2",
+      "definition": "for all time; always",
+      "definition_vi": "mãi mãi",
+      "examples": [
+        {
+          "sentence": "I will remember this day forever.",
+          "sentence_vi": "Tôi sẽ nhớ ngày này mãi mãi."
+        },
+        {
+          "sentence": "She said the meeting felt like it lasted forever.",
+          "sentence_vi": "Cô ấy nói cuộc họp kéo dài như mãi mãi."
+        }
+      ]
+    },
+    {
+      "lemma": "iron",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a strong grey metal used to make tools",
+      "definition_vi": "sắt",
+      "examples": [
+        {
+          "sentence": "The gate is made of iron.",
+          "sentence_vi": "Cánh cổng được làm bằng sắt."
+        },
+        {
+          "sentence": "Iron is heavier than wood.",
+          "sentence_vi": "Sắt nặng hơn gỗ."
+        }
+      ]
+    },
+    {
+      "lemma": "lovely",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "very nice or beautiful",
+      "definition_vi": "đẹp, đáng yêu",
+      "examples": [
+        {
+          "sentence": "What a lovely garden you have!",
+          "sentence_vi": "Bạn có khu vườn đẹp quá!"
+        },
+        {
+          "sentence": "We spent a lovely afternoon by the sea.",
+          "sentence_vi": "Chúng tôi có một buổi chiều tuyệt vời bên biển."
+        }
+      ]
+    },
+    {
+      "lemma": "magazine",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a thin book with news and pictures, sold weekly or monthly",
+      "definition_vi": "tạp chí",
+      "examples": [
+        {
+          "sentence": "She reads a fashion magazine every month.",
+          "sentence_vi": "Cô ấy đọc một tạp chí thời trang mỗi tháng."
+        },
+        {
+          "sentence": "There are some magazines on the table in the waiting room.",
+          "sentence_vi": "Có vài tạp chí trên bàn ở phòng chờ."
+        }
+      ]
+    },
+    {
+      "lemma": "offers",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "says you will give something to someone",
+      "definition_vi": "đề nghị, đưa ra",
+      "examples": [
+        {
+          "sentence": "She always offers to help her neighbours.",
+          "sentence_vi": "Cô ấy luôn đề nghị giúp hàng xóm."
+        },
+        {
+          "sentence": "The shop offers a discount to new customers.",
+          "sentence_vi": "Cửa hàng giảm giá cho khách hàng mới."
+        }
+      ]
+    },
+    {
+      "lemma": "ordered",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "asked for food or goods to be brought to you",
+      "definition_vi": "đã đặt, đã gọi",
+      "examples": [
+        {
+          "sentence": "We ordered two pizzas for dinner.",
+          "sentence_vi": "Chúng tôi đã đặt hai chiếc pizza cho bữa tối."
+        },
+        {
+          "sentence": "She ordered a new phone online last week.",
+          "sentence_vi": "Cô ấy đã đặt một chiếc điện thoại mới trên mạng tuần trước."
+        }
+      ]
+    },
+    {
+      "lemma": "sites",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "places where something is or happened, or locations on the internet",
+      "definition_vi": "địa điểm; trang web",
+      "examples": [
+        {
+          "sentence": "Tourists visit famous historical sites in the city.",
+          "sentence_vi": "Du khách ghé thăm các địa điểm lịch sử nổi tiếng trong thành phố."
+        },
+        {
+          "sentence": "I read the news on several sites every morning.",
+          "sentence_vi": "Tôi đọc tin tức trên vài trang web mỗi sáng."
+        }
+      ]
+    },
+    {
+      "lemma": "somewhere",
+      "pos": "adverb",
+      "cefr_level": "A2",
+      "definition": "in or to a place, but you do not say exactly where",
+      "definition_vi": "ở đâu đó, nơi nào đó",
+      "examples": [
+        {
+          "sentence": "I left my keys somewhere in the house.",
+          "sentence_vi": "Tôi để chìa khóa ở đâu đó trong nhà."
+        },
+        {
+          "sentence": "Let's go somewhere quiet this weekend.",
+          "sentence_vi": "Cuối tuần này chúng ta đi đâu đó yên tĩnh nhé."
+        }
+      ]
+    },
+    {
+      "lemma": "web",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the system of connected pages on the internet",
+      "definition_vi": "mạng web, web",
+      "examples": [
+        {
+          "sentence": "You can find almost anything on the web.",
+          "sentence_vi": "Bạn có thể tìm thấy gần như mọi thứ trên web."
+        },
+        {
+          "sentence": "She built her first web page last week.",
+          "sentence_vi": "Cô ấy đã tạo trang web đầu tiên của mình tuần trước."
+        }
+      ]
+    },
+    {
+      "lemma": "wine",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "an alcoholic drink made from grapes",
+      "definition_vi": "rượu vang",
+      "examples": [
+        {
+          "sentence": "My father drinks a glass of wine with dinner.",
+          "sentence_vi": "Bố tôi uống một ly rượu vang với bữa tối."
+        },
+        {
+          "sentence": "This region is famous for its red wine.",
+          "sentence_vi": "Vùng này nổi tiếng với rượu vang đỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "angeles",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "part of the name of the US city Los Angeles",
+      "definition_vi": "thành phần tên thành phố Los Angeles",
+      "examples": [
+        {
+          "sentence": "Los Angeles is a big city in California.",
+          "sentence_vi": "Los Angeles là một thành phố lớn ở California."
+        },
+        {
+          "sentence": "My cousin moved to Los Angeles last year.",
+          "sentence_vi": "Anh họ tôi chuyển đến Los Angeles năm ngoái."
+        }
+      ]
+    },
+    {
+      "lemma": "blog",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a website where a person writes regularly about their life or interests",
+      "definition_vi": "nhật ký trực tuyến, blog",
+      "examples": [
+        {
+          "sentence": "She writes a blog about cooking simple meals.",
+          "sentence_vi": "Cô ấy viết một blog về nấu các món ăn đơn giản."
+        },
+        {
+          "sentence": "I read his travel blog before my trip.",
+          "sentence_vi": "Tôi đọc blog du lịch của anh ấy trước chuyến đi."
+        }
+      ]
+    },
+    {
+      "lemma": "closer",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "nearer to something than before or than another thing",
+      "definition_vi": "gần hơn",
+      "examples": [
+        {
+          "sentence": "Please move your chair closer to the window.",
+          "sentence_vi": "Vui lòng chuyển ghế của bạn lại gần cửa sổ hơn."
+        },
+        {
+          "sentence": "My brother and I are much closer now than when we were young.",
+          "sentence_vi": "Bây giờ tôi và anh trai thân thiết hơn nhiều so với khi còn nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "description",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "words that tell what something or someone is like",
+      "definition_vi": "sự mô tả",
+      "examples": [
+        {
+          "sentence": "The police asked her for a description of the thief.",
+          "sentence_vi": "Cảnh sát yêu cầu cô mô tả kẻ trộm."
+        },
+        {
+          "sentence": "His description of the beach made me want to visit it.",
+          "sentence_vi": "Lời mô tả về bãi biển của anh ấy khiến tôi muốn đến thăm."
+        }
+      ]
+    },
+    {
+      "lemma": "dropped",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "past tense of drop; let something fall from your hand",
+      "definition_vi": "đã làm rơi",
+      "examples": [
+        {
+          "sentence": "She dropped her phone on the floor and the screen broke.",
+          "sentence_vi": "Cô ấy làm rơi điện thoại xuống sàn và màn hình bị vỡ."
+        },
+        {
+          "sentence": "He dropped the ball during the game, and the other team scored.",
+          "sentence_vi": "Anh ấy đánh rơi bóng trong trận đấu, và đội kia ghi bàn."
+        }
+      ]
+    },
+    {
+      "lemma": "excellent",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "very good; of the highest quality",
+      "definition_vi": "xuất sắc, rất tốt",
+      "examples": [
+        {
+          "sentence": "The food at that restaurant was excellent.",
+          "sentence_vi": "Đồ ăn ở nhà hàng đó rất tuyệt."
+        },
+        {
+          "sentence": "She got an excellent score on her English test.",
+          "sentence_vi": "Cô ấy đạt điểm xuất sắc trong bài kiểm tra tiếng Anh."
+        }
+      ]
+    },
+    {
+      "lemma": "forms",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "documents with spaces where you write information",
+      "definition_vi": "mẫu đơn, tờ khai",
+      "examples": [
+        {
+          "sentence": "Please fill in these forms and sign at the bottom.",
+          "sentence_vi": "Vui lòng điền vào các mẫu đơn này và ký ở phần dưới."
+        },
+        {
+          "sentence": "You can download the application forms from the website.",
+          "sentence_vi": "Bạn có thể tải các mẫu đơn đăng ký từ trang web."
+        }
+      ]
+    },
+    {
+      "lemma": "honest",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "someone who tells the truth and does not cheat",
+      "definition_vi": "trung thực, thật thà",
+      "examples": [
+        {
+          "sentence": "He is an honest man who never lies to his friends.",
+          "sentence_vi": "Anh ấy là một người trung thực, không bao giờ nói dối bạn bè."
+        },
+        {
+          "sentence": "To be honest, I didn't like the movie very much.",
+          "sentence_vi": "Thật thà mà nói, tôi không thích bộ phim lắm."
+        }
+      ]
+    },
+    {
+      "lemma": "joined",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "past tense of join; became a member of a group or activity",
+      "definition_vi": "đã tham gia",
+      "examples": [
+        {
+          "sentence": "She joined the football club at her school last year.",
+          "sentence_vi": "Cô ấy đã tham gia câu lạc bộ bóng đá ở trường vào năm ngoái."
+        },
+        {
+          "sentence": "We joined the queue and waited for our turn.",
+          "sentence_vi": "Chúng tôi xếp hàng và chờ đến lượt mình."
+        }
+      ]
+    },
+    {
+      "lemma": "lies",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "words that are not true, said to trick someone",
+      "definition_vi": "lời nói dối",
+      "examples": [
+        {
+          "sentence": "Don't believe him; his story is full of lies.",
+          "sentence_vi": "Đừng tin anh ta; câu chuyện của anh ta toàn nói dối."
+        },
+        {
+          "sentence": "She told lies to her mother about where she went.",
+          "sentence_vi": "Cô ấy nói dối mẹ về nơi cô ấy đã đi."
+        }
+      ]
+    },
+    {
+      "lemma": "orders",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "instructions from someone in authority, or requests for goods",
+      "definition_vi": "mệnh lệnh; đơn đặt hàng",
+      "examples": [
+        {
+          "sentence": "The soldiers must follow their orders without questions.",
+          "sentence_vi": "Những người lính phải làm theo mệnh lệnh mà không hỏi gì."
+        },
+        {
+          "sentence": "The restaurant received many orders for pizza last night.",
+          "sentence_vi": "Nhà hàng nhận được nhiều đơn đặt hàng pizza tối qua."
+        }
+      ]
+    },
+    {
+      "lemma": "port",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a place by the sea where ships stop to load goods",
+      "definition_vi": "cảng",
+      "examples": [
+        {
+          "sentence": "The ship arrived at the port early in the morning.",
+          "sentence_vi": "Con tàu đến cảng vào sáng sớm."
+        },
+        {
+          "sentence": "Thousands of containers are moved at the port every day.",
+          "sentence_vi": "Hàng nghìn thùng hàng được di chuyển ở cảng mỗi ngày."
+        }
+      ]
+    },
+    {
+      "lemma": "shoot",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to fire a gun or arrow at something or someone",
+      "definition_vi": "bắn",
+      "examples": [
+        {
+          "sentence": "The hunter learned to shoot at a moving target.",
+          "sentence_vi": "Người thợ săn học cách bắn vào mục tiêu di chuyển."
+        },
+        {
+          "sentence": "In the film, the police shoot at the escaping car.",
+          "sentence_vi": "Trong phim, cảnh sát bắn vào chiếc xe đang bỏ chạy."
+        }
+      ]
+    },
+    {
+      "lemma": "spanish",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "relating to Spain, its people, or its language",
+      "definition_vi": "thuộc Tây Ban Nha; tiếng Tây Ban Nha",
+      "examples": [
+        {
+          "sentence": "She is learning Spanish so she can work in Madrid.",
+          "sentence_vi": "Cô ấy đang học tiếng Tây Ban Nha để có thể làm việc ở Madrid."
+        },
+        {
+          "sentence": "We ate Spanish food at a small restaurant last night.",
+          "sentence_vi": "Tối qua chúng tôi ăn món Tây Ban Nha ở một nhà hàng nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "taste",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the flavour of food or drink in your mouth",
+      "definition_vi": "vị, hương vị",
+      "examples": [
+        {
+          "sentence": "This soup has a very salty taste.",
+          "sentence_vi": "Món canh này có vị rất mặn."
+        },
+        {
+          "sentence": "I love the sweet taste of mango.",
+          "sentence_vi": "Tôi thích vị ngọt của xoài."
+        }
+      ]
+    },
+    {
+      "lemma": "assistant",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a person whose job is to help another person at work",
+      "definition_vi": "trợ lý",
+      "examples": [
+        {
+          "sentence": "The manager's assistant answers all his phone calls.",
+          "sentence_vi": "Trợ lý của giám đốc trả lời tất cả các cuộc gọi của anh ấy."
+        },
+        {
+          "sentence": "She works as a shop assistant in a small store.",
+          "sentence_vi": "Cô ấy làm nhân viên bán hàng trong một cửa hàng nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "britain",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the island country that includes England, Scotland and Wales",
+      "definition_vi": "nước Anh (Anh, Scotland, Wales)",
+      "examples": [
+        {
+          "sentence": "Britain has many old castles to visit.",
+          "sentence_vi": "Nước Anh có nhiều lâu đài cổ để tham quan."
+        },
+        {
+          "sentence": "It often rains in Britain, even in summer.",
+          "sentence_vi": "Ở Anh thường mưa, ngay cả vào mùa hè."
+        }
+      ]
+    },
+    {
+      "lemma": "electric",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "using or producing electricity to work",
+      "definition_vi": "chạy bằng điện",
+      "examples": [
+        {
+          "sentence": "My father bought an electric car last month.",
+          "sentence_vi": "Bố tôi đã mua một chiếc ô tô điện tháng trước."
+        },
+        {
+          "sentence": "Turn off the electric heater before you leave.",
+          "sentence_vi": "Hãy tắt máy sưởi điện trước khi bạn ra đi."
+        }
+      ]
+    },
+    {
+      "lemma": "entered",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "went or came into a place",
+      "definition_vi": "đã đi vào, bước vào",
+      "examples": [
+        {
+          "sentence": "She entered the room quietly so no one would wake up.",
+          "sentence_vi": "Cô ấy bước vào phòng một cách nhẹ nhàng để không ai tỉnh giấc."
+        },
+        {
+          "sentence": "We entered the building through the back door.",
+          "sentence_vi": "Chúng tôi vào tòa nhà qua cửa sau."
+        }
+      ]
+    },
+    {
+      "lemma": "festival",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "a special event with music, food or celebrations",
+      "definition_vi": "lễ hội",
+      "examples": [
+        {
+          "sentence": "The music festival happens every summer in our city.",
+          "sentence_vi": "Lễ hội âm nhạc diễn ra mỗi mùa hè ở thành phố chúng tôi."
+        },
+        {
+          "sentence": "Thousands of people visit the lantern festival each year.",
+          "sentence_vi": "Hàng nghìn người đến xem lễ hội đèn lồng mỗi năm."
+        }
+      ]
+    },
+    {
+      "lemma": "flat",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "smooth and level, with no raised parts",
+      "definition_vi": "phẳng",
+      "examples": [
+        {
+          "sentence": "The road was flat, so the bike ride was easy.",
+          "sentence_vi": "Con đường phẳng nên việc đạp xe rất dễ."
+        },
+        {
+          "sentence": "Put the paper on a flat surface before you write.",
+          "sentence_vi": "Đặt tờ giấy lên mặt phẳng trước khi viết."
+        }
+      ]
+    },
+    {
+      "lemma": "ill",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "sick; not feeling well in body",
+      "definition_vi": "ốm, bệnh",
+      "examples": [
+        {
+          "sentence": "He stayed home from school because he was ill.",
+          "sentence_vi": "Cậu ấy ở nhà không đi học vì bị ốm."
+        },
+        {
+          "sentence": "My grandmother became ill after eating old fish.",
+          "sentence_vi": "Bà tôi bị ốm sau khi ăn cá cũ."
+        }
+      ]
+    },
+    {
+      "lemma": "introduced",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "told people each other's names for the first time",
+      "definition_vi": "đã giới thiệu",
+      "examples": [
+        {
+          "sentence": "She introduced her brother to all her friends.",
+          "sentence_vi": "Cô ấy giới thiệu anh trai mình với tất cả bạn bè."
+        },
+        {
+          "sentence": "The teacher introduced a new game to the class.",
+          "sentence_vi": "Giáo viên giới thiệu một trò chơi mới cho lớp."
+        }
+      ]
+    },
+    {
+      "lemma": "johnson",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "an English family name used for people",
+      "definition_vi": "họ Johnson",
+      "examples": [
+        {
+          "sentence": "Mr Johnson teaches maths at our school.",
+          "sentence_vi": "Ông Johnson dạy toán ở trường chúng tôi."
+        },
+        {
+          "sentence": "My friend Anna Johnson lives near the park.",
+          "sentence_vi": "Bạn tôi Anna Johnson sống gần công viên."
+        }
+      ]
+    },
+    {
+      "lemma": "mail",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "letters and packages sent from one place to another",
+      "definition_vi": "thư, bưu phẩm",
+      "examples": [
+        {
+          "sentence": "I check my mail every morning.",
+          "sentence_vi": "Tôi kiểm tra thư mỗi sáng."
+        },
+        {
+          "sentence": "She sent the birthday card by mail.",
+          "sentence_vi": "Cô ấy gửi thiệp sinh nhật qua bưu điện."
+        }
+      ]
+    },
+    {
+      "lemma": "matters",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "to be important or have value",
+      "definition_vi": "quan trọng",
+      "examples": [
+        {
+          "sentence": "It matters that you arrive on time.",
+          "sentence_vi": "Việc bạn đến đúng giờ là quan trọng."
+        },
+        {
+          "sentence": "Money matters less than health.",
+          "sentence_vi": "Tiền bạc không quan trọng bằng sức khỏe."
+        }
+      ]
+    },
+    {
+      "lemma": "pair",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "two things used or seen together",
+      "definition_vi": "cặp, đôi",
+      "examples": [
+        {
+          "sentence": "I bought a new pair of shoes.",
+          "sentence_vi": "Tôi đã mua một đôi giày mới."
+        },
+        {
+          "sentence": "The pair of birds built a nest in our garden.",
+          "sentence_vi": "Đôi chim đã làm tổ trong vườn nhà chúng tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "picked",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "chose one thing from several; took fruit or flowers",
+      "definition_vi": "đã chọn; đã hái",
+      "examples": [
+        {
+          "sentence": "She picked the blue dress for the party.",
+          "sentence_vi": "Cô ấy đã chọn chiếc váy xanh cho bữa tiệc."
+        },
+        {
+          "sentence": "We picked apples in the garden yesterday.",
+          "sentence_vi": "Chúng tôi đã hái táo trong vườn hôm qua."
+        }
+      ]
+    },
+    {
+      "lemma": "pieces",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "small parts that something is broken or cut into",
+      "definition_vi": "những mảnh, miếng",
+      "examples": [
+        {
+          "sentence": "The cup broke into small pieces.",
+          "sentence_vi": "Chiếc cốc vỡ thành nhiều mảnh nhỏ."
+        },
+        {
+          "sentence": "He cut the pizza into eight pieces.",
+          "sentence_vi": "Anh ấy cắt chiếc pizza thành tám miếng."
+        }
+      ]
+    },
+    {
+      "lemma": "plenty",
+      "pos": "pronoun",
+      "cefr_level": "A2",
+      "definition": "a large amount; more than enough",
+      "definition_vi": "nhiều, dư dả",
+      "examples": [
+        {
+          "sentence": "Don't worry, we have plenty of food.",
+          "sentence_vi": "Đừng lo, chúng ta có nhiều thức ăn lắm."
+        },
+        {
+          "sentence": "There is plenty of time before the train leaves.",
+          "sentence_vi": "Còn nhiều thời gian trước khi tàu khởi hành."
+        }
+      ]
+    },
+    {
+      "lemma": "prince",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the son of a king or queen",
+      "definition_vi": "hoàng tử",
+      "examples": [
+        {
+          "sentence": "The young prince will become king one day.",
+          "sentence_vi": "Hoàng tử trẻ sẽ trở thành vua một ngày nào đó."
+        },
+        {
+          "sentence": "People waved as the prince walked past.",
+          "sentence_vi": "Mọi người vẫy tay khi hoàng tử đi ngang qua."
+        }
+      ]
+    },
+    {
+      "lemma": "quarter",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "one of four equal parts of something",
+      "definition_vi": "một phần tư",
+      "examples": [
+        {
+          "sentence": "She spent a quarter of her money on books.",
+          "sentence_vi": "Cô ấy dành một phần tư số tiền để mua sách."
+        },
+        {
+          "sentence": "Cut the cake into quarters so everyone gets some.",
+          "sentence_vi": "Cắt chiếc bánh thành bốn phần để ai cũng có phần."
+        }
+      ]
+    },
+    {
+      "lemma": "shape",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "the outer form of something, like a circle or square",
+      "definition_vi": "hình dạng",
+      "examples": [
+        {
+          "sentence": "The table has a round shape.",
+          "sentence_vi": "Chiếc bàn có hình dạng tròn."
+        },
+        {
+          "sentence": "She drew the shape of a heart on the paper.",
+          "sentence_vi": "Cô vẽ hình trái tim lên giấy."
+        }
+      ]
+    },
+    {
+      "lemma": "toward",
+      "pos": "preposition",
+      "cefr_level": "A2",
+      "definition": "in the direction of someone or something",
+      "definition_vi": "về phía, hướng về",
+      "examples": [
+        {
+          "sentence": "The dog ran toward the door.",
+          "sentence_vi": "Con chó chạy về phía cửa."
+        },
+        {
+          "sentence": "She walked toward the bus stop.",
+          "sentence_vi": "Cô ấy đi về phía trạm xe buýt."
+        }
+      ]
+    },
+    {
+      "lemma": "useful",
+      "pos": "adjective",
+      "cefr_level": "A2",
+      "definition": "helping you to do or get something",
+      "definition_vi": "hữu ích, có ích",
+      "examples": [
+        {
+          "sentence": "This book is very useful for learning English.",
+          "sentence_vi": "Cuốn sách này rất hữu ích để học tiếng Anh."
+        },
+        {
+          "sentence": "She gave me some useful advice about my job.",
+          "sentence_vi": "Cô ấy cho tôi vài lời khuyên hữu ích về công việc."
+        }
+      ]
+    },
+    {
+      "lemma": "accident",
+      "pos": "noun",
+      "cefr_level": "A2",
+      "definition": "something bad that happens by chance and causes harm",
+      "definition_vi": "tai nạn",
+      "examples": [
+        {
+          "sentence": "He had a small accident on his bike yesterday.",
+          "sentence_vi": "Hôm qua anh ấy bị một tai nạn nhỏ khi đi xe đạp."
+        },
+        {
+          "sentence": "The accident on the road stopped all the traffic.",
+          "sentence_vi": "Tai nạn trên đường khiến giao thông tắc nghẽn hoàn toàn."
+        }
+      ]
+    },
+    {
+      "lemma": "bringing",
+      "pos": "verb",
+      "cefr_level": "A2",
+      "definition": "carrying or taking something to a person or place",
+      "definition_vi": "mang đến, đem lại",
+      "examples": [
+        {
+          "sentence": "He is bringing some cake to the party.",
+          "sentence_vi": "Anh ấy đang mang một ít bánh đến bữa tiệc."
+        },
+        {
+          "sentence": "Thank you for bringing me the book.",
+          "sentence_vi": "Cảm ơn bạn đã mang sách cho tôi."
         }
       ]
     }

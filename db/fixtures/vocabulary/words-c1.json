@@ -38,6 +38,40 @@
           "sentence_vi": "Trong trò chơi này, quân vua thắng quân hậu."
         }
       ]
+    },
+    {
+      "lemma": "lee",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the side sheltered from wind; also a common family name",
+      "definition_vi": "sườn khuất gió; họ Lee",
+      "examples": [
+        {
+          "sentence": "We anchored the boat in the lee of the island to escape the storm.",
+          "sentence_vi": "Chúng tôi thả neo thuyền ở sườn khuất gió của hòn đảo để tránh bão."
+        },
+        {
+          "sentence": "Mr Lee has worked as an engineer for twenty years.",
+          "sentence_vi": "Ông Lee đã làm kỹ sư suốt hai mươi năm."
+        }
+      ]
+    },
+    {
+      "lemma": "harry",
+      "pos": "verb",
+      "cefr_level": "C1",
+      "definition": "to keep troubling or attacking someone again and again",
+      "definition_vi": "hành hạ, quấy nhiễu liên tục",
+      "examples": [
+        {
+          "sentence": "The soldiers harried the enemy camp all night long.",
+          "sentence_vi": "Quân sĩ quấy nhiễu trại địch suốt đêm."
+        },
+        {
+          "sentence": "Reporters continued to harry the minister with hard questions.",
+          "sentence_vi": "Các phóng viên tiếp tục quấy rối bộ trưởng bằng những câu hỏi khó."
+        }
+      ]
     }
   ]
 }
