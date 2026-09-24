@@ -3013,6 +3013,1264 @@
           "sentence_vi": "Anh ấy ném chiếc điện thoại chết tiệt xuống sàn trong cơn giận."
         }
       ]
+    },
+    {
+      "lemma": "instrumental",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "very important in making something happen or succeed",
+      "definition_vi": "đóng vai trò then chốt",
+      "examples": [
+        {
+          "sentence": "Her advice was instrumental in solving the problem.",
+          "sentence_vi": "Lời khuyên của cô ấy đóng vai trò then chốt trong việc giải quyết vấn đề."
+        },
+        {
+          "sentence": "He was instrumental in getting the project approved.",
+          "sentence_vi": "Anh ấy là người then chốt giúp dự án được phê duyệt."
+        }
+      ]
+    },
+    {
+      "lemma": "speculation",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "talk or ideas about something without knowing the facts",
+      "definition_vi": "sự suy đoán",
+      "examples": [
+        {
+          "sentence": "There is much speculation about who will win the election.",
+          "sentence_vi": "Có nhiều suy đoán về việc ai sẽ thắng cử."
+        },
+        {
+          "sentence": "The company refused to comment on the speculation about job cuts.",
+          "sentence_vi": "Công ty từ chối bình luận về suy đoán về việc cắt giảm nhân sự."
+        }
+      ]
+    },
+    {
+      "lemma": "vector",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a quantity with size and direction, or an insect that spreads disease",
+      "definition_vi": "vectơ; vật trung gian truyền bệnh",
+      "examples": [
+        {
+          "sentence": "The teacher drew a vector with an arrow to show direction.",
+          "sentence_vi": "Giáo viên vẽ một vectơ có mũi tên để chỉ hướng."
+        },
+        {
+          "sentence": "Mosquitoes are a vector for diseases like malaria.",
+          "sentence_vi": "Muỗi là vật trung gian truyền các bệnh như sốt rét."
+        }
+      ]
+    },
+    {
+      "lemma": "compelling",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "so interesting or strong that you must believe or watch",
+      "definition_vi": "thuyết phục, hấp dẫn",
+      "examples": [
+        {
+          "sentence": "The lawyer gave a compelling argument in court.",
+          "sentence_vi": "Luật sư đưa ra một lập luận rất thuyết phục tại tòa."
+        },
+        {
+          "sentence": "It was a compelling film that held my attention for hours.",
+          "sentence_vi": "Đó là một bộ phim hấp dẫn giữ chân tôi hàng giờ."
+        }
+      ]
+    },
+    {
+      "lemma": "doctrine",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a set of beliefs or principles taught by a group or government",
+      "definition_vi": "học thuyết, giáo lý",
+      "examples": [
+        {
+          "sentence": "The party's main doctrine supports free trade between nations.",
+          "sentence_vi": "Học thuyết chính của đảng ủng hộ thương mại tự do giữa các quốc gia."
+        },
+        {
+          "sentence": "Religious doctrine shaped the laws of that country for centuries.",
+          "sentence_vi": "Giáo lý tôn giáo đã định hình luật pháp của quốc gia đó trong nhiều thế kỷ."
+        }
+      ]
+    },
+    {
+      "lemma": "af",
+      "pos": "adverb",
+      "cefr_level": "C1",
+      "definition": "informal short form of 'as fuck', meaning very much",
+      "definition_vi": "rất, cực kỳ (tiếng lóng)",
+      "examples": [
+        {
+          "sentence": "That exam was hard af, I barely finished it.",
+          "sentence_vi": "Bài thi đó khó cực kỳ, tôi suýt không làm xong."
+        },
+        {
+          "sentence": "I'm tired af after working all night.",
+          "sentence_vi": "Tôi mệt lử sau khi làm việc cả đêm."
+        }
+      ]
+    },
+    {
+      "lemma": "capitalism",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "an economic system where businesses are privately owned for profit",
+      "definition_vi": "chủ nghĩa tư bản",
+      "examples": [
+        {
+          "sentence": "Capitalism encourages companies to compete with each other.",
+          "sentence_vi": "Chủ nghĩa tư bản khuyến khích các công ty cạnh tranh với nhau."
+        },
+        {
+          "sentence": "Critics say capitalism creates big gaps between rich and poor.",
+          "sentence_vi": "Nhà phê bình cho rằng chủ nghĩa tư bản tạo ra khoảng cách lớn giữa giàu và nghèo."
+        }
+      ]
+    },
+    {
+      "lemma": "condemned",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "officially judged to be bad, unsafe, or deserving punishment",
+      "definition_vi": "bị lên án; bị kết án",
+      "examples": [
+        {
+          "sentence": "The condemned building was too dangerous to enter.",
+          "sentence_vi": "Tòa nhà bị tuyên bố không an toàn, quá nguy hiểm để vào."
+        },
+        {
+          "sentence": "The condemned man asked to see his family one last time.",
+          "sentence_vi": "Người bị kết án xin gặp gia đình lần cuối."
+        }
+      ]
+    },
+    {
+      "lemma": "entities",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "things that exist as separate and complete units",
+      "definition_vi": "thực thể, các đơn vị riêng biệt",
+      "examples": [
+        {
+          "sentence": "The company and its partner are two separate legal entities.",
+          "sentence_vi": "Công ty và đối tác là hai pháp nhân riêng biệt."
+        },
+        {
+          "sentence": "The database stores information about different entities, like customers and orders.",
+          "sentence_vi": "Cơ sở dữ liệu lưu thông tin về các thực thể khác nhau, như khách hàng và đơn hàng."
+        }
+      ]
+    },
+    {
+      "lemma": "frontier",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the edge of a country or the limit of what is known",
+      "definition_vi": "biên giới; giới hạn của kiến thức",
+      "examples": [
+        {
+          "sentence": "Space is often called the final frontier of human exploration.",
+          "sentence_vi": "Vũ trụ thường được gọi là biên giới cuối cùng của sự khám phá con người."
+        },
+        {
+          "sentence": "Scientists are working at the frontier of medical research.",
+          "sentence_vi": "Các nhà khoa học đang làm việc ở giới hạn xa nhất của nghiên cứu y khoa."
+        }
+      ]
+    },
+    {
+      "lemma": "hardcore",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "very extreme, serious, or fully committed to something",
+      "definition_vi": "cực đoan, cuồng nhiệt tuyệt đối",
+      "examples": [
+        {
+          "sentence": "He is a hardcore fan who never misses a single match.",
+          "sentence_vi": "Anh ấy là một fan cuồng nhiệt chưa bao giờ bỏ lỡ trận nào."
+        },
+        {
+          "sentence": "The gym has hardcore training sessions starting at five a.m.",
+          "sentence_vi": "Phòng gym có các buổi tập cường độ cao bắt đầu lúc 5 giờ sáng."
+        }
+      ]
+    },
+    {
+      "lemma": "mandate",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "an official order or the authority given to someone to act",
+      "definition_vi": "lệnh bắt buộc; quyền ủy nhiệm",
+      "examples": [
+        {
+          "sentence": "The government issued a mandate requiring masks in hospitals.",
+          "sentence_vi": "Chính phủ ban hành lệnh bắt buộc đeo khẩu trang trong bệnh viện."
+        },
+        {
+          "sentence": "The president won the election with a strong mandate for change.",
+          "sentence_vi": "Tổng thống thắng cử với sự ủy nhiệm mạnh mẽ cho thay đổi."
+        }
+      ]
+    },
+    {
+      "lemma": "sally",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a sudden attack by soldiers from inside a defended place",
+      "definition_vi": "cuộc tấn công bất ngờ từ trong pháo đài ra",
+      "examples": [
+        {
+          "sentence": "The soldiers made a sally from the castle at dawn.",
+          "sentence_vi": "Lính thực hiện một cuộc xuất kích từ lâu đài lúc bình minh."
+        },
+        {
+          "sentence": "Their sally surprised the enemy camp completely.",
+          "sentence_vi": "Cuộc xuất kích của họ khiến trại địch hoàn toàn bất ngờ."
+        }
+      ]
+    },
+    {
+      "lemma": "succession",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a number of similar things or people coming one after another",
+      "definition_vi": "sự nối tiếp liên tiếp",
+      "examples": [
+        {
+          "sentence": "A succession of bad storms destroyed the crops.",
+          "sentence_vi": "Một loạt bão liên tiếp đã phá hủy mùa màng."
+        },
+        {
+          "sentence": "The prince became king in succession to his father.",
+          "sentence_vi": "Hoàng tử lên ngôi vua kế vị cha mình."
+        }
+      ]
+    },
+    {
+      "lemma": "superintendent",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a person in charge of a building, school district, or police department",
+      "definition_vi": "giám sát, cảnh sát trưởng (cấp quận)",
+      "examples": [
+        {
+          "sentence": "The superintendent of the building fixed the broken elevator.",
+          "sentence_vi": "Người quản lý tòa nhà đã sửa chiếc thang máy bị hỏng."
+        },
+        {
+          "sentence": "The police superintendent spoke to the reporters yesterday.",
+          "sentence_vi": "Vị cảnh sát trưởng đã phát biểu với các phóng viên hôm qua."
+        }
+      ]
+    },
+    {
+      "lemma": "tactical",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "relating to careful plans for achieving a military or political goal",
+      "definition_vi": "thuộc chiến thuật",
+      "examples": [
+        {
+          "sentence": "The general made a tactical decision to retreat at night.",
+          "sentence_vi": "Vị tướng đưa ra quyết định chiến thuật là rút lui ban đêm."
+        },
+        {
+          "sentence": "Her apology was a tactical move to win support.",
+          "sentence_vi": "Lời xin lỗi của cô ấy là một nước đi chiến thuật để giành sự ủng hộ."
+        }
+      ]
+    },
+    {
+      "lemma": "thereafter",
+      "pos": "adverb",
+      "cefr_level": "C1",
+      "definition": "from that time onward, after that event",
+      "definition_vi": "từ đó trở đi",
+      "examples": [
+        {
+          "sentence": "She moved to Paris in 2010 and lived there thereafter.",
+          "sentence_vi": "Cô ấy chuyển đến Paris năm 2010 và sống ở đó từ đó trở đi."
+        },
+        {
+          "sentence": "The law was passed and thereafter all shops closed on Sundays.",
+          "sentence_vi": "Luật được thông qua và từ đó mọi cửa hàng đóng cửa vào Chủ nhật."
+        }
+      ]
+    },
+    {
+      "lemma": "artillery",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "large, heavy guns used by an army in war",
+      "definition_vi": "pháo, pháo binh",
+      "examples": [
+        {
+          "sentence": "The army moved its artillery to the hills.",
+          "sentence_vi": "Quân đội chuyển pháo của mình lên các đồi."
+        },
+        {
+          "sentence": "Artillery fire could be heard far away.",
+          "sentence_vi": "Tiếng pháo có thể nghe thấy từ xa."
+        }
+      ]
+    },
+    {
+      "lemma": "commissioned",
+      "pos": "verb",
+      "cefr_level": "C1",
+      "definition": "officially asked someone to make or do a piece of work",
+      "definition_vi": "thuê, đặt hàng (làm việc gì đó)",
+      "examples": [
+        {
+          "sentence": "The city commissioned a local artist to paint a large mural.",
+          "sentence_vi": "Thành phố đã thuê một nghệ sĩ địa phương vẽ một bức tranh tường lớn."
+        },
+        {
+          "sentence": "The company commissioned a study on air pollution.",
+          "sentence_vi": "Công ty đã đặt hàng một nghiên cứu về ô nhiễm không khí."
+        }
+      ]
+    },
+    {
+      "lemma": "dame",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a title used for a woman who has received a high British honour",
+      "definition_vi": "nữ tước hiệu Dame (danh hiệu Anh)",
+      "examples": [
+        {
+          "sentence": "The actress was made a dame for her work in theatre.",
+          "sentence_vi": "Nữ diễn viên được phong tước hiệu dame vì đóng góp của bà cho sân khấu."
+        },
+        {
+          "sentence": "Dame Judith gave a speech at the university ceremony.",
+          "sentence_vi": "Nữ tước Judith đã phát biểu tại lễ trao bằng của trường đại học."
+        }
+      ]
+    },
+    {
+      "lemma": "deceased",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "dead; used in formal language about a person who has died",
+      "definition_vi": "đã qua đời (dùng trang trọng)",
+      "examples": [
+        {
+          "sentence": "The deceased man's family received many letters of sympathy.",
+          "sentence_vi": "Gia đình người đã khuất nhận được nhiều thư chia buồn."
+        },
+        {
+          "sentence": "She inherited the house from her deceased aunt.",
+          "sentence_vi": "Cô ấy thừa hưởng ngôi nhà từ người dì đã qua đời."
+        }
+      ]
+    },
+    {
+      "lemma": "defining",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "very important in showing the true character of something",
+      "definition_vi": "quyết định bản chất, đặc trưng nhất",
+      "examples": [
+        {
+          "sentence": "Moving to Japan was the defining moment of her life.",
+          "sentence_vi": "Việc chuyển đến Nhật Bản là khoảnh khắc quyết định trong cuộc đời cô ấy."
+        },
+        {
+          "sentence": "Honesty is a defining quality of a good leader.",
+          "sentence_vi": "Sự trung thực là phẩm chất đặc trưng của một nhà lãnh đạo tốt."
+        }
+      ]
+    },
+    {
+      "lemma": "explicit",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "clear and direct, stated in a way that leaves no doubt",
+      "definition_vi": "rõ ràng, tường minh",
+      "examples": [
+        {
+          "sentence": "She gave explicit instructions about how to open the safe.",
+          "sentence_vi": "Cô ấy đưa ra chỉ dẫn rõ ràng về cách mở két sắt."
+        },
+        {
+          "sentence": "The contract contains an explicit warning about late payments.",
+          "sentence_vi": "Hợp đồng có cảnh báo rõ ràng về việc thanh toán chậm."
+        }
+      ]
+    },
+    {
+      "lemma": "explicitly",
+      "pos": "adverb",
+      "cefr_level": "C1",
+      "definition": "in a clear and direct way, leaving no doubt",
+      "definition_vi": "một cách rõ ràng, tường minh",
+      "examples": [
+        {
+          "sentence": "The teacher explicitly told us not to use phones in class.",
+          "sentence_vi": "Giáo viên nói rõ ràng là không được dùng điện thoại trong lớp."
+        },
+        {
+          "sentence": "He explicitly denied knowing anything about the deal.",
+          "sentence_vi": "Anh ta phủ nhận rõ ràng là không biết gì về vụ giao dịch."
+        }
+      ]
+    },
+    {
+      "lemma": "infantry",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "soldiers who fight on foot",
+      "definition_vi": "bộ binh",
+      "examples": [
+        {
+          "sentence": "The infantry moved forward across the field.",
+          "sentence_vi": "Bộ binh tiến về phía trước qua cánh đồng."
+        },
+        {
+          "sentence": "He served in the infantry for five years.",
+          "sentence_vi": "Anh ấy phục vụ trong lực lượng bộ binh năm năm."
+        }
+      ]
+    },
+    {
+      "lemma": "integral",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "necessary as an important part of a whole",
+      "definition_vi": "thiết yếu, không thể thiếu",
+      "examples": [
+        {
+          "sentence": "Music is an integral part of their culture.",
+          "sentence_vi": "Âm nhạc là một phần không thể thiếu trong văn hóa của họ."
+        },
+        {
+          "sentence": "Trust is integral to a good working relationship.",
+          "sentence_vi": "Sự tin tưởng là điều thiết yếu cho một mối quan hệ làm việc tốt."
+        }
+      ]
+    },
+    {
+      "lemma": "uber",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "extreme or extremely; used before other words for emphasis",
+      "definition_vi": "siêu, cực kỳ",
+      "examples": [
+        {
+          "sentence": "The new phone has an uber powerful camera.",
+          "sentence_vi": "Chiếc điện thoại mới có camera siêu mạnh."
+        },
+        {
+          "sentence": "She is an uber fan of that football team.",
+          "sentence_vi": "Cô ấy là một fan siêu cuồng của đội bóng đó."
+        }
+      ]
+    },
+    {
+      "lemma": "unto",
+      "pos": "preposition",
+      "cefr_level": "C1",
+      "definition": "old word meaning 'to' or 'until'; now rare and formal",
+      "definition_vi": "đến, tới (từ cổ)",
+      "examples": [
+        {
+          "sentence": "The king spoke unto the people from the tower.",
+          "sentence_vi": "Nhà vua nói với dân chúng từ tháp."
+        },
+        {
+          "sentence": "He worked unto the end of his life.",
+          "sentence_vi": "Ông ấy làm việc cho đến cuối đời."
+        }
+      ]
+    },
+    {
+      "lemma": "viable",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "able to work successfully or stay alive",
+      "definition_vi": "khả thi, có thể sống được",
+      "examples": [
+        {
+          "sentence": "The plan is not viable without more money.",
+          "sentence_vi": "Kế hoạch này không khả thi nếu không có thêm tiền."
+        },
+        {
+          "sentence": "Doctors kept the baby viable with special care.",
+          "sentence_vi": "Các bác sĩ giữ cho em bé sống được nhờ chăm sóc đặc biệt."
+        }
+      ]
+    },
+    {
+      "lemma": "wit",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the ability to say clever and funny things",
+      "definition_vi": "sự hóm hỉnh, trí thông minh",
+      "examples": [
+        {
+          "sentence": "Her wit makes every party more fun.",
+          "sentence_vi": "Sự hóm hỉnh của cô ấy làm cho mọi bữa tiệc vui hơn."
+        },
+        {
+          "sentence": "He answered the hard question with quick wit.",
+          "sentence_vi": "Anh ấy trả lời câu hỏi khó với trí thông minh nhanh nhạy."
+        }
+      ]
+    },
+    {
+      "lemma": "col",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a low point or pass between two mountains",
+      "definition_vi": "đèo, điểm thấp giữa hai ngọn núi",
+      "examples": [
+        {
+          "sentence": "The climbers crossed the col before sunset.",
+          "sentence_vi": "Những người leo núi vượt qua đèo trước khi mặt trời lặn."
+        },
+        {
+          "sentence": "A narrow col connects the two peaks.",
+          "sentence_vi": "Một con đèo hẹp nối hai đỉnh núi."
+        }
+      ]
+    },
+    {
+      "lemma": "compassion",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a strong feeling of sympathy for people who suffer",
+      "definition_vi": "lòng trắc ẩn",
+      "examples": [
+        {
+          "sentence": "She showed compassion to the sick old man.",
+          "sentence_vi": "Cô thể hiện lòng trắc ẩn với ông già ốm."
+        },
+        {
+          "sentence": "Nurses need compassion as well as skill.",
+          "sentence_vi": "Y tá cần lòng trắc ẩn lẫn kỹ năng."
+        }
+      ]
+    },
+    {
+      "lemma": "distress",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "great unhappiness or suffering",
+      "definition_vi": "sự đau khổ, khổ sở",
+      "examples": [
+        {
+          "sentence": "The bad news caused her great distress.",
+          "sentence_vi": "Tin xấu khiến cô ấy vô cùng đau khổ."
+        },
+        {
+          "sentence": "He could see the distress in her face.",
+          "sentence_vi": "Anh ấy thấy rõ sự khổ sở trên gương mặt cô."
+        }
+      ]
+    },
+    {
+      "lemma": "herald",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a person or thing that announces important news or change",
+      "definition_vi": "người báo tin; điềm báo",
+      "examples": [
+        {
+          "sentence": "In old stories, a herald announced the king's arrival.",
+          "sentence_vi": "Trong truyện cổ, người báo tin loan báo vua đến."
+        },
+        {
+          "sentence": "The first flowers are a herald of spring.",
+          "sentence_vi": "Những bông hoa đầu tiên là điềm báo của mùa xuân."
+        }
+      ]
+    },
+    {
+      "lemma": "philosophical",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "relating to deep ideas about life and knowledge",
+      "definition_vi": "thuộc về triết học",
+      "examples": [
+        {
+          "sentence": "The book raises philosophical questions about happiness.",
+          "sentence_vi": "Cuốn sách nêu những câu hỏi triết học về hạnh phúc."
+        },
+        {
+          "sentence": "He stayed calm and philosophical about the loss.",
+          "sentence_vi": "Anh ấy giữ bình tĩnh và nhìn nhận chuyện mất mát một cách triết lý."
+        }
+      ]
+    },
+    {
+      "lemma": "rhetoric",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "language used to persuade people, often without real meaning",
+      "definition_vi": "hùng biện; lời nói suông, hoa mỹ",
+      "examples": [
+        {
+          "sentence": "The speech was full of rhetoric but few real plans.",
+          "sentence_vi": "Bài phát biểu đầy lời hùng biện nhưng ít kế hoạch thực tế."
+        },
+        {
+          "sentence": "He studied rhetoric to become a better public speaker.",
+          "sentence_vi": "Anh ấy học hùng biện để trở thành diễn giả giỏi hơn."
+        }
+      ]
+    },
+    {
+      "lemma": "salvation",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "being saved from danger, harm or sin",
+      "definition_vi": "sự cứu rỗi, sự giải thoát",
+      "examples": [
+        {
+          "sentence": "In many religions, faith brings salvation to the soul.",
+          "sentence_vi": "Ở nhiều tôn giáo, đức tin mang lại sự cứu rỗi cho linh hồn."
+        },
+        {
+          "sentence": "The new medicine was the salvation of many sick people.",
+          "sentence_vi": "Loại thuốc mới là sự cứu rỗi của nhiều người bệnh."
+        }
+      ]
+    },
+    {
+      "lemma": "secular",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "not connected with religion or religious matters",
+      "definition_vi": "thuộc thế tục, không tôn giáo",
+      "examples": [
+        {
+          "sentence": "The country has a secular government with no state religion.",
+          "sentence_vi": "Quốc gia đó có chính phủ thế tục, không có quốc giáo."
+        },
+        {
+          "sentence": "Music at the wedding was secular, not religious.",
+          "sentence_vi": "Nhạc trong đám cưới là nhạc thế tục, không phải nhạc tôn giáo."
+        }
+      ]
+    },
+    {
+      "lemma": "sovereign",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "having full independent power to govern a country",
+      "definition_vi": "có chủ quyền",
+      "examples": [
+        {
+          "sentence": "Vietnam became a fully sovereign nation in the twentieth century.",
+          "sentence_vi": "Việt Nam trở thành một quốc gia hoàn toàn có chủ quyền vào thế kỷ hai mươi."
+        },
+        {
+          "sentence": "Each sovereign state has the right to make its own laws.",
+          "sentence_vi": "Mỗi quốc gia có chủ quyền đều có quyền ban hành luật riêng."
+        }
+      ]
+    },
+    {
+      "lemma": "troy",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "an old city in Asia Minor, famous from Greek stories",
+      "definition_vi": "thành Troy",
+      "examples": [
+        {
+          "sentence": "The ancient city of Troy was destroyed by fire.",
+          "sentence_vi": "Thành cổ Troy đã bị cháy phá hủy."
+        },
+        {
+          "sentence": "Archaeologists found the ruins of Troy in Turkey.",
+          "sentence_vi": "Các nhà khảo cổ đã tìm thấy tàn tích của Troy ở Thổ Nhĩ Kỳ."
+        }
+      ]
+    },
+    {
+      "lemma": "aggregate",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the total amount made by combining several parts",
+      "definition_vi": "tổng cộng",
+      "examples": [
+        {
+          "sentence": "The aggregate of all three scores is 240 points.",
+          "sentence_vi": "Tổng cộng của cả ba điểm số là 240 điểm."
+        },
+        {
+          "sentence": "Sales rose in aggregate, even though some stores lost money.",
+          "sentence_vi": "Doanh thu tăng về tổng thể, dù một số cửa hàng lỗ."
+        }
+      ]
+    },
+    {
+      "lemma": "anal",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "relating to the anus; also very worried about small details",
+      "definition_vi": "thuộc hậu môn; quá cầu toàn",
+      "examples": [
+        {
+          "sentence": "The doctor asked about anal pain during the examination.",
+          "sentence_vi": "Bác sĩ hỏi về đau hậu môn trong lúc khám."
+        },
+        {
+          "sentence": "He is so anal about his desk that nothing may be moved.",
+          "sentence_vi": "Anh ấy cầu toàn đến mức không ai được động vào bàn làm việc."
+        }
+      ]
+    },
+    {
+      "lemma": "citing",
+      "pos": "verb",
+      "cefr_level": "C1",
+      "definition": "mentioning a source or reason as support",
+      "definition_vi": "trích dẫn, nêu ra",
+      "examples": [
+        {
+          "sentence": "The lawyer argued for hours, citing several past cases.",
+          "sentence_vi": "Luật sư tranh luận hàng giờ, trích dẫn nhiều vụ án trước đây."
+        },
+        {
+          "sentence": "She left the job, citing family reasons.",
+          "sentence_vi": "Cô ấy bỏ việc, nêu lý do gia đình."
+        }
+      ]
+    },
+    {
+      "lemma": "composite",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "made of several different parts combined together",
+      "definition_vi": "hợp thành, tổng hợp",
+      "examples": [
+        {
+          "sentence": "The plane's wings are made of composite materials.",
+          "sentence_vi": "Cánh máy bay được làm bằng vật liệu tổng hợp."
+        },
+        {
+          "sentence": "The report gives a composite picture of the whole economy.",
+          "sentence_vi": "Báo cáo đưa ra bức tranh tổng hợp về toàn bộ nền kinh tế."
+        }
+      ]
+    },
+    {
+      "lemma": "cox",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the person who steers a rowing boat and shouts to the rowers",
+      "definition_vi": "người lái thuyền (đua thuyền)",
+      "examples": [
+        {
+          "sentence": "The cox shouted 'faster!' as the boat neared the finish line.",
+          "sentence_vi": "Người lái thuyền hét 'nhanh hơn!' khi thuyền gần đến vạch đích."
+        },
+        {
+          "sentence": "A good cox must know the river very well.",
+          "sentence_vi": "Một người lái thuyền giỏi phải biết sông rất rõ."
+        }
+      ]
+    },
+    {
+      "lemma": "lance",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a long weapon with a pointed end, used by riders",
+      "definition_vi": "giáo dài (vũ khí)",
+      "examples": [
+        {
+          "sentence": "The knight held his lance high before the fight.",
+          "sentence_vi": "Hiệp sĩ giơ cao cây giáo trước trận đấu."
+        },
+        {
+          "sentence": "In the old sport, riders tried to hit a target with a lance.",
+          "sentence_vi": "Trong môn thể thao xưa, người cưỡi ngựa cố đánh trúng mục tiêu bằng giáo."
+        }
+      ]
+    },
+    {
+      "lemma": "lynch",
+      "pos": "verb",
+      "cefr_level": "C1",
+      "definition": "to kill someone without a legal trial, usually by a mob",
+      "definition_vi": "treo cổ tư hình, giết người ngoài pháp luật",
+      "examples": [
+        {
+          "sentence": "In the past, angry crowds sometimes tried to lynch prisoners.",
+          "sentence_vi": "Trong quá khứ, đám đông giận dữ đôi khi cố treo cổ tù nhân."
+        },
+        {
+          "sentence": "The sheriff arrived quickly and stopped the mob from planning to lynch the man.",
+          "sentence_vi": "Cảnh sát trưởng đến nhanh chóng và ngăn đám đông định treo cổ người đàn ông."
+        }
+      ]
+    },
+    {
+      "lemma": "newton",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a unit for measuring force in science",
+      "definition_vi": "niuton (đơn vị đo lực)",
+      "examples": [
+        {
+          "sentence": "The scientist measured the force in newtons.",
+          "sentence_vi": "Nhà khoa học đo lực bằng đơn vị niuton."
+        },
+        {
+          "sentence": "One newton is quite a small amount of force.",
+          "sentence_vi": "Một niuton là một lực khá nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "optimal",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "the best possible level or condition",
+      "definition_vi": "tối ưu, tốt nhất",
+      "examples": [
+        {
+          "sentence": "Keep the room at an optimal temperature for the plants.",
+          "sentence_vi": "Giữ phòng ở nhiệt độ tối ưu cho cây."
+        },
+        {
+          "sentence": "Doctors say sleep is optimal when it lasts eight hours.",
+          "sentence_vi": "Bác sĩ nói giấc ngủ tối ưu là tám tiếng."
+        }
+      ]
+    },
+    {
+      "lemma": "profound",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "very deep, great, or serious in effect",
+      "definition_vi": "sâu sắc",
+      "examples": [
+        {
+          "sentence": "The book had a profound effect on my thinking.",
+          "sentence_vi": "Cuốn sách có ảnh hưởng sâu sắc đến suy nghĩ của tôi."
+        },
+        {
+          "sentence": "Losing his job caused profound changes in his life.",
+          "sentence_vi": "Việc mất việc gây ra những thay đổi sâu sắc trong cuộc đời anh."
+        }
+      ]
+    },
+    {
+      "lemma": "prosecutor",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a lawyer who tries to prove someone guilty in court",
+      "definition_vi": "công tố viên",
+      "examples": [
+        {
+          "sentence": "The prosecutor showed the jury strong evidence.",
+          "sentence_vi": "Công tố viên trình bày với bồi thẩm đoàn bằng chứng mạnh."
+        },
+        {
+          "sentence": "She worked as a prosecutor for ten years.",
+          "sentence_vi": "Cô ấy làm công tố viên mười năm."
+        }
+      ]
+    },
+    {
+      "lemma": "robust",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "strong and healthy, or solid and well built",
+      "definition_vi": "mạnh mẽ, vững chắc",
+      "examples": [
+        {
+          "sentence": "The economy remains robust despite the crisis.",
+          "sentence_vi": "Nền kinh tế vẫn mạnh mẽ dù có khủng hoảng."
+        },
+        {
+          "sentence": "This robust table will last for many years.",
+          "sentence_vi": "Chiếc bàn vững chắc này sẽ dùng được nhiều năm."
+        }
+      ]
+    },
+    {
+      "lemma": "virtue",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a good quality that a person should have",
+      "definition_vi": "phẩm chất tốt, đức hạnh",
+      "examples": [
+        {
+          "sentence": "Patience is a virtue worth developing.",
+          "sentence_vi": "Kiên nhẫn là một đức hạnh đáng để rèn luyện."
+        },
+        {
+          "sentence": "Honesty was the virtue her parents valued most.",
+          "sentence_vi": "Sự trung thực là phẩm chất cha mẹ cô coi trọng nhất."
+        }
+      ]
+    },
+    {
+      "lemma": "casualties",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "people who are hurt or killed in an accident or war",
+      "definition_vi": "thương vong",
+      "examples": [
+        {
+          "sentence": "The earthquake caused many casualties in the mountain villages.",
+          "sentence_vi": "Trận động đất gây ra nhiều thương vong ở các làng miền núi."
+        },
+        {
+          "sentence": "Doctors worked all night to treat the casualties from the crash.",
+          "sentence_vi": "Các bác sĩ làm việc cả đêm để chữa trị cho các nạn nhân từ vụ tai nạn."
+        }
+      ]
+    },
+    {
+      "lemma": "guild",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a group of people with the same job or interest",
+      "definition_vi": "hội, hiệp hội nghề nghiệp",
+      "examples": [
+        {
+          "sentence": "The writers' guild protects its members' rights.",
+          "sentence_vi": "Hội nhà văn bảo vệ quyền lợi của các thành viên."
+        },
+        {
+          "sentence": "She joined a guild for young artists in the city.",
+          "sentence_vi": "Cô ấy tham gia một hội dành cho các nghệ sĩ trẻ trong thành phố."
+        }
+      ]
+    },
+    {
+      "lemma": "litigation",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the process of taking legal action in court",
+      "definition_vi": "tranh tụng, kiện tụng",
+      "examples": [
+        {
+          "sentence": "The two companies avoided litigation by making a deal.",
+          "sentence_vi": "Hai công ty tránh kiện tụng bằng cách thỏa thuận với nhau."
+        },
+        {
+          "sentence": "Years of litigation cost the family a lot of money.",
+          "sentence_vi": "Nhiều năm kiện tụng đã khiến gia đình tốn rất nhiều tiền."
+        }
+      ]
+    },
+    {
+      "lemma": "orthodox",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "following traditional beliefs or the usual accepted way",
+      "definition_vi": "chính thống, theo truyền thống",
+      "examples": [
+        {
+          "sentence": "His orthodox views on education surprised the younger teachers.",
+          "sentence_vi": "Quan điểm chính thống của anh về giáo dục khiến các giáo viên trẻ ngạc nhiên."
+        },
+        {
+          "sentence": "The Orthodox Church has beautiful paintings inside its buildings.",
+          "sentence_vi": "Nhà thờ Chính thống có những bức tranh đẹp bên trong."
+        }
+      ]
+    },
+    {
+      "lemma": "prone",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "likely to suffer from something bad, or lying face down",
+      "definition_vi": "dễ mắc (bệnh, lỗi); nằm sấp",
+      "examples": [
+        {
+          "sentence": "He is prone to making the same mistake again and again.",
+          "sentence_vi": "Anh ấy hay mắc cùng một lỗi lặp đi lặp lại."
+        },
+        {
+          "sentence": "The soldier lay prone behind the wall to hide.",
+          "sentence_vi": "Người lính nằm sấp sau bức tường để trốn."
+        }
+      ]
+    },
+    {
+      "lemma": "regiment",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a large group of soldiers under one commander",
+      "definition_vi": "trung đoàn",
+      "examples": [
+        {
+          "sentence": "Her grandfather served in a famous regiment during the war.",
+          "sentence_vi": "Ông cô từng phục vụ trong một trung đoàn nổi tiếng thời chiến."
+        },
+        {
+          "sentence": "The regiment marched through the town in perfect order.",
+          "sentence_vi": "Trung đoàn hành quân qua thị trấn theo đội hình ngay ngắn."
+        }
+      ]
+    },
+    {
+      "lemma": "tenure",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the period of time someone holds a job or position",
+      "definition_vi": "thời gian tại chức",
+      "examples": [
+        {
+          "sentence": "Her tenure as manager lasted five years.",
+          "sentence_vi": "Thời gian cô ấy làm quản lý kéo dài năm năm."
+        },
+        {
+          "sentence": "During his tenure, the company grew quickly.",
+          "sentence_vi": "Trong thời gian ông ấy tại chức, công ty phát triển nhanh."
+        }
+      ]
+    },
+    {
+      "lemma": "demographic",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "relating to the population and its groups",
+      "definition_vi": "thuộc nhân khẩu học",
+      "examples": [
+        {
+          "sentence": "The country is going through a major demographic change.",
+          "sentence_vi": "Đất nước đang trải qua một thay đổi nhân khẩu học lớn."
+        },
+        {
+          "sentence": "Companies study demographic data before launching new products.",
+          "sentence_vi": "Các công ty nghiên cứu dữ liệu nhân khẩu học trước khi tung sản phẩm mới."
+        }
+      ]
+    },
+    {
+      "lemma": "manuscript",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a book or document written by hand before printing",
+      "definition_vi": "bản thảo; bản viết tay",
+      "examples": [
+        {
+          "sentence": "The library keeps a manuscript from the fifteenth century.",
+          "sentence_vi": "Thư viện giữ một bản viết tay từ thế kỷ mười lăm."
+        },
+        {
+          "sentence": "She sent her manuscript to three publishers.",
+          "sentence_vi": "Cô ấy gửi bản thảo của mình cho ba nhà xuất bản."
+        }
+      ]
+    },
+    {
+      "lemma": "subsidiary",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a company that is owned or controlled by a larger company",
+      "definition_vi": "công ty con",
+      "examples": [
+        {
+          "sentence": "The German firm is a subsidiary of a Japanese group.",
+          "sentence_vi": "Công ty Đức là công ty con của một tập đoàn Nhật."
+        },
+        {
+          "sentence": "They opened a new subsidiary in Singapore last year.",
+          "sentence_vi": "Họ mở một công ty con mới ở Singapore năm ngoái."
+        }
+      ]
+    },
+    {
+      "lemma": "theology",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the serious study of God, religion, and religious beliefs",
+      "definition_vi": "thần học",
+      "examples": [
+        {
+          "sentence": "He studied theology for four years before becoming a priest.",
+          "sentence_vi": "Anh học thần học bốn năm trước khi trở thành linh mục."
+        },
+        {
+          "sentence": "The university offers a course in modern theology.",
+          "sentence_vi": "Trường đại học có khóa học về thần học hiện đại."
+        }
+      ]
+    },
+    {
+      "lemma": "velocity",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the speed of something moving in a particular direction",
+      "definition_vi": "vận tốc",
+      "examples": [
+        {
+          "sentence": "The rocket reached a velocity of 20,000 kilometers per hour.",
+          "sentence_vi": "Tên lửa đạt vận tốc 20.000 km mỗi giờ."
+        },
+        {
+          "sentence": "Scientists measured the velocity of the flowing river.",
+          "sentence_vi": "Các nhà khoa học đo vận tốc dòng sông chảy."
+        }
+      ]
+    },
+    {
+      "lemma": "albeit",
+      "pos": "conjunction",
+      "cefr_level": "C1",
+      "definition": "although; used to introduce a weaker point",
+      "definition_vi": "dù là, tuy rằng",
+      "examples": [
+        {
+          "sentence": "The trip was fun, albeit a little tiring.",
+          "sentence_vi": "Chuyến đi vui, dù hơi mệt."
+        },
+        {
+          "sentence": "He agreed to help, albeit slowly and unwillingly.",
+          "sentence_vi": "Anh ấy đồng ý giúp, dù chậm chạp và miễn cưỡng."
+        }
+      ]
+    },
+    {
+      "lemma": "deployment",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the act of sending people or equipment somewhere for use",
+      "definition_vi": "việc triển khai, điều động",
+      "examples": [
+        {
+          "sentence": "The deployment of new software took several weeks.",
+          "sentence_vi": "Việc triển khai phần mềm mới mất vài tuần."
+        },
+        {
+          "sentence": "His military deployment lasted almost a year.",
+          "sentence_vi": "Đợt điều động quân sự của anh ấy kéo dài gần một năm."
+        }
+      ]
+    },
+    {
+      "lemma": "fury",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "extremely strong, uncontrolled anger",
+      "definition_vi": "cơn thịnh nộ",
+      "examples": [
+        {
+          "sentence": "He slammed the door in a fit of fury.",
+          "sentence_vi": "Anh ấy đóng sầm cửa trong cơn thịnh nộ."
+        },
+        {
+          "sentence": "The crowd's fury grew after the unfair decision.",
+          "sentence_vi": "Sự phẫn nộ của đám đông tăng lên sau phán quyết bất công."
+        }
+      ]
+    },
+    {
+      "lemma": "genocide",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the planned killing of a whole group of people",
+      "definition_vi": "tội diệt chủng",
+      "examples": [
+        {
+          "sentence": "The museum teaches visitors about the genocide and its victims.",
+          "sentence_vi": "Bảo tàng dạy du khách về tội diệt chủng và các nạn nhân."
+        },
+        {
+          "sentence": "World leaders promised to prevent any future genocide.",
+          "sentence_vi": "Các nhà lãnh đạo thế giới hứa ngăn chặn mọi tội diệt chủng trong tương lai."
+        }
+      ]
+    },
+    {
+      "lemma": "massacre",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the cruel killing of many people at once",
+      "definition_vi": "cuộc thảm sát",
+      "examples": [
+        {
+          "sentence": "The village built a memorial after the terrible massacre.",
+          "sentence_vi": "Ngôi làng xây đài tưởng niệm sau cuộc thảm sát khủng khiếp."
+        },
+        {
+          "sentence": "History books describe the massacre in great detail.",
+          "sentence_vi": "Sách lịch sử mô tả cuộc thảm sát rất chi tiết."
+        }
+      ]
+    },
+    {
+      "lemma": "prosperity",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a period of being rich, successful, and comfortable",
+      "definition_vi": "sự thịnh vượng",
+      "examples": [
+        {
+          "sentence": "The country enjoyed years of prosperity after the war.",
+          "sentence_vi": "Đất nước hưởng nhiều năm thịnh vượng sau chiến tranh."
+        },
+        {
+          "sentence": "Education brings prosperity to whole communities.",
+          "sentence_vi": "Giáo dục mang lại sự thịnh vượng cho cả cộng đồng."
+        }
+      ]
+    },
+    {
+      "lemma": "advocacy",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "public support for a cause, idea, or group of people",
+      "definition_vi": "sự ủng hộ, vận động",
+      "examples": [
+        {
+          "sentence": "Her advocacy for children's rights changed national policy.",
+          "sentence_vi": "Công cuộc vận động vì quyền trẻ em của cô ấy đã thay đổi chính sách quốc gia."
+        },
+        {
+          "sentence": "The group does advocacy work for homeless families.",
+          "sentence_vi": "Nhóm này làm công tác vận động cho các gia đình vô gia cư."
+        }
+      ]
+    },
+    {
+      "lemma": "aftermath",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the period and effects following a bad event",
+      "definition_vi": "hậu quả, thời kỳ sau thảm họa",
+      "examples": [
+        {
+          "sentence": "In the aftermath of the flood, many homes were destroyed.",
+          "sentence_vi": "Trong hậu quả của trận lụt, nhiều ngôi nhà đã bị phá hủy."
+        },
+        {
+          "sentence": "The country struggled in the aftermath of the war.",
+          "sentence_vi": "Đất nước chật vật trong thời kỳ sau chiến tranh."
+        }
+      ]
+    },
+    {
+      "lemma": "arguably",
+      "pos": "adverb",
+      "cefr_level": "C1",
+      "definition": "used when saying something can be claimed to be true",
+      "definition_vi": "có thể nói là, có lẽ là",
+      "examples": [
+        {
+          "sentence": "She is arguably the best player on the team.",
+          "sentence_vi": "Có thể nói cô ấy là cầu thủ xuất sắc nhất đội."
+        },
+        {
+          "sentence": "This is arguably the most beautiful city in the country.",
+          "sentence_vi": "Đây có lẽ là thành phố đẹp nhất cả nước."
+        }
+      ]
     }
   ]
 }
