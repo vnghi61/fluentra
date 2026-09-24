@@ -15,6 +15,13 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
+// Question-type names the exam structure tests use.
+const (
+	typeCompletion     = "completion"
+	typeMultipleChoice = "multiple_choice"
+	typeTrueFalse      = "true_false_not_given"
+)
+
 type customCEFRAI struct {
 	judgedLevel string
 	reasoning   string
@@ -262,7 +269,7 @@ func TestVerifyItem_ExamStructure_QuestionTypesMustBeAllowed(t *testing.T) {
 		Body:      body,
 		ExamConstraints: &learningcontract.ExamPartConstraints{
 			QuestionsPerGroup: 4,
-			AllowedTypes:      []string{"completion", "true_false_not_given"},
+			AllowedTypes:      []string{typeCompletion, typeTrueFalse},
 		},
 	})
 	require.Error(t, err, "a disallowed question type must be refused")
@@ -275,10 +282,69 @@ func TestVerifyItem_ExamStructure_QuestionTypesMustBeAllowed(t *testing.T) {
 		Body:      body,
 		ExamConstraints: &learningcontract.ExamPartConstraints{
 			QuestionsPerGroup: 4,
-			AllowedTypes:      []string{"multiple_choice"},
+			AllowedTypes:      []string{typeMultipleChoice},
 		},
 	})
 	require.NoError(t, err, "an allowed question type must pass")
+}
+
+// TestVerifyItem_ExamStructure_QuestionTypeMixIsRequired is Stage I.3.4: a group
+// that ignores the part's type mix and returns one type is refused.
+func TestVerifyItem_ExamStructure_QuestionTypeMixIsRequired(t *testing.T) {
+	ctx := context.Background()
+
+	svc := service.New(service.Deps{
+		Lesson:       newFakePoolLessons(),
+		LessonAuthor: newFakePoolLessons(),
+		Graders:      passingGraders(),
+		Clock:        clock.NewFake(time.Now()),
+	})
+
+	passage := "The city opened a new library in 2020. It holds ten thousand books and a reading room."
+	question := func(id string) string {
+		return `{
+			"id": "` + id + `",
+			"type": "multiple_choice",
+			"prompt": "When did the library open?",
+			"options": [
+				{"id": "A", "text": "2020"},
+				{"id": "B", "text": "2019"},
+				{"id": "C", "text": "2021"},
+				{"id": "D", "text": "2018"}
+			],
+			"correct_option_id": "A",
+			"explanation": {"explanation_en": "It opened in 2020.", "explanation_vi": "Mở năm 2020."}
+		}`
+	}
+	body := json.RawMessage(`{
+		"passage": "` + passage + `",
+		"questions": [` + question("q1") + `,` + question("q2") + `,` + question("q3") + `,` + question("q4") + `]
+	}`)
+
+	err := svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:      kindReading,
+		CEFRLevel: "B1",
+		Body:      body,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			QuestionsPerGroup: 4,
+			AllowedTypes:      []string{typeMultipleChoice, typeCompletion},
+			TypeMix:           map[string]float64{typeMultipleChoice: 0.5, typeCompletion: 0.5},
+		},
+	})
+	require.Error(t, err, "a group missing half its types must be refused")
+	assert.Contains(t, err.Error(), `type "completion" should be about 50%`)
+
+	err = svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:      kindReading,
+		CEFRLevel: "B1",
+		Body:      body,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			QuestionsPerGroup: 4,
+			AllowedTypes:      []string{typeMultipleChoice},
+			TypeMix:           map[string]float64{typeMultipleChoice: 1.0},
+		},
+	})
+	require.NoError(t, err, "a group of the only expected type must pass")
 }
 
 func TestVerifyItem_ProvenanceCheck(t *testing.T) {

@@ -207,6 +207,34 @@ func checkAllowedQuestionTypes(questions []candQuestion, c *learningcontract.Exa
 				i+1, q.Type)
 		}
 	}
+	return checkQuestionTypeMix(questions, c)
+}
+
+// mixFloor is the smallest share that must appear at least once. A type the part
+// only touches lightly may be absent from one group without the item being
+// wrong; a type a fifth of the group should be cannot be missing.
+const mixFloor = 0.15
+
+// checkQuestionTypeMix requires every type the part expects in a real share to
+// be present at least once (WO 22 Stage I.3.4). The exact proportion is the
+// generator's, guided by the prompt; this catches a group that ignored the mix
+// entirely and returned one type.
+func checkQuestionTypeMix(questions []candQuestion, c *learningcontract.ExamPartConstraints) error {
+	if len(c.TypeMix) == 0 {
+		return nil
+	}
+	present := map[string]bool{}
+	for _, q := range questions {
+		if q.Type != "" {
+			present[q.Type] = true
+		}
+	}
+	for typ, share := range c.TypeMix {
+		if share >= mixFloor && !present[typ] {
+			return fmt.Errorf("check (exam structure) failed: type %q should be about %d%% of the group but is missing",
+				typ, int(share*100+0.5))
+		}
+	}
 	return nil
 }
 

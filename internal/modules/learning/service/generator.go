@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -212,7 +213,29 @@ func examFormat(c *learningcontract.ExamPartConstraints) string {
 	if c.Plays > 0 {
 		lines = append(lines, fmt.Sprintf("The recording is played %d time(s).", c.Plays))
 	}
+	if mix := formatTypeMix(c.TypeMix); mix != "" {
+		lines = append(lines, "Question-type mix: "+mix+".")
+	}
 	return strings.Join(lines, "\n")
+}
+
+// formatTypeMix renders a part's question-type mix in a stable order, so the
+// generation prompt asks for the published proportion rather than a group of
+// whatever type the model prefers (WO 22 Stage I.3.4).
+func formatTypeMix(mix map[string]float64) string {
+	if len(mix) == 0 {
+		return ""
+	}
+	types := make([]string, 0, len(mix))
+	for typ := range mix {
+		types = append(types, typ)
+	}
+	sort.Strings(types)
+	parts := make([]string, 0, len(types))
+	for _, typ := range types {
+		parts = append(parts, fmt.Sprintf("%s %d%%", typ, int(mix[typ]*100+0.5)))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func (s *Service) attachProvenanceAndVerify(
