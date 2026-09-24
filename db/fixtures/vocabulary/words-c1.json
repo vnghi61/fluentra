@@ -6,36 +6,36 @@
   "level": "C1",
   "words": [
     {
-      "lemma": "fuck",
-      "pos": "verb",
+      "lemma": "san",
+      "pos": "noun",
       "cefr_level": "C1",
-      "definition": "a very rude swear word; avoid using it",
-      "definition_vi": "từ chửi thề rất thô tục",
+      "definition": "a flat open area of ground, as in Vietnamese compounds",
+      "definition_vi": "sân; khu đất bằng",
       "examples": [
         {
-          "sentence": "He swore loudly, but I will not repeat the word here.",
-          "sentence_vi": "Anh ấy chửi to, nhưng tôi sẽ không nhắc lại từ đó ở đây."
+          "sentence": "The children played football in the san behind the temple.",
+          "sentence_vi": "Lũ trẻ chơi bóng đá ở sân sau ngôi đình."
         },
         {
-          "sentence": "Never use that word in class; it is very rude.",
-          "sentence_vi": "Đừng bao giờ dùng từ đó trong lớp; nó rất thô lỗ."
+          "sentence": "Villagers gathered in the san to watch the festival.",
+          "sentence_vi": "Dân làng tụ họp ở sân để xem lễ hội."
         }
       ]
     },
     {
-      "lemma": "fucking",
-      "pos": "adverb",
+      "lemma": "trump",
+      "pos": "verb",
       "cefr_level": "C1",
-      "definition": "a rude word used to make another word stronger",
-      "definition_vi": "(từ thô tục, nhấn mạnh) rất, cực kỳ",
+      "definition": "to be more important than something else and beat it",
+      "definition_vi": "quan trọng hơn, vượt qua",
       "examples": [
         {
-          "sentence": "This fucking computer never works when I need it.",
-          "sentence_vi": "Cái máy tính chết tiệt này không bao giờ hoạt động khi tôi cần."
+          "sentence": "Safety always trumps speed when we drive.",
+          "sentence_vi": "An toàn luôn quan trọng hơn tốc độ khi lái xe."
         },
         {
-          "sentence": "It's fucking cold outside, so wear a warm coat.",
-          "sentence_vi": "Ngoài trời lạnh kinh khủng, nên mặc áo khoác ấm vào."
+          "sentence": "In this game, a king trumps a queen.",
+          "sentence_vi": "Trong trò chơi này, quân vua thắng quân hậu."
         }
       ]
     }

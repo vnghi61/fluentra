@@ -93,7 +93,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		"Directory the level files are written to")
 	cacheFlag := flags.String("cache", defaultCacheFile,
 		"Scratch file holding the meanings written so far, so a run resumes")
-	batchFlag := flags.Int("batch", 50, "Lemmas per model call")
+	batchFlag := flags.Int("batch", 15, "Lemmas per model call")
 	dryRunFlag := flags.Bool("dry-run", false, "Print what would be built without writing")
 
 	if err := flags.Parse(args); err != nil {
@@ -126,6 +126,12 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 
 	cache, err := readCache(*cacheFlag)
 	if err != nil {
+		return err
+	}
+	// The fixtures already written are part of the cache: a run that stopped
+	// after writing words 1-3,000 resumes at 3,001 without paying for them
+	// twice, even if the scratch cache is gone.
+	if err := mergeCacheFromFixtures(*fixturesFlag, cache); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "Cache holds %d meaning(s)\n", len(cache))
@@ -382,6 +388,33 @@ func missingFromCache(lemmas []string, cache map[string]modelMeaning) []string {
 		}
 	}
 	return missing
+}
+
+// mergeCacheFromFixtures adds every word already frozen in dir to the cache, so
+// a resumed run builds only what is missing. The level files are the durable
+// record; the scratch cache is only a convenience.
+func mergeCacheFromFixtures(dir string, cache map[string]modelMeaning) error {
+	files, err := vocabfixture.ReadAll(dir)
+	if err != nil {
+		return fmt.Errorf("read the word fixtures: %w", err)
+	}
+	for _, file := range files {
+		for _, word := range file.Words {
+			lemma := strings.ToLower(word.Lemma)
+			if _, ok := cache[lemma]; ok {
+				continue
+			}
+			cache[lemma] = modelMeaning{
+				Lemma:        word.Lemma,
+				POS:          word.POS,
+				CEFRLevel:    word.CEFRLevel,
+				Definition:   word.Definition,
+				DefinitionVI: word.DefinitionVI,
+				Examples:     word.Examples,
+			}
+		}
+	}
+	return nil
 }
 
 func readCache(path string) (map[string]modelMeaning, error) {

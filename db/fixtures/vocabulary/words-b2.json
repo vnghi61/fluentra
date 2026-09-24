@@ -395,6 +395,550 @@
           "sentence_vi": "Có những rủi ro tiềm ẩn trong kế hoạch mới này."
         }
       ]
+    },
+    {
+      "lemma": "content",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the information or material inside something, such as a book or website",
+      "definition_vi": "nội dung",
+      "examples": [
+        {
+          "sentence": "The content of the report surprised the manager.",
+          "sentence_vi": "Nội dung của báo cáo làm giám đốc ngạc nhiên."
+        },
+        {
+          "sentence": "This website has a lot of free educational content.",
+          "sentence_vi": "Trang web này có rất nhiều nội dung giáo dục miễn phí."
+        }
+      ]
+    },
+    {
+      "lemma": "individual",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "one single person, thought of separately",
+      "definition_vi": "cá nhân",
+      "examples": [
+        {
+          "sentence": "Each individual must sign the form before the meeting.",
+          "sentence_vi": "Mỗi cá nhân phải ký vào mẫu trước cuộc họp."
+        },
+        {
+          "sentence": "The rights of the individual are protected by law.",
+          "sentence_vi": "Quyền của cá nhân được pháp luật bảo vệ."
+        }
+      ]
+    },
+    {
+      "lemma": "leading",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "most important or most successful in a field",
+      "definition_vi": "hàng đầu",
+      "examples": [
+        {
+          "sentence": "She is a leading expert on climate change.",
+          "sentence_vi": "Cô ấy là chuyên gia hàng đầu về biến đổi khí hậu."
+        },
+        {
+          "sentence": "The company became a leading phone maker in Asia.",
+          "sentence_vi": "Công ty trở thành nhà sản xuất điện thoại hàng đầu ở châu Á."
+        }
+      ]
+    },
+    {
+      "lemma": "throughout",
+      "pos": "preposition",
+      "cefr_level": "B2",
+      "definition": "in every part of, or during the whole time of",
+      "definition_vi": "khắp; trong suốt",
+      "examples": [
+        {
+          "sentence": "The song was popular throughout the country.",
+          "sentence_vi": "Bài hát nổi tiếng khắp cả nước."
+        },
+        {
+          "sentence": "She stayed calm throughout the meeting.",
+          "sentence_vi": "Cô ấy giữ bình tĩnh trong suốt cuộc họp."
+        }
+      ]
+    },
+    {
+      "lemma": "beyond",
+      "pos": "preposition",
+      "cefr_level": "B2",
+      "definition": "on the far side of, or more than something",
+      "definition_vi": "vượt quá; phía bên kia",
+      "examples": [
+        {
+          "sentence": "The village is beyond those mountains.",
+          "sentence_vi": "Ngôi làng nằm phía bên kia dãy núi."
+        },
+        {
+          "sentence": "This problem is beyond my ability to fix.",
+          "sentence_vi": "Vấn đề này vượt quá khả năng sửa chữa của tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "significant",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "important or large enough to have an effect",
+      "definition_vi": "đáng kể, quan trọng",
+      "examples": [
+        {
+          "sentence": "The new law had a significant effect on prices.",
+          "sentence_vi": "Luật mới có tác động đáng kể đến giá cả."
+        },
+        {
+          "sentence": "There was a significant difference between the two results.",
+          "sentence_vi": "Có sự khác biệt đáng kể giữa hai kết quả."
+        }
+      ]
+    },
+    {
+      "lemma": "justice",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "fair treatment and fair decisions under the law",
+      "definition_vi": "công lý",
+      "examples": [
+        {
+          "sentence": "The court worked slowly, but justice was finally done.",
+          "sentence_vi": "Tòa án làm việc chậm, nhưng công lý cuối cùng đã được thực thi."
+        },
+        {
+          "sentence": "She became a lawyer because she believes in justice.",
+          "sentence_vi": "Cô ấy trở thành luật sư vì tin vào công lý."
+        }
+      ]
+    },
+    {
+      "lemma": "pre",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a prefix meaning before in time or position",
+      "definition_vi": "tiền tố nghĩa là 'trước'",
+      "examples": [
+        {
+          "sentence": "The prefix 'pre' in 'preview' means before.",
+          "sentence_vi": "Tiền tố 'pre' trong 'preview' nghĩa là trước."
+        },
+        {
+          "sentence": "Words like 'preheat' use 'pre' to show something happens earlier.",
+          "sentence_vi": "Những từ như 'preheat' dùng 'pre' để chỉ điều xảy ra sớm hơn."
+        }
+      ]
+    },
+    {
+      "lemma": "pro",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a person who does something as a paid job, or an advantage",
+      "definition_vi": "người chuyên nghiệp; mặt lợi",
+      "examples": [
+        {
+          "sentence": "She turned pro after winning her first golf title.",
+          "sentence_vi": "Cô ấy trở thành tay golf chuyên nghiệp sau khi vô địch đầu tiên."
+        },
+        {
+          "sentence": "One pro of city life is easy travel by bus.",
+          "sentence_vi": "Một mặt lợi của cuộc sống thành phố là đi lại dễ dàng bằng xe buýt."
+        }
+      ]
+    },
+    {
+      "lemma": "administration",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the management of a company, school, or government",
+      "definition_vi": "sự quản lý, chính quyền",
+      "examples": [
+        {
+          "sentence": "The new administration changed the school rules.",
+          "sentence_vi": "Chính quyền mới đã thay đổi các quy tắc của trường."
+        },
+        {
+          "sentence": "She works in the administration office of the hospital.",
+          "sentence_vi": "Cô ấy làm việc trong phòng quản lý của bệnh viện."
+        }
+      ]
+    },
+    {
+      "lemma": "civil",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "relating to ordinary people and their society, not the military",
+      "definition_vi": "thuộc dân sự, dân sự",
+      "examples": [
+        {
+          "sentence": "Civil laws protect the rights of ordinary people.",
+          "sentence_vi": "Luật dân sự bảo vệ quyền lợi của người dân thường."
+        },
+        {
+          "sentence": "Many civil workers joined the meeting about city plans.",
+          "sentence_vi": "Nhiều công chức dân sự đã tham dự cuộc họp về kế hoạch thành phố."
+        }
+      ]
+    },
+    {
+      "lemma": "impact",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a strong effect that something has on a person or situation",
+      "definition_vi": "tác động, ảnh hưởng",
+      "examples": [
+        {
+          "sentence": "The new law had a big impact on small businesses.",
+          "sentence_vi": "Luật mới có tác động lớn đến các doanh nghiệp nhỏ."
+        },
+        {
+          "sentence": "Pollution has a serious impact on people's health.",
+          "sentence_vi": "Ô nhiễm có ảnh hưởng nghiêm trọng đến sức khỏe con người."
+        }
+      ]
+    },
+    {
+      "lemma": "lack",
+      "pos": "verb",
+      "cefr_level": "B2",
+      "definition": "to not have enough of something that is needed",
+      "definition_vi": "thiếu",
+      "examples": [
+        {
+          "sentence": "Many students lack the money to pay for university.",
+          "sentence_vi": "Nhiều sinh viên thiếu tiền để trả học đại học."
+        },
+        {
+          "sentence": "The team lacks experience, but they work very hard.",
+          "sentence_vi": "Đội thiếu kinh nghiệm, nhưng họ làm việc rất chăm chỉ."
+        }
+      ]
+    },
+    {
+      "lemma": "multiple",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "many, or more than one",
+      "definition_vi": "nhiều, đa số",
+      "examples": [
+        {
+          "sentence": "He has multiple jobs to pay his bills.",
+          "sentence_vi": "Anh ấy có nhiều công việc để trả hóa đơn."
+        },
+        {
+          "sentence": "The road was closed because of multiple accidents.",
+          "sentence_vi": "Con đường bị đóng vì nhiều vụ tai nạn."
+        }
+      ]
+    },
+    {
+      "lemma": "analysis",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "careful study of something to understand its parts",
+      "definition_vi": "sự phân tích",
+      "examples": [
+        {
+          "sentence": "Our analysis of the data showed a clear trend.",
+          "sentence_vi": "Phân tích dữ liệu của chúng tôi cho thấy một xu hướng rõ ràng."
+        },
+        {
+          "sentence": "The report gives a detailed analysis of the problem.",
+          "sentence_vi": "Báo cáo đưa ra một bản phân tích chi tiết về vấn đề."
+        }
+      ]
+    },
+    {
+      "lemma": "commission",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "money paid to someone for selling things or doing business",
+      "definition_vi": "hoa hồng; tiền hoa hồng",
+      "examples": [
+        {
+          "sentence": "She gets a commission for every car she sells.",
+          "sentence_vi": "Cô ấy nhận hoa hồng cho mỗi chiếc xe cô ấy bán."
+        },
+        {
+          "sentence": "The agent earns a 10% commission on each sale.",
+          "sentence_vi": "Nhân viên môi giới kiếm 10% hoa hồng cho mỗi lần bán."
+        }
+      ]
+    },
+    {
+      "lemma": "grand",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "big, impressive, and often expensive",
+      "definition_vi": "hoành tráng, lớn lao",
+      "examples": [
+        {
+          "sentence": "They live in a grand old house with tall columns.",
+          "sentence_vi": "Họ sống trong một ngôi nhà cổ hoành tráng với những cột cao."
+        },
+        {
+          "sentence": "The hotel has a grand entrance with gold doors.",
+          "sentence_vi": "Khách sạn có lối vào nguy nga với những cánh cửa mạ vàng."
+        }
+      ]
+    },
+    {
+      "lemma": "literally",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "used to show that words are true in a real, exact way",
+      "definition_vi": "theo nghĩa đen",
+      "examples": [
+        {
+          "sentence": "The streets were literally covered in snow.",
+          "sentence_vi": "Đường phố theo nghĩa đen bị tuyết phủ kín."
+        },
+        {
+          "sentence": "He literally ran the whole way home.",
+          "sentence_vi": "Anh ấy thực sự chạy bộ suốt quãng đường về nhà."
+        }
+      ]
+    },
+    {
+      "lemma": "thus",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "as a result of what has just been said; therefore",
+      "definition_vi": "do đó, vì vậy",
+      "examples": [
+        {
+          "sentence": "He missed the bus, thus he arrived late to work.",
+          "sentence_vi": "Anh ấy lỡ xe buýt, do đó đến chỗ làm muộn."
+        },
+        {
+          "sentence": "The road was closed, thus we had to find another way.",
+          "sentence_vi": "Đường bị đóng, vì vậy chúng tôi phải tìm đường khác."
+        }
+      ]
+    },
+    {
+      "lemma": "congress",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a large formal meeting, or the group that makes laws in some countries",
+      "definition_vi": "quốc hội; đại hội",
+      "examples": [
+        {
+          "sentence": "Congress voted to change the law last month.",
+          "sentence_vi": "Quốc hội đã bỏ phiếu thay đổi luật tháng trước."
+        },
+        {
+          "sentence": "Doctors from many countries attended the medical congress in Hanoi.",
+          "sentence_vi": "Bác sĩ từ nhiều nước dự đại hội y khoa ở Hà Nội."
+        }
+      ]
+    },
+    {
+      "lemma": "established",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "existing for a long time and well known or accepted",
+      "definition_vi": "đã được thiết lập, lâu đời, có uy tín",
+      "examples": [
+        {
+          "sentence": "This is an established company with offices in many countries.",
+          "sentence_vi": "Đây là một công ty lâu đời với văn phòng ở nhiều nước."
+        },
+        {
+          "sentence": "The rules are well established and everyone follows them.",
+          "sentence_vi": "Các quy tắc đã được thiết lập rõ ràng và ai cũng tuân theo."
+        }
+      ]
+    },
+    {
+      "lemma": "associated",
+      "pos": "adjective",
+      "cefr_level": "B2",
+      "definition": "connected or linked with something else",
+      "definition_vi": "có liên quan, gắn liền",
+      "examples": [
+        {
+          "sentence": "Smoking is associated with many serious health problems.",
+          "sentence_vi": "Hút thuốc có liên quan đến nhiều vấn đề sức khỏe nghiêm trọng."
+        },
+        {
+          "sentence": "The company and its associated businesses employ over a thousand people.",
+          "sentence_vi": "Công ty và các doanh nghiệp liên kết của nó sử dụng hơn một nghìn người."
+        }
+      ]
+    },
+    {
+      "lemma": "highly",
+      "pos": "adverb",
+      "cefr_level": "B2",
+      "definition": "very much, or to a high degree",
+      "definition_vi": "rất, cao độ",
+      "examples": [
+        {
+          "sentence": "Her boss thinks highly of her work.",
+          "sentence_vi": "Sếp của cô ấy đánh giá rất cao công việc của cô."
+        },
+        {
+          "sentence": "This hotel is highly recommended by tourists.",
+          "sentence_vi": "Khách sạn này được du khách đánh giá rất cao."
+        }
+      ]
+    },
+    {
+      "lemma": "reality",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the way things really are, not in imagination",
+      "definition_vi": "thực tế, hiện thực",
+      "examples": [
+        {
+          "sentence": "His dream of becoming a pilot became reality.",
+          "sentence_vi": "Giấc mơ trở thành phi công của anh ấy đã thành hiện thực."
+        },
+        {
+          "sentence": "In reality, the job is harder than it looks.",
+          "sentence_vi": "Trên thực tế, công việc này khó hơn vẻ ngoài của nó."
+        }
+      ]
+    },
+    {
+      "lemma": "smith",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a person who makes things from metal",
+      "definition_vi": "thợ rèn",
+      "examples": [
+        {
+          "sentence": "The smith heated the iron until it turned red.",
+          "sentence_vi": "Thợ rèn nung sắt cho đến khi nó đỏ lên."
+        },
+        {
+          "sentence": "A smith can make tools and horseshoes by hand.",
+          "sentence_vi": "Thợ rèn có thể làm công cụ và móng ngựa bằng tay."
+        }
+      ]
+    },
+    {
+      "lemma": "killing",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the act of causing someone's death",
+      "definition_vi": "sát hại, việc giết người",
+      "examples": [
+        {
+          "sentence": "The police are investigating the killing of the shop owner.",
+          "sentence_vi": "Cảnh sát đang điều tra vụ sát hại chủ cửa hàng."
+        },
+        {
+          "sentence": "The killing of wild animals is against the law here.",
+          "sentence_vi": "Việc giết động vật hoang dã là trái pháp luật ở đây."
+        }
+      ]
+    },
+    {
+      "lemma": "rates",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "amounts measured against time, cost, or another unit",
+      "definition_vi": "tỷ lệ, mức giá",
+      "examples": [
+        {
+          "sentence": "Interest rates rose again this year.",
+          "sentence_vi": "Lãi suất lại tăng trong năm nay."
+        },
+        {
+          "sentence": "The hotel charges lower rates in the winter.",
+          "sentence_vi": "Khách sạn tính giá thấp hơn vào mùa đông."
+        }
+      ]
+    },
+    {
+      "lemma": "executive",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a person with a high position who makes decisions in a company",
+      "definition_vi": "cán bộ quản lý cấp cao",
+      "examples": [
+        {
+          "sentence": "The executive called a meeting with all the managers.",
+          "sentence_vi": "Cán bộ quản lý cấp cao đã triệu tập cuộc họp với tất cả các quản lý."
+        },
+        {
+          "sentence": "She became an executive at the age of thirty.",
+          "sentence_vi": "Cô trở thành cán bộ quản lý cấp cao ở tuổi ba mươi."
+        }
+      ]
+    },
+    {
+      "lemma": "mass",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "a large amount or number; the amount of matter in something",
+      "definition_vi": "khối lượng; số lượng lớn",
+      "examples": [
+        {
+          "sentence": "A mass of people waited outside the station.",
+          "sentence_vi": "Một đám đông lớn chờ đợi bên ngoài nhà ga."
+        },
+        {
+          "sentence": "The mass of the box made it hard to lift.",
+          "sentence_vi": "Khối lượng của chiếc hộp khiến nó khó nhấc."
+        }
+      ]
+    },
+    {
+      "lemma": "operations",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the activities and work a business or organization does",
+      "definition_vi": "hoạt động, công việc vận hành",
+      "examples": [
+        {
+          "sentence": "The company moved its operations to a bigger city.",
+          "sentence_vi": "Công ty đã chuyển hoạt động sang một thành phố lớn hơn."
+        },
+        {
+          "sentence": "Daily operations stopped during the holiday.",
+          "sentence_vi": "Các hoạt động hàng ngày đã dừng lại trong kỳ nghỉ."
+        }
+      ]
+    },
+    {
+      "lemma": "claims",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "statements that something is true, often without proof",
+      "definition_vi": "các tuyên bố, lời khẳng định",
+      "examples": [
+        {
+          "sentence": "The company's claims about the product were not true.",
+          "sentence_vi": "Những tuyên bố của công ty về sản phẩm là không đúng."
+        },
+        {
+          "sentence": "Scientists checked the claims before publishing the results.",
+          "sentence_vi": "Các nhà khoa học đã kiểm tra các tuyên bố trước khi công bố kết quả."
+        }
+      ]
+    },
+    {
+      "lemma": "murder",
+      "pos": "noun",
+      "cefr_level": "B2",
+      "definition": "the crime of deliberately killing a person",
+      "definition_vi": "tội giết người",
+      "examples": [
+        {
+          "sentence": "The police are investigating the murder of a young man.",
+          "sentence_vi": "Cảnh sát đang điều tra vụ giết người của một người đàn ông trẻ."
+        },
+        {
+          "sentence": "The film tells the story of a murder in a small town.",
+          "sentence_vi": "Bộ phim kể câu chuyện về một vụ án mạng ở một thị trấn nhỏ."
+        }
+      ]
     }
   ]
 }
