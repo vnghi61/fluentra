@@ -177,9 +177,12 @@ func seedFoundationCourses(
 			CEFRFrom:       meta.CEFRFrom,
 			CEFRTo:         meta.CEFRTo,
 			EstimatedHours: meta.Hours,
-			Origin:         "foundation",
-			Visibility:     "public",
-			OwnerID:        &owner,
+			// "curriculum", not "generated": the catalogue lists only
+			// curriculum, official and community courses, and a generated
+			// origin would hide every Foundation course from the learner.
+			Origin:     "curriculum",
+			Visibility: "public",
+			OwnerID:    &owner,
 		})
 		if err != nil {
 			return fmt.Errorf("course %s: %w", slug, err)

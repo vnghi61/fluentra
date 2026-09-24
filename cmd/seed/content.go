@@ -325,6 +325,32 @@ func withLearnerGloss(config map[string]any) map[string]any {
 	return config
 }
 
+// vocabSlug is the content slug for a word sense: lower-case, with every
+// character a slug cannot hold folded to a hyphen. A lemma the model wrote with
+// a capital ("November") or a space would otherwise fail the slug check and
+// stop the whole seed.
+func vocabSlug(lemma, pos string) string {
+	return "vocab-" + slugPart(lemma) + "-" + slugPart(pos)
+}
+
+func slugPart(s string) string {
+	var b strings.Builder
+	lastHyphen := true
+	for _, r := range strings.ToLower(s) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			lastHyphen = false
+		default:
+			if !lastHyphen {
+				b.WriteByte('-')
+				lastHyphen = true
+			}
+		}
+	}
+	return strings.Trim(b.String(), "-")
+}
+
 func seedVocabularyWords(
 	ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, senses []seedWordSense,
 ) (int, error) {
@@ -353,7 +379,7 @@ func seedVocabularyWords(
 	seededCount := 0
 	for i, s := range senses {
 		// 1. Ensure content version for sense
-		slug := fmt.Sprintf("vocab-%s-%s", s.Lemma, s.POS)
+		slug := vocabSlug(s.Lemma, s.POS)
 		// The dictionary entry, not just the answer key. All of this is already
 		// on seedWordSense; it simply never reached the body, so the review
 		// screen had a word to schedule and nothing to show for it.

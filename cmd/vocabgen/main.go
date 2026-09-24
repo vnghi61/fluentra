@@ -351,7 +351,10 @@ func writeFixtures(
 		}
 		level := clampLevel(meaning.CEFRLevel)
 		word := vocabfixture.Word{
-			Lemma:        meaning.Lemma,
+			// The list's lower-cased form, not the model's casing: the headword
+			// is the key the frequency list ranked, and "November" as a lemma
+			// would make the seed's slug invalid.
+			Lemma:        lemma,
 			POS:          meaning.POS,
 			CEFRLevel:    level,
 			Definition:   meaning.Definition,
