@@ -1415,6 +1415,8 @@
       "respondTitle": "Trả lời bằng lời nói",
       "readAloudDesc": "Đọc to đoạn văn với tốc độ tự nhiên.",
       "respondDesc": "Trả lời thành tiếng trong thời gian cho phép.",
+      "prepare": "Hãy dành một chút thời gian chuẩn bị.",
+      "startNow": "Bắt đầu ngay",
       "timeLimit": "{{seconds}} giây",
       "record": "Ghi âm",
       "reRecord": "Ghi âm lại",

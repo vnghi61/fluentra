@@ -1415,6 +1415,8 @@
       "respondTitle": "Spoken answer",
       "readAloudDesc": "Read the text aloud at a natural pace.",
       "respondDesc": "Answer out loud within the time limit.",
+      "prepare": "Take a moment to prepare.",
+      "startNow": "Start now",
       "timeLimit": "{{seconds}} s",
       "record": "Record",
       "reRecord": "Record again",

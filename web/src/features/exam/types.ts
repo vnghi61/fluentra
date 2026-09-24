@@ -59,6 +59,7 @@ export interface SittingActivityConfig {
   task_type?: "read_aloud" | "respond";
   reference_text?: string;
   speaking_time_seconds?: number;
+  preparation_seconds?: number;
   options?: ChoiceOption[];
   statements?: ChoiceOption[];
   responses?: ChoiceOption[];

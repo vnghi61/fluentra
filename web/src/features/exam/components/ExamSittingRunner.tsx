@@ -1135,6 +1135,7 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
           speakingTimeSeconds={
             config.speaking_time_seconds ?? DEFAULT_SPEAKING_SECONDS
           }
+          preparationSeconds={config.preparation_seconds}
           mode={mode}
           currentRecordingKey={key}
           onRecordingComplete={onRecorded}
