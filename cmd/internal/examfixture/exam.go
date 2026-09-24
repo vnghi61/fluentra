@@ -46,6 +46,53 @@ type Verification struct {
 	Reason    string    `json:"reason,omitempty"`
 }
 
+// ReadAll reads and validates every exam fixture in dir, in file-name order.
+// A directory with no fixtures is not an error: a database with no exam content
+// is a valid state the seed reports rather than fails on.
+func ReadAll(dir string) ([]*ExamFile, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read exam fixtures directory: %w", err)
+	}
+	var files []*ExamFile
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		path := filepath.Join(dir, entry.Name())
+		// The directory also holds the Part 1 photos fixture, which is a
+		// different format. Skip it rather than refuse it as a malformed exam.
+		if format, err := peekFormat(path); err == nil && format == PhotosFormat {
+			continue
+		}
+		file, err := LoadExamFile(path)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, file)
+	}
+	return files, nil
+}
+
+// peekFormat reads just the format field of a fixture, to tell the kinds of
+// fixture a shared directory holds apart.
+func peekFormat(path string) (string, error) {
+	raw, err := os.ReadFile(path) //nolint:gosec // the operator's own fixtures directory
+	if err != nil {
+		return "", err
+	}
+	var parsed struct {
+		Format string `json:"format"`
+	}
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return "", err
+	}
+	return parsed.Format, nil
+}
+
 // LoadExamFile reads and validates one exam fixture. An item missing its slug,
 // kind, part or body is refused: the seed would otherwise write a question with
 // no home.

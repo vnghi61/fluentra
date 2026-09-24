@@ -2,6 +2,8 @@ package examfixture
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -43,6 +45,26 @@ func TestExamFixture_RoundTrips(t *testing.T) {
 	}
 	if !loaded.Items[0].Verification.Confirmed {
 		t.Error("the approval the item had must survive the round trip")
+	}
+}
+
+func TestReadAll_SkipsThePhotosFixtureInTheSameDirectory(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "toeic-part1-photos.json"),
+		[]byte(`{"format":"`+PhotosFormat+`","photos":[]}`), 0o600); err != nil {
+		t.Fatalf("write photos fixture: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "toeic.json"),
+		[]byte(`{"format":"`+ExamFormat+`","exam":"toeic","items":[]}`), 0o600); err != nil {
+		t.Fatalf("write exam fixture: %v", err)
+	}
+
+	files, err := ReadAll(dir)
+	if err != nil {
+		t.Fatalf("read all: %v", err)
+	}
+	if len(files) != 1 || files[0].Exam != "toeic" {
+		t.Fatalf("files = %+v, want the one exam fixture", files)
 	}
 }
 

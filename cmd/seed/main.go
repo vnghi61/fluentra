@@ -74,13 +74,20 @@ var demoAccounts = []demoAccount{
 // (WO 22 Stage G).
 var includeFoundationFixtures = true
 
+// includeExamFixtures is set from -exams and read by run. Default on: a
+// database with no exam content is a valid state the loader reports, not fails.
+var includeExamFixtures = true
+
 func main() {
 	audio := flag.Bool("audio", false,
 		"backfill recorded pronunciation onto flashcards that have none, then exit")
 	foundation := flag.Bool("foundation", true,
 		"load the frozen Foundation fixtures from db/fixtures/foundation (no model call)")
+	exams := flag.Bool("exams", true,
+		"load the frozen exam fixtures from db/fixtures/exams (no model call)")
 	flag.Parse()
 	includeFoundationFixtures = *foundation
+	includeExamFixtures = *exams
 	if *audio {
 		if err := runAudioBackfill(context.Background(), os.Stdout); err != nil {
 			log.Print(err)
@@ -208,6 +215,14 @@ func run(ctx context.Context, out io.Writer) error {
 	if includeFoundationFixtures {
 		if err := seedFoundationFixtures(ctx, pool, adminID, defaultFoundationFixtureDir, out); err != nil {
 			return fmt.Errorf("seed foundation fixtures: %w", err)
+		}
+	}
+
+	// The frozen exam content (WO 22 Stage N): loaded through content's own
+	// state machine, put in the bank, then composed into numbered fixed tests.
+	if includeExamFixtures {
+		if err := seedExamFixtures(ctx, pool, adminID, defaultExamFixtureDir, out); err != nil {
+			return fmt.Errorf("seed exam fixtures: %w", err)
 		}
 	}
 
