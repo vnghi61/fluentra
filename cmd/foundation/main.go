@@ -128,30 +128,23 @@ func main() {
 	}
 }
 
+// foundationOptions are the parsed command-line flags of one run.
+type foundationOptions struct {
+	node     string
+	after    string
+	limit    int
+	missing  bool
+	drafts   bool
+	export   bool
+	dryRun   bool
+	mock     bool
+	fixtures string
+}
+
 func run(ctx context.Context, args []string, out io.Writer) error {
-	flags := flag.NewFlagSet("foundation", flag.ContinueOnError)
-	nodeFlag := flags.String("node", "", "Specific spine taxonomy node code to generate drafts for (e.g. PRESENT_PERFECT)")
-	allFlag := flags.Bool("all", false, "Generate drafts for all spine taxonomy nodes")
-	limitFlag := flags.Int("limit", 0, "Optional limit on number of nodes to process")
-	dryRunFlag := flags.Bool("dry-run", false, "Simulate generation without persisting items")
-	mockFlag := flags.Bool("mock", false, "Generate with the offline mock provider, writing placeholder drafts")
-	exportFlag := flags.Bool("export", false, "Export published Foundation content to fixtures and exit")
-	fixturesFlag := flags.String("fixtures", defaultFixtureDir,
-		"Directory an -export writes to and `cmd/seed -foundation` reads")
-	missingFlag := flags.Bool("missing", false,
-		"Only nodes with no published topic yet, so a long run resumes in chunks")
-	afterFlag := flags.String("after", "",
-		"Resume after this node code, so a chunked run advances past a node that keeps failing")
-	draftsFlag := flags.Bool("drafts", false,
-		"With -missing, treat a node that has any topic version (draft too) as done, for a drafts-only run a person reviews later")
-
-	if err := flags.Parse(args); err != nil {
+	opts, err := parseFoundationFlags(args)
+	if err != nil {
 		return err
-	}
-
-	targetNode := strings.TrimSpace(*nodeFlag)
-	if targetNode == "" && !*allFlag && !*exportFlag && !*missingFlag {
-		return errors.New("must specify either -node CODE or -all (or -export, or -missing)")
 	}
 
 	cfg, err := loadFoundationConfig(ctx)
@@ -165,16 +158,67 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	}
 	defer pool.Close()
 
-	nodes, err := querySpineNodes(ctx, pool, targetNode, strings.TrimSpace(*afterFlag), *limitFlag, *missingFlag, *draftsFlag)
+	nodes, err := querySpineNodes(ctx, pool, opts.node, opts.after, opts.limit, opts.missing, opts.drafts)
 	if err != nil {
 		return fmt.Errorf("query spine nodes: %w", err)
 	}
+	return dispatchFoundationNodes(ctx, cfg, pool, nodes, opts, out)
+}
 
+func parseFoundationFlags(args []string) (foundationOptions, error) {
+	flags := flag.NewFlagSet("foundation", flag.ContinueOnError)
+	nodeFlag := flags.String("node", "", "Spine taxonomy node code to generate drafts for (e.g. PRESENT_PERFECT)")
+	allFlag := flags.Bool("all", false, "Generate drafts for all spine taxonomy nodes")
+	limitFlag := flags.Int("limit", 0, "Optional limit on number of nodes to process")
+	dryRunFlag := flags.Bool("dry-run", false, "Simulate generation without persisting items")
+	mockFlag := flags.Bool("mock", false, "Generate with the offline mock provider, writing placeholder drafts")
+	exportFlag := flags.Bool("export", false, "Export published Foundation content to fixtures and exit")
+	fixturesFlag := flags.String("fixtures", defaultFixtureDir,
+		"Directory an -export writes to and `cmd/seed -foundation` reads")
+	missingFlag := flags.Bool("missing", false,
+		"Only nodes with no published topic yet, so a long run resumes in chunks")
+	afterFlag := flags.String("after", "",
+		"Resume after this node code, so a chunked run advances past a node that keeps failing")
+	draftsFlag := flags.Bool("drafts", false,
+		"With -missing, treat a node with any topic version (draft too) as done, "+
+			"for a drafts-only run a person reviews later")
+
+	if err := flags.Parse(args); err != nil {
+		return foundationOptions{}, err
+	}
+
+	targetNode := strings.TrimSpace(*nodeFlag)
+	if targetNode == "" && !*allFlag && !*exportFlag && !*missingFlag {
+		return foundationOptions{}, errors.New("must specify either -node CODE or -all (or -export, or -missing)")
+	}
+	return foundationOptions{
+		node:     targetNode,
+		after:    strings.TrimSpace(*afterFlag),
+		limit:    *limitFlag,
+		missing:  *missingFlag,
+		drafts:   *draftsFlag,
+		export:   *exportFlag,
+		dryRun:   *dryRunFlag,
+		mock:     *mockFlag,
+		fixtures: *fixturesFlag,
+	}, nil
+}
+
+// dispatchFoundationNodes acts on the nodes a run resolved: an export, a dry
+// run, or generation.
+func dispatchFoundationNodes(
+	ctx context.Context,
+	cfg foundationCLIConfig,
+	pool *pgxpool.Pool,
+	nodes []spineNodeRow,
+	opts foundationOptions,
+	out io.Writer,
+) error {
 	if len(nodes) == 0 {
-		if targetNode != "" {
-			return fmt.Errorf("spine node %q not found", targetNode)
+		if opts.node != "" {
+			return fmt.Errorf("spine node %q not found", opts.node)
 		}
-		if *missingFlag {
+		if opts.missing {
 			_, _ = fmt.Fprintln(out, "Every spine node already has a published Foundation topic.")
 			return nil
 		}
@@ -183,12 +227,11 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 
 	_, _ = fmt.Fprintf(out, "Found %d spine taxonomy node(s) to process.\n", len(nodes))
 
-	if *exportFlag {
-		_, _ = fmt.Fprintf(out, "Exporting published Foundation content to %s...\n", *fixturesFlag)
-		return exportFoundationFixtures(ctx, pool, nodes, *fixturesFlag, out)
+	if opts.export {
+		_, _ = fmt.Fprintf(out, "Exporting published Foundation content to %s...\n", opts.fixtures)
+		return exportFoundationFixtures(ctx, pool, nodes, opts.fixtures, out)
 	}
-
-	if *dryRunFlag {
+	if opts.dryRun {
 		printFoundationDryRun(nodes, out)
 		return nil
 	}
@@ -198,7 +241,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	// queue. That is a worse outcome than not running, so it is refused rather
 	// than warned about. -mock is for trying the plumbing on a throwaway
 	// database.
-	if len(cfg.aiProviders()) == 0 && !*mockFlag {
+	if len(cfg.aiProviders()) == 0 && !opts.mock {
 		return errors.New(
 			"no AI provider is configured, so this would fill the database with mock drafts: " +
 				"set AI_PROVIDER_1_NAME and AI_PROVIDER_1_API_KEY " +
