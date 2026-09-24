@@ -72,6 +72,108 @@
           "sentence_vi": "Các phóng viên tiếp tục quấy rối bộ trưởng bằng những câu hỏi khó."
         }
       ]
+    },
+    {
+      "lemma": "vice",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "a bad habit or immoral behaviour",
+      "definition_vi": "thói xấu, sự sa đọa",
+      "examples": [
+        {
+          "sentence": "Gambling was considered a vice in the old city.",
+          "sentence_vi": "Cờ bạc bị coi là một thói xấu ở thành phố xưa."
+        },
+        {
+          "sentence": "The novel shows the vice and greed of the rich family.",
+          "sentence_vi": "Cuốn tiểu thuyết cho thấy sự sa đọa và tham lam của gia đình giàu có."
+        }
+      ]
+    },
+    {
+      "lemma": "coverage",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the reporting of news, or the amount something covers",
+      "definition_vi": "sự đưa tin; phạm vi bảo hiểm/độ phủ",
+      "examples": [
+        {
+          "sentence": "The election received wide coverage on television.",
+          "sentence_vi": "Cuộc bầu cử được đưa tin rộng rãi trên truyền hình."
+        },
+        {
+          "sentence": "Check what coverage your travel insurance includes.",
+          "sentence_vi": "Hãy kiểm tra bảo hiểm du lịch của bạn bao gồm những gì."
+        }
+      ]
+    },
+    {
+      "lemma": "don",
+      "pos": "verb",
+      "cefr_level": "C1",
+      "definition": "to put on a piece of clothing (formal word)",
+      "definition_vi": "mặc vào, đội vào (trang trọng)",
+      "examples": [
+        {
+          "sentence": "The players don their uniforms before every match.",
+          "sentence_vi": "Các cầu thủ mặc đồng phục trước mỗi trận đấu."
+        },
+        {
+          "sentence": "She donned her coat and left the house.",
+          "sentence_vi": "Cô ấy mặc áo khoác và rời khỏi nhà."
+        }
+      ]
+    },
+    {
+      "lemma": "fucked",
+      "pos": "verb",
+      "cefr_level": "C1",
+      "definition": "vulgar past form of fuck; a rude word for having sex or ruining something",
+      "definition_vi": "đã làm hỏng; từ thô tục (chỉ quan hệ tình dục)",
+      "examples": [
+        {
+          "sentence": "He fucked up the exam by not studying at all.",
+          "sentence_vi": "Nó làm hỏng bài thi vì không học gì cả."
+        },
+        {
+          "sentence": "The weather fucked up our plans for the beach trip.",
+          "sentence_vi": "Thời tiết làm hỏng kế hoạch đi biển của chúng tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "pacific",
+      "pos": "adjective",
+      "cefr_level": "C1",
+      "definition": "calm, peaceful, and liking to avoid arguments or war",
+      "definition_vi": "hiền hòa, yêu chuộng hòa bình",
+      "examples": [
+        {
+          "sentence": "She has a pacific nature and never argues with anyone.",
+          "sentence_vi": "Cô ấy có tính cách hiền hòa và chưa bao giờ cãi ai."
+        },
+        {
+          "sentence": "The two nations kept pacific relations for over fifty years.",
+          "sentence_vi": "Hai quốc gia duy trì quan hệ hòa bình hơn năm mươi năm."
+        }
+      ]
+    },
+    {
+      "lemma": "premier",
+      "pos": "noun",
+      "cefr_level": "C1",
+      "definition": "the head of a government, like a prime minister",
+      "definition_vi": "thủ tướng",
+      "examples": [
+        {
+          "sentence": "The premier spoke about the economy on television.",
+          "sentence_vi": "Thủ tướng nói về nền kinh tế trên truyền hình."
+        },
+        {
+          "sentence": "People waited to hear what the premier would announce.",
+          "sentence_vi": "Mọi người chờ nghe thủ tướng sẽ công bố gì."
+        }
+      ]
     }
   ]
 }
