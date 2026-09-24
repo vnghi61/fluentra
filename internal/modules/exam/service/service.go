@@ -287,12 +287,17 @@ type IntegritySignalDTO struct {
 
 // ScoreReportDTO response.
 type ScoreReportDTO struct {
-	AttemptID        uuid.UUID               `json:"attempt_id"`
-	Mode             string                  `json:"mode"`
-	SubmittedBy      string                  `json:"submitted_by,omitempty"`
-	Status           string                  `json:"status"`
-	OverallScore     float64                 `json:"overall_score"`
-	OverallBand      string                  `json:"overall_band,omitempty"`
+	AttemptID    uuid.UUID `json:"attempt_id"`
+	Mode         string    `json:"mode"`
+	SubmittedBy  string    `json:"submitted_by,omitempty"`
+	Status       string    `json:"status"`
+	OverallScore float64   `json:"overall_score"`
+	OverallBand  string    `json:"overall_band,omitempty"`
+	// PublishedScore is the overall on the exam's own scale (an IELTS band, a
+	// TOEIC scaled estimate, a VSTEP level), when the version states one.
+	PublishedScore   *float64                `json:"published_score,omitempty"`
+	PublishedScale   string                  `json:"published_scale,omitempty"`
+	ScoreIsEstimate  bool                    `json:"score_is_estimate,omitempty"`
 	PerSection       []domain.SectionOutcome `json:"per_section"`
 	IntegritySignals []IntegritySignalDTO    `json:"integrity_signals"`
 	Disclaimer       string                  `json:"disclaimer"`
@@ -1148,7 +1153,57 @@ func (s *Service) GetScoreReport(ctx context.Context, userID, attemptID uuid.UUI
 	if attempt.SubmittedAt != nil {
 		dto.ElapsedSeconds = int(attempt.SubmittedAt.Sub(attempt.StartedAt).Seconds())
 	}
+	if published, ok := s.publishedScoreForAttempt(ctx, attempt, overall.Float64); ok {
+		value := published.Value
+		dto.PublishedScore = &value
+		dto.PublishedScale = published.Scale
+		dto.ScoreIsEstimate = published.Estimate
+	}
 	return dto, nil
+}
+
+// publishedScoreForAttempt maps the overall onto the sitting's exam scale, when
+// the version states one (WO 22 Stage I.3.6).
+func (s *Service) publishedScoreForAttempt(
+	ctx context.Context, attempt *sqlc.AssessExamAttempt, overall float64,
+) (domain.PublishedScore, bool) {
+	scoring, err := s.versionScoringForAttempt(ctx, attempt)
+	if err != nil || len(scoring) == 0 {
+		return domain.PublishedScore{}, false
+	}
+	return domain.ScaleScore(scoring, overall)
+}
+
+// versionScoringForAttempt resolves the exam version a sitting belongs to: a
+// mock test through its blueprint, a template through its own version.
+func (s *Service) versionScoringForAttempt(
+	ctx context.Context, attempt *sqlc.AssessExamAttempt,
+) (json.RawMessage, error) {
+	if attempt.MockTestID != nil {
+		mt, err := s.repo.GetMockTestByID(ctx, *attempt.MockTestID)
+		if err != nil || mt == nil {
+			return nil, err
+		}
+		bp, err := s.repo.GetBlueprintByID(ctx, mt.BlueprintID)
+		if err != nil || bp == nil {
+			return nil, err
+		}
+		version, err := s.repo.GetExamVersionByID(ctx, bp.VersionID)
+		if err != nil || version == nil {
+			return nil, err
+		}
+		return version.Scoring, nil
+	}
+
+	exam, err := s.repo.GetExamByID(ctx, attempt.ExamID)
+	if err != nil || exam == nil || exam.VersionID == nil {
+		return nil, err
+	}
+	version, err := s.repo.GetExamVersionByID(ctx, *exam.VersionID)
+	if err != nil || version == nil {
+		return nil, err
+	}
+	return version.Scoring, nil
 }
 
 // ListUserAttempts returns the caller's sittings, newest first, with the total.

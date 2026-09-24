@@ -230,6 +230,10 @@ export interface ScoreReport {
   status: ReportStatus;
   overall_score: number;
   overall_band?: string;
+  /** The overall on the exam's own scale, when the version states one. */
+  published_score?: number | null;
+  published_scale?: string;
+  score_is_estimate?: boolean;
   per_section: ExamSectionOutcome[];
   integrity_signals: IntegritySignal[];
   disclaimer: string;

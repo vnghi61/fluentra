@@ -272,6 +272,20 @@ ExamScoreReport:
     overall_band:
       type: string
       description: Estimated CEFR band. Absent until a section is scored.
+    published_score:
+      type: number
+      nullable: true
+      description: >-
+        The overall on the exam's own scale (an IELTS band, a TOEIC scaled
+        estimate, a VSTEP level), when the version states one.
+    published_scale:
+      type: string
+      description: The scale published_score is on, e.g. band, raw_with_estimate, vstep.
+    score_is_estimate:
+      type: boolean
+      description: >-
+        True when the exam owner publishes no raw-to-score conversion, so the
+        published_score is our estimate and must be labelled so.
     per_section:
       type: array
       items:

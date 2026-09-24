@@ -1,9 +1,43 @@
 package domain
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 )
+
+func TestScaleScore(t *testing.T) {
+	tests := []struct {
+		name      string
+		scoring   string
+		overall   float64
+		wantValue float64
+		wantOK    bool
+		estimate  bool
+	}{
+		{"ielts band", `{"type":"band","scale":[0,9],"step":0.5,"published_conversion":true}`, 72, 6.5, true, false},
+		{"toeic estimate", `{"type":"raw_with_estimate"}`, 50, 500, true, true},
+		{"vstep", `{"type":"vstep"}`, 75, 7.5, true, true},
+		{"unknown without scale", `{"type":"mystery"}`, 50, 0, false, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := ScaleScore(json.RawMessage(tt.scoring), tt.overall)
+			if ok != tt.wantOK {
+				t.Fatalf("ok = %v, want %v", ok, tt.wantOK)
+			}
+			if !ok {
+				return
+			}
+			if got.Value != tt.wantValue {
+				t.Errorf("value = %v, want %v", got.Value, tt.wantValue)
+			}
+			if got.Estimate != tt.estimate {
+				t.Errorf("estimate = %v, want %v", got.Estimate, tt.estimate)
+			}
+		})
+	}
+}
 
 func TestClampPracticeDuration(t *testing.T) {
 	tests := []struct {

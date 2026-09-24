@@ -6507,6 +6507,12 @@ export interface components {
             overall_score: number;
             /** @description Estimated CEFR band. Absent until a section is scored. */
             overall_band?: string;
+            /** @description The overall on the exam's own scale (an IELTS band, a TOEIC scaled estimate, a VSTEP level), when the version states one. */
+            published_score?: number | null;
+            /** @description The scale published_score is on, e.g. band, raw_with_estimate, vstep. */
+            published_scale?: string;
+            /** @description True when the exam owner publishes no raw-to-score conversion, so the published_score is our estimate and must be labelled so. */
+            score_is_estimate?: boolean;
             per_section: components["schemas"]["ExamSectionOutcome"][];
             integrity_signals: components["schemas"]["ExamIntegritySignal"][];
             disclaimer: string;

@@ -164,6 +164,20 @@ export const ExamReport: React.FC<ExamReportProps> = ({
               {t("exam.report.band")}
             </span>
           </div>
+          {report.published_score !== undefined &&
+            report.published_score !== null && (
+              <div className="flex flex-col items-center">
+                <p className="font-mono text-5xl font-extrabold text-success-accent sm:text-6xl">
+                  {report.published_score}
+                </p>
+                <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-text-muted">
+                  {t("exam.report.published")}
+                  {report.score_is_estimate
+                    ? ` · ${t("exam.report.estimate")}`
+                    : ""}
+                </span>
+              </div>
+            )}
         </div>
         <ul className="space-y-1 rounded-2xl border border-border-subtle bg-surface-muted/70 p-4 text-left text-xs leading-relaxed text-text-muted sm:p-5">
           <li className="flex gap-2 font-semibold text-text">

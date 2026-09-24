@@ -1419,6 +1419,8 @@
       "partialBody": "Grading failed for part of this sitting. Those sections are not scored, and the overall score counts only the scored ones.",
       "overall": "Overall",
       "band": "Estimated CEFR band",
+      "published": "On the exam scale",
+      "estimate": "estimate",
       "notOfficial": "Not an official TOEIC score.",
       "pronunciation": "Pronunciation not assessed: speaking is scored from a transcript of what you said.",
       "sittingsDiffer": "Every sitting is drawn separately, so two sittings hold different items and their scores are close but not strictly comparable.",

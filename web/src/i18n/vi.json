@@ -1419,6 +1419,8 @@
       "partialBody": "Việc chấm một phần của lượt thi này bị lỗi. Các phần đó không có điểm, và điểm tổng chỉ tính các phần đã chấm.",
       "overall": "Điểm tổng",
       "band": "Trình độ CEFR ước tính",
+      "published": "Theo thang điểm của bài thi",
+      "estimate": "ước tính",
       "notOfficial": "Không phải điểm TOEIC chính thức.",
       "pronunciation": "Không đánh giá phát âm: phần nói được chấm dựa trên văn bản ghi lại lời bạn nói.",
       "sittingsDiffer": "Mỗi lượt thi được chọn đề riêng, nên các lượt có câu hỏi khác nhau và điểm gần tương đương chứ không so sánh tuyệt đối được.",
