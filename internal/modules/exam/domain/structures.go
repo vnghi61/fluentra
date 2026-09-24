@@ -139,9 +139,11 @@ type MockTestPartComposition struct {
 
 // MockTest models a composed mock test.
 type MockTest struct {
-	ID          uuid.UUID                 `json:"id"`
-	BlueprintID uuid.UUID                 `json:"blueprint_id"`
-	Mode        string                    `json:"mode"`
+	ID          uuid.UUID `json:"id"`
+	BlueprintID uuid.UUID `json:"blueprint_id"`
+	Mode        string    `json:"mode"`
+	// Number is the fixed test's number ("Đề 3"); nil for every other mode.
+	Number      *int                      `json:"number,omitempty"`
 	Seed        int64                     `json:"seed"`
 	Composition []MockTestPartComposition `json:"composition"`
 	OwnerID     *uuid.UUID                `json:"owner_id,omitempty"`

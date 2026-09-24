@@ -357,6 +357,18 @@ func (r *inMemoryGateRepo) GetMockTestByID(_ context.Context, id uuid.UUID) (*do
 	defer r.mu.Unlock()
 	return r.mockTests[id], nil
 }
+func (r *inMemoryGateRepo) ListFixedMockTests(_ context.Context, blueprintID uuid.UUID) ([]*domain.MockTest, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []*domain.MockTest
+	for _, mt := range r.mockTests {
+		if mt.Mode == domain.MockModeFixed && mt.BlueprintID == blueprintID {
+			out = append(out, mt)
+		}
+	}
+	return out, nil
+}
+
 func (r *inMemoryGateRepo) ListMockTestsByOwner(_ context.Context, ownerID *uuid.UUID) ([]*domain.MockTest, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

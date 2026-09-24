@@ -515,10 +515,16 @@ func (r *Repository) CreateMockTest(ctx context.Context, mt *domain.MockTest) (*
 	if err != nil {
 		return nil, err
 	}
+	var number *int32
+	if mt.Number != nil {
+		n := int32(*mt.Number) //nolint:gosec // a test number is small
+		number = &n
+	}
 	row, err := r.queries.CreateMockTest(ctx, sqlc.CreateMockTestParams{
 		ID:          mt.ID,
 		BlueprintID: mt.BlueprintID,
 		Mode:        mt.Mode,
+		Number:      number,
 		Seed:        mt.Seed,
 		Composition: compBytes,
 		OwnerID:     mt.OwnerID,
@@ -562,6 +568,26 @@ func (r *Repository) ListMockTestsByOwner(ctx context.Context, ownerID *uuid.UUI
 	return res, nil
 }
 
+// ListFixedMockTests returns a blueprint's numbered fixed tests, in order.
+func (r *Repository) ListFixedMockTests(ctx context.Context, blueprintID uuid.UUID) ([]*domain.MockTest, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListFixedMockTests(ctx, blueprintID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*domain.MockTest, 0, len(rows))
+	for _, row := range rows {
+		item, err := toDomainMockTest(row)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, item)
+	}
+	return res, nil
+}
+
 // GetExamByVersionID finds an exam template linked to this version.
 func (r *Repository) GetExamByVersionID(ctx context.Context, versionID uuid.UUID) (*sqlc.AssessExam, error) {
 	if r.queries == nil {
@@ -581,10 +607,16 @@ func toDomainMockTest(row sqlc.AssessMockTest) (*domain.MockTest, error) {
 			return nil, err
 		}
 	}
+	var number *int
+	if row.Number != nil {
+		n := int(*row.Number)
+		number = &n
+	}
 	return &domain.MockTest{
 		ID:          row.ID,
 		BlueprintID: row.BlueprintID,
 		Mode:        row.Mode,
+		Number:      number,
 		Seed:        row.Seed,
 		Composition: comp,
 		OwnerID:     row.OwnerID,

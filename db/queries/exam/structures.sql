@@ -38,8 +38,8 @@ SELECT * FROM assess.blueprints
 WHERE version_id = $1 AND name = $2;
 
 -- name: CreateMockTest :one
-INSERT INTO assess.mock_tests (id, blueprint_id, mode, seed, composition, owner_id, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO assess.mock_tests (id, blueprint_id, mode, number, seed, composition, owner_id, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: GetMockTestByID :one
@@ -50,6 +50,12 @@ WHERE id = $1;
 SELECT * FROM assess.mock_tests
 WHERE owner_id = $1 OR owner_id IS NULL
 ORDER BY created_at DESC;
+
+-- name: ListFixedMockTests :many
+-- The numbered fixed tests of one blueprint, in order (WO 22 Stage J).
+SELECT * FROM assess.mock_tests
+WHERE blueprint_id = $1 AND mode = 'fixed'
+ORDER BY number;
 
 -- name: GetExamByVersionID :one
 SELECT * FROM assess.exams

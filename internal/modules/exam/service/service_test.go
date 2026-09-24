@@ -29,6 +29,7 @@ import (
 type mockExamRepo struct {
 	mu         sync.Mutex
 	exams      []sqlc.AssessExam
+	mockTests  []*domain.MockTest
 	attempts   map[uuid.UUID]sqlc.AssessExamAttempt
 	reports    map[uuid.UUID]sqlc.AssessScoreReport
 	events     []sqlc.RecordIntegrityEventParams
@@ -341,6 +342,9 @@ func (m *mockExamRepo) GetBlueprintByName(_ context.Context, _ uuid.UUID, _ stri
 }
 
 func (m *mockExamRepo) CreateMockTest(_ context.Context, mt *domain.MockTest) (*domain.MockTest, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.mockTests = append(m.mockTests, mt)
 	return mt, nil
 }
 
@@ -349,7 +353,11 @@ func (m *mockExamRepo) GetMockTestByID(_ context.Context, _ uuid.UUID) (*domain.
 }
 
 func (m *mockExamRepo) ListMockTestsByOwner(_ context.Context, _ *uuid.UUID) ([]*domain.MockTest, error) {
-	return nil, nil
+	return m.mockTests, nil
+}
+
+func (m *mockExamRepo) ListFixedMockTests(_ context.Context, _ uuid.UUID) ([]*domain.MockTest, error) {
+	return m.mockTests, nil
 }
 
 func (m *mockExamRepo) GetExamByVersionID(_ context.Context, _ uuid.UUID) (*sqlc.AssessExam, error) {

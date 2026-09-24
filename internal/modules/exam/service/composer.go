@@ -363,6 +363,16 @@ func (s *Service) resolveMockTestParts(
 func (s *Service) drawPartActivities(
 	ctx context.Context, part *domain.ExamPart, cefrMix map[string]float64, seed int64, userID *uuid.UUID,
 ) ([]uuid.UUID, error) {
+	return s.drawPartActivitiesExcluding(ctx, part, cefrMix, seed, userID, nil)
+}
+
+// drawPartActivitiesExcluding draws a part's activities, skipping any candidate
+// a caller has already used. A fixed test passes the activities of the earlier
+// tests of its blueprint, so the tests share no question (WO 22 Stage J).
+func (s *Service) drawPartActivitiesExcluding(
+	ctx context.Context, part *domain.ExamPart, cefrMix map[string]float64, seed int64,
+	userID *uuid.UUID, exclude map[uuid.UUID]struct{},
+) ([]uuid.UUID, error) {
 	var candidates []*questionbankcontract.Question
 	if s.questionbank != nil {
 		drawable, err := s.questionbank.DrawableForPart(ctx, part.ID)
@@ -370,6 +380,18 @@ func (s *Service) drawPartActivities(
 			return nil, fmt.Errorf("fetch drawable questions for part %s: %w", part.ID, err)
 		}
 		candidates = fitPart(part, drawable)
+	}
+	if len(exclude) > 0 {
+		kept := candidates[:0]
+		for _, q := range candidates {
+			if q.ActivityID != nil {
+				if _, used := exclude[*q.ActivityID]; used {
+					continue
+				}
+			}
+			kept = append(kept, q)
+		}
+		candidates = kept
 	}
 
 	ordered := s.orderByExposure(ctx, candidates, seed, int64(part.PartNumber), userID)
@@ -651,6 +673,144 @@ func (s *Service) findFixedMockTest(ctx context.Context, blueprintID uuid.UUID) 
 		}
 	}
 	return found, nil
+}
+
+// ComposeFixedTest returns the blueprint's stored fixed Test `number`, or
+// composes it: each part draws only questions no earlier fixed test of the
+// blueprint uses, so the tests share no question (WO 22 Stage J).
+func (s *Service) ComposeFixedTest(
+	ctx context.Context, blueprintID uuid.UUID, number int,
+) (*domain.MockTest, error) {
+	if s.repo == nil {
+		return nil, errors.New("repository not configured")
+	}
+	if blueprintID == uuid.Nil || number < 1 {
+		return nil, apperr.New(apperr.Validation, "INVALID_FIXED_TEST",
+			"A fixed test needs a blueprint and a positive number.")
+	}
+
+	stored, err := s.fixedTestByNumber(ctx, blueprintID, number)
+	if err != nil {
+		return nil, err
+	}
+	if stored != nil {
+		return stored, nil
+	}
+
+	blueprint, parts, err := s.resolveMockTestParts(ctx, blueprintID, nil)
+	if err != nil {
+		return nil, err
+	}
+	used, err := s.usedFixedTestActivities(ctx, blueprintID, number)
+	if err != nil {
+		return nil, err
+	}
+
+	seed := hashUUID(blueprint.ID) + int64(number)*7919
+	cefrMix := parseCEFRMix(blueprint.CefrDistribution)
+	compositions := make([]domain.MockTestPartComposition, 0, len(parts))
+	for _, part := range parts {
+		picked, drawErr := s.drawPartActivitiesExcluding(ctx, part, cefrMix, seed, nil, used)
+		if drawErr != nil {
+			return nil, drawErr
+		}
+		compositions = append(compositions, domain.MockTestPartComposition{
+			PartID:      part.ID,
+			ActivityIDs: picked,
+		})
+	}
+
+	n := number
+	mt := &domain.MockTest{
+		ID:          uuid.New(),
+		BlueprintID: blueprint.ID,
+		Mode:        domain.MockModeFixed,
+		Number:      &n,
+		Seed:        seed,
+		Composition: compositions,
+		CreatedAt:   s.clock.Now().UTC(),
+	}
+	saved, err := s.repo.CreateMockTest(ctx, mt)
+	if err != nil {
+		// A concurrent worker composed this number first: the unique index
+		// rejected one row, and the other is the test.
+		if existing, findErr := s.fixedTestByNumber(ctx, blueprintID, number); findErr == nil && existing != nil {
+			return existing, nil
+		}
+		return nil, fmt.Errorf("create fixed test %d: %w", number, err)
+	}
+	return saved, nil
+}
+
+// ComposeNextFixedTests composes max+1, max+2, … until one cannot be filled,
+// returning how many it composed.
+func (s *Service) ComposeNextFixedTests(ctx context.Context, blueprintID uuid.UUID) (int, error) {
+	tests, err := s.repo.ListFixedMockTests(ctx, blueprintID)
+	if err != nil {
+		return 0, err
+	}
+	highest := 0
+	for _, mt := range tests {
+		if mt.Number != nil && *mt.Number > highest {
+			highest = *mt.Number
+		}
+	}
+
+	composed := 0
+	for number := highest + 1; ; number++ {
+		if _, err := s.ComposeFixedTest(ctx, blueprintID, number); err != nil {
+			if isInsufficientItems(err) {
+				return composed, nil
+			}
+			return composed, err
+		}
+		composed++
+	}
+}
+
+// fixedTestByNumber returns the stored fixed test with this number, if any.
+func (s *Service) fixedTestByNumber(
+	ctx context.Context, blueprintID uuid.UUID, number int,
+) (*domain.MockTest, error) {
+	tests, err := s.repo.ListFixedMockTests(ctx, blueprintID)
+	if err != nil {
+		return nil, fmt.Errorf("list fixed tests: %w", err)
+	}
+	for _, mt := range tests {
+		if mt.Number != nil && *mt.Number == number {
+			return mt, nil
+		}
+	}
+	return nil, nil
+}
+
+// usedFixedTestActivities is every activity a fixed test numbered below `number`
+// already uses, so the next test excludes those groups.
+func (s *Service) usedFixedTestActivities(
+	ctx context.Context, blueprintID uuid.UUID, number int,
+) (map[uuid.UUID]struct{}, error) {
+	tests, err := s.repo.ListFixedMockTests(ctx, blueprintID)
+	if err != nil {
+		return nil, fmt.Errorf("list fixed tests: %w", err)
+	}
+	used := map[uuid.UUID]struct{}{}
+	for _, mt := range tests {
+		if mt.Number == nil || *mt.Number >= number {
+			continue
+		}
+		for _, comp := range mt.Composition {
+			for _, id := range comp.ActivityIDs {
+				used[id] = struct{}{}
+			}
+		}
+	}
+	return used, nil
+}
+
+// isInsufficientItems reports the bank-short-for-a-part refusal.
+func isInsufficientItems(err error) bool {
+	var appErr *apperr.Error
+	return errors.As(err, &appErr) && appErr.Code == "INSUFFICIENT_ITEMS"
 }
 
 // compositionToSectionActivities converts a mock test composition into ordered SectionActivities.

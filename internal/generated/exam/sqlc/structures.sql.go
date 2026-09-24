@@ -13,8 +13,8 @@ import (
 )
 
 const createMockTest = `-- name: CreateMockTest :one
-INSERT INTO assess.mock_tests (id, blueprint_id, mode, seed, composition, owner_id, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO assess.mock_tests (id, blueprint_id, mode, number, seed, composition, owner_id, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, blueprint_id, mode, seed, composition, owner_id, created_at, number
 `
 
@@ -22,6 +22,7 @@ type CreateMockTestParams struct {
 	ID          uuid.UUID
 	BlueprintID uuid.UUID
 	Mode        string
+	Number      *int32
 	Seed        int64
 	Composition []byte
 	OwnerID     *uuid.UUID
@@ -33,6 +34,7 @@ func (q *Queries) CreateMockTest(ctx context.Context, arg CreateMockTestParams) 
 		arg.ID,
 		arg.BlueprintID,
 		arg.Mode,
+		arg.Number,
 		arg.Seed,
 		arg.Composition,
 		arg.OwnerID,
@@ -343,6 +345,42 @@ func (q *Queries) ListExamVersions(ctx context.Context) ([]AssessExamVersion, er
 			&i.IsCurrent,
 			&i.Notes,
 			&i.Listed,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFixedMockTests = `-- name: ListFixedMockTests :many
+SELECT id, blueprint_id, mode, seed, composition, owner_id, created_at, number FROM assess.mock_tests
+WHERE blueprint_id = $1 AND mode = 'fixed'
+ORDER BY number
+`
+
+// The numbered fixed tests of one blueprint, in order (WO 22 Stage J).
+func (q *Queries) ListFixedMockTests(ctx context.Context, blueprintID uuid.UUID) ([]AssessMockTest, error) {
+	rows, err := q.db.Query(ctx, listFixedMockTests, blueprintID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AssessMockTest
+	for rows.Next() {
+		var i AssessMockTest
+		if err := rows.Scan(
+			&i.ID,
+			&i.BlueprintID,
+			&i.Mode,
+			&i.Seed,
+			&i.Composition,
+			&i.OwnerID,
+			&i.CreatedAt,
+			&i.Number,
 		); err != nil {
 			return nil, err
 		}
