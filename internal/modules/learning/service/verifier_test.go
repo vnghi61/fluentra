@@ -257,7 +257,7 @@ func TestVerifyItem_ExamStructure_QuestionTypesMustBeAllowed(t *testing.T) {
 
 	// A part that allows only completion and true/false/not given refuses it.
 	err := svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
-		Kind:      "reading_comprehension",
+		Kind:      kindReading,
 		CEFRLevel: "B1",
 		Body:      body,
 		ExamConstraints: &learningcontract.ExamPartConstraints{
@@ -270,7 +270,7 @@ func TestVerifyItem_ExamStructure_QuestionTypesMustBeAllowed(t *testing.T) {
 
 	// Allowing multiple choice lets the same item through.
 	err = svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
-		Kind:      "reading_comprehension",
+		Kind:      kindReading,
 		CEFRLevel: "B1",
 		Body:      body,
 		ExamConstraints: &learningcontract.ExamPartConstraints{

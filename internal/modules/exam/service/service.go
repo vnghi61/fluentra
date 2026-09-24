@@ -1136,12 +1136,24 @@ func (s *Service) GetScoreReport(ctx context.Context, userID, attemptID uuid.UUI
 		signals = []IntegritySignalDTO{}
 	}
 	overall, _ := report.OverallScore.Float64Value()
+	return s.reportDTO(ctx, attempt, report, perSection, signals, overall.Float64), nil
+}
 
+// reportDTO assembles the learner-facing report, adding the caller's time and
+// the score on the exam's own scale when the version states one.
+func (s *Service) reportDTO(
+	ctx context.Context,
+	attempt *sqlc.AssessExamAttempt,
+	report *sqlc.AssessScoreReport,
+	perSection []domain.SectionOutcome,
+	signals []IntegritySignalDTO,
+	overall float64,
+) *ScoreReportDTO {
 	dto := &ScoreReportDTO{
 		AttemptID:        report.AttemptID,
 		Mode:             attempt.Mode,
 		Status:           report.Status,
-		OverallScore:     overall.Float64,
+		OverallScore:     overall,
 		OverallBand:      report.OverallBand,
 		PerSection:       perSection,
 		IntegritySignals: signals,
@@ -1153,13 +1165,13 @@ func (s *Service) GetScoreReport(ctx context.Context, userID, attemptID uuid.UUI
 	if attempt.SubmittedAt != nil {
 		dto.ElapsedSeconds = int(attempt.SubmittedAt.Sub(attempt.StartedAt).Seconds())
 	}
-	if published, ok := s.publishedScoreForAttempt(ctx, attempt, overall.Float64); ok {
+	if published, ok := s.publishedScoreForAttempt(ctx, attempt, overall); ok {
 		value := published.Value
 		dto.PublishedScore = &value
 		dto.PublishedScale = published.Scale
 		dto.ScoreIsEstimate = published.Estimate
 	}
-	return dto, nil
+	return dto
 }
 
 // publishedScoreForAttempt maps the overall onto the sitting's exam scale, when

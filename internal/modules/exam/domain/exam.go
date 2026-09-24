@@ -311,21 +311,21 @@ func ScaleScore(scoring json.RawMessage, overall float64) (PublishedScore, bool)
 		return PublishedScore{}, false
 	}
 
-	var min, max, step float64
+	var lo, hi, step float64
 	switch s.Type {
 	case "band":
-		min, max, step = 0, 9, 0.5
+		lo, hi, step = 0, 9, 0.5
 	case "raw_with_estimate":
-		min, max, step = 10, 990, 5
+		lo, hi, step = 10, 990, 5
 	case "vstep":
-		min, max, step = 0, 10, 0.5
+		lo, hi, step = 0, 10, 0.5
 	default:
 		if len(s.Scale) != 2 {
 			return PublishedScore{}, false
 		}
 	}
 	if len(s.Scale) == 2 {
-		min, max = s.Scale[0], s.Scale[1]
+		lo, hi = s.Scale[0], s.Scale[1]
 	}
 	if s.Step > 0 {
 		step = s.Step
@@ -333,11 +333,11 @@ func ScaleScore(scoring json.RawMessage, overall float64) (PublishedScore, bool)
 	if step <= 0 {
 		step = 0.5
 	}
-	if max <= min {
+	if hi <= lo {
 		return PublishedScore{}, false
 	}
 
-	value := min + (overall/100)*(max-min)
+	value := lo + (overall/100)*(hi-lo)
 	value = math.Round(value/step) * step
 	return PublishedScore{Value: value, Scale: s.Type, Estimate: !s.Published}, true
 }

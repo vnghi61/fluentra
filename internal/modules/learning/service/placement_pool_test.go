@@ -79,7 +79,7 @@ func (p *placementAI) item(kind, level string, n int) string {
 	case "vocabulary", kindChoice:
 		return fmt.Sprintf(`{"prompt": "Item %d: choose the word.", "options": %s, "correct_option_id": "A",
 			"explanation": %s}`, n, options, explanation)
-	case "reading_comprehension":
+	case kindReading:
 		return fmt.Sprintf(`{"passage_title": "T", "passage": %q, "questions": [%s]}`,
 			words(fmt.Sprintf("Passage %d", n), passage), questionsJSON())
 	case kindListening:

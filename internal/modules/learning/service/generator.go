@@ -229,26 +229,19 @@ func (s *Service) attachProvenanceAndVerify(
 		promptVersion = "foundation_topic_generate.v1"
 	}
 
-	var blindSolvePayload json.RawMessage
 	// A prompt or a task has no answer key to blind-solve against: asking the
 	// model to solve it and parsing the reply fails, and it failed every
 	// generated writing and speaking item (found in the live run).
-	if blindSolve && !isTopic && kindHasAnswerKey(req.Kind) {
-		var err error
-		blindSolvePayload, err = s.blindSolveItem(ctx, req.Kind, preparedBody)
-		if err != nil {
-			return nil, "", uuid.Nil, fmt.Errorf("blind solve item: %w", err)
-		}
+	hasKey := kindHasAnswerKey(req.Kind)
+	blindSolvePayload, err := s.maybeBlindSolve(ctx, req, preparedBody, isTopic, blindSolve && hasKey)
+	if err != nil {
+		return nil, "", uuid.Nil, fmt.Errorf("blind solve item: %w", err)
 	}
 
-	var judgedCEFR, cefrReasoning string
 	checkCEFR := (req.Purpose == purposeBank || req.Purpose == purposeFoundation) && !isTopic
-	if checkCEFR && s.ai != nil {
-		var err error
-		judgedCEFR, cefrReasoning, err = s.evaluateCEFR(ctx, req.Kind, req.CEFRLevel, preparedBody)
-		if err != nil {
-			return nil, "", uuid.Nil, fmt.Errorf("cefr evaluation failed: %w", err)
-		}
+	judgedCEFR, cefrReasoning, err := s.maybeEvaluateCEFR(ctx, req, preparedBody, checkCEFR)
+	if err != nil {
+		return nil, "", uuid.Nil, fmt.Errorf("cefr evaluation failed: %w", err)
 	}
 
 	bodyWithProv, err := injectProvenance(
@@ -263,7 +256,7 @@ func (s *Service) attachProvenanceAndVerify(
 		Kind:            req.Kind,
 		CEFRLevel:       req.CEFRLevel,
 		Body:            bodyWithProv,
-		BlindSolve:      blindSolve && !isTopic && kindHasAnswerKey(req.Kind),
+		BlindSolve:      blindSolve && !isTopic && hasKey,
 		CheckCEFR:       checkCEFR,
 		CheckProvenance: true,
 		// The exam part's published format, when the caller supplied it: the
@@ -278,6 +271,34 @@ func (s *Service) attachProvenanceAndVerify(
 	}
 
 	return bodyWithProv, promptVersion, aiRequestID, nil
+}
+
+// maybeBlindSolve solves an item with the key hidden, when the caller asked and
+// the kind has a key at all.
+func (s *Service) maybeBlindSolve(
+	ctx context.Context,
+	req learningcontract.GenerateRequest,
+	preparedBody json.RawMessage,
+	isTopic, shouldSolve bool,
+) (json.RawMessage, error) {
+	if !shouldSolve || isTopic {
+		return nil, nil
+	}
+	return s.blindSolveItem(ctx, req.Kind, preparedBody)
+}
+
+// maybeEvaluateCEFR judges an item's level, when the caller asked and a model is
+// configured to ask.
+func (s *Service) maybeEvaluateCEFR(
+	ctx context.Context,
+	req learningcontract.GenerateRequest,
+	preparedBody json.RawMessage,
+	check bool,
+) (string, string, error) {
+	if !check || s.ai == nil {
+		return "", "", nil
+	}
+	return s.evaluateCEFR(ctx, req.Kind, req.CEFRLevel, preparedBody)
 }
 
 func (s *Service) generateSingleItem(
