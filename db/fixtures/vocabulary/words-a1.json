@@ -17803,6 +17803,2012 @@
           "sentence_vi": "Xe buýt giá bốn mươi nghìn đồng."
         }
       ]
+    },
+    {
+      "lemma": "bottles",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "glass or plastic containers for liquids",
+      "definition_vi": "cái chai",
+      "examples": [
+        {
+          "sentence": "Please buy two bottles of water.",
+          "sentence_vi": "Làm ơn mua hai chai nước."
+        },
+        {
+          "sentence": "She put the empty bottles in the recycling bin.",
+          "sentence_vi": "Cô ấy bỏ các chai rỗng vào thùng tái chế."
+        }
+      ]
+    },
+    {
+      "lemma": "helen",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a common English name for a girl or woman",
+      "definition_vi": "Helen (tên người)",
+      "examples": [
+        {
+          "sentence": "Helen is my best friend at school.",
+          "sentence_vi": "Helen là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "My aunt Helen lives in Canada.",
+          "sentence_vi": "Dì Helen của tôi sống ở Canada."
+        }
+      ]
+    },
+    {
+      "lemma": "jennifer",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a common English first name for a girl or woman",
+      "definition_vi": "tên riêng Jennifer",
+      "examples": [
+        {
+          "sentence": "Jennifer is my best friend at school.",
+          "sentence_vi": "Jennifer là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "I called Jennifer to invite her to the party.",
+          "sentence_vi": "Tôi đã gọi cho Jennifer để mời cô ấy đến bữa tiệc."
+        }
+      ]
+    },
+    {
+      "lemma": "marie",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a French first name for a girl or woman",
+      "definition_vi": "tên riêng Marie",
+      "examples": [
+        {
+          "sentence": "Marie comes from a small town in France.",
+          "sentence_vi": "Marie đến từ một thị trấn nhỏ ở Pháp."
+        },
+        {
+          "sentence": "Marie helped me with my French homework.",
+          "sentence_vi": "Marie đã giúp tôi làm bài tập tiếng Pháp."
+        }
+      ]
+    },
+    {
+      "lemma": "meals",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "the food you eat at regular times of the day",
+      "definition_vi": "các bữa ăn",
+      "examples": [
+        {
+          "sentence": "We eat three meals a day: breakfast, lunch, and dinner.",
+          "sentence_vi": "Chúng tôi ăn ba bữa một ngày: sáng, trưa và tối."
+        },
+        {
+          "sentence": "My mother cooks delicious meals for the family.",
+          "sentence_vi": "Mẹ tôi nấu những bữa ăn ngon cho gia đình."
+        }
+      ]
+    },
+    {
+      "lemma": "samuel",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a boy's or man's first name",
+      "definition_vi": "tên người: Samuel",
+      "examples": [
+        {
+          "sentence": "Samuel is my best friend at school.",
+          "sentence_vi": "Samuel là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "Samuel lives in a small house near the river.",
+          "sentence_vi": "Samuel sống trong một ngôi nhà nhỏ gần sông."
+        }
+      ]
+    },
+    {
+      "lemma": "sheep",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a farm animal kept for its wool and meat",
+      "definition_vi": "con cừu",
+      "examples": [
+        {
+          "sentence": "There are ten sheep in the field.",
+          "sentence_vi": "Có mười con cừu trên cánh đồng."
+        },
+        {
+          "sentence": "The farmer feeds his sheep every morning.",
+          "sentence_vi": "Người nông dân cho cừu ăn mỗi sáng."
+        }
+      ]
+    },
+    {
+      "lemma": "sony",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a large Japanese company that makes electronics",
+      "definition_vi": "công ty Sony",
+      "examples": [
+        {
+          "sentence": "I bought a Sony television last week.",
+          "sentence_vi": "Tôi đã mua một chiếc tivi Sony tuần trước."
+        },
+        {
+          "sentence": "Sony makes cameras, games, and music players.",
+          "sentence_vi": "Sony sản xuất máy ảnh, trò chơi và máy nghe nhạc."
+        }
+      ]
+    },
+    {
+      "lemma": "stanley",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a boy's name used for people",
+      "definition_vi": "tên người (nam)",
+      "examples": [
+        {
+          "sentence": "Stanley is my best friend at school.",
+          "sentence_vi": "Stanley là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "My uncle Stanley lives in a small town.",
+          "sentence_vi": "Chú Stanley của tôi sống ở một thị trấn nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "taxi",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a car you pay to take you somewhere",
+      "definition_vi": "xe taxi",
+      "examples": [
+        {
+          "sentence": "We took a taxi to the airport.",
+          "sentence_vi": "Chúng tôi đi taxi đến sân bay."
+        },
+        {
+          "sentence": "The taxi driver was very friendly.",
+          "sentence_vi": "Tài xế taxi rất thân thiện."
+        }
+      ]
+    },
+    {
+      "lemma": "turner",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a family name used for people",
+      "definition_vi": "họ Turner",
+      "examples": [
+        {
+          "sentence": "Mrs Turner teaches us English.",
+          "sentence_vi": "Cô Turner dạy chúng tôi tiếng Anh."
+        },
+        {
+          "sentence": "Turner is a famous painter from England.",
+          "sentence_vi": "Turner là một họa sĩ nổi tiếng người Anh."
+        }
+      ]
+    },
+    {
+      "lemma": "xbox",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a game machine made by Microsoft",
+      "definition_vi": "máy chơi game Xbox",
+      "examples": [
+        {
+          "sentence": "He plays football games on his Xbox every evening.",
+          "sentence_vi": "Cậu ấy chơi game bóng đá trên Xbox mỗi tối."
+        },
+        {
+          "sentence": "My brother bought a new Xbox yesterday.",
+          "sentence_vi": "Anh trai tôi đã mua một chiếc Xbox mới hôm qua."
+        }
+      ]
+    },
+    {
+      "lemma": "cherry",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a small round red fruit with a hard seed inside",
+      "definition_vi": "quả anh đào",
+      "examples": [
+        {
+          "sentence": "She picked a cherry from the tree in the garden.",
+          "sentence_vi": "Cô ấy hái một quả anh đào từ cây trong vườn."
+        },
+        {
+          "sentence": "I love cake with cherry on top.",
+          "sentence_vi": "Tôi thích bánh có quả anh đào ở trên."
+        }
+      ]
+    },
+    {
+      "lemma": "craig",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a male first name used in English-speaking countries",
+      "definition_vi": "tên riêng nam (Craig)",
+      "examples": [
+        {
+          "sentence": "Craig lives next door to my grandmother.",
+          "sentence_vi": "Craig sống ngay nhà bên bà tôi."
+        },
+        {
+          "sentence": "I invited Craig to my birthday party.",
+          "sentence_vi": "Tôi đã mời Craig đến dự tiệc sinh nhật của mình."
+        }
+      ]
+    },
+    {
+      "lemma": "didnt",
+      "pos": "phrase",
+      "cefr_level": "A1",
+      "definition": "short form of 'did not', used to make past negatives",
+      "definition_vi": "viết tắt của 'did not' (không)",
+      "examples": [
+        {
+          "sentence": "I didnt see you at school yesterday.",
+          "sentence_vi": "Hôm qua tôi không thấy bạn ở trường."
+        },
+        {
+          "sentence": "She didnt finish her homework before dinner.",
+          "sentence_vi": "Cô ấy đã không làm xong bài tập trước bữa tối."
+        }
+      ]
+    },
+    {
+      "lemma": "grows",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "gets bigger or taller over time",
+      "definition_vi": "lớn lên, mọc, trồng",
+      "examples": [
+        {
+          "sentence": "A child grows quickly in the first few years.",
+          "sentence_vi": "Trẻ em lớn lên rất nhanh trong những năm đầu."
+        },
+        {
+          "sentence": "My grandmother grows vegetables in her garden.",
+          "sentence_vi": "Bà tôi trồng rau trong vườn."
+        }
+      ]
+    },
+    {
+      "lemma": "knees",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "the middle joints of your legs",
+      "definition_vi": "đầu gối",
+      "examples": [
+        {
+          "sentence": "My knees hurt after running for an hour.",
+          "sentence_vi": "Đầu gối của tôi đau sau khi chạy bộ một giờ."
+        },
+        {
+          "sentence": "She fell down and hurt both knees.",
+          "sentence_vi": "Cô ấy ngã và đau cả hai đầu gối."
+        }
+      ]
+    },
+    {
+      "lemma": "lions",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "large wild cats that live in groups in Africa",
+      "definition_vi": "sư tử",
+      "examples": [
+        {
+          "sentence": "Lions sleep for many hours every day.",
+          "sentence_vi": "Sư tử ngủ nhiều giờ mỗi ngày."
+        },
+        {
+          "sentence": "We saw three lions at the zoo.",
+          "sentence_vi": "Chúng tôi thấy ba con sư tử ở sở thú."
+        }
+      ]
+    },
+    {
+      "lemma": "shoulders",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "the body parts between your neck and your arms",
+      "definition_vi": "vai",
+      "examples": [
+        {
+          "sentence": "My shoulders hurt after carrying the heavy bag.",
+          "sentence_vi": "Vai tôi đau sau khi mang chiếc túi nặng."
+        },
+        {
+          "sentence": "She put her coat over her shoulders to keep warm.",
+          "sentence_vi": "Cô ấy khoác áo lên vai để giữ ấm."
+        }
+      ]
+    },
+    {
+      "lemma": "sits",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "rests on a chair or other place with the body upright",
+      "definition_vi": "ngồi",
+      "examples": [
+        {
+          "sentence": "My cat sits by the window every morning.",
+          "sentence_vi": "Con mèo của tôi ngồi bên cửa sổ mỗi sáng."
+        },
+        {
+          "sentence": "He sits next to his best friend in class.",
+          "sentence_vi": "Cậu ấy ngồi cạnh bạn thân nhất trong lớp."
+        }
+      ]
+    },
+    {
+      "lemma": "slept",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "past tense of sleep; rested with your eyes closed",
+      "definition_vi": "đã ngủ",
+      "examples": [
+        {
+          "sentence": "I slept for ten hours last night.",
+          "sentence_vi": "Tôi đã ngủ mười tiếng tối qua."
+        },
+        {
+          "sentence": "The baby slept quietly in her mother's arms.",
+          "sentence_vi": "Em bé ngủ yên trong vòng tay mẹ."
+        }
+      ]
+    },
+    {
+      "lemma": "soap",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a product you use with water to wash your body",
+      "definition_vi": "xà phòng",
+      "examples": [
+        {
+          "sentence": "Please buy a bar of soap from the shop.",
+          "sentence_vi": "Xin hãy mua một cục xà phòng ở cửa hàng."
+        },
+        {
+          "sentence": "Wash your hands with soap before dinner.",
+          "sentence_vi": "Rửa tay bằng xà phòng trước khi ăn tối."
+        }
+      ]
+    },
+    {
+      "lemma": "beds",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "pieces of furniture for sleeping on",
+      "definition_vi": "giường",
+      "examples": [
+        {
+          "sentence": "The hotel room has two comfortable beds.",
+          "sentence_vi": "Phòng khách sạn có hai chiếc giường thoải mái."
+        },
+        {
+          "sentence": "We made the beds before the guests arrived.",
+          "sentence_vi": "Chúng tôi dọn giường trước khi khách đến."
+        }
+      ]
+    },
+    {
+      "lemma": "cinema",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a place where you watch films",
+      "definition_vi": "rạp chiếu phim",
+      "examples": [
+        {
+          "sentence": "Let's go to the cinema on Friday.",
+          "sentence_vi": "Thứ sáu chúng ta đi xem phim nhé."
+        },
+        {
+          "sentence": "The cinema near my house is very big.",
+          "sentence_vi": "Rạp chiếu phim gần nhà tôi rất lớn."
+        }
+      ]
+    },
+    {
+      "lemma": "jake",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a boy's or man's first name",
+      "definition_vi": "tên riêng Jake",
+      "examples": [
+        {
+          "sentence": "Jake is my best friend at school.",
+          "sentence_vi": "Jake là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "I saw Jake at the shop this morning.",
+          "sentence_vi": "Tôi thấy Jake ở cửa hàng sáng nay."
+        }
+      ]
+    },
+    {
+      "lemma": "jam",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "sweet food made from fruit, eaten on bread",
+      "definition_vi": "mứt trái cây",
+      "examples": [
+        {
+          "sentence": "I like strawberry jam on my toast.",
+          "sentence_vi": "Tôi thích mứt dâu trên bánh mì nướng."
+        },
+        {
+          "sentence": "My grandmother makes jam from the garden plums.",
+          "sentence_vi": "Bà tôi làm mứt từ quả mận trong vườn."
+        }
+      ]
+    },
+    {
+      "lemma": "jamie",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a boy's or man's first name",
+      "definition_vi": "tên riêng Jamie",
+      "examples": [
+        {
+          "sentence": "Jamie lives next door to my house.",
+          "sentence_vi": "Jamie sống ở nhà bên cạnh nhà tôi."
+        },
+        {
+          "sentence": "Jamie wants to be a football player.",
+          "sentence_vi": "Jamie muốn trở thành cầu thủ bóng đá."
+        }
+      ]
+    },
+    {
+      "lemma": "jessica",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a girl's or woman's first name",
+      "definition_vi": "tên riêng Jessica",
+      "examples": [
+        {
+          "sentence": "Jessica is learning English at the same school as me.",
+          "sentence_vi": "Jessica học tiếng Anh ở cùng trường với tôi."
+        },
+        {
+          "sentence": "I invited Jessica to my birthday party.",
+          "sentence_vi": "Tôi đã mời Jessica đến dự tiệc sinh nhật của mình."
+        }
+      ]
+    },
+    {
+      "lemma": "keith",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a boy's or man's first name",
+      "definition_vi": "tên riêng Keith",
+      "examples": [
+        {
+          "sentence": "Keith works in a bank in London.",
+          "sentence_vi": "Keith làm việc ở một ngân hàng ở London."
+        },
+        {
+          "sentence": "My uncle Keith makes the best pancakes.",
+          "sentence_vi": "Chú Keith của tôi làm bánh kếp ngon nhất."
+        }
+      ]
+    },
+    {
+      "lemma": "metres",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "units for measuring length, the plural of metre",
+      "definition_vi": "mét (số nhiều)",
+      "examples": [
+        {
+          "sentence": "The pool is twenty-five metres long.",
+          "sentence_vi": "Hồ bơi dài hai mươi lăm mét."
+        },
+        {
+          "sentence": "My house is only fifty metres from the shop.",
+          "sentence_vi": "Nhà tôi chỉ cách cửa hàng năm mươi mét."
+        }
+      ]
+    },
+    {
+      "lemma": "monsters",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "scary imaginary creatures in stories",
+      "definition_vi": "quái vật",
+      "examples": [
+        {
+          "sentence": "The children drew monsters with big teeth.",
+          "sentence_vi": "Bọn trẻ vẽ những con quái vật có răng to."
+        },
+        {
+          "sentence": "He is afraid of monsters under his bed.",
+          "sentence_vi": "Cậu bé sợ quái vật dưới gầm giường."
+        }
+      ]
+    },
+    {
+      "lemma": "shine",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "to give out or reflect bright light",
+      "definition_vi": "tỏa sáng, chiếu sáng",
+      "examples": [
+        {
+          "sentence": "The sun will shine all day tomorrow.",
+          "sentence_vi": "Ngày mai mặt trời sẽ suốt ngày tỏa sáng."
+        },
+        {
+          "sentence": "Please shine your shoes before the party.",
+          "sentence_vi": "Hãy đánh bóng giày của bạn trước bữa tiệc."
+        }
+      ]
+    },
+    {
+      "lemma": "tyler",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a boy's first name used in English",
+      "definition_vi": "tên riêng Tyler",
+      "examples": [
+        {
+          "sentence": "Tyler is my best friend at school.",
+          "sentence_vi": "Tyler là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "Tyler plays football every Saturday.",
+          "sentence_vi": "Tyler chơi bóng đá vào mỗi thứ Bảy."
+        }
+      ]
+    },
+    {
+      "lemma": "aunt",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "the sister of your mother or father",
+      "definition_vi": "cô, dì, bác gái",
+      "examples": [
+        {
+          "sentence": "My aunt lives in a small town near the sea.",
+          "sentence_vi": "Dì tôi sống ở một thị trấn nhỏ gần biển."
+        },
+        {
+          "sentence": "We visited our aunt every summer.",
+          "sentence_vi": "Chúng tôi đến thăm dì mỗi mùa hè."
+        }
+      ]
+    },
+    {
+      "lemma": "clouds",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "white or grey shapes of water drops in the sky",
+      "definition_vi": "mây",
+      "examples": [
+        {
+          "sentence": "Dark clouds covered the sky before the rain.",
+          "sentence_vi": "Những đám mây đen che kín bầu trời trước cơn mưa."
+        },
+        {
+          "sentence": "We lay on the grass and watched the clouds move.",
+          "sentence_vi": "Chúng tôi nằm trên cỏ và nhìn mây trôi."
+        }
+      ]
+    },
+    {
+      "lemma": "der",
+      "pos": "determiner",
+      "cefr_level": "A1",
+      "definition": "German word meaning 'the', used before some nouns",
+      "definition_vi": "mạo từ 'the' trong tiếng Đức",
+      "examples": [
+        {
+          "sentence": "In German, you say 'der Mann' to mean 'the man'.",
+          "sentence_vi": "Trong tiếng Đức, bạn nói 'der Mann' để nghĩa là 'người đàn ông'."
+        },
+        {
+          "sentence": "The word 'der' changes form depending on the noun's case.",
+          "sentence_vi": "Từ 'der' thay đổi hình dạng tùy theo cách của danh từ."
+        }
+      ]
+    },
+    {
+      "lemma": "hammer",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a tool used for hitting nails into wood",
+      "definition_vi": "cái búa",
+      "examples": [
+        {
+          "sentence": "I need a hammer to fix this chair.",
+          "sentence_vi": "Tôi cần một cái búa để sửa cái ghế này."
+        },
+        {
+          "sentence": "He hit the nail with the hammer.",
+          "sentence_vi": "Anh ấy đóng cái đinh bằng búa."
+        }
+      ]
+    },
+    {
+      "lemma": "kicking",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "hitting something with your foot",
+      "definition_vi": "đang đá",
+      "examples": [
+        {
+          "sentence": "The boys are kicking a ball in the park.",
+          "sentence_vi": "Các cậu bé đang đá bóng trong công viên."
+        },
+        {
+          "sentence": "Stop kicking the door, please!",
+          "sentence_vi": "Đừng đá cửa nữa nhé!"
+        }
+      ]
+    },
+    {
+      "lemma": "michelle",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a girl's first name",
+      "definition_vi": "tên riêng Michelle",
+      "examples": [
+        {
+          "sentence": "Michelle is my best friend at school.",
+          "sentence_vi": "Michelle là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "Michelle lives near the park with her family.",
+          "sentence_vi": "Michelle sống gần công viên cùng gia đình."
+        }
+      ]
+    },
+    {
+      "lemma": "neil",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a man's first name",
+      "definition_vi": "tên riêng Neil",
+      "examples": [
+        {
+          "sentence": "Neil plays football every weekend.",
+          "sentence_vi": "Neil chơi bóng đá mỗi cuối tuần."
+        },
+        {
+          "sentence": "My uncle Neil works in a hospital.",
+          "sentence_vi": "Chú Neil của tôi làm việc ở bệnh viện."
+        }
+      ]
+    },
+    {
+      "lemma": "planes",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "flying vehicles with wings and engines",
+      "definition_vi": "máy bay",
+      "examples": [
+        {
+          "sentence": "Planes fly over our town every morning.",
+          "sentence_vi": "Máy bay bay qua thị trấn chúng tôi mỗi sáng."
+        },
+        {
+          "sentence": "Two planes landed at the airport at the same time.",
+          "sentence_vi": "Hai máy bay hạ cánh xuống sân bay cùng lúc."
+        }
+      ]
+    },
+    {
+      "lemma": "roberts",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a family name used for people",
+      "definition_vi": "họ Roberts",
+      "examples": [
+        {
+          "sentence": "Mr Roberts lives next door to my grandmother.",
+          "sentence_vi": "Ông Roberts sống cạnh nhà bà tôi."
+        },
+        {
+          "sentence": "Mrs Roberts teaches English at our school.",
+          "sentence_vi": "Bà Roberts dạy tiếng Anh ở trường của chúng tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "tommy",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a male name, also an informal word for a British soldier",
+      "definition_vi": "tên riêng Tommy; cách gọi lính Anh",
+      "examples": [
+        {
+          "sentence": "Tommy is my best friend at school.",
+          "sentence_vi": "Tommy là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "The old tommy wrote letters home every week.",
+          "sentence_vi": "Người lính Anh già viết thư về nhà mỗi tuần."
+        }
+      ]
+    },
+    {
+      "lemma": "classroom",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a room in a school where students learn together",
+      "definition_vi": "phòng học, lớp học",
+      "examples": [
+        {
+          "sentence": "Our classroom has a big whiteboard and twenty desks.",
+          "sentence_vi": "Lớp học của chúng tôi có một bảng trắng lớn và hai mươi cái bàn."
+        },
+        {
+          "sentence": "Please keep your classroom clean and tidy.",
+          "sentence_vi": "Hãy giữ lớp học của bạn sạch sẽ và gọn gàng."
+        }
+      ]
+    },
+    {
+      "lemma": "colours",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "red, blue, yellow and other things we see with our eyes",
+      "definition_vi": "màu sắc",
+      "examples": [
+        {
+          "sentence": "The children painted the picture with bright colours.",
+          "sentence_vi": "Những đứa trẻ vẽ bức tranh bằng những màu sắc tươi sáng."
+        },
+        {
+          "sentence": "What colours do you like best?",
+          "sentence_vi": "Bạn thích màu sắc nào nhất?"
+        }
+      ]
+    },
+    {
+      "lemma": "farmer",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a person who grows plants or keeps animals on a farm",
+      "definition_vi": "nông dân",
+      "examples": [
+        {
+          "sentence": "The farmer wakes up very early to feed the animals.",
+          "sentence_vi": "Người nông dân dậy rất sớm để cho động vật ăn."
+        },
+        {
+          "sentence": "My uncle is a farmer and grows vegetables near my village.",
+          "sentence_vi": "Chú tôi là nông dân và trồng rau gần làng của tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "hates",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "feels strong dislike for someone or something",
+      "definition_vi": "ghét",
+      "examples": [
+        {
+          "sentence": "She hates cold weather in the morning.",
+          "sentence_vi": "Cô ấy ghét thời tiết lạnh vào buổi sáng."
+        },
+        {
+          "sentence": "He hates waiting for the bus every day.",
+          "sentence_vi": "Anh ấy ghét phải chờ xe buýt mỗi ngày."
+        }
+      ]
+    },
+    {
+      "lemma": "jeremy",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a boy's or man's first name",
+      "definition_vi": "tên riêng Jeremy",
+      "examples": [
+        {
+          "sentence": "Jeremy is my best friend at school.",
+          "sentence_vi": "Jeremy là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "Jeremy plays football every Saturday.",
+          "sentence_vi": "Jeremy chơi bóng đá mỗi thứ Bảy."
+        }
+      ]
+    },
+    {
+      "lemma": "morris",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a family name or a man's first name",
+      "definition_vi": "họ hoặc tên Morris",
+      "examples": [
+        {
+          "sentence": "Mr Morris teaches English at our school.",
+          "sentence_vi": "Ông Morris dạy tiếng Anh ở trường chúng tôi."
+        },
+        {
+          "sentence": "Morris lives near the train station.",
+          "sentence_vi": "Morris sống gần nhà ga."
+        }
+      ]
+    },
+    {
+      "lemma": "rachel",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a girl's or woman's first name",
+      "definition_vi": "tên riêng Rachel",
+      "examples": [
+        {
+          "sentence": "Rachel sings in the school choir.",
+          "sentence_vi": "Rachel hát trong dàn hợp xướng của trường."
+        },
+        {
+          "sentence": "My neighbour Rachel has two cats.",
+          "sentence_vi": "Hàng xóm của tôi, Rachel, có hai con mèo."
+        }
+      ]
+    },
+    {
+      "lemma": "salad",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a cold dish made of fresh vegetables",
+      "definition_vi": "rau trộn, món salad",
+      "examples": [
+        {
+          "sentence": "I eat salad with lunch every day.",
+          "sentence_vi": "Tôi ăn salad với bữa trưa mỗi ngày."
+        },
+        {
+          "sentence": "She made a fresh salad from the garden.",
+          "sentence_vi": "Cô ấy làm một món salad tươi từ vườn."
+        }
+      ]
+    },
+    {
+      "lemma": "sends",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "makes something go to another person or place",
+      "definition_vi": "gửi",
+      "examples": [
+        {
+          "sentence": "She sends emails to her friends every week.",
+          "sentence_vi": "Cô ấy gửi email cho bạn bè mỗi tuần."
+        },
+        {
+          "sentence": "My mother sends me money when I need it.",
+          "sentence_vi": "Mẹ tôi gửi tiền cho tôi khi tôi cần."
+        }
+      ]
+    },
+    {
+      "lemma": "smiling",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "making a happy face with the mouth turned up",
+      "definition_vi": "cười, mỉm cười",
+      "examples": [
+        {
+          "sentence": "The baby is smiling at her mother.",
+          "sentence_vi": "Em bé đang cười với mẹ."
+        },
+        {
+          "sentence": "He was smiling when he heard the good news.",
+          "sentence_vi": "Anh ấy mỉm cười khi nghe tin tốt lành."
+        }
+      ]
+    },
+    {
+      "lemma": "soup",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a hot liquid food made with water and vegetables or meat",
+      "definition_vi": "súp, canh",
+      "examples": [
+        {
+          "sentence": "I want a bowl of hot soup.",
+          "sentence_vi": "Tôi muốn một bát súp nóng."
+        },
+        {
+          "sentence": "My grandmother makes chicken soup for me.",
+          "sentence_vi": "Bà tôi nấu súp gà cho tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "tigers",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "large wild cats with orange and black stripes",
+      "definition_vi": "hổ, cọp",
+      "examples": [
+        {
+          "sentence": "Tigers live in forests in Asia.",
+          "sentence_vi": "Hổ sống trong rừng ở châu Á."
+        },
+        {
+          "sentence": "We saw two tigers at the zoo.",
+          "sentence_vi": "Chúng tôi thấy hai con hổ ở sở thú."
+        }
+      ]
+    },
+    {
+      "lemma": "vegetables",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "plants we eat, like carrots and potatoes",
+      "definition_vi": "rau củ",
+      "examples": [
+        {
+          "sentence": "Eat your vegetables if you want to be strong and healthy.",
+          "sentence_vi": "Hãy ăn rau củ nếu bạn muốn khỏe mạnh và mạnh mẽ."
+        },
+        {
+          "sentence": "I buy fresh vegetables at the market every morning.",
+          "sentence_vi": "Tôi mua rau tươi ở chợ mỗi sáng."
+        }
+      ]
+    },
+    {
+      "lemma": "beans",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "small seeds we eat, growing in long pods",
+      "definition_vi": "đậu, hạt đậu",
+      "examples": [
+        {
+          "sentence": "I had rice and beans for lunch.",
+          "sentence_vi": "Tôi ăn cơm với đậu cho bữa trưa."
+        },
+        {
+          "sentence": "My mother grows beans in the garden every summer.",
+          "sentence_vi": "Mẹ tôi trồng đậu trong vườn mỗi mùa hè."
+        }
+      ]
+    },
+    {
+      "lemma": "cow",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a big farm animal that gives milk",
+      "definition_vi": "con bò cái",
+      "examples": [
+        {
+          "sentence": "The cow eats grass in the field every morning.",
+          "sentence_vi": "Con bò ăn cỏ trên đồng mỗi sáng."
+        },
+        {
+          "sentence": "We get fresh milk from our cow.",
+          "sentence_vi": "Chúng tôi lấy sữa tươi từ con bò của mình."
+        }
+      ]
+    },
+    {
+      "lemma": "eddie",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a boy's or man's first name, short for Edward",
+      "definition_vi": "tên riêng Eddie",
+      "examples": [
+        {
+          "sentence": "Eddie plays football with his friends after school.",
+          "sentence_vi": "Eddie chơi bóng đá với bạn bè sau giờ học."
+        },
+        {
+          "sentence": "I gave Eddie a book for his birthday.",
+          "sentence_vi": "Tôi tặng Eddie một cuốn sách vào sinh nhật của cậu ấy."
+        }
+      ]
+    },
+    {
+      "lemma": "emily",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a girl's or woman's first name",
+      "definition_vi": "tên riêng Emily",
+      "examples": [
+        {
+          "sentence": "Emily likes to read stories before bed.",
+          "sentence_vi": "Emily thích đọc truyện trước khi đi ngủ."
+        },
+        {
+          "sentence": "My cousin Emily lives in a small town.",
+          "sentence_vi": "Anh họ của tôi, Emily, sống ở một thị trấn nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "fifteen",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "the number after fourteen; 15",
+      "definition_vi": "số mười lăm",
+      "examples": [
+        {
+          "sentence": "There are fifteen students in my English class.",
+          "sentence_vi": "Lớp tiếng Anh của tôi có mười lăm học sinh."
+        },
+        {
+          "sentence": "The bus leaves in fifteen minutes.",
+          "sentence_vi": "Xe buýt khởi hành sau mười lăm phút nữa."
+        }
+      ]
+    },
+    {
+      "lemma": "grandmother",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "the mother of your mother or father",
+      "definition_vi": "bà",
+      "examples": [
+        {
+          "sentence": "My grandmother makes the best rice cakes in the family.",
+          "sentence_vi": "Bà tôi làm bánh chưng ngon nhất trong nhà."
+        },
+        {
+          "sentence": "We visit our grandmother every Sunday afternoon.",
+          "sentence_vi": "Chúng tôi thăm bà mỗi chiều chủ nhật."
+        }
+      ]
+    },
+    {
+      "lemma": "hurry",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "to move or do things very fast because you are late",
+      "definition_vi": "vội vã, nhanh lên",
+      "examples": [
+        {
+          "sentence": "Hurry up, or we will miss the bus to school!",
+          "sentence_vi": "Nhanh lên, nếu không chúng ta sẽ lỡ xe buýt đi học!"
+        },
+        {
+          "sentence": "Don't hurry when you eat; chew your food slowly.",
+          "sentence_vi": "Đừng ăn vội, nhai thức ăn chậm thôi."
+        }
+      ]
+    },
+    {
+      "lemma": "kyle",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a boy's first name used in English-speaking countries",
+      "definition_vi": "tên riêng Kyle (tên nam)",
+      "examples": [
+        {
+          "sentence": "Kyle is my best friend at school; he sits next to me.",
+          "sentence_vi": "Kyle là bạn thân nhất của tôi ở trường; cậu ấy ngồi cạnh tôi."
+        },
+        {
+          "sentence": "Kyle plays football every weekend with his older brother.",
+          "sentence_vi": "Kyle chơi bóng đá mỗi cuối tuần cùng anh trai."
+        }
+      ]
+    },
+    {
+      "lemma": "nancy",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a girl's first name",
+      "definition_vi": "tên riêng nữ Nancy",
+      "examples": [
+        {
+          "sentence": "Nancy is my best friend at school.",
+          "sentence_vi": "Nancy là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "Nancy lives next door with her family.",
+          "sentence_vi": "Nancy sống ở nhà bên với gia đình cô ấy."
+        }
+      ]
+    },
+    {
+      "lemma": "norman",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a boy's first name",
+      "definition_vi": "tên riêng nam Norman",
+      "examples": [
+        {
+          "sentence": "Norman wants to be a pilot when he grows up.",
+          "sentence_vi": "Norman muốn làm phi công khi lớn lên."
+        },
+        {
+          "sentence": "I met Norman at the football game yesterday.",
+          "sentence_vi": "Tôi gặp Norman ở trận bóng đá hôm qua."
+        }
+      ]
+    },
+    {
+      "lemma": "pig",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a farm animal kept for its meat",
+      "definition_vi": "con lợn",
+      "examples": [
+        {
+          "sentence": "The pig is sleeping in the mud.",
+          "sentence_vi": "Con lợn đang ngủ trong bùn."
+        },
+        {
+          "sentence": "We have three pigs on our farm.",
+          "sentence_vi": "Chúng tôi có ba con lợn trên trang trại."
+        }
+      ]
+    },
+    {
+      "lemma": "stairs",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "steps that take you up or down inside a building",
+      "definition_vi": "cầu thang",
+      "examples": [
+        {
+          "sentence": "The bedroom is upstairs, so take the stairs.",
+          "sentence_vi": "Phòng ngủ ở trên lầu, nên đi cầu thang."
+        },
+        {
+          "sentence": "Be careful when you walk down the stairs.",
+          "sentence_vi": "Cẩn thận khi bạn đi xuống cầu thang."
+        }
+      ]
+    },
+    {
+      "lemma": "sticks",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "small thin pieces of wood from trees",
+      "definition_vi": "cây que, cành nhỏ",
+      "examples": [
+        {
+          "sentence": "The dog loves to play with sticks in the park.",
+          "sentence_vi": "Con chó thích chơi với những cây que trong công viên."
+        },
+        {
+          "sentence": "We collected dry sticks to make a fire.",
+          "sentence_vi": "Chúng tôi nhặt những cành khô để nhóm lửa."
+        }
+      ]
+    },
+    {
+      "lemma": "vincent",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a boy's first name",
+      "definition_vi": "tên riêng Vincent",
+      "examples": [
+        {
+          "sentence": "Vincent is my best friend at school.",
+          "sentence_vi": "Vincent là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "Vincent likes to draw pictures of flowers.",
+          "sentence_vi": "Vincent thích vẽ tranh hoa."
+        }
+      ]
+    },
+    {
+      "lemma": "zoo",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a place where people go to see animals",
+      "definition_vi": "vườn thú",
+      "examples": [
+        {
+          "sentence": "The children saw a lion at the zoo.",
+          "sentence_vi": "Bọn trẻ nhìn thấy một con sư tử ở vườn thú."
+        },
+        {
+          "sentence": "We take the bus to the zoo on Sundays.",
+          "sentence_vi": "Chúng tôi đi xe buýt đến vườn thú vào các ngày Chủ nhật."
+        }
+      ]
+    },
+    {
+      "lemma": "ba",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a short word for a bachelor's university degree",
+      "definition_vi": "cử nhân (bằng BA)",
+      "examples": [
+        {
+          "sentence": "She finished her BA in history last June.",
+          "sentence_vi": "Cô ấy hoàn thành bằng cử nhân lịch sử vào tháng Sáu năm ngoái."
+        },
+        {
+          "sentence": "He is studying for a BA in economics.",
+          "sentence_vi": "Anh ấy đang học cử nhân kinh tế."
+        }
+      ]
+    },
+    {
+      "lemma": "dishes",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "plates, bowls, and cups, or food that is cooked",
+      "definition_vi": "bát đĩa; các món ăn",
+      "examples": [
+        {
+          "sentence": "Please wash the dishes after dinner.",
+          "sentence_vi": "Vui lòng rửa bát đĩa sau bữa tối."
+        },
+        {
+          "sentence": "She cooked three delicious dishes for the party.",
+          "sentence_vi": "Cô ấy nấu ba món ngon cho bữa tiệc."
+        }
+      ]
+    },
+    {
+      "lemma": "eaten",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "past participle of eat; having taken food into the body",
+      "definition_vi": "đã ăn (quá khứ phân từ của eat)",
+      "examples": [
+        {
+          "sentence": "I have already eaten my lunch.",
+          "sentence_vi": "Tôi đã ăn trưa rồi."
+        },
+        {
+          "sentence": "The cake was eaten by the children quickly.",
+          "sentence_vi": "Chiếc bánh đã bị lũ trẻ ăn nhanh chóng."
+        }
+      ]
+    },
+    {
+      "lemma": "homework",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "school work that students do at home after class",
+      "definition_vi": "bài tập về nhà",
+      "examples": [
+        {
+          "sentence": "I do my homework every evening.",
+          "sentence_vi": "Tôi làm bài tập về nhà mỗi tối."
+        },
+        {
+          "sentence": "The teacher gave us a lot of homework today.",
+          "sentence_vi": "Cô giáo giao cho chúng tôi nhiều bài tập về nhà hôm nay."
+        }
+      ]
+    },
+    {
+      "lemma": "lip",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "one of the soft edges of your mouth",
+      "definition_vi": "môi",
+      "examples": [
+        {
+          "sentence": "She put her finger on her lip to keep him quiet.",
+          "sentence_vi": "Cô đặt ngón tay lên môi để bảo anh im lặng."
+        },
+        {
+          "sentence": "My lip hurts when I smile.",
+          "sentence_vi": "Môi tôi đau khi tôi cười."
+        }
+      ]
+    },
+    {
+      "lemma": "nathan",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a boy's first name",
+      "definition_vi": "tên Nathan (tên nam)",
+      "examples": [
+        {
+          "sentence": "Nathan is my best friend at school.",
+          "sentence_vi": "Nathan là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "Nathan wants to be a pilot when he grows up.",
+          "sentence_vi": "Nathan muốn trở thành phi công khi lớn lên."
+        }
+      ]
+    },
+    {
+      "lemma": "sandwich",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "food made with bread and filling between two slices",
+      "definition_vi": "bánh mì kẹp",
+      "examples": [
+        {
+          "sentence": "I eat a cheese sandwich for lunch every day.",
+          "sentence_vi": "Tôi ăn một chiếc bánh mì kẹp phô mai mỗi ngày trưa."
+        },
+        {
+          "sentence": "She made a chicken sandwich for her brother.",
+          "sentence_vi": "Cô làm một bánh mì kẹp gà cho em trai."
+        }
+      ]
+    },
+    {
+      "lemma": "stuart",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a common English first name or family name",
+      "definition_vi": "Stuart (tên người)",
+      "examples": [
+        {
+          "sentence": "Stuart lives next door with his two dogs.",
+          "sentence_vi": "Stuart sống ở nhà bên với hai con chó."
+        },
+        {
+          "sentence": "I called Stuart to ask about the party.",
+          "sentence_vi": "Tôi gọi cho Stuart để hỏi về bữa tiệc."
+        }
+      ]
+    },
+    {
+      "lemma": "um",
+      "pos": "interjection",
+      "cefr_level": "A1",
+      "definition": "a sound people make when thinking or pausing while speaking",
+      "definition_vi": "ừ (tiếng nói chần chừ)",
+      "examples": [
+        {
+          "sentence": "Um, I don't know the answer to that question.",
+          "sentence_vi": "Ừm, tôi không biết câu trả lời cho câu hỏi đó."
+        },
+        {
+          "sentence": "She said, 'Um, can you help me with this?'",
+          "sentence_vi": "Cô ấy nói: 'Ừm, bạn có thể giúp tôi việc này không?'"
+        }
+      ]
+    },
+    {
+      "lemma": "understands",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "knows what something means or how it works",
+      "definition_vi": "hiểu",
+      "examples": [
+        {
+          "sentence": "He understands the lesson very well.",
+          "sentence_vi": "Cậu ấy hiểu bài học rất tốt."
+        },
+        {
+          "sentence": "My teacher understands when I make mistakes.",
+          "sentence_vi": "Giáo viên của tôi hiểu khi tôi mắc lỗi."
+        }
+      ]
+    },
+    {
+      "lemma": "brad",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a male first name",
+      "definition_vi": "Brad (tên riêng nam)",
+      "examples": [
+        {
+          "sentence": "Brad is my best friend at school.",
+          "sentence_vi": "Brad là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "Brad plays football every weekend.",
+          "sentence_vi": "Brad chơi bóng đá mỗi cuối tuần."
+        }
+      ]
+    },
+    {
+      "lemma": "cookies",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "small sweet flat cakes that you bake in an oven",
+      "definition_vi": "bánh quy",
+      "examples": [
+        {
+          "sentence": "My mother makes delicious cookies every Sunday.",
+          "sentence_vi": "Mẹ tôi làm bánh quy ngon mỗi Chủ nhật."
+        },
+        {
+          "sentence": "Would you like some cookies with your milk?",
+          "sentence_vi": "Bạn có muốn ăn bánh quy với sữa không?"
+        }
+      ]
+    },
+    {
+      "lemma": "eleven",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "the number after ten and before twelve",
+      "definition_vi": "số mười một",
+      "examples": [
+        {
+          "sentence": "My little brother is eleven years old.",
+          "sentence_vi": "Em trai tôi mười một tuổi."
+        },
+        {
+          "sentence": "There are eleven players in a football team.",
+          "sentence_vi": "Có mười một cầu thủ trong một đội bóng đá."
+        }
+      ]
+    },
+    {
+      "lemma": "exercises",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "activities that keep your body strong and healthy",
+      "definition_vi": "bài tập thể dục",
+      "examples": [
+        {
+          "sentence": "I do morning exercises before breakfast.",
+          "sentence_vi": "Tôi tập thể dục buổi sáng trước bữa ăn."
+        },
+        {
+          "sentence": "These exercises help strengthen your legs.",
+          "sentence_vi": "Những bài tập này giúp làm mạnh chân của bạn."
+        }
+      ]
+    },
+    {
+      "lemma": "ham",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "salted or smoked meat from a pig's leg",
+      "definition_vi": "thịt giăm bông",
+      "examples": [
+        {
+          "sentence": "I put ham and cheese in my sandwich.",
+          "sentence_vi": "Tôi kẹp giăm bông và phô mai vào bánh mì kẹp."
+        },
+        {
+          "sentence": "She fried some ham for breakfast this morning.",
+          "sentence_vi": "Cô ấy chiên một ít giăm bông cho bữa sáng sáng nay."
+        }
+      ]
+    },
+    {
+      "lemma": "juan",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a male first name used in Spanish-speaking countries",
+      "definition_vi": "tên người (Juan)",
+      "examples": [
+        {
+          "sentence": "Juan is my best friend at school.",
+          "sentence_vi": "Juan là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "Juan lives in Madrid with his family.",
+          "sentence_vi": "Juan sống ở Madrid với gia đình."
+        }
+      ]
+    },
+    {
+      "lemma": "julia",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a female first name",
+      "definition_vi": "tên người (Julia)",
+      "examples": [
+        {
+          "sentence": "Julia wants to be a doctor.",
+          "sentence_vi": "Julia muốn trở thành bác sĩ."
+        },
+        {
+          "sentence": "I met Julia at the library yesterday.",
+          "sentence_vi": "Tôi gặp Julia ở thư viện hôm qua."
+        }
+      ]
+    },
+    {
+      "lemma": "pete",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a male first name, short for Peter",
+      "definition_vi": "tên người (Pete)",
+      "examples": [
+        {
+          "sentence": "Pete plays football every weekend.",
+          "sentence_vi": "Pete chơi bóng đá mỗi cuối tuần."
+        },
+        {
+          "sentence": "I called Pete to ask about the party.",
+          "sentence_vi": "Tôi gọi cho Pete để hỏi về bữa tiệc."
+        }
+      ]
+    },
+    {
+      "lemma": "arrives",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "comes to a place",
+      "definition_vi": "đến",
+      "examples": [
+        {
+          "sentence": "The bus arrives at eight every morning.",
+          "sentence_vi": "Xe buýt đến lúc tám giờ mỗi sáng."
+        },
+        {
+          "sentence": "She arrives at school before the bell rings.",
+          "sentence_vi": "Cô ấy đến trường trước khi chuông reo."
+        }
+      ]
+    },
+    {
+      "lemma": "ashley",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a first name used for girls or boys",
+      "definition_vi": "tên riêng Ashley",
+      "examples": [
+        {
+          "sentence": "Ashley is my best friend at school.",
+          "sentence_vi": "Ashley là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "I called Ashley to invite her to the party.",
+          "sentence_vi": "Tôi gọi cho Ashley để mời cô ấy đến bữa tiệc."
+        }
+      ]
+    },
+    {
+      "lemma": "catherine",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a girl's first name",
+      "definition_vi": "tên riêng Catherine",
+      "examples": [
+        {
+          "sentence": "Catherine lives next door to my house.",
+          "sentence_vi": "Catherine sống ngay cạnh nhà tôi."
+        },
+        {
+          "sentence": "Catherine made a cake for my birthday.",
+          "sentence_vi": "Catherine đã làm bánh sinh nhật cho tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "cups",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "small open containers for drinking",
+      "definition_vi": "cái cốc",
+      "examples": [
+        {
+          "sentence": "Please wash the cups after breakfast.",
+          "sentence_vi": "Vui lòng rửa các cốc sau bữa sáng."
+        },
+        {
+          "sentence": "She bought two new cups for tea.",
+          "sentence_vi": "Cô ấy mua hai cái cốc mới để uống trà."
+        }
+      ]
+    },
+    {
+      "lemma": "grandma",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "the mother of your mother or father",
+      "definition_vi": "bà",
+      "examples": [
+        {
+          "sentence": "Grandma makes the best cookies in the world.",
+          "sentence_vi": "Bà làm bánh quy ngon nhất thế giới."
+        },
+        {
+          "sentence": "I visit my grandma every Sunday.",
+          "sentence_vi": "Tôi đi thăm bà mỗi Chủ nhật."
+        }
+      ]
+    },
+    {
+      "lemma": "loses",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "does not win; cannot find or keep something",
+      "definition_vi": "thua; làm mất",
+      "examples": [
+        {
+          "sentence": "Our team often loses when the star player is absent.",
+          "sentence_vi": "Đội của chúng tôi thường thua khi cầu thủ chủ chốt vắng mặt."
+        },
+        {
+          "sentence": "He always loses his keys before school.",
+          "sentence_vi": "Cậu ấy luôn làm mất chìa khóa trước giờ đi học."
+        }
+      ]
+    },
+    {
+      "lemma": "neighbor",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a person who lives next to you or very near you",
+      "definition_vi": "người láng giềng",
+      "examples": [
+        {
+          "sentence": "My neighbor helped me carry the heavy boxes upstairs.",
+          "sentence_vi": "Người láng giềng giúp tôi mang những thùng hàng nặng lên lầu."
+        },
+        {
+          "sentence": "We often share fruit from our garden with our neighbors.",
+          "sentence_vi": "Chúng tôi thường chia trái cây từ vườn cho những người láng giềng."
+        }
+      ]
+    },
+    {
+      "lemma": "potato",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a round vegetable that grows under the ground",
+      "definition_vi": "củ khoai tây",
+      "examples": [
+        {
+          "sentence": "I would like a potato with my dinner.",
+          "sentence_vi": "Tôi muốn một củ khoai tây với bữa tối."
+        },
+        {
+          "sentence": "She cut the potato into small pieces.",
+          "sentence_vi": "Cô ấy cắt củ khoai tây thành những miếng nhỏ."
+        }
+      ]
+    },
+    {
+      "lemma": "dennis",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a male first name used in English-speaking countries",
+      "definition_vi": "tên riêng Dennis",
+      "examples": [
+        {
+          "sentence": "Dennis is my older brother.",
+          "sentence_vi": "Dennis là anh trai tôi."
+        },
+        {
+          "sentence": "Dennis works at a bank in London.",
+          "sentence_vi": "Dennis làm việc ở một ngân hàng tại London."
+        }
+      ]
+    },
+    {
+      "lemma": "lemon",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a yellow fruit with a sour taste",
+      "definition_vi": "quả chanh",
+      "examples": [
+        {
+          "sentence": "I put a slice of lemon in my tea.",
+          "sentence_vi": "Tôi thả một lát chanh vào trà."
+        },
+        {
+          "sentence": "She squeezed a lemon over the fish.",
+          "sentence_vi": "Cô ấy vắt chanh lên con cá."
+        }
+      ]
+    },
+    {
+      "lemma": "ralph",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a boy's or man's first name",
+      "definition_vi": "tên riêng của nam giới",
+      "examples": [
+        {
+          "sentence": "Ralph is my best friend at school.",
+          "sentence_vi": "Ralph là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "I called Ralph on the phone last night.",
+          "sentence_vi": "Tôi đã gọi điện cho Ralph tối qua."
+        }
+      ]
+    },
+    {
+      "lemma": "sang",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "past tense of sing: made music with the voice",
+      "definition_vi": "đã hát",
+      "examples": [
+        {
+          "sentence": "She sang a beautiful song at the party.",
+          "sentence_vi": "Cô ấy đã hát một bài hát hay ở bữa tiệc."
+        },
+        {
+          "sentence": "The children sang together in the classroom.",
+          "sentence_vi": "Những đứa trẻ đã hát cùng nhau trong lớp học."
+        }
+      ]
+    },
+    {
+      "lemma": "washed",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "past tense of wash: cleaned with water",
+      "definition_vi": "đã rửa, đã giặt",
+      "examples": [
+        {
+          "sentence": "I washed my hands before dinner.",
+          "sentence_vi": "Tôi đã rửa tay trước khi ăn tối."
+        },
+        {
+          "sentence": "She washed the dirty clothes yesterday.",
+          "sentence_vi": "Cô ấy đã giặt quần áo bẩn hôm qua."
+        }
+      ]
+    },
+    {
+      "lemma": "watches",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "small clocks worn on the wrist",
+      "definition_vi": "đồng hồ đeo tay",
+      "examples": [
+        {
+          "sentence": "He owns three expensive watches.",
+          "sentence_vi": "Anh ấy sở hữu ba chiếc đồng hồ đắt tiền."
+        },
+        {
+          "sentence": "My father buys new watches every year.",
+          "sentence_vi": "Bố tôi mua đồng hồ mới mỗi năm."
+        }
+      ]
+    },
+    {
+      "lemma": "cafe",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a small place where you can buy drinks and light food",
+      "definition_vi": "quán cà phê",
+      "examples": [
+        {
+          "sentence": "Let's meet at the cafe near the station.",
+          "sentence_vi": "Chúng ta gặp nhau ở quán cà phê gần nhà ga nhé."
+        },
+        {
+          "sentence": "She drinks coffee at a cafe every morning.",
+          "sentence_vi": "Cô ấy uống cà phê ở một quán mỗi sáng."
+        }
+      ]
+    },
+    {
+      "lemma": "carlos",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a male first name used in Spanish-speaking countries",
+      "definition_vi": "tên nam giới (Carlos)",
+      "examples": [
+        {
+          "sentence": "Carlos is my best friend at school.",
+          "sentence_vi": "Carlos là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "I called Carlos to tell him the good news.",
+          "sentence_vi": "Tôi đã gọi cho Carlos để báo tin tốt lành."
+        }
+      ]
+    },
+    {
+      "lemma": "colin",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a male first name common in English-speaking countries",
+      "definition_vi": "tên nam giới (Colin)",
+      "examples": [
+        {
+          "sentence": "Colin lives next door to my grandmother.",
+          "sentence_vi": "Colin sống ở nhà bên nhà bà tôi."
+        },
+        {
+          "sentence": "Did you invite Colin to the party?",
+          "sentence_vi": "Bạn đã mời Colin đến bữa tiệc chưa?"
+        }
+      ]
+    },
+    {
+      "lemma": "dakota",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a first name for a girl or boy, also a US region",
+      "definition_vi": "tên riêng (Dakota)",
+      "examples": [
+        {
+          "sentence": "Dakota wants to become a singer one day.",
+          "sentence_vi": "Dakota muốn trở thành ca sĩ một ngày nào đó."
+        },
+        {
+          "sentence": "My cousin Dakota lives on a farm.",
+          "sentence_vi": "Anh họ Dakota của tôi sống ở một trang trại."
+        }
+      ]
+    },
+    {
+      "lemma": "flies",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "moves through the air with wings",
+      "definition_vi": "bay",
+      "examples": [
+        {
+          "sentence": "A bird flies over the lake every morning.",
+          "sentence_vi": "Một con chim bay qua hồ mỗi sáng."
+        },
+        {
+          "sentence": "She flies to Hanoi twice a month for work.",
+          "sentence_vi": "Cô ấy bay đến Hà Nội hai lần mỗi tháng để làm việc."
+        }
+      ]
+    },
+    {
+      "lemma": "hug",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "putting your arms around someone to show love",
+      "definition_vi": "cái ôm",
+      "examples": [
+        {
+          "sentence": "She gave her mother a big hug.",
+          "sentence_vi": "Cô ấy ôm mẹ thật chặt."
+        },
+        {
+          "sentence": "He needs a hug after such a hard day.",
+          "sentence_vi": "Anh ấy cần một cái ôm sau một ngày vất vả như vậy."
+        }
+      ]
+    },
+    {
+      "lemma": "jeans",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "trousers made of strong blue cotton cloth",
+      "definition_vi": "quần jeans",
+      "examples": [
+        {
+          "sentence": "I wear jeans to school every day.",
+          "sentence_vi": "Tôi mặc quần jeans đến trường mỗi ngày."
+        },
+        {
+          "sentence": "These jeans are too small for me now.",
+          "sentence_vi": "Quần jeans này giờ quá chật với tôi."
+        }
+      ]
+    },
+    {
+      "lemma": "julie",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a female first name",
+      "definition_vi": "tên riêng nữ Julie",
+      "examples": [
+        {
+          "sentence": "Julie is my best friend at school.",
+          "sentence_vi": "Julie là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "Julie made a cake for her mother's birthday.",
+          "sentence_vi": "Julie làm một chiếc bánh cho sinh nhật mẹ cô ấy."
+        }
+      ]
+    },
+    {
+      "lemma": "karen",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a female first name",
+      "definition_vi": "tên riêng nữ Karen",
+      "examples": [
+        {
+          "sentence": "Karen lives next door to my grandmother.",
+          "sentence_vi": "Karen sống cạnh nhà bà tôi."
+        },
+        {
+          "sentence": "Karen asked the teacher a difficult question.",
+          "sentence_vi": "Karen hỏi giáo viên một câu hỏi khó."
+        }
+      ]
+    },
+    {
+      "lemma": "lucas",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a male first name",
+      "definition_vi": "tên riêng nam Lucas",
+      "examples": [
+        {
+          "sentence": "Lucas plays football every weekend.",
+          "sentence_vi": "Lucas chơi bóng đá mỗi cuối tuần."
+        },
+        {
+          "sentence": "Lucas helped me carry the heavy boxes.",
+          "sentence_vi": "Lucas giúp tôi xách những chiếc hộp nặng."
+        }
+      ]
+    },
+    {
+      "lemma": "marcus",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a male first name",
+      "definition_vi": "tên riêng nam Marcus",
+      "examples": [
+        {
+          "sentence": "Marcus is learning to play the guitar.",
+          "sentence_vi": "Marcus đang học chơi guitar."
+        },
+        {
+          "sentence": "Marcus invited us to his birthday party.",
+          "sentence_vi": "Marcus mời chúng tôi đến dự tiệc sinh nhật của anh ấy."
+        }
+      ]
+    },
+    {
+      "lemma": "potatoes",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "vegetables that grow under the ground",
+      "definition_vi": "khoai tây",
+      "examples": [
+        {
+          "sentence": "We boiled potatoes for dinner.",
+          "sentence_vi": "Chúng tôi luộc khoai tây cho bữa tối."
+        },
+        {
+          "sentence": "Farmers dig potatoes out of the soil in autumn.",
+          "sentence_vi": "Nông dân đào khoai tây khỏi đất vào mùa thu."
+        }
+      ]
+    },
+    {
+      "lemma": "rogers",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a family name used for a person",
+      "definition_vi": "họ Rogers",
+      "examples": [
+        {
+          "sentence": "Mr. Rogers lives next door to my house.",
+          "sentence_vi": "Ông Rogers sống ở nhà bên cạnh nhà tôi."
+        },
+        {
+          "sentence": "Rogers is a common family name in England.",
+          "sentence_vi": "Rogers là một họ phổ biến ở Anh."
+        }
+      ]
+    },
+    {
+      "lemma": "sells",
+      "pos": "verb",
+      "cefr_level": "A1",
+      "definition": "gives something to someone in exchange for money",
+      "definition_vi": "bán",
+      "examples": [
+        {
+          "sentence": "This shop sells fresh bread every morning.",
+          "sentence_vi": "Cửa hàng này bán bánh mì tươi mỗi sáng."
+        },
+        {
+          "sentence": "She sells fruit at the market on Sundays.",
+          "sentence_vi": "Cô ấy bán trái cây ở chợ vào Chủ nhật."
+        }
+      ]
+    },
+    {
+      "lemma": "todd",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a first name used for a person",
+      "definition_vi": "tên Todd",
+      "examples": [
+        {
+          "sentence": "Todd is my best friend at school.",
+          "sentence_vi": "Todd là bạn thân nhất của tôi ở trường."
+        },
+        {
+          "sentence": "Todd plays football every weekend with his brothers.",
+          "sentence_vi": "Todd chơi bóng đá mỗi cuối tuần với các anh trai."
+        }
+      ]
     }
   ]
 }
