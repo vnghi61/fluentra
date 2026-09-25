@@ -91,7 +91,7 @@ func TestComposeNextFixedTests_DisjointAndStopsWhenShort(t *testing.T) {
 	repo.blueprint = &domain.Blueprint{
 		ID:               blueprintID,
 		VersionID:        versionID,
-		Name:             "toeic_default",
+		Name:             testBlueprintName,
 		CefrDistribution: json.RawMessage(`{"B1": 1.0}`),
 	}
 	repo.parts = []*domain.ExamPart{part}

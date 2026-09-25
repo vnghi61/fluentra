@@ -1407,30 +1407,13 @@ func (s *Service) ApproveReviewBatch(
 				}
 				continue
 			}
-			version, err := repo.GetVersionByID(txCtx, versionID)
+			published, err := s.approveBatchVersion(txCtx, tx, repo, reviewerID, versionID, note)
 			if err != nil {
 				return err
 			}
-			item, err := repo.GetItemByID(txCtx, version.ItemID)
-			if err != nil {
-				return err
+			if published {
+				approved++
 			}
-			if version.Status == domain.StatusPublished {
-				continue
-			}
-			ready, err := s.advanceToApproved(txCtx, repo, item, version)
-			if err != nil {
-				return err
-			}
-			if _, err := s.finalizePublished(txCtx, tx, repo, item, ready); err != nil {
-				return err
-			}
-			if _, err := repo.CreateReview(
-				txCtx, s.newID(), versionID, reviewerID, domain.ReviewDecisionApproved, note,
-			); err != nil {
-				return err
-			}
-			approved++
 		}
 		return nil
 	})
@@ -1459,4 +1442,36 @@ func topicsLast(ctx context.Context, repo Repository, versionIDs []uuid.UUID) ([
 		ordered = append(ordered, id)
 	}
 	return append(ordered, topics...), nil
+}
+
+// approveBatchVersion publishes one version of a batch a person approved, with
+// the same gates and outbox event as an individual publish. A version already
+// published is left alone and reported as not published by this call.
+func (s *Service) approveBatchVersion(
+	ctx context.Context, tx pgx.Tx, repo Repository, reviewerID, versionID uuid.UUID, note *string,
+) (bool, error) {
+	version, err := repo.GetVersionByID(ctx, versionID)
+	if err != nil {
+		return false, err
+	}
+	if version.Status == domain.StatusPublished {
+		return false, nil
+	}
+	item, err := repo.GetItemByID(ctx, version.ItemID)
+	if err != nil {
+		return false, err
+	}
+	ready, err := s.advanceToApproved(ctx, repo, item, version)
+	if err != nil {
+		return false, err
+	}
+	if _, err := s.finalizePublished(ctx, tx, repo, item, ready); err != nil {
+		return false, err
+	}
+	if _, err := repo.CreateReview(
+		ctx, s.newID(), versionID, reviewerID, domain.ReviewDecisionApproved, note,
+	); err != nil {
+		return false, err
+	}
+	return true, nil
 }

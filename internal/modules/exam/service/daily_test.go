@@ -15,6 +15,9 @@ import (
 	questionbankcontract "github.com/fluentra/fluentra/internal/modules/questionbank/contract"
 )
 
+// testBlueprintName is the TOEIC blueprint the daily and fixed-test tests use.
+const testBlueprintName = "toeic_default"
+
 // fakeBankAuthor records the generation requests the daily job makes.
 type fakeBankAuthor struct {
 	calls []questionbankcontract.GenerateRequest
@@ -75,7 +78,7 @@ func TestGenerateDailyExam_GeneratesEachPartThenComposes(t *testing.T) {
 	repo.blueprint = &domain.Blueprint{
 		ID:               blueprintID,
 		VersionID:        versionID,
-		Name:             "toeic_default",
+		Name:             testBlueprintName,
 		CefrDistribution: json.RawMessage(`{"B2": 0.6, "B1": 0.4}`),
 	}
 
@@ -124,7 +127,7 @@ func TestComposeAllFixedTests_ComposesWhatTheBankCanFill(t *testing.T) {
 		Kind: kindListeningComprehension, QuestionCount: 3, GroupSize: 1,
 	}}
 	repo.blueprint = &domain.Blueprint{
-		ID: uuid.New(), VersionID: versionID, Name: "toeic_default",
+		ID: uuid.New(), VersionID: versionID, Name: testBlueprintName,
 		CefrDistribution: json.RawMessage(`{"B2": 1.0}`),
 	}
 	questions := make([]*questionbankcontract.Question, 0, 3)

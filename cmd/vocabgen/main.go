@@ -275,7 +275,7 @@ var profanity = map[string]bool{
 	"bugger": true, "cock": true, "crap": true, "cunt": true, "damn": true,
 	"dick": true, "fuck": true, "fucking": true, "hell": true, "piss": true,
 	"prick": true, "pussy": true, "shit": true, "slut": true, "twat": true,
-	"whore": true, "boobs": true, "tits": true, "horny": true, "porn": true,
+	"whore": true, "boobs": true, "tits": true, "horny": true,
 }
 
 // profaneStems catch the inflected and compound forms an exact list misses:

@@ -865,7 +865,7 @@ func TestRouter_ExcludesTheWritersModel(t *testing.T) {
 	require.NoError(t, err)
 
 	writer := &namedProvider{
-		name: "writer", model: testWriterModel,
+		name: testWriterName, model: testWriterModel,
 		res: ai.Response{Text: testConfirmedVerdict, Model: testWriterModel},
 	}
 	other := &namedProvider{
@@ -897,7 +897,7 @@ func TestRouter_ExclusionIsNotAnsweredFromTheWritersCache(t *testing.T) {
 	require.NoError(t, err)
 
 	writer := &namedProvider{
-		name: "writer", model: testWriterModel,
+		name: testWriterName, model: testWriterModel,
 		res: ai.Response{Text: testConfirmedVerdict, Model: testWriterModel},
 	}
 	other := &namedProvider{
@@ -934,7 +934,7 @@ func TestRouter_ExcludingTheOnlyModelIsDisabled(t *testing.T) {
 	require.NoError(t, err)
 
 	writer := &namedProvider{
-		name: "writer", model: testWriterModel,
+		name: testWriterName, model: testWriterModel,
 		res: ai.Response{Text: testConfirmedVerdict, Model: testWriterModel},
 	}
 	router := ai.NewRouter(ai.RouterOptions{
@@ -955,6 +955,7 @@ func TestRouter_ExcludingTheOnlyModelIsDisabled(t *testing.T) {
 // The writer and verifier models the exclusion tests compare, and the reply the
 // mock item_verify returns when it confirms.
 const (
+	testWriterName       = "writer"
 	testWriterModel      = "model-w"
 	testOtherModel       = "model-o"
 	testConfirmedVerdict = `{"verdict":"confirmed"}`

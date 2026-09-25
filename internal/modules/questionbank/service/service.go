@@ -314,23 +314,32 @@ func (s *Service) GenerateQuestions(ctx context.Context, req contract.GenerateRe
 			slog.WarnContext(ctx, "could not create question bank row", "error", cErr)
 			continue
 		}
-		// An independent verifier may already have published the version inside
-		// Generate (WO 22 Stage A). Its content.published event can be consumed
-		// before this row exists, and then finds no question to put in the
-		// bank, so a published version goes into the bank here instead.
-		if ver.Status == contentStatusPublished {
-			if published, pErr := s.publishIntoBank(ctx, created, ver.ID); pErr != nil {
-				slog.WarnContext(ctx, "could not put a verified question in the bank",
-					"question_id", created.ID, "error", pErr)
-			} else if published != nil {
-				createdQuestions = append(createdQuestions, published)
-				continue
-			}
-		}
-		createdQuestions = append(createdQuestions, toContractQuestion(created))
+		createdQuestions = append(createdQuestions, s.bankIfVerified(ctx, created, ver))
 	}
 
 	return createdQuestions, nil
+}
+
+// bankIfVerified puts a question whose version is already published into the
+// bank, and returns it as the caller should report it.
+//
+// An independent verifier may have published the version inside Generate (WO 22
+// Stage A). Its content.published event can be consumed before the question row
+// exists, and then finds no question to put in the bank, so a published version
+// goes into the bank here instead.
+func (s *Service) bankIfVerified(
+	ctx context.Context, q *domain.Question, ver *contentcontract.Version,
+) *contract.Question {
+	if ver.Status != contentStatusPublished {
+		return toContractQuestion(q)
+	}
+	published, err := s.publishIntoBank(ctx, q, ver.ID)
+	if err != nil || published == nil {
+		slog.WarnContext(ctx, "could not put a verified question in the bank",
+			"question_id", q.ID, "error", err)
+		return toContractQuestion(q)
+	}
+	return published
 }
 
 const skillReading = "reading"
