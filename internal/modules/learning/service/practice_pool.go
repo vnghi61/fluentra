@@ -706,7 +706,7 @@ func parseReadingWithMinMax(raw []byte, minQ, maxQ int) error {
 	return nil
 }
 
-func parseToeicChoice(_ string, raw []byte) error {
+func parseToeicChoice(kind string, raw []byte) error {
 	var body toeicChoiceCand
 	if err := json.Unmarshal(raw, &body); err != nil {
 		return err
@@ -740,7 +740,13 @@ func parseToeicChoice(_ string, raw []byte) error {
 			opts[i].Text = opts[i].ID
 		}
 	}
-	return parseChoice(prompt, opts, key)
+	// TOEIC Part 2 is a question and three spoken responses; every other
+	// choice kind has four options. Requiring four refused every Part 2 item.
+	want := 4
+	if kind == kindQuestionResponse {
+		want = 3
+	}
+	return parseChoiceN(prompt, opts, key, want)
 }
 
 func (s *Service) checkReadingCandidateWithMin(
@@ -794,11 +800,16 @@ func (s *Service) checkReadingCandidateWithMin(
 }
 
 func parseChoice(prompt string, options []candOption, correctOptionID string) error {
+	return parseChoiceN(prompt, options, correctOptionID, 4)
+}
+
+// parseChoiceN is parseChoice for a kind with want options.
+func parseChoiceN(prompt string, options []candOption, correctOptionID string, want int) error {
 	if strings.TrimSpace(prompt) == "" {
 		return errors.New("prompt is empty")
 	}
-	if len(options) != 4 {
-		return fmt.Errorf("expected 4 options, got %d", len(options))
+	if len(options) != want {
+		return fmt.Errorf("expected %d options, got %d", want, len(options))
 	}
 	if strings.TrimSpace(correctOptionID) == "" {
 		return errors.New("correct_option_id is empty")

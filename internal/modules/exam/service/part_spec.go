@@ -33,7 +33,7 @@ func (s *Service) PartConstraints(
 	}
 	// A listening item without a script cannot be sat, and the spec's section
 	// is the statement that there is a recording.
-	if part.Section == "listening" {
+	if part.Section == skillListening {
 		constraints.AudioRequired = true
 	}
 	return constraints, nil

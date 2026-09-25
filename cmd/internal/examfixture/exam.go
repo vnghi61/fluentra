@@ -40,10 +40,16 @@ type ExamItem struct {
 // Verification is the independent verifier's marking, lifted from the body's
 // provenance so the seed records the approval the item already had.
 type Verification struct {
-	Confirmed bool      `json:"confirmed"`
-	Model     string    `json:"model,omitempty"`
-	CheckedAt time.Time `json:"checked_at,omitempty"`
-	Reason    string    `json:"reason,omitempty"`
+	// ApprovedBy is who let the item through on the machine that generated
+	// it: "verifier" (the independent model confirmed it) or "person" (a
+	// reviewer approved it, alone or with its batch). An export holds only
+	// published items, so an older fixture without it and without a
+	// confirmation was approved by a person.
+	ApprovedBy string    `json:"approved_by,omitempty"`
+	Confirmed  bool      `json:"confirmed"`
+	Model      string    `json:"model,omitempty"`
+	CheckedAt  time.Time `json:"checked_at,omitempty"`
+	Reason     string    `json:"reason,omitempty"`
 }
 
 // ReadAll reads and validates every exam fixture in dir, in file-name order.
@@ -161,4 +167,16 @@ func WriteExamFile(dir string, file *ExamFile) (string, error) {
 		return "", fmt.Errorf("write exam fixture: %w", err)
 	}
 	return path, nil
+}
+
+// Approval kinds a fixture records.
+const (
+	ApprovedByVerifier = "verifier"
+	ApprovedByPerson   = "person"
+)
+
+// ByPerson reports an item a person approved: recorded as such, or an older
+// export's published item the verifier did not confirm.
+func (v Verification) ByPerson() bool {
+	return v.ApprovedBy == ApprovedByPerson || (v.ApprovedBy == "" && !v.Confirmed)
 }

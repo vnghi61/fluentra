@@ -454,3 +454,29 @@ func TestVerifyItem_ExamStructure_IELTSGroupWithTypedAnswers(t *testing.T) {
 	require.Error(t, err, "a completion key over the word limit must be refused")
 	assert.Contains(t, err.Error(), "the limit is 2")
 }
+
+// TestVerifyItem_TOEICPart2HasThreeResponses: a question-response item is a
+// question and three spoken responses, as the published format has it; the
+// structure check used to demand four and refused every Part 2 item.
+func TestVerifyItem_TOEICPart2HasThreeResponses(t *testing.T) {
+	graders := passingGraders()
+	require.NoError(t, graders.Register("question_response", &testPracticeGrader{shouldPass: true}))
+	svc := service.New(service.Deps{
+		Lesson:       newFakePoolLessons(),
+		LessonAuthor: newFakePoolLessons(),
+		Graders:      graders,
+		Clock:        clock.NewFake(time.Now()),
+	})
+	body := json.RawMessage(`{
+		"prompt": "When does the meeting start?",
+		"responses": [{"id": "A", "text": "At ten o'clock."}, {"id": "B", "text": "In room four."},
+		              {"id": "C", "text": "Yes, I did."}],
+		"correct_option_id": "A",
+		"explanation": {"explanation_en": "It asks for a time.", "explanation_vi": "Câu hỏi về thời gian."}
+	}`)
+	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
+		Kind: "question_response", CEFRLevel: "B1", Body: body,
+		ExamConstraints: &learningcontract.ExamPartConstraints{OptionCount: 3, QuestionsPerGroup: 1},
+	})
+	require.NoError(t, err, "three responses is the published Part 2 shape")
+}

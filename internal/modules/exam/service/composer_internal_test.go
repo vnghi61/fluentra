@@ -76,7 +76,7 @@ func TestCompositionToSectionActivities_RedactsTheAnswerKey(t *testing.T) {
 
 	partID := uuid.New()
 	parts := map[uuid.UUID]*domain.ExamPart{
-		partID: {ID: partID, Section: "listening", Kind: "vocab_multiple_choice", QuestionCount: 1, GroupSize: 1},
+		partID: {ID: partID, Section: skillListening, Kind: "vocab_multiple_choice", QuestionCount: 1, GroupSize: 1},
 	}
 	drawn, ids := svc.compositionToSectionActivities(
 		context.Background(),

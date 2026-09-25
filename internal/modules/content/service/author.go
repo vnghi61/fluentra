@@ -310,6 +310,43 @@ func isPublicationGate(err error) bool {
 		appErr.Code == ErrBatchEscalated.Code
 }
 
+// ApproveRecorded implements contract.RecordedApprover: a draft a person
+// approved on the machine that generated it is published, with a review row by
+// the item's owner saying the approval was recorded in the fixture.
+func (s *Service) ApproveRecorded(ctx context.Context, versionID uuid.UUID, approvedAt time.Time) error {
+	if versionID == uuid.Nil {
+		return apperr.New(apperr.Validation, "CONTENT_VERSION_REQUIRED", "A content version is required.")
+	}
+	return dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+		repo := s.repo.WithTx(tx)
+		version, err := repo.GetVersionByID(txCtx, versionID)
+		if err != nil {
+			return err
+		}
+		if version.Status == domain.StatusPublished {
+			return nil
+		}
+		item, err := repo.GetItemByID(txCtx, version.ItemID)
+		if err != nil {
+			return err
+		}
+		approved, err := s.advanceToApproved(txCtx, repo, item, version)
+		if err != nil {
+			return err
+		}
+		if _, err := s.finalizePublished(txCtx, tx, repo, item, approved); err != nil {
+			return err
+		}
+		comment := "Approved by a person"
+		if !approvedAt.IsZero() {
+			comment += " on " + approvedAt.UTC().Format("2006-01-02")
+		}
+		comment += "; loaded from the frozen fixture."
+		_, err = repo.CreateReview(txCtx, s.newID(), version.ID, item.OwnerID, domain.ReviewDecisionApproved, &comment)
+		return err
+	})
+}
+
 // RecordVerification implements contract.VerificationRecorder.
 //
 // It writes the verifier's outcome into a version that is still a draft, so a
@@ -613,3 +650,4 @@ func validateAuthorSpec(spec contract.AuthorSpec) error {
 var _ contract.Author = (*Service)(nil)
 var _ contract.VerificationRecorder = (*Service)(nil)
 var _ contract.VerifiedBatchPublisher = (*Service)(nil)
+var _ contract.RecordedApprover = (*Service)(nil)

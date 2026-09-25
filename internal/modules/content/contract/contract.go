@@ -140,6 +140,17 @@ type VerifiedBatchPublisher interface {
 	ApproveVerifiedBatch(ctx context.Context, batch string) (int, error)
 }
 
+// RecordedApprover replays a person's approval that a frozen fixture recorded
+// (WO 22 D22-4: `make seed` "records the approval each item already had").
+//
+// Only the seed uses it. An item a person approved on the machine that
+// generated it is published on a fresh database with a review row saying so,
+// and without the verifier marking an auto-published item carries: it was not
+// auto-published, and the daily sample must not draw it as if it were.
+type RecordedApprover interface {
+	ApproveRecorded(ctx context.Context, versionID uuid.UUID, approvedAt time.Time) error
+}
+
 // ReviewBacklog says how far behind the people reviewing generated content are
 // (WO 22 Stage O): a job that generates faster than anyone reads the doubts only
 // grows a backlog.

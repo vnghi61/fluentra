@@ -112,6 +112,8 @@ func TestGenerateDailyExam_GeneratesEachPartThenComposes(t *testing.T) {
 	require.Len(t, bank.calls, 1, "one part generates once")
 	assert.Equal(t, partID, *bank.calls[0].ExamPartID)
 	assert.Equal(t, "B2", bank.calls[0].CEFRLevel, "the blueprint's largest share is the level")
+	assert.Equal(t, []string{"LISTENING"}, bank.calls[0].NodeCodes,
+		"the generator refuses a request with no node; a listening part is tagged to LISTENING")
 	// One test's worth (3 groups) plus the margin.
 	assert.Equal(t, 3+service.DailyGenerationMargin, bank.calls[0].Count)
 	assert.Equal(t, 1, composed, "a full test's worth composes one numbered test")

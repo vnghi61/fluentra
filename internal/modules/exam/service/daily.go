@@ -116,7 +116,10 @@ func (s *Service) GenerateDailyExam(ctx context.Context, versionCode string) (in
 			Kind:        part.Kind,
 			Skill:       part.Section,
 			CEFRLevel:   level,
-			Count:       groups,
+			// The generator tags every item to a spine node and refuses a
+			// request with none; an exam item is tagged to its section's skill.
+			NodeCodes: []string{sectionNode(part.Section)},
+			Count:     groups,
 		})
 		if genErr != nil {
 			return 0, fmt.Errorf("generate %s part %d: %w", versionCode, part.PartNumber, genErr)
@@ -186,4 +189,19 @@ func (s *Service) ComposeAllFixedTests(ctx context.Context) error {
 		}
 	}
 	return firstErr
+}
+
+// sectionNode is the skill spine node an exam part's items are tagged to.
+func sectionNode(section string) string {
+	switch section {
+	case skillListening:
+		return "LISTENING"
+	case "writing":
+		return "WRITING"
+	case "speaking":
+		return "SPEAKING"
+	default:
+		// Reading, and Use of English, are read.
+		return "READING"
+	}
 }

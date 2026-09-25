@@ -50,6 +50,7 @@ func seedFoundationFixtures(
 	contentMod := content.NewAuthoring(content.Deps{Pool: pool, Clock: clock.Real{}})
 	author := contentMod.Author()
 	recorder := contentMod.VerificationRecorder()
+	approver := contentMod.RecordedApprover()
 
 	published := 0
 	drafted := 0
@@ -83,16 +84,15 @@ func seedFoundationFixtures(
 				Reason:    item.Verification.Reason,
 				CheckedAt: item.Verification.CheckedAt,
 			}
-			if !verification.Confirmed {
-				// A doubted item ships as a draft for a person, exactly as it
-				// would have on the machine that generated it.
-				if err := recorder.RecordVerification(ctx, versionID, verification); err != nil {
-					return fmt.Errorf("record doubt for %s: %w", item.Slug, err)
+			// The approval the item had: a person's is replayed as a person's,
+			// the verifier's as the verifier's (D22-4).
+			approve := func() error { return author.ApproveVerified(ctx, versionID, verification) }
+			if item.Verification.ByPerson() {
+				approve = func() error {
+					return approver.ApproveRecorded(ctx, versionID, item.Verification.CheckedAt)
 				}
-				drafted++
-				continue
 			}
-			if err := author.ApproveVerified(ctx, versionID, verification); err != nil {
+			if err := approve(); err != nil {
 				if !isPublicationGate(err) {
 					return fmt.Errorf("publish %s: %w", item.Slug, err)
 				}

@@ -113,10 +113,18 @@ func verificationFromBody(body []byte) foundationfixture.Verify {
 	if err := json.Unmarshal(body, &decoded); err != nil {
 		return foundationfixture.Verify{}
 	}
+	confirmed := decoded.Provenance.Verification.Verdict == "confirmed"
+	// The export holds published items only: one the verifier did not confirm
+	// was published by a person.
+	approvedBy := foundationfixture.ApprovedByPerson
+	if confirmed {
+		approvedBy = foundationfixture.ApprovedByVerifier
+	}
 	verify := foundationfixture.Verify{
-		Confirmed: decoded.Provenance.Verification.Verdict == "confirmed",
-		Model:     decoded.Provenance.Verification.Model,
-		Reason:    decoded.Provenance.Verification.Reason,
+		ApprovedBy: approvedBy,
+		Confirmed:  confirmed,
+		Model:      decoded.Provenance.Verification.Model,
+		Reason:     decoded.Provenance.Verification.Reason,
 	}
 	if checkedAt, err := time.Parse(time.RFC3339, decoded.Provenance.Verification.CheckedAt); err == nil {
 		verify.CheckedAt = checkedAt

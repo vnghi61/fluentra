@@ -117,6 +117,9 @@ func (m *Module) VerificationRecorder() contract.VerificationRecorder { return m
 // (WO 22 D22-13).
 func (m *Module) VerifiedBatchPublisher() contract.VerifiedBatchPublisher { return m.service }
 
+// RecordedApprover replays a fixture's recorded human approval (seed only).
+func (m *Module) RecordedApprover() contract.RecordedApprover { return m.service }
+
 // ReviewBacklog reports unreviewed generation batches (WO 22 Stage O).
 func (m *Module) ReviewBacklog() contract.ReviewBacklog { return m.service }
 

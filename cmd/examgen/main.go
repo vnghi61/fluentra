@@ -32,9 +32,12 @@ type examCLIConfig struct {
 	App struct {
 		Environment string `koanf:"environment"`
 	} `koanf:"app"`
+	// "db", not "database": the key is db.dsn, and a struct tag that did not
+	// match it left the DSN empty whatever DB_DSN said.
 	Database struct {
 		DSN string `koanf:"dsn"`
-	} `koanf:"database"`
+	} `koanf:"db"`
+	AI aiConfig `koanf:"ai"`
 }
 
 func main() {
@@ -52,6 +55,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	fixturesFlag := flags.String("fixtures", defaultFixtureDir,
 		"Directory an -export writes to and `cmd/seed -exams` reads")
 	dryRunFlag := flags.Bool("dry-run", false, "Print what would happen without writing")
+	mockFlag := flags.Bool("mock", false,
+		"Generate with the offline mock provider, writing placeholder questions (a throwaway database only)")
 
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -73,22 +78,18 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	}
 	defer pool.Close()
 
-	if !*exportFlag {
-		// Generation itself is the operator's run through the questionbank
-		// pipeline, which needs the AI provider chain and the module graph. The
-		// export is the half that must run here, and it is refused without a
-		// generated, published bank to freeze.
-		return fmt.Errorf(
-			"generation of %d tests is not wired into this command yet; generate through the "+
-				"questionbank pipeline, then run `cmd/examgen -exam %s -export` to freeze it",
-			*testsFlag, examCode)
+	if *exportFlag {
+		return exportExam(ctx, pool, examCode, *fixturesFlag, *dryRunFlag, out)
 	}
-
-	return exportExam(ctx, pool, examCode, *fixturesFlag, *dryRunFlag, out)
+	if len(cfg.AI.providers()) == 0 && !*mockFlag {
+		return errors.New(
+			"no AI provider is configured, so this would fill the bank with mock questions: " +
+				"set AI_PROVIDER_1_NAME and AI_PROVIDER_1_API_KEY (and a second provider of a " +
+				"different model with AI_AUTO_PUBLISH=true, so the verifier can publish), or pass -mock")
+	}
+	return generateTests(ctx, cfg, pool, examCode, *testsFlag, *dryRunFlag, out)
 }
 
-// exportExam writes every published question of the exam version to
-// db/fixtures/exams/<exam>.json, with the approval each already had.
 func exportExam(
 	ctx context.Context, pool *pgxpool.Pool, examCode, dir string, dryRun bool, out io.Writer,
 ) error {
@@ -179,14 +180,22 @@ func verificationFromBody(body []byte) examfixture.Verification {
 		} `json:"_provenance"`
 	}
 	if err := json.Unmarshal(body, &parsed); err != nil {
-		return examfixture.Verification{}
+		return examfixture.Verification{ApprovedBy: examfixture.ApprovedByPerson}
 	}
 	v := parsed.Provenance.Verification
 	checkedAt, _ := time.Parse(time.RFC3339, v.CheckedAt)
+	confirmed := strings.EqualFold(v.Verdict, "confirmed")
+	// The export holds published questions only: one the verifier did not
+	// confirm was published by a person.
+	approvedBy := examfixture.ApprovedByPerson
+	if confirmed {
+		approvedBy = examfixture.ApprovedByVerifier
+	}
 	return examfixture.Verification{
-		Confirmed: strings.EqualFold(v.Verdict, "confirmed") || v.Verdict == "pass",
-		Model:     v.Model,
-		CheckedAt: checkedAt,
+		ApprovedBy: approvedBy,
+		Confirmed:  confirmed,
+		Model:      v.Model,
+		CheckedAt:  checkedAt,
 	}
 }
 
@@ -194,10 +203,12 @@ func verificationFromBody(body []byte) examfixture.Verification {
 // declared, because config.Load drops any key a command does not.
 func loadConfig(ctx context.Context) (examCLIConfig, error) {
 	var cfg examCLIConfig
+	defaults := map[string]any{"app.environment": "local"}
+	for key, value := range aiDefaults() {
+		defaults[key] = value
+	}
 	if err := config.Load(ctx, config.Options{
-		Defaults: map[string]any{
-			"app.environment": "local",
-		},
+		Defaults: defaults,
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
 		},

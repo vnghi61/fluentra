@@ -45,8 +45,11 @@ func seedExamFixtures(
 	}
 
 	contentMod := content.NewAuthoring(content.Deps{Pool: pool, Clock: clock.Real{}})
-	author := contentMod.Author()
-	recorder := contentMod.VerificationRecorder()
+	doors := contentDoors{
+		author:   contentMod.Author(),
+		recorder: contentMod.VerificationRecorder(),
+		approver: contentMod.RecordedApprover(),
+	}
 
 	lessonMod := lesson.New(lesson.Deps{
 		Pool:    pool,
@@ -68,7 +71,7 @@ func seedExamFixtures(
 		// Per file: the line printed below is one exam version's.
 		published, drafted, questions := 0, 0, 0
 		for _, item := range file.Items {
-			versionID, itemPublished, err := authorExamItem(ctx, pool, author, recorder, adminID, item)
+			versionID, itemPublished, err := authorExamItem(ctx, pool, doors, adminID, item)
 			if err != nil {
 				return fmt.Errorf("author %s: %w", item.Slug, err)
 			}
@@ -97,16 +100,24 @@ func seedExamFixtures(
 	return nil
 }
 
+// contentDoors are the content doors a fixture item is published through: the
+// verifier's, a person's recorded approval, and the doubt recorder.
+type contentDoors struct {
+	author   contentcontract.Author
+	recorder contentcontract.VerificationRecorder
+	approver contentcontract.RecordedApprover
+}
+
 // authorExamItem authors and, when the fixture says it was confirmed, publishes
 // the item's content version. It reports whether the item is published.
 func authorExamItem(
 	ctx context.Context,
 	pool *pgxpool.Pool,
-	author contentcontract.Author,
-	recorder contentcontract.VerificationRecorder,
+	doors contentDoors,
 	adminID uuid.UUID,
 	item examfixture.ExamItem,
 ) (uuid.UUID, bool, error) {
+	author, recorder, approver := doors.author, doors.recorder, doors.approver
 	body, found, err := publishedBodyBySlug(ctx, pool, item.Slug)
 	if err != nil {
 		return uuid.Nil, false, err
@@ -135,14 +146,26 @@ func authorExamItem(
 		Reason:    item.Verification.Reason,
 		CheckedAt: item.Verification.CheckedAt,
 	}
-	if !verification.Confirmed {
+	// The approval the question had: a person's is replayed as a person's, the
+	// verifier's as the verifier's (D22-4).
+	var approveErr error
+	if item.Verification.ByPerson() {
+		approveErr = approver.ApproveRecorded(ctx, versionID, item.Verification.CheckedAt)
+	} else {
+		approveErr = author.ApproveVerified(ctx, versionID, verification)
+	}
+	if approveErr != nil {
+		if !isPublicationGate(approveErr) {
+			return uuid.Nil, false, approveErr
+		}
+		// A publication gate refused it (media not ready): a draft with the
+		// reason, for a person.
+		verification.Confirmed = false
+		verification.Reason = fmt.Sprintf("publication gate: %v", approveErr)
 		if err := recorder.RecordVerification(ctx, versionID, verification); err != nil {
 			return uuid.Nil, false, err
 		}
 		return versionID, false, nil
-	}
-	if err := author.ApproveVerified(ctx, versionID, verification); err != nil {
-		return uuid.Nil, false, err
 	}
 	return versionID, true, nil
 }

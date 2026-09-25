@@ -51,10 +51,16 @@ type Item struct {
 // Verify is the independent verifier's marking, lifted from the body's
 // provenance.
 type Verify struct {
-	Confirmed bool      `json:"confirmed"`
-	Model     string    `json:"model,omitempty"`
-	CheckedAt time.Time `json:"checked_at,omitempty"`
-	Reason    string    `json:"reason,omitempty"`
+	// ApprovedBy is who let the item through on the machine that generated
+	// it: "verifier" (the independent model confirmed it) or "person" (a
+	// reviewer approved it, alone or with its batch). An export holds only
+	// published items, so an older fixture without it and without a
+	// confirmation was approved by a person.
+	ApprovedBy string    `json:"approved_by,omitempty"`
+	Confirmed  bool      `json:"confirmed"`
+	Model      string    `json:"model,omitempty"`
+	CheckedAt  time.Time `json:"checked_at,omitempty"`
+	Reason     string    `json:"reason,omitempty"`
 }
 
 // Write encodes one node's fixture to dir.
@@ -117,4 +123,16 @@ func Validate(file File) error {
 		}
 	}
 	return nil
+}
+
+// Approval kinds a fixture records.
+const (
+	ApprovedByVerifier = "verifier"
+	ApprovedByPerson   = "person"
+)
+
+// ByPerson reports an item a person approved: recorded as such, or an older
+// export's published item the verifier did not confirm.
+func (v Verify) ByPerson() bool {
+	return v.ApprovedBy == ApprovedByPerson || (v.ApprovedBy == "" && !v.Confirmed)
 }
