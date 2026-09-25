@@ -614,3 +614,60 @@ Not on this list: Stage A's verifier, checklist, marking and sample (auto-publis
 publishing unchecked content); Stage I's specification and its enforcement (a test that does not follow
 the format is not the test the learner will sit); Stage B steps 1–5; the 10,000 words; the thirteen courses; five tests per
 exam; the exam hub.
+
+## 7. Handover notes
+
+State of the branch at hand-off. Code for every stage is in and tested; what is left is generation that
+needs AI provider keys or network access, and two decisions only a person can make.
+
+### Status per stage
+
+| Stage | Code | Content | Left to do |
+|---|---|---|---|
+| A — verifier | Done: excluded model in the cache key, batches, sample, `ApproveVerifiedBatch` | — | — |
+| B — DB first | Done: words and phrases | — | — |
+| C/D — words | Done: `scripts/vocab-source-list.py`, `vocabgen` top-up, `-pronounce`, rank decks | **6,056 of 10,000** words; no IPA/audio beyond what the CMU pass gave | Top-up and pronunciation runs (below) |
+| E–H — Foundation | Done: 13 courses, Phase 2 content moved, per-node publish | **27 of 93** nodes have content | `cmd/foundation -missing` (below) |
+| I — format spec | Done: one schema, enforced by generator, verifier, composer and runner | — | **Sign-off** (below) |
+| J/K/L — tests, practice, hub | Done | — | — |
+| M — media | Done: Part 1 from a credited photograph; Task 1 chart drawn from the model's data (SVG data URI, see note); two voices | Photo fixture **empty** | A person fills `toeic-part1-photos.json` |
+| N — examgen | Done: generates through the verifier, `-export`, fixtures keep who approved | **No exam fixture** yet | `cmd/examgen` per exam (below) |
+| O — daily job | Done: backlog skip, per-run cap (`exam.daily_generation_cap`), hourly compose | — | Part 1 in the worker (see note) |
+
+### Commands to run with AI keys and network
+
+Set `AI_PROVIDER_1_*` and a second provider of a different model, and `AI_AUTO_PUBLISH=true`, so the
+verifier can publish; with one model everything waits for a person.
+
+1. **Words to 10,000:** `go run ./cmd/vocabgen -source db/fixtures/vocabulary/source/wordfreq-lemmas.tsv`,
+   then `go run ./cmd/vocabgen -pronounce` (needs `api.dictionaryapi.dev` and `commons.wikimedia.org`).
+2. **Foundation:** `go run ./cmd/foundation -missing` (repeat until no node is left; `-after CODE` skips
+   past a node that keeps failing), review the doubted batches, then `go run ./cmd/foundation -export`.
+3. **Part 1 photographs:** a person fills `db/fixtures/exams/toeic-part1-photos.json` — URL, credit
+   page, CC0 or CC BY licence, and their own description. Finding them needs `commons.wikimedia.org` or
+   `api.openverse.org`. Aim for at least 7 per TOEIC test (6 plus the margin).
+4. **Exams:** `go run ./cmd/examgen -exam TOEIC_LR_2026 -tests 5`, the same for
+   `IELTS_ACADEMIC_2026_R2` and `VSTEP_3_5`; review the doubts; then `-export` for each.
+5. `make seed` on a fresh database, and check the final gate (§5).
+
+### Notes and deviations
+
+- **Task 1 charts are an SVG data URI in the body**, not an object in `fluentra-media`. The drawing is a
+  few kilobytes, needs no signed URL on every read, and the CSP already allows `data:` images. The series
+  stays in the body as D22-22 asks.
+- **Part 1 in the daily job.** The worker has no photo source (no config key names one), so the daily
+  job skips TOEIC Part 1 with a warning. TOEIC fixed tests keep composing while `cmd/examgen` has left
+  spare Part 1 items; after that, Part 1 needs another `cmd/examgen` run with new photographs.
+- **Licences.** wordfreq's data is CC BY-SA 4.0 (its code is Apache-2.0); the vocabulary fixture header
+  says so. Word recordings accept CC0, CC BY and CC BY-SA; Part 1 photographs only CC0 and CC BY.
+
+### Specification sign-off (Stage I.1)
+
+The format table is in `db/migrations/exam/1700000943_exam_format_spec.sql`, with a source per row.
+A person checks it against the official sources and signs here:
+
+| Exam | Checked against | By | Date |
+|---|---|---|---|
+| TOEIC Listening & Reading | | | |
+| IELTS Academic | | | |
+| VSTEP.3-5 | | | |
