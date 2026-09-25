@@ -1108,6 +1108,13 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
         <p className="rounded-xl border border-border-subtle bg-surface-muted p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
           {config.prompt}
         </p>
+        {config.image_url && (
+          <img
+            src={config.image_url}
+            alt={config.chart?.title || t("exam.writing.chart")}
+            className="w-full max-w-xl rounded-xl border border-border-subtle bg-white"
+          />
+        )}
         <label htmlFor={inputId} className="sr-only">
           {t("exam.writing.essay")}
         </label>

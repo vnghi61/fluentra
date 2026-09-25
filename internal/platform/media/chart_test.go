@@ -1,6 +1,7 @@
 package media
 
 import (
+	"encoding/base64"
 	"strings"
 	"testing"
 )
@@ -44,5 +45,31 @@ func TestRenderChartSVG_RefusesDataThatDoesNotAddUp(t *testing.T) {
 				t.Fatal("broken chart data must be refused")
 			}
 		})
+	}
+}
+
+// TestChartDataURI_DrawsTheModelsData: the model's chart data becomes an SVG a
+// learner's browser shows inline; data that does not add up is refused.
+func TestChartDataURI_DrawsTheModelsData(t *testing.T) {
+	url, err := ChartDataURI{}.RenderChart([]byte(
+		`{"chart_type":"bar","title":"Visitors","series":[{"label":"2019","value":12},{"label":"2020","value":8}]}`))
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	const prefix = "data:image/svg+xml;base64,"
+	if !strings.HasPrefix(url, prefix) {
+		t.Fatalf("got %q, want an SVG data URI", url[:min(len(url), 40)])
+	}
+	svg, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(url, prefix))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !strings.Contains(string(svg), "Visitors") {
+		t.Error("the drawing must carry the chart's title")
+	}
+
+	broken := []byte(`{"chart_type":"bar","series":[{"label":"a","value":-1}]}`)
+	if _, err := (ChartDataURI{}).RenderChart(broken); err == nil {
+		t.Error("a chart whose data does not add up must be refused")
 	}
 }

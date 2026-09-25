@@ -42,6 +42,8 @@ type mockExamFormat struct {
 	typed     bool
 	minWords  int
 	types     []string
+	// chart is a task written about a chart (IELTS Writing Task 1).
+	chart bool
 }
 
 func parseMockExamFormat(format string) mockExamFormat {
@@ -57,6 +59,7 @@ func parseMockExamFormat(format string) mockExamFormat {
 		f.minWords, _ = strconv.Atoi(m[1])
 	}
 	f.types = mockTypeMix(format, f.questions)
+	f.chart = strings.Contains(format, "The task shows a chart")
 	return f
 }
 
@@ -122,6 +125,17 @@ func (p *MockProvider) examGenerate(kind, format string) (Response, error) {
 			"min_words":          minWords,
 			"time_limit_minutes": 20,
 			"explanation":        mockExplanation(),
+		}
+		if f.chart {
+			body["prompt"] = "The chart shows how many people visited the city library each year. " +
+				"Summarise the information by selecting and reporting the main features."
+			body["chart"] = map[string]any{
+				"chart_type": "bar",
+				"title":      "Library visitors (thousands)",
+				"series": []map[string]any{
+					{"label": "2019", "value": 12}, {"label": "2020", "value": 8}, {"label": "2021", "value": 15},
+				},
+			}
 		}
 	case "speaking_task":
 		body = map[string]any{

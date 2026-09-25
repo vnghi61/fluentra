@@ -30,6 +30,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/writing"
 	writingcontract "github.com/fluentra/fluentra/internal/modules/writing/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
+	"github.com/fluentra/fluentra/internal/platform/media"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
@@ -78,6 +79,7 @@ func Assemble(pool *pgxpool.Pool, client ai.Client, autoPublish bool, authorID u
 		AI:                client,
 		Clock:             clock.Real{},
 		GeneratorAuthorID: authorID,
+		Charts:            media.ChartDataURI{},
 	})
 	return &Kit{Content: contentMod, Lesson: lessonMod, Learning: learningMod}
 }

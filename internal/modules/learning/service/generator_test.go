@@ -612,3 +612,67 @@ func TestGenerate_APart1ItemCarriesItsPhotograph(t *testing.T) {
 	assert.Equal(t, "https://commons.wikimedia.org/wiki/File:Photo.jpg", body.ImageCredit)
 	assert.Equal(t, "CC BY 4.0", body.ImageLicence)
 }
+
+// fakeCharts records the chart data it was asked to draw.
+type fakeCharts struct{ drawn []json.RawMessage }
+
+func (f *fakeCharts) RenderChart(spec json.RawMessage) (string, error) {
+	f.drawn = append(f.drawn, spec)
+	return "data:image/svg+xml;base64,PHN2Zy8+", nil
+}
+
+// task1Request is an IELTS Writing Task 1 request: a task about a chart.
+func task1Request() learningcontract.GenerateRequest {
+	return learningcontract.GenerateRequest{
+		Kind:      examKindWritingPrompt,
+		CEFRLevel: "B2",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   testPurposeBank,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			QuestionsPerGroup: 1, MinWords: 150, VisualRequired: true,
+			AllowedTypes: []string{examKindWritingPrompt},
+		},
+	}
+}
+
+func task1Service(charts service.ChartRenderer) *service.Service {
+	return service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     &generatorTestAuthor{},
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           passingGraders(),
+		AI:                ai.NewMockProvider(nil),
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+		Charts:            charts,
+	})
+}
+
+// TestGenerate_ATask1CarriesTheChartItDescribes is D22-22: the model returns
+// the chart's data, our renderer draws it, and the body keeps both.
+func TestGenerate_ATask1CarriesTheChartItDescribes(t *testing.T) {
+	charts := &fakeCharts{}
+	items, err := task1Service(charts).Generate(context.Background(), task1Request())
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.Len(t, charts.drawn, 1, "the chart is drawn from the model's data")
+
+	var body struct {
+		ImageURL string          `json:"image_url"`
+		Chart    json.RawMessage `json:"chart"`
+	}
+	require.NoError(t, json.Unmarshal(items[0].Body, &body))
+	assert.Equal(t, "data:image/svg+xml;base64,PHN2Zy8+", body.ImageURL)
+	assert.JSONEq(t, string(charts.drawn[0]), string(body.Chart), "the body keeps the numbers the learner describes")
+}
+
+// TestGenerate_ATask1WithoutARendererIsRefused: a task about a chart nobody can
+// draw is not published without its visual.
+func TestGenerate_ATask1WithoutARendererIsRefused(t *testing.T) {
+	_, err := task1Service(nil).Generate(context.Background(), task1Request())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "chart")
+}

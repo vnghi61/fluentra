@@ -259,9 +259,30 @@ func validateExamStructure(kind string, raw json.RawMessage, c *learningcontract
 		return validateGrammarExamStructure(raw, c)
 	case kindTypedCompletion:
 		return validateTypedCompletionExamStructure(raw, c)
+	case kindWritingPrompt:
+		return validateWritingExamStructure(raw, c)
 	default:
 		return nil
 	}
+}
+
+// validateWritingExamStructure checks a writing task against its part: a task
+// written about a chart carries the chart's data and its drawing (D22-22).
+func validateWritingExamStructure(raw json.RawMessage, c *learningcontract.ExamPartConstraints) error {
+	if !c.VisualRequired {
+		return nil
+	}
+	var cand struct {
+		Chart    json.RawMessage `json:"chart"`
+		ImageURL string          `json:"image_url"`
+	}
+	if err := json.Unmarshal(raw, &cand); err != nil {
+		return fmt.Errorf("check (exam structure) failed: %w", err)
+	}
+	if len(cand.Chart) == 0 || string(cand.Chart) == "null" || strings.TrimSpace(cand.ImageURL) == "" {
+		return errors.New("check (exam structure) failed: the task describes a chart and carries none")
+	}
+	return nil
 }
 
 // validateTypedCompletionExamStructure checks a completion item against its

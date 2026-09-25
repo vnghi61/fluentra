@@ -1407,6 +1407,7 @@
       "answerLabel": "Câu trả lời của bạn"
     },
     "writing": {
+      "chart": "Biểu đồ",
       "essay": "Bài luận",
       "words": "{{count}} / {{min}} từ",
       "essayPlaceholder": "Viết bài luận của bạn ở đây.",

@@ -69,6 +69,8 @@ export interface SittingActivityConfig {
   // shows wherever the photo does.
   image_credit?: string;
   image_licence?: string;
+  // An IELTS Writing Task 1's chart data (WO 22 D22-22); image_url is its drawing.
+  chart?: { title?: string };
 }
 
 export interface SittingActivity {

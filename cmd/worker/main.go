@@ -616,6 +616,7 @@ func startLearning(
 		GeneratorAuthorID: generatorAuthor,
 		AuthorResolver:    roleAuthorResolver{members: rbacModule.RoleMembers()},
 		Synthesiser:       mediaSynthesiser,
+		Charts:            media.ChartDataURI{},
 		Audio:             media.NewCacheLocator(contentModule.TTSCache()).WithVoice(cfg.Speech.TTSVoice),
 		AudioRender:       newRenderDispatcher(ctx, cfg),
 		Resource:          resourceReader,

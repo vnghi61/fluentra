@@ -480,3 +480,21 @@ func TestVerifyItem_TOEICPart2HasThreeResponses(t *testing.T) {
 	})
 	require.NoError(t, err, "three responses is the published Part 2 shape")
 }
+
+// TestVerifyItem_ATask1CarriesItsChart is D22-22: a task written about a chart
+// that carries none is refused before it is stored.
+func TestVerifyItem_ATask1CarriesItsChart(t *testing.T) {
+	svc := service.New(service.Deps{
+		Lesson:       newFakePoolLessons(),
+		LessonAuthor: newFakePoolLessons(),
+		Graders:      passingGraders(),
+		Clock:        clock.NewFake(time.Now()),
+	})
+	task1 := &learningcontract.ExamPartConstraints{QuestionsPerGroup: 1, MinWords: 150, VisualRequired: true}
+	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
+		Kind: examKindWritingPrompt, CEFRLevel: "B2", Body: json.RawMessage(`{"prompt":"Describe the chart."}`),
+		ExamConstraints: task1,
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "carries none")
+}

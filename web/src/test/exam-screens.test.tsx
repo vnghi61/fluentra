@@ -487,6 +487,41 @@ describe("exam screens", () => {
     ).toHaveAttribute("src", "https://upload.wikimedia.org/photo.jpg");
   });
 
+  it("shows a Task 1 its chart", async () => {
+    const { section_remaining_seconds: _unused, ...rest } = attempt;
+    const ielts = {
+      ...rest,
+      mode: "practice" as const,
+      section_activities: [
+        {
+          section_position: 1,
+          skill: "writing" as const,
+          activities: [
+            {
+              id: READING_ID,
+              kind: "writing_prompt",
+              content_version_id: "66666666-6666-6666-6666-666666666604",
+              weight: 1,
+              config: {
+                prompt: "The chart shows library visitors each year.",
+                min_words: 150,
+                image_url: "data:image/svg+xml;base64,PHN2Zy8+",
+                chart: { title: "Library visitors" },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    await renderWithProviders(
+      <ExamSittingRunner attempt={ielts} onSubmitted={vi.fn()} />,
+    );
+
+    expect(
+      await screen.findByRole("img", { name: "Library visitors" }),
+    ).toHaveAttribute("src", "data:image/svg+xml;base64,PHN2Zy8+");
+  });
+
   it("numbers every question and jumps to one in another practice section", async () => {
     // A practice sitting has no section clock.
     const { section_remaining_seconds: _unused, ...rest } = attempt;

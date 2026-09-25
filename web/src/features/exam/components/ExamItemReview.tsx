@@ -386,11 +386,19 @@ const WritingReview: React.FC<{ item: ExamItemOutcome }> = ({ item }) => {
   const answer = asString(item.response?.text_answer);
   const words = answer.trim() ? answer.trim().split(/\s+/).length : 0;
   const sample = asString(item.content?.model_answer);
+  const chart = asString(item.content?.image_url);
   return (
     <div className="space-y-2 text-sm">
       <p className="leading-relaxed text-text">
         {asString(item.content?.prompt)}
       </p>
+      {chart && (
+        <img
+          src={chart}
+          alt={t("exam.writing.chart")}
+          className="w-full max-w-md rounded-lg border border-border-subtle bg-white"
+        />
+      )}
       <div className="space-y-1 rounded-lg border border-border-subtle p-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
           {t("exam.report.yourText")} ·{" "}

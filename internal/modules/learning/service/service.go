@@ -267,6 +267,9 @@ type Deps struct {
 	AuthorResolver contract.AuthorResolver
 	// Synthesiser turns listening script text into pre-rendered audio.
 	Synthesiser AudioSynthesiser
+	// Charts draws the chart an IELTS Writing Task 1 describes. Nil refuses
+	// every task that needs one rather than publishing it without its visual.
+	Charts ChartRenderer
 	// Audio finds a listening item's rendered clip when its body carries no key.
 	Audio contract.AudioLocator
 	// AudioRender asks for newly published listening items to be rendered now.
@@ -293,6 +296,13 @@ type Deps struct {
 // AudioSynthesiser produces pre-rendered audio for listening exercises.
 type AudioSynthesiser interface {
 	Synthesise(ctx context.Context, text, voice string) (string, error)
+}
+
+// ChartRenderer draws a task's chart from the data the model returned — chart
+// type, title and series — and returns the image a learner sees. It refuses
+// data that does not add up (WO 22 D22-22).
+type ChartRenderer interface {
+	RenderChart(spec json.RawMessage) (imageURL string, err error)
 }
 
 // Service coordinates attempt execution, grading, progress rollups, and event emission.
@@ -329,6 +339,7 @@ type Service struct {
 	generatorAuthor uuid.UUID
 	authorResolver  contract.AuthorResolver
 	synthesiser     AudioSynthesiser
+	charts          ChartRenderer
 	audio           contract.AudioLocator
 	audioRender     AudioRenderRequester
 
@@ -389,6 +400,7 @@ func New(deps Deps) *Service {
 		generatorAuthor: deps.GeneratorAuthorID,
 		authorResolver:  deps.AuthorResolver,
 		synthesiser:     deps.Synthesiser,
+		charts:          deps.Charts,
 		audio:           deps.Audio,
 		audioRender:     deps.AudioRender,
 	}

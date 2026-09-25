@@ -394,6 +394,7 @@ func newIdentity(deps identityDeps) *identity {
 		Metrics:       deps.Instruments,
 		DeclaredKinds: buildDeclaredKinds(),
 		Audio:         media.NewCacheLocator(assembled.content.TTSCache()).WithVoice(deps.SpeechTTSVoice),
+		Charts:        media.ChartDataURI{},
 		Env:           deps.Env,
 		AI:            deps.AI,
 		User:          assembled.user.LearningProfileReader(),

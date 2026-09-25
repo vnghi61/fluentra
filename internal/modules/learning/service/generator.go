@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -235,7 +236,50 @@ func examFormat(c *learningcontract.ExamPartConstraints) string {
 	if mix := formatTypeMix(c.TypeMix); mix != "" {
 		lines = append(lines, "Question-type mix: "+mix+".")
 	}
+	if c.VisualRequired {
+		lines = append(lines, chartInstruction)
+	}
 	return strings.Join(lines, "\n")
+}
+
+// chartInstruction asks for a Task 1 chart as data: the model cannot draw, and a
+// chart drawn from the numbers the prompt and model answer use cannot disagree
+// with them (D22-22).
+const chartInstruction = `The task shows a chart the learner describes. Return it as "chart": ` +
+	`{"chart_type": "bar", "line" or "pie", "title": "...", "series": [{"label": "...", "value": 12.5}, ...]} ` +
+	`with at least two points and no negative values; the prompt and the model answer describe exactly ` +
+	`these numbers. Do not return an image_url: the chart is drawn for you.`
+
+// withChart draws the chart a Task 1 describes from the data the model
+// returned and puts it on the body as image_url; the body keeps the series, so
+// the numbers a learner describes stay readable (D22-22). A task with no chart,
+// or one whose data does not add up, is refused and written again rather than
+// shown without its visual.
+func (s *Service) withChart(body json.RawMessage, c *learningcontract.ExamPartConstraints) (json.RawMessage, error) {
+	if c == nil || !c.VisualRequired {
+		return body, nil
+	}
+	var decoded map[string]json.RawMessage
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		return nil, fmt.Errorf("decode the task: %w", err)
+	}
+	chart, ok := decoded["chart"]
+	if !ok || len(chart) == 0 || string(chart) == "null" {
+		return nil, errors.New("the task describes a chart, and none was returned")
+	}
+	if s.charts == nil {
+		return nil, errors.New("no chart renderer is configured, so the task's chart cannot be drawn")
+	}
+	imageURL, err := s.charts.RenderChart(chart)
+	if err != nil {
+		return nil, fmt.Errorf("draw the task's chart: %w", err)
+	}
+	encoded, err := json.Marshal(imageURL)
+	if err != nil {
+		return nil, err
+	}
+	decoded["image_url"] = encoded
+	return json.Marshal(decoded)
 }
 
 // isTaskOnlyPart reports a writing or speaking part: its item is one task, not
@@ -433,6 +477,9 @@ func (s *Service) generateSingleItem(
 	}
 	preparedBody = withGroupWordLimit(preparedBody, req.ExamConstraints)
 	preparedBody = withPhoto(preparedBody, req.Photo)
+	if preparedBody, err = s.withChart(preparedBody, req.ExamConstraints); err != nil {
+		return nil, fmt.Errorf("prepare candidate body: %w", err)
+	}
 
 	model := resp.Model
 	if model == "" {

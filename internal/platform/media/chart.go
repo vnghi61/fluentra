@@ -1,6 +1,8 @@
 package media
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
@@ -51,6 +53,25 @@ func RenderChartSVG(spec ChartSpec) ([]byte, error) {
 	default:
 		return nil, fmt.Errorf("unknown chart type %q", spec.ChartType)
 	}
+}
+
+// ChartDataURI draws a chart into an SVG data URI. The drawing is a few
+// kilobytes and travels inside the item's body, so a learner sees it wherever
+// the body goes with no stored object to sign or expire; the page's policy
+// already allows data: images.
+type ChartDataURI struct{}
+
+// RenderChart decodes the model's chart data, draws it and returns the image.
+func (ChartDataURI) RenderChart(raw json.RawMessage) (string, error) {
+	var spec ChartSpec
+	if err := json.Unmarshal(raw, &spec); err != nil {
+		return "", fmt.Errorf("decode chart: %w", err)
+	}
+	svg, err := RenderChartSVG(spec)
+	if err != nil {
+		return "", err
+	}
+	return "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString(svg), nil
 }
 
 func (s ChartSpec) validate() error {

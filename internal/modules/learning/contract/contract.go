@@ -386,6 +386,10 @@ type ExamPartConstraints struct {
 	TypeMix      map[string]float64 `json:"type_mix,omitempty"`
 	// Plays is how many times a recording may be played; 0 means not stated.
 	Plays int `json:"plays,omitempty"`
+	// VisualRequired is a task written about a chart the learner sees (IELTS
+	// Writing Task 1, WO 22 D22-22): the model returns the chart's data, our
+	// code draws it, and an item without one is refused.
+	VisualRequired bool `json:"visual_required,omitempty"`
 }
 
 // VerifyItemRequest specifies an item to verify through ItemVerifier.

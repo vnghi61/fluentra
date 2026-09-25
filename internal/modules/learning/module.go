@@ -77,6 +77,8 @@ type Deps struct {
 	AuthorResolver contract.AuthorResolver
 	// Synthesiser turns listening scripts into pre-rendered audio.
 	Synthesiser service.AudioSynthesiser
+	// Charts draws an IELTS Writing Task 1 chart (WO 22 D22-22).
+	Charts service.ChartRenderer
 	// Audio finds a listening item's rendered clip in the TTS cache.
 	Audio contract.AudioLocator
 	// AudioRender asks for newly published listening items to be rendered now.
@@ -164,6 +166,7 @@ func New(deps Deps) *Module {
 		GeneratorAuthorID: deps.GeneratorAuthorID,
 		AuthorResolver:    deps.AuthorResolver,
 		Synthesiser:       deps.Synthesiser,
+		Charts:            deps.Charts,
 		Audio:             deps.Audio,
 		AudioRender:       deps.AudioRender,
 		User:              deps.User,
