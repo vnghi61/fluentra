@@ -125,23 +125,6 @@
       ]
     },
     {
-      "lemma": "fucked",
-      "pos": "verb",
-      "cefr_level": "C1",
-      "definition": "vulgar past form of fuck; a rude word for having sex or ruining something",
-      "definition_vi": "đã làm hỏng; từ thô tục (chỉ quan hệ tình dục)",
-      "examples": [
-        {
-          "sentence": "He fucked up the exam by not studying at all.",
-          "sentence_vi": "Nó làm hỏng bài thi vì không học gì cả."
-        },
-        {
-          "sentence": "The weather fucked up our plans for the beach trip.",
-          "sentence_vi": "Thời tiết làm hỏng kế hoạch đi biển của chúng tôi."
-        }
-      ]
-    },
-    {
       "lemma": "pacific",
       "pos": "adjective",
       "cefr_level": "C1",
@@ -189,23 +172,6 @@
         {
           "sentence": "Students often confuse 'le' and 'la' in French class.",
           "sentence_vi": "Học sinh thường nhầm 'le' và 'la' trong lớp tiếng Pháp."
-        }
-      ]
-    },
-    {
-      "lemma": "bullshit",
-      "pos": "noun",
-      "cefr_level": "C1",
-      "definition": "rude word for talk or writing that is not true or useful",
-      "definition_vi": "lời nói dối, chuyện nhảm nhí (thô tục)",
-      "examples": [
-        {
-          "sentence": "Stop talking bullshit and tell me the truth.",
-          "sentence_vi": "Đừng nói nhảm nữa mà nói thật đi."
-        },
-        {
-          "sentence": "His excuse was complete bullshit.",
-          "sentence_vi": "Lời biện minh của anh ta hoàn toàn là chuyện bịp bợm."
         }
       ]
     },
@@ -478,23 +444,6 @@
         {
           "sentence": "The court decided that the new law was not constitutional.",
           "sentence_vi": "Tòa án quyết định rằng luật mới không phù hợp với hiến pháp."
-        }
-      ]
-    },
-    {
-      "lemma": "fuckin",
-      "pos": "adjective",
-      "cefr_level": "C1",
-      "definition": "a rude swear word used to make another word stronger",
-      "definition_vi": "từ chửi thề nhấn mạnh (thô tục)",
-      "examples": [
-        {
-          "sentence": "He was so fuckin angry that he left the room.",
-          "sentence_vi": "Anh ta tức điên lên nên rời khỏi phòng."
-        },
-        {
-          "sentence": "That was a fuckin great movie, honestly.",
-          "sentence_vi": "Thật ra bộ phim đó hay vãi."
         }
       ]
     },
@@ -2420,23 +2369,6 @@
       ]
     },
     {
-      "lemma": "shitty",
-      "pos": "adjective",
-      "cefr_level": "C1",
-      "definition": "very bad or unpleasant; a rude informal word",
-      "definition_vi": "tệ, tồi tệ (từ thô tục)",
-      "examples": [
-        {
-          "sentence": "I had a shitty day at work today.",
-          "sentence_vi": "Hôm nay tôi có một ngày làm việc tồi tệ."
-        },
-        {
-          "sentence": "The hotel was shitty, so we left after one night.",
-          "sentence_vi": "Khách san tồi tệ nên chúng tôi đi sau một đêm."
-        }
-      ]
-    },
-    {
       "lemma": "thee",
       "pos": "pronoun",
       "cefr_level": "C1",
@@ -4358,23 +4290,6 @@
       ]
     },
     {
-      "lemma": "fucks",
-      "pos": "verb",
-      "cefr_level": "C1",
-      "definition": "vulgar swear word; forms rude expressions of anger or emphasis",
-      "definition_vi": "(tục) chửi thề, biểu thị giận dữ",
-      "examples": [
-        {
-          "sentence": "He fucks up simple tasks when he is in a hurry.",
-          "sentence_vi": "Anh ta làm hỏng những việc đơn giản khi vội vàng."
-        },
-        {
-          "sentence": "Nobody fucks with her and gets away with it.",
-          "sentence_vi": "Không ai trêu chọc cô ấy mà thoát được."
-        }
-      ]
-    },
-    {
       "lemma": "gilbert",
       "pos": "noun",
       "cefr_level": "C1",
@@ -5442,23 +5357,6 @@
         {
           "sentence": "She was too shocked to utter a sound.",
           "sentence_vi": "Cô ấy quá sốc để phát ra tiếng nào."
-        }
-      ]
-    },
-    {
-      "lemma": "bitches",
-      "pos": "noun",
-      "cefr_level": "C1",
-      "definition": "rude word for women, or plural of female dogs",
-      "definition_vi": "chữ thô tục chỉ phụ nữ; chó cái (số nhiều)",
-      "examples": [
-        {
-          "sentence": "The farmer keeps two bitches for breeding.",
-          "sentence_vi": "Người nông dân nuôi hai con chó cái để nhân giống."
-        },
-        {
-          "sentence": "Calling women bitches is very offensive.",
-          "sentence_vi": "Gọi phụ nữ là bitches là rất xúc phạm."
         }
       ]
     },

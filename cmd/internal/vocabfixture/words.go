@@ -34,6 +34,10 @@ type File struct {
 // Word is one headword with its primary sense and, when one was found, a
 // credited recording.
 type Word struct {
+	// Rank is the headword's place in the frequency list, 1 the commonest. It
+	// is what the seed's frequency_rank and the "Top 1,000" deck read (D22-10);
+	// zero in a fixture written before it was recorded.
+	Rank         int       `json:"rank,omitempty"`
 	Lemma        string    `json:"lemma"`
 	POS          string    `json:"pos"`
 	CEFRLevel    string    `json:"cefr_level"`

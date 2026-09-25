@@ -55,3 +55,19 @@ func TestClampLevel(t *testing.T) {
 		}
 	}
 }
+
+// TestIsWord_DropsInflectedProfanity. The exact list let "fucked", "shitty" and
+// "bitches" into the frozen fixture; the stems catch the forms it misses, and an
+// ordinary word survives.
+func TestIsWord_DropsInflectedProfanity(t *testing.T) {
+	for _, word := range []string{"fucked", "fuckin", "shitty", "bullshit", "bitches", "porn", "tits"} {
+		if isWord(word) {
+			t.Errorf("isWord(%q) = true, want the profanity dropped", word)
+		}
+	}
+	for _, word := range []string{"spicy", "cocktail", "therapeutic", "suspicious", "shift"} {
+		if !isWord(word) {
+			t.Errorf("isWord(%q) = false, want an ordinary word kept", word)
+		}
+	}
+}

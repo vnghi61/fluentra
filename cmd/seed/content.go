@@ -73,18 +73,11 @@ func seedContentAndCurriculum(ctx context.Context, pool *pgxpool.Pool, adminID u
 	if fromFixture {
 		_, _ = fmt.Fprintf(out, "  ✓ Vocabulary: %d words loaded from the frozen fixture\n", count)
 	} else {
-		count, err = seedVocabularyWords(ctx, pool, adminID, wordSenseSeedData)
+		count, err = seedVocabularyWords(ctx, pool, adminID, wordSenseSeedData, curatedDeckFor)
 		if err != nil {
 			return fmt.Errorf("seed vocabulary words: %w", err)
 		}
 		_, _ = fmt.Fprintf(out, "  ✓ Vocabulary: %d word senses seeded & linked into curated deck\n", count)
-	}
-
-	// 3. The thirteen Foundation courses (WO 22 Stage H), built from the course
-	// map through lesson's Author. This also archives the five Phase 2 courses
-	// the block above authored, so the catalogue shows thirteen.
-	if err := seedFoundationCourses(ctx, pool, adminID, out); err != nil {
-		return fmt.Errorf("seed Foundation courses: %w", err)
 	}
 
 	return nil
@@ -351,29 +344,54 @@ func slugPart(s string) string {
 	return strings.Trim(b.String(), "-")
 }
 
+// seedDeck is a public deck a seeded word is linked into.
+type seedDeck struct {
+	Slug        string
+	Name        string
+	Description string
+}
+
+// curatedDeck is the hand-written 200's deck.
+var curatedDeck = seedDeck{
+	Slug:        "a2-b1-essentials",
+	Name:        "A2–B1 Essential Vocabulary",
+	Description: "Curated core 200 vocabulary words for intermediate fluency.",
+}
+
+// curatedDeckFor puts every hand-written word in the curated deck.
+func curatedDeckFor(seedWordSense) []seedDeck { return []seedDeck{curatedDeck} }
+
 func seedVocabularyWords(
 	ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, senses []seedWordSense,
+	decksFor func(seedWordSense) []seedDeck,
 ) (int, error) {
-	// The curated deck has no owner.
+	// A seeded deck has no owner.
 	//
 	// ListDecksByUser shows a learner `owner_id = $1 OR (owner_id IS NULL AND
 	// is_public)`, so a "curated" deck owned by the admin account is visible to
 	// exactly one person — the admin. NULL is what makes it everyone's. The
 	// unique constraint is NULLS NOT DISTINCT, so the upsert still matches on
 	// re-run.
-	var deckID uuid.UUID
 	const upsertDeck = `
 		INSERT INTO skill.decks (owner_id, slug, name, description, is_public, updated_at)
-		VALUES (NULL, 'a2-b1-essentials', 'A2–B1 Essential Vocabulary',
-		        'Curated core 200 vocabulary words for intermediate fluency.', true, now())
+		VALUES (NULL, $1, $2, $3, true, now())
 		ON CONFLICT (owner_id, slug) DO UPDATE
 		SET name = EXCLUDED.name,
 		    description = EXCLUDED.description,
 		    is_public = true,
 		    updated_at = now()
 		RETURNING id`
-	if err := pool.QueryRow(ctx, upsertDeck).Scan(&deckID); err != nil {
-		return 0, fmt.Errorf("upsert curated deck: %w", err)
+	deckIDs := map[string]uuid.UUID{}
+	deckID := func(deck seedDeck) (uuid.UUID, error) {
+		if id, ok := deckIDs[deck.Slug]; ok {
+			return id, nil
+		}
+		var id uuid.UUID
+		if err := pool.QueryRow(ctx, upsertDeck, deck.Slug, deck.Name, deck.Description).Scan(&id); err != nil {
+			return uuid.Nil, fmt.Errorf("upsert deck %s: %w", deck.Slug, err)
+		}
+		deckIDs[deck.Slug] = id
+		return id, nil
 	}
 
 	seededCount := 0
@@ -415,6 +433,9 @@ func seedVocabularyWords(
 		// 2. Upsert word
 		var wordID uuid.UUID
 		rank := i + 1
+		if s.Rank > 0 {
+			rank = s.Rank
+		}
 		const upsertWord = `
 			INSERT INTO skill.words (lemma, pos, cefr_level, frequency_rank, ipa, updated_at)
 			VALUES ($1, $2, $3, $4, $5, now())
@@ -465,13 +486,19 @@ func seedVocabularyWords(
 			}
 		}
 
-		// 4. Add to public deck
+		// 4. Add to its public decks
 		const insertDeckItem = `
 			INSERT INTO skill.deck_items (deck_id, word_sense_id)
 			VALUES ($1, $2)
 			ON CONFLICT (deck_id, word_sense_id) DO NOTHING`
-		if _, err := pool.Exec(ctx, insertDeckItem, deckID, senseID); err != nil {
-			return seededCount, fmt.Errorf("link deck item for %s: %w", s.Lemma, err)
+		for _, deck := range decksFor(s) {
+			id, err := deckID(deck)
+			if err != nil {
+				return seededCount, err
+			}
+			if _, err := pool.Exec(ctx, insertDeckItem, id, senseID); err != nil {
+				return seededCount, fmt.Errorf("link deck item for %s: %w", s.Lemma, err)
+			}
 		}
 
 		seededCount++

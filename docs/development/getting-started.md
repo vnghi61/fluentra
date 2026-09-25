@@ -79,6 +79,10 @@ make migrate-up
 make seed
 ```
 
+`make seed` is offline: words, Foundation courses and exam tests come from the frozen fixtures
+under `db/fixtures/`. `make seed-audio` backfills recorded pronunciation for any seeded word that
+has none; it calls an external dictionary, so it is a separate, repeatable step.
+
 Demo accounts: `nghitienvl@gmail.com` (learner) and `nguyenvannghi1110@gmail.com` (admin),
 password `Password123!demo`. The admin holds every permission, so it is the account for the
 review queue, the question bank and content authoring; the learner holds none, which is what

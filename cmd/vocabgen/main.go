@@ -250,7 +250,7 @@ func isWord(word string) bool {
 			return false
 		}
 	}
-	if profanity[word] || abbreviation[word] {
+	if isProfane(word) || abbreviation[word] {
 		return false
 	}
 	// A word with no vowel is an acronym or a keyboard artefact ("http", "www",
@@ -275,7 +275,26 @@ var profanity = map[string]bool{
 	"bugger": true, "cock": true, "crap": true, "cunt": true, "damn": true,
 	"dick": true, "fuck": true, "fucking": true, "hell": true, "piss": true,
 	"prick": true, "pussy": true, "shit": true, "slut": true, "twat": true,
-	"whore": true,
+	"whore": true, "boobs": true, "tits": true, "horny": true, "porn": true,
+}
+
+// profaneStems catch the inflected and compound forms an exact list misses:
+// the first list let "fucked", "fucks", "fuckin", "shitty", "bullshit" and
+// "bitches" into the frozen fixture. A stem here never begins an ordinary word
+// a course teaches.
+var profaneStems = []string{"fuck", "shit", "bitch", "cunt", "whore", "slut", "porn", "wank"}
+
+// isProfane reports whether a headword is profanity or built on it.
+func isProfane(word string) bool {
+	if profanity[word] {
+		return true
+	}
+	for _, stem := range profaneStems {
+		if strings.Contains(word, stem) {
+			return true
+		}
+	}
+	return false
 }
 
 // generateMeanings asks the model for one batch. The model's reply is a JSON
@@ -344,7 +363,7 @@ func writeFixtures(
 ) error {
 	byLevel := map[string][]vocabfixture.Word{}
 	flagged := append([]flaggedWord(nil), extraFlagged...)
-	for _, lemma := range lemmas {
+	for i, lemma := range lemmas {
 		meaning, ok := cache[lemma]
 		if !ok {
 			continue
@@ -354,6 +373,9 @@ func writeFixtures(
 			// The list's lower-cased form, not the model's casing: the headword
 			// is the key the frequency list ranked, and "November" as a lemma
 			// would make the seed's slug invalid.
+			// The list is read in frequency order, so its position is the rank
+			// the seed's "Top 1,000" deck needs (D22-10).
+			Rank:         i + 1,
 			Lemma:        lemma,
 			POS:          meaning.POS,
 			CEFRLevel:    level,

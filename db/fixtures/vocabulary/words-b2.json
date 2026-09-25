@@ -4256,23 +4256,6 @@
       ]
     },
     {
-      "lemma": "porn",
-      "pos": "noun",
-      "cefr_level": "B2",
-      "definition": "pictures or videos made to cause sexual excitement",
-      "definition_vi": "khiêu dâm",
-      "examples": [
-        {
-          "sentence": "The website was blocked because it contained porn.",
-          "sentence_vi": "Trang web đã bị chặn vì có nội dung khiêu dâm."
-        },
-        {
-          "sentence": "Parents worry that children may find porn online.",
-          "sentence_vi": "Cha mẹ lo lắng rằng con cái có thể tìm thấy nội dung khiêu dâm trên mạng."
-        }
-      ]
-    },
-    {
       "lemma": "republicans",
       "pos": "noun",
       "cefr_level": "B2",
@@ -22208,23 +22191,6 @@
       ]
     },
     {
-      "lemma": "tits",
-      "pos": "noun",
-      "cefr_level": "B2",
-      "definition": "small wild birds with short beaks, or a rude word for breasts",
-      "definition_vi": "chim bách thanh; (thô tục) ngực",
-      "examples": [
-        {
-          "sentence": "A pair of tits built a nest in our garden tree.",
-          "sentence_vi": "Một cặp chim bách thanh làm tổ trên cây trong vườn nhà."
-        },
-        {
-          "sentence": "Blue tits are easy to spot at bird feeders in winter.",
-          "sentence_vi": "Chim bách thanh xanh dễ thấy ở chỗ cho chim ăn vào mùa đông."
-        }
-      ]
-    },
-    {
       "lemma": "vinyl",
       "pos": "noun",
       "cefr_level": "B2",
@@ -35345,23 +35311,6 @@
         {
           "sentence": "Public hearings were held before the new law passed.",
           "sentence_vi": "Các phiên điều trần công khai đã được tổ chức trước khi luật mới được thông qua."
-        }
-      ]
-    },
-    {
-      "lemma": "horny",
-      "pos": "adjective",
-      "cefr_level": "B2",
-      "definition": "informal word meaning feeling sexual desire",
-      "definition_vi": "ham muốn tình dục (từ suồng sã)",
-      "examples": [
-        {
-          "sentence": "The movie made him feel horny.",
-          "sentence_vi": "Bộ phim khiến anh ấy cảm thấy ham muốn."
-        },
-        {
-          "sentence": "He used the informal word 'horny' with his friends.",
-          "sentence_vi": "Anh ấy dùng từ suồng sã 'horny' với bạn bè."
         }
       ]
     },

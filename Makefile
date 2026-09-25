@@ -139,11 +139,14 @@ migrate-new: ## Create a migration: make migrate-new MODULE=auth NAME=add_mfa
 	@mkdir -p db/migrations/$(MODULE)
 	goose -dir db/migrations/$(MODULE) create $(NAME) sql
 
-seed: ## Load the development dataset
+seed: ## Load the development dataset (offline: the words, courses and tests come from db/fixtures)
 	go run ./cmd/seed
-	# Recorded pronunciation, looked up per lemma. Separate because it is the
-	# one part of the seed that calls somebody else's API; -audio is idempotent,
-	# so a re-run only asks about words that still have no recording.
+
+# Recorded pronunciation is frozen into the word fixture by cmd/vocabgen (WO 22
+# D22-8), so `make seed` makes no dictionary call. This is the repair for words
+# that still have none: it looks each one up in somebody else's API, and is
+# idempotent, so a re-run only asks about words that still have no recording.
+seed-audio: ## Backfill recorded pronunciation onto seeded words that have none (network)
 	go run ./cmd/seed -audio
 
 audit-logs: ## Prove no OTP code or personal data reaches Loki (needs `make dev`)
@@ -348,7 +351,7 @@ security: ## Security scans
 	cd web && pnpm audit --audit-level=high
 
 .PHONY: help setup dev dev-infra dev-infra-down dev-down logs prod-up api worker web gen gen-backend gen-sql gen-api gen-mocks gen-web \
-        gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed promote-admin due-reviews audit-logs \
+        gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed seed-audio promote-admin due-reviews audit-logs \
         db-reset-DANGEROUS check fmt fmt-check vet lint lint-int lint-go arch test test-int \
         test-contract test-web test-e2e test-load test-eval cover cover-check cover-gate docs \
         docs-check ci ci-backend ci-frontend ci-fast security

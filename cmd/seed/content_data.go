@@ -34,6 +34,8 @@ type seedActivity struct {
 }
 
 type seedWordSense struct {
+	// Rank is the frequency rank from the fixture; zero means the order given.
+	Rank         int
 	Lemma        string
 	POS          string
 	CEFRLevel    string

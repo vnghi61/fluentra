@@ -218,6 +218,16 @@ func run(ctx context.Context, out io.Writer) error {
 		}
 	}
 
+	// The thirteen Foundation courses (WO 22 Stage H), built from the course
+	// map through lesson's Author, after the fixtures: a lesson's activities are
+	// its node's published content, so building the courses first gave a fresh
+	// database thirteen courses of empty lessons. This also archives the five
+	// Phase 2 courses seedAuthoredContent authored, so the catalogue shows
+	// thirteen.
+	if err := seedFoundationCourses(ctx, pool, adminID, out); err != nil {
+		return fmt.Errorf("seed Foundation courses: %w", err)
+	}
+
 	// The frozen exam content (WO 22 Stage N): loaded through content's own
 	// state machine, put in the bank, then composed into numbered fixed tests.
 	if includeExamFixtures {
