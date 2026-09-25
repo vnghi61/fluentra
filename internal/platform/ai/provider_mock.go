@@ -359,6 +359,10 @@ func (p *MockProvider) practiceGenerate(req Request) (Response, error) {
 	if format := stringVar(req.Vars, "ExamFormat"); format != "" && mockExamKinds[kind] {
 		return p.examGenerate(kind, format)
 	}
+	if kind == "listening_comprehension" {
+		// A practice or Foundation recording: four questions of four options.
+		return p.examGenerate(kind, "Questions in this group: exactly 4.\nOptions per question: exactly 4.")
+	}
 	taskType := stringVar(req.Vars, "TaskType")
 	var payload []byte
 	var err error
