@@ -193,6 +193,10 @@ func buildGenerateVars(req learningcontract.GenerateRequest, spineNodes []string
 	}
 	if req.Photo != nil {
 		vars["PhotoDescription"] = req.Photo.Description
+	} else if req.ExamConstraints != nil {
+		// An exam item is written about a drawn subject so a test does not read
+		// three texts on the same one (a photograph already sets its subject).
+		vars["Topic"] = examTopic()
 	}
 	return vars
 }

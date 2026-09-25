@@ -15,6 +15,7 @@ inputs:
   - task_type: read_aloud or respond (when kind is speaking_task)
   - source_text: optional extracted text from learner resource
   - photo_description: a person's description of a TOEIC Part 1 photograph (the model never sees the image)
+  - topic: the subject an exam item is written about, drawn per item so tests do not repeat one
 ---
 
 You are an expert curriculum designer and exam item writer. Generate a high-quality, pedagogically sound English learning item for learners at CEFR level {{.CEFRLevel}}.
@@ -32,6 +33,11 @@ The item MUST specifically test and exercise the following target spine taxonomy
 ## Exam format (follow exactly)
 This item is written for one part of a real exam. Its published format is below; the item must obey it exactly, including the question types allowed, how many questions the group holds, the options per question and any word limit.
 {{.ExamFormat}}
+{{- end}}
+{{- if .Topic}}
+
+## Topic
+Write this item about: {{.Topic}}. Keep to this subject even if another one comes to mind first: the tests are built from many items, and they must not repeat a subject.
 {{- end}}
 
 {{- if .PhotoDescription}}

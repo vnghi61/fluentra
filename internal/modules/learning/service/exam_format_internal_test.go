@@ -66,3 +66,39 @@ func TestExamFormatStatesTheRecordingsSpeakers(t *testing.T) {
 		})
 	}
 }
+
+// Without a drawn subject the model wrote six IELTS reading passages on two
+// topics. An exam item gets one; a Foundation item and a photograph item, whose
+// subject is already set, do not.
+func TestBuildGenerateVarsDrawsATopicForExamItems(t *testing.T) {
+	t.Parallel()
+
+	known := make(map[string]bool, len(examTopics))
+	for _, topic := range examTopics {
+		known[topic] = true
+	}
+
+	exam := buildGenerateVars(learningcontract.GenerateRequest{
+		Kind: "reading_comprehension", CEFRLevel: "B2",
+		ExamConstraints: &learningcontract.ExamPartConstraints{QuestionsPerGroup: 13},
+	}, nil, "")
+	topic, _ := exam["Topic"].(string)
+	if !known[topic] {
+		t.Errorf("exam item topic = %q, want one of examTopics", topic)
+	}
+
+	foundation := buildGenerateVars(
+		learningcontract.GenerateRequest{Kind: "grammar_tense_choice", CEFRLevel: "A2"}, nil, "")
+	if _, ok := foundation["Topic"]; ok {
+		t.Error("a Foundation item should not be given a topic")
+	}
+
+	photo := buildGenerateVars(learningcontract.GenerateRequest{
+		Kind: "photo_description", CEFRLevel: "B1",
+		ExamConstraints: &learningcontract.ExamPartConstraints{OptionCount: 4},
+		Photo:           &learningcontract.PhotoRef{Description: "A man is typing."},
+	}, nil, "")
+	if _, ok := photo["Topic"]; ok {
+		t.Error("a photograph item already has its subject; it should not be given a topic")
+	}
+}
