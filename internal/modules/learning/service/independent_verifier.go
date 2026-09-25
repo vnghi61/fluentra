@@ -153,6 +153,12 @@ func (s *Service) publishVerifiedDraft(
 	if err != nil {
 		return err
 	}
+	// A Foundation item is published with its node or not at all (D22-13): the
+	// verdict is recorded here and the node's batch is published whole by the
+	// caller once its topic and every item are confirmed.
+	if req.Purpose == purposeFoundation {
+		return s.contentRecorder.RecordVerification(ctx, versionID, verification)
+	}
 	if verification.Confirmed {
 		if err := s.contentAuthor.ApproveVerified(ctx, versionID, verification); err != nil {
 			// The verifier confirmed it, but a publication gate did not: the

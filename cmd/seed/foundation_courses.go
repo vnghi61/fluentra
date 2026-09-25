@@ -163,6 +163,7 @@ func seedFoundationCourses(
 	author := lessonMod.Author()
 
 	order, byCourse := groupByCourse(nodes)
+	courseIDs := make(map[string]uuid.UUID, len(order))
 	for _, slug := range order {
 		meta, ok := foundationCourseMetaBySlug[slug]
 		if !ok {
@@ -187,6 +188,7 @@ func seedFoundationCourses(
 		if err != nil {
 			return fmt.Errorf("course %s: %w", slug, err)
 		}
+		courseIDs[slug] = courseID
 		unitID, err := author.EnsureUnit(ctx, lessoncontract.UnitSpec{
 			CourseID: courseID, Position: 1, Title: meta.Title,
 		})
@@ -224,6 +226,11 @@ func seedFoundationCourses(
 			meta.Title, len(courseNodes), withActivities)
 	}
 
+	// The Phase 2 courses' content is kept, moved into the course it belongs
+	// to, before those courses leave the catalogue (D22-14).
+	if err := movePhase2Content(ctx, pool, author, courseIDs, out); err != nil {
+		return err
+	}
 	if err := archivePhase2Courses(ctx, pool); err != nil {
 		return err
 	}
@@ -343,4 +350,143 @@ func archivePhase2Courses(ctx context.Context, pool *pgxpool.Pool) error {
 		return fmt.Errorf("archive the Phase 2 courses: %w", err)
 	}
 	return nil
+}
+
+// phase2Move is where one Phase 2 course's content goes (D22-14): a practice
+// unit of the Foundation course it belongs to, with the activity kinds kept.
+type phase2Move struct {
+	from, to  string
+	unitTitle string
+	keep      func(kind string) bool
+}
+
+// phase2Moves: reading passages, listening scripts, writing prompts and
+// speaking tasks become lessons of the four skill courses; Everyday English's
+// flashcards and their word drills go to Vocabulary Foundations.
+var phase2Moves = []phase2Move{
+	{phase2ReadingPractice, courseReadingFoundations, "Reading practice", kindIs("reading_comprehension")},
+	{phase2ListeningPractice, courseListeningFoundations, "Listening practice", kindIs("listening_comprehension")},
+	{phase2WritingPractice, courseWritingFoundations, "Writing practice", kindIs("writing_prompt")},
+	{phase2SpeakingPractice, courseSpeakingFoundations, "Speaking practice", kindIs("speaking_task")},
+	{phase2EverydayEnglish, courseVocabularyFoundations, "Everyday English words", func(kind string) bool {
+		return strings.HasPrefix(kind, "vocab_")
+	}},
+}
+
+func kindIs(want string) func(string) bool {
+	return func(kind string) bool { return kind == want }
+}
+
+// practiceUnitPosition is the unit the moved lessons sit in: after the unit of
+// the course's own nodes.
+const practiceUnitPosition = 2
+
+// phase2Lesson is one lesson of a Phase 2 course with the activities it holds.
+type phase2Lesson struct {
+	title      string
+	skill      string
+	minutes    int
+	cefr       *string
+	activities []lessoncontract.ActivitySpec
+}
+
+// movePhase2Content copies each Phase 2 course's lessons into its Foundation
+// course's practice unit, through lesson's Author, pointing at the same content
+// versions: nothing is re-authored, and a learner's attempts on the old lessons
+// are untouched. A course the map did not produce, or a Phase 2 course that is
+// not there, is skipped.
+func movePhase2Content(
+	ctx context.Context, pool *pgxpool.Pool, author lessoncontract.Author,
+	courseIDs map[string]uuid.UUID, out io.Writer,
+) error {
+	for _, move := range phase2Moves {
+		courseID, ok := courseIDs[move.to]
+		if !ok {
+			continue
+		}
+		lessons, err := phase2Lessons(ctx, pool, move.from, move.keep)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", move.from, err)
+		}
+		if len(lessons) == 0 {
+			continue
+		}
+		unitID, err := author.EnsureUnit(ctx, lessoncontract.UnitSpec{
+			CourseID: courseID, Position: practiceUnitPosition, Title: move.unitTitle,
+		})
+		if err != nil {
+			return fmt.Errorf("practice unit of %s: %w", move.to, err)
+		}
+		for i, lesson := range lessons {
+			lessonID, err := author.EnsureLesson(ctx, lessoncontract.LessonSpec{
+				UnitID: unitID, Position: i + 1, Title: lesson.title, SkillFocus: lesson.skill,
+				EstimatedMinutes: lesson.minutes, CEFRLevel: lesson.cefr,
+			})
+			if err != nil {
+				return fmt.Errorf("lesson %q of %s: %w", lesson.title, move.to, err)
+			}
+			if err := author.SyncActivities(ctx, lessonID, lesson.activities); err != nil {
+				return fmt.Errorf("activities of %q: %w", lesson.title, err)
+			}
+		}
+		_, _ = fmt.Fprintf(out, "  ✓ %s: %d lesson(s) moved into %s\n", move.from, len(lessons), move.to)
+	}
+	return nil
+}
+
+// phase2Lessons reads a Phase 2 course's lessons, in order, with the live
+// activities of the kinds kept. A lesson left with none is dropped.
+func phase2Lessons(
+	ctx context.Context, pool *pgxpool.Pool, slug string, keep func(string) bool,
+) ([]phase2Lesson, error) {
+	const query = `
+		SELECT l.id, l.title, l.skill_focus, l.estimated_minutes, l.cefr_level::text,
+		       a.kind, a.content_version_id, a.config, a.weight
+		FROM learn.courses c
+		JOIN learn.course_units u ON u.course_id = c.id
+		JOIN learn.lessons l ON l.unit_id = u.id
+		JOIN learn.activities a ON a.lesson_id = l.id AND a.retired_at IS NULL
+		WHERE c.slug = $1
+		ORDER BY u.position, l.position, a.position`
+	rows, err := pool.Query(ctx, query, slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var lessons []phase2Lesson
+	var current uuid.UUID
+	for rows.Next() {
+		var lessonID, versionID uuid.UUID
+		var lesson phase2Lesson
+		var kind string
+		var config []byte
+		var weight int
+		if err := rows.Scan(&lessonID, &lesson.title, &lesson.skill, &lesson.minutes, &lesson.cefr,
+			&kind, &versionID, &config, &weight); err != nil {
+			return nil, err
+		}
+		if lessonID != current {
+			current = lessonID
+			lessons = append(lessons, lesson)
+		}
+		if !keep(kind) {
+			continue
+		}
+		last := &lessons[len(lessons)-1]
+		last.activities = append(last.activities, lessoncontract.ActivitySpec{
+			Position: len(last.activities) + 1, Kind: kind, ContentVersionID: versionID,
+			Config: json.RawMessage(config), Weight: weight,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	kept := lessons[:0]
+	for _, lesson := range lessons {
+		if len(lesson.activities) > 0 {
+			kept = append(kept, lesson)
+		}
+	}
+	return kept, nil
 }

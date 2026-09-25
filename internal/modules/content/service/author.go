@@ -197,6 +197,119 @@ func (s *Service) ApproveVerified(
 	})
 }
 
+// ErrBatchEscalated reports a batch the verifier did not confirm whole, or that
+// a publication gate refused: it stays as drafts for a person.
+var ErrBatchEscalated = apperr.New(apperr.Conflict, "CONTENT_BATCH_ESCALATED",
+	"The batch was not confirmed whole; it stays for a person to review.")
+
+// ApproveVerifiedBatch implements contract.VerifiedBatchPublisher (D22-13).
+//
+// Every draft of the batch must carry a confirmed verification; then all of
+// them are published in one transaction, topics after the items their gate
+// needs, each with a content_reviews row naming the verifier. Otherwise nothing
+// changes and the error says which version held the batch back.
+func (s *Service) ApproveVerifiedBatch(ctx context.Context, batch string) (int, error) {
+	if strings.TrimSpace(batch) == "" {
+		return 0, apperr.New(apperr.Validation, "CONTENT_BATCH_REQUIRED", "A batch is required.")
+	}
+	published := 0
+	err := dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+		repo := s.repo.WithTx(tx)
+		ids, err := repo.ListReviewBatchVersionIDs(txCtx, batch)
+		if err != nil {
+			return err
+		}
+		ids, err = topicsLast(txCtx, repo, ids)
+		if err != nil {
+			return err
+		}
+		versions := make([]domain.Version, 0, len(ids))
+		for _, id := range ids {
+			version, err := repo.GetVersionByID(txCtx, id)
+			if err != nil {
+				return err
+			}
+			if verification, ok := recordedVerification(version.Body); !ok || !verification.Confirmed {
+				return ErrBatchEscalated.WithInternal(fmt.Sprintf("version %s is not confirmed", id))
+			}
+			versions = append(versions, version)
+		}
+		for _, version := range versions {
+			if err := s.publishVerifiedVersion(txCtx, tx, repo, version); err != nil {
+				return err
+			}
+			published++
+		}
+		return nil
+	})
+	if err != nil {
+		published = 0
+		if isPublicationGate(err) {
+			return 0, ErrBatchEscalated.WithInternal(err.Error())
+		}
+		return 0, err
+	}
+	return published, nil
+}
+
+// publishVerifiedVersion walks one confirmed draft to published and records the
+// verifier's approval, reviewer the item's owner.
+func (s *Service) publishVerifiedVersion(
+	ctx context.Context, tx pgx.Tx, repo Repository, version domain.Version,
+) error {
+	item, err := repo.GetItemByID(ctx, version.ItemID)
+	if err != nil {
+		return err
+	}
+	approved, err := s.advanceToApproved(ctx, repo, item, version)
+	if err != nil {
+		return err
+	}
+	if _, err := s.finalizePublished(ctx, tx, repo, item, approved); err != nil {
+		return err
+	}
+	verification, _ := recordedVerification(version.Body)
+	comment := fmt.Sprintf("Approved by independent verifier %s at %s, with its whole batch.",
+		verifierName(verification.Model), verification.CheckedAt.UTC().Format(time.RFC3339))
+	_, err = repo.CreateReview(ctx, s.newID(), version.ID, item.OwnerID, domain.ReviewDecisionApproved, &comment)
+	return err
+}
+
+// recordedVerification reads `_provenance.verification` back from a body.
+func recordedVerification(body json.RawMessage) (contract.Verification, bool) {
+	var decoded struct {
+		Provenance struct {
+			Verification *struct {
+				Model     string `json:"model"`
+				Verdict   string `json:"verdict"`
+				Reason    string `json:"reason"`
+				CheckedAt string `json:"checked_at"`
+			} `json:"verification"`
+		} `json:"_provenance"`
+	}
+	if err := json.Unmarshal(body, &decoded); err != nil || decoded.Provenance.Verification == nil {
+		return contract.Verification{}, false
+	}
+	mark := decoded.Provenance.Verification
+	checkedAt, _ := time.Parse(time.RFC3339, mark.CheckedAt)
+	return contract.Verification{
+		Confirmed: mark.Verdict == "confirmed",
+		Model:     mark.Model,
+		Reason:    mark.Reason,
+		CheckedAt: checkedAt,
+	}, true
+}
+
+// isPublicationGate reports a refusal by a publication gate rather than a fault.
+func isPublicationGate(err error) bool {
+	var appErr *apperr.Error
+	if !errors.As(err, &appErr) {
+		return false
+	}
+	return appErr.Code == domain.ErrFoundationIncomplete.Code || appErr.Code == domain.ErrMediaNotReady.Code ||
+		appErr.Code == ErrBatchEscalated.Code
+}
+
 // RecordVerification implements contract.VerificationRecorder.
 //
 // It writes the verifier's outcome into a version that is still a draft, so a
@@ -499,3 +612,4 @@ func validateAuthorSpec(spec contract.AuthorSpec) error {
 
 var _ contract.Author = (*Service)(nil)
 var _ contract.VerificationRecorder = (*Service)(nil)
+var _ contract.VerifiedBatchPublisher = (*Service)(nil)

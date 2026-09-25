@@ -75,11 +75,15 @@ func TestFoundationCLI_AssemblesWithoutAGuard(t *testing.T) {
 	}()
 
 	// No API key, so the AI client is the offline mock and nothing is called.
-	generator := assembleGenerator(
+	generator, publisher := assembleGenerator(
 		context.Background(), foundationCLIConfig{}, nil, uuid.New(),
 	)
 	if generator == nil {
 		t.Fatal("assembleGenerator returned no generator")
+	}
+	// Auto-publish is off by default, so no node is published without a person.
+	if publisher != nil {
+		t.Fatal("with auto-publish off there must be no batch publisher")
 	}
 }
 

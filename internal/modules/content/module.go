@@ -113,6 +113,10 @@ func (m *Module) Author() contract.Author { return m.service }
 // unpublished version (WO 22 Stage A).
 func (m *Module) VerificationRecorder() contract.VerificationRecorder { return m.service }
 
+// VerifiedBatchPublisher publishes a batch the verifier confirmed whole
+// (WO 22 D22-13).
+func (m *Module) VerifiedBatchPublisher() contract.VerifiedBatchPublisher { return m.service }
+
 // TTSCache provides caching and retrieval of synthesised speech audio.
 func (m *Module) TTSCache() contract.TTSCache { return m.service }
 

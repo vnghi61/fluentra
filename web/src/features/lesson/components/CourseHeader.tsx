@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { CheckCircle2, ShoppingBag } from "lucide-react";
 import type { CourseDetail } from "../api/lessonApi";
+import { courseDescription, courseTitle } from "../model/courseText";
 
 export interface CourseHeaderProps {
   course: CourseDetail;
@@ -33,7 +34,10 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
   const { t } = useTranslation();
 
   // Price from prop or course object
-  const courseAny = course as unknown as { price_vnd?: number; origin?: string };
+  const courseAny = course as unknown as {
+    price_vnd?: number;
+    origin?: string;
+  };
   const effectivePrice = priceVnd ?? courseAny.price_vnd ?? 0;
   const isPaid = effectivePrice > 0;
   const isCommunity = courseAny.origin === "community";
@@ -64,11 +68,11 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
 
         <div>
           <CardTitle className="text-2xl md:text-3xl font-extrabold text-text">
-            {course.title}
+            {courseTitle(t, course)}
           </CardTitle>
           {course.description && (
             <CardDescription className="mt-1 text-sm md:text-base">
-              {course.description}
+              {courseDescription(t, course)}
             </CardDescription>
           )}
         </div>

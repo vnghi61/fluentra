@@ -384,12 +384,46 @@ func TestGenerate_AutoPublishPublishesWhatTheVerifierConfirms(t *testing.T) {
 		CEFRLevel: "B1",
 		NodeCodes: []string{testNodeCodePresentPerfect},
 		Count:     1,
-		Purpose:   testPurposeFoundation,
+		Purpose:   "bank",
 	})
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	assert.Len(t, author.approved, 1, "a confirmed item publishes through ApproveVerified")
 	assert.Empty(t, recorder.received, "a confirmed item leaves no doubt")
+}
+
+// TestGenerate_AFoundationItemWaitsForItsNode is D22-13: a confirmed Foundation
+// item is not published on its own. The verdict is recorded, and the node's
+// batch is published whole once its topic and every item are confirmed.
+func TestGenerate_AFoundationItemWaitsForItsNode(t *testing.T) {
+	author := &generatorTestAuthor{}
+	recorder := &fakeVerificationRecorder{}
+	svc := service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     author,
+		ContentRecorder:   recorder,
+		AutoPublish:       true,
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           passingGraders(),
+		AI:                &autoPublishAI{inner: ai.NewMockProvider(nil), solve: "A", verdict: "confirmed"},
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+		Synthesiser:       &fakeAudioSynthesiser{},
+	})
+
+	_, err := svc.Generate(context.Background(), learningcontract.GenerateRequest{
+		Kind:      testKindTenseChoice,
+		CEFRLevel: "B1",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   testPurposeFoundation,
+	})
+	require.NoError(t, err)
+	assert.Empty(t, author.approved, "a Foundation item publishes with its node, not alone")
+	require.Len(t, recorder.received, 1, "the verdict is recorded for the node's batch")
+	assert.True(t, recorder.received[0].Confirmed)
 }
 
 // TestGenerate_AutoPublishLeavesADoubtForAPerson. A verifier that does not

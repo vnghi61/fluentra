@@ -2039,5 +2039,59 @@
     "quizzes": "Quizzes",
     "reviews": "Reviews",
     "pathSection": "Foundation Learning Path"
+  },
+  "courses": {
+    "grammar-foundations": {
+      "title": "Grammar Foundations",
+      "description": "Parts of speech, nouns, articles, verbs, clauses of agreement."
+    },
+    "english-tenses": {
+      "title": "English Tenses",
+      "description": "The twelve tenses, one lesson each, from present simple to future perfect continuous."
+    },
+    "sentence-structure": {
+      "title": "Sentence Structure",
+      "description": "Subjects, verbs and objects, questions and negatives."
+    },
+    "clauses": {
+      "title": "Clauses",
+      "description": "Relative, noun and adverbial clauses and how they join."
+    },
+    "sentence-patterns": {
+      "title": "Sentence Patterns",
+      "description": "Everyday patterns: introducing, asking, requesting, agreeing, explaining."
+    },
+    "vocabulary-foundations": {
+      "title": "Vocabulary Foundations",
+      "description": "High-frequency words, collocations, synonyms and topic vocabulary."
+    },
+    "word-formation": {
+      "title": "Word Formation",
+      "description": "Prefixes, suffixes, families, conversion and compounds."
+    },
+    "phrasal-verbs-and-expressions": {
+      "title": "Phrasal Verbs & Expressions",
+      "description": "Phrasal verbs, idioms and fixed spoken expressions."
+    },
+    "pronunciation-foundations": {
+      "title": "Pronunciation Foundations",
+      "description": "Sounds, word and sentence stress, linking, reductions and intonation."
+    },
+    "reading-foundations": {
+      "title": "Reading Foundations",
+      "description": "Sentences, paragraphs, words in context and main idea and detail."
+    },
+    "listening-foundations": {
+      "title": "Listening Foundations",
+      "description": "Words, phrases, sentences and conversations at natural speed."
+    },
+    "speaking-foundations": {
+      "title": "Speaking Foundations",
+      "description": "Words, phrases, sentences and speaking at length."
+    },
+    "writing-foundations": {
+      "title": "Writing Foundations",
+      "description": "Sentences, paragraphs and linking words."
+    }
   }
 }

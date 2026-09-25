@@ -2039,5 +2039,59 @@
     "quizzes": "Câu đố",
     "reviews": "Ôn tập",
     "pathSection": "Lộ trình học nền tảng"
+  },
+  "courses": {
+    "grammar-foundations": {
+      "title": "Ngữ pháp nền tảng",
+      "description": "Từ loại, danh từ, mạo từ, động từ, mệnh đề và sự hòa hợp."
+    },
+    "english-tenses": {
+      "title": "Các thì tiếng Anh",
+      "description": "Mười hai thì, mỗi thì một bài, từ hiện tại đơn đến tương lai hoàn thành tiếp diễn."
+    },
+    "sentence-structure": {
+      "title": "Cấu trúc câu",
+      "description": "Chủ ngữ, động từ và tân ngữ; câu hỏi và câu phủ định."
+    },
+    "clauses": {
+      "title": "Mệnh đề",
+      "description": "Mệnh đề quan hệ, mệnh đề danh từ, mệnh đề trạng ngữ và cách nối chúng."
+    },
+    "sentence-patterns": {
+      "title": "Mẫu câu thông dụng",
+      "description": "Mẫu câu hằng ngày: giới thiệu, hỏi, yêu cầu, đồng ý, giải thích."
+    },
+    "vocabulary-foundations": {
+      "title": "Từ vựng nền tảng",
+      "description": "Từ thông dụng, cụm từ đi kèm, từ đồng nghĩa – trái nghĩa và từ vựng theo chủ đề."
+    },
+    "word-formation": {
+      "title": "Cấu tạo từ",
+      "description": "Tiền tố, hậu tố, họ từ, chuyển loại và từ ghép."
+    },
+    "phrasal-verbs-and-expressions": {
+      "title": "Cụm động từ & thành ngữ",
+      "description": "Cụm động từ, thành ngữ và các cách nói cố định trong giao tiếp."
+    },
+    "pronunciation-foundations": {
+      "title": "Phát âm nền tảng",
+      "description": "Âm, trọng âm từ và câu, nối âm, nuốt âm và ngữ điệu."
+    },
+    "reading-foundations": {
+      "title": "Đọc hiểu nền tảng",
+      "description": "Câu, đoạn văn, đoán nghĩa theo ngữ cảnh, ý chính và chi tiết."
+    },
+    "listening-foundations": {
+      "title": "Nghe hiểu nền tảng",
+      "description": "Từ, cụm từ, câu và hội thoại ở tốc độ tự nhiên."
+    },
+    "speaking-foundations": {
+      "title": "Nói nền tảng",
+      "description": "Từ, cụm từ, câu và nói dài."
+    },
+    "writing-foundations": {
+      "title": "Viết nền tảng",
+      "description": "Câu, đoạn văn và từ nối."
+    }
   }
 }

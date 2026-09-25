@@ -26,6 +26,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/fluentra/fluentra/internal/modules/content"
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/grammar"
 	grammarcontract "github.com/fluentra/fluentra/internal/modules/grammar/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning"
@@ -248,7 +249,7 @@ func dispatchFoundationNodes(
 				"(see .env.example), or pass -mock to do it anyway")
 	}
 
-	generator, authorID, err := buildGenerator(ctx, cfg, pool)
+	generator, publisher, authorID, err := buildGenerator(ctx, cfg, pool)
 	if err != nil {
 		return fmt.Errorf("build generator: %w", err)
 	}
@@ -256,7 +257,7 @@ func dispatchFoundationNodes(
 	// One batch id per run, so a node's doubts are reviewed together and can be
 	// told apart from another run's (WO 22 Stage A.4).
 	runBatch := time.Now().UTC().Format("20060102T150405")
-	return generateDraftsForNodes(ctx, generator, nodes, authorID, runBatch, out)
+	return generateDraftsForNodes(ctx, generator, publisher, nodes, authorID, runBatch, out)
 }
 
 // loadFoundationConfig reads this command's configuration.
@@ -409,12 +410,13 @@ func buildGenerator(
 	ctx context.Context,
 	cfg foundationCLIConfig,
 	pool *pgxpool.Pool,
-) (learningcontract.Generator, uuid.UUID, error) {
+) (learningcontract.Generator, contentcontract.VerifiedBatchPublisher, uuid.UUID, error) {
 	authorID, err := resolveAuthorID(ctx, pool)
 	if err != nil {
-		return nil, uuid.Nil, err
+		return nil, nil, uuid.Nil, err
 	}
-	return assembleGenerator(ctx, cfg, pool, authorID), authorID, nil
+	generator, publisher := assembleGenerator(ctx, cfg, pool, authorID)
+	return generator, publisher, authorID, nil
 }
 
 // assembleGenerator is the module wiring alone, with no database read in it.
@@ -429,7 +431,7 @@ func assembleGenerator(
 	cfg foundationCLIConfig,
 	pool *pgxpool.Pool,
 	authorID uuid.UUID,
-) learningcontract.Generator {
+) (learningcontract.Generator, contentcontract.VerifiedBatchPublisher) {
 	// NewAuthoring, not New: this is a CLI that mounts no routes, so it has no
 	// guard to give and content.New fails closed without one. The worker learned
 	// the same lesson — see content.NewAuthoring's comment.
@@ -493,7 +495,13 @@ func assembleGenerator(
 		GeneratorAuthorID: authorID,
 	})
 
-	return learningMod.Generator()
+	// With auto-publish off there is nothing to publish: every node waits for a
+	// person, as before.
+	var publisher contentcontract.VerifiedBatchPublisher
+	if cfg.AI.AutoPublish {
+		publisher = contentMod.VerifiedBatchPublisher()
+	}
+	return learningMod.Generator(), publisher
 }
 
 func assembleGraders(
@@ -607,6 +615,7 @@ func initAIClient(ctx context.Context, cfg foundationCLIConfig, pool *pgxpool.Po
 func generateDraftsForNodes(
 	ctx context.Context,
 	generator learningcontract.Generator,
+	publisher contentcontract.VerifiedBatchPublisher,
 	nodes []spineNodeRow,
 	authorID uuid.UUID,
 	runBatch string,
@@ -715,6 +724,8 @@ nodeLoop:
 		}
 		totalGenerated += len(topicItems)
 		_, _ = fmt.Fprintf(out, "  ✓ topic (version %s)\n", topicItems[0].ContentVersionID)
+
+		publishNode(ctx, publisher, batch, out)
 	}
 
 	_, _ = fmt.Fprintf(out, "Generated %d item(s) across %d spine nodes.\n",
@@ -724,6 +735,23 @@ nodeLoop:
 			len(failed), strings.Join(failed, ", "))
 	}
 	return nil
+}
+
+// publishNode publishes a node's batch when the independent verifier confirmed
+// its topic and every item (D22-13), and otherwise says it waits for a person
+// as one batch. A nil publisher is auto-publish off: every node waits.
+func publishNode(
+	ctx context.Context, publisher contentcontract.VerifiedBatchPublisher, batch string, out io.Writer,
+) {
+	if publisher == nil {
+		return
+	}
+	published, err := publisher.ApproveVerifiedBatch(ctx, batch)
+	if err != nil {
+		_, _ = fmt.Fprintf(out, "  … node waits for a person as one batch: %v\n", err)
+		return
+	}
+	_, _ = fmt.Fprintf(out, "  ✓ node published whole (%d item(s))\n", published)
 }
 
 // offlineGuard permits everything, because there is nothing to protect: this

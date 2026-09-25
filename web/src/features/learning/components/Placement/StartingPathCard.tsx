@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useStartingPath } from "../../api/placement";
+import { courseTitle } from "@/features/lesson/model/courseText";
 
 const linkClass =
   "inline-flex min-h-[44px] items-center justify-center rounded-lg bg-primary px-6 text-base font-medium text-primary-fg hover:bg-primary-hover";
@@ -44,7 +45,9 @@ export const StartingPathCard: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-1">
-        <p className="text-base font-semibold text-text">{course.title}</p>
+        <p className="text-base font-semibold text-text">
+          {courseTitle(t, course)}
+        </p>
         <p className="text-sm text-text-muted">
           {t("placement.path.range", {
             from: course.cefr_from,

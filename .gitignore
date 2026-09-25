@@ -37,3 +37,9 @@ tmp/
 
 # cmd/vocabgen scratch cache (WO 22 Stage C): resumes a run, never committed
 vocabgen-cache.json
+
+# go build ./cmd/<name> in the repo root writes the binary here
+/seed
+/vocabgen
+/examgen
+/foundation

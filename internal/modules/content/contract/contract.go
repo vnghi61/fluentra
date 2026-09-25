@@ -124,6 +124,22 @@ type VerificationRecorder interface {
 	RecordVerification(ctx context.Context, versionID uuid.UUID, verification Verification) error
 }
 
+// VerifiedBatchPublisher publishes a generation batch the independent verifier
+// confirmed whole (WO 22 D22-13).
+//
+// A Foundation node is one batch: its topic, exercises, quiz and review. It
+// publishes only when every version in it was confirmed; one doubt leaves the
+// whole batch as drafts for a person, who approves it as a batch. Nothing is
+// published half-way, so a learner never meets a topic whose quiz is missing or
+// exercises whose topic was doubted.
+type VerifiedBatchPublisher interface {
+	// ApproveVerifiedBatch publishes every version of the batch in one
+	// transaction and returns how many it published. A batch holding a
+	// doubt, or refused by a publication gate, is left untouched and reported
+	// with a CONTENT_BATCH_ESCALATED error naming why.
+	ApproveVerifiedBatch(ctx context.Context, batch string) (int, error)
+}
+
 // Verification is the outcome of an independent check on a machine-authored
 // version (WO 22 Stage A).
 //

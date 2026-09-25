@@ -21,6 +21,7 @@ import {
 } from "@/features/lesson";
 import { GuestNotice, learningApi } from "@/features/learning";
 import { CheckoutModal, useUserPurchases } from "@/features/studio";
+import { courseTitle } from "@/features/lesson/model/courseText";
 
 export function LearnPage(): React.JSX.Element {
   const { t } = useTranslation();
@@ -69,9 +70,9 @@ export function LearnPage(): React.JSX.Element {
 
   const isCourseOwned = Boolean(
     activeCourse &&
-      purchasesData?.items?.some(
-        (p) => p.course_id === activeCourse.id && !p.revoked_at,
-      ),
+    purchasesData?.items?.some(
+      (p) => p.course_id === activeCourse.id && !p.revoked_at,
+    ),
   );
 
   // Enrolment is the learner's half of `StartAttempt`'s precondition, and this
@@ -194,7 +195,9 @@ export function LearnPage(): React.JSX.Element {
         totalLessons={totalLessons}
         completedLessons={0}
         isOwned={isCourseOwned}
-        priceVnd={(activeCourse as unknown as { price_vnd?: number })?.price_vnd}
+        priceVnd={
+          (activeCourse as unknown as { price_vnd?: number })?.price_vnd
+        }
         onBuyOrClaim={() => {
           if (!signedIn) {
             void navigate({ to: "/login" });
@@ -211,7 +214,7 @@ export function LearnPage(): React.JSX.Element {
       {activeCourse && (
         <CheckoutModal
           courseId={activeCourse.id}
-          courseTitle={activeCourse.title}
+          courseTitle={courseTitle(t, activeCourse)}
           priceVnd={
             (activeCourse as unknown as { price_vnd?: number })?.price_vnd ?? 0
           }
