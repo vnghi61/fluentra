@@ -21,6 +21,14 @@ import (
 
 const schemaDatabase = "fluentra_exam_schema_test"
 
+// Section names the format tests compare.
+const (
+	sectionListening = "listening"
+	sectionReading   = "reading"
+	sectionWriting   = "writing"
+	sectionSpeaking  = "speaking"
+)
+
 var packagePool *pgxpool.Pool
 
 func TestMain(m *testing.M) {
@@ -127,9 +135,13 @@ func TestExamFormat_SectionCountsMatchThePublishedFormat(t *testing.T) {
 	ctx := context.Background()
 
 	want := map[string]map[string]int{
-		"TOEIC_LR_2026":          {"listening": 100, "reading": 100},
-		"VSTEP_3_5":              {"listening": 35, "reading": 40, "writing": 2, "speaking": 3},
-		"IELTS_ACADEMIC_2026_R2": {"listening": 40, "reading": 40, "writing": 2, "speaking": 3},
+		"TOEIC_LR_2026": {sectionListening: 100, sectionReading: 100},
+		"VSTEP_3_5": {
+			sectionListening: 35, sectionReading: 40, sectionWriting: 2, sectionSpeaking: 3,
+		},
+		"IELTS_ACADEMIC_2026_R2": {
+			sectionListening: 40, sectionReading: 40, sectionWriting: 2, sectionSpeaking: 3,
+		},
 	}
 
 	for code, sections := range want {
@@ -213,6 +225,21 @@ func TestExamFormat_Listing(t *testing.T) {
 	}
 	if !blueprint {
 		t.Error("ielts_default blueprint is missing for IELTS_ACADEMIC_2026_R2")
+	}
+
+	// A mock test's sitting is recorded under the exam row of its version; an
+	// IELTS test with none could not be started.
+	var examRow bool
+	if err := pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM assess.exams e
+			JOIN assess.exam_versions v ON v.id = e.version_id
+			WHERE v.code = 'IELTS_ACADEMIC_2026_R2'
+		)`).Scan(&examRow); err != nil {
+		t.Fatalf("check ielts exam row: %v", err)
+	}
+	if !examRow {
+		t.Error("IELTS_ACADEMIC_2026_R2 has no assess.exams row to record sittings under")
 	}
 }
 

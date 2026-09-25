@@ -6572,6 +6572,11 @@ export interface components {
              * @example 2
              */
             distinct_tests_possible: number;
+            /**
+             * @description How many numbered fixed tests ("Đề 1 … Đề N") exist for this version (WO 22 Stage J). Not distinct_tests_possible: that is what the bank could compose, this is what a learner can open.
+             * @example 5
+             */
+            fixed_test_count: number;
             /** @description The version's structure, so a custom composition can name the parts it wants. Counts of available bank items are not here; those stay in the admin coverage report. */
             parts: {
                 /** @example 1 */
@@ -6652,8 +6657,8 @@ export interface components {
             question_count: number;
             /** @example 120 */
             minutes: number;
-            /** @description The calling learner's most recent attempt at this test, if any. */
-            latest_attempt?: components["schemas"]["FixedTestAttemptSummary"] | null;
+            /** @description The calling learner's most recent attempt at this test; absent when there is none. */
+            latest_attempt?: components["schemas"]["FixedTestAttemptSummary"];
         };
         FixedTestAttemptSummary: {
             /** Format: uuid */
@@ -11341,6 +11346,22 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "batch": "foundation:PRESENT_PERFECT:20260923T101500",
+                     *           "item_count": 2,
+                     *           "kinds": [
+                     *             "grammar_tense_choice",
+                     *             "foundation_quiz"
+                     *           ],
+                     *           "created_at": "2026-09-23T10:15:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["AdminReviewBatchListResponse"];
                 };
             };
@@ -11372,6 +11393,11 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "approved": 11
+                     *     }
+                     */
                     "application/json": components["schemas"]["AdminApproveBatchResponse"];
                 };
             };
@@ -11403,6 +11429,21 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "version_id": "50000000-0000-0000-0000-000000000001",
+                     *           "batch": "sample",
+                     *           "kind": "grammar_tense_choice",
+                     *           "cefr_level": "B1",
+                     *           "sampled_on": "2026-09-24",
+                     *           "created_at": "2026-09-24T00:05:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["AdminReviewSampleListResponse"];
                 };
             };
@@ -14583,6 +14624,7 @@ export interface operations {
                      *             }
                      *           ],
                      *           "distinct_tests_possible": 2,
+                     *           "fixed_test_count": 1,
                      *           "parts": [
                      *             {
                      *               "part_number": 1,
@@ -14633,8 +14675,7 @@ export interface operations {
                      *           "latest_attempt": {
                      *             "attempt_id": "60000000-0000-0000-0000-000000000001",
                      *             "status": "submitted",
-                     *             "score": 750,
-                     *             "band": null
+                     *             "score": 750
                      *           }
                      *         }
                      *       ]

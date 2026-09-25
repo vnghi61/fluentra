@@ -247,10 +247,12 @@ func (q *Queries) ListBlueprintsByVersionID(ctx context.Context, versionID uuid.
 
 const listCurrentExamVersions = `-- name: ListCurrentExamVersions :many
 SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, listed FROM assess.exam_versions
-WHERE is_current = true
+WHERE is_current = true AND listed = true
 ORDER BY code ASC
 `
 
+// What a learner chooses from: current and listed (WO 22 D22-16). A version
+// kept only for the attempts that point at it is current or not, but unlisted.
 func (q *Queries) ListCurrentExamVersions(ctx context.Context) ([]AssessExamVersion, error) {
 	rows, err := q.db.Query(ctx, listCurrentExamVersions)
 	if err != nil {

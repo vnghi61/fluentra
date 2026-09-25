@@ -29,6 +29,7 @@ const version = {
   is_current: true,
   notes: "",
   distinct_tests_possible: 2,
+  fixed_test_count: 1,
   blueprints: [
     {
       id: "30000000-0000-0000-0010-000000000002",

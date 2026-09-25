@@ -3659,6 +3659,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminReviewBatchListResponse'
+              example:
+                items:
+                  - batch: "foundation:PRESENT_PERFECT:20260923T101500"
+                    item_count: 2
+                    kinds: [grammar_tense_choice, foundation_quiz]
+                    created_at: "2026-09-23T10:15:00Z"
+                total: 1
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3695,6 +3702,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminApproveBatchResponse'
+              example:
+                approved: 11
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3735,6 +3744,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminReviewSampleListResponse'
+              example:
+                items:
+                  - version_id: "50000000-0000-0000-0000-000000000001"
+                    batch: sample
+                    kind: grammar_tense_choice
+                    cefr_level: B1
+                    sampled_on: "2026-09-24"
+                    created_at: "2026-09-24T00:05:00Z"
+                total: 1
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -6941,6 +6959,7 @@ paths:
                           B2: 0.5
                         node_distribution: {}
                     distinct_tests_possible: 2
+                    fixed_test_count: 1
                     parts:
                       - part_number: 1
                         section: "listening"
@@ -6989,7 +7008,6 @@ paths:
                       attempt_id: "60000000-0000-0000-0000-000000000001"
                       status: "submitted"
                       score: 750
-                      band: null
               schema:
                 $ref: '#/components/schemas/FixedTestListResponse'
         '401':

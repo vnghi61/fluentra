@@ -189,8 +189,8 @@ function VersionList({
                   <span className="flex flex-wrap gap-1.5 pt-0.5">
                     <Badge variant="secondary">
                       {t("exam.hub.testCount", {
-                        count: version.distinct_tests_possible,
-                        defaultValue: `${version.distinct_tests_possible} tests`,
+                        count: version.fixed_test_count,
+                        defaultValue: `${version.fixed_test_count} tests`,
                       })}
                     </Badge>
                   </span>

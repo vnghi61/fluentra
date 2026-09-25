@@ -324,7 +324,7 @@ BlueprintSummary:
 
 ExamVersion:
   type: object
-  required: [id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, blueprints, distinct_tests_possible, parts]
+  required: [id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, blueprints, distinct_tests_possible, fixed_test_count, parts]
   properties:
     id:
       type: string
@@ -369,6 +369,13 @@ ExamVersion:
         (the coverage report's number). Shown to learners so the product never
         implies more tests than the bank holds.
       example: 2
+    fixed_test_count:
+      type: integer
+      description: >-
+        How many numbered fixed tests ("Đề 1 … Đề N") exist for this version
+        (WO 22 Stage J). Not distinct_tests_possible: that is what the bank
+        could compose, this is what a learner can open.
+      example: 5
     parts:
       type: array
       description: >-
@@ -522,8 +529,7 @@ FixedTestSummary:
       type: integer
       example: 120
     latest_attempt:
-      nullable: true
-      description: The calling learner's most recent attempt at this test, if any.
+      description: The calling learner's most recent attempt at this test; absent when there is none.
       allOf:
         - $ref: '#/FixedTestAttemptSummary'
 

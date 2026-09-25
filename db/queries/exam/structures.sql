@@ -3,8 +3,10 @@ SELECT * FROM assess.exam_versions
 ORDER BY is_current DESC, code ASC;
 
 -- name: ListCurrentExamVersions :many
+-- What a learner chooses from: current and listed (WO 22 D22-16). A version
+-- kept only for the attempts that point at it is current or not, but unlisted.
 SELECT * FROM assess.exam_versions
-WHERE is_current = true
+WHERE is_current = true AND listed = true
 ORDER BY code ASC;
 
 -- name: GetExamVersionByID :one

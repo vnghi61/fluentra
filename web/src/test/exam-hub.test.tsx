@@ -32,6 +32,7 @@ const version: ExamVersion = {
   is_current: true,
   notes: "7 parts, 200 questions",
   distinct_tests_possible: 3,
+  fixed_test_count: 2,
   blueprints: [
     {
       id: BLUEPRINT_ID,

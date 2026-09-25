@@ -59,6 +59,9 @@ type ExamVersionDTO struct {
 	// tests the published bank can compose. Learners see it so the product
 	// never implies more tests than the bank holds (WO 19 H.3).
 	DistinctTestsPossible int `json:"distinct_tests_possible"`
+	// FixedTestCount is how many numbered fixed tests exist (WO 22 Stage J):
+	// what a learner can open, never confused with DistinctTestsPossible.
+	FixedTestCount int `json:"fixed_test_count"`
 	// Parts is the version's structure: what a "custom" composition chooses
 	// between. Counts of available bank items are not here; those stay in the
 	// admin coverage report.
@@ -149,8 +152,14 @@ func (s *Service) ListCurrentExamVersions(ctx context.Context) ([]ExamVersionDTO
 		if err != nil {
 			return nil, fmt.Errorf("list blueprints for version %s: %w", v.ID, err)
 		}
+		fixedTests := 0
 		bpDTOs := make([]BlueprintSummaryDTO, len(bps))
 		for i, bp := range bps {
+			tests, err := s.repo.ListFixedMockTests(ctx, bp.ID)
+			if err != nil {
+				return nil, fmt.Errorf("list fixed tests for blueprint %s: %w", bp.ID, err)
+			}
+			fixedTests += len(tests)
 			bpDTOs[i] = BlueprintSummaryDTO{
 				ID:               bp.ID,
 				Name:             bp.Name,
@@ -191,6 +200,7 @@ func (s *Service) ListCurrentExamVersions(ctx context.Context) ([]ExamVersionDTO
 			// The same number the admin coverage report shows, so the learner's
 			// test list and the operator's report cannot disagree.
 			DistinctTestsPossible: s.coverageForParts(ctx, v, parts).DistinctTestsPossible,
+			FixedTestCount:        fixedTests,
 		})
 	}
 	return out, nil
