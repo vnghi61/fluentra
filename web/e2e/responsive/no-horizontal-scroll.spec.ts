@@ -24,7 +24,10 @@ import {
  */
 
 /** Fails if the document is wider than the viewport. */
-async function expectNoHorizontalScroll(page: Page, where: string): Promise<void> {
+async function expectNoHorizontalScroll(
+  page: Page,
+  where: string,
+): Promise<void> {
   const overflow = await page.evaluate(() => {
     const doc = document.documentElement;
     return {
@@ -40,7 +43,11 @@ async function expectNoHorizontalScroll(page: Page, where: string): Promise<void
           let parent = element.parentElement;
           while (parent && parent !== doc) {
             const overflow = getComputedStyle(parent).overflowX;
-            if (overflow === "auto" || overflow === "scroll" || overflow === "hidden") {
+            if (
+              overflow === "auto" ||
+              overflow === "scroll" ||
+              overflow === "hidden"
+            ) {
               return false;
             }
             parent = parent.parentElement;
@@ -48,7 +55,9 @@ async function expectNoHorizontalScroll(page: Page, where: string): Promise<void
           return true;
         };
         return Array.from(document.body.querySelectorAll("*"))
-          .filter((element) => element.getBoundingClientRect().right > limit + 1)
+          .filter(
+            (element) => element.getBoundingClientRect().right > limit + 1,
+          )
           .filter(escapes)
           .slice(0, 5)
           .map((element) => {
@@ -68,7 +77,8 @@ async function expectNoHorizontalScroll(page: Page, where: string): Promise<void
 /** Fails if any visible interactive control is under 44×44 CSS px. */
 async function expectTouchTargets(page: Page, where: string): Promise<void> {
   const undersized = await page.evaluate(() => {
-    const selector = 'button, a[href], input:not([type="hidden"]), select, textarea, [role="button"]';
+    const selector =
+      'button, a[href], input:not([type="hidden"]), select, textarea, [role="button"]';
     return Array.from(document.querySelectorAll(selector))
       .filter((element) => {
         const box = element.getBoundingClientRect();
@@ -77,7 +87,11 @@ async function expectTouchTargets(page: Page, where: string): Promise<void> {
         // A visually-hidden input (Tailwind `sr-only`) is not a target: the
         // styled element beside it is, and that one is measured on its own.
         const style = getComputedStyle(element);
-        if (style.position === "absolute" && box.width <= 2 && box.height <= 2) {
+        if (
+          style.position === "absolute" &&
+          box.width <= 2 &&
+          box.height <= 2
+        ) {
           return false;
         }
         // WCAG 2.5.8's inline exception, which R1 inherits: a link inside a
@@ -93,7 +107,13 @@ async function expectTouchTargets(page: Page, where: string): Promise<void> {
         const box = element.getBoundingClientRect();
         return {
           tag: element.tagName.toLowerCase(),
-          label: (element.getAttribute("aria-label") || element.textContent || "").trim().slice(0, 30),
+          label: (
+            element.getAttribute("aria-label") ||
+            element.textContent ||
+            ""
+          )
+            .trim()
+            .slice(0, 30),
           width: Math.round(box.width),
           height: Math.round(box.height),
         };
@@ -124,7 +144,9 @@ test.describe("R6/R1 at 320 px", () => {
     }
   });
 
-  test("the OTP screen fits, including with the keyboard open", async ({ page }) => {
+  test("the OTP screen fits, including with the keyboard open", async ({
+    page,
+  }) => {
     await stubRegistration(page);
 
     await page.goto("/register");
@@ -205,8 +227,9 @@ test.describe("R6/R1 at 320 px", () => {
     });
   }
 
-  // The WO 21 screens: the learner's private library and the mock-test
-  // composer, in both locales.
+  // The WO 21 screens — the learner's private library — and the WO 22 exam
+  // hub, which absorbed the WO 21 mock-test tab: exams, one exam's tests, and
+  // the custom composer, in both locales.
   for (const locale of ["en", "vi"] as const) {
     test(`the wo21 learner screens fit in ${locale}`, async ({ page }) => {
       await stubAuthenticated(page);
@@ -222,10 +245,13 @@ test.describe("R6/R1 at 320 px", () => {
       await check(page, `my resources — ${locale}`);
 
       await page.goto("/exams");
+      await check(page, `exam hub — ${locale}`);
+      await page.getByRole("button", { name: /VSTEP/ }).first().click();
+      await check(page, `one exam's tests — ${locale}`);
       await page
-        .getByRole("button", { name: /Mock tests|Đề thi thử/i })
+        .getByRole("button", { name: /Build a custom test|Tạo đề tùy chọn/i })
         .click();
-      await check(page, `mock tests — ${locale}`);
+      await check(page, `custom test — ${locale}`);
     });
 
     test(`the wo21 admin screens fit in ${locale}`, async ({ page }) => {

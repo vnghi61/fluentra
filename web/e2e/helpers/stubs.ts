@@ -184,15 +184,26 @@ export async function stubLearningApi(page: Page): Promise<void> {
           lesson_id: "0199a1c2-3d4e-7f80-9abc-def01234567a",
           unit_id: "0199a1c2-3d4e-7f80-9abc-def012345679",
           course_id: "0199a1c2-3d4e-7f80-9abc-def012345678",
-          title: "Everyday English: A2–B1 Foundations — Morning Routines & Habits",
+          title:
+            "Everyday English: A2–B1 Foundations — Morning Routines & Habits",
           kind: "vocab_multiple_choice",
           skill: "vocabulary",
           estimated_minutes: 15,
         },
         due_reviews_count: 12,
         skill_mastery: [
-          { skill: "vocabulary", level: "B1", confidence: 0.85, updated_at: "2026-08-24T09:00:00Z" },
-          { skill: "grammar", level: "A2", confidence: 0.4, updated_at: "2026-08-24T09:00:00Z" },
+          {
+            skill: "vocabulary",
+            level: "B1",
+            confidence: 0.85,
+            updated_at: "2026-08-24T09:00:00Z",
+          },
+          {
+            skill: "grammar",
+            level: "A2",
+            confidence: 0.4,
+            updated_at: "2026-08-24T09:00:00Z",
+          },
         ],
       }),
     ),
@@ -211,7 +222,12 @@ export async function stubLearningApi(page: Page): Promise<void> {
           },
         ],
         skills: [
-          { skill: "vocabulary", level: "B1", confidence: 0.85, updated_at: "2026-08-24T09:00:00Z" },
+          {
+            skill: "vocabulary",
+            level: "B1",
+            confidence: 0.85,
+            updated_at: "2026-08-24T09:00:00Z",
+          },
         ],
       }),
     ),
@@ -241,7 +257,8 @@ export async function stubLearningApi(page: Page): Promise<void> {
                 ipa: "/məˈtɪkjələs/",
                 definition: "Showing great attention to detail.",
                 definition_vi: "Tỉ mỉ, cẩn thận, kỹ lưỡng.",
-                example_sentence: "She kept meticulous records of every transaction.",
+                example_sentence:
+                  "She kept meticulous records of every transaction.",
               },
             },
           },
@@ -383,6 +400,23 @@ export async function stubWo21Api(page: Page): Promise<void> {
                 group_size: 1,
               },
             ],
+          },
+        ],
+      }),
+    ),
+  );
+
+  // The version's numbered fixed tests (WO 22 Stage J): the hub's second level.
+  await page.route("**/api/v1/exam-versions/*/tests", (route) =>
+    route.fulfill(
+      json({
+        items: [
+          {
+            id: "30000000-0000-0000-0000-000000000001",
+            number: 1,
+            title: "Đề 1",
+            question_count: 35,
+            minutes: 100,
           },
         ],
       }),
