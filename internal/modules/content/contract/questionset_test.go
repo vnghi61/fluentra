@@ -129,7 +129,7 @@ func TestGradeQuestionSet_EnforcesTheGroupWordLimit(t *testing.T) {
 
 	questions := contract.WithGroupWordLimit([]contract.QuestionItem{
 		{ID: "q1", Type: "completion", Key: "reading room", Acceptable: []string{"the reading room"}},
-		{ID: "q2", Type: "multiple_choice", CorrectOptionID: "A", Options: []contract.QuestionOption{{ID: "A"}, {ID: "B"}}},
+		{ID: "q2", CorrectOptionID: "A", Options: []contract.QuestionOption{{ID: "A"}, {ID: "B"}}},
 	}, 2)
 
 	within := contract.GradeQuestionSet(questions, map[string]string{"q1": "reading room", "q2": "A"}, 100)

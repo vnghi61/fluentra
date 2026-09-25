@@ -99,7 +99,6 @@ func ParseComprehensionResponse(raw json.RawMessage) ComprehensionResponse {
 	return ComprehensionResponse{}
 }
 
-// GradeQuestionSet grades an array of questions against a submitted answers map.
 // WithGroupWordLimit gives every typed question of a group (one with no options)
 // the group's word limit, unless it states its own. A passage or recording
 // carries the part's limit once, at the top of its body.
@@ -117,6 +116,7 @@ func WithGroupWordLimit(questions []QuestionItem, maxWords int) []QuestionItem {
 	return limited
 }
 
+// GradeQuestionSet grades an array of questions against a submitted answers map.
 func GradeQuestionSet(questions []QuestionItem, answers map[string]string, maxScore int) QuestionSetGradeResult {
 	total := len(questions)
 	if total == 0 {
@@ -241,16 +241,8 @@ func MatchQuestion(submitted string, q QuestionItem) bool {
 	if q.Key != "" && normSubmitted == NormaliseText(q.Key) {
 		return true
 	}
-	if q.Answer != "" &&
-		(normSubmitted == NormaliseText(q.Answer) || SentenceWords(submitted) == SentenceWords(q.Answer)) {
-		return true
-	}
-	if q.CorrectAnswer != "" &&
-		(normSubmitted == NormaliseText(q.CorrectAnswer) || SentenceWords(submitted) == SentenceWords(q.CorrectAnswer)) {
-		return true
-	}
-	for _, alt := range q.Acceptable {
-		if normSubmitted == NormaliseText(alt) || SentenceWords(submitted) == SentenceWords(alt) {
+	for _, target := range append([]string{q.Answer, q.CorrectAnswer}, q.Acceptable...) {
+		if target != "" && (normSubmitted == NormaliseText(target) || SentenceWords(submitted) == SentenceWords(target)) {
 			return true
 		}
 	}
