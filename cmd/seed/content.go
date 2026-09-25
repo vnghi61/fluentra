@@ -365,7 +365,7 @@ func seedVocabularyWords(
 	ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, senses []seedWordSense,
 	decksFor func(seedWordSense) []seedDeck,
 ) (int, error) {
-	decks := &deckCache{pool: pool, ids: map[string]uuid.UUID{}}
+	decks := &deckCache{pool: pool, ids: map[string]uuid.UUID{}, linked: map[uuid.UUID][]uuid.UUID{}}
 
 	seededCount := 0
 	for i, s := range senses {
@@ -464,6 +464,9 @@ func seedVocabularyWords(
 		seededCount++
 	}
 
+	if err := decks.prune(ctx); err != nil {
+		return seededCount, err
+	}
 	return seededCount, nil
 }
 
@@ -480,6 +483,23 @@ func seedRank(sense seedWordSense, index int) int {
 type deckCache struct {
 	pool *pgxpool.Pool
 	ids  map[string]uuid.UUID
+	// linked is every sense this run put in each deck, by deck id.
+	linked map[uuid.UUID][]uuid.UUID
+}
+
+// prune removes from each deck this run seeded the senses it did not link, so
+// a deck holds exactly the list it was built from: a word the fixture dropped
+// ("went", "london") leaves the deck on the next seed, not only on a fresh
+// database. A learner's own progress on the word is untouched.
+func (c *deckCache) prune(ctx context.Context) error {
+	for deckID, senses := range c.linked {
+		if _, err := c.pool.Exec(ctx,
+			`DELETE FROM skill.deck_items WHERE deck_id = $1 AND NOT (word_sense_id = ANY($2))`,
+			deckID, senses); err != nil {
+			return fmt.Errorf("prune deck %s: %w", deckID, err)
+		}
+	}
+	return nil
 }
 
 // id returns the deck's id, creating or refreshing it on first use.
@@ -526,6 +546,7 @@ func linkDecks(
 		if _, err := pool.Exec(ctx, insertDeckItem, id, senseID); err != nil {
 			return err
 		}
+		cache.linked[id] = append(cache.linked[id], senseID)
 	}
 	return nil
 }

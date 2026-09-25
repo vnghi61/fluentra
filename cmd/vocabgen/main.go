@@ -25,7 +25,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/fluentra/fluentra/cmd/internal/lemmaaudio"
 	"github.com/fluentra/fluentra/cmd/internal/vocabfixture"
+	"github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/shared/config"
 )
@@ -76,6 +78,9 @@ type modelMeaning struct {
 	Definition   string                 `json:"definition"`
 	DefinitionVI string                 `json:"definition_vi"`
 	Examples     []vocabfixture.Example `json:"examples"`
+	// Skip is set instead of a meaning when the headword is not one a course
+	// teaches: "proper_noun", "abbreviation", "inflection", "not_a_word".
+	Skip string `json:"skip,omitempty"`
 }
 
 func main() {
@@ -88,16 +93,27 @@ func main() {
 func run(ctx context.Context, args []string, out io.Writer) error {
 	flags := flag.NewFlagSet("vocabgen", flag.ContinueOnError)
 	sourceFlag := flags.String("source", "", "The frequency list: one lemma per line, or rank<TAB>lemma")
-	limitFlag := flags.Int("limit", defaultLimit, "How many lemmas to build")
+	limitFlag := flags.Int("limit", defaultLimit, "How many headwords the fixture holds")
 	fixturesFlag := flags.String("fixtures", defaultFixtureDir,
 		"Directory the level files are written to")
 	cacheFlag := flags.String("cache", defaultCacheFile,
 		"Scratch file holding the meanings written so far, so a run resumes")
 	batchFlag := flags.Int("batch", 15, "Lemmas per model call")
 	dryRunFlag := flags.Bool("dry-run", false, "Print what would be built without writing")
+	pronounceFlag := flags.Bool("pronounce", false,
+		"Step 3: look up IPA and a credited recording for every word without one, then exit")
+	canonicaliseFlag := flags.Bool("canonicalise", false,
+		"Rewrite the fixture files in this tool's format (after an edit by another tool), then exit")
 
 	if err := flags.Parse(args); err != nil {
 		return err
+	}
+	if *canonicaliseFlag {
+		return canonicalise(*fixturesFlag, out)
+	}
+	if *pronounceFlag {
+		lookup := lemmaaudio.New(repository.NewFreeDictionaryAPI("").WithTimeout(3 * time.Second))
+		return pronounce(ctx, *fixturesFlag, lookup, out)
 	}
 	if strings.TrimSpace(*sourceFlag) == "" {
 		return errors.New("must specify -source FILE, the openly licensed frequency list")
@@ -118,92 +134,44 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return errors.New("no AI provider is configured; set AI_PROVIDER_1_NAME and AI_PROVIDER_1_API_KEY")
 	}
 
-	lemmas, err := readSource(*sourceFlag, *limitFlag)
+	// Every candidate: the list runs past the limit, so the headwords the model
+	// or the list's own rules skip are replaced by the next ones.
+	candidates, err := readSource(*sourceFlag, 0)
 	if err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(out, "Read %d lemma(s) from %s\n", len(lemmas), *sourceFlag)
+	_, _ = fmt.Fprintf(out, "Read %d candidate lemma(s) from %s\n", len(candidates), *sourceFlag)
 
-	cache, err := readCache(*cacheFlag)
+	b, err := newBuilder(client, *fixturesFlag, *cacheFlag, *batchFlag, *dryRunFlag, out)
 	if err != nil {
 		return err
 	}
-	// The fixtures already written are part of the cache: a run that stopped
-	// after writing words 1-3,000 resumes at 3,001 without paying for them
-	// twice, even if the scratch cache is gone.
-	if err := mergeCacheFromFixtures(*fixturesFlag, cache); err != nil {
-		return err
-	}
-	_, _ = fmt.Fprintf(out, "Cache holds %d meaning(s)\n", len(cache))
-
-	batchSize := *batchFlag
-	if batchSize <= 0 {
-		batchSize = 50
-	}
-	flagged, err := generateMissing(ctx, client, cache, *cacheFlag, lemmas, batchSize, *dryRunFlag, out)
+	accepted, flagged, err := b.generateUntil(ctx, candidates, *limitFlag)
 	if err != nil {
 		return err
 	}
 	if *dryRunFlag {
 		return nil
 	}
-	return writeFixtures(*fixturesFlag, lemmas, cache, flagged, out)
-}
-
-// generateMissing asks the model for every lemma the cache does not hold, one
-// batch at a time, saving the cache after each so a failure resumes here. A
-// lemma the model cannot answer is flagged, not fatal: one bad word must not
-// stop a 10,000-word run.
-func generateMissing(
-	ctx context.Context,
-	client ai.Client,
-	cache map[string]modelMeaning,
-	cacheFile string,
-	lemmas []string,
-	batchSize int,
-	dryRun bool,
-	out io.Writer,
-) ([]flaggedWord, error) {
-	var flagged []flaggedWord
-	for start := 0; start < len(lemmas); start += batchSize {
-		end := min(start+batchSize, len(lemmas))
-		batch := missingFromCache(lemmas[start:end], cache)
-		if len(batch) == 0 {
-			continue
-		}
-		if dryRun {
-			_, _ = fmt.Fprintf(out, "Would ask the model for %d lemma(s): %s …\n",
-				len(batch), strings.Join(batch, ", "))
-			continue
-		}
-		meanings, failed, genErr := generateMeanings(ctx, client, batch)
-		if genErr != nil {
-			// The cache is saved up to the last complete batch, so the next run
-			// resumes here.
-			if saveErr := writeCache(cacheFile, cache); saveErr != nil {
-				return flagged, saveErr
-			}
-			return flagged, fmt.Errorf("generate meanings for %d lemma(s): %w", len(batch), genErr)
-		}
-		for _, meaning := range meanings {
-			cache[strings.ToLower(meaning.Lemma)] = meaning
-		}
-		for _, lemma := range failed {
-			flagged = append(flagged, flaggedWord{Lemma: lemma, Reason: "the model's reply could not be parsed"})
-		}
-		if err := writeCache(cacheFile, cache); err != nil {
-			return flagged, err
-		}
-		_, _ = fmt.Fprintf(out, "  ✓ %d/%d lemma(s) written\n", min(end, len(lemmas)), len(lemmas))
+	if err := vocabfixture.WriteSkipped(*fixturesFlag, b.skipped); err != nil {
+		return err
 	}
-	return flagged, nil
+	return writeFixtures(*fixturesFlag, accepted, b.cache, b.existing, flagged, out)
 }
 
-// readSource reads the frequency list, keeping the first limit headwords that
-// look like words: letters only, at least two characters, lower-cased and
-// deduplicated. A proper noun or an abbreviation a real list carries is dropped
-// here (WO 22 D22-6).
-func readSource(path string, limit int) ([]string, error) {
+// sourceLemma is one headword of the frequency list and its rank.
+type sourceLemma struct {
+	Rank  int
+	Lemma string
+}
+
+// readSource reads the frequency list, keeping the first limit headwords (0:
+// all) that look like words: letters only, at least two characters,
+// lower-cased and deduplicated. A `rank<TAB>lemma` line keeps its rank; a bare
+// lemma is ranked by its line. The list scripts/vocab-source-list.py builds is
+// already lemmatised, with proper nouns and non-words it can recognise removed
+// (WO 22 D22-5, D22-6); what it cannot, the model skips.
+func readSource(path string, limit int) ([]sourceLemma, error) {
 	file, err := os.Open(path) //nolint:gosec // the operator's own source list
 	if err != nil {
 		return nil, fmt.Errorf("open source list: %w", err)
@@ -211,26 +179,28 @@ func readSource(path string, limit int) ([]string, error) {
 	defer func() { _ = file.Close() }()
 
 	seen := make(map[string]bool)
-	var lemmas []string
+	var lemmas []sourceLemma
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	line := 0
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
+		text := strings.TrimSpace(scanner.Text())
+		if text == "" || strings.HasPrefix(text, "#") {
 			continue
 		}
-		// `rank<TAB>lemma`, or just the lemma.
-		if rank, lemma, found := strings.Cut(line, "\t"); found {
-			if _, err := strconv.Atoi(rank); err == nil {
-				line = lemma
+		line++
+		rank := line
+		if rankText, lemma, found := strings.Cut(text, "\t"); found {
+			if parsed, err := strconv.Atoi(rankText); err == nil {
+				rank, text = parsed, lemma
 			}
 		}
-		word := strings.ToLower(strings.TrimSpace(line))
+		word := strings.ToLower(strings.TrimSpace(text))
 		if !isWord(word) || seen[word] {
 			continue
 		}
 		seen[word] = true
-		lemmas = append(lemmas, word)
+		lemmas = append(lemmas, sourceLemma{Rank: rank, Lemma: word})
 		if limit > 0 && len(lemmas) >= limit {
 			break
 		}
@@ -351,82 +321,120 @@ type flaggedWord struct {
 	Reason string `json:"reason"`
 }
 
-// writeFixtures groups the meanings by CEFR level and writes one file per level.
-// A word that fails the checks is flagged rather than written, and listed in
-// flagged.json for a person.
+// writeFixtures groups the accepted headwords by CEFR level and writes one file
+// per level, in rank order. A word's pronunciation already in the fixture is
+// kept: the meanings come from the model, the IPA and the recording from step 3.
+// A level left with no words has its file removed, so no stale words survive.
 func writeFixtures(
 	dir string,
-	lemmas []string,
+	accepted []sourceLemma,
 	cache map[string]modelMeaning,
-	extraFlagged []flaggedWord,
+	existing map[string]vocabfixture.Word,
+	flagged []flaggedWord,
 	out io.Writer,
 ) error {
 	byLevel := map[string][]vocabfixture.Word{}
-	flagged := append([]flaggedWord(nil), extraFlagged...)
-	for i, lemma := range lemmas {
-		meaning, ok := cache[lemma]
-		if !ok {
+	for _, lemma := range accepted {
+		prev, hadPrev := existing[lemma.Lemma]
+		var prevPtr *vocabfixture.Word
+		if hadPrev {
+			prevPtr = &prev
+		}
+		word := toWord(lemma, cache[lemma.Lemma], prevPtr)
+		byLevel[word.CEFRLevel] = append(byLevel[word.CEFRLevel], word)
+	}
+
+	if err := writeFlagged(dir, flagged, out); err != nil {
+		return err
+	}
+
+	for _, level := range fixtureLevels {
+		path := filepath.Join(dir, "words-"+strings.ToLower(level)+".json")
+		words := byLevel[level]
+		if len(words) == 0 {
+			if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("remove the emptied %s: %w", path, err)
+			}
 			continue
 		}
-		level := clampLevel(meaning.CEFRLevel)
-		word := vocabfixture.Word{
-			// The list's lower-cased form, not the model's casing: the headword
-			// is the key the frequency list ranked, and "November" as a lemma
-			// would make the seed's slug invalid.
-			// The list is read in frequency order, so its position is the rank
-			// the seed's "Top 1,000" deck needs (D22-10).
-			Rank:         i + 1,
-			Lemma:        lemma,
-			POS:          meaning.POS,
-			CEFRLevel:    level,
-			Definition:   meaning.Definition,
-			DefinitionVI: meaning.DefinitionVI,
-			Examples:     meaning.Examples,
-		}
-		if err := vocabfixture.ValidateWord(word, level); err != nil {
-			flagged = append(flagged, flaggedWord{Lemma: lemma, Reason: err.Error()})
-			continue
-		}
-		byLevel[level] = append(byLevel[level], word)
-	}
-
-	if len(flagged) > 0 {
-		raw, err := json.MarshalIndent(flagged, "", "  ")
-		if err != nil {
-			return fmt.Errorf("encode flagged words: %w", err)
-		}
-		path := filepath.Join(dir, "flagged.json")
-		if err := os.WriteFile(path, append(raw, '\n'), 0o600); err != nil {
-			return fmt.Errorf("write flagged words: %w", err)
-		}
-		_, _ = fmt.Fprintf(out, "  ! %d word(s) failed the checks, listed in %s\n", len(flagged), path)
-	}
-
-	levels := make([]string, 0, len(byLevel))
-	for level := range byLevel {
-		levels = append(levels, level)
-	}
-	sort.Strings(levels)
-
-	for _, level := range levels {
+		sort.SliceStable(words, func(i, j int) bool { return words[i].Rank < words[j].Rank })
 		file := &vocabfixture.File{
-			Source:    "wordfreq 3.1.1 (top_n_list, English)",
-			Licence:   "wordfreq data: MIT package; frequency data from the listed open sources",
+			Source:    fixtureSource,
+			Licence:   fixtureLicence,
 			CheckedAt: time.Now().UTC().Format("2006-01-02"),
 			Level:     level,
-			Words:     byLevel[level],
+			Words:     words,
 		}
-		path, err := vocabfixture.WriteFile(dir, file)
+		written, err := vocabfixture.WriteFile(dir, file)
 		if err != nil {
 			return err
 		}
 		// Read it back through the loader the seed uses: a file the seed would
 		// refuse must not be written in the first place.
-		if _, err := vocabfixture.LoadWords(path); err != nil {
-			return fmt.Errorf("the written fixture %s is not loadable: %w", path, err)
+		if _, err := vocabfixture.LoadWords(written); err != nil {
+			return fmt.Errorf("the written fixture %s is not loadable: %w", written, err)
 		}
-		_, _ = fmt.Fprintf(out, "  ✓ %s: %d word(s) -> %s\n", level, len(file.Words), path)
+		_, _ = fmt.Fprintf(out, "  ✓ %s: %d word(s) -> %s\n", level, len(words), written)
 	}
+	return nil
+}
+
+// fixtureLevels are the level files a fixture may hold.
+var fixtureLevels = []string{"A1", "A2", "B1", "B2", "C1"}
+
+// The fixture header. The same strings scripts/vocab-source-list.py writes, so
+// a canonicalised file does not change them.
+const (
+	fixtureSource  = "wordfreq 3.1.1 (top_n_list, English), lemmatised with lemminflect 0.2.3"
+	fixtureLicence = "Word list: wordfreq data, CC BY-SA 4.0 " +
+		"(https://creativecommons.org/licenses/by-sa/4.0/), by Robyn Speer; " +
+		"wordfreq code Apache-2.0. IPA: CMU Pronouncing Dictionary (BSD-style) via " +
+		"eng-to-ipa, replaced by the Free Dictionary API's (Wiktionary) where step 3 finds one; " +
+		"each recording is credited on its word. Definitions and examples are original model-written text."
+)
+
+// toWord is one fixture word: the model's meaning, the list's rank, and any
+// pronunciation the fixture already held.
+func toWord(lemma sourceLemma, meaning modelMeaning, prev *vocabfixture.Word) vocabfixture.Word {
+	word := vocabfixture.Word{
+		// The list's lower-cased form, not the model's casing: the headword is
+		// the key the frequency list ranked, and "November" as a lemma would
+		// make the seed's slug invalid.
+		Rank:         lemma.Rank,
+		Lemma:        lemma.Lemma,
+		POS:          meaning.POS,
+		CEFRLevel:    clampLevel(meaning.CEFRLevel),
+		Definition:   meaning.Definition,
+		DefinitionVI: meaning.DefinitionVI,
+		Examples:     meaning.Examples,
+	}
+	if prev != nil {
+		word.IPA = prev.IPA
+		word.AudioURL = prev.AudioURL
+		word.AudioAttribution = prev.AudioAttribution
+		word.AudioLicence = prev.AudioLicence
+	}
+	return word
+}
+
+// writeFlagged lists the words that failed the checks for a person, or removes
+// the list when none did, so an old run's flags do not linger.
+func writeFlagged(dir string, flagged []flaggedWord, out io.Writer) error {
+	path := filepath.Join(dir, "flagged.json")
+	if len(flagged) == 0 {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove %s: %w", path, err)
+		}
+		return nil
+	}
+	raw, err := json.MarshalIndent(flagged, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode flagged words: %w", err)
+	}
+	if err := os.WriteFile(path, append(raw, '\n'), 0o600); err != nil {
+		return fmt.Errorf("write flagged words: %w", err)
+	}
+	_, _ = fmt.Fprintf(out, "  ! %d word(s) failed the checks, listed in %s\n", len(flagged), path)
 	return nil
 }
 
@@ -441,16 +449,6 @@ func clampLevel(level string) string {
 	default:
 		return "B1"
 	}
-}
-
-func missingFromCache(lemmas []string, cache map[string]modelMeaning) []string {
-	var missing []string
-	for _, lemma := range lemmas {
-		if _, ok := cache[lemma]; !ok {
-			missing = append(missing, lemma)
-		}
-	}
-	return missing
 }
 
 // mergeCacheFromFixtures adds every word already frozen in dir to the cache, so

@@ -257,6 +257,7 @@ and no vendor lock. Add an SDK when a provider-specific capability needs it
 | `air` | Hot reload in dev |
 | `goimports-reviser` | Import ordering |
 | `dbmate`/`pgtyped` | *not used* — sqlc covers it |
+| `wordfreq` 3.1.1, `lemminflect` 0.2.3, `eng-to-ipa` 0.0.2 (Python, dev only) | `scripts/vocab-source-list.py` builds the lemmatised frequency list and cleans the word fixture offline (WO 22 Stage C). Never imported by the product; wordfreq's data is CC BY-SA 4.0 and credited in every fixture header. Alternatives: a Go lemmatiser (none maintained), asking the model to lemmatise (a model call per word for a rule a lexicon answers) |
 
 ### 1.16 Image processing
 

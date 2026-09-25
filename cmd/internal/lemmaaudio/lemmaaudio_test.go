@@ -1,4 +1,4 @@
-package main
+package lemmaaudio
 
 import (
 	"context"
@@ -43,16 +43,16 @@ func commonsServing(t *testing.T, existing ...string) *httptest.Server {
 	return server
 }
 
-func commonsBackfill(t *testing.T, dictionary repository.DictionaryLookup, existing ...string) *lemmaAudio {
+func commonsBackfill(t *testing.T, dictionary repository.DictionaryLookup, existing ...string) *Lookup {
 	t.Helper()
-	audio := newLemmaAudio(dictionary)
-	audio.commonsBase = commonsServing(t, existing...).URL + "/wiki/"
-	audio.client = &http.Client{}
-	audio.pace = 0
+	audio := New(dictionary)
+	audio.CommonsBase = commonsServing(t, existing...).URL + "/wiki/"
+	audio.Client = &http.Client{}
+	audio.Pace = 0
 	return audio
 }
 
-func TestLemmaAudio_KeepsTheDictionarysRecording(t *testing.T) {
+func TestLookup_KeepsTheDictionarysRecording(t *testing.T) {
 	// The dictionary is authoritative when it answers: it is the only source
 	// that names the licence, and the Commons fallback exists for the days it
 	// does not answer at all.
@@ -63,7 +63,7 @@ func TestLemmaAudio_KeepsTheDictionarysRecording(t *testing.T) {
 		AudioLicence:     "BY-SA 3.0",
 	}}, "En-us-eat.ogg")
 
-	entry, found, err := audio.lookup(context.Background(), testLemma)
+	entry, found, err := audio.Lookup(context.Background(), testLemma)
 	require.NoError(t, err)
 	require.True(t, found)
 
@@ -71,11 +71,11 @@ func TestLemmaAudio_KeepsTheDictionarysRecording(t *testing.T) {
 	assert.Equal(t, "BY-SA 3.0", entry.AudioLicence)
 }
 
-func TestLemmaAudio_FallsBackToCommonsWhenTheDictionaryHasNoRecording(t *testing.T) {
+func TestLookup_FallsBackToCommonsWhenTheDictionaryHasNoRecording(t *testing.T) {
 	audio := commonsBackfill(t, stubDictionary{entry: repository.DictionaryEntry{Lemma: testLemma}},
 		"En-us-eat.ogg")
 
-	entry, found, err := audio.lookup(context.Background(), testLemma)
+	entry, found, err := audio.Lookup(context.Background(), testLemma)
 	require.NoError(t, err)
 	require.True(t, found)
 
@@ -85,32 +85,32 @@ func TestLemmaAudio_FallsBackToCommonsWhenTheDictionaryHasNoRecording(t *testing
 	assert.Empty(t, entry.AudioLicence)
 }
 
-func TestLemmaAudio_FallsBackToTheBritishFileWhenThereIsNoAmericanOne(t *testing.T) {
+func TestLookup_FallsBackToTheBritishFileWhenThereIsNoAmericanOne(t *testing.T) {
 	audio := commonsBackfill(t, stubDictionary{entry: repository.DictionaryEntry{Lemma: testLemma}},
 		"En-uk-eat.ogg")
 
-	entry, found, err := audio.lookup(context.Background(), testLemma)
+	entry, found, err := audio.Lookup(context.Background(), testLemma)
 	require.NoError(t, err)
 	require.True(t, found)
 
 	assert.Contains(t, entry.AudioURL, "En-uk-eat.ogg")
 }
 
-func TestLemmaAudio_SaysNothingWhenNeitherSourceHasTheWord(t *testing.T) {
+func TestLookup_SaysNothingWhenNeitherSourceHasTheWord(t *testing.T) {
 	audio := commonsBackfill(t, stubDictionary{err: repository.ErrWordNotFound})
 
-	_, found, err := audio.lookup(context.Background(), "asdfgh")
+	_, found, err := audio.Lookup(context.Background(), "asdfgh")
 	require.NoError(t, err)
 	assert.False(t, found)
 }
 
-func TestLemmaAudio_ReportsAFailureOnlyWhenCommonsHasNothingEither(t *testing.T) {
+func TestLookup_ReportsAFailureOnlyWhenCommonsHasNothingEither(t *testing.T) {
 	// A dictionary timeout is not a verdict on the word. When Commons has no
 	// file, the run must be able to say a lookup failed rather than claim the
 	// word has no recording.
 	audio := commonsBackfill(t, stubDictionary{err: assert.AnError})
 
-	_, found, err := audio.lookup(context.Background(), testLemma)
+	_, found, err := audio.Lookup(context.Background(), testLemma)
 	require.Error(t, err)
 	assert.False(t, found)
 }

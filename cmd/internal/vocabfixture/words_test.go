@@ -130,3 +130,48 @@ func TestReadAll_ReadsOnlyWordsFiles(t *testing.T) {
 		t.Fatalf("files = %+v, want one words file", files)
 	}
 }
+
+// TestIsRecordingLicence: a recording is linked with a credit, so CC BY-SA is
+// fine; non-commercial and no-derivatives licences are not.
+func TestIsRecordingLicence(t *testing.T) {
+	for _, licence := range []string{"CC0", "CC BY 4.0", "BY-SA 3.0", "CC-BY-SA-4.0"} {
+		if !IsRecordingLicence(licence) {
+			t.Errorf("%q must be accepted", licence)
+		}
+	}
+	for _, licence := range []string{"CC BY-NC 4.0", "CC-BY-ND-2.0", "All rights reserved"} {
+		if IsRecordingLicence(licence) {
+			t.Errorf("%q must be refused", licence)
+		}
+	}
+}
+
+// TestLoadWords_AcceptsACommonsRecordingWithoutANamedLicence: the Commons file
+// page states the licence, so the word need not repeat it.
+func TestLoadWords_AcceptsACommonsRecordingWithoutANamedLicence(t *testing.T) {
+	body := wrap(`{
+		"lemma": "book", "pos": "noun", "cefr_level": "A2",
+		"definition": "A written work.", "definition_vi": "Sách",
+		"examples": [{"sentence": "I read a book."}],
+		"audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-book.ogg",
+		"audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-book.ogg"
+	}`)
+	if _, err := LoadWords(writeWords(t, "words-a2.json", body)); err != nil {
+		t.Fatalf("a Commons recording must load: %v", err)
+	}
+}
+
+// TestSkipped_RoundTrips: the skipped headwords written are the ones read.
+func TestSkipped_RoundTrips(t *testing.T) {
+	dir := t.TempDir()
+	if err := WriteSkipped(dir, map[string]string{"john": "proper_noun", "went": "inflection_of:go"}); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	got, err := ReadSkipped(dir)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if got["john"] != "proper_noun" || got["went"] != "inflection_of:go" {
+		t.Fatalf("skipped = %v", got)
+	}
+}

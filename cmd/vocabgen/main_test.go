@@ -8,7 +8,7 @@ import (
 
 func TestReadSource_FiltersAndDeduplicates(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "source.txt")
-	body := "1\tthe\n2\tThe\n3\tstudy\n4\tb\n5\tUnited States\n6\tgo\n7\tgo\n8\tA\n"
+	body := "# a comment line\n1\tthe\n2\tThe\n3\tstudy\n4\tb\n5\tUnited States\n6\tgo\n7\tgo\n8\tA\n"
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatalf("write source: %v", err)
 	}
@@ -19,13 +19,13 @@ func TestReadSource_FiltersAndDeduplicates(t *testing.T) {
 	}
 	// "The" folds into "the"; "ab" is too short; the multi-word line is dropped;
 	// the duplicate "go" is dropped; "A" is too short.
-	want := []string{"the", "study", "go"}
+	want := []sourceLemma{{1, "the"}, {3, "study"}, {6, "go"}}
 	if len(lemmas) != len(want) {
 		t.Fatalf("lemmas = %v, want %v", lemmas, want)
 	}
 	for i := range want {
 		if lemmas[i] != want[i] {
-			t.Errorf("lemma %d = %q, want %q", i, lemmas[i], want[i])
+			t.Errorf("lemma %d = %+v, want %+v", i, lemmas[i], want[i])
 		}
 	}
 }

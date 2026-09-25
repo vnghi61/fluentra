@@ -34,3 +34,6 @@ deploy/volumes/
 tmp/
 
 .tmpbin/
+
+# cmd/vocabgen scratch cache (WO 22 Stage C): resumes a run, never committed
+vocabgen-cache.json

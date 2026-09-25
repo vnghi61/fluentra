@@ -13,8 +13,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"github.com/fluentra/fluentra/cmd/internal/examfixture"
 )
 
 // Format is the fixture schema version. A file with another format is refused
@@ -140,12 +138,84 @@ func (w Word) validate(fileLevel string) error {
 		return fmt.Errorf("lemma %q does not appear in any example", w.Lemma)
 	}
 	if w.AudioURL != "" {
-		if strings.TrimSpace(w.AudioAttribution) == "" || strings.TrimSpace(w.AudioLicence) == "" {
-			return fmt.Errorf("a recording needs its attribution and licence")
+		if strings.TrimSpace(w.AudioAttribution) == "" {
+			return fmt.Errorf("a recording needs its attribution")
 		}
-		if !examfixture.IsOpenLicence(w.AudioLicence) {
-			return fmt.Errorf("recording licence %q is not CC0 or CC BY", w.AudioLicence)
+		// The Commons fallback credits the file page, which states the licence;
+		// the lookup does not guess one. Any licence that is named must allow
+		// linking with a credit.
+		if strings.TrimSpace(w.AudioLicence) == "" && !strings.Contains(w.AudioAttribution, "/wiki/File:") {
+			return fmt.Errorf("a recording needs its licence, or a Commons file page that states it")
 		}
+		if w.AudioLicence != "" && !IsRecordingLicence(w.AudioLicence) {
+			return fmt.Errorf("recording licence %q is not CC0, CC BY or CC BY-SA", w.AudioLicence)
+		}
+	}
+	return nil
+}
+
+// IsRecordingLicence reports whether a recording may be linked and played with
+// a credit: CC0, CC BY or CC BY-SA, any version. A recording is linked, never
+// copied or built into other material, so share-alike places no condition on
+// the lesson; non-commercial and no-derivatives licences are refused. Photos
+// are stricter (examfixture.IsOpenLicence) because they illustrate our items.
+func IsRecordingLicence(licence string) bool {
+	compact := strings.NewReplacer(" ", "", "-", "", "_", "").
+		Replace(strings.ToUpper(strings.TrimSpace(licence)))
+	compact = strings.TrimPrefix(compact, "CC")
+	if strings.HasPrefix(compact, "0") || strings.HasPrefix(compact, "PUBLICDOMAIN") {
+		return true
+	}
+	if !strings.HasPrefix(compact, "BY") {
+		return false
+	}
+	return !strings.Contains(compact, "NC") && !strings.Contains(compact, "ND")
+}
+
+// SkippedFile is where the build tool records the headwords it decided not to
+// teach — proper nouns, abbreviations, inflected forms, non-words — with the
+// reason, so a later run never asks the model about them again.
+const SkippedFile = "skipped.json"
+
+// Skipped is one headword the list will not teach.
+type Skipped struct {
+	Lemma  string `json:"lemma"`
+	Reason string `json:"reason"`
+}
+
+// ReadSkipped reads the skipped headwords of a fixture directory, keyed by lemma.
+func ReadSkipped(dir string) (map[string]string, error) {
+	skipped := map[string]string{}
+	raw, err := os.ReadFile(filepath.Join(dir, SkippedFile)) //nolint:gosec // the operator's own fixtures
+	if err != nil {
+		if os.IsNotExist(err) {
+			return skipped, nil
+		}
+		return nil, fmt.Errorf("read skipped headwords: %w", err)
+	}
+	var rows []Skipped
+	if err := json.Unmarshal(raw, &rows); err != nil {
+		return nil, fmt.Errorf("parse skipped headwords: %w", err)
+	}
+	for _, row := range rows {
+		skipped[strings.ToLower(row.Lemma)] = row.Reason
+	}
+	return skipped, nil
+}
+
+// WriteSkipped writes the skipped headwords, sorted, so the file diffs cleanly.
+func WriteSkipped(dir string, skipped map[string]string) error {
+	rows := make([]Skipped, 0, len(skipped))
+	for lemma, reason := range skipped {
+		rows = append(rows, Skipped{Lemma: lemma, Reason: reason})
+	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i].Lemma < rows[j].Lemma })
+	raw, err := json.MarshalIndent(rows, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode skipped headwords: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, SkippedFile), append(raw, '\n'), 0o600); err != nil {
+		return fmt.Errorf("write skipped headwords: %w", err)
 	}
 	return nil
 }
