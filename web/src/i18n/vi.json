@@ -1388,6 +1388,7 @@
     "listening": {
       "audioClip": "Đoạn nghe",
       "photoDescription": "Mô tả hình ảnh",
+      "photoCredit": "Ảnh: {{licence}}",
       "questionResponse": "Hỏi - Đáp",
       "instructions": "Nghe rồi trả lời các câu hỏi.",
       "playsLeft": "Còn {{count}} lượt nghe",

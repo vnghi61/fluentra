@@ -56,6 +56,13 @@ type WorkerNudger interface {
 	Nudge(ctx context.Context)
 }
 
+// PhotoSource hands out the openly licensed, person-described photographs TOEIC
+// Part 1 items are written from (WO 22 D22-21), each photograph once: up to n
+// not yet used, fewer or none when the supply runs out.
+type PhotoSource interface {
+	NextPhotos(ctx context.Context, n int) ([]questionbankcontract.Photo, error)
+}
+
 // PoolDrawer draws items for an exam sitting across the 4 sections.
 type PoolDrawer interface {
 	DrawSitting(ctx context.Context, userID uuid.UUID, level string) ([]SectionActivities, error)
@@ -146,11 +153,14 @@ type Deps struct {
 	// DailyGenerationCap bounds how many items one daily run asks for; 0 is
 	// no bound beyond one test's worth.
 	DailyGenerationCap int
-	Drawer             PoolDrawer
-	Clock              clock.Clock
-	DailyLimit         int
-	Enqueuer           platformjob.Enqueuer
-	Nudger             WorkerNudger
+	// Photos supplies Part 1 photographs. Nil leaves photo parts ungenerated:
+	// the model cannot invent a photograph, and nothing else can.
+	Photos     PhotoSource
+	Drawer     PoolDrawer
+	Clock      clock.Clock
+	DailyLimit int
+	Enqueuer   platformjob.Enqueuer
+	Nudger     WorkerNudger
 }
 
 // Service orchestrates exam sittings, timing, auto-submission, and scoring.
@@ -165,6 +175,7 @@ type Service struct {
 	bankAuthor   questionbankcontract.Author
 	backlog      contentcontract.ReviewBacklog
 	dailyCap     int
+	photos       PhotoSource
 	drawer       PoolDrawer
 	clock        clock.Clock
 	dailyLimit   int
@@ -193,6 +204,7 @@ func New(deps Deps) *Service {
 		bankAuthor:   deps.BankAuthor,
 		backlog:      deps.ReviewBacklog,
 		dailyCap:     deps.DailyGenerationCap,
+		photos:       deps.Photos,
 		drawer:       deps.Drawer,
 		clock:        clk,
 		dailyLimit:   dailyLimit,

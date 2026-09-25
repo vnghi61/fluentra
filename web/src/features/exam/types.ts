@@ -65,6 +65,10 @@ export interface SittingActivityConfig {
   responses?: ChoiceOption[];
   sentence?: string;
   image_url?: string;
+  // A Part 1 photograph's credit page and licence (WO 22 D22-21): the credit
+  // shows wherever the photo does.
+  image_credit?: string;
+  image_licence?: string;
 }
 
 export interface SittingActivity {
@@ -104,7 +108,6 @@ export type SittingAnswer =
   | RewriteAnswer
   | RecordingAnswer;
 export type DraftAnswers = Record<string, SittingAnswer>;
-
 
 export interface ExamAttempt {
   id: string;

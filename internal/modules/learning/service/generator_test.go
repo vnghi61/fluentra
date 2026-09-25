@@ -26,6 +26,7 @@ const (
 	testLabelPresentPerfect    = "Present Perfect"
 	testKindTenseChoice        = "grammar_tense_choice"
 	testPurposeFoundation      = "foundation"
+	testPurposeBank            = "bank"
 )
 
 type generatorTestAuthor struct {
@@ -302,7 +303,7 @@ func TestGenerator_FoundationContentKinds(t *testing.T) {
 			if kind == learningcontract.KindFoundationTopic {
 				assert.Equal(t, "foundation_topic_generate.v1", item.PromptVersion)
 			} else {
-				assert.Equal(t, "item_generate.v1", item.PromptVersion)
+				assert.Equal(t, "item_generate.v2", item.PromptVersion)
 			}
 
 			// Verify provenance
@@ -384,7 +385,7 @@ func TestGenerate_AutoPublishPublishesWhatTheVerifierConfirms(t *testing.T) {
 		CEFRLevel: "B1",
 		NodeCodes: []string{testNodeCodePresentPerfect},
 		Count:     1,
-		Purpose:   "bank",
+		Purpose:   testPurposeBank,
 	})
 	require.NoError(t, err)
 	require.Len(t, items, 1)
@@ -550,7 +551,7 @@ func TestGenerate_AOneQuestionRecordingForVSTEPPart1(t *testing.T) {
 		CEFRLevel: "B1",
 		NodeCodes: []string{testNodeCodePresentPerfect},
 		Count:     1,
-		Purpose:   "bank",
+		Purpose:   testPurposeBank,
 		ExamConstraints: &learningcontract.ExamPartConstraints{
 			OptionCount: 4, QuestionsPerGroup: 1, AudioRequired: true,
 		},
@@ -562,4 +563,52 @@ func TestGenerate_AOneQuestionRecordingForVSTEPPart1(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(items[0].Body, &body))
 	assert.Len(t, body.Questions, 1, "one question per announcement, as the part states")
+}
+
+// TestGenerate_APart1ItemCarriesItsPhotograph is D22-21: the model writes from
+// the description and never sees the image, so the item's photograph, credit
+// page and licence come from the request, whatever the model wrote there.
+func TestGenerate_APart1ItemCarriesItsPhotograph(t *testing.T) {
+	graders := passingGraders()
+	require.NoError(t, graders.Register("photo_description", &testPracticeGrader{shouldPass: true}))
+	svc := service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     &generatorTestAuthor{},
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           graders,
+		AI:                ai.NewMockProvider(nil),
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+		Synthesiser:       &fakeAudioSynthesiser{},
+	})
+
+	items, err := svc.Generate(context.Background(), learningcontract.GenerateRequest{
+		Kind:      "photo_description",
+		CEFRLevel: "B1",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   testPurposeBank,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			OptionCount: 4, QuestionsPerGroup: 1, AudioRequired: true,
+		},
+		Photo: &learningcontract.PhotoRef{ //nolint:gosec // a photograph's credit page, not a credential
+			URL:         "https://upload.wikimedia.org/photo.jpg",
+			CreditPage:  "https://commons.wikimedia.org/wiki/File:Photo.jpg",
+			Licence:     "CC BY 4.0",
+			Description: "A man carries a box up a flight of stairs.",
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	var body struct {
+		ImageURL     string `json:"image_url"`
+		ImageCredit  string `json:"image_credit"`
+		ImageLicence string `json:"image_licence"`
+	}
+	require.NoError(t, json.Unmarshal(items[0].Body, &body))
+	assert.Equal(t, "https://upload.wikimedia.org/photo.jpg", body.ImageURL)
+	assert.Equal(t, "https://commons.wikimedia.org/wiki/File:Photo.jpg", body.ImageCredit)
+	assert.Equal(t, "CC BY 4.0", body.ImageLicence)
 }

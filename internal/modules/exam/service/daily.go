@@ -108,22 +108,11 @@ func (s *Service) GenerateDailyExam(ctx context.Context, versionCode string) (in
 				break
 			}
 		}
-		asked += groups
-		partID := part.ID
-		_, genErr := s.bankAuthor.GenerateQuestions(ctx, questionbankcontract.GenerateRequest{
-			ExamVersion: &versionCode,
-			ExamPartID:  &partID,
-			Kind:        part.Kind,
-			Skill:       part.Section,
-			CEFRLevel:   level,
-			// The generator tags every item to a spine node and refuses a
-			// request with none; an exam item is tagged to its section's skill.
-			NodeCodes: []string{sectionNode(part.Section)},
-			Count:     groups,
-		})
+		generated, genErr := s.generatePart(ctx, versionCode, part, level, groups)
 		if genErr != nil {
 			return 0, fmt.Errorf("generate %s part %d: %w", versionCode, part.PartNumber, genErr)
 		}
+		asked += generated
 	}
 
 	composed := 0
@@ -135,6 +124,51 @@ func (s *Service) GenerateDailyExam(ctx context.Context, versionCode string) (in
 		composed += count
 	}
 	return composed, nil
+}
+
+// generatePart asks the bank author for one part's groups and returns how many
+// it asked for. A photo part is written one photograph at a time, from the
+// photographs the source has left; with none, the part waits and says so.
+func (s *Service) generatePart(
+	ctx context.Context, versionCode string, part *domain.ExamPart, level string, groups int,
+) (int, error) {
+	partID := part.ID
+	req := questionbankcontract.GenerateRequest{
+		ExamVersion: &versionCode,
+		ExamPartID:  &partID,
+		Kind:        part.Kind,
+		Skill:       part.Section,
+		CEFRLevel:   level,
+		// The generator tags every item to a spine node and refuses a request
+		// with none; an exam item is tagged to its section's skill.
+		NodeCodes: []string{sectionNode(part.Section)},
+		Count:     groups,
+	}
+	if part.Kind != kindPhotoDescription {
+		_, err := s.bankAuthor.GenerateQuestions(ctx, req)
+		return groups, err
+	}
+
+	var photos []questionbankcontract.Photo
+	if s.photos != nil {
+		var err error
+		if photos, err = s.photos.NextPhotos(ctx, groups); err != nil {
+			return 0, fmt.Errorf("read part 1 photographs: %w", err)
+		}
+	}
+	if len(photos) == 0 {
+		slog.WarnContext(ctx, "exam: photo part skipped; no unused photograph is left to write it from",
+			"exam", versionCode, "part", part.PartNumber)
+		return 0, nil
+	}
+	for i := range photos {
+		req.Count = 1
+		req.Photo = &photos[i]
+		if _, err := s.bankAuthor.GenerateQuestions(ctx, req); err != nil {
+			return i, err
+		}
+	}
+	return len(photos), nil
 }
 
 // blueprintLevel is the level most of a blueprint's items should be written at:

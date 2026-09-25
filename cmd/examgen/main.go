@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/fluentra/fluentra/cmd/internal/examfixture"
+	"github.com/fluentra/fluentra/internal/modules/exam"
 	"github.com/fluentra/fluentra/internal/shared/config"
 )
 
@@ -53,7 +54,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	testsFlag := flags.Int("tests", 5, "How many disjoint tests to generate toward")
 	exportFlag := flags.Bool("export", false, "Export published questions to the fixture and exit")
 	fixturesFlag := flags.String("fixtures", defaultFixtureDir,
-		"Directory an -export writes to and `cmd/seed -exams` reads")
+		"Directory an -export writes to, `cmd/seed -exams` reads, and the Part 1 photographs are read from")
 	dryRunFlag := flags.Bool("dry-run", false, "Print what would happen without writing")
 	mockFlag := flags.Bool("mock", false,
 		"Generate with the offline mock provider, writing placeholder questions (a throwaway database only)")
@@ -87,7 +88,15 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 				"set AI_PROVIDER_1_NAME and AI_PROVIDER_1_API_KEY (and a second provider of a " +
 				"different model with AI_AUTO_PUBLISH=true, so the verifier can publish), or pass -mock")
 	}
-	return generateTests(ctx, cfg, pool, examCode, *testsFlag, *dryRunFlag, out)
+	var photos exam.PhotoSource = mockPhotos{}
+	if !*mockFlag {
+		fixture, err := loadFixturePhotos(pool, *fixturesFlag)
+		if err != nil {
+			return err
+		}
+		photos = fixture
+	}
+	return generateTests(ctx, cfg, pool, examCode, *testsFlag, *dryRunFlag, photos, out)
 }
 
 func exportExam(

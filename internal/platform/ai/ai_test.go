@@ -123,6 +123,29 @@ func TestRegistry_RendersTheCallersVariables(t *testing.T) {
 	assert.NotContains(t, rendered, "task: vocab_verify", "front matter is configuration, not prompt text")
 }
 
+// TestRegistry_ItemGenerateWritesPart1FromTheDescription is D22-21: the model
+// gets a person's description of the photograph, never the image, and the
+// section is absent for every other item.
+func TestRegistry_ItemGenerateWritesPart1FromTheDescription(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+	tmpl, err := registry.Get(ai.TaskItemGenerate)
+	require.NoError(t, err)
+	assert.Equal(t, 2, tmpl.Version)
+
+	vars := map[string]any{"CEFRLevel": "B1", "Count": 1}
+	plain, err := tmpl.Render(vars)
+	require.NoError(t, err)
+	assert.NotContains(t, plain, "The photograph (TOEIC Part 1)")
+
+	vars["PhotoDescription"] = "A man carries a box up a flight of stairs."
+	withPhoto, err := tmpl.Render(vars)
+	require.NoError(t, err)
+	assert.Contains(t, withPhoto, "The photograph (TOEIC Part 1)")
+	assert.Contains(t, withPhoto, "A man carries a box up a flight of stairs.")
+	assert.NotContains(t, withPhoto, "{{")
+}
+
 func TestRegistry_RefusesAnUnknownTask(t *testing.T) {
 	registry, err := ai.NewRegistry()
 	require.NoError(t, err)

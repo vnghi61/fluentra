@@ -88,6 +88,18 @@ type GenerateRequest struct {
 	CEFRLevel   string     `json:"cefr_level"`
 	NodeCodes   []string   `json:"node_codes,omitempty"`
 	Count       int        `json:"count"`
+	// Photo is the photograph a TOEIC Part 1 question is written from
+	// (D22-21); each request with one generates one question.
+	Photo *Photo `json:"photo,omitempty"`
+}
+
+// Photo is an openly licensed photograph with its credit and a person's
+// description of it.
+type Photo struct {
+	URL         string `json:"url"`
+	CreditPage  string `json:"credit_page"`
+	Licence     string `json:"licence"`
+	Description string `json:"description"`
 }
 
 // Reader provides read-only access to question bank items.

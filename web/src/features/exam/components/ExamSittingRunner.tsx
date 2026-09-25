@@ -988,13 +988,27 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
                 : t("exam.reading.mcqGap", "Incomplete Sentences")),
         )}
         {activity.kind === "photo_description" && config.image_url && (
-          <div className="flex justify-center p-4">
+          <figure className="flex flex-col items-center gap-1.5 p-4">
             <img
               src={config.image_url}
-              alt="Photo Description"
+              alt={t("exam.listening.photoDescription", "Photo Description")}
               className="max-h-72 rounded-xl border border-border-subtle object-contain shadow-sm"
             />
-          </div>
+            {config.image_credit && (
+              <figcaption className="text-xs text-text-muted">
+                <a
+                  href={config.image_credit}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  {t("exam.listening.photoCredit", "Photo: {{licence}}", {
+                    licence: config.image_licence ?? "",
+                  })}
+                </a>
+              </figcaption>
+            )}
+          </figure>
         )}
         {(activity.kind === "photo_description" ||
           activity.kind === "question_response") && (

@@ -436,6 +436,19 @@ type GenerateRequest struct {
 	// check, so a "TOEIC Part 3" item cannot be composed with the wrong
 	// question count or option count.
 	ExamConstraints *ExamPartConstraints
+	// Photo is the photograph a TOEIC Part 1 item is written from (WO 22
+	// D22-21). The model is given its human-written description, never the
+	// image, and the item carries the photograph's link and credit.
+	Photo *PhotoRef
+}
+
+// PhotoRef is one openly licensed photograph and the person-written
+// description a Part 1 item is written from.
+type PhotoRef struct {
+	URL         string
+	CreditPage  string
+	Licence     string
+	Description string
 }
 
 // GeneratedItem represents a single authored and verified item.

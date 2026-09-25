@@ -441,6 +441,52 @@ describe("exam screens", () => {
     ).toBeInTheDocument();
   });
 
+  it("credits a Part 1 photograph wherever it shows", async () => {
+    const { section_remaining_seconds: _unused, ...rest } = attempt;
+    const toeic = {
+      ...rest,
+      mode: "practice" as const,
+      section_activities: [
+        {
+          section_position: 1,
+          skill: "listening" as const,
+          activities: [
+            {
+              id: READING_ID,
+              kind: "photo_description",
+              content_version_id: "66666666-6666-6666-6666-666666666603",
+              weight: 1,
+              config: {
+                image_url: "https://upload.wikimedia.org/photo.jpg",
+                image_credit:
+                  "https://commons.wikimedia.org/wiki/File:Photo.jpg",
+                image_licence: "CC BY 4.0",
+                options: [
+                  { id: "A", text: "A" },
+                  { id: "B", text: "B" },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    await renderWithProviders(
+      <ExamSittingRunner attempt={toeic} onSubmitted={vi.fn()} />,
+    );
+
+    const credit = await screen.findByRole("link", {
+      name: "Photo: CC BY 4.0",
+    });
+    expect(credit).toHaveAttribute(
+      "href",
+      "https://commons.wikimedia.org/wiki/File:Photo.jpg",
+    );
+    expect(
+      screen.getByRole("img", { name: "Photo Description" }),
+    ).toHaveAttribute("src", "https://upload.wikimedia.org/photo.jpg");
+  });
+
   it("numbers every question and jumps to one in another practice section", async () => {
     // A practice sitting has no section clock.
     const { section_remaining_seconds: _unused, ...rest } = attempt;

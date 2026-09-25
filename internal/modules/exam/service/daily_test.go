@@ -228,3 +228,74 @@ func TestListCurrentExamVersions_CarriesTheCallersBestScore(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, anonymous[0].BestScore)
 }
+
+// fakePhotos hands out a fixed supply of photographs.
+type fakePhotos struct {
+	left  []questionbankcontract.Photo
+	asked []int
+}
+
+func (f *fakePhotos) NextPhotos(_ context.Context, n int) ([]questionbankcontract.Photo, error) {
+	f.asked = append(f.asked, n)
+	take := min(n, len(f.left))
+	next := f.left[:take]
+	f.left = f.left[take:]
+	return next, nil
+}
+
+// photoRepo is dailyRepo with a TOEIC Part 1: six one-question photographs.
+func photoRepo() *mockExamRepo {
+	repo := dailyRepo()
+	repo.parts[0].Kind = "photo_description"
+	repo.parts[0].QuestionCount = 6
+	return repo
+}
+
+// TestGenerateDailyExam_WritesEachPhotoPartItemFromItsOwnPhotograph is D22-21:
+// a Part 1 item is written from one photograph, so the job asks once per
+// photograph with the photograph on the request, and no more than it has.
+func TestGenerateDailyExam_WritesEachPhotoPartItemFromItsOwnPhotograph(t *testing.T) {
+	bank := &fakeBankAuthor{}
+	photos := &fakePhotos{left: []questionbankcontract.Photo{
+		{URL: "https://example.org/a.jpg", Description: "A man carries a box."},
+		{URL: "https://example.org/b.jpg", Description: "Two women sit at a table."},
+	}}
+	svc := service.New(service.Deps{Repo: photoRepo(), BankAuthor: bank, Photos: photos})
+
+	_, err := svc.GenerateDailyExam(context.Background(), testVersionCode)
+	require.NoError(t, err)
+
+	assert.Equal(t, []int{6 + service.DailyGenerationMargin}, photos.asked, "one test's worth plus the margin")
+	require.Len(t, bank.calls, 2, "one request per photograph the source had")
+	for i, call := range bank.calls {
+		assert.Equal(t, 1, call.Count)
+		require.NotNil(t, call.Photo)
+		assert.Equal(t, []string{"https://example.org/a.jpg", "https://example.org/b.jpg"}[i], call.Photo.URL)
+	}
+}
+
+// TestGenerateDailyExam_LeavesAPhotoPartWithoutPhotographs: with no source, or
+// one that has run out, Part 1 is skipped — the model cannot invent a
+// photograph — and the rest of the exam still generates.
+func TestGenerateDailyExam_LeavesAPhotoPartWithoutPhotographs(t *testing.T) {
+	for name, photos := range map[string]service.PhotoSource{
+		"no source": nil,
+		"none left": &fakePhotos{},
+	} {
+		t.Run(name, func(t *testing.T) {
+			repo := photoRepo()
+			repo.parts = append(repo.parts, &domain.ExamPart{
+				ID: uuid.New(), VersionID: repo.version.ID, Section: testSkillListening, PartNumber: 2,
+				Kind: kindListeningComprehension, QuestionCount: 3, GroupSize: 1,
+			})
+			bank := &fakeBankAuthor{}
+			svc := service.New(service.Deps{Repo: repo, BankAuthor: bank, Photos: photos})
+
+			_, err := svc.GenerateDailyExam(context.Background(), testVersionCode)
+			require.NoError(t, err)
+			require.Len(t, bank.calls, 1, "only the part that needs no photograph generates")
+			assert.Equal(t, kindListeningComprehension, bank.calls[0].Kind)
+			assert.Nil(t, bank.calls[0].Photo)
+		})
+	}
+}

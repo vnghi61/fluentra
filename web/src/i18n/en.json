@@ -1388,6 +1388,7 @@
     "listening": {
       "audioClip": "Audio clip",
       "photoDescription": "Photo Description",
+      "photoCredit": "Photo: {{licence}}",
       "questionResponse": "Question-Response",
       "instructions": "Listen, then answer the questions.",
       "playsLeft": "Plays left: {{count}}",

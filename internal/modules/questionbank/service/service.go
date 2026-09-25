@@ -252,6 +252,7 @@ func (s *Service) GenerateQuestions(ctx context.Context, req contract.GenerateRe
 		// together (WO 22 Stage A.4).
 		Batch:           generationBatch(req),
 		ExamConstraints: examConstraints,
+		Photo:           photoRef(req.Photo),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("learning generator: %w", err)
@@ -318,6 +319,16 @@ func (s *Service) GenerateQuestions(ctx context.Context, req contract.GenerateRe
 	}
 
 	return createdQuestions, nil
+}
+
+// photoRef hands a Part 1 photograph to the generator.
+func photoRef(photo *contract.Photo) *learningcontract.PhotoRef {
+	if photo == nil {
+		return nil
+	}
+	return &learningcontract.PhotoRef{
+		URL: photo.URL, CreditPage: photo.CreditPage, Licence: photo.Licence, Description: photo.Description,
+	}
 }
 
 // generationBatch is one run's batch id: the exam version first, so the daily

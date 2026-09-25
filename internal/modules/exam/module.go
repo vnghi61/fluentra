@@ -24,6 +24,9 @@ type WorkerNudger = service.WorkerNudger
 // PoolDrawer draws items for an exam sitting across the 4 sections.
 type PoolDrawer = service.PoolDrawer
 
+// PhotoSource hands out TOEIC Part 1 photographs, each once.
+type PhotoSource = service.PhotoSource
+
 // SectionActivities represents drawn activities for a section.
 type SectionActivities = service.SectionActivities
 
@@ -50,6 +53,9 @@ type Deps struct {
 	// person (WO 22 Stage O). DailyGenerationCap bounds one run.
 	ReviewBacklog      contentcontract.ReviewBacklog
 	DailyGenerationCap int
+	// Photos supplies TOEIC Part 1 photographs (WO 22 D22-21). Nil leaves
+	// photo parts ungenerated.
+	Photos PhotoSource
 }
 
 // Module represents the wired exam module.
@@ -78,6 +84,7 @@ func New(deps Deps) *Module {
 		BankAuthor:         deps.BankAuthor,
 		ReviewBacklog:      deps.ReviewBacklog,
 		DailyGenerationCap: deps.DailyGenerationCap,
+		Photos:             deps.Photos,
 	})
 
 	handler := examhttp.NewHandler(svc)

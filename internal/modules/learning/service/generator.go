@@ -190,6 +190,9 @@ func buildGenerateVars(req learningcontract.GenerateRequest, spineNodes []string
 	if format := examFormat(req.ExamConstraints); format != "" {
 		vars["ExamFormat"] = format
 	}
+	if req.Photo != nil {
+		vars["PhotoDescription"] = req.Photo.Description
+	}
 	return vars
 }
 
@@ -249,6 +252,28 @@ func isTaskOnlyPart(types []string) bool {
 	return true
 }
 
+// withPhoto puts the photograph an item was written from on its body — the
+// link, the credit page and the licence — in place of anything the model
+// wrote there: the model never saw the image, and a learner must always see its
+// credit (D22-21).
+func withPhoto(body json.RawMessage, photo *learningcontract.PhotoRef) json.RawMessage {
+	if photo == nil {
+		return body
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		return body
+	}
+	decoded["image_url"] = photo.URL
+	decoded["image_credit"] = photo.CreditPage
+	decoded["image_licence"] = photo.Licence
+	withImage, err := json.Marshal(decoded)
+	if err != nil {
+		return body
+	}
+	return withImage
+}
+
 // withGroupWordLimit writes an exam part's typed-answer word limit onto a
 // passage or recording that has typed questions, so the grader enforces it and
 // the sitting shows it ("NO MORE THAN TWO WORDS", D22-25). A body that does
@@ -299,7 +324,7 @@ func (s *Service) attachProvenanceAndVerify(
 	blindSolve bool,
 ) (json.RawMessage, string, uuid.UUID, error) {
 	aiRequestID := uuid.New()
-	promptVersion := "item_generate.v1"
+	promptVersion := "item_generate.v2"
 	isTopic := (req.Kind == kindFoundationTopic)
 	if isTopic {
 		promptVersion = "foundation_topic_generate.v1"
@@ -407,6 +432,7 @@ func (s *Service) generateSingleItem(
 		return nil, fmt.Errorf("prepare candidate body: %w", err)
 	}
 	preparedBody = withGroupWordLimit(preparedBody, req.ExamConstraints)
+	preparedBody = withPhoto(preparedBody, req.Photo)
 
 	model := resp.Model
 	if model == "" {

@@ -30,7 +30,7 @@ const extraRounds = 3
 // for the same shapes.
 func generateTests(
 	ctx context.Context, cfg examCLIConfig, pool *pgxpool.Pool, examCode string, tests int, dryRun bool,
-	out io.Writer,
+	photos exam.PhotoSource, out io.Writer,
 ) error {
 	have, err := fixedTestCount(ctx, pool, examCode)
 	if err != nil {
@@ -50,7 +50,7 @@ func generateTests(
 	if err != nil {
 		return err
 	}
-	examModule := assembleExam(pool, cfg.AI.client(ctx, pool), cfg.AI.AutoPublish, authorID)
+	examModule := assembleExam(pool, cfg.AI.client(ctx, pool), cfg.AI.AutoPublish, authorID, photos)
 
 	for round := 1; have < tests && round <= tests-have+extraRounds; round++ {
 		composed, err := examModule.Service().GenerateDailyExam(ctx, examCode)
@@ -74,8 +74,11 @@ func generateTests(
 }
 
 // assembleExam wires the exam module with a question bank that generates
-// through the shared generator, as the worker's daily job does.
-func assembleExam(pool *pgxpool.Pool, client ai.Client, autoPublish bool, authorID uuid.UUID) *exam.Module {
+// through the shared generator, as the worker's daily job does, and the Part 1
+// photographs it writes photo parts from.
+func assembleExam(
+	pool *pgxpool.Pool, client ai.Client, autoPublish bool, authorID uuid.UUID, photos exam.PhotoSource,
+) *exam.Module {
 	kit := genkit.Assemble(pool, client, autoPublish, authorID)
 	var examModule *exam.Module
 	bank := questionbank.New(questionbank.Deps{
@@ -91,6 +94,7 @@ func assembleExam(pool *pgxpool.Pool, client ai.Client, autoPublish bool, author
 		Lesson:       kit.Lesson.Reader(),
 		Questionbank: bank.Reader(),
 		BankAuthor:   bank.Author(),
+		Photos:       photos,
 	})
 	return examModule
 }
