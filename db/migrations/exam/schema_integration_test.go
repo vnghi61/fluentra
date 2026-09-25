@@ -241,6 +241,16 @@ func TestExamFormat_Listing(t *testing.T) {
 	if !examRow {
 		t.Error("IELTS_ACADEMIC_2026_R2 has no assess.exams row to record sittings under")
 	}
+
+	// A VSTEP report is on VSTEP's 0–10, not TOEIC's scale.
+	var vstepScale string
+	if err := pool.QueryRow(ctx,
+		`SELECT scoring->>'type' FROM assess.exam_versions WHERE code = 'VSTEP_3_5'`).Scan(&vstepScale); err != nil {
+		t.Fatalf("read vstep scoring: %v", err)
+	}
+	if vstepScale != "vstep" {
+		t.Errorf("VSTEP_3_5 scoring type = %q, want vstep", vstepScale)
+	}
 }
 
 func createDatabase(base, name string) (string, func(), error) {

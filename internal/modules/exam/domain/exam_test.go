@@ -15,7 +15,12 @@ func TestScaleScore(t *testing.T) {
 		wantOK    bool
 		estimate  bool
 	}{
-		{"ielts band", `{"type":"band","scale":[0,9],"step":0.5,"published_conversion":true}`, 72, 6.5, true, false},
+		// A linear map is not the owner's conversion: an estimate, even when the
+		// row claims a published one.
+		{"ielts band", `{"type":"band","scale":[0,9],"step":0.5,"published_conversion":true}`, 72, 6.5, true, true},
+		// VSTEP's row after 1700000946 keeps its section notes beside the scale.
+		{"vstep row", `{"type":"vstep","scale":[0,10],"step":0.5,"sections":{"listening":{"max_raw":35}}}`,
+			60, 6, true, true},
 		{"toeic estimate", `{"type":"raw_with_estimate"}`, 50, 500, true, true},
 		{"vstep", `{"type":"vstep"}`, 75, 7.5, true, true},
 		{"unknown without scale", `{"type":"mystery"}`, 50, 0, false, false},
