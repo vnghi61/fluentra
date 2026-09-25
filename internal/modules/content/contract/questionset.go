@@ -24,6 +24,10 @@ type QuestionItem struct {
 	CorrectOptionID string           `json:"correct_option_id,omitempty"`
 	Key             string           `json:"key,omitempty"`
 	Acceptable      []string         `json:"acceptable,omitempty"`
+	// MaxWords is a typed answer's word limit ("NO MORE THAN TWO WORDS"); an
+	// answer over it is wrong even when its words match (WO 22 D22-25). Zero
+	// is no limit.
+	MaxWords int `json:"max_words,omitempty"`
 	// Explanation is authored per question, in either spelling; graders pass it
 	// back with the verdict. Raw, because its type belongs to learning.
 	Explanation json.RawMessage `json:"explanation,omitempty"`
@@ -96,6 +100,23 @@ func ParseComprehensionResponse(raw json.RawMessage) ComprehensionResponse {
 }
 
 // GradeQuestionSet grades an array of questions against a submitted answers map.
+// WithGroupWordLimit gives every typed question of a group (one with no options)
+// the group's word limit, unless it states its own. A passage or recording
+// carries the part's limit once, at the top of its body.
+func WithGroupWordLimit(questions []QuestionItem, maxWords int) []QuestionItem {
+	if maxWords <= 0 {
+		return questions
+	}
+	limited := make([]QuestionItem, len(questions))
+	for i, q := range questions {
+		if q.MaxWords == 0 && len(q.Options) == 0 && q.Type != "true_false_not_given" {
+			q.MaxWords = maxWords
+		}
+		limited[i] = q
+	}
+	return limited
+}
+
 func GradeQuestionSet(questions []QuestionItem, answers map[string]string, maxScore int) QuestionSetGradeResult {
 	total := len(questions)
 	if total == 0 {
@@ -205,6 +226,10 @@ func QuestionCanonicalAnswer(q QuestionItem) string {
 // MatchQuestion reports whether the submitted answer satisfies the question's criteria.
 func MatchQuestion(submitted string, q QuestionItem) bool {
 	if submitted == "" {
+		return false
+	}
+
+	if q.MaxWords > 0 && len(strings.Fields(submitted)) > q.MaxWords {
 		return false
 	}
 

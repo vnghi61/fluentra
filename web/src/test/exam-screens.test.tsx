@@ -399,6 +399,48 @@ describe("exam screens", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows a typed question its word limit and a true/false/not given one its three answers", async () => {
+    const { section_remaining_seconds: _unused, ...rest } = attempt;
+    const ielts = {
+      ...rest,
+      mode: "practice" as const,
+      section_activities: [
+        {
+          section_position: 1,
+          skill: "reading" as const,
+          activities: [
+            {
+              id: READING_ID,
+              kind: "reading_comprehension",
+              content_version_id: "66666666-6666-6666-6666-666666666602",
+              weight: 1,
+              config: {
+                passage: "The library opened in 2020 and has a reading room.",
+                max_words: 2,
+                questions: [
+                  { id: "q1", type: "completion", prompt: "It has a ___." },
+                  {
+                    id: "q2",
+                    type: "true_false_not_given",
+                    prompt: "It opened in 2020.",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    await renderWithProviders(
+      <ExamSittingRunner attempt={ielts} onSubmitted={vi.fn()} />,
+    );
+
+    expect(await screen.findByText("No more than 2 words")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Not Given/ }),
+    ).toBeInTheDocument();
+  });
+
   it("numbers every question and jumps to one in another practice section", async () => {
     // A practice sitting has no section clock.
     const { section_remaining_seconds: _unused, ...rest } = attempt;

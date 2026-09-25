@@ -1402,6 +1402,7 @@
       "mcqGap": "Điền vào chỗ trống",
       "completion": "Điền từ",
       "maxWords": "{{count}} / {{max}} từ",
+      "wordLimit": "Không quá {{max}} từ",
       "answerLabel": "Câu trả lời của bạn"
     },
     "writing": {

@@ -138,7 +138,8 @@ func gradeQuestionSet(
 	resp contentcontract.ComprehensionResponse,
 	wpm int,
 ) learningcontract.GradeResult {
-	qResult := contentcontract.GradeQuestionSet(body.Questions, resp.Answers, maxReadingScore)
+	questions := contentcontract.WithGroupWordLimit(body.Questions, body.MaxWords)
+	qResult := contentcontract.GradeQuestionSet(questions, resp.Answers, maxReadingScore)
 
 	itemResults := make([]learningcontract.ItemResult, len(qResult.ItemResults))
 	for i, r := range qResult.ItemResults {

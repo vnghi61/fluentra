@@ -116,6 +116,8 @@ type listeningBody struct {
 	Acceptable      []string                            `json:"acceptable,omitempty"`
 	Explanation     *learningcontract.AnswerExplanation `json:"explanation,omitempty"`
 	Questions       []contentcontract.QuestionItem      `json:"questions,omitempty"`
+	// MaxWords is the group's typed-answer word limit (WO 22 D22-25).
+	MaxWords int `json:"max_words,omitempty"`
 }
 
 // RecordPlay enforces the play limit and returns a short-lived presigned URL.

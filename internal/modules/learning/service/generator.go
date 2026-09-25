@@ -249,6 +249,29 @@ func isTaskOnlyPart(types []string) bool {
 	return true
 }
 
+// withGroupWordLimit writes an exam part's typed-answer word limit onto a
+// passage or recording that has typed questions, so the grader enforces it and
+// the sitting shows it ("NO MORE THAN TWO WORDS", D22-25). A body that does
+// not parse, or a part with no limit, is left as it is.
+func withGroupWordLimit(body json.RawMessage, c *learningcontract.ExamPartConstraints) json.RawMessage {
+	if c == nil || c.MaxWords <= 0 {
+		return body
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		return body
+	}
+	if _, ok := decoded["questions"]; !ok {
+		return body
+	}
+	decoded["max_words"] = c.MaxWords
+	limited, err := json.Marshal(decoded)
+	if err != nil {
+		return body
+	}
+	return limited
+}
+
 // formatTypeMix renders a part's question-type mix in a stable order, so the
 // generation prompt asks for the published proportion rather than a group of
 // whatever type the model prefers (WO 22 Stage I.3.4).
@@ -383,6 +406,7 @@ func (s *Service) generateSingleItem(
 	if err != nil {
 		return nil, fmt.Errorf("prepare candidate body: %w", err)
 	}
+	preparedBody = withGroupWordLimit(preparedBody, req.ExamConstraints)
 
 	model := resp.Model
 	if model == "" {

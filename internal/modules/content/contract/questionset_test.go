@@ -120,3 +120,27 @@ func TestParseComprehensionResponse(t *testing.T) {
 		t.Errorf("failed to parse raw string: %+v", respStr)
 	}
 }
+
+// TestGradeQuestionSet_EnforcesTheGroupWordLimit is D22-25 at grading: a typed
+// answer over its group's word limit is wrong even when its words match, and a
+// choice question is not limited.
+func TestGradeQuestionSet_EnforcesTheGroupWordLimit(t *testing.T) {
+	t.Parallel()
+
+	questions := contract.WithGroupWordLimit([]contract.QuestionItem{
+		{ID: "q1", Type: "completion", Key: "reading room", Acceptable: []string{"the reading room"}},
+		{ID: "q2", Type: "multiple_choice", CorrectOptionID: "A", Options: []contract.QuestionOption{{ID: "A"}, {ID: "B"}}},
+	}, 2)
+
+	within := contract.GradeQuestionSet(questions, map[string]string{"q1": "reading room", "q2": "A"}, 100)
+	if !within.AllCorrect {
+		t.Fatalf("answers within the limit must grade correct: %+v", within)
+	}
+	over := contract.GradeQuestionSet(questions, map[string]string{"q1": "the reading room", "q2": "A"}, 100)
+	if over.ItemResults[0].Correct {
+		t.Fatal("a three-word answer to a two-word limit must be wrong")
+	}
+	if !over.ItemResults[1].Correct {
+		t.Fatal("a choice question has no word limit")
+	}
+}

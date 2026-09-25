@@ -62,13 +62,13 @@ export interface ExamSittingRunnerProps {
 export function isAnswered(answer: SittingAnswer | undefined): boolean {
   if (!answer) return false;
   if ("answers" in answer) return Object.keys(answer.answers).length > 0;
-  if ("selected_option_id" in answer) return answer.selected_option_id.trim() !== "";
+  if ("selected_option_id" in answer)
+    return answer.selected_option_id.trim() !== "";
   if ("text_answer" in answer) return answer.text_answer.trim() !== "";
   if ("answer" in answer) return answer.answer.trim() !== "";
   if ("audio_object_key" in answer) return answer.audio_object_key !== "";
   return false;
 }
-
 
 export function formatClock(totalSeconds: number): string {
   const safe = Math.max(0, Math.floor(totalSeconds));
@@ -770,11 +770,26 @@ const QuestionList: React.FC<{
   );
 };
 
+/** The typed-answer limit under a completion question (D22-25). */
+const WordLimitNote: React.FC<{ max: number }> = ({ max }) => {
+  const { t } = useTranslation();
+  return (
+    <p className="text-xs text-text-muted">
+      {t("exam.reading.wordLimit", {
+        max,
+        defaultValue: `No more than ${max} words`,
+      })}
+    </p>
+  );
+};
+
 interface ChoiceQuestionsProps {
   questions: ChoiceQuestion[];
   firstNumber: number;
   selected: Record<string, string>;
   onSelect: (questionId: string, optionId: string) => void;
+  /** The group's typed-answer word limit ("NO MORE THAN TWO WORDS"); 0 is none. */
+  maxWords?: number;
 }
 
 // trueFalseOptions is the fixed three-option choice a true/false/not-given
@@ -791,6 +806,7 @@ const ChoiceQuestions: React.FC<ChoiceQuestionsProps> = ({
   firstNumber,
   selected,
   onSelect,
+  maxWords = 0,
 }) => (
   <div className="space-y-6 pt-2">
     {questions.map((question, qIndex) => {
@@ -834,12 +850,15 @@ const ChoiceQuestions: React.FC<ChoiceQuestionsProps> = ({
             </div>
           ) : (
             // A completion question has no options: the answer is typed.
-            <input
-              type="text"
-              value={selected[question.id] ?? ""}
-              onChange={(e) => onSelect(question.id, e.target.value)}
-              className="min-h-[44px] w-full rounded-lg border border-border bg-surface-card px-3 py-2 text-base text-text focus:outline-hidden focus:ring-2 focus:ring-primary"
-            />
+            <>
+              <input
+                type="text"
+                value={selected[question.id] ?? ""}
+                onChange={(e) => onSelect(question.id, e.target.value)}
+                className="min-h-[44px] w-full rounded-lg border border-border bg-surface-card px-3 py-2 text-base text-text focus:outline-hidden focus:ring-2 focus:ring-primary"
+              />
+              {maxWords > 0 && <WordLimitNote max={maxWords} />}
+            </>
           )}
         </fieldset>
       );
@@ -928,6 +947,7 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
           firstNumber={firstNumber}
           selected={selected}
           onSelect={select}
+          maxWords={config.max_words ?? 0}
         />
       </div>
     );
@@ -939,14 +959,15 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
     activity.kind === "mcq_gap"
   ) {
     const selectedOpt =
-      answer && "selected_option_id" in answer && typeof answer.selected_option_id === "string"
+      answer &&
+      "selected_option_id" in answer &&
+      typeof answer.selected_option_id === "string"
         ? answer.selected_option_id
         : answer && "answers" in answer && typeof answer.answers === "object"
-          ? Object.values(answer.answers)[0] ?? ""
+          ? (Object.values(answer.answers)[0] ?? "")
           : "";
     const select = (optionId: string) =>
       onChange({ selected_option_id: optionId });
-
 
     const rawOpts: ChoiceOption[] =
       config.options || config.statements || config.responses || [];

@@ -1402,6 +1402,7 @@
       "mcqGap": "Incomplete Sentences",
       "completion": "Completion",
       "maxWords": "{{count}} / {{max}} words",
+      "wordLimit": "No more than {{max}} words",
       "answerLabel": "Your answer"
     },
     "writing": {
