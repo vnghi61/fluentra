@@ -8,6 +8,10 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "aap",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "aaron",
     "reason": "proper_noun"
   },
@@ -20,7 +24,15 @@
     "reason": "inflection_of:abandon"
   },
   {
+    "lemma": "abbas",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "abbott",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "abby",
     "reason": "proper_noun"
   },
   {
@@ -28,7 +40,27 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "abdul",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "abdullah",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "abe",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "abel",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "aberdeen",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "abigail",
     "reason": "proper_noun"
   },
   {
@@ -37,6 +69,10 @@
   },
   {
     "lemma": "abraham",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "abrams",
     "reason": "proper_noun"
   },
   {
@@ -56,8 +92,16 @@
     "reason": "abbreviation"
   },
   {
+    "lemma": "aca",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "academics",
     "reason": "inflection_of:academic"
+  },
+  {
+    "lemma": "acc",
+    "reason": "abbreviation"
   },
   {
     "lemma": "accelerated",
@@ -124,12 +168,24 @@
     "reason": "inflection_of:achieve"
   },
   {
+    "lemma": "achilles",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "acids",
     "reason": "inflection_of:acid"
   },
   {
     "lemma": "acknowledged",
     "reason": "inflection_of:acknowledge"
+  },
+  {
+    "lemma": "acl",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "acquired",
+    "reason": "inflection"
   },
   {
     "lemma": "acquiring",
@@ -172,6 +228,10 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "ada",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "adam",
     "reason": "proper_noun"
   },
@@ -190,6 +250,10 @@
   {
     "lemma": "adding",
     "reason": "inflection_of:add"
+  },
+  {
+    "lemma": "addison",
+    "reason": "proper_noun"
   },
   {
     "lemma": "additions",
@@ -216,8 +280,24 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "adele",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "adhd",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "adidas",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "adjustments",
     "reason": "inflection_of:adjustment"
+  },
+  {
+    "lemma": "adler",
+    "reason": "proper_noun"
   },
   {
     "lemma": "admin",
@@ -242,6 +322,10 @@
   {
     "lemma": "admitting",
     "reason": "inflection_of:admit"
+  },
+  {
+    "lemma": "adolf",
+    "reason": "proper_noun"
   },
   {
     "lemma": "adopted",
@@ -288,7 +372,15 @@
     "reason": "inflection_of:advocate"
   },
   {
+    "lemma": "ae",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "af",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "afc",
     "reason": "abbreviation"
   },
   {
@@ -332,6 +424,10 @@
     "reason": "inflection_of:agent"
   },
   {
+    "lemma": "agnes",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "agreed",
     "reason": "inflection_of:agree"
   },
@@ -350,6 +446,14 @@
   {
     "lemma": "ahh",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "ahhh",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "ahmad",
+    "reason": "proper_noun"
   },
   {
     "lemma": "ahmed",
@@ -372,8 +476,16 @@
     "reason": "inflection_of:aim"
   },
   {
+    "lemma": "ain",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "aired",
     "reason": "inflection_of:air"
+  },
+  {
+    "lemma": "aires",
+    "reason": "proper_noun"
   },
   {
     "lemma": "airlines",
@@ -382,6 +494,18 @@
   {
     "lemma": "airports",
     "reason": "inflection_of:airport"
+  },
+  {
+    "lemma": "aj",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ajax",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ak",
+    "reason": "abbreviation"
   },
   {
     "lemma": "aka",
@@ -416,11 +540,35 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "alberto",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "albion",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "albums",
     "reason": "inflection_of:album"
   },
   {
+    "lemma": "albuquerque",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "alec",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "aleppo",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "alex",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "alexa",
     "reason": "proper_noun"
   },
   {
@@ -428,11 +576,23 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "alexandra",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "alexandria",
     "reason": "proper_noun"
   },
   {
+    "lemma": "alexis",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "alfred",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "algeria",
     "reason": "proper_noun"
   },
   {
@@ -445,6 +605,10 @@
   },
   {
     "lemma": "alice",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "alicia",
     "reason": "proper_noun"
   },
   {
@@ -504,8 +668,24 @@
     "reason": "inflection_of:allow"
   },
   {
+    "lemma": "alma",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "alonso",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "alot",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "alps",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "als",
+    "reason": "abbreviation"
   },
   {
     "lemma": "alt",
@@ -520,8 +700,20 @@
     "reason": "inflection_of:alumnus"
   },
   {
+    "lemma": "alvarez",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "alvin",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "am",
     "reason": "inflection_of:be"
+  },
+  {
+    "lemma": "ama",
+    "reason": "abbreviation"
   },
   {
     "lemma": "amanda",
@@ -533,6 +725,22 @@
   },
   {
     "lemma": "amazon",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ambrose",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "amc",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "amd",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "amelia",
     "reason": "proper_noun"
   },
   {
@@ -552,6 +760,22 @@
     "reason": "inflection_of:american"
   },
   {
+    "lemma": "americas",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ames",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "amir",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "amos",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "amounts",
     "reason": "inflection_of:amount"
   },
@@ -565,6 +789,10 @@
   },
   {
     "lemma": "ana",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "anaheim",
     "reason": "proper_noun"
   },
   {
@@ -584,8 +812,20 @@
     "reason": "inflection_of:analyze"
   },
   {
+    "lemma": "anc",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "ancestors",
     "reason": "inflection_of:ancestor"
+  },
+  {
+    "lemma": "anchorage",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "anders",
+    "reason": "proper_noun"
   },
   {
     "lemma": "anderson",
@@ -597,6 +837,10 @@
   },
   {
     "lemma": "andrea",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "andreas",
     "reason": "proper_noun"
   },
   {
@@ -612,11 +856,23 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "ang",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "angela",
     "reason": "proper_noun"
   },
   {
     "lemma": "angeles",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "angelina",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "angelo",
     "reason": "proper_noun"
   },
   {
@@ -628,12 +884,24 @@
     "reason": "inflection_of:angle"
   },
   {
+    "lemma": "angus",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "animals",
     "reason": "inflection_of:animal"
   },
   {
     "lemma": "animated",
     "reason": "inflection_of:animate"
+  },
+  {
+    "lemma": "anita",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ankara",
+    "reason": "proper_noun"
   },
   {
     "lemma": "ann",
@@ -684,6 +952,10 @@
     "reason": "inflection_of:answer"
   },
   {
+    "lemma": "antarctica",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "anthony",
     "reason": "proper_noun"
   },
@@ -692,7 +964,19 @@
     "reason": "inflection_of:anticipate"
   },
   {
+    "lemma": "antoine",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "anton",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "antonio",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "antony",
     "reason": "proper_noun"
   },
   {
@@ -700,12 +984,24 @@
     "reason": "inflection_of:anyway"
   },
   {
+    "lemma": "ao",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "ap",
     "reason": "abbreviation"
   },
   {
+    "lemma": "apache",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "apartments",
     "reason": "inflection_of:apartment"
+  },
+  {
+    "lemma": "api",
+    "reason": "abbreviation"
   },
   {
     "lemma": "apollo",
@@ -788,6 +1084,10 @@
     "reason": "inflection_of:approve"
   },
   {
+    "lemma": "approx",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "apps",
     "reason": "inflection_of:app"
   },
@@ -804,8 +1104,16 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "arabian",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "arabs",
     "reason": "inflection_of:arab"
+  },
+  {
+    "lemma": "archie",
+    "reason": "proper_noun"
   },
   {
     "lemma": "architects",
@@ -840,11 +1148,31 @@
     "reason": "inflection_of:argument"
   },
   {
+    "lemma": "ari",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ariel",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "aristotle",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "arizona",
     "reason": "proper_noun"
   },
   {
     "lemma": "arkansas",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "arlington",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "armenia",
     "reason": "proper_noun"
   },
   {
@@ -908,6 +1236,10 @@
     "reason": "inflection_of:art"
   },
   {
+    "lemma": "asa",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "ashes",
     "reason": "inflection_of:ash"
   },
@@ -916,7 +1248,15 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "ashton",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "asia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "asians",
     "reason": "proper_noun"
   },
   {
@@ -934,6 +1274,18 @@
   {
     "lemma": "aspects",
     "reason": "inflection_of:aspect"
+  },
+  {
+    "lemma": "aspen",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "assad",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "assange",
+    "reason": "proper_noun"
   },
   {
     "lemma": "assaulted",
@@ -962,6 +1314,10 @@
   {
     "lemma": "asshole",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "assholes",
+    "reason": "inflection"
   },
   {
     "lemma": "assigned",
@@ -1008,6 +1364,10 @@
     "reason": "inflection_of:assumption"
   },
   {
+    "lemma": "aston",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ate",
     "reason": "inflection_of:eat"
   },
@@ -1020,8 +1380,20 @@
     "reason": "inflection_of:athlete"
   },
   {
+    "lemma": "atkinson",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "atlanta",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "atlantis",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "atleast",
+    "reason": "not_a_word"
   },
   {
     "lemma": "atm",
@@ -1030,6 +1402,10 @@
   {
     "lemma": "atoms",
     "reason": "inflection_of:atom"
+  },
+  {
+    "lemma": "atp",
+    "reason": "abbreviation"
   },
   {
     "lemma": "attacked",
@@ -1054,6 +1430,10 @@
   {
     "lemma": "attended",
     "reason": "inflection_of:attend"
+  },
+  {
+    "lemma": "attendees",
+    "reason": "inflection"
   },
   {
     "lemma": "attitudes",
@@ -1084,12 +1464,40 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "auckland",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "audi",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "audiences",
     "reason": "inflection_of:audience"
   },
   {
+    "lemma": "audrey",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "aug",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "augusta",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "augustine",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "augustus",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "aus",
+    "reason": "abbreviation"
   },
   {
     "lemma": "austin",
@@ -1098,6 +1506,10 @@
   {
     "lemma": "australia",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "australians",
+    "reason": "inflection"
   },
   {
     "lemma": "austria",
@@ -1116,6 +1528,22 @@
     "reason": "inflection_of:author"
   },
   {
+    "lemma": "aux",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "av",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "ava",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "avant",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "ave",
     "reason": "non_standard"
   },
@@ -1128,12 +1556,28 @@
     "reason": "inflection_of:average"
   },
   {
+    "lemma": "avery",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "avg",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "aviv",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "avoided",
     "reason": "inflection_of:avoid"
   },
   {
     "lemma": "avoiding",
     "reason": "inflection_of:avoid"
+  },
+  {
+    "lemma": "avon",
+    "reason": "proper_noun"
   },
   {
     "lemma": "aw",
@@ -1152,12 +1596,36 @@
     "reason": "inflection_of:award"
   },
   {
+    "lemma": "ay",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "az",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "azerbaijan",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ba",
     "reason": "non_standard"
   },
   {
+    "lemma": "baba",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "babies",
     "reason": "inflection_of:baby"
+  },
+  {
+    "lemma": "babylon",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bach",
+    "reason": "proper_noun"
   },
   {
     "lemma": "backed",
@@ -1172,11 +1640,35 @@
     "reason": "inflection_of:back"
   },
   {
+    "lemma": "baden",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bae",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "baghdad",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "bags",
     "reason": "inflection_of:bag"
   },
   {
+    "lemma": "bahamas",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bahrain",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "bailey",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "baird",
     "reason": "proper_noun"
   },
   {
@@ -1196,8 +1688,16 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "bali",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "balls",
     "reason": "inflection_of:ball"
+  },
+  {
+    "lemma": "baltic",
+    "reason": "proper_noun"
   },
   {
     "lemma": "baltimore",
@@ -1206,6 +1706,10 @@
   {
     "lemma": "bands",
     "reason": "inflection_of:band"
+  },
+  {
+    "lemma": "bangalore",
+    "reason": "proper_noun"
   },
   {
     "lemma": "bangkok",
@@ -1240,7 +1744,15 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "barbados",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "barbara",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "barca",
     "reason": "proper_noun"
   },
   {
@@ -1248,12 +1760,36 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "barker",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "barlow",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "barnes",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "barnett",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "barney",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "barr",
     "reason": "proper_noun"
   },
   {
     "lemma": "barrels",
     "reason": "inflection_of:barrel"
+  },
+  {
+    "lemma": "barrett",
+    "reason": "proper_noun"
   },
   {
     "lemma": "barriers",
@@ -1266,6 +1802,22 @@
   {
     "lemma": "bars",
     "reason": "inflection_of:bar"
+  },
+  {
+    "lemma": "bart",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bartlett",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "barton",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "basel",
+    "reason": "proper_noun"
   },
   {
     "lemma": "bases",
@@ -1292,7 +1844,19 @@
     "reason": "inflection_of:battle"
   },
   {
+    "lemma": "bauer",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "baxter",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "bayern",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "baylor",
     "reason": "proper_noun"
   },
   {
@@ -1320,6 +1884,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "beatrice",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "beats",
     "reason": "inflection_of:beat"
   },
@@ -1328,8 +1896,28 @@
     "reason": "inflection_of:become"
   },
   {
+    "lemma": "becker",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "beckett",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "beckham",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "becky",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "becomes",
     "reason": "inflection_of:become"
+  },
+  {
+    "lemma": "bedford",
+    "reason": "proper_noun"
   },
   {
     "lemma": "beds",
@@ -1346,6 +1934,10 @@
   {
     "lemma": "bees",
     "reason": "inflection_of:bee"
+  },
+  {
+    "lemma": "beethoven",
+    "reason": "proper_noun"
   },
   {
     "lemma": "began",
@@ -1376,6 +1968,14 @@
     "reason": "inflection_of:being"
   },
   {
+    "lemma": "beirut",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "belarus",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "belfast",
     "reason": "proper_noun"
   },
@@ -1398,6 +1998,10 @@
   {
     "lemma": "believing",
     "reason": "inflection_of:believe"
+  },
+  {
+    "lemma": "bella",
+    "reason": "proper_noun"
   },
   {
     "lemma": "belle",
@@ -1424,8 +2028,24 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "benedict",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "benefits",
     "reason": "inflection_of:benefit"
+  },
+  {
+    "lemma": "bengal",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bengals",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "benghazi",
+    "reason": "proper_noun"
   },
   {
     "lemma": "benjamin",
@@ -1436,11 +2056,39 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "benny",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "benson",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bentley",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "benton",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "benz",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "berkeley",
     "reason": "proper_noun"
   },
   {
+    "lemma": "berkshire",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "berlin",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bermuda",
     "reason": "proper_noun"
   },
   {
@@ -1452,7 +2100,23 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "bernstein",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bert",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "beth",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bethesda",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bethlehem",
     "reason": "proper_noun"
   },
   {
@@ -1462,6 +2126,10 @@
   {
     "lemma": "bets",
     "reason": "inflection_of:bet"
+  },
+  {
+    "lemma": "betsy",
+    "reason": "proper_noun"
   },
   {
     "lemma": "betting",
@@ -1476,8 +2144,16 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "beyonce",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "bi",
     "reason": "inflection_of:bus"
+  },
+  {
+    "lemma": "bianca",
+    "reason": "proper_noun"
   },
   {
     "lemma": "bible",
@@ -1496,6 +2172,10 @@
     "reason": "inflection_of:bid"
   },
   {
+    "lemma": "bieber",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "bigger",
     "reason": "inflection_of:big"
   },
@@ -1508,8 +2188,16 @@
     "reason": "inflection_of:bike"
   },
   {
+    "lemma": "billie",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "bills",
     "reason": "inflection_of:bill"
+  },
+  {
+    "lemma": "bing",
+    "reason": "proper_noun"
   },
   {
     "lemma": "bio",
@@ -1528,6 +2216,10 @@
     "reason": "inflection_of:bishop"
   },
   {
+    "lemma": "bitcoins",
+    "reason": "inflection"
+  },
+  {
     "lemma": "bites",
     "reason": "inflection_of:bite"
   },
@@ -1538,6 +2230,14 @@
   {
     "lemma": "bits",
     "reason": "inflection_of:bit"
+  },
+  {
+    "lemma": "blackburn",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "blackpool",
+    "reason": "proper_noun"
   },
   {
     "lemma": "blacks",
@@ -1564,12 +2264,28 @@
     "reason": "inflection_of:blame"
   },
   {
+    "lemma": "blanc",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "blanche",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "blessings",
     "reason": "inflection_of:blessing"
   },
   {
     "lemma": "blew",
     "reason": "inflection_of:blow"
+  },
+  {
+    "lemma": "blinded",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "blocked",
+    "reason": "inflection"
   },
   {
     "lemma": "blocks",
@@ -1592,6 +2308,10 @@
     "reason": "inflection_of:blog"
   },
   {
+    "lemma": "bloomberg",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "blown",
     "reason": "inflection_of:blow"
   },
@@ -1602,6 +2322,10 @@
   {
     "lemma": "blu",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "bmi",
+    "reason": "abbreviation"
   },
   {
     "lemma": "bo",
@@ -1620,6 +2344,10 @@
     "reason": "inflection_of:boat"
   },
   {
+    "lemma": "bodied",
+    "reason": "inflection"
+  },
+  {
     "lemma": "bodies",
     "reason": "inflection_of:body"
   },
@@ -1628,8 +2356,32 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "boi",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "boiling",
     "reason": "inflection_of:boil"
+  },
+  {
+    "lemma": "boise",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bolivia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bollywood",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bolton",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bombay",
+    "reason": "proper_noun"
   },
   {
     "lemma": "bombers",
@@ -1640,12 +2392,28 @@
     "reason": "inflection_of:bomb"
   },
   {
+    "lemma": "bon",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "bonds",
     "reason": "inflection_of:bond"
   },
   {
     "lemma": "bones",
     "reason": "inflection_of:bone"
+  },
+  {
+    "lemma": "bong",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "bonnie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bono",
+    "reason": "proper_noun"
   },
   {
     "lemma": "bonuses",
@@ -1660,8 +2428,20 @@
     "reason": "inflection_of:book"
   },
   {
+    "lemma": "boomers",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "boone",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "boots",
     "reason": "inflection_of:boot"
+  },
+  {
+    "lemma": "bordeaux",
+    "reason": "proper_noun"
   },
   {
     "lemma": "borders",
@@ -1678,6 +2458,10 @@
   {
     "lemma": "borrowed",
     "reason": "inflection_of:borrow"
+  },
+  {
+    "lemma": "bosnia",
+    "reason": "proper_noun"
   },
   {
     "lemma": "bosses",
@@ -1708,6 +2492,18 @@
     "reason": "inflection_of:boundary"
   },
   {
+    "lemma": "bournemouth",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bowen",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bowie",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "bowling",
     "reason": "inflection_of:bowl"
   },
@@ -1725,6 +2521,10 @@
   },
   {
     "lemma": "boyd",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "boyle",
     "reason": "proper_noun"
   },
   {
@@ -1796,6 +2596,26 @@
     "reason": "inflection_of:breed"
   },
   {
+    "lemma": "brenda",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "brendan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "brennan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "brent",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "brethren",
+    "reason": "inflection"
+  },
+  {
     "lemma": "brett",
     "reason": "proper_noun"
   },
@@ -1814,6 +2634,14 @@
   {
     "lemma": "bridges",
     "reason": "inflection_of:bridge"
+  },
+  {
+    "lemma": "bridget",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "briggs",
+    "reason": "proper_noun"
   },
   {
     "lemma": "brighton",
@@ -1840,6 +2668,18 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "britney",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "brits",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "brittany",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "bro",
     "reason": "non_standard"
   },
@@ -1852,8 +2692,16 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "brock",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "broncos",
     "reason": "inflection_of:bronco"
+  },
+  {
+    "lemma": "bronx",
+    "reason": "proper_noun"
   },
   {
     "lemma": "brooke",
@@ -1880,6 +2728,10 @@
     "reason": "inflection_of:bring"
   },
   {
+    "lemma": "browne",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "browns",
     "reason": "inflection_of:brown"
   },
@@ -1888,7 +2740,19 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "bruh",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "bruin",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "bruno",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "brunswick",
     "reason": "proper_noun"
   },
   {
@@ -1904,12 +2768,36 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "bryce",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "bu",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "bubbles",
     "reason": "inflection_of:bubble"
   },
   {
+    "lemma": "buchanan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "buckingham",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "buckley",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "bucks",
     "reason": "inflection_of:buck"
+  },
+  {
+    "lemma": "budapest",
+    "reason": "proper_noun"
   },
   {
     "lemma": "buddha",
@@ -1918,6 +2806,14 @@
   {
     "lemma": "buddies",
     "reason": "inflection_of:buddy"
+  },
+  {
+    "lemma": "buenos",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "buffy",
+    "reason": "proper_noun"
   },
   {
     "lemma": "bugs",
@@ -1956,12 +2852,32 @@
     "reason": "inflection_of:bully"
   },
   {
+    "lemma": "burgers",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "burgess",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "burke",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "burlington",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "burma",
     "reason": "proper_noun"
   },
   {
     "lemma": "burned",
     "reason": "inflection_of:burn"
+  },
+  {
+    "lemma": "burnley",
+    "reason": "proper_noun"
   },
   {
     "lemma": "burns",
@@ -1970,6 +2886,10 @@
   {
     "lemma": "burnt",
     "reason": "inflection_of:burn"
+  },
+  {
+    "lemma": "burt",
+    "reason": "proper_noun"
   },
   {
     "lemma": "burton",
@@ -2004,6 +2924,14 @@
     "reason": "inflection_of:buy"
   },
   {
+    "lemma": "byrne",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "byron",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ca",
     "reason": "abbreviation"
   },
@@ -2012,7 +2940,15 @@
     "reason": "inflection_of:cable"
   },
   {
+    "lemma": "cadillac",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "caesar",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cain",
     "reason": "proper_noun"
   },
   {
@@ -2034,6 +2970,18 @@
   {
     "lemma": "calculations",
     "reason": "inflection_of:calculation"
+  },
+  {
+    "lemma": "calcutta",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "caldwell",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "caleb",
+    "reason": "proper_noun"
   },
   {
     "lemma": "calgary",
@@ -2064,7 +3012,15 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "cambodia",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "cambridge",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "camden",
     "reason": "proper_noun"
   },
   {
@@ -2077,6 +3033,10 @@
   },
   {
     "lemma": "cameron",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cameroon",
     "reason": "proper_noun"
   },
   {
@@ -2104,6 +3064,10 @@
     "reason": "inflection_of:canadian"
   },
   {
+    "lemma": "canberra",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "canceled",
     "reason": "inflection_of:cancel"
   },
@@ -2120,12 +3084,24 @@
     "reason": "inflection_of:candle"
   },
   {
+    "lemma": "cannes",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "cans",
     "reason": "inflection_of:can"
   },
   {
     "lemma": "cant",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "canterbury",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "canucks",
+    "reason": "proper_noun"
   },
   {
     "lemma": "capabilities",
@@ -2136,12 +3112,20 @@
     "reason": "inflection_of:cap"
   },
   {
+    "lemma": "capt",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "captured",
     "reason": "inflection_of:capture"
   },
   {
     "lemma": "capturing",
     "reason": "inflection_of:capture"
+  },
+  {
+    "lemma": "cara",
+    "reason": "proper_noun"
   },
   {
     "lemma": "cardiff",
@@ -2168,6 +3152,10 @@
     "reason": "inflection_of:care"
   },
   {
+    "lemma": "carey",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "caring",
     "reason": "inflection_of:care"
   },
@@ -2176,7 +3164,39 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "carla",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "carlisle",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "carlo",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "carlos",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "carlson",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "carlton",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "carly",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "carmen",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "carnegie",
     "reason": "proper_noun"
   },
   {
@@ -2185,6 +3205,14 @@
   },
   {
     "lemma": "caroline",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "carolyn",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "carr",
     "reason": "proper_noun"
   },
   {
@@ -2228,6 +3256,18 @@
     "reason": "inflection_of:carve"
   },
   {
+    "lemma": "cary",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cas",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "casa",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "cases",
     "reason": "inflection_of:case"
   },
@@ -2236,8 +3276,24 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "cass",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "cassidy",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "castro",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "casualties",
     "reason": "inflection_of:casualty"
+  },
+  {
+    "lemma": "catalan",
+    "reason": "proper_noun"
   },
   {
     "lemma": "catches",
@@ -2260,6 +3316,10 @@
     "reason": "inflection_of:catholic"
   },
   {
+    "lemma": "cathy",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "cats",
     "reason": "inflection_of:cat"
   },
@@ -2280,12 +3340,20 @@
     "reason": "inflection_of:cause"
   },
   {
+    "lemma": "cavs",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ce",
     "reason": "abbreviation"
   },
   {
     "lemma": "ceased",
     "reason": "inflection_of:cease"
+  },
+  {
+    "lemma": "cecil",
+    "reason": "proper_noun"
   },
   {
     "lemma": "celebrated",
@@ -2312,8 +3380,16 @@
     "reason": "inflection_of:cell"
   },
   {
+    "lemma": "celtics",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "centers",
     "reason": "inflection_of:center"
+  },
+  {
+    "lemma": "centred",
+    "reason": "inflection"
   },
   {
     "lemma": "centres",
@@ -2328,8 +3404,20 @@
     "reason": "inflection_of:century"
   },
   {
+    "lemma": "ceos",
+    "reason": "inflection"
+  },
+  {
     "lemma": "certificates",
     "reason": "inflection_of:certificate"
+  },
+  {
+    "lemma": "cgi",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "cha",
+    "reason": "not_a_word"
   },
   {
     "lemma": "chad",
@@ -2370,6 +3458,14 @@
   {
     "lemma": "chances",
     "reason": "inflection_of:chance"
+  },
+  {
+    "lemma": "chanel",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "chang",
+    "reason": "proper_noun"
   },
   {
     "lemma": "changed",
@@ -2452,6 +3548,10 @@
     "reason": "inflection_of:chat"
   },
   {
+    "lemma": "che",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "cheaper",
     "reason": "inflection_of:cheap"
   },
@@ -2496,6 +3596,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "chem",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "chemicals",
     "reason": "inflection_of:chemical"
   },
@@ -2504,8 +3608,48 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "cheney",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cheng",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "chennai",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cher",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cherokee",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cheryl",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cheshire",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "chester",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "chevrolet",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "chevy",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "chewing",
+    "reason": "inflection"
   },
   {
     "lemma": "chicago",
@@ -2528,12 +3672,24 @@
     "reason": "inflection_of:child"
   },
   {
+    "lemma": "ching",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "chips",
     "reason": "inflection_of:chip"
   },
   {
     "lemma": "chloe",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "cho",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "choi",
+    "reason": "not_a_word"
   },
   {
     "lemma": "choices",
@@ -2568,6 +3724,10 @@
     "reason": "inflection_of:christian"
   },
   {
+    "lemma": "christie",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "christina",
     "reason": "proper_noun"
   },
@@ -2580,12 +3740,28 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "chrysler",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "chu",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "chung",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "churches",
     "reason": "inflection_of:church"
   },
   {
     "lemma": "churchill",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "ci",
+    "reason": "abbreviation"
   },
   {
     "lemma": "cia",
@@ -2600,12 +3776,24 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "cinderella",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cindy",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "circles",
     "reason": "inflection_of:circle"
   },
   {
     "lemma": "circuits",
     "reason": "inflection_of:circuit"
+  },
+  {
+    "lemma": "cisco",
+    "reason": "proper_noun"
   },
   {
     "lemma": "cited",
@@ -2648,11 +3836,23 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "clare",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "clarence",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "clark",
     "reason": "proper_noun"
   },
   {
     "lemma": "clarke",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "clarkson",
     "reason": "proper_noun"
   },
   {
@@ -2668,6 +3868,18 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "claudia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "claus",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "clayton",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "cleaned",
     "reason": "inflection_of:clean"
   },
@@ -2678,6 +3890,10 @@
   {
     "lemma": "cleared",
     "reason": "inflection_of:clear"
+  },
+  {
+    "lemma": "clemson",
+    "reason": "proper_noun"
   },
   {
     "lemma": "cleveland",
@@ -2708,12 +3924,20 @@
     "reason": "inflection_of:clinic"
   },
   {
+    "lemma": "clint",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "clinton",
     "reason": "proper_noun"
   },
   {
     "lemma": "clips",
     "reason": "inflection_of:clip"
+  },
+  {
+    "lemma": "clive",
+    "reason": "proper_noun"
   },
   {
     "lemma": "closes",
@@ -2736,6 +3960,10 @@
     "reason": "inflection_of:clue"
   },
   {
+    "lemma": "clyde",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "co",
     "reason": "non_standard"
   },
@@ -2746,6 +3974,18 @@
   {
     "lemma": "coaching",
     "reason": "inflection_of:coach"
+  },
+  {
+    "lemma": "cobb",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "coca",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "coco",
+    "reason": "not_a_word"
   },
   {
     "lemma": "codes",
@@ -2766,6 +4006,10 @@
   {
     "lemma": "col",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "colbert",
+    "reason": "proper_noun"
   },
   {
     "lemma": "cole",
@@ -2856,8 +4100,24 @@
     "reason": "inflection_of:combine"
   },
   {
+    "lemma": "comcast",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "comes",
+    "reason": "inflection"
+  },
+  {
     "lemma": "comics",
     "reason": "inflection_of:comic"
+  },
+  {
+    "lemma": "comin",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "comm",
+    "reason": "abbreviation"
   },
   {
     "lemma": "commanded",
@@ -3012,12 +4272,20 @@
     "reason": "inflection_of:comprise"
   },
   {
+    "lemma": "compton",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "computers",
     "reason": "inflection_of:computer"
   },
   {
     "lemma": "computing",
     "reason": "inflection_of:compute"
+  },
+  {
+    "lemma": "conan",
+    "reason": "proper_noun"
   },
   {
     "lemma": "conceived",
@@ -3100,6 +4368,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "conn",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "connecticut",
     "reason": "proper_noun"
   },
@@ -3116,7 +4388,23 @@
     "reason": "inflection_of:connect"
   },
   {
+    "lemma": "connie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "connolly",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "connor",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "conor",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "conrad",
     "reason": "proper_noun"
   },
   {
@@ -3140,6 +4428,10 @@
     "reason": "inflection_of:consider"
   },
   {
+    "lemma": "consisted",
+    "reason": "inflection"
+  },
+  {
     "lemma": "consisting",
     "reason": "inflection_of:consist"
   },
@@ -3150,6 +4442,14 @@
   {
     "lemma": "consolidated",
     "reason": "inflection_of:consolidate"
+  },
+  {
+    "lemma": "constantinople",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "constrained",
+    "reason": "inflection"
   },
   {
     "lemma": "constraints",
@@ -3256,6 +4556,14 @@
     "reason": "inflection_of:convict"
   },
   {
+    "lemma": "conway",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cooke",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "cooked",
     "reason": "inflection_of:cook"
   },
@@ -3280,6 +4588,10 @@
     "reason": "inflection_of:coordinate"
   },
   {
+    "lemma": "copenhagen",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "copied",
     "reason": "inflection_of:copy"
   },
@@ -3290,6 +4602,18 @@
   {
     "lemma": "cops",
     "reason": "inflection_of:cop"
+  },
+  {
+    "lemma": "corey",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "corinthians",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cornell",
+    "reason": "proper_noun"
   },
   {
     "lemma": "corners",
@@ -3312,8 +4636,16 @@
     "reason": "inflection_of:correct"
   },
   {
+    "lemma": "correlated",
+    "reason": "inflection"
+  },
+  {
     "lemma": "corresponding",
     "reason": "inflection_of:correspond"
+  },
+  {
+    "lemma": "cory",
+    "reason": "proper_noun"
   },
   {
     "lemma": "cos",
@@ -3322,6 +4654,10 @@
   {
     "lemma": "costa",
     "reason": "inflection_of:co"
+  },
+  {
+    "lemma": "costing",
+    "reason": "inflection"
   },
   {
     "lemma": "costs",
@@ -3372,12 +4708,20 @@
     "reason": "inflection_of:couple"
   },
   {
+    "lemma": "courtney",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "courts",
     "reason": "inflection_of:court"
   },
   {
     "lemma": "cousins",
     "reason": "inflection_of:cousin"
+  },
+  {
+    "lemma": "coventry",
+    "reason": "proper_noun"
   },
   {
     "lemma": "covered",
@@ -3398,6 +4742,10 @@
   {
     "lemma": "cox",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "cpu",
+    "reason": "abbreviation"
   },
   {
     "lemma": "cracked",
@@ -3460,6 +4808,10 @@
     "reason": "inflection_of:credit"
   },
   {
+    "lemma": "creeps",
+    "reason": "inflection"
+  },
+  {
     "lemma": "crews",
     "reason": "inflection_of:crew"
   },
@@ -3472,12 +4824,20 @@
     "reason": "inflection_of:cry"
   },
   {
+    "lemma": "crimea",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "crimes",
     "reason": "inflection_of:crime"
   },
   {
     "lemma": "criminals",
     "reason": "inflection_of:criminal"
+  },
+  {
+    "lemma": "cristina",
+    "reason": "proper_noun"
   },
   {
     "lemma": "criteria",
@@ -3492,8 +4852,20 @@
     "reason": "inflection_of:critic"
   },
   {
+    "lemma": "croatia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cromwell",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "crops",
     "reason": "inflection_of:crop"
+  },
+  {
+    "lemma": "crosby",
+    "reason": "proper_noun"
   },
   {
     "lemma": "crossed",
@@ -3506,6 +4878,10 @@
   {
     "lemma": "crowds",
     "reason": "inflection_of:crowd"
+  },
+  {
+    "lemma": "crowley",
+    "reason": "proper_noun"
   },
   {
     "lemma": "crushed",
@@ -3528,6 +4904,10 @@
     "reason": "inflection_of:crystal"
   },
   {
+    "lemma": "cu",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "cuba",
     "reason": "proper_noun"
   },
@@ -3542,6 +4922,18 @@
   {
     "lemma": "cum",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "cumberland",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cummings",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cunningham",
+    "reason": "proper_noun"
   },
   {
     "lemma": "cups",
@@ -3564,12 +4956,20 @@
     "reason": "inflection_of:custom"
   },
   {
+    "lemma": "cutler",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "cuts",
     "reason": "inflection_of:cut"
   },
   {
     "lemma": "cuz",
     "reason": "abbreviation"
+  },
+  {
+    "lemma": "cy",
+    "reason": "not_a_word"
   },
   {
     "lemma": "cycles",
@@ -3580,7 +4980,23 @@
     "reason": "inflection_of:cycle"
   },
   {
+    "lemma": "cynthia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cyprus",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "cyril",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "cyrus",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "czechoslovakia",
     "reason": "proper_noun"
   },
   {
@@ -3596,8 +5012,32 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "dalton",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "daly",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "damaged",
     "reason": "inflection_of:damage"
+  },
+  {
+    "lemma": "damascus",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "damian",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "damien",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "damon",
+    "reason": "proper_noun"
   },
   {
     "lemma": "dan",
@@ -3620,15 +5060,43 @@
     "reason": "inflection_of:dance"
   },
   {
+    "lemma": "dane",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dang",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "dangers",
     "reason": "inflection_of:danger"
+  },
+  {
+    "lemma": "dani",
+    "reason": "proper_noun"
   },
   {
     "lemma": "daniel",
     "reason": "proper_noun"
   },
   {
+    "lemma": "danielle",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "daniels",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "danny",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dante",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "darius",
     "reason": "proper_noun"
   },
   {
@@ -3642,6 +5110,18 @@
   {
     "lemma": "darwin",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "daryl",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "das",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "dat",
+    "reason": "not_a_word"
   },
   {
     "lemma": "dates",
@@ -3684,8 +5164,20 @@
     "reason": "inflection_of:day"
   },
   {
+    "lemma": "dayton",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "daytona",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "de",
     "reason": "foreign_word"
+  },
+  {
+    "lemma": "dea",
+    "reason": "abbreviation"
   },
   {
     "lemma": "dealers",
@@ -3706,6 +5198,14 @@
   {
     "lemma": "debates",
     "reason": "inflection_of:debate"
+  },
+  {
+    "lemma": "debbie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "deborah",
+    "reason": "proper_noun"
   },
   {
     "lemma": "debts",
@@ -3876,6 +5376,14 @@
     "reason": "inflection_of:deliver"
   },
   {
+    "lemma": "dell",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "della",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "dem",
     "reason": "non_standard"
   },
@@ -3886,6 +5394,10 @@
   {
     "lemma": "demands",
     "reason": "inflection_of:demand"
+  },
+  {
+    "lemma": "demi",
+    "reason": "not_a_word"
   },
   {
     "lemma": "democrats",
@@ -3920,11 +5432,23 @@
     "reason": "inflection_of:deny"
   },
   {
+    "lemma": "denis",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "denise",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "denmark",
     "reason": "proper_noun"
   },
   {
     "lemma": "dennis",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "denny",
     "reason": "proper_noun"
   },
   {
@@ -3968,6 +5492,10 @@
     "reason": "inflection_of:depress"
   },
   {
+    "lemma": "dept",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "der",
     "reason": "foreign_word"
   },
@@ -3980,8 +5508,16 @@
     "reason": "inflection_of:derive"
   },
   {
+    "lemma": "derrick",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "des",
     "reason": "abbreviation"
+  },
+  {
+    "lemma": "descended",
+    "reason": "inflection"
   },
   {
     "lemma": "described",
@@ -4024,6 +5560,10 @@
     "reason": "inflection_of:desire"
   },
   {
+    "lemma": "desmond",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "destinations",
     "reason": "inflection_of:destination"
   },
@@ -4034,6 +5574,10 @@
   {
     "lemma": "destroying",
     "reason": "inflection_of:destroy"
+  },
+  {
+    "lemma": "det",
+    "reason": "abbreviation"
   },
   {
     "lemma": "details",
@@ -4048,6 +5592,10 @@
     "reason": "inflection_of:detect"
   },
   {
+    "lemma": "detectors",
+    "reason": "inflection"
+  },
+  {
     "lemma": "determines",
     "reason": "inflection_of:determine"
   },
@@ -4057,6 +5605,10 @@
   },
   {
     "lemma": "detroit",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "deutsche",
     "reason": "proper_noun"
   },
   {
@@ -4100,6 +5652,18 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "dewey",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dexter",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dhabi",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "di",
     "reason": "foreign_word"
   },
@@ -4118,6 +5682,22 @@
   {
     "lemma": "diane",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "diaz",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dickens",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dickinson",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dicks",
+    "reason": "inflection"
   },
   {
     "lemma": "did",
@@ -4152,8 +5732,16 @@
     "reason": "inflection_of:dig"
   },
   {
+    "lemma": "dillon",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "dining",
     "reason": "inflection_of:dine"
+  },
+  {
+    "lemma": "dir",
+    "reason": "abbreviation"
   },
   {
     "lemma": "directing",
@@ -4232,6 +5820,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "disneyland",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "disorders",
     "reason": "inflection_of:disorder"
   },
@@ -4268,6 +5860,10 @@
     "reason": "inflection_of:distribute"
   },
   {
+    "lemma": "distributors",
+    "reason": "inflection"
+  },
+  {
     "lemma": "districts",
     "reason": "inflection_of:district"
   },
@@ -4284,6 +5880,14 @@
     "reason": "inflection_of:division"
   },
   {
+    "lemma": "dixie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dixon",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "diy",
     "reason": "non_standard"
   },
@@ -4296,6 +5900,10 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "docs",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "doctors",
     "reason": "inflection_of:doctor"
   },
@@ -4306,6 +5914,10 @@
   {
     "lemma": "documents",
     "reason": "inflection_of:document"
+  },
+  {
+    "lemma": "dodd",
+    "reason": "proper_noun"
   },
   {
     "lemma": "dodgers",
@@ -4348,6 +5960,10 @@
     "reason": "inflection_of:dominate"
   },
   {
+    "lemma": "dominic",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "donald",
     "reason": "proper_noun"
   },
@@ -4360,6 +5976,10 @@
     "reason": "inflection_of:donation"
   },
   {
+    "lemma": "doncaster",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "dong",
     "reason": "proper_noun"
   },
@@ -4368,12 +5988,24 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "donnie",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "donors",
     "reason": "inflection_of:donor"
   },
   {
+    "lemma": "donovan",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "dont",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "doo",
+    "reason": "not_a_word"
   },
   {
     "lemma": "doomed",
@@ -4384,8 +6016,28 @@
     "reason": "inflection_of:door"
   },
   {
+    "lemma": "dora",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "doris",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "dorothy",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "dorset",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dortmund",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dos",
+    "reason": "abbreviation"
   },
   {
     "lemma": "doses",
@@ -4416,12 +6068,24 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "dover",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dow",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "downloaded",
     "reason": "inflection_of:download"
   },
   {
     "lemma": "downs",
     "reason": "inflection_of:down"
+  },
+  {
+    "lemma": "doyle",
+    "reason": "proper_noun"
   },
   {
     "lemma": "dozens",
@@ -4454,6 +6118,10 @@
   {
     "lemma": "draws",
     "reason": "inflection_of:draw"
+  },
+  {
+    "lemma": "dre",
+    "reason": "proper_noun"
   },
   {
     "lemma": "dreamed",
@@ -4512,6 +6180,10 @@
     "reason": "inflection_of:drop"
   },
   {
+    "lemma": "drove",
+    "reason": "inflection"
+  },
+  {
     "lemma": "drugs",
     "reason": "inflection_of:drug"
   },
@@ -4544,15 +6216,43 @@
     "reason": "inflection_of:dude"
   },
   {
+    "lemma": "dudley",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "duffy",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "dug",
     "reason": "inflection_of:dig"
+  },
+  {
+    "lemma": "duh",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "dumbass",
+    "reason": "not_a_word"
   },
   {
     "lemma": "dumped",
     "reason": "inflection_of:dump"
   },
   {
+    "lemma": "dumping",
+    "reason": "inflection"
+  },
+  {
     "lemma": "duncan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dundee",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dunn",
     "reason": "proper_noun"
   },
   {
@@ -4560,12 +6260,24 @@
     "reason": "abbreviation"
   },
   {
+    "lemma": "durant",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "durham",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "dustin",
     "reason": "proper_noun"
   },
   {
     "lemma": "duties",
     "reason": "inflection_of:duty"
+  },
+  {
+    "lemma": "dwight",
+    "reason": "proper_noun"
   },
   {
     "lemma": "dylan",
@@ -4616,6 +6328,10 @@
     "reason": "inflection_of:eat"
   },
   {
+    "lemma": "eaton",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "eats",
     "reason": "inflection_of:eat"
   },
@@ -4624,12 +6340,28 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "ebola",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ec",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "economies",
     "reason": "inflection_of:economy"
   },
   {
     "lemma": "economists",
     "reason": "inflection_of:economist"
+  },
+  {
+    "lemma": "ecuador",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ed",
+    "reason": "not_a_word"
   },
   {
     "lemma": "eddie",
@@ -4648,8 +6380,16 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "edison",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "edited",
     "reason": "inflection_of:edit"
+  },
+  {
+    "lemma": "edith",
+    "reason": "proper_noun"
   },
   {
     "lemma": "editing",
@@ -4664,7 +6404,19 @@
     "reason": "inflection_of:editor"
   },
   {
+    "lemma": "edmonton",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "edmund",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "eds",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "edt",
     "reason": "abbreviation"
   },
   {
@@ -4680,12 +6432,28 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "edwin",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ee",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "eff",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "effects",
     "reason": "inflection_of:effect"
   },
   {
     "lemma": "efforts",
     "reason": "inflection_of:effort"
+  },
+  {
+    "lemma": "eg",
+    "reason": "abbreviation"
   },
   {
     "lemma": "eggs",
@@ -4696,12 +6464,28 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "egyptians",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "eh",
     "reason": "non_standard"
   },
   {
+    "lemma": "einstein",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "eisenhower",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "el",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "elaine",
+    "reason": "proper_noun"
   },
   {
     "lemma": "elders",
@@ -4720,6 +6504,10 @@
     "reason": "inflection_of:election"
   },
   {
+    "lemma": "electro",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "elements",
     "reason": "inflection_of:element"
   },
@@ -4736,6 +6524,18 @@
     "reason": "inflection_of:elevate"
   },
   {
+    "lemma": "eli",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "elias",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "elijah",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "eliminated",
     "reason": "inflection_of:eliminate"
   },
@@ -4744,11 +6544,35 @@
     "reason": "inflection_of:eliminate"
   },
   {
+    "lemma": "eliot",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "eliza",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "elizabeth",
     "reason": "proper_noun"
   },
   {
+    "lemma": "ella",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "elle",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ellen",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ellie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "elliot",
     "reason": "proper_noun"
   },
   {
@@ -4757,6 +6581,18 @@
   },
   {
     "lemma": "ellis",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ellison",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "elsa",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "elton",
     "reason": "proper_noun"
   },
   {
@@ -4784,7 +6620,15 @@
     "reason": "inflection_of:emerge"
   },
   {
+    "lemma": "emerson",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "emily",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "emirates",
     "reason": "proper_noun"
   },
   {
@@ -4796,12 +6640,24 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "emmanuel",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "emmy",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "emotions",
     "reason": "inflection_of:emotion"
   },
   {
     "lemma": "empire",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "empires",
+    "reason": "inflection"
   },
   {
     "lemma": "employed",
@@ -4814,6 +6670,10 @@
   {
     "lemma": "employers",
     "reason": "inflection_of:employer"
+  },
+  {
+    "lemma": "ems",
+    "reason": "abbreviation"
   },
   {
     "lemma": "en",
@@ -4872,6 +6732,10 @@
     "reason": "inflection_of:enforce"
   },
   {
+    "lemma": "eng",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "engaging",
     "reason": "inflection_of:engage"
   },
@@ -4898,6 +6762,10 @@
   {
     "lemma": "enjoys",
     "reason": "inflection_of:enjoy"
+  },
+  {
+    "lemma": "enrique",
+    "reason": "proper_noun"
   },
   {
     "lemma": "enrolled",
@@ -4952,8 +6820,20 @@
     "reason": "abbreviation"
   },
   {
+    "lemma": "episcopal",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "episodes",
     "reason": "inflection_of:episode"
+  },
+  {
+    "lemma": "eps",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "epstein",
+    "reason": "proper_noun"
   },
   {
     "lemma": "equations",
@@ -4976,6 +6856,34 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "erica",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "erie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "erik",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "erin",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ernest",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ernie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ernst",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "errors",
     "reason": "inflection_of:error"
   },
@@ -4986,6 +6894,10 @@
   {
     "lemma": "escaped",
     "reason": "inflection_of:escape"
+  },
+  {
+    "lemma": "esp",
+    "reason": "abbreviation"
   },
   {
     "lemma": "espn",
@@ -5020,6 +6932,10 @@
     "reason": "inflection_of:estate"
   },
   {
+    "lemma": "esther",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "estimated",
     "reason": "inflection_of:estimate"
   },
@@ -5028,11 +6944,39 @@
     "reason": "inflection_of:estimate"
   },
   {
+    "lemma": "estonia",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "et",
     "reason": "foreign_word"
   },
   {
+    "lemma": "eta",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "ethan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ethiopia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "etsy",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "eugene",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "eur",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "europa",
     "reason": "proper_noun"
   },
   {
@@ -5046,6 +6990,10 @@
   {
     "lemma": "euros",
     "reason": "inflection_of:euro"
+  },
+  {
+    "lemma": "ev",
+    "reason": "abbreviation"
   },
   {
     "lemma": "eva",
@@ -5068,8 +7016,28 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "evelyn",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "events",
     "reason": "inflection_of:event"
+  },
+  {
+    "lemma": "everest",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "everett",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "everton",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "everytime",
+    "reason": "not_a_word"
   },
   {
     "lemma": "evolved",
@@ -5078,6 +7046,10 @@
   {
     "lemma": "evolving",
     "reason": "inflection_of:evolve"
+  },
+  {
+    "lemma": "ew",
+    "reason": "not_a_word"
   },
   {
     "lemma": "examined",
@@ -5098,6 +7070,10 @@
   {
     "lemma": "exceeded",
     "reason": "inflection_of:exceed"
+  },
+  {
+    "lemma": "excellency",
+    "reason": "proper_noun"
   },
   {
     "lemma": "exceptions",
@@ -5132,6 +7108,10 @@
     "reason": "inflection_of:exercise"
   },
   {
+    "lemma": "exeter",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "exhausted",
     "reason": "inflection_of:exhaust"
   },
@@ -5150,6 +7130,10 @@
   {
     "lemma": "exists",
     "reason": "inflection_of:exist"
+  },
+  {
+    "lemma": "exp",
+    "reason": "abbreviation"
   },
   {
     "lemma": "expanded",
@@ -5268,8 +7252,16 @@
     "reason": "inflection_of:eye"
   },
   {
+    "lemma": "ezra",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "fa",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "faa",
+    "reason": "abbreviation"
   },
   {
     "lemma": "facebook",
@@ -5286,6 +7278,10 @@
   {
     "lemma": "factions",
     "reason": "inflection_of:faction"
+  },
+  {
+    "lemma": "facto",
+    "reason": "not_a_word"
   },
   {
     "lemma": "factories",
@@ -5312,8 +7308,16 @@
     "reason": "inflection_of:failure"
   },
   {
+    "lemma": "fairfax",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "falling",
     "reason": "inflection_of:fall"
+  },
+  {
+    "lemma": "fallon",
+    "reason": "proper_noun"
   },
   {
     "lemma": "falls",
@@ -5328,6 +7332,10 @@
     "reason": "inflection_of:fan"
   },
   {
+    "lemma": "fargo",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "farmers",
     "reason": "inflection_of:farmer"
   },
@@ -5340,8 +7348,16 @@
     "reason": "inflection_of:farm"
   },
   {
+    "lemma": "farrell",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "farther",
     "reason": "inflection_of:far"
+  },
+  {
+    "lemma": "fascists",
+    "reason": "inflection"
   },
   {
     "lemma": "fashioned",
@@ -5408,6 +7424,10 @@
     "reason": "inflection_of:feed"
   },
   {
+    "lemma": "fedex",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "feeds",
     "reason": "inflection_of:feed"
   },
@@ -5424,8 +7444,16 @@
     "reason": "inflection_of:foot"
   },
   {
+    "lemma": "felipe",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "felix",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "fellas",
+    "reason": "inflection"
   },
   {
     "lemma": "fellows",
@@ -5436,11 +7464,35 @@
     "reason": "inflection_of:female"
   },
   {
+    "lemma": "fender",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "feng",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ferdinand",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ferguson",
     "reason": "proper_noun"
   },
   {
+    "lemma": "fernandez",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "fernando",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ferrari",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ferris",
     "reason": "proper_noun"
   },
   {
@@ -5484,6 +7536,10 @@
     "reason": "inflection_of:figure"
   },
   {
+    "lemma": "fiji",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "filed",
     "reason": "inflection_of:file"
   },
@@ -5502,6 +7558,10 @@
   {
     "lemma": "filming",
     "reason": "inflection_of:film"
+  },
+  {
+    "lemma": "filmmakers",
+    "reason": "inflection"
   },
   {
     "lemma": "films",
@@ -5556,12 +7616,20 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "fiona",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "firearms",
     "reason": "inflection_of:firearm"
   },
   {
     "lemma": "fired",
     "reason": "inflection_of:fire"
+  },
+  {
+    "lemma": "firefox",
+    "reason": "proper_noun"
   },
   {
     "lemma": "fires",
@@ -5572,6 +7640,10 @@
     "reason": "inflection_of:firm"
   },
   {
+    "lemma": "fischer",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "fishing",
     "reason": "inflection_of:fish"
   },
@@ -5580,12 +7652,20 @@
     "reason": "inflection_of:fit"
   },
   {
+    "lemma": "fitzgerald",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "fixing",
     "reason": "inflection_of:fix"
   },
   {
     "lemma": "fixtures",
     "reason": "inflection_of:fixture"
+  },
+  {
+    "lemma": "fla",
+    "reason": "abbreviation"
   },
   {
     "lemma": "flags",
@@ -5606,6 +7686,10 @@
   {
     "lemma": "fled",
     "reason": "inflection_of:flee"
+  },
+  {
+    "lemma": "fleming",
+    "reason": "proper_noun"
   },
   {
     "lemma": "fletcher",
@@ -5668,8 +7752,16 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "flushing",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "flynn",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "fo",
+    "reason": "not_a_word"
   },
   {
     "lemma": "focused",
@@ -5686,6 +7778,10 @@
   {
     "lemma": "folded",
     "reason": "inflection_of:fold"
+  },
+  {
+    "lemma": "foley",
+    "reason": "proper_noun"
   },
   {
     "lemma": "followed",
@@ -5756,6 +7852,10 @@
     "reason": "inflection_of:form"
   },
   {
+    "lemma": "forrest",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "forums",
     "reason": "inflection_of:forum"
   },
@@ -5780,6 +7880,10 @@
     "reason": "inflection_of:found"
   },
   {
+    "lemma": "fowler",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "fragments",
     "reason": "inflection_of:fragment"
   },
@@ -5788,7 +7892,15 @@
     "reason": "inflection_of:frame"
   },
   {
+    "lemma": "fran",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "france",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "frances",
     "reason": "proper_noun"
   },
   {
@@ -5800,12 +7912,36 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "franco",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "francois",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "frankfurt",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "frankie",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "franklin",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "franz",
     "reason": "proper_noun"
   },
   {
     "lemma": "fraser",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "freakin",
+    "reason": "not_a_word"
   },
   {
     "lemma": "freaking",
@@ -5817,6 +7953,10 @@
   },
   {
     "lemma": "freddie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "freddy",
     "reason": "proper_noun"
   },
   {
@@ -5832,8 +7972,28 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "fresno",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "freud",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "fri",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "fridays",
+    "reason": "inflection"
+  },
+  {
     "lemma": "fried",
     "reason": "inflection_of:fry"
+  },
+  {
+    "lemma": "friedman",
+    "reason": "proper_noun"
   },
   {
     "lemma": "friends",
@@ -5842,6 +8002,10 @@
   {
     "lemma": "fries",
     "reason": "inflection_of:fry"
+  },
+  {
+    "lemma": "fritz",
+    "reason": "proper_noun"
   },
   {
     "lemma": "fruits",
@@ -5864,6 +8028,14 @@
     "reason": "inflection_of:fulfill"
   },
   {
+    "lemma": "fulham",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "fulton",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "functioning",
     "reason": "inflection_of:function"
   },
@@ -5880,11 +8052,19 @@
     "reason": "inflection_of:future"
   },
   {
+    "lemma": "fyi",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "ga",
     "reason": "non_standard"
   },
   {
     "lemma": "gabriel",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "gail",
     "reason": "proper_noun"
   },
   {
@@ -5900,12 +8080,24 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "gallagher",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "galleries",
     "reason": "inflection_of:gallery"
   },
   {
+    "lemma": "galloway",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "gambling",
     "reason": "inflection_of:gamble"
+  },
+  {
+    "lemma": "gamers",
+    "reason": "inflection"
   },
   {
     "lemma": "gaming",
@@ -5913,6 +8105,10 @@
   },
   {
     "lemma": "gandhi",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "gao",
     "reason": "proper_noun"
   },
   {
@@ -5932,6 +8128,18 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "gareth",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "garfield",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "garrett",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "gary",
     "reason": "proper_noun"
   },
@@ -5948,12 +8156,20 @@
     "reason": "inflection_of:give"
   },
   {
+    "lemma": "gavin",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "gaza",
     "reason": "proper_noun"
   },
   {
     "lemma": "ge",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "gemini",
+    "reason": "proper_noun"
   },
   {
     "lemma": "gen",
@@ -5984,7 +8200,27 @@
     "reason": "inflection_of:gentleman"
   },
   {
+    "lemma": "geo",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "geoff",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "geoffrey",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "george",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "georges",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "georgetown",
     "reason": "proper_noun"
   },
   {
@@ -5996,6 +8232,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "gerard",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "germans",
     "reason": "inflection_of:german"
   },
@@ -6004,12 +8244,24 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "gerry",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "gets",
     "reason": "inflection_of:get"
   },
   {
+    "lemma": "gettin",
+    "reason": "inflection"
+  },
+  {
     "lemma": "getting",
     "reason": "inflection_of:get"
+  },
+  {
+    "lemma": "getty",
+    "reason": "proper_noun"
   },
   {
     "lemma": "ghana",
@@ -6020,8 +8272,16 @@
     "reason": "inflection_of:ghost"
   },
   {
+    "lemma": "gi",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "giants",
     "reason": "inflection_of:giant"
+  },
+  {
+    "lemma": "gibbs",
+    "reason": "proper_noun"
   },
   {
     "lemma": "gibson",
@@ -6032,11 +8292,31 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "gifs",
+    "reason": "inflection"
+  },
+  {
     "lemma": "gifts",
     "reason": "inflection_of:gift"
   },
   {
+    "lemma": "gil",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "gilbert",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "giles",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "gina",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "giovanni",
     "reason": "proper_noun"
   },
   {
@@ -6060,8 +8340,20 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "gloria",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "gloucester",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "gloves",
     "reason": "inflection_of:glove"
+  },
+  {
+    "lemma": "goa",
+    "reason": "proper_noun"
   },
   {
     "lemma": "goals",
@@ -6076,6 +8368,10 @@
     "reason": "inflection_of:god"
   },
   {
+    "lemma": "godzilla",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "goes",
     "reason": "inflection_of:go"
   },
@@ -6084,12 +8380,36 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "goldberg",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "goldman",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "gomez",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "gone",
     "reason": "inflection_of:go"
   },
   {
     "lemma": "gonna",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "gonzalez",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "goodman",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "goodwin",
+    "reason": "proper_noun"
   },
   {
     "lemma": "gop",
@@ -6104,12 +8424,20 @@
     "reason": "inflection_of:get"
   },
   {
+    "lemma": "gotham",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "gotta",
     "reason": "non_standard"
   },
   {
     "lemma": "gotten",
     "reason": "inflection_of:get"
+  },
+  {
+    "lemma": "gould",
+    "reason": "proper_noun"
   },
   {
     "lemma": "gov",
@@ -6132,12 +8460,20 @@
     "reason": "inflection_of:governor"
   },
   {
+    "lemma": "gpa",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "grabbed",
     "reason": "inflection_of:grab"
   },
   {
     "lemma": "grabbing",
     "reason": "inflection_of:grab"
+  },
+  {
+    "lemma": "graded",
+    "reason": "inflection"
   },
   {
     "lemma": "grades",
@@ -6157,6 +8493,10 @@
   },
   {
     "lemma": "graham",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "grammy",
     "reason": "proper_noun"
   },
   {
@@ -6192,6 +8532,10 @@
     "reason": "inflection_of:grave"
   },
   {
+    "lemma": "grayson",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "greater",
     "reason": "inflection_of:great"
   },
@@ -6204,7 +8548,15 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "greeks",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "greene",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "greenland",
     "reason": "proper_noun"
   },
   {
@@ -6212,7 +8564,19 @@
     "reason": "inflection_of:green"
   },
   {
+    "lemma": "greenwich",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "greenwood",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "greg",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "gregg",
     "reason": "proper_noun"
   },
   {
@@ -6222,6 +8586,10 @@
   {
     "lemma": "grew",
     "reason": "inflection_of:grow"
+  },
+  {
+    "lemma": "griffith",
+    "reason": "proper_noun"
   },
   {
     "lemma": "groups",
@@ -6240,6 +8608,14 @@
     "reason": "inflection_of:grow"
   },
   {
+    "lemma": "gta",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "gu",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "guaranteed",
     "reason": "inflection_of:guarantee"
   },
@@ -6254,6 +8630,10 @@
   {
     "lemma": "guards",
     "reason": "inflection_of:guard"
+  },
+  {
+    "lemma": "guatemala",
+    "reason": "proper_noun"
   },
   {
     "lemma": "guessing",
@@ -6276,8 +8656,20 @@
     "reason": "inflection_of:guide"
   },
   {
+    "lemma": "guinness",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "gujarat",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "guns",
     "reason": "inflection_of:gun"
+  },
+  {
+    "lemma": "gus",
+    "reason": "proper_noun"
   },
   {
     "lemma": "guts",
@@ -6286,6 +8678,10 @@
   {
     "lemma": "guys",
     "reason": "inflection_of:guy"
+  },
+  {
+    "lemma": "gwen",
+    "reason": "proper_noun"
   },
   {
     "lemma": "ha",
@@ -6308,6 +8704,14 @@
     "reason": "inflection_of:have"
   },
   {
+    "lemma": "hague",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hah",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "haha",
     "reason": "non_standard"
   },
@@ -6316,12 +8720,44 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "hai",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "haired",
+    "reason": "inflection"
+  },
+  {
     "lemma": "hairs",
     "reason": "inflection_of:hair"
   },
   {
+    "lemma": "haiti",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hal",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "haley",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "halifax",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "halls",
     "reason": "inflection_of:hall"
+  },
+  {
+    "lemma": "hamas",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hamburg",
+    "reason": "proper_noun"
   },
   {
     "lemma": "hamilton",
@@ -6336,7 +8772,15 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "hampton",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "han",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hancock",
     "reason": "proper_noun"
   },
   {
@@ -6360,11 +8804,39 @@
     "reason": "inflection_of:hand"
   },
   {
+    "lemma": "hank",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hanna",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "hannah",
     "reason": "proper_noun"
   },
   {
+    "lemma": "hannibal",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hanoi",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hanover",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "hans",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hansen",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hanson",
     "reason": "proper_noun"
   },
   {
@@ -6388,11 +8860,31 @@
     "reason": "inflection_of:hard"
   },
   {
+    "lemma": "harding",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "harlem",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "harley",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "harold",
     "reason": "proper_noun"
   },
   {
     "lemma": "harper",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "harriet",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "harrington",
     "reason": "proper_noun"
   },
   {
@@ -6404,8 +8896,20 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "hartford",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hartley",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "harvard",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "harvesting",
+    "reason": "inflection"
   },
   {
     "lemma": "harvey",
@@ -6416,12 +8920,28 @@
     "reason": "inflection_of:have"
   },
   {
+    "lemma": "hassan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hastings",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "hated",
     "reason": "inflection_of:hate"
   },
   {
+    "lemma": "haters",
+    "reason": "inflection"
+  },
+  {
     "lemma": "hates",
     "reason": "inflection_of:hate"
+  },
+  {
+    "lemma": "hath",
+    "reason": "inflection"
   },
   {
     "lemma": "hating",
@@ -6436,6 +8956,10 @@
     "reason": "inflection_of:haunt"
   },
   {
+    "lemma": "havana",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "having",
     "reason": "inflection_of:have"
   },
@@ -6444,11 +8968,27 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "hawkins",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "hawks",
     "reason": "inflection_of:hawk"
   },
   {
+    "lemma": "hayden",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "hayes",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hayley",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hbo",
     "reason": "proper_noun"
   },
   {
@@ -6492,12 +9032,28 @@
     "reason": "inflection_of:heat"
   },
   {
+    "lemma": "heathrow",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "heavier",
     "reason": "inflection_of:heavy"
   },
   {
+    "lemma": "hee",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "heels",
     "reason": "inflection_of:heel"
+  },
+  {
+    "lemma": "heh",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "heidi",
+    "reason": "proper_noun"
   },
   {
     "lemma": "heights",
@@ -6509,6 +9065,10 @@
   },
   {
     "lemma": "helen",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "helena",
     "reason": "proper_noun"
   },
   {
@@ -6524,11 +9084,27 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "henri",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "henry",
     "reason": "proper_noun"
   },
   {
     "lemma": "herbert",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hercules",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "herman",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hernandez",
     "reason": "proper_noun"
   },
   {
@@ -6538,6 +9114,10 @@
   {
     "lemma": "hes",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "hewitt",
+    "reason": "proper_noun"
   },
   {
     "lemma": "hid",
@@ -6550,6 +9130,10 @@
   {
     "lemma": "hiding",
     "reason": "inflection_of:hide"
+  },
+  {
+    "lemma": "higgins",
+    "reason": "proper_noun"
   },
   {
     "lemma": "higher",
@@ -6568,12 +9152,20 @@
     "reason": "inflection_of:highlight"
   },
   {
+    "lemma": "highschool",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "highways",
     "reason": "inflection_of:highway"
   },
   {
     "lemma": "hiking",
     "reason": "inflection_of:hike"
+  },
+  {
+    "lemma": "hilary",
+    "reason": "proper_noun"
   },
   {
     "lemma": "hillary",
@@ -6584,8 +9176,16 @@
     "reason": "inflection_of:hill"
   },
   {
+    "lemma": "hilton",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "hindi",
     "reason": "inflection_of:hindus"
+  },
+  {
+    "lemma": "hindus",
+    "reason": "inflection"
   },
   {
     "lemma": "hints",
@@ -6628,6 +9228,34 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "hobart",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hobbit",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hoc",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "hodges",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hoffman",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hogan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "holden",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "holders",
     "reason": "inflection_of:holder"
   },
@@ -6660,6 +9288,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "holt",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "homes",
     "reason": "inflection_of:home"
   },
@@ -6672,7 +9304,15 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "honduras",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "hong",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "honolulu",
     "reason": "proper_noun"
   },
   {
@@ -6684,8 +9324,16 @@
     "reason": "inflection_of:honor"
   },
   {
+    "lemma": "hoo",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "hooked",
     "reason": "inflection_of:hook"
+  },
+  {
+    "lemma": "hoover",
+    "reason": "proper_noun"
   },
   {
     "lemma": "hoped",
@@ -6701,6 +9349,10 @@
   },
   {
     "lemma": "hopkins",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "horace",
     "reason": "proper_noun"
   },
   {
@@ -6760,6 +9412,22 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "howe",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "howell",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hu",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "huang",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "hudson",
     "reason": "proper_noun"
   },
@@ -6784,6 +9452,10 @@
     "reason": "inflection_of:human"
   },
   {
+    "lemma": "humphrey",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "hundreds",
     "reason": "inflection_of:hundred"
   },
@@ -6800,6 +9472,10 @@
     "reason": "inflection_of:hunter"
   },
   {
+    "lemma": "huntington",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "hurting",
     "reason": "inflection_of:hurt"
   },
@@ -6812,12 +9488,64 @@
     "reason": "inflection_of:husband"
   },
   {
+    "lemma": "hussein",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hutchinson",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hyde",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hyderabad",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hydro",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "hyun",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "hyundai",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ia",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "ian",
     "reason": "proper_noun"
   },
   {
+    "lemma": "ib",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "ibm",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "ibn",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "ibrahim",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ic",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "icc",
+    "reason": "abbreviation"
   },
   {
     "lemma": "iceland",
@@ -6826,6 +9554,10 @@
   {
     "lemma": "id",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "ida",
+    "reason": "proper_noun"
   },
   {
     "lemma": "idaho",
@@ -6864,6 +9596,14 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "ieee",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "ig",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "ignored",
     "reason": "inflection_of:ignore"
   },
@@ -6872,12 +9612,24 @@
     "reason": "inflection_of:ignore"
   },
   {
+    "lemma": "igor",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ii",
     "reason": "abbreviation"
   },
   {
     "lemma": "iii",
     "reason": "abbreviation"
+  },
+  {
+    "lemma": "ike",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ikea",
+    "reason": "proper_noun"
   },
   {
     "lemma": "il",
@@ -6890,6 +9642,10 @@
   {
     "lemma": "illinois",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "illuminated",
+    "reason": "inflection"
   },
   {
     "lemma": "illustrated",
@@ -6912,8 +9668,16 @@
     "reason": "inflection_of:imagine"
   },
   {
+    "lemma": "imf",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "immigrants",
     "reason": "inflection_of:immigrant"
+  },
+  {
+    "lemma": "imo",
+    "reason": "abbreviation"
   },
   {
     "lemma": "impacts",
@@ -7004,6 +9768,10 @@
     "reason": "inflection_of:increase"
   },
   {
+    "lemma": "ind",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "india",
     "reason": "proper_noun"
   },
@@ -7040,6 +9808,10 @@
     "reason": "inflection_of:individual"
   },
   {
+    "lemma": "indo",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "indonesia",
     "reason": "proper_noun"
   },
@@ -7050,6 +9822,10 @@
   {
     "lemma": "industries",
     "reason": "inflection_of:industry"
+  },
+  {
+    "lemma": "indy",
+    "reason": "abbreviation"
   },
   {
     "lemma": "infants",
@@ -7082,6 +9858,10 @@
   {
     "lemma": "inherited",
     "reason": "inflection_of:inherit"
+  },
+  {
+    "lemma": "inhibitors",
+    "reason": "inflection"
   },
   {
     "lemma": "initiated",
@@ -7256,8 +10036,16 @@
     "reason": "inflection_of:involve"
   },
   {
+    "lemma": "io",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "ios",
     "reason": "inflection_of:io"
+  },
+  {
+    "lemma": "iot",
+    "reason": "abbreviation"
   },
   {
     "lemma": "iowa",
@@ -7276,6 +10064,30 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "iphones",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ipo",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "ipod",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ipswich",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "iq",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "ir",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "ira",
     "reason": "non_standard"
   },
@@ -7292,15 +10104,51 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "irene",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "irl",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "irs",
     "reason": "inflection_of:ir"
+  },
+  {
+    "lemma": "irvine",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "irving",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "irwin",
+    "reason": "proper_noun"
   },
   {
     "lemma": "is",
     "reason": "inflection_of:be"
   },
   {
+    "lemma": "isa",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "isaac",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "isabel",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "isabella",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "isaiah",
     "reason": "proper_noun"
   },
   {
@@ -7324,6 +10172,14 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "israelis",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "iss",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "issued",
     "reason": "inflection_of:issue"
   },
@@ -7336,6 +10192,18 @@
     "reason": "inflection_of:issue"
   },
   {
+    "lemma": "istanbul",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "italia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "italians",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "italy",
     "reason": "proper_noun"
   },
@@ -7345,6 +10213,10 @@
   },
   {
     "lemma": "itunes",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "itv",
     "reason": "proper_noun"
   },
   {
@@ -7360,6 +10232,14 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "ix",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "ja",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "jackets",
     "reason": "inflection_of:jacket"
   },
@@ -7372,7 +10252,35 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "jacksonville",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "jacob",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jacobs",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jacques",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jae",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jai",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "jaime",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jakarta",
     "reason": "proper_noun"
   },
   {
@@ -7382,6 +10290,10 @@
   {
     "lemma": "jamaica",
     "reason": "inflection_of:jama"
+  },
+  {
+    "lemma": "jamal",
+    "reason": "proper_noun"
   },
   {
     "lemma": "james",
@@ -7400,8 +10312,16 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "janeiro",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "janet",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "jang",
+    "reason": "not_a_word"
   },
   {
     "lemma": "japan",
@@ -7412,7 +10332,35 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "jarvis",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "jason",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jasper",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "javascript",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "javier",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "je",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "jeanne",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jedi",
     "reason": "proper_noun"
   },
   {
@@ -7428,7 +10376,19 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "jen",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "jenkins",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jenna",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jenner",
     "reason": "proper_noun"
   },
   {
@@ -7436,11 +10396,27 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "jennings",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "jenny",
     "reason": "proper_noun"
   },
   {
+    "lemma": "jensen",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jeremiah",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "jeremy",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jerome",
     "reason": "proper_noun"
   },
   {
@@ -7452,11 +10428,19 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "jess",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "jesse",
     "reason": "proper_noun"
   },
   {
     "lemma": "jessica",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jessie",
     "reason": "proper_noun"
   },
   {
@@ -7500,6 +10484,14 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "joanna",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "joanne",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "jobs",
     "reason": "inflection_of:job"
   },
@@ -7513,6 +10505,14 @@
   },
   {
     "lemma": "joey",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "johann",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "johannesburg",
     "reason": "proper_noun"
   },
   {
@@ -7556,7 +10556,19 @@
     "reason": "inflection_of:joke"
   },
   {
+    "lemma": "jolie",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "jon",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jonah",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jonas",
     "reason": "proper_noun"
   },
   {
@@ -7568,7 +10580,15 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "jong",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "jordan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jorge",
     "reason": "proper_noun"
   },
   {
@@ -7600,7 +10620,31 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "ju",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "juan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "judah",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "judaism",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "judas",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "judd",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jude",
     "reason": "proper_noun"
   },
   {
@@ -7616,7 +10660,19 @@
     "reason": "inflection_of:judge"
   },
   {
+    "lemma": "judith",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "judy",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jul",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jules",
     "reason": "proper_noun"
   },
   {
@@ -7629,6 +10685,18 @@
   },
   {
     "lemma": "julie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "juliet",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "julio",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "julius",
     "reason": "proper_noun"
   },
   {
@@ -7648,7 +10716,19 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "jupiter",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "jurassic",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "justin",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "juventus",
     "reason": "proper_noun"
   },
   {
@@ -7656,11 +10736,27 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "kabul",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "kai",
     "reason": "proper_noun"
   },
   {
+    "lemma": "kaiser",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kan",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "kane",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kang",
     "reason": "proper_noun"
   },
   {
@@ -7672,11 +10768,39 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "kaplan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kappa",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "kara",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "karachi",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kardashian",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "karen",
     "reason": "proper_noun"
   },
   {
     "lemma": "karl",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kashmir",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kat",
     "reason": "proper_noun"
   },
   {
@@ -7688,12 +10812,44 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "kathleen",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kathryn",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kathy",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "katie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "katrina",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "katy",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "katz",
     "reason": "proper_noun"
   },
   {
     "lemma": "kay",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "kazakhstan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ke",
+    "reason": "abbreviation"
   },
   {
     "lemma": "keeping",
@@ -7708,7 +10864,27 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "keller",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kelley",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "kelly",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kemp",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "kendall",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kendrick",
     "reason": "proper_noun"
   },
   {
@@ -7721,6 +10897,10 @@
   },
   {
     "lemma": "kenny",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kensington",
     "reason": "proper_noun"
   },
   {
@@ -7740,6 +10920,14 @@
     "reason": "inflection_of:keep"
   },
   {
+    "lemma": "kerala",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kerr",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "kerry",
     "reason": "proper_noun"
   },
@@ -7756,6 +10944,10 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "kia",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "kicked",
     "reason": "inflection_of:kick"
   },
@@ -7768,6 +10960,10 @@
     "reason": "inflection_of:kick"
   },
   {
+    "lemma": "kickstarter",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "kidding",
     "reason": "inflection_of:kid"
   },
@@ -7778,6 +10974,10 @@
   {
     "lemma": "kids",
     "reason": "inflection_of:kid"
+  },
+  {
+    "lemma": "kiev",
+    "reason": "proper_noun"
   },
   {
     "lemma": "killed",
@@ -7804,6 +11004,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "kimberly",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "kinda",
     "reason": "non_standard"
   },
@@ -7814,6 +11018,14 @@
   {
     "lemma": "kings",
     "reason": "inflection_of:king"
+  },
+  {
+    "lemma": "kingston",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kirby",
+    "reason": "proper_noun"
   },
   {
     "lemma": "kirk",
@@ -7832,12 +11044,24 @@
     "reason": "inflection_of:kit"
   },
   {
+    "lemma": "klaus",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "klein",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "knees",
     "reason": "inflection_of:knee"
   },
   {
     "lemma": "knew",
     "reason": "inflection_of:know"
+  },
+  {
+    "lemma": "knicks",
+    "reason": "proper_noun"
   },
   {
     "lemma": "knights",
@@ -7864,6 +11088,22 @@
     "reason": "inflection_of:know"
   },
   {
+    "lemma": "knox",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ko",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "kobe",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "koch",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "kong",
     "reason": "proper_noun"
   },
@@ -7872,7 +11112,59 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "koreans",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "kosovo",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kraft",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kramer",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kremlin",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kris",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "krishna",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kristen",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ku",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kuala",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kumar",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kung",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "kurt",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kuwait",
     "reason": "proper_noun"
   },
   {
@@ -7884,12 +11176,24 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "kylie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "kyoto",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "la",
     "reason": "non_standard"
   },
   {
     "lemma": "labeled",
     "reason": "inflection_of:label"
+  },
+  {
+    "lemma": "labeling",
+    "reason": "inflection"
   },
   {
     "lemma": "labels",
@@ -7920,6 +11224,18 @@
     "reason": "inflection_of:lad"
   },
   {
+    "lemma": "lafayette",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lagos",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lahore",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "laid",
     "reason": "inflection_of:lay"
   },
@@ -7930,6 +11246,26 @@
   {
     "lemma": "lakes",
     "reason": "inflection_of:lake"
+  },
+  {
+    "lemma": "lamar",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lambert",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lana",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lancashire",
+    "reason": "proper_noun"
   },
   {
     "lemma": "lancaster",
@@ -7952,11 +11288,19 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "langley",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "languages",
     "reason": "inflection_of:language"
   },
   {
     "lemma": "lanka",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lara",
     "reason": "proper_noun"
   },
   {
@@ -7969,6 +11313,10 @@
   },
   {
     "lemma": "larry",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lars",
     "reason": "proper_noun"
   },
   {
@@ -7986,6 +11334,10 @@
   {
     "lemma": "latest",
     "reason": "inflection_of:late"
+  },
+  {
+    "lemma": "latvia",
+    "reason": "proper_noun"
   },
   {
     "lemma": "laughed",
@@ -8020,12 +11372,28 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "laurence",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "laurent",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "laurie",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "lawrence",
     "reason": "proper_noun"
   },
   {
     "lemma": "laws",
     "reason": "inflection_of:law"
+  },
+  {
+    "lemma": "lawson",
+    "reason": "proper_noun"
   },
   {
     "lemma": "lawyers",
@@ -8058,6 +11426,10 @@
   {
     "lemma": "leagues",
     "reason": "inflection_of:league"
+  },
+  {
+    "lemma": "leah",
+    "reason": "proper_noun"
   },
   {
     "lemma": "leaked",
@@ -8116,6 +11488,10 @@
     "reason": "inflection_of:legend"
   },
   {
+    "lemma": "legged",
+    "reason": "inflection"
+  },
+  {
     "lemma": "lego",
     "reason": "proper_noun"
   },
@@ -8128,12 +11504,36 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "leigh",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "len",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "lena",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "lending",
     "reason": "inflection_of:lend"
   },
   {
     "lemma": "lengths",
     "reason": "inflection_of:length"
+  },
+  {
+    "lemma": "lenin",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lennon",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lenny",
+    "reason": "proper_noun"
   },
   {
     "lemma": "lenses",
@@ -8152,6 +11552,14 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "leonardo",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "leone",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "les",
     "reason": "foreign_word"
   },
@@ -8162,6 +11570,10 @@
   {
     "lemma": "lessons",
     "reason": "inflection_of:lesson"
+  },
+  {
+    "lemma": "lester",
+    "reason": "proper_noun"
   },
   {
     "lemma": "lets",
@@ -8176,7 +11588,27 @@
     "reason": "inflection_of:level"
   },
   {
+    "lemma": "levi",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "levin",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "levine",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "lewis",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lex",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "lexington",
     "reason": "proper_noun"
   },
   {
@@ -8188,8 +11620,20 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "lib",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "liberals",
     "reason": "inflection_of:liberal"
+  },
+  {
+    "lemma": "liberated",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "liberia",
+    "reason": "proper_noun"
   },
   {
     "lemma": "libraries",
@@ -8228,6 +11672,10 @@
     "reason": "inflection_of:lift"
   },
   {
+    "lemma": "liga",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "lights",
     "reason": "inflection_of:light"
   },
@@ -8246,6 +11694,14 @@
   {
     "lemma": "lil",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "lilly",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lima",
+    "reason": "proper_noun"
   },
   {
     "lemma": "limitations",
@@ -8272,6 +11728,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "lindsey",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "lined",
     "reason": "inflection_of:line"
   },
@@ -8282,6 +11742,10 @@
   {
     "lemma": "linked",
     "reason": "inflection_of:link"
+  },
+  {
+    "lemma": "linkedin",
+    "reason": "proper_noun"
   },
   {
     "lemma": "linking",
@@ -8296,6 +11760,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "lionel",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "lions",
     "reason": "inflection_of:lion"
   },
@@ -8305,6 +11773,10 @@
   },
   {
     "lemma": "lisa",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lisbon",
     "reason": "proper_noun"
   },
   {
@@ -8332,6 +11804,18 @@
     "reason": "inflection_of:light"
   },
   {
+    "lemma": "lithuania",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "liu",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "liv",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "lived",
     "reason": "inflection_of:live"
   },
@@ -8342,6 +11826,10 @@
   {
     "lemma": "lives",
     "reason": "inflection_of:life"
+  },
+  {
+    "lemma": "livingston",
+    "reason": "proper_noun"
   },
   {
     "lemma": "liz",
@@ -8384,6 +11872,10 @@
     "reason": "inflection_of:location"
   },
   {
+    "lemma": "locke",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "locked",
     "reason": "inflection_of:lock"
   },
@@ -8408,8 +11900,16 @@
     "reason": "inflection_of:log"
   },
   {
+    "lemma": "lois",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "lol",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "lola",
+    "reason": "proper_noun"
   },
   {
     "lemma": "london",
@@ -8448,6 +11948,18 @@
     "reason": "inflection_of:lord"
   },
   {
+    "lemma": "lorenzo",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lori",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lorraine",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "los",
     "reason": "foreign_word"
   },
@@ -8484,6 +11996,10 @@
     "reason": "inflection_of:loud"
   },
   {
+    "lemma": "louie",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "louis",
     "reason": "proper_noun"
   },
@@ -8512,6 +12028,14 @@
     "reason": "inflection_of:love"
   },
   {
+    "lemma": "lowe",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lowell",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "lowered",
     "reason": "inflection_of:lower"
   },
@@ -8524,7 +12048,31 @@
     "reason": "inflection_of:low"
   },
   {
+    "lemma": "lsu",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lte",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "lu",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "luca",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "lucas",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lucia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lucifer",
     "reason": "proper_noun"
   },
   {
@@ -8540,11 +12088,35 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "lumpur",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "luna",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "lungs",
     "reason": "inflection_of:lung"
   },
   {
     "lemma": "luther",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "lutheran",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "luxembourg",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ly",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "lydia",
     "reason": "proper_noun"
   },
   {
@@ -8560,6 +12132,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "lyons",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "lyrics",
     "reason": "inflection_of:lyric"
   },
@@ -8572,8 +12148,40 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "macbook",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "macdonald",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "macedonia",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "machines",
     "reason": "inflection_of:machine"
+  },
+  {
+    "lemma": "mack",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mackay",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mackenzie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "macmillan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "madagascar",
+    "reason": "proper_noun"
   },
   {
     "lemma": "madame",
@@ -8584,11 +12192,23 @@
     "reason": "inflection_of:make"
   },
   {
+    "lemma": "madeleine",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "madison",
     "reason": "proper_noun"
   },
   {
+    "lemma": "madonna",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "madrid",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mae",
     "reason": "proper_noun"
   },
   {
@@ -8597,6 +12217,18 @@
   },
   {
     "lemma": "maggie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "magnum",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "magnus",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mai",
     "reason": "proper_noun"
   },
   {
@@ -8616,6 +12248,10 @@
     "reason": "inflection_of:maintain"
   },
   {
+    "lemma": "maj",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "makers",
     "reason": "inflection_of:maker"
   },
@@ -8628,6 +12264,10 @@
     "reason": "inflection_of:make"
   },
   {
+    "lemma": "mal",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "malaysia",
     "reason": "proper_noun"
   },
@@ -8638,6 +12278,26 @@
   {
     "lemma": "males",
     "reason": "inflection_of:male"
+  },
+  {
+    "lemma": "mali",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "malibu",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "malik",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "malone",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "malta",
+    "reason": "proper_noun"
   },
   {
     "lemma": "managers",
@@ -8656,7 +12316,23 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "mandela",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mandy",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "manhattan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "manitoba",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mann",
     "reason": "proper_noun"
   },
   {
@@ -8666,6 +12342,10 @@
   {
     "lemma": "manning",
     "reason": "inflection_of:man"
+  },
+  {
+    "lemma": "mansfield",
+    "reason": "proper_noun"
   },
   {
     "lemma": "manuel",
@@ -8684,11 +12364,23 @@
     "reason": "inflection_of:manufacture"
   },
   {
+    "lemma": "mao",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "maps",
     "reason": "inflection_of:map"
   },
   {
+    "lemma": "mara",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "marc",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "marcel",
     "reason": "proper_noun"
   },
   {
@@ -8697,6 +12389,10 @@
   },
   {
     "lemma": "marco",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "marcos",
     "reason": "proper_noun"
   },
   {
@@ -8716,7 +12412,19 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "marian",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "marianne",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "marie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "marilyn",
     "reason": "proper_noun"
   },
   {
@@ -8740,6 +12448,10 @@
     "reason": "inflection_of:mark"
   },
   {
+    "lemma": "marley",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "marriages",
     "reason": "inflection_of:marriage"
   },
@@ -8756,12 +12468,32 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "martinez",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "marty",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "marvin",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "marx",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "mary",
     "reason": "proper_noun"
   },
   {
     "lemma": "maryland",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "mas",
+    "reason": "not_a_word"
   },
   {
     "lemma": "masks",
@@ -8780,6 +12512,10 @@
     "reason": "inflection_of:master"
   },
   {
+    "lemma": "mata",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "matched",
     "reason": "inflection_of:match"
   },
@@ -8796,6 +12532,10 @@
     "reason": "inflection_of:mate"
   },
   {
+    "lemma": "mating",
+    "reason": "inflection"
+  },
+  {
     "lemma": "matters",
     "reason": "inflection_of:matter"
   },
@@ -8805,6 +12545,10 @@
   },
   {
     "lemma": "matthews",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "maureen",
     "reason": "proper_noun"
   },
   {
@@ -8824,11 +12568,67 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "mayer",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mba",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "mccain",
     "reason": "proper_noun"
   },
   {
+    "lemma": "mccarthy",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mccartney",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mcconnell",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mccoy",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "mcdonald",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mcdonalds",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mcgee",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mcgraw",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mcgregor",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mckay",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mckenzie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mclaren",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mclean",
     "reason": "proper_noun"
   },
   {
@@ -8864,6 +12664,10 @@
     "reason": "inflection_of:medal"
   },
   {
+    "lemma": "medicaid",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "medications",
     "reason": "inflection_of:medication"
   },
@@ -8880,12 +12684,24 @@
     "reason": "inflection_of:meet"
   },
   {
+    "lemma": "meg",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "megan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mei",
     "reason": "proper_noun"
   },
   {
     "lemma": "mel",
     "reason": "abbreviation"
+  },
+  {
+    "lemma": "melanie",
+    "reason": "proper_noun"
   },
   {
     "lemma": "melbourne",
@@ -8916,6 +12732,10 @@
     "reason": "inflection_of:man"
   },
   {
+    "lemma": "mens",
+    "reason": "inflection"
+  },
+  {
     "lemma": "mentioned",
     "reason": "inflection_of:mention"
   },
@@ -8928,8 +12748,28 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "mercer",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "merchants",
     "reason": "inflection_of:merchant"
+  },
+  {
+    "lemma": "meredith",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "merkel",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "merlin",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "merrill",
+    "reason": "proper_noun"
   },
   {
     "lemma": "messages",
@@ -8956,12 +12796,20 @@
     "reason": "inflection_of:meet"
   },
   {
+    "lemma": "meta",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "metals",
     "reason": "inflection_of:metal"
   },
   {
     "lemma": "meters",
     "reason": "inflection_of:meter"
+  },
+  {
+    "lemma": "methodist",
+    "reason": "proper_noun"
   },
   {
     "lemma": "methods",
@@ -8972,7 +12820,19 @@
     "reason": "inflection_of:metre"
   },
   {
+    "lemma": "mets",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mexicans",
+    "reason": "inflection"
+  },
+  {
     "lemma": "mexico",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "meyer",
     "reason": "proper_noun"
   },
   {
@@ -9000,6 +12860,18 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "michaels",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "michel",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "michele",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "michelle",
     "reason": "proper_noun"
   },
@@ -9016,6 +12888,18 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "middleton",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "midland",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "midlands",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "might",
     "reason": "inflection_of:may"
   },
@@ -9028,6 +12912,14 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "mikhail",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mil",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "milan",
     "reason": "proper_noun"
   },
@@ -9036,8 +12928,20 @@
     "reason": "inflection_of:mile"
   },
   {
+    "lemma": "miley",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "milf",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "mills",
     "reason": "inflection_of:mill"
+  },
+  {
+    "lemma": "milo",
+    "reason": "proper_noun"
   },
   {
     "lemma": "milton",
@@ -9076,6 +12980,10 @@
     "reason": "inflection_of:mine"
   },
   {
+    "lemma": "ming",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "mining",
     "reason": "inflection_of:mine"
   },
@@ -9100,6 +13008,10 @@
     "reason": "abbreviation"
   },
   {
+    "lemma": "mir",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "miracles",
     "reason": "inflection_of:miracle"
   },
@@ -9108,8 +13020,16 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "miriam",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "mirrors",
     "reason": "inflection_of:mirror"
+  },
+  {
+    "lemma": "mis",
+    "reason": "not_a_word"
   },
   {
     "lemma": "missed",
@@ -9140,6 +13060,10 @@
     "reason": "inflection_of:mistake"
   },
   {
+    "lemma": "mit",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "mitch",
     "reason": "proper_noun"
   },
@@ -9152,12 +13076,20 @@
     "reason": "inflection_of:mix"
   },
   {
+    "lemma": "mma",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "mo",
     "reason": "non_standard"
   },
   {
     "lemma": "mod",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "modelling",
+    "reason": "inflection"
   },
   {
     "lemma": "models",
@@ -9180,6 +13112,26 @@
     "reason": "inflection_of:modify"
   },
   {
+    "lemma": "moe",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mohamed",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mohammad",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mohammed",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "moines",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "molecules",
     "reason": "inflection_of:molecule"
   },
@@ -9200,6 +13152,14 @@
     "reason": "abbreviation"
   },
   {
+    "lemma": "mona",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "monaco",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "monica",
     "reason": "proper_noun"
   },
@@ -9212,15 +13172,31 @@
     "reason": "inflection_of:monkey"
   },
   {
+    "lemma": "mono",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "monroe",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "monsieur",
+    "reason": "not_a_word"
   },
   {
     "lemma": "monsters",
     "reason": "inflection_of:monster"
   },
   {
+    "lemma": "mont",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "montana",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "monte",
     "reason": "proper_noun"
   },
   {
@@ -9236,7 +13212,19 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "monty",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "moore",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "moran",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mormon",
     "reason": "proper_noun"
   },
   {
@@ -9250,6 +13238,18 @@
   {
     "lemma": "morrison",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "morse",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "morton",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mos",
+    "reason": "abbreviation"
   },
   {
     "lemma": "moscow",
@@ -9268,6 +13268,14 @@
     "reason": "inflection_of:motivate"
   },
   {
+    "lemma": "moto",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "motorola",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "motors",
     "reason": "inflection_of:motor"
   },
@@ -9280,6 +13288,10 @@
     "reason": "inflection_of:mount"
   },
   {
+    "lemma": "mourinho",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "moved",
     "reason": "inflection_of:move"
   },
@@ -9290,6 +13302,22 @@
   {
     "lemma": "moves",
     "reason": "inflection_of:move"
+  },
+  {
+    "lemma": "mozart",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "mri",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "mu",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "mueller",
+    "reason": "proper_noun"
   },
   {
     "lemma": "muhammad",
@@ -9310,6 +13338,10 @@
   {
     "lemma": "murders",
     "reason": "inflection_of:murder"
+  },
+  {
+    "lemma": "murdoch",
+    "reason": "proper_noun"
   },
   {
     "lemma": "murphy",
@@ -9340,6 +13372,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "myers",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "na",
     "reason": "abbreviation"
   },
@@ -9354,6 +13390,14 @@
   {
     "lemma": "nails",
     "reason": "inflection_of:nail"
+  },
+  {
+    "lemma": "nairobi",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nam",
+    "reason": "proper_noun"
   },
   {
     "lemma": "named",
@@ -9372,8 +13416,24 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "naomi",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "naples",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "napoleon",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "naruto",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nas",
+    "reason": "abbreviation"
   },
   {
     "lemma": "nasa",
@@ -9381,6 +13441,10 @@
   },
   {
     "lemma": "nascar",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nasdaq",
     "reason": "proper_noun"
   },
   {
@@ -9392,7 +13456,15 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "nat",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "natalie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "natasha",
     "reason": "proper_noun"
   },
   {
@@ -9401,6 +13473,10 @@
   },
   {
     "lemma": "nathan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nathaniel",
     "reason": "proper_noun"
   },
   {
@@ -9432,11 +13508,19 @@
     "reason": "abbreviation"
   },
   {
+    "lemma": "neal",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "nearest",
     "reason": "inflection_of:near"
   },
   {
     "lemma": "nebraska",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ned",
     "reason": "proper_noun"
   },
   {
@@ -9496,6 +13580,10 @@
     "reason": "inflection_of:nerve"
   },
   {
+    "lemma": "ness",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "netflix",
     "reason": "proper_noun"
   },
@@ -9520,6 +13608,14 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "neville",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "newark",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "newcastle",
     "reason": "proper_noun"
   },
@@ -9530,6 +13626,10 @@
   {
     "lemma": "newest",
     "reason": "inflection_of:new"
+  },
+  {
+    "lemma": "newfoundland",
+    "reason": "proper_noun"
   },
   {
     "lemma": "newman",
@@ -9544,11 +13644,59 @@
     "reason": "inflection_of:newspaper"
   },
   {
+    "lemma": "neymar",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ngo",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "ngos",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "ni",
     "reason": "inflection_of:nus"
   },
   {
+    "lemma": "niagara",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nic",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "nicaragua",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "nicholas",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nichols",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nicholson",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nicky",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nico",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nicola",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nicolas",
     "reason": "proper_noun"
   },
   {
@@ -9556,12 +13704,24 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "nielsen",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "nigel",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "niger",
     "reason": "proper_noun"
   },
   {
     "lemma": "nigeria",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "nigga",
+    "reason": "not_a_word"
   },
   {
     "lemma": "nights",
@@ -9572,11 +13732,23 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "nikki",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nile",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "nina",
     "reason": "proper_noun"
   },
   {
     "lemma": "nintendo",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nissan",
     "reason": "proper_noun"
   },
   {
@@ -9592,6 +13764,18 @@
     "reason": "inflection_of:node"
   },
   {
+    "lemma": "noel",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nokia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nolan",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "nominated",
     "reason": "inflection_of:nominate"
   },
@@ -9604,6 +13788,10 @@
     "reason": "abbreviation"
   },
   {
+    "lemma": "nora",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "norfolk",
     "reason": "proper_noun"
   },
@@ -9612,16 +13800,44 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "normandy",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "norms",
     "reason": "inflection_of:norm"
+  },
+  {
+    "lemma": "norris",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "northampton",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "norton",
+    "reason": "proper_noun"
   },
   {
     "lemma": "norway",
     "reason": "proper_noun"
   },
   {
+    "lemma": "norwich",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nos",
+    "reason": "inflection"
+  },
+  {
     "lemma": "notes",
     "reason": "inflection_of:note"
+  },
+  {
+    "lemma": "nothin",
+    "reason": "not_a_word"
   },
   {
     "lemma": "noticed",
@@ -9640,6 +13856,14 @@
     "reason": "inflection_of:note"
   },
   {
+    "lemma": "notre",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "nottingham",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "nov",
     "reason": "abbreviation"
   },
@@ -9648,8 +13872,16 @@
     "reason": "inflection_of:novel"
   },
   {
+    "lemma": "nra",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "nsa",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "nu",
+    "reason": "not_a_word"
   },
   {
     "lemma": "numbered",
@@ -9672,8 +13904,16 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "nypd",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "oakland",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "ob",
+    "reason": "abbreviation"
   },
   {
     "lemma": "obama",
@@ -9728,6 +13968,10 @@
     "reason": "inflection_of:obtain"
   },
   {
+    "lemma": "oc",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "occasions",
     "reason": "inflection_of:occasion"
   },
@@ -9753,6 +13997,14 @@
   },
   {
     "lemma": "oct",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "od",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "oecd",
     "reason": "abbreviation"
   },
   {
@@ -9788,8 +14040,24 @@
     "reason": "inflection_of:official"
   },
   {
+    "lemma": "offs",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "og",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "ohh",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "ohio",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "oi",
+    "reason": "not_a_word"
   },
   {
     "lemma": "oils",
@@ -9816,6 +14084,10 @@
     "reason": "inflection_of:old"
   },
   {
+    "lemma": "ole",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "oliver",
     "reason": "proper_noun"
   },
@@ -9824,8 +14096,28 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "olivier",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "olsen",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "olympics",
     "reason": "inflection_of:olympic"
+  },
+  {
+    "lemma": "om",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "omaha",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "omar",
+    "reason": "proper_noun"
   },
   {
     "lemma": "omg",
@@ -9840,8 +14132,24 @@
     "reason": "inflection_of:onion"
   },
   {
+    "lemma": "ons",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "ontario",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "oo",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "ooo",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "oooh",
+    "reason": "not_a_word"
   },
   {
     "lemma": "op",
@@ -9890,6 +14198,10 @@
   {
     "lemma": "opposing",
     "reason": "inflection_of:oppose"
+  },
+  {
+    "lemma": "oprah",
+    "reason": "proper_noun"
   },
   {
     "lemma": "ops",
@@ -9944,6 +14256,10 @@
     "reason": "inflection_of:origin"
   },
   {
+    "lemma": "orion",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "orlando",
     "reason": "proper_noun"
   },
@@ -9956,7 +14272,27 @@
     "reason": "abbreviation"
   },
   {
+    "lemma": "osaka",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "osborne",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "oscar",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "oscars",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "oslo",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "oswald",
     "reason": "proper_noun"
   },
   {
@@ -9968,7 +14304,15 @@
     "reason": "inflection_of:other"
   },
   {
+    "lemma": "otis",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ottawa",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "otto",
     "reason": "proper_noun"
   },
   {
@@ -10013,6 +14357,10 @@
   },
   {
     "lemma": "owen",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "owens",
     "reason": "proper_noun"
   },
   {
@@ -10072,6 +14420,10 @@
     "reason": "inflection_of:pay"
   },
   {
+    "lemma": "paige",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "pains",
     "reason": "inflection_of:pain"
   },
@@ -10088,6 +14440,10 @@
     "reason": "inflection_of:pair"
   },
   {
+    "lemma": "pak",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "pakistan",
     "reason": "proper_noun"
   },
@@ -10096,11 +14452,27 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "palestinians",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "palmer",
     "reason": "proper_noun"
   },
   {
+    "lemma": "pam",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "pamela",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "panama",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "pandora",
     "reason": "proper_noun"
   },
   {
@@ -10116,8 +14488,16 @@
     "reason": "inflection_of:pant"
   },
   {
+    "lemma": "paolo",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "papers",
     "reason": "inflection_of:paper"
+  },
+  {
+    "lemma": "papua",
+    "reason": "proper_noun"
   },
   {
     "lemma": "para",
@@ -10180,6 +14560,18 @@
     "reason": "inflection_of:part"
   },
   {
+    "lemma": "pas",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "pasadena",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "paso",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "passed",
     "reason": "inflection_of:pass"
   },
@@ -10196,8 +14588,16 @@
     "reason": "inflection_of:patch"
   },
   {
+    "lemma": "patel",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "patents",
     "reason": "inflection_of:patent"
+  },
+  {
+    "lemma": "paterson",
+    "reason": "proper_noun"
   },
   {
     "lemma": "paths",
@@ -10224,12 +14624,32 @@
     "reason": "inflection_of:pattern"
   },
   {
+    "lemma": "patterson",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "patton",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "paul",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "paula",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "pauline",
     "reason": "proper_noun"
   },
   {
     "lemma": "paulo",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "paved",
+    "reason": "inflection"
   },
   {
     "lemma": "paying",
@@ -10240,16 +14660,48 @@
     "reason": "inflection_of:payment"
   },
   {
+    "lemma": "payne",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "paypal",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "pays",
     "reason": "inflection_of:pay"
+  },
+  {
+    "lemma": "pe",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "peaked",
+    "reason": "inflection"
   },
   {
     "lemma": "peaks",
     "reason": "inflection_of:peak"
   },
   {
+    "lemma": "pearce",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "pearson",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "pedro",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "peers",
     "reason": "inflection_of:peer"
+  },
+  {
+    "lemma": "peggy",
+    "reason": "proper_noun"
   },
   {
     "lemma": "penalties",
@@ -10272,8 +14724,24 @@
     "reason": "inflection_of:people"
   },
   {
+    "lemma": "pepe",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "pepsi",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "perceived",
     "reason": "inflection_of:perceive"
+  },
+  {
+    "lemma": "percy",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "perez",
+    "reason": "proper_noun"
   },
   {
     "lemma": "performances",
@@ -10294,6 +14762,10 @@
   {
     "lemma": "periods",
     "reason": "inflection_of:period"
+  },
+  {
+    "lemma": "perkins",
+    "reason": "proper_noun"
   },
   {
     "lemma": "permits",
@@ -10336,6 +14808,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "petersburg",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "peterson",
     "reason": "proper_noun"
   },
@@ -10344,8 +14820,24 @@
     "reason": "inflection_of:pet"
   },
   {
+    "lemma": "peyton",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "pga",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "phases",
     "reason": "inflection_of:phase"
+  },
+  {
+    "lemma": "phelps",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "phi",
+    "reason": "not_a_word"
   },
   {
     "lemma": "phil",
@@ -10360,6 +14852,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "philippe",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "philippine",
     "reason": "proper_noun"
   },
@@ -10368,11 +14864,23 @@
     "reason": "inflection_of:philippine"
   },
   {
+    "lemma": "philips",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "phillip",
     "reason": "proper_noun"
   },
   {
     "lemma": "phillips",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "philly",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "phoebe",
     "reason": "proper_noun"
   },
   {
@@ -10406,6 +14914,10 @@
   {
     "lemma": "pic",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "picasso",
+    "reason": "proper_noun"
   },
   {
     "lemma": "picked",
@@ -10456,6 +14968,10 @@
     "reason": "inflection_of:pin"
   },
   {
+    "lemma": "pinterest",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "pipes",
     "reason": "inflection_of:pipe"
   },
@@ -10478,6 +14994,10 @@
   {
     "lemma": "pittsburgh",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "placed",
+    "reason": "inflection"
   },
   {
     "lemma": "places",
@@ -10524,6 +15044,10 @@
     "reason": "inflection_of:platform"
   },
   {
+    "lemma": "plato",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "played",
     "reason": "inflection_of:play"
   },
@@ -10552,12 +15076,20 @@
     "reason": "inflection_of:plot"
   },
   {
+    "lemma": "plymouth",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "po",
     "reason": "non_standard"
   },
   {
     "lemma": "pockets",
     "reason": "inflection_of:pocket"
+  },
+  {
+    "lemma": "poe",
+    "reason": "proper_noun"
   },
   {
     "lemma": "poems",
@@ -10604,6 +15136,14 @@
     "reason": "inflection_of:poll"
   },
   {
+    "lemma": "polly",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "poly",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "popped",
     "reason": "inflection_of:pop"
   },
@@ -10624,11 +15164,23 @@
     "reason": "inflection_of:population"
   },
   {
+    "lemma": "por",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "porsche",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "portions",
     "reason": "inflection_of:portion"
   },
   {
     "lemma": "portland",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "porto",
     "reason": "proper_noun"
   },
   {
@@ -10644,8 +15196,20 @@
     "reason": "inflection_of:port"
   },
   {
+    "lemma": "portsmouth",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "portugal",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "pos",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "posed",
+    "reason": "inflection"
   },
   {
     "lemma": "poses",
@@ -10700,6 +15264,10 @@
     "reason": "inflection_of:pour"
   },
   {
+    "lemma": "pow",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "powell",
     "reason": "proper_noun"
   },
@@ -10728,8 +15296,20 @@
     "reason": "inflection_of:practitioner"
   },
   {
+    "lemma": "pradesh",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "prague",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "praised",
     "reason": "inflection_of:praise"
+  },
+  {
+    "lemma": "pratt",
+    "reason": "proper_noun"
   },
   {
     "lemma": "prayers",
@@ -10756,6 +15336,10 @@
     "reason": "inflection_of:preference"
   },
   {
+    "lemma": "preferred",
+    "reason": "inflection"
+  },
+  {
     "lemma": "premises",
     "reason": "inflection_of:premise"
   },
@@ -10766,6 +15350,18 @@
   {
     "lemma": "preparing",
     "reason": "inflection_of:prepare"
+  },
+  {
+    "lemma": "pres",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "presbyterian",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "prescott",
+    "reason": "proper_noun"
   },
   {
     "lemma": "prescribed",
@@ -10880,6 +15476,10 @@
     "reason": "inflection_of:prize"
   },
   {
+    "lemma": "prob",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "problems",
     "reason": "inflection_of:problem"
   },
@@ -10902,6 +15502,10 @@
   {
     "lemma": "processor",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "processors",
+    "reason": "inflection"
   },
   {
     "lemma": "proclaimed",
@@ -11076,6 +15680,22 @@
     "reason": "inflection_of:province"
   },
   {
+    "lemma": "provoking",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "psa",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "psi",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "pu",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "publications",
     "reason": "inflection_of:publication"
   },
@@ -11086,6 +15706,10 @@
   {
     "lemma": "publishers",
     "reason": "inflection_of:publisher"
+  },
+  {
+    "lemma": "pubs",
+    "reason": "inflection"
   },
   {
     "lemma": "puerto",
@@ -11124,6 +15748,10 @@
     "reason": "inflection_of:punish"
   },
   {
+    "lemma": "punjab",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "pupils",
     "reason": "inflection_of:pupil"
   },
@@ -11138,6 +15766,10 @@
   {
     "lemma": "purchasing",
     "reason": "inflection_of:purchase"
+  },
+  {
+    "lemma": "purdue",
+    "reason": "proper_noun"
   },
   {
     "lemma": "purposes",
@@ -11176,6 +15808,10 @@
     "reason": "inflection_of:put"
   },
   {
+    "lemma": "qaeda",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "qatar",
     "reason": "proper_noun"
   },
@@ -11212,6 +15848,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "quentin",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "questioned",
     "reason": "inflection_of:question"
   },
@@ -11222,6 +15862,10 @@
   {
     "lemma": "quicker",
     "reason": "inflection_of:quick"
+  },
+  {
+    "lemma": "quincy",
+    "reason": "proper_noun"
   },
   {
     "lemma": "quinn",
@@ -11240,6 +15884,10 @@
     "reason": "inflection_of:quote"
   },
   {
+    "lemma": "quran",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ra",
     "reason": "abbreviation"
   },
@@ -11254,6 +15902,18 @@
   {
     "lemma": "racing",
     "reason": "inflection_of:race"
+  },
+  {
+    "lemma": "rae",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "raf",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "rafael",
+    "reason": "proper_noun"
   },
   {
     "lemma": "raiders",
@@ -11284,7 +15944,27 @@
     "reason": "inflection_of:raise"
   },
   {
+    "lemma": "raj",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "raleigh",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ralph",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ramos",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ramsay",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ramsey",
     "reason": "proper_noun"
   },
   {
@@ -11293,6 +15973,14 @@
   },
   {
     "lemma": "rand",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "randall",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "randolph",
     "reason": "proper_noun"
   },
   {
@@ -11324,6 +16012,14 @@
     "reason": "inflection_of:rape"
   },
   {
+    "lemma": "raphael",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "rappers",
+    "reason": "inflection"
+  },
+  {
     "lemma": "rated",
     "reason": "inflection_of:rate"
   },
@@ -11346,6 +16042,10 @@
   {
     "lemma": "rays",
     "reason": "inflection_of:ray"
+  },
+  {
+    "lemma": "rbi",
+    "reason": "abbreviation"
   },
   {
     "lemma": "reached",
@@ -11410,6 +16110,10 @@
   {
     "lemma": "rebounds",
     "reason": "inflection_of:rebound"
+  },
+  {
+    "lemma": "rec",
+    "reason": "abbreviation"
   },
   {
     "lemma": "recalled",
@@ -11488,8 +16192,16 @@
     "reason": "inflection_of:recruit"
   },
   {
+    "lemma": "reddit",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "reds",
     "reason": "inflection_of:red"
+  },
+  {
+    "lemma": "redskins",
+    "reason": "proper_noun"
   },
   {
     "lemma": "reduced",
@@ -11502,6 +16214,10 @@
   {
     "lemma": "reducing",
     "reason": "inflection_of:reduce"
+  },
+  {
+    "lemma": "reese",
+    "reason": "proper_noun"
   },
   {
     "lemma": "references",
@@ -11522,6 +16238,10 @@
   {
     "lemma": "reflecting",
     "reason": "inflection_of:reflect"
+  },
+  {
+    "lemma": "reflections",
+    "reason": "inflection"
   },
   {
     "lemma": "reflects",
@@ -11548,6 +16268,10 @@
     "reason": "inflection_of:refuse"
   },
   {
+    "lemma": "reg",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "regarded",
     "reason": "inflection_of:regard"
   },
@@ -11558,6 +16282,14 @@
   {
     "lemma": "regards",
     "reason": "inflection_of:regard"
+  },
+  {
+    "lemma": "reggie",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "regina",
+    "reason": "proper_noun"
   },
   {
     "lemma": "regions",
@@ -11574,6 +16306,10 @@
   {
     "lemma": "regulations",
     "reason": "inflection_of:regulation"
+  },
+  {
+    "lemma": "reich",
+    "reason": "proper_noun"
   },
   {
     "lemma": "reid",
@@ -11684,12 +16420,20 @@
     "reason": "inflection_of:remove"
   },
   {
+    "lemma": "ren",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "rendered",
     "reason": "inflection_of:render"
   },
   {
     "lemma": "renewed",
     "reason": "inflection_of:renew"
+  },
+  {
+    "lemma": "reno",
+    "reason": "proper_noun"
   },
   {
     "lemma": "rented",
@@ -11756,6 +16500,10 @@
     "reason": "inflection_of:represent"
   },
   {
+    "lemma": "reps",
+    "reason": "inflection"
+  },
+  {
     "lemma": "republicans",
     "reason": "inflection_of:republican"
   },
@@ -11812,6 +16560,10 @@
     "reason": "inflection_of:resident"
   },
   {
+    "lemma": "resigned",
+    "reason": "inflection"
+  },
+  {
     "lemma": "resolved",
     "reason": "inflection_of:resolve"
   },
@@ -11850,6 +16602,10 @@
   {
     "lemma": "restaurants",
     "reason": "inflection_of:restaurant"
+  },
+  {
+    "lemma": "rested",
+    "reason": "inflection"
   },
   {
     "lemma": "restored",
@@ -11952,6 +16708,10 @@
     "reason": "foreign_word"
   },
   {
+    "lemma": "reyes",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "reynolds",
     "reason": "proper_noun"
   },
@@ -11960,8 +16720,28 @@
     "reason": "abbreviation"
   },
   {
+    "lemma": "rhodes",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ri",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "ribs",
     "reason": "inflection_of:rib"
+  },
+  {
+    "lemma": "rica",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "rican",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "ricardo",
+    "reason": "proper_noun"
   },
   {
     "lemma": "richard",
@@ -11973,6 +16753,10 @@
   },
   {
     "lemma": "richardson",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "richie",
     "reason": "proper_noun"
   },
   {
@@ -12006,6 +16790,10 @@
   {
     "lemma": "rights",
     "reason": "inflection_of:right"
+  },
+  {
+    "lemma": "rihanna",
+    "reason": "proper_noun"
   },
   {
     "lemma": "riley",
@@ -12044,12 +16832,32 @@
     "reason": "inflection_of:risk"
   },
   {
+    "lemma": "rita",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ritchie",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "rivals",
     "reason": "inflection_of:rival"
   },
   {
+    "lemma": "rivera",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "rivers",
     "reason": "inflection_of:river"
+  },
+  {
+    "lemma": "rna",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "ro",
+    "reason": "abbreviation"
   },
   {
     "lemma": "roads",
@@ -12064,7 +16872,15 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "robbins",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "robert",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "roberto",
     "reason": "proper_noun"
   },
   {
@@ -12088,8 +16904,16 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "rockefeller",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "rockets",
     "reason": "inflection_of:rocket"
+  },
+  {
+    "lemma": "rockies",
+    "reason": "proper_noun"
   },
   {
     "lemma": "rocks",
@@ -12104,11 +16928,27 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "rodney",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "rodriguez",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "roger",
     "reason": "proper_noun"
   },
   {
     "lemma": "rogers",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "roi",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "roland",
     "reason": "proper_noun"
   },
   {
@@ -12124,8 +16964,20 @@
     "reason": "inflection_of:roll"
   },
   {
+    "lemma": "rollins",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "rolls",
     "reason": "inflection_of:roll"
+  },
+  {
+    "lemma": "rom",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "roma",
+    "reason": "proper_noun"
   },
   {
     "lemma": "romania",
@@ -12140,6 +16992,14 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "romeo",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "romney",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ron",
     "reason": "proper_noun"
   },
@@ -12148,8 +17008,20 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "ronaldo",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ronnie",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "rooms",
     "reason": "inflection_of:room"
+  },
+  {
+    "lemma": "rooney",
+    "reason": "proper_noun"
   },
   {
     "lemma": "roosevelt",
@@ -12160,7 +17032,15 @@
     "reason": "inflection_of:root"
   },
   {
+    "lemma": "rory",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "rosa",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "rosen",
     "reason": "proper_noun"
   },
   {
@@ -12168,7 +17048,15 @@
     "reason": "inflection_of:rose"
   },
   {
+    "lemma": "rosie",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ross",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "rossi",
     "reason": "proper_noun"
   },
   {
@@ -12176,8 +17064,16 @@
     "reason": "inflection_of:rotate"
   },
   {
+    "lemma": "roth",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "routes",
     "reason": "inflection_of:route"
+  },
+  {
+    "lemma": "routledge",
+    "reason": "proper_noun"
   },
   {
     "lemma": "rows",
@@ -12185,6 +17081,30 @@
   },
   {
     "lemma": "roy",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "royale",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "royce",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ru",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "rubbing",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "rubio",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "rudy",
     "reason": "proper_noun"
   },
   {
@@ -12212,12 +17132,24 @@
     "reason": "inflection_of:run"
   },
   {
+    "lemma": "rupees",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "rupert",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "rushed",
     "reason": "inflection_of:rush"
   },
   {
     "lemma": "rushing",
     "reason": "inflection_of:rush"
+  },
+  {
+    "lemma": "russ",
+    "reason": "proper_noun"
   },
   {
     "lemma": "russell",
@@ -12232,7 +17164,19 @@
     "reason": "inflection_of:russian"
   },
   {
+    "lemma": "rutgers",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ruth",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "rutherford",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "rwanda",
     "reason": "proper_noun"
   },
   {
@@ -12240,16 +17184,32 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "ryder",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "sa",
     "reason": "abbreviation"
+  },
+  {
+    "lemma": "sachs",
+    "reason": "proper_noun"
   },
   {
     "lemma": "sacramento",
     "reason": "proper_noun"
   },
   {
+    "lemma": "saddam",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "safer",
     "reason": "inflection_of:safe"
+  },
+  {
+    "lemma": "sahara",
+    "reason": "proper_noun"
   },
   {
     "lemma": "said",
@@ -12260,20 +17220,52 @@
     "reason": "inflection_of:saint"
   },
   {
+    "lemma": "sal",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "salaries",
     "reason": "inflection_of:salary"
+  },
+  {
+    "lemma": "salem",
+    "reason": "proper_noun"
   },
   {
     "lemma": "sales",
     "reason": "inflection_of:sale"
   },
   {
+    "lemma": "salisbury",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "salvador",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "sam",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "samantha",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sammy",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "samoa",
     "reason": "proper_noun"
   },
   {
     "lemma": "samples",
     "reason": "inflection_of:sample"
+  },
+  {
+    "lemma": "samson",
+    "reason": "proper_noun"
   },
   {
     "lemma": "samsung",
@@ -12316,8 +17308,24 @@
     "reason": "inflection_of:sing"
   },
   {
+    "lemma": "sans",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "santa",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "santiago",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "santos",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sao",
+    "reason": "not_a_word"
   },
   {
     "lemma": "sara",
@@ -12325,6 +17333,18 @@
   },
   {
     "lemma": "sarah",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sas",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "sasha",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "saskatchewan",
     "reason": "proper_noun"
   },
   {
@@ -12340,6 +17360,22 @@
     "reason": "inflection_of:satisfy"
   },
   {
+    "lemma": "saturdays",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "saturn",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "saul",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "saunders",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "saved",
     "reason": "inflection_of:save"
   },
@@ -12352,6 +17388,14 @@
     "reason": "inflection_of:save"
   },
   {
+    "lemma": "sawyer",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sayin",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "says",
     "reason": "inflection_of:say"
   },
@@ -12360,8 +17404,16 @@
     "reason": "inflection_of:scale"
   },
   {
+    "lemma": "scanning",
+    "reason": "inflection"
+  },
+  {
     "lemma": "scared",
     "reason": "inflection_of:scare"
+  },
+  {
+    "lemma": "scarlett",
+    "reason": "proper_noun"
   },
   {
     "lemma": "scars",
@@ -12388,6 +17440,14 @@
     "reason": "inflection_of:scheme"
   },
   {
+    "lemma": "schmidt",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "schneider",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "scholars",
     "reason": "inflection_of:scholar"
   },
@@ -12398,6 +17458,14 @@
   {
     "lemma": "schools",
     "reason": "inflection_of:school"
+  },
+  {
+    "lemma": "schultz",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "schwartz",
+    "reason": "proper_noun"
   },
   {
     "lemma": "sci",
@@ -12414,6 +17482,14 @@
   {
     "lemma": "scores",
     "reason": "inflection_of:score"
+  },
+  {
+    "lemma": "scotch",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "scotia",
+    "reason": "proper_noun"
   },
   {
     "lemma": "scotland",
@@ -12440,12 +17516,20 @@
     "reason": "inflection_of:screen"
   },
   {
+    "lemma": "screenshots",
+    "reason": "inflection"
+  },
+  {
     "lemma": "screwed",
     "reason": "inflection_of:screw"
   },
   {
     "lemma": "se",
     "reason": "abbreviation"
+  },
+  {
+    "lemma": "seahawks",
+    "reason": "proper_noun"
   },
   {
     "lemma": "sealed",
@@ -12580,6 +17664,10 @@
     "reason": "inflection_of:select"
   },
   {
+    "lemma": "selfies",
+    "reason": "inflection"
+  },
+  {
     "lemma": "sellers",
     "reason": "inflection_of:seller"
   },
@@ -12590,6 +17678,10 @@
   {
     "lemma": "sells",
     "reason": "inflection_of:sell"
+  },
+  {
+    "lemma": "semitism",
+    "reason": "not_a_word"
   },
   {
     "lemma": "sen",
@@ -12606,6 +17698,10 @@
   {
     "lemma": "sends",
     "reason": "inflection_of:send"
+  },
+  {
+    "lemma": "senegal",
+    "reason": "proper_noun"
   },
   {
     "lemma": "seniors",
@@ -12656,6 +17752,26 @@
     "reason": "inflection_of:sequence"
   },
   {
+    "lemma": "ser",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "serbia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "serena",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sergei",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sergio",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "servants",
     "reason": "inflection_of:servant"
   },
@@ -12700,6 +17816,10 @@
     "reason": "inflection_of:settle"
   },
   {
+    "lemma": "seymour",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "shades",
     "reason": "inflection_of:shade"
   },
@@ -12710,6 +17830,10 @@
   {
     "lemma": "shah",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "shakes",
+    "reason": "inflection"
   },
   {
     "lemma": "shakespeare",
@@ -12736,6 +17860,10 @@
     "reason": "inflection_of:shape"
   },
   {
+    "lemma": "shapiro",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "shared",
     "reason": "inflection_of:share"
   },
@@ -12748,6 +17876,10 @@
     "reason": "inflection_of:share"
   },
   {
+    "lemma": "sharif",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "sharing",
     "reason": "inflection_of:share"
   },
@@ -12756,8 +17888,20 @@
     "reason": "inflection_of:shark"
   },
   {
+    "lemma": "sharma",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "sharon",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "shaun",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "shaving",
+    "reason": "inflection"
   },
   {
     "lemma": "shaw",
@@ -12776,6 +17920,22 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "sheila",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "shelby",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sheldon",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "shelley",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "shells",
     "reason": "inflection_of:shell"
   },
@@ -12784,7 +17944,31 @@
     "reason": "inflection_of:shelf"
   },
   {
+    "lemma": "shepard",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sheridan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sherlock",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "sherman",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sherwood",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "shi",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "shia",
     "reason": "proper_noun"
   },
   {
@@ -12814,6 +17998,10 @@
   {
     "lemma": "ships",
     "reason": "inflection_of:ship"
+  },
+  {
+    "lemma": "shirley",
+    "reason": "proper_noun"
   },
   {
     "lemma": "shirts",
@@ -12896,20 +18084,48 @@
     "reason": "inflection_of:show"
   },
   {
+    "lemma": "shri",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "si",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "siberia",
+    "reason": "proper_noun"
   },
   {
     "lemma": "siblings",
     "reason": "inflection_of:sibling"
   },
   {
+    "lemma": "sicily",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sid",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "sides",
     "reason": "inflection_of:side"
   },
   {
+    "lemma": "sidney",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sighted",
+    "reason": "inflection"
+  },
+  {
     "lemma": "sights",
     "reason": "inflection_of:sight"
+  },
+  {
+    "lemma": "signaling",
+    "reason": "inflection"
   },
   {
     "lemma": "signals",
@@ -12948,6 +18164,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "simone",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "simpler",
     "reason": "inflection_of:simple"
   },
@@ -12956,8 +18176,20 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "simpsons",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "sims",
     "reason": "abbreviation"
+  },
+  {
+    "lemma": "sinai",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sinclair",
+    "reason": "proper_noun"
   },
   {
     "lemma": "singapore",
@@ -12990,6 +18222,10 @@
   {
     "lemma": "sins",
     "reason": "inflection_of:sin"
+  },
+  {
+    "lemma": "sioux",
+    "reason": "proper_noun"
   },
   {
     "lemma": "sisters",
@@ -13032,8 +18268,20 @@
     "reason": "inflection_of:skill"
   },
   {
+    "lemma": "skinner",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "skins",
     "reason": "inflection_of:skin"
+  },
+  {
+    "lemma": "skype",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "slater",
+    "reason": "proper_noun"
   },
   {
     "lemma": "slaves",
@@ -13064,12 +18312,20 @@
     "reason": "inflection_of:slip"
   },
   {
+    "lemma": "sloan",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "slopes",
     "reason": "inflection_of:slope"
   },
   {
     "lemma": "slots",
     "reason": "inflection_of:slot"
+  },
+  {
+    "lemma": "slovenia",
+    "reason": "proper_noun"
   },
   {
     "lemma": "slower",
@@ -13086,6 +18342,10 @@
   {
     "lemma": "smarter",
     "reason": "inflection_of:smart"
+  },
+  {
+    "lemma": "smartphones",
+    "reason": "inflection"
   },
   {
     "lemma": "smashed",
@@ -13108,6 +18368,10 @@
     "reason": "inflection_of:smile"
   },
   {
+    "lemma": "smithsonian",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "smoked",
     "reason": "inflection_of:smoke"
   },
@@ -13120,8 +18384,20 @@
     "reason": "inflection_of:snake"
   },
   {
+    "lemma": "snapchat",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "snapped",
     "reason": "inflection_of:snap"
+  },
+  {
+    "lemma": "snowden",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "snyder",
+    "reason": "proper_noun"
   },
   {
     "lemma": "societies",
@@ -13130,6 +18406,14 @@
   {
     "lemma": "socks",
     "reason": "inflection_of:sock"
+  },
+  {
+    "lemma": "sofia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "soho",
+    "reason": "proper_noun"
   },
   {
     "lemma": "sold",
@@ -13156,12 +18440,24 @@
     "reason": "inflection_of:solve"
   },
   {
+    "lemma": "somalia",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "somerset",
     "reason": "proper_noun"
   },
   {
+    "lemma": "somethin",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "songs",
     "reason": "inflection_of:song"
+  },
+  {
+    "lemma": "sonia",
+    "reason": "proper_noun"
   },
   {
     "lemma": "sons",
@@ -13178,6 +18474,18 @@
   {
     "lemma": "sooner",
     "reason": "inflection_of:soon"
+  },
+  {
+    "lemma": "sooo",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "soooo",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "sophia",
+    "reason": "proper_noun"
   },
   {
     "lemma": "sophie",
@@ -13216,12 +18524,20 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "soviets",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "sox",
     "reason": "non_standard"
   },
   {
     "lemma": "spaces",
     "reason": "inflection_of:space"
+  },
+  {
+    "lemma": "spacex",
+    "reason": "proper_noun"
   },
   {
     "lemma": "spain",
@@ -13242,6 +18558,10 @@
   {
     "lemma": "speaks",
     "reason": "inflection_of:speak"
+  },
+  {
+    "lemma": "spec",
+    "reason": "abbreviation"
   },
   {
     "lemma": "specialists",
@@ -13324,12 +18644,20 @@
     "reason": "inflection_of:sport"
   },
   {
+    "lemma": "spotify",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "spots",
     "reason": "inflection_of:spot"
   },
   {
     "lemma": "spreading",
     "reason": "inflection_of:spread"
+  },
+  {
+    "lemma": "springer",
+    "reason": "proper_noun"
   },
   {
     "lemma": "springfield",
@@ -13352,6 +18680,18 @@
     "reason": "inflection_of:stab"
   },
   {
+    "lemma": "stacey",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "stacy",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "stafford",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "staged",
     "reason": "inflection_of:stage"
   },
@@ -13368,8 +18708,20 @@
     "reason": "inflection_of:stair"
   },
   {
+    "lemma": "stakeholders",
+    "reason": "inflection"
+  },
+  {
     "lemma": "stakes",
     "reason": "inflection_of:stake"
+  },
+  {
+    "lemma": "stalin",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "stamford",
+    "reason": "proper_noun"
   },
   {
     "lemma": "stamps",
@@ -13396,12 +18748,20 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "stanton",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "starbucks",
     "reason": "proper_noun"
   },
   {
     "lemma": "staring",
     "reason": "inflection_of:stare"
+  },
+  {
+    "lemma": "starr",
+    "reason": "proper_noun"
   },
   {
     "lemma": "starring",
@@ -13472,12 +18832,32 @@
     "reason": "inflection_of:steal"
   },
   {
+    "lemma": "steele",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "steelers",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "steering",
     "reason": "inflection_of:steer"
   },
   {
+    "lemma": "stefan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "stella",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "stems",
     "reason": "inflection_of:stem"
+  },
+  {
+    "lemma": "steph",
+    "reason": "proper_noun"
   },
   {
     "lemma": "stephanie",
@@ -13485,6 +18865,10 @@
   },
   {
     "lemma": "stephen",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "stephens",
     "reason": "proper_noun"
   },
   {
@@ -13512,6 +18896,14 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "stevenson",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "stevie",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "stewart",
     "reason": "proper_noun"
   },
@@ -13522,6 +18914,10 @@
   {
     "lemma": "sticks",
     "reason": "inflection_of:stick"
+  },
+  {
+    "lemma": "stirling",
+    "reason": "proper_noun"
   },
   {
     "lemma": "stockholm",
@@ -13584,6 +18980,10 @@
     "reason": "inflection_of:strategy"
   },
   {
+    "lemma": "strauss",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "streams",
     "reason": "inflection_of:stream"
   },
@@ -13630,6 +19030,10 @@
   {
     "lemma": "strips",
     "reason": "inflection_of:strip"
+  },
+  {
+    "lemma": "striving",
+    "reason": "inflection"
   },
   {
     "lemma": "stronger",
@@ -13692,6 +19096,10 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "suarez",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "subjected",
     "reason": "inflection_of:subject"
   },
@@ -13748,6 +19156,10 @@
     "reason": "inflection_of:suffer"
   },
   {
+    "lemma": "suffolk",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "suggested",
     "reason": "inflection_of:suggest"
   },
@@ -13784,8 +19196,28 @@
     "reason": "inflection_of:sum"
   },
   {
+    "lemma": "sundays",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "sunderland",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "sung",
     "reason": "inflection_of:sing"
+  },
+  {
+    "lemma": "sunni",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sup",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "superheroes",
+    "reason": "inflection"
   },
   {
     "lemma": "supplements",
@@ -13818,6 +19250,10 @@
   {
     "lemma": "supports",
     "reason": "inflection_of:support"
+  },
+  {
+    "lemma": "sur",
+    "reason": "not_a_word"
   },
   {
     "lemma": "surfaces",
@@ -13876,6 +19312,26 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "sutherland",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "sutton",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "suzanne",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "suzuki",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "swansea",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "sweden",
     "reason": "proper_noun"
   },
@@ -13916,6 +19372,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "sylvia",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "symbols",
     "reason": "inflection_of:symbol"
   },
@@ -13925,6 +19385,10 @@
   },
   {
     "lemma": "sync",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "syracuse",
     "reason": "proper_noun"
   },
   {
@@ -13960,12 +19424,20 @@
     "reason": "inflection_of:tactic"
   },
   {
+    "lemma": "tae",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "tagged",
     "reason": "inflection_of:tag"
   },
   {
     "lemma": "tags",
     "reason": "inflection_of:tag"
+  },
+  {
+    "lemma": "tai",
+    "reason": "not_a_word"
   },
   {
     "lemma": "taiwan",
@@ -13980,6 +19452,10 @@
     "reason": "inflection_of:take"
   },
   {
+    "lemma": "talbot",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "talents",
     "reason": "inflection_of:talent"
   },
@@ -13988,8 +19464,16 @@
     "reason": "inflection_of:tale"
   },
   {
+    "lemma": "taliban",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "talked",
     "reason": "inflection_of:talk"
+  },
+  {
+    "lemma": "talkin",
+    "reason": "inflection"
   },
   {
     "lemma": "talking",
@@ -14008,8 +19492,32 @@
     "reason": "inflection_of:tank"
   },
   {
+    "lemma": "tanner",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "tanya",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "tanzania",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "tao",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "tapes",
     "reason": "inflection_of:tape"
+  },
+  {
+    "lemma": "taps",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "tara",
+    "reason": "proper_noun"
   },
   {
     "lemma": "targeted",
@@ -14028,8 +19536,16 @@
     "reason": "inflection_of:task"
   },
   {
+    "lemma": "tasmania",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "tastes",
     "reason": "inflection_of:taste"
+  },
+  {
+    "lemma": "tate",
+    "reason": "proper_noun"
   },
   {
     "lemma": "taught",
@@ -14108,6 +19624,10 @@
     "reason": "inflection_of:tooth"
   },
   {
+    "lemma": "tehran",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "tel",
     "reason": "non_standard"
   },
@@ -14148,6 +19668,10 @@
     "reason": "inflection_of:tension"
   },
   {
+    "lemma": "teresa",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "terms",
     "reason": "inflection_of:term"
   },
@@ -14180,6 +19704,14 @@
     "reason": "inflection_of:test"
   },
   {
+    "lemma": "tex",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "texans",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "texas",
     "reason": "proper_noun"
   },
@@ -14188,12 +19720,24 @@
     "reason": "inflection_of:text"
   },
   {
+    "lemma": "tha",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "thailand",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "thames",
     "reason": "proper_noun"
   },
   {
     "lemma": "thanks",
     "reason": "inflection_of:thank"
+  },
+  {
+    "lemma": "thatcher",
+    "reason": "proper_noun"
   },
   {
     "lemma": "thats",
@@ -14212,12 +19756,24 @@
     "reason": "inflection_of:theme"
   },
   {
+    "lemma": "theo",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "theodore",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "theories",
     "reason": "inflection_of:theory"
   },
   {
     "lemma": "theres",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "theresa",
+    "reason": "proper_noun"
   },
   {
     "lemma": "thieves",
@@ -14230,6 +19786,10 @@
   {
     "lemma": "thinks",
     "reason": "inflection_of:think"
+  },
+  {
+    "lemma": "thinner",
+    "reason": "inflection"
   },
   {
     "lemma": "thirds",
@@ -14249,6 +19809,14 @@
   },
   {
     "lemma": "thomson",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "thor",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "thornton",
     "reason": "proper_noun"
   },
   {
@@ -14308,8 +19876,16 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "tibet",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "tickets",
     "reason": "inflection_of:ticket"
+  },
+  {
+    "lemma": "ticking",
+    "reason": "inflection"
   },
   {
     "lemma": "tied",
@@ -14318,6 +19894,10 @@
   {
     "lemma": "ties",
     "reason": "inflection_of:tie"
+  },
+  {
+    "lemma": "tiffany",
+    "reason": "proper_noun"
   },
   {
     "lemma": "tigers",
@@ -14344,12 +19924,20 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "tipping",
+    "reason": "inflection"
+  },
+  {
     "lemma": "tips",
     "reason": "inflection_of:tip"
   },
   {
     "lemma": "tires",
     "reason": "inflection_of:tire"
+  },
+  {
+    "lemma": "tis",
+    "reason": "not_a_word"
   },
   {
     "lemma": "tissues",
@@ -14362,6 +19950,14 @@
   {
     "lemma": "titles",
     "reason": "inflection_of:title"
+  },
+  {
+    "lemma": "tobago",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "toby",
+    "reason": "proper_noun"
   },
   {
     "lemma": "todd",
@@ -14380,6 +19976,14 @@
     "reason": "inflection_of:tell"
   },
   {
+    "lemma": "toledo",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "tomas",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "tomatoes",
     "reason": "inflection_of:tomato"
   },
@@ -14390,6 +19994,10 @@
   {
     "lemma": "tones",
     "reason": "inflection_of:tone"
+  },
+  {
+    "lemma": "toni",
+    "reason": "proper_noun"
   },
   {
     "lemma": "tons",
@@ -14420,6 +20028,10 @@
     "reason": "inflection_of:top"
   },
   {
+    "lemma": "tor",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "tories",
     "reason": "inflection_of:tory"
   },
@@ -14432,8 +20044,16 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "torres",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "tortured",
     "reason": "inflection_of:torture"
+  },
+  {
+    "lemma": "tottenham",
+    "reason": "proper_noun"
   },
   {
     "lemma": "touched",
@@ -14474,6 +20094,10 @@
   {
     "lemma": "towns",
     "reason": "inflection_of:town"
+  },
+  {
+    "lemma": "townsend",
+    "reason": "proper_noun"
   },
   {
     "lemma": "toyota",
@@ -14644,6 +20268,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "tri",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "trials",
     "reason": "inflection_of:trial"
   },
@@ -14656,6 +20284,10 @@
     "reason": "inflection_of:trick"
   },
   {
+    "lemma": "tried",
+    "reason": "inflection"
+  },
+  {
     "lemma": "tries",
     "reason": "inflection_of:try"
   },
@@ -14664,8 +20296,20 @@
     "reason": "inflection_of:trigger"
   },
   {
+    "lemma": "trinidad",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "trips",
     "reason": "inflection_of:trip"
+  },
+  {
+    "lemma": "tristan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "trojan",
+    "reason": "proper_noun"
   },
   {
     "lemma": "troubles",
@@ -14680,6 +20324,14 @@
     "reason": "inflection_of:truck"
   },
   {
+    "lemma": "trudeau",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "truman",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "trusted",
     "reason": "inflection_of:trust"
   },
@@ -14690,6 +20342,10 @@
   {
     "lemma": "trusts",
     "reason": "inflection_of:trust"
+  },
+  {
+    "lemma": "tryin",
+    "reason": "not_a_word"
   },
   {
     "lemma": "trying",
@@ -14708,6 +20364,18 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "tucson",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "tulsa",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "tumblr",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "tuned",
     "reason": "inflection_of:tune"
   },
@@ -14716,8 +20384,16 @@
     "reason": "inflection_of:tune"
   },
   {
+    "lemma": "tunisia",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "tunnels",
     "reason": "inflection_of:tunnel"
+  },
+  {
+    "lemma": "turks",
+    "reason": "proper_noun"
   },
   {
     "lemma": "turned",
@@ -14740,12 +20416,36 @@
     "reason": "inflection_of:twin"
   },
   {
+    "lemma": "ty",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "tyler",
     "reason": "proper_noun"
   },
   {
     "lemma": "types",
     "reason": "inflection_of:type"
+  },
+  {
+    "lemma": "tyson",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "uae",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "uc",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "ucla",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "uefa",
+    "reason": "proper_noun"
   },
   {
     "lemma": "ufc",
@@ -14764,7 +20464,27 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "uhh",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "ui",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "ukip",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ukraine",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "ul",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "ulster",
     "reason": "proper_noun"
   },
   {
@@ -14772,8 +20492,16 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "umm",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "un",
     "reason": "abbreviation"
+  },
+  {
+    "lemma": "una",
+    "reason": "not_a_word"
   },
   {
     "lemma": "und",
@@ -14790,6 +20518,14 @@
   {
     "lemma": "undertaken",
     "reason": "inflection_of:undertake"
+  },
+  {
+    "lemma": "underwood",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "unesco",
+    "reason": "proper_noun"
   },
   {
     "lemma": "unified",
@@ -14844,6 +20580,10 @@
     "reason": "inflection_of:up"
   },
   {
+    "lemma": "upton",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ur",
     "reason": "non_standard"
   },
@@ -14852,11 +20592,27 @@
     "reason": "inflection_of:urge"
   },
   {
+    "lemma": "urging",
+    "reason": "inflection"
+  },
+  {
+    "lemma": "uruguay",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "usb",
     "reason": "non_standard"
   },
   {
+    "lemma": "usc",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "usd",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "usda",
     "reason": "abbreviation"
   },
   {
@@ -14876,12 +20632,24 @@
     "reason": "inflection_of:use"
   },
   {
+    "lemma": "uss",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "ussr",
     "reason": "proper_noun"
   },
   {
+    "lemma": "ut",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "utah",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "utc",
+    "reason": "abbreviation"
   },
   {
     "lemma": "utilities",
@@ -14892,6 +20660,10 @@
     "reason": "inflection_of:utilize"
   },
   {
+    "lemma": "uv",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "va",
     "reason": "abbreviation"
   },
@@ -14900,12 +20672,36 @@
     "reason": "inflection_of:vaccine"
   },
   {
+    "lemma": "val",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "valencia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "valerie",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "values",
     "reason": "inflection_of:value"
   },
   {
+    "lemma": "vance",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "vancouver",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "vanessa",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "var",
+    "reason": "abbreviation"
   },
   {
     "lemma": "variables",
@@ -14932,8 +20728,16 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "vaughan",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "ve",
     "reason": "abbreviation"
+  },
+  {
+    "lemma": "vega",
+    "reason": "proper_noun"
   },
   {
     "lemma": "vegas",
@@ -14942,6 +20746,10 @@
   {
     "lemma": "vegetables",
     "reason": "inflection_of:vegetable"
+  },
+  {
+    "lemma": "veggies",
+    "reason": "inflection"
   },
   {
     "lemma": "vehicles",
@@ -14976,8 +20784,20 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "ver",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "vera",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "verified",
     "reason": "inflection_of:verify"
+  },
+  {
+    "lemma": "verizon",
+    "reason": "proper_noun"
   },
   {
     "lemma": "vermont",
@@ -14986,6 +20806,14 @@
   {
     "lemma": "vernon",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "veronica",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "versa",
+    "reason": "not_a_word"
   },
   {
     "lemma": "verses",
@@ -15024,6 +20852,10 @@
     "reason": "inflection_of:victory"
   },
   {
+    "lemma": "vid",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "videos",
     "reason": "inflection_of:video"
   },
@@ -15056,12 +20888,24 @@
     "reason": "abbreviation"
   },
   {
+    "lemma": "viii",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "vikings",
     "reason": "inflection_of:viking"
   },
   {
+    "lemma": "viktor",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "villages",
     "reason": "inflection_of:village"
+  },
+  {
+    "lemma": "vin",
+    "reason": "not_a_word"
   },
   {
     "lemma": "vince",
@@ -15084,8 +20928,16 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "virgil",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "virginia",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "vis",
+    "reason": "not_a_word"
   },
   {
     "lemma": "visions",
@@ -15108,6 +20960,22 @@
     "reason": "inflection_of:visit"
   },
   {
+    "lemma": "vita",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "vitro",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "vivian",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "vivo",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "vladimir",
     "reason": "proper_noun"
   },
@@ -15124,12 +20992,24 @@
     "reason": "abbreviation"
   },
   {
+    "lemma": "volkswagen",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "vols",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "volumes",
     "reason": "inflection_of:volume"
   },
   {
     "lemma": "volunteers",
     "reason": "inflection_of:volunteer"
+  },
+  {
+    "lemma": "volvo",
+    "reason": "proper_noun"
   },
   {
     "lemma": "von",
@@ -15160,12 +21040,24 @@
     "reason": "inflection_of:wage"
   },
   {
+    "lemma": "wagner",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "wah",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "waited",
     "reason": "inflection_of:wait"
   },
   {
     "lemma": "waiting",
     "reason": "inflection_of:wait"
+  },
+  {
+    "lemma": "wal",
+    "reason": "not_a_word"
   },
   {
     "lemma": "wales",
@@ -15192,6 +21084,10 @@
     "reason": "inflection_of:wall"
   },
   {
+    "lemma": "wally",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "walmart",
     "reason": "proper_noun"
   },
@@ -15205,6 +21101,14 @@
   },
   {
     "lemma": "walter",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "walters",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "walton",
     "reason": "proper_noun"
   },
   {
@@ -15248,6 +21152,14 @@
     "reason": "inflection_of:war"
   },
   {
+    "lemma": "warsaw",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "warwick",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "was",
     "reason": "inflection_of:be"
   },
@@ -15268,6 +21180,10 @@
     "reason": "inflection_of:waste"
   },
   {
+    "lemma": "wat",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "watched",
     "reason": "inflection_of:watch"
   },
@@ -15280,8 +21196,16 @@
     "reason": "inflection_of:watch"
   },
   {
+    "lemma": "waterloo",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "waters",
     "reason": "inflection_of:water"
+  },
+  {
+    "lemma": "watkins",
+    "reason": "proper_noun"
   },
   {
     "lemma": "watson",
@@ -15328,6 +21252,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "weber",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "websites",
     "reason": "inflection_of:website"
   },
@@ -15348,12 +21276,20 @@
     "reason": "inflection_of:week"
   },
   {
+    "lemma": "wei",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "weighed",
     "reason": "inflection_of:weigh"
   },
   {
     "lemma": "weights",
     "reason": "inflection_of:weight"
+  },
+  {
+    "lemma": "weiss",
+    "reason": "proper_noun"
   },
   {
     "lemma": "welcomed",
@@ -15368,7 +21304,19 @@
     "reason": "inflection_of:well"
   },
   {
+    "lemma": "wembley",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "wen",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "wendy",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "wenger",
     "reason": "proper_noun"
   },
   {
@@ -15380,7 +21328,23 @@
     "reason": "inflection_of:be"
   },
   {
+    "lemma": "wes",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "wesley",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "westbrook",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "westminster",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "weston",
     "reason": "proper_noun"
   },
   {
@@ -15390,6 +21354,10 @@
   {
     "lemma": "whats",
     "reason": "non_standard"
+  },
+  {
+    "lemma": "whatsapp",
+    "reason": "proper_noun"
   },
   {
     "lemma": "wheeler",
@@ -15404,15 +21372,51 @@
     "reason": "inflection_of:white"
   },
   {
+    "lemma": "whitman",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "whitney",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "wi",
     "reason": "abbreviation"
+  },
+  {
+    "lemma": "wichita",
+    "reason": "proper_noun"
   },
   {
     "lemma": "wider",
     "reason": "inflection_of:wide"
   },
   {
+    "lemma": "wigan",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "wii",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "wikileaks",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "wikipedia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "wilde",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "wiley",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "wilkinson",
     "reason": "proper_noun"
   },
   {
@@ -15424,11 +21428,31 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "williamson",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "willie",
     "reason": "proper_noun"
   },
   {
+    "lemma": "willis",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "wilmington",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "wilson",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "wimbledon",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "winchester",
     "reason": "proper_noun"
   },
   {
@@ -15438,6 +21462,10 @@
   {
     "lemma": "winds",
     "reason": "inflection_of:wind"
+  },
+  {
+    "lemma": "windsor",
+    "reason": "proper_noun"
   },
   {
     "lemma": "wines",
@@ -15454,6 +21482,10 @@
   {
     "lemma": "winning",
     "reason": "inflection_of:win"
+  },
+  {
+    "lemma": "winnipeg",
+    "reason": "proper_noun"
   },
   {
     "lemma": "wins",
@@ -15504,8 +21536,20 @@
     "reason": "inflection_of:wife"
   },
   {
+    "lemma": "wo",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "woah",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "woke",
     "reason": "inflection_of:wake"
+  },
+  {
+    "lemma": "wolfe",
+    "reason": "proper_noun"
   },
   {
     "lemma": "wolves",
@@ -15514,6 +21558,10 @@
   {
     "lemma": "women",
     "reason": "inflection_of:woman"
+  },
+  {
+    "lemma": "womens",
+    "reason": "not_a_word"
   },
   {
     "lemma": "won",
@@ -15532,12 +21580,28 @@
     "reason": "inflection_of:wonder"
   },
   {
+    "lemma": "wong",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "wont",
     "reason": "non_standard"
   },
   {
     "lemma": "woods",
     "reason": "inflection_of:wood"
+  },
+  {
+    "lemma": "woodward",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "worcester",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "wordpress",
+    "reason": "proper_noun"
   },
   {
     "lemma": "words",
@@ -15628,7 +21692,19 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "wwii",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "wyatt",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "wyoming",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "xavier",
     "reason": "proper_noun"
   },
   {
@@ -15640,11 +21716,35 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "xii",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "xiii",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "xiv",
+    "reason": "abbreviation"
+  },
+  {
+    "lemma": "xvi",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "ya",
     "reason": "non_standard"
   },
   {
+    "lemma": "yah",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "yale",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "yan",
     "reason": "proper_noun"
   },
   {
@@ -15658,6 +21758,10 @@
   {
     "lemma": "yards",
     "reason": "inflection_of:yard"
+  },
+  {
+    "lemma": "yates",
+    "reason": "proper_noun"
   },
   {
     "lemma": "yay",
@@ -15680,6 +21784,10 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "yi",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "yields",
     "reason": "inflection_of:yield"
   },
@@ -15688,8 +21796,20 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "yong",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "yoo",
+    "reason": "not_a_word"
+  },
+  {
     "lemma": "york",
     "reason": "proper_noun"
+  },
+  {
+    "lemma": "yorker",
+    "reason": "not_a_word"
   },
   {
     "lemma": "yorkshire",
@@ -15716,7 +21836,23 @@
     "reason": "non_standard"
   },
   {
+    "lemma": "yrs",
+    "reason": "abbreviation"
+  },
+  {
     "lemma": "yu",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "yugoslavia",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "yuri",
+    "reason": "not_a_word"
+  },
+  {
+    "lemma": "zac",
     "reason": "proper_noun"
   },
   {
@@ -15724,7 +21860,47 @@
     "reason": "proper_noun"
   },
   {
+    "lemma": "zack",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "zambia",
+    "reason": "proper_noun"
+  },
+  {
     "lemma": "zealand",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "zelda",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "zeus",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "zhang",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "zhou",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "zimbabwe",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "zimmerman",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "zion",
+    "reason": "proper_noun"
+  },
+  {
+    "lemma": "zoe",
     "reason": "proper_noun"
   },
   {
@@ -15734,5 +21910,9 @@
   {
     "lemma": "zones",
     "reason": "inflection_of:zone"
+  },
+  {
+    "lemma": "zurich",
+    "reason": "proper_noun"
   }
 ]

@@ -10,7 +10,7 @@
       "lemma": "the",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/ðə/",
+      "ipa": "/ðʌ/",
       "definition": "used before a noun when we both know which thing is meant",
       "definition_vi": "cái, con, người (mạo từ xác định)",
       "examples": [
@@ -29,7 +29,7 @@
       "lemma": "to",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/tɪ/",
+      "ipa": "/tˈu/",
       "definition": "in the direction of a place, person, or thing",
       "definition_vi": "đến, tới",
       "examples": [
@@ -48,7 +48,7 @@
       "lemma": "and",
       "pos": "conjunction",
       "cefr_level": "A1",
-      "ipa": "/ənd/",
+      "ipa": "/ʌnd/",
       "definition": "used to join two words or ideas together",
       "definition_vi": "và",
       "examples": [
@@ -60,14 +60,16 @@
           "sentence": "My brother and I play football after school.",
           "sentence_vi": "Anh trai và tôi chơi bóng đá sau giờ học."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-and.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-and.ogg"
     },
     {
       "rank": 4,
       "lemma": "of",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/əv/",
+      "ipa": "/ˈʌv/",
       "definition": "belonging to or connected with something",
       "definition_vi": "của",
       "examples": [
@@ -79,7 +81,9 @@
           "sentence": "The colour of the sky is blue today.",
           "sentence_vi": "Màu của bầu trời hôm nay là màu xanh."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-of.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-of.ogg"
     },
     {
       "rank": 6,
@@ -98,14 +102,16 @@
           "sentence": "She was born in 2005.",
           "sentence_vi": "Cô ấy sinh năm 2005."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-in.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-in.ogg"
     },
     {
       "rank": 8,
       "lemma": "be",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/bi/",
+      "ipa": "/bˈi/",
       "definition": "to exist or to have a quality",
       "definition_vi": "là, thì, ở",
       "examples": [
@@ -117,14 +123,16 @@
           "sentence": "Be quiet, please.",
           "sentence_vi": "Xin hãy giữ yên lặng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-be.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-be.ogg"
     },
     {
       "rank": 9,
       "lemma": "for",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/fər/",
+      "ipa": "/fˈɔr/",
       "definition": "used to say who something is given to or what it is meant for",
       "definition_vi": "cho, dành cho",
       "examples": [
@@ -136,14 +144,16 @@
           "sentence": "I bought some bread for breakfast.",
           "sentence_vi": "Tôi mua ít bánh mì để ăn sáng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-for.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-for.ogg"
     },
     {
       "rank": 10,
       "lemma": "that",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/ðət/",
+      "ipa": "/ðˈæt/",
       "definition": "used to point to a person or thing far away",
       "definition_vi": "cái đó, người đó (ở xa)",
       "examples": [
@@ -155,14 +165,16 @@
           "sentence": "Who is that man over there?",
           "sentence_vi": "Người đàn ông kia là ai?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-that.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-that.ogg"
     },
     {
       "rank": 11,
       "lemma": "you",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/ju/",
+      "ipa": "/jˈu/",
       "definition": "the person or people being spoken to",
       "definition_vi": "bạn, các bạn",
       "examples": [
@@ -174,14 +186,16 @@
           "sentence": "Can you help me with this bag?",
           "sentence_vi": "Bạn giúp tôi xách chiếc túi này được không?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-you.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-you.ogg"
     },
     {
       "rank": 12,
       "lemma": "it",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/ɪt/",
+      "ipa": "/ˈɪt/",
       "definition": "used to talk about a thing, animal or situation",
       "definition_vi": "nó, cái đó",
       "examples": [
@@ -193,14 +207,16 @@
           "sentence": "It is raining outside.",
           "sentence_vi": "Bên ngoài trời đang mưa."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-it.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-it.ogg"
     },
     {
       "rank": 13,
       "lemma": "on",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/ɔn/",
+      "ipa": "/ˈɑn/",
       "definition": "touching or supported by the top of something",
       "definition_vi": "trên",
       "examples": [
@@ -212,14 +228,16 @@
           "sentence": "She put a book on the shelf.",
           "sentence_vi": "Cô ấy đặt một cuốn sách lên kệ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-on.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-on.ogg"
     },
     {
       "rank": 14,
       "lemma": "with",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/wɪθ/",
+      "ipa": "/wˈɪð/",
       "definition": "in the company of, or using something",
       "definition_vi": "với, cùng",
       "examples": [
@@ -231,14 +249,16 @@
           "sentence": "He cut the bread with a knife.",
           "sentence_vi": "Anh ấy cắt bánh mì bằng dao."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-with.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-with.ogg"
     },
     {
       "rank": 15,
       "lemma": "this",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/ðɪs/",
+      "ipa": "/ðˈɪs/",
       "definition": "used to point at one thing close to you",
       "definition_vi": "cái này, này",
       "examples": [
@@ -250,14 +270,16 @@
           "sentence": "I like this song a lot.",
           "sentence_vi": "Tôi thích bài hát này lắm."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-this.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-this.ogg"
     },
     {
       "rank": 20,
       "lemma": "have",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/hæv/",
+      "ipa": "/hˈæv/",
       "definition": "to own something or to hold it",
       "definition_vi": "có",
       "examples": [
@@ -269,14 +291,16 @@
           "sentence": "We have a big garden.",
           "sentence_vi": "Chúng tôi có một khu vườn lớn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-have.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-have.ogg"
     },
     {
       "rank": 21,
       "lemma": "at",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/æt/",
+      "ipa": "/ˈæt/",
       "definition": "used to show a place or a point in time",
       "definition_vi": "ở, tại, lúc",
       "examples": [
@@ -288,14 +312,16 @@
           "sentence": "We eat dinner at seven o'clock.",
           "sentence_vi": "Chúng tôi ăn tối lúc bảy giờ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-at.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-at.ogg"
     },
     {
       "rank": 22,
       "lemma": "he",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/hi/",
+      "ipa": "/hˈi/",
       "definition": "the man or boy that was mentioned",
       "definition_vi": "anh ấy, ông ấy, nó (con trai)",
       "examples": [
@@ -307,14 +333,16 @@
           "sentence": "He plays football every weekend.",
           "sentence_vi": "Anh ấy chơi bóng đá mỗi cuối tuần."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-he.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-he.ogg"
     },
     {
       "rank": 23,
       "lemma": "not",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/nɑt/",
+      "ipa": "/nˈɑt/",
       "definition": "a word that makes a sentence negative",
       "definition_vi": "không",
       "examples": [
@@ -326,14 +354,16 @@
           "sentence": "She does not like coffee.",
           "sentence_vi": "Cô ấy không thích cà phê."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-not.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-not.ogg"
     },
     {
       "rank": 25,
       "lemma": "but",
       "pos": "conjunction",
       "cefr_level": "A1",
-      "ipa": "/bət/",
+      "ipa": "/bˈʌt/",
       "definition": "used to join two ideas that are different",
       "definition_vi": "nhưng",
       "examples": [
@@ -345,14 +375,16 @@
           "sentence": "The test was hard, but I passed.",
           "sentence_vi": "Bài kiểm tra khó, nhưng tôi đã đậu."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-but.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-but.ogg"
     },
     {
       "rank": 26,
       "lemma": "from",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/frəm/",
+      "ipa": "/frˈʌm/",
       "definition": "showing where something starts or comes from",
       "definition_vi": "từ",
       "examples": [
@@ -364,14 +396,16 @@
           "sentence": "The shop is open from morning to night.",
           "sentence_vi": "Cửa hàng mở từ sáng đến tối."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-from.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-from.ogg"
     },
     {
       "rank": 27,
       "lemma": "my",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/maɪ/",
+      "ipa": "/mˈaɪ/",
       "definition": "belonging to me",
       "definition_vi": "của tôi",
       "examples": [
@@ -383,14 +417,16 @@
           "sentence": "This is my best friend.",
           "sentence_vi": "Đây là bạn thân của tôi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-my.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-my.ogg"
     },
     {
       "rank": 28,
       "lemma": "or",
       "pos": "conjunction",
       "cefr_level": "A1",
-      "ipa": "/ər/",
+      "ipa": "/ˈɔr/",
       "definition": "used to connect two choices or possibilities",
       "definition_vi": "hoặc",
       "examples": [
@@ -402,14 +438,16 @@
           "sentence": "We can walk or take the bus.",
           "sentence_vi": "Chúng ta có thể đi bộ hoặc đi xe buýt."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-or.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-or.ogg"
     },
     {
       "rank": 29,
       "lemma": "we",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/wi/",
+      "ipa": "/wˈi/",
       "definition": "the speaker and one or more other people",
       "definition_vi": "chúng tôi, chúng ta",
       "examples": [
@@ -421,14 +459,16 @@
           "sentence": "We go to school every morning.",
           "sentence_vi": "Chúng tôi đi học mỗi sáng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-we.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-we.ogg"
     },
     {
       "rank": 30,
       "lemma": "an",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/ən/",
+      "ipa": "/ˈæn/",
       "definition": "one; used before a word starting with a vowel sound",
       "definition_vi": "một (dùng trước danh từ bắt đầu bằng nguyên âm)",
       "examples": [
@@ -440,14 +480,16 @@
           "sentence": "I waited for an hour.",
           "sentence_vi": "Tôi đã đợi một giờ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-an.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-an.ogg"
     },
     {
       "rank": 31,
       "lemma": "your",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/jʊr/",
+      "ipa": "/jˈɔr/",
       "definition": "belonging to the person you are talking to",
       "definition_vi": "của bạn",
       "examples": [
@@ -459,14 +501,16 @@
           "sentence": "Your shoes are under the bed.",
           "sentence_vi": "Giày của bạn ở dưới gầm giường."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-your.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-your.ogg"
     },
     {
       "rank": 32,
       "lemma": "all",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/ɔl/",
+      "ipa": "/ˈɔɫ/",
       "definition": "every one of something; the whole amount",
       "definition_vi": "tất cả",
       "examples": [
@@ -478,14 +522,16 @@
           "sentence": "She ate all the cake.",
           "sentence_vi": "Cô ấy đã ăn hết bánh."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-all.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-all.ogg"
     },
     {
       "rank": 33,
       "lemma": "so",
       "pos": "conjunction",
       "cefr_level": "A1",
-      "ipa": "/soʊ/",
+      "ipa": "/sˈoʊ/",
       "definition": "therefore; for that reason",
       "definition_vi": "vì vậy, nên",
       "examples": [
@@ -497,14 +543,16 @@
           "sentence": "I was hungry, so I made a sandwich.",
           "sentence_vi": "Tôi đói, nên tôi làm một cái bánh mì kẹp."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-so.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-so.ogg"
     },
     {
       "rank": 34,
       "lemma": "his",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/hɪz/",
+      "ipa": "/hˈɪz/",
       "definition": "belonging to a boy or man",
       "definition_vi": "của anh ấy, của nó (về nam)",
       "examples": [
@@ -516,14 +564,16 @@
           "sentence": "That is his dog, not mine.",
           "sentence_vi": "Đó là con chó của anh ấy, không phải của tôi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-his.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-his.ogg"
     },
     {
       "rank": 35,
       "lemma": "they",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/ðeɪ/",
+      "ipa": "/ðˈeɪ/",
       "definition": "the people or things already talked about",
       "definition_vi": "họ, chúng",
       "examples": [
@@ -535,14 +585,16 @@
           "sentence": "Where are they going?",
           "sentence_vi": "Họ đang đi đâu?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-they.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-they.ogg"
     },
     {
       "rank": 36,
       "lemma": "me",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/mi/",
+      "ipa": "/mˈi/",
       "definition": "the person speaking; used as an object",
       "definition_vi": "tôi",
       "examples": [
@@ -554,14 +606,16 @@
           "sentence": "She gave me a gift.",
           "sentence_vi": "Cô ấy tặng tôi một món quà."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-me.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-me.ogg"
     },
     {
       "rank": 37,
       "lemma": "if",
       "pos": "conjunction",
       "cefr_level": "A1",
-      "ipa": "/ɪf/",
+      "ipa": "/ˈɪf/",
       "definition": "used to talk about a possible condition",
       "definition_vi": "nếu",
       "examples": [
@@ -573,14 +627,16 @@
           "sentence": "Call me if you need help.",
           "sentence_vi": "Gọi cho tôi nếu bạn cần giúp đỡ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-if.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-if.ogg"
     },
     {
       "rank": 38,
       "lemma": "one",
       "pos": "number",
       "cefr_level": "A1",
-      "ipa": "/wən/",
+      "ipa": "/wˈʌn/",
       "definition": "the number 1; a single thing",
       "definition_vi": "một",
       "examples": [
@@ -592,14 +648,16 @@
           "sentence": "Only one chair is free.",
           "sentence_vi": "Chỉ có một chiếc ghế trống."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-one.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-one.ogg"
     },
     {
       "rank": 39,
       "lemma": "can",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/kən/",
+      "ipa": "/kˈæn/",
       "definition": "to be able to do something",
       "definition_vi": "có thể",
       "examples": [
@@ -611,14 +669,16 @@
           "sentence": "Can you open the window?",
           "sentence_vi": "Bạn có thể mở cửa sổ không?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-can.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-can.ogg"
     },
     {
       "rank": 40,
       "lemma": "will",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/wɪl/",
+      "ipa": "/wˈɪɫ/",
       "definition": "used to talk about the future",
       "definition_vi": "sẽ",
       "examples": [
@@ -630,14 +690,16 @@
           "sentence": "She will be happy to see you.",
           "sentence_vi": "Cô ấy sẽ vui khi gặp bạn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-will.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-will.ogg"
     },
     {
       "rank": 42,
       "lemma": "like",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/laɪk/",
+      "ipa": "/ɫˈaɪk/",
       "definition": "to enjoy something or find it good",
       "definition_vi": "thích",
       "examples": [
@@ -649,14 +711,16 @@
           "sentence": "Do you like this song?",
           "sentence_vi": "Bạn có thích bài hát này không?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-like.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-like.ogg"
     },
     {
       "rank": 43,
       "lemma": "about",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/əˈbaʊt/",
+      "ipa": "/ʌbˈaʊt/",
       "definition": "on the subject of something; approximately",
       "definition_vi": "về; khoảng",
       "examples": [
@@ -668,14 +732,16 @@
           "sentence": "The trip takes about two hours.",
           "sentence_vi": "Chuyến đi mất khoảng hai giờ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-about.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-about.ogg"
     },
     {
       "rank": 44,
       "lemma": "up",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/əp/",
+      "ipa": "/ˈʌp/",
       "definition": "towards a higher place or position",
       "definition_vi": "lên",
       "examples": [
@@ -687,14 +753,16 @@
           "sentence": "Please stand up when I call your name.",
           "sentence_vi": "Vui lòng đứng lên khi tôi gọi tên bạn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-up.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-up.ogg"
     },
     {
       "rank": 45,
       "lemma": "out",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/aʊt/",
+      "ipa": "/ˈaʊt/",
       "definition": "away from the inside of a place",
       "definition_vi": "ra ngoài",
       "examples": [
@@ -706,14 +774,16 @@
           "sentence": "Let's go out for dinner.",
           "sentence_vi": "Chúng ta đi ra ngoài ăn tối nhé."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-out.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-out.ogg"
     },
     {
       "rank": 46,
       "lemma": "what",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/wət/",
+      "ipa": "/wˈʌt/",
       "definition": "used to ask for information about something",
       "definition_vi": "cái gì",
       "examples": [
@@ -725,14 +795,16 @@
           "sentence": "What do you want to eat?",
           "sentence_vi": "Bạn muốn ăn gì?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-what.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-what.ogg"
     },
     {
       "rank": 48,
       "lemma": "when",
       "pos": "conjunction",
       "cefr_level": "A1",
-      "ipa": "/wɪn/",
+      "ipa": "/wˈɛn/",
       "definition": "at the time that something happens",
       "definition_vi": "khi",
       "examples": [
@@ -744,14 +816,16 @@
           "sentence": "When I was young, I lived in Hue.",
           "sentence_vi": "Khi tôi còn nhỏ, tôi sống ở Huế."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-when.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-when.ogg"
     },
     {
       "rank": 49,
       "lemma": "more",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/mɔr/",
+      "ipa": "/mˈɔr/",
       "definition": "a greater amount or number of something",
       "definition_vi": "nhiều hơn",
       "examples": [
@@ -763,14 +837,16 @@
           "sentence": "I need more time to finish.",
           "sentence_vi": "Tôi cần thêm thời gian để hoàn thành."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-more.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-more.ogg"
     },
     {
       "rank": 50,
       "lemma": "do",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/du/",
+      "ipa": "/dˈu/",
       "definition": "to perform an action or task",
       "definition_vi": "làm",
       "examples": [
@@ -789,7 +865,7 @@
       "lemma": "no",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/noʊ/",
+      "ipa": "/nˈoʊ/",
       "definition": "not any; used to give a negative answer",
       "definition_vi": "không",
       "examples": [
@@ -801,14 +877,16 @@
           "sentence": "No, thank you, I am not hungry.",
           "sentence_vi": "Không, cảm ơn, tôi không đói."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-no.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-no.ogg"
     },
     {
       "rank": 53,
       "lemma": "who",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/hu/",
+      "ipa": "/hˈu/",
       "definition": "used to ask about a person's name or identity",
       "definition_vi": "ai",
       "examples": [
@@ -820,14 +898,16 @@
           "sentence": "Who wants some more rice?",
           "sentence_vi": "Ai muốn thêm cơm?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-who.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-who.ogg"
     },
     {
       "rank": 56,
       "lemma": "their",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/ðɛr/",
+      "ipa": "/ðˈɛr/",
       "definition": "belonging to a group of people",
       "definition_vi": "của họ",
       "examples": [
@@ -839,14 +919,16 @@
           "sentence": "They washed their hands before dinner.",
           "sentence_vi": "Họ rửa tay trước bữa tối."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-their.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-their.ogg"
     },
     {
       "rank": 57,
       "lemma": "there",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/ðɛr/",
+      "ipa": "/ðˈɛr/",
       "definition": "in or to that place, not here",
       "definition_vi": "ở đó, ở kia",
       "examples": [
@@ -858,14 +940,16 @@
           "sentence": "There are many flowers in the garden.",
           "sentence_vi": "Có nhiều hoa trong vườn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-there.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-there.ogg"
     },
     {
       "rank": 58,
       "lemma": "her",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/hər/",
+      "ipa": "/hɝ/",
       "definition": "belonging to or about a girl or woman",
       "definition_vi": "cô ấy, của cô ấy",
       "examples": [
@@ -877,14 +961,16 @@
           "sentence": "Her bag is on the chair.",
           "sentence_vi": "Túi của cô ấy ở trên ghế."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-her.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-her.ogg"
     },
     {
       "rank": 60,
       "lemma": "time",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/taɪm/",
+      "ipa": "/tˈaɪm/",
       "definition": "the hours and minutes shown on a clock",
       "definition_vi": "thời gian, giờ",
       "examples": [
@@ -896,14 +982,16 @@
           "sentence": "I have no time to play today.",
           "sentence_vi": "Hôm nay tôi không có thời gian để chơi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-time.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-time.ogg"
     },
     {
       "rank": 61,
       "lemma": "get",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/gɪt/",
+      "ipa": "/gˈɛt/",
       "definition": "to receive, buy, or come to have something",
       "definition_vi": "nhận được, mua, có được",
       "examples": [
@@ -915,14 +1003,16 @@
           "sentence": "Can you get some milk from the shop?",
           "sentence_vi": "Bạn có thể mua ít sữa ở cửa hàng không?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-get.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-get.ogg"
     },
     {
       "rank": 64,
       "lemma": "she",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/ʃi/",
+      "ipa": "/ʃˈi/",
       "definition": "used for a girl or woman already mentioned",
       "definition_vi": "cô ấy, bà ấy",
       "examples": [
@@ -934,14 +1024,16 @@
           "sentence": "My sister works in a hospital, and she likes her job.",
           "sentence_vi": "Chị tôi làm việc ở bệnh viện, và chị ấy thích công việc của mình."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-she.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-she.ogg"
     },
     {
       "rank": 65,
       "lemma": "new",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/nu/",
+      "ipa": "/nˈu/",
       "definition": "recently made, bought, or started; not old",
       "definition_vi": "mới",
       "examples": [
@@ -953,14 +1045,16 @@
           "sentence": "We moved into a new house last week.",
           "sentence_vi": "Chúng tôi chuyển vào nhà mới tuần trước."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-new.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-new.ogg"
     },
     {
       "rank": 66,
       "lemma": "people",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ˈpipəl/",
+      "ipa": "/pˈipʌɫ/",
       "definition": "more than one person; humans in general",
       "definition_vi": "người, mọi người",
       "examples": [
@@ -972,14 +1066,16 @@
           "sentence": "Some people like coffee, others like tea.",
           "sentence_vi": "Một số người thích cà phê, người khác thích trà."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-people.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-people.ogg"
     },
     {
       "rank": 67,
       "lemma": "how",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/haʊ/",
+      "ipa": "/hˈaʊ/",
       "definition": "used to ask about the way or manner of something",
       "definition_vi": "như thế nào, làm sao",
       "examples": [
@@ -991,14 +1087,16 @@
           "sentence": "How much is this shirt?",
           "sentence_vi": "Cái áo này giá bao nhiêu?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-how.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-how.ogg"
     },
     {
       "rank": 69,
       "lemma": "some",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/səm/",
+      "ipa": "/sˈʌm/",
       "definition": "an amount or number that is not exact",
       "definition_vi": "một vài, một ít",
       "examples": [
@@ -1010,14 +1108,16 @@
           "sentence": "Some students stayed after class to ask questions.",
           "sentence_vi": "Một số học sinh ở lại sau giờ học để hỏi câu hỏi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-some.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-some.ogg"
     },
     {
       "rank": 71,
       "lemma": "them",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/ðɛm/",
+      "ipa": "/ðˈɛm/",
       "definition": "the object form of they; used for people or things already mentioned",
       "definition_vi": "họ, chúng, chúng nó",
       "examples": [
@@ -1029,14 +1129,16 @@
           "sentence": "The children are outside; please call them for dinner.",
           "sentence_vi": "Bọn trẻ ở ngoài; hãy gọi chúng vào ăn tối."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-them.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-them.ogg"
     },
     {
       "rank": 72,
       "lemma": "now",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/naʊ/",
+      "ipa": "/nˈaʊ/",
       "definition": "at this moment; at the present time",
       "definition_vi": "bây giờ",
       "examples": [
@@ -1048,14 +1150,16 @@
           "sentence": "She used to live in Hanoi, but now she lives in Da Nang.",
           "sentence_vi": "Cô ấy từng sống ở Hà Nội, nhưng bây giờ sống ở Đà Nẵng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-now.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-now.ogg"
     },
     {
       "rank": 76,
       "lemma": "our",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/ɑr/",
+      "ipa": "/ˈaʊɝ/",
       "definition": "belonging to us",
       "definition_vi": "của chúng tôi, của chúng ta",
       "examples": [
@@ -1067,14 +1171,16 @@
           "sentence": "We clean our classroom every Friday.",
           "sentence_vi": "Chúng tôi dọn lớp học của mình vào mỗi thứ Sáu."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-our.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-our.ogg"
     },
     {
       "rank": 78,
       "lemma": "good",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/gʊd/",
+      "ipa": "/gˈʊd/",
       "definition": "of high quality; nice or pleasant",
       "definition_vi": "tốt, hay",
       "examples": [
@@ -1086,14 +1192,16 @@
           "sentence": "She is a good student and always does her homework.",
           "sentence_vi": "Cô ấy là học sinh giỏi và luôn làm bài tập về nhà."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-good.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-good.ogg"
     },
     {
       "rank": 80,
       "lemma": "after",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/ˈæftər/",
+      "ipa": "/ˈæftɝ/",
       "definition": "later than something; following in time",
       "definition_vi": "sau khi, sau",
       "examples": [
@@ -1105,14 +1213,16 @@
           "sentence": "After dinner, the family watched a movie together.",
           "sentence_vi": "Sau bữa tối, cả gia đình cùng xem một bộ phim."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-after.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-after.ogg"
     },
     {
       "rank": 81,
       "lemma": "first",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/fərst/",
+      "ipa": "/fˈɝst/",
       "definition": "coming before all others in order or time",
       "definition_vi": "đầu tiên",
       "examples": [
@@ -1124,14 +1234,16 @@
           "sentence": "I always drink water first thing in the morning.",
           "sentence_vi": "Tôi luôn uống nước việc đầu tiên vào buổi sáng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-first.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-first.ogg"
     },
     {
       "rank": 82,
       "lemma": "him",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/ɪm/",
+      "ipa": "/hˈɪm/",
       "definition": "the male person already mentioned, as object",
       "definition_vi": "anh ấy, ông ấy (tân ngữ)",
       "examples": [
@@ -1143,14 +1255,16 @@
           "sentence": "Please give him the book when you meet.",
           "sentence_vi": "Hãy đưa cho anh ấy cuốn sách khi bạn gặp."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-him.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-him.ogg"
     },
     {
       "rank": 83,
       "lemma": "into",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/ˈɪntu/",
+      "ipa": "/ɪntˈu/",
       "definition": "moving to the inside of a place or thing",
       "definition_vi": "vào trong",
       "examples": [
@@ -1162,14 +1276,16 @@
           "sentence": "He put the money into his bag.",
           "sentence_vi": "Anh ấy đặt tiền vào trong túi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-into.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-into.ogg"
     },
     {
       "rank": 84,
       "lemma": "know",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/noʊ/",
+      "ipa": "/nˈoʊ/",
       "definition": "to have information or understanding about something",
       "definition_vi": "biết",
       "examples": [
@@ -1181,14 +1297,16 @@
           "sentence": "Do you know how to cook rice?",
           "sentence_vi": "Bạn có biết nấu cơm không?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-know.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-know.ogg"
     },
     {
       "rank": 85,
       "lemma": "see",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/si/",
+      "ipa": "/sˈi/",
       "definition": "to notice something with your eyes",
       "definition_vi": "thấy, nhìn thấy",
       "examples": [
@@ -1200,14 +1318,16 @@
           "sentence": "I see my friends every weekend.",
           "sentence_vi": "Tôi gặp bạn bè mỗi cuối tuần."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-see.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-see.ogg"
     },
     {
       "rank": 86,
       "lemma": "two",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/tu/",
+      "ipa": "/tˈu/",
       "definition": "the number between one and three",
       "definition_vi": "hai",
       "examples": [
@@ -1219,14 +1339,16 @@
           "sentence": "The bus comes every two hours.",
           "sentence_vi": "Xe buýt đến mỗi hai giờ một lần."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-two.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-two.ogg"
     },
     {
       "rank": 87,
       "lemma": "make",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/meɪk/",
+      "ipa": "/mˈeɪk/",
       "definition": "to create or produce something",
       "definition_vi": "làm, tạo ra",
       "examples": [
@@ -1238,14 +1360,16 @@
           "sentence": "Let's make a plan for the weekend.",
           "sentence_vi": "Chúng ta hãy lập kế hoạch cho cuối tuần."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-make.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-make.ogg"
     },
     {
       "rank": 88,
       "lemma": "over",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/ˈoʊvər/",
+      "ipa": "/ˈoʊvɝ/",
       "definition": "above or across something",
       "definition_vi": "trên, qua",
       "examples": [
@@ -1257,14 +1381,16 @@
           "sentence": "There is a lamp hanging over the table.",
           "sentence_vi": "Có một cái đèn treo trên bàn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-over.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-over.ogg"
     },
     {
       "rank": 89,
       "lemma": "think",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/θɪŋk/",
+      "ipa": "/θˈɪŋk/",
       "definition": "to use your mind to consider or decide something",
       "definition_vi": "nghĩ",
       "examples": [
@@ -1276,7 +1402,9 @@
           "sentence": "Think carefully before you answer the question.",
           "sentence_vi": "Hãy suy nghĩ kỹ trước khi trả lời câu hỏi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-think.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-think.ogg"
     },
     {
       "rank": 90,
@@ -1295,14 +1423,16 @@
           "sentence": "There isn't any milk in the fridge.",
           "sentence_vi": "Không có sữa nào trong tủ lạnh."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-any.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-any.ogg"
     },
     {
       "rank": 91,
       "lemma": "then",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/ðɛn/",
+      "ipa": "/ðˈɛn/",
       "definition": "at that time or after that",
       "definition_vi": "sau đó, lúc đó",
       "examples": [
@@ -1314,14 +1444,16 @@
           "sentence": "I was living in Hanoi then.",
           "sentence_vi": "Lúc đó tôi đang sống ở Hà Nội."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-then.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-then.ogg"
     },
     {
       "rank": 93,
       "lemma": "back",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/bæk/",
+      "ipa": "/bˈæk/",
       "definition": "the part of the body opposite the chest",
       "definition_vi": "lưng",
       "examples": [
@@ -1333,14 +1465,16 @@
           "sentence": "He carried the heavy box on his back.",
           "sentence_vi": "Anh ấy vác chiếc hộp nặng trên lưng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-back.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-back.ogg"
     },
     {
       "rank": 94,
       "lemma": "these",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/ðiz/",
+      "ipa": "/ðˈiz/",
       "definition": "used for several people or things that are near",
       "definition_vi": "những (cái) này",
       "examples": [
@@ -1352,14 +1486,16 @@
           "sentence": "I bought these apples at the market.",
           "sentence_vi": "Tôi mua những quả táo này ở chợ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-these.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-these.ogg"
     },
     {
       "rank": 96,
       "lemma": "want",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/wɔnt/",
+      "ipa": "/wˈɑnt/",
       "definition": "to wish to have or do something",
       "definition_vi": "muốn",
       "examples": [
@@ -1371,14 +1507,16 @@
           "sentence": "They want to visit Ha Long Bay next month.",
           "sentence_vi": "Họ muốn thăm Vịnh Hạ Long vào tháng sau."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-want.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-want.ogg"
     },
     {
       "rank": 97,
       "lemma": "because",
       "pos": "conjunction",
       "cefr_level": "A1",
-      "ipa": "/bɪˈkəz/",
+      "ipa": "/bɪkˈɔz/",
       "definition": "for the reason that",
       "definition_vi": "bởi vì",
       "examples": [
@@ -1390,14 +1528,16 @@
           "sentence": "She is happy because she passed the exam.",
           "sentence_vi": "Cô ấy vui vì đã đậu kỳ thi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-because.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-because.ogg"
     },
     {
       "rank": 98,
       "lemma": "go",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/goʊ/",
+      "ipa": "/gˈoʊ/",
       "definition": "to move or travel to another place",
       "definition_vi": "đi",
       "examples": [
@@ -1409,14 +1549,16 @@
           "sentence": "Let's go to the beach this Sunday.",
           "sentence_vi": "Chúng ta hãy đi biển chủ nhật này."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-go.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-go.ogg"
     },
     {
       "rank": 99,
       "lemma": "well",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/wɛl/",
+      "ipa": "/wˈɛɫ/",
       "definition": "in a good way",
       "definition_vi": "tốt, giỏi",
       "examples": [
@@ -1428,14 +1570,16 @@
           "sentence": "He speaks English well for a beginner.",
           "sentence_vi": "Anh ấy nói tiếng Anh tốt đối với người mới học."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-well.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-well.ogg"
     },
     {
       "rank": 100,
       "lemma": "say",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/seɪ/",
+      "ipa": "/sˈeɪ/",
       "definition": "to speak words to someone",
       "definition_vi": "nói",
       "examples": [
@@ -1447,14 +1591,16 @@
           "sentence": "He always says hello to his neighbours.",
           "sentence_vi": "Anh ấy luôn chào hỏi hàng xóm."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-say.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-say.ogg"
     },
     {
       "rank": 101,
       "lemma": "way",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/weɪ/",
+      "ipa": "/wˈeɪ/",
       "definition": "a road or method for doing something",
       "definition_vi": "đường, cách",
       "examples": [
@@ -1466,14 +1612,16 @@
           "sentence": "This is the best way to learn new words.",
           "sentence_vi": "Đây là cách tốt nhất để học từ mới."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-way.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-way.ogg"
     },
     {
       "rank": 105,
       "lemma": "much",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/məʧ/",
+      "ipa": "/mˈʌtʃ/",
       "definition": "a large amount of something you cannot count",
       "definition_vi": "nhiều",
       "examples": [
@@ -1485,14 +1633,16 @@
           "sentence": "There isn't much time before the train leaves.",
           "sentence_vi": "Không còn nhiều thời gian trước khi tàu chạy."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-much.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-much.ogg"
     },
     {
       "rank": 106,
       "lemma": "very",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/ˈvɛri/",
+      "ipa": "/vˈɛri/",
       "definition": "to a high degree; extremely",
       "definition_vi": "rất",
       "examples": [
@@ -1504,14 +1654,16 @@
           "sentence": "She is very good at math.",
           "sentence_vi": "Cô ấy rất giỏi toán."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-very.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-very.ogg"
     },
     {
       "rank": 107,
       "lemma": "where",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/wɛr/",
+      "ipa": "/wˈɛr/",
       "definition": "in or to which place",
       "definition_vi": "ở đâu",
       "examples": [
@@ -1523,14 +1675,16 @@
           "sentence": "Do you know where I left my keys?",
           "sentence_vi": "Bạn có biết tôi để chìa khóa ở đâu không?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-where.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-where.ogg"
     },
     {
       "rank": 111,
       "lemma": "here",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/hir/",
+      "ipa": "/hˈɪr/",
       "definition": "in or at this place",
       "definition_vi": "ở đây",
       "examples": [
@@ -1542,14 +1696,16 @@
           "sentence": "I live here with my family.",
           "sentence_vi": "Tôi sống ở đây với gia đình."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-here.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-here.ogg"
     },
     {
       "rank": 112,
       "lemma": "need",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/nid/",
+      "ipa": "/nˈid/",
       "definition": "to want or must have something",
       "definition_vi": "cần",
       "examples": [
@@ -1561,14 +1717,16 @@
           "sentence": "Do you need help with your homework?",
           "sentence_vi": "Bạn có cần giúp bài tập không?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-need.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-need.ogg"
     },
     {
       "rank": 115,
       "lemma": "right",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/raɪt/",
+      "ipa": "/rˈaɪt/",
       "definition": "correct, or on the side that is not left",
       "definition_vi": "đúng; bên phải",
       "examples": [
@@ -1580,14 +1738,16 @@
           "sentence": "The bank is on the right.",
           "sentence_vi": "Ngân hàng ở bên phải."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-right.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-right.ogg"
     },
     {
       "rank": 116,
       "lemma": "work",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/wərk/",
+      "ipa": "/wˈɝk/",
       "definition": "a job or activity you do to earn money",
       "definition_vi": "công việc",
       "examples": [
@@ -1599,14 +1759,16 @@
           "sentence": "Her work is very hard.",
           "sentence_vi": "Công việc của cô ấy rất vất vả."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-work.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-work.ogg"
     },
     {
       "rank": 117,
       "lemma": "year",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/jɪr/",
+      "ipa": "/jˈɪr/",
       "definition": "a period of twelve months",
       "definition_vi": "năm",
       "examples": [
@@ -1618,14 +1780,16 @@
           "sentence": "We moved here last year.",
           "sentence_vi": "Chúng tôi chuyển đến đây năm ngoái."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-year.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-year.ogg"
     },
     {
       "rank": 120,
       "lemma": "day",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/deɪ/",
+      "ipa": "/dˈeɪ/",
       "definition": "a period of 24 hours, or the time when it is light",
       "definition_vi": "ngày",
       "examples": [
@@ -1637,14 +1801,16 @@
           "sentence": "I study English every day.",
           "sentence_vi": "Tôi học tiếng Anh mỗi ngày."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-day.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-day.ogg"
     },
     {
       "rank": 121,
       "lemma": "too",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/tu/",
+      "ipa": "/tˈu/",
       "definition": "more than needed, or also",
       "definition_vi": "quá; cũng",
       "examples": [
@@ -1656,14 +1822,16 @@
           "sentence": "I want to go too.",
           "sentence_vi": "Tôi cũng muốn đi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-too.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-too.ogg"
     },
     {
       "rank": 122,
       "lemma": "going",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/goʊɪŋ/",
+      "ipa": "/gˈoʊɪŋ/",
       "definition": "moving or traveling to a place",
       "definition_vi": "đang đi",
       "examples": [
@@ -1675,14 +1843,16 @@
           "sentence": "We are going to the market later.",
           "sentence_vi": "Chúng tôi sẽ đi chợ sau."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-going.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-going.ogg"
     },
     {
       "rank": 123,
       "lemma": "before",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/ˌbiˈfɔr/",
+      "ipa": "/bɪfˈɔr/",
       "definition": "earlier than something",
       "definition_vi": "trước",
       "examples": [
@@ -1694,14 +1864,16 @@
           "sentence": "I have seen this film before.",
           "sentence_vi": "Tôi đã xem phim này trước rồi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-before.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-before.ogg"
     },
     {
       "rank": 124,
       "lemma": "off",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/ɔf/",
+      "ipa": "/ˈɔf/",
       "definition": "away from a place, or not working",
       "definition_vi": "tắt; rời khỏi",
       "examples": [
@@ -1713,14 +1885,16 @@
           "sentence": "He got off the bus at the park.",
           "sentence_vi": "Anh ấy xuống xe buýt ở công viên."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-off.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-off.ogg"
     },
     {
       "rank": 125,
       "lemma": "why",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/waɪ/",
+      "ipa": "/wˈaɪ/",
       "definition": "used to ask for a reason",
       "definition_vi": "tại sao",
       "examples": [
@@ -1732,14 +1906,16 @@
           "sentence": "I don't know why she left.",
           "sentence_vi": "Tôi không biết tại sao cô ấy đi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-why.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-why.ogg"
     },
     {
       "rank": 128,
       "lemma": "take",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/teɪk/",
+      "ipa": "/tˈeɪk/",
       "definition": "to get or carry something from one place to another",
       "definition_vi": "lấy; mang; đi",
       "examples": [
@@ -1751,14 +1927,16 @@
           "sentence": "It takes ten minutes by bus.",
           "sentence_vi": "Đi xe buýt mất mười phút."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-take.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-take.ogg"
     },
     {
       "rank": 131,
       "lemma": "many",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/ˈmɛni/",
+      "ipa": "/mˈɛni/",
       "definition": "a large number of things or people",
       "definition_vi": "nhiều",
       "examples": [
@@ -1770,14 +1948,16 @@
           "sentence": "How many books do you have?",
           "sentence_vi": "Bạn có bao nhiêu quyển sách?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-many.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-many.ogg"
     },
     {
       "rank": 132,
       "lemma": "never",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/ˈnɛvər/",
+      "ipa": "/nˈɛvɝ/",
       "definition": "not at any time; not ever",
       "definition_vi": "không bao giờ",
       "examples": [
@@ -1789,14 +1969,16 @@
           "sentence": "She never forgets my birthday.",
           "sentence_vi": "Cô ấy không bao giờ quên sinh nhật tôi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-never.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-never.ogg"
     },
     {
       "rank": 133,
       "lemma": "those",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/ðoʊz/",
+      "ipa": "/ðˈoʊz/",
       "definition": "used to point at people or things far away",
       "definition_vi": "những... kia",
       "examples": [
@@ -1808,14 +1990,16 @@
           "sentence": "I like those flowers in the garden.",
           "sentence_vi": "Tôi thích những bông hoa kia trong vườn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-those.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-those.ogg"
     },
     {
       "rank": 134,
       "lemma": "life",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/laɪf/",
+      "ipa": "/ɫˈaɪf/",
       "definition": "the time when a person is alive and living",
       "definition_vi": "cuộc sống, cuộc đời",
       "examples": [
@@ -1827,14 +2011,16 @@
           "sentence": "Life in the city is very busy.",
           "sentence_vi": "Cuộc sống ở thành phố rất bận rộn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-life.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-life.ogg"
     },
     {
       "rank": 136,
       "lemma": "world",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/wərld/",
+      "ipa": "/wˈɝɫd/",
       "definition": "the Earth and all the countries and people on it",
       "definition_vi": "thế giới",
       "examples": [
@@ -1853,7 +2039,7 @@
       "lemma": "down",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/daʊn/",
+      "ipa": "/dˈaʊn/",
       "definition": "from a higher place to a lower place",
       "definition_vi": "xuống",
       "examples": [
@@ -1865,14 +2051,16 @@
           "sentence": "Please sit down and open your books.",
           "sentence_vi": "Xin hãy ngồi xuống và mở sách ra."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-down.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-down.ogg"
     },
     {
       "rank": 138,
       "lemma": "great",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/greɪt/",
+      "ipa": "/grˈeɪt/",
       "definition": "very good or very large in amount",
       "definition_vi": "tuyệt vời, lớn",
       "examples": [
@@ -1884,14 +2072,16 @@
           "sentence": "That was a great idea, thank you!",
           "sentence_vi": "Đó là một ý tưởng tuyệt vời, cảm ơn bạn!"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-great.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-great.ogg"
     },
     {
       "rank": 145,
       "lemma": "best",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/bɛst/",
+      "ipa": "/bˈɛst/",
       "definition": "better than all others; the most good",
       "definition_vi": "tốt nhất",
       "examples": [
@@ -1903,14 +2093,16 @@
           "sentence": "She is my best friend at school.",
           "sentence_vi": "Cô ấy là bạn thân nhất của tôi ở trường."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-best.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-best.ogg"
     },
     {
       "rank": 147,
       "lemma": "love",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/ləv/",
+      "ipa": "/ɫˈʌv/",
       "definition": "to like someone or something very much",
       "definition_vi": "yêu, thích",
       "examples": [
@@ -1922,14 +2114,16 @@
           "sentence": "They love watching films together on weekends.",
           "sentence_vi": "Họ thích xem phim cùng nhau vào cuối tuần."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-love.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-love.ogg"
     },
     {
       "rank": 148,
       "lemma": "man",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/mæn/",
+      "ipa": "/mˈæn/",
       "definition": "an adult male person",
       "definition_vi": "đàn ông, người đàn ông",
       "examples": [
@@ -1941,14 +2135,16 @@
           "sentence": "The old man walks in the park every morning.",
           "sentence_vi": "Ông già đi bộ trong công viên mỗi sáng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-man.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-man.ogg"
     },
     {
       "rank": 149,
       "lemma": "home",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/hoʊm/",
+      "ipa": "/hˈoʊm/",
       "definition": "the place where you live",
       "definition_vi": "nhà, ngôi nhà",
       "examples": [
@@ -1960,14 +2156,16 @@
           "sentence": "Her home is near the train station.",
           "sentence_vi": "Nhà của cô ấy gần nhà ga."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-home.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-home.ogg"
     },
     {
       "rank": 150,
       "lemma": "long",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/lɔŋ/",
+      "ipa": "/ɫˈɔŋ/",
       "definition": "measuring a great distance or lasting a great time",
       "definition_vi": "dài",
       "examples": [
@@ -1979,14 +2177,16 @@
           "sentence": "We waited a long time for the train.",
           "sentence_vi": "Chúng tôi chờ tàu rất lâu."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-long.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-long.ogg"
     },
     {
       "rank": 151,
       "lemma": "look",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/lʊk/",
+      "ipa": "/ɫˈʊk/",
       "definition": "to turn your eyes toward something to see it",
       "definition_vi": "nhìn",
       "examples": [
@@ -2005,7 +2205,7 @@
       "lemma": "something",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/ˈsəmθɪŋ/",
+      "ipa": "/sˈʌmθɪŋ/",
       "definition": "a thing that is not named or known",
       "definition_vi": "một cái gì đó",
       "examples": [
@@ -2017,14 +2217,16 @@
           "sentence": "I want to eat something sweet after dinner.",
           "sentence_vi": "Tôi muốn ăn thứ gì đó ngọt sau bữa tối."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-something.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-something.ogg"
     },
     {
       "rank": 153,
       "lemma": "use",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/juz/",
+      "ipa": "/jˈus/",
       "definition": "to do something with a tool or object",
       "definition_vi": "sử dụng, dùng",
       "examples": [
@@ -2036,14 +2238,16 @@
           "sentence": "She uses her phone to check the weather.",
           "sentence_vi": "Cô ấy dùng điện thoại để xem thời tiết."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-use.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-use.ogg"
     },
     {
       "rank": 158,
       "lemma": "every",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/ˈɛvəri/",
+      "ipa": "/ˈɛvɝi/",
       "definition": "each one of all the things or people",
       "definition_vi": "mỗi, mọi",
       "examples": [
@@ -2055,14 +2259,16 @@
           "sentence": "She waters the plants every morning.",
           "sentence_vi": "Cô ấy tưới cây mỗi sáng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-every.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-every.ogg"
     },
     {
       "rank": 161,
       "lemma": "come",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/kəm/",
+      "ipa": "/kˈʌm/",
       "definition": "to move toward the person speaking",
       "definition_vi": "đến, tới",
       "examples": [
@@ -2074,14 +2280,16 @@
           "sentence": "My friends came to my house last night.",
           "sentence_vi": "Bạn bè tôi đã đến nhà tôi tối qua."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-come.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-come.ogg"
     },
     {
       "rank": 162,
       "lemma": "part",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/pɑrt/",
+      "ipa": "/pˈɑrt/",
       "definition": "one piece or section of something bigger",
       "definition_vi": "phần, bộ phận",
       "examples": [
@@ -2093,14 +2301,16 @@
           "sentence": "This broken part of the machine needs repair.",
           "sentence_vi": "Bộ phận hỏng này của máy cần được sửa."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-part.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-part.ogg"
     },
     {
       "rank": 164,
       "lemma": "three",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/θri/",
+      "ipa": "/θrˈi/",
       "definition": "the number 3",
       "definition_vi": "số ba",
       "examples": [
@@ -2112,14 +2322,16 @@
           "sentence": "The bus comes at three o'clock.",
           "sentence_vi": "Xe buýt đến lúc ba giờ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-three.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-three.ogg"
     },
     {
       "rank": 165,
       "lemma": "around",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/əraʊnd/",
+      "ipa": "/ɝˈaʊnd/",
       "definition": "on every side of something; near a place",
       "definition_vi": "xung quanh; quanh",
       "examples": [
@@ -2131,14 +2343,16 @@
           "sentence": "There are many shops around here.",
           "sentence_vi": "Có nhiều cửa hàng quanh đây."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-around.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-around.ogg"
     },
     {
       "rank": 166,
       "lemma": "between",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/bɪtˈwin/",
+      "ipa": "/bɪtwˈin/",
       "definition": "in the space that separates two things or people",
       "definition_vi": "giữa",
       "examples": [
@@ -2150,14 +2364,16 @@
           "sentence": "She sat between her two friends.",
           "sentence_vi": "Cô ấy ngồi giữa hai người bạn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-between.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-between.ogg"
     },
     {
       "rank": 167,
       "lemma": "always",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/ˈɔlˌweɪz/",
+      "ipa": "/ˈɔɫweɪz/",
       "definition": "every time; all the time",
       "definition_vi": "luôn luôn",
       "examples": [
@@ -2169,14 +2385,16 @@
           "sentence": "My dog is always happy to see me.",
           "sentence_vi": "Chú chó của tôi luôn vui khi thấy tôi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-always.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-always.ogg"
     },
     {
       "rank": 168,
       "lemma": "better",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/ˈbɛtər/",
+      "ipa": "/bˈɛtɝ/",
       "definition": "more good than something else",
       "definition_vi": "tốt hơn",
       "examples": [
@@ -2188,14 +2406,16 @@
           "sentence": "I feel better today, thank you.",
           "sentence_vi": "Hôm nay tôi cảm thấy khỏe hơn, cảm ơn bạn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-better.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-better.ogg"
     },
     {
       "rank": 169,
       "lemma": "find",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/faɪnd/",
+      "ipa": "/fˈaɪnd/",
       "definition": "to get or see something you were looking for",
       "definition_vi": "tìm thấy",
       "examples": [
@@ -2207,14 +2427,16 @@
           "sentence": "She found some money on the street.",
           "sentence_vi": "Cô ấy tìm thấy một ít tiền trên đường."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-find.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-find.ogg"
     },
     {
       "rank": 171,
       "lemma": "help",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/hɛlp/",
+      "ipa": "/hˈɛɫp/",
       "definition": "to do something useful for someone",
       "definition_vi": "giúp đỡ",
       "examples": [
@@ -2226,14 +2448,16 @@
           "sentence": "He helped his mother clean the kitchen.",
           "sentence_vi": "Cậu ấy giúp mẹ dọn bếp."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-help.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-help.ogg"
     },
     {
       "rank": 172,
       "lemma": "high",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/haɪ/",
+      "ipa": "/hˈaɪ/",
       "definition": "measuring a long distance from bottom to top",
       "definition_vi": "cao",
       "examples": [
@@ -2245,14 +2469,16 @@
           "sentence": "The bird flew high in the sky.",
           "sentence_vi": "Con chim bay cao trên trời."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-high.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-high.ogg"
     },
     {
       "rank": 173,
       "lemma": "little",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/ˈlɪtəl/",
+      "ipa": "/ɫˈɪtʌɫ/",
       "definition": "small in size or amount",
       "definition_vi": "nhỏ, ít",
       "examples": [
@@ -2264,14 +2490,16 @@
           "sentence": "There is a little milk left in the fridge.",
           "sentence_vi": "Còn một ít sữa trong tủ lạnh."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-little.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-little.ogg"
     },
     {
       "rank": 174,
       "lemma": "old",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/oʊld/",
+      "ipa": "/ˈoʊɫd/",
       "definition": "having lived or existed for a long time",
       "definition_vi": "già, cũ",
       "examples": [
@@ -2283,14 +2511,16 @@
           "sentence": "She has an old bike from 1990.",
           "sentence_vi": "Cô ấy có một chiếc xe đạp cũ từ năm 1990."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-old.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-old.ogg"
     },
     {
       "rank": 176,
       "lemma": "another",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/əˈnəðər/",
+      "ipa": "/ʌnˈʌðɝ/",
       "definition": "one more of the same kind; a different one",
       "definition_vi": "một cái khác, thêm một",
       "examples": [
@@ -2302,14 +2532,16 @@
           "sentence": "This shirt is too small. Can I try another one?",
           "sentence_vi": "Áo này quá nhỏ. Tôi thử cái khác được không?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-another.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-another.ogg"
     },
     {
       "rank": 179,
       "lemma": "things",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/θɪŋz/",
+      "ipa": "/θˈɪŋz/",
       "definition": "objects; items in general",
       "definition_vi": "những thứ, đồ đạc",
       "examples": [
@@ -2321,14 +2553,16 @@
           "sentence": "There are many things to do today.",
           "sentence_vi": "Hôm nay có nhiều việc phải làm."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-things.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-things.ogg"
     },
     {
       "rank": 180,
       "lemma": "under",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/ˈəndər/",
+      "ipa": "/ˈʌndɝ/",
       "definition": "in or to a position below something",
       "definition_vi": "dưới",
       "examples": [
@@ -2340,14 +2574,16 @@
           "sentence": "We hid under the bed during the game.",
           "sentence_vi": "Chúng tôi trốn dưới giường trong lúc chơi trò chơi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-under.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-under.ogg"
     },
     {
       "rank": 182,
       "lemma": "game",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/geɪm/",
+      "ipa": "/gˈeɪm/",
       "definition": "an activity you play, often with rules",
       "definition_vi": "trò chơi",
       "examples": [
@@ -2359,14 +2595,16 @@
           "sentence": "The football game starts at seven.",
           "sentence_vi": "Trận bóng đá bắt đầu lúc bảy giờ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-game.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-game.ogg"
     },
     {
       "rank": 184,
       "lemma": "thing",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/θɪŋ/",
+      "ipa": "/θˈɪŋ/",
       "definition": "an object; something that exists or happens",
       "definition_vi": "cái, vật, việc",
       "examples": [
@@ -2378,14 +2616,16 @@
           "sentence": "The best thing about summer is the sun.",
           "sentence_vi": "Điều tốt nhất về mùa hè là ánh nắng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-thing.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-thing.ogg"
     },
     {
       "rank": 185,
       "lemma": "give",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/gɪv/",
+      "ipa": "/gˈɪv/",
       "definition": "to put something into someone's hands",
       "definition_vi": "đưa, cho",
       "examples": [
@@ -2397,14 +2637,16 @@
           "sentence": "She gave her sister a birthday present.",
           "sentence_vi": "Cô ấy tặng chị mình một món quà sinh nhật."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-give.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-give.ogg"
     },
     {
       "rank": 186,
       "lemma": "house",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/haʊs/",
+      "ipa": "/hˈaʊs/",
       "definition": "a building where people live",
       "definition_vi": "ngôi nhà",
       "examples": [
@@ -2416,14 +2658,16 @@
           "sentence": "We are going to her house tonight.",
           "sentence_vi": "Tối nay chúng tôi sẽ đến nhà cô ấy."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-uk-house.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-uk-house.ogg"
     },
     {
       "rank": 187,
       "lemma": "place",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/pleɪs/",
+      "ipa": "/pɫˈeɪs/",
       "definition": "a space or area where something is",
       "definition_vi": "nơi, chỗ",
       "examples": [
@@ -2435,14 +2679,16 @@
           "sentence": "Keep your books in a safe place.",
           "sentence_vi": "Để sách của bạn ở nơi an toàn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-place.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-place.ogg"
     },
     {
       "rank": 188,
       "lemma": "school",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/skul/",
+      "ipa": "/skˈuɫ/",
       "definition": "a place where children go to learn",
       "definition_vi": "trường học",
       "examples": [
@@ -2454,14 +2700,16 @@
           "sentence": "The school starts at eight in the morning.",
           "sentence_vi": "Trường học bắt đầu lúc tám giờ sáng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-uk-school.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-uk-school.ogg"
     },
     {
       "rank": 189,
       "lemma": "again",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/əˈgɛn/",
+      "ipa": "/ʌgˈɛn/",
       "definition": "one more time; another time",
       "definition_vi": "lần nữa, lại",
       "examples": [
@@ -2473,14 +2721,16 @@
           "sentence": "We will meet again next week.",
           "sentence_vi": "Chúng ta sẽ gặp lại vào tuần sau."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-again.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-again.ogg"
     },
     {
       "rank": 190,
       "lemma": "next",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/nɛkst/",
+      "ipa": "/nˈɛkst/",
       "definition": "coming immediately after this one",
       "definition_vi": "tiếp theo, kế bên",
       "examples": [
@@ -2492,14 +2742,16 @@
           "sentence": "See you next Monday!",
           "sentence_vi": "Hẹn gặp bạn thứ Hai tới!"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-next.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-next.ogg"
     },
     {
       "rank": 191,
       "lemma": "each",
       "pos": "determiner",
       "cefr_level": "A1",
-      "ipa": "/iʧ/",
+      "ipa": "/ˈitʃ/",
       "definition": "every single one of a group, considered one by one",
       "definition_vi": "mỗi",
       "examples": [
@@ -2511,14 +2763,16 @@
           "sentence": "The tickets cost five dollars each.",
           "sentence_vi": "Mỗi vé giá năm đô la."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-each.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-each.ogg"
     },
     {
       "rank": 193,
       "lemma": "without",
       "pos": "preposition",
       "cefr_level": "A1",
-      "ipa": "/wɪˈθaʊt/",
+      "ipa": "/wɪθˈaʊt/",
       "definition": "not having something; not doing something",
       "definition_vi": "không có, không",
       "examples": [
@@ -2530,14 +2784,16 @@
           "sentence": "She left the house without her keys.",
           "sentence_vi": "Cô ấy rời nhà mà không mang chìa khóa."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-without.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-without.ogg"
     },
     {
       "rank": 196,
       "lemma": "end",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ɛnd/",
+      "ipa": "/ˈɛnd/",
       "definition": "the last part or final point of something",
       "definition_vi": "kết thúc, phần cuối",
       "examples": [
@@ -2549,14 +2805,16 @@
           "sentence": "We walked to the end of the street.",
           "sentence_vi": "Chúng tôi đi đến cuối con phố."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-end.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-end.ogg"
     },
     {
       "rank": 198,
       "lemma": "must",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/məst/",
+      "ipa": "/mˈʌst/",
       "definition": "used to say something is necessary or very important",
       "definition_vi": "phải",
       "examples": [
@@ -2568,14 +2826,16 @@
           "sentence": "We must be quiet in the library.",
           "sentence_vi": "Chúng ta phải giữ yên lặng trong thư viện."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-must.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-must.ogg"
     },
     {
       "rank": 199,
       "lemma": "show",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/ʃoʊ/",
+      "ipa": "/ʃˈoʊ/",
       "definition": "to let someone see something; to explain how",
       "definition_vi": "cho xem, chỉ cho",
       "examples": [
@@ -2587,14 +2847,16 @@
           "sentence": "She will show us how to cook rice.",
           "sentence_vi": "Cô ấy sẽ chỉ chúng tôi cách nấu cơm."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-show.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-show.ogg"
     },
     {
       "rank": 200,
       "lemma": "big",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/bɪg/",
+      "ipa": "/bˈɪg/",
       "definition": "large in size or amount",
       "definition_vi": "to, lớn",
       "examples": [
@@ -2606,14 +2868,16 @@
           "sentence": "That dog is too big for the small car.",
           "sentence_vi": "Con chó đó quá to so với chiếc xe nhỏ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-big.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-big.ogg"
     },
     {
       "rank": 201,
       "lemma": "feel",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/fil/",
+      "ipa": "/fˈiɫ/",
       "definition": "to experience an emotion or a physical state",
       "definition_vi": "cảm thấy",
       "examples": [
@@ -2625,14 +2889,16 @@
           "sentence": "Do you feel cold in this room?",
           "sentence_vi": "Bạn có thấy lạnh trong phòng này không?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-feel.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-feel.ogg"
     },
     {
       "rank": 203,
       "lemma": "team",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/tim/",
+      "ipa": "/tˈim/",
       "definition": "a group of people who play or work together",
       "definition_vi": "đội, nhóm",
       "examples": [
@@ -2644,14 +2910,16 @@
           "sentence": "She is the leader of the school team.",
           "sentence_vi": "Cô ấy là đội trưởng đội trường."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-team.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-team.ogg"
     },
     {
       "rank": 205,
       "lemma": "family",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ˈfæməli/",
+      "ipa": "/fˈæmʌɫi/",
       "definition": "a group of people related to you, like parents and children",
       "definition_vi": "gia đình",
       "examples": [
@@ -2663,14 +2931,16 @@
           "sentence": "She has a big family with five brothers.",
           "sentence_vi": "Cô ấy có một gia đình đông với năm anh em trai."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-family.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-family.ogg"
     },
     {
       "rank": 208,
       "lemma": "please",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/pliz/",
+      "ipa": "/pɫˈiz/",
       "definition": "a polite word used when asking for something",
       "definition_vi": "xin, làm ơn",
       "examples": [
@@ -2682,14 +2952,16 @@
           "sentence": "Two coffees, please.",
           "sentence_vi": "Cho hai cà phê, làm ơn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-please.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-please.ogg"
     },
     {
       "rank": 209,
       "lemma": "put",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/pʊt/",
+      "ipa": "/pˈʊt/",
       "definition": "to move something to a place",
       "definition_vi": "đặt, để",
       "examples": [
@@ -2701,14 +2973,16 @@
           "sentence": "She put the milk in the fridge.",
           "sentence_vi": "Cô ấy để sữa vào tủ lạnh."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-put.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-put.ogg"
     },
     {
       "rank": 210,
       "lemma": "money",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ˈməni/",
+      "ipa": "/mˈʌni/",
       "definition": "coins and notes used to buy things",
       "definition_vi": "tiền",
       "examples": [
@@ -2720,14 +2994,16 @@
           "sentence": "He saved money to buy a bike.",
           "sentence_vi": "Anh ấy tiết kiệm tiền để mua xe đạp."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-money.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-money.ogg"
     },
     {
       "rank": 211,
       "lemma": "free",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/fri/",
+      "ipa": "/frˈi/",
       "definition": "costing nothing; not busy; not held by anyone",
       "definition_vi": "miễn phí; rảnh; tự do",
       "examples": [
@@ -2739,14 +3015,16 @@
           "sentence": "Are you free this afternoon?",
           "sentence_vi": "Bạn có rảnh chiều nay không?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-free.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-free.ogg"
     },
     {
       "rank": 213,
       "lemma": "someone",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/ˈsəmˌwən/",
+      "ipa": "/sˈʌmwʌn/",
       "definition": "a person you do not name or know",
       "definition_vi": "ai đó",
       "examples": [
@@ -2758,14 +3036,16 @@
           "sentence": "I need someone to help me move this table.",
           "sentence_vi": "Tôi cần ai đó giúp tôi chuyển cái bàn này."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-someone.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-someone.ogg"
     },
     {
       "rank": 215,
       "lemma": "left",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/lɛft/",
+      "ipa": "/ɫˈɛft/",
       "definition": "the side where your heart is; past of leave",
       "definition_vi": "bên trái; đã rời đi (quá khứ của leave)",
       "examples": [
@@ -2777,14 +3057,16 @@
           "sentence": "He left the office at five o'clock.",
           "sentence_vi": "Anh ấy rời văn phòng lúc năm giờ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-left.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-left.ogg"
     },
     {
       "rank": 216,
       "lemma": "number",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ˈnəmbər/",
+      "ipa": "/nˈʌmbɝ/",
       "definition": "a word or sign used for counting, like 3 or 10",
       "definition_vi": "số",
       "examples": [
@@ -2796,14 +3078,16 @@
           "sentence": "Seven is my lucky number.",
           "sentence_vi": "Số bảy là số may mắn của tôi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-number.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-number.ogg"
     },
     {
       "rank": 217,
       "lemma": "city",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ˈsɪti/",
+      "ipa": "/sˈɪti/",
       "definition": "a large and important town where many people live",
       "definition_vi": "thành phố",
       "examples": [
@@ -2815,14 +3099,16 @@
           "sentence": "She moved to the city to find a job.",
           "sentence_vi": "Cô ấy chuyển đến thành phố để tìm việc."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-city.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-city.ogg"
     },
     {
       "rank": 219,
       "lemma": "lot",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/lɔt/",
+      "ipa": "/ɫˈɑt/",
       "definition": "a large number or amount of something",
       "definition_vi": "nhiều, rất nhiều",
       "examples": [
@@ -2834,14 +3120,16 @@
           "sentence": "Thanks a lot for your help.",
           "sentence_vi": "Cảm ơn bạn rất nhiều vì sự giúp đỡ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-lot.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-lot.ogg"
     },
     {
       "rank": 220,
       "lemma": "name",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/neɪm/",
+      "ipa": "/nˈeɪm/",
       "definition": "the word that a person or thing is called",
       "definition_vi": "tên",
       "examples": [
@@ -2853,14 +3141,16 @@
           "sentence": "What is the name of this street?",
           "sentence_vi": "Tên con đường này là gì?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-name.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-name.ogg"
     },
     {
       "rank": 221,
       "lemma": "night",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/naɪt/",
+      "ipa": "/nˈaɪt/",
       "definition": "the dark time between evening and morning",
       "definition_vi": "đêm",
       "examples": [
@@ -2872,14 +3162,16 @@
           "sentence": "The stars shine at night.",
           "sentence_vi": "Những ngôi sao tỏa sáng vào ban đêm."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-night.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-night.ogg"
     },
     {
       "rank": 222,
       "lemma": "play",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/pleɪ/",
+      "ipa": "/pɫˈeɪ/",
       "definition": "to do things for fun, or to take part in a game",
       "definition_vi": "chơi; chơi (thể thao)",
       "examples": [
@@ -2891,14 +3183,16 @@
           "sentence": "He likes to play football with his friends.",
           "sentence_vi": "Anh ấy thích chơi bóng đá với bạn bè."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-play.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-play.ogg"
     },
     {
       "rank": 225,
       "lemma": "doing",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/duɪŋ/",
+      "ipa": "/dˈuɪŋ/",
       "definition": "performing an action or task (form of 'do')",
       "definition_vi": "đang làm",
       "examples": [
@@ -2917,7 +3211,7 @@
       "lemma": "let",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/lɛt/",
+      "ipa": "/ɫˈɛt/",
       "definition": "to allow something to happen or allow someone to do something",
       "definition_vi": "cho phép, để",
       "examples": [
@@ -2929,14 +3223,16 @@
           "sentence": "Her parents let her go to the party.",
           "sentence_vi": "Bố mẹ cô ấy cho cô ấy đi dự tiệc."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-let.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-let.ogg"
     },
     {
       "rank": 231,
       "lemma": "call",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/kɔl/",
+      "ipa": "/kˈɔɫ/",
       "definition": "to phone someone, or to give someone or something a name",
       "definition_vi": "gọi điện; gọi tên",
       "examples": [
@@ -2948,6 +3244,27 @@
           "sentence": "Everyone calls him by his short name, Tuan.",
           "sentence_vi": "Ai cũng gọi anh ấy bằng tên ngắn là Tuấn."
         }
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-call.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-call.ogg"
+    },
+    {
+      "rank": 236,
+      "lemma": "done",
+      "pos": "adjective",
+      "cefr_level": "A1",
+      "ipa": "/dˈʌn/",
+      "definition": "finished; completed",
+      "definition_vi": "xong, hoàn thành",
+      "examples": [
+        {
+          "sentence": "The work is done, so we can go home now.",
+          "sentence_vi": "Công việc đã xong, nên bây giờ chúng ta có thể về nhà."
+        },
+        {
+          "sentence": "Are you done with your homework?",
+          "sentence_vi": "Cậu làm xong bài tập chưa?"
+        }
       ]
     },
     {
@@ -2955,7 +3272,7 @@
       "lemma": "top",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/tɔp/",
+      "ipa": "/tˈɑp/",
       "definition": "the highest part of something",
       "definition_vi": "phần trên cùng, đỉnh",
       "examples": [
@@ -2967,14 +3284,16 @@
           "sentence": "She climbed to the top of the hill.",
           "sentence_vi": "Cô ấy leo lên đỉnh đồi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-top.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-top.ogg"
     },
     {
       "rank": 245,
       "lemma": "woman",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ˈwʊmən/",
+      "ipa": "/wˈʊmʌn/",
       "definition": "an adult female person",
       "definition_vi": "phụ nữ",
       "examples": [
@@ -2986,14 +3305,16 @@
           "sentence": "A kind woman helped me find the station.",
           "sentence_vi": "Một người phụ nữ tốt bụng đã giúp tôi tìm nhà ga."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-woman.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-woman.ogg"
     },
     {
       "rank": 248,
       "lemma": "start",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/stɑrt/",
+      "ipa": "/stˈɑrt/",
       "definition": "to begin doing something",
       "definition_vi": "bắt đầu",
       "examples": [
@@ -3005,14 +3326,16 @@
           "sentence": "Let's start the meeting now.",
           "sentence_vi": "Chúng ta hãy bắt đầu cuộc họp bây giờ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-start.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-start.ogg"
     },
     {
       "rank": 251,
       "lemma": "week",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/wik/",
+      "ipa": "/wˈik/",
       "definition": "a period of seven days",
       "definition_vi": "tuần",
       "examples": [
@@ -3024,14 +3347,16 @@
           "sentence": "We go to the beach every week.",
           "sentence_vi": "Chúng tôi đi biển mỗi tuần một lần."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-week.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-week.ogg"
     },
     {
       "rank": 257,
       "lemma": "person",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ˈpərsən/",
+      "ipa": "/pˈɝsʌn/",
       "definition": "a human being",
       "definition_vi": "người",
       "examples": [
@@ -3043,14 +3368,16 @@
           "sentence": "She is a very kind person.",
           "sentence_vi": "Cô ấy là một người rất tốt bụng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-person.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-person.ogg"
     },
     {
       "rank": 258,
       "lemma": "today",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/təˈdeɪ/",
+      "ipa": "/tʌdˈeɪ/",
       "definition": "on this day",
       "definition_vi": "hôm nay",
       "examples": [
@@ -3062,14 +3389,16 @@
           "sentence": "It is very hot today.",
           "sentence_vi": "Hôm nay trời rất nóng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-today.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-today.ogg"
     },
     {
       "rank": 262,
       "lemma": "full",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/fʊl/",
+      "ipa": "/fˈʊɫ/",
       "definition": "containing as much as possible",
       "definition_vi": "đầy, đầy đủ",
       "examples": [
@@ -3081,14 +3410,16 @@
           "sentence": "The bus was full, so we waited.",
           "sentence_vi": "Xe buýt đầy, nên chúng tôi chờ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-full.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-full.ogg"
     },
     {
       "rank": 263,
       "lemma": "live",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/lɪv/",
+      "ipa": "/ɫˈaɪv/",
       "definition": "to have your home in a place",
       "definition_vi": "sống, ở",
       "examples": [
@@ -3107,7 +3438,7 @@
       "lemma": "read",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/rɛd/",
+      "ipa": "/rˈɛd/",
       "definition": "to look at words and understand them",
       "definition_vi": "đọc",
       "examples": [
@@ -3119,14 +3450,16 @@
           "sentence": "Can you read this letter for me?",
           "sentence_vi": "Bạn có thể đọc lá thư này giúp tôi không?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-read.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-read.ogg"
     },
     {
       "rank": 268,
       "lemma": "tell",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/tɛl/",
+      "ipa": "/tˈɛɫ/",
       "definition": "to give information to someone by speaking or writing",
       "definition_vi": "kể; nói cho ai biết",
       "examples": [
@@ -3138,14 +3471,16 @@
           "sentence": "Grandma tells us stories every night.",
           "sentence_vi": "Bà kể chuyện cho chúng tôi mỗi tối."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-tell.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-tell.ogg"
     },
     {
       "rank": 270,
       "lemma": "bad",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/bæd/",
+      "ipa": "/bˈæd/",
       "definition": "not good; of low quality",
       "definition_vi": "xấu, tệ",
       "examples": [
@@ -3157,14 +3492,16 @@
           "sentence": "That was a bad idea.",
           "sentence_vi": "Đó là một ý tưởng tồi."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-bad.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-bad.ogg"
     },
     {
       "rank": 272,
       "lemma": "four",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/fɔr/",
+      "ipa": "/fˈɔr/",
       "definition": "the number after three and before five",
       "definition_vi": "số bốn",
       "examples": [
@@ -3176,14 +3513,16 @@
           "sentence": "The class starts at four o'clock.",
           "sentence_vi": "Lớp học bắt đầu lúc bốn giờ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-four.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-four.ogg"
     },
     {
       "rank": 273,
       "lemma": "hard",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/hɑrd/",
+      "ipa": "/hˈɑrd/",
       "definition": "difficult to do or understand; also firm and solid",
       "definition_vi": "khó; cứng",
       "examples": [
@@ -3195,14 +3534,16 @@
           "sentence": "The table has a hard surface.",
           "sentence_vi": "Chiếc bàn có bề mặt cứng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-hard.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-hard.ogg"
     },
     {
       "rank": 279,
       "lemma": "music",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/mˈjuzɪk/",
+      "ipa": "/mjˈuzɪk/",
       "definition": "sounds made in a pleasant way, often with instruments",
       "definition_vi": "âm nhạc",
       "examples": [
@@ -3214,14 +3555,16 @@
           "sentence": "She writes music for the piano.",
           "sentence_vi": "Cô ấy sáng tác nhạc cho dương cầm."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-music.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-music.ogg"
     },
     {
       "rank": 283,
       "lemma": "stop",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/stɑp/",
+      "ipa": "/stˈɑp/",
       "definition": "to no longer do something or no longer move",
       "definition_vi": "dừng; ngừng",
       "examples": [
@@ -3233,14 +3576,16 @@
           "sentence": "It stopped raining an hour ago.",
           "sentence_vi": "Trời ngừng mưa một giờ trước."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-stop.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-stop.ogg"
     },
     {
       "rank": 284,
       "lemma": "water",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ˈwɔtər/",
+      "ipa": "/wˈɔtɝ/",
       "definition": "the clear liquid that we drink and that fills rivers and seas",
       "definition_vi": "nước",
       "examples": [
@@ -3252,14 +3597,16 @@
           "sentence": "The water in this lake is very clean.",
           "sentence_vi": "Nước trong hồ này rất sạch."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-water.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-water.ogg"
     },
     {
       "rank": 288,
       "lemma": "head",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/hɛd/",
+      "ipa": "/hˈɛd/",
       "definition": "the part of the body above the neck with the face and brain",
       "definition_vi": "cái đầu",
       "examples": [
@@ -3271,14 +3618,16 @@
           "sentence": "She shook her head to say no.",
           "sentence_vi": "Cô ấy lắc đầu để nói không."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-head.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-head.ogg"
     },
     {
       "rank": 291,
       "lemma": "small",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/smɔl/",
+      "ipa": "/smˈɔɫ/",
       "definition": "little in size or amount; not big",
       "definition_vi": "nhỏ",
       "examples": [
@@ -3290,14 +3639,16 @@
           "sentence": "Can I have a small coffee, please?",
           "sentence_vi": "Cho tôi một ly cà phê nhỏ nhé?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-small.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-small.ogg"
     },
     {
       "rank": 293,
       "lemma": "white",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/waɪt/",
+      "ipa": "/wˈaɪt/",
       "definition": "having the color of snow or milk",
       "definition_vi": "màu trắng",
       "examples": [
@@ -3309,14 +3660,16 @@
           "sentence": "He wore a white shirt to the interview.",
           "sentence_vi": "Anh ấy mặc áo sơ mi trắng đi phỏng vấn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-white.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-white.ogg"
     },
     {
       "rank": 296,
       "lemma": "job",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ʤɑb/",
+      "ipa": "/dʒˈɑb/",
       "definition": "the work that a person does to earn money",
       "definition_vi": "công việc",
       "examples": [
@@ -3328,14 +3681,16 @@
           "sentence": "My father's job is teaching math.",
           "sentence_vi": "Công việc của bố tôi là dạy toán."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-job.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-job.ogg"
     },
     {
       "rank": 297,
       "lemma": "side",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/saɪd/",
+      "ipa": "/sˈaɪd/",
       "definition": "one of the two parts of something, left or right",
       "definition_vi": "bên, cạnh",
       "examples": [
@@ -3347,14 +3702,16 @@
           "sentence": "She sat on the other side of the table.",
           "sentence_vi": "Cô ấy ngồi ở phía bên kia của bàn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-side.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-side.ogg"
     },
     {
       "rank": 299,
       "lemma": "try",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/traɪ/",
+      "ipa": "/trˈaɪ/",
       "definition": "to make an effort to do something",
       "definition_vi": "cố gắng, thử",
       "examples": [
@@ -3366,14 +3723,16 @@
           "sentence": "Try this cake; it tastes very good.",
           "sentence_vi": "Thử chiếc bánh này đi; nó rất ngon."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-try.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-try.ogg"
     },
     {
       "rank": 301,
       "lemma": "yes",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/jɛs/",
+      "ipa": "/jˈɛs/",
       "definition": "a word used to agree or say it is true",
       "definition_vi": "vâng, có, đúng",
       "examples": [
@@ -3385,14 +3744,16 @@
           "sentence": "Are you ready? Yes, let's go!",
           "sentence_vi": "Bạn sẵn sàng chưa? Có, đi thôi!"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-yes.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-yes.ogg"
     },
     {
       "rank": 304,
       "lemma": "later",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/ˈleɪtər/",
+      "ipa": "/ɫˈeɪtɝ/",
       "definition": "at a time after now or after something else",
       "definition_vi": "sau này, muộn hơn",
       "examples": [
@@ -3404,14 +3765,16 @@
           "sentence": "She arrived later than everyone else.",
           "sentence_vi": "Cô ấy đến muộn hơn mọi người."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-later.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-later.ogg"
     },
     {
       "rank": 308,
       "lemma": "party",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ˈpɑrti/",
+      "ipa": "/pˈɑrti/",
       "definition": "a fun event with food, music and friends",
       "definition_vi": "bữa tiệc",
       "examples": [
@@ -3423,14 +3786,16 @@
           "sentence": "We danced all night at the party.",
           "sentence_vi": "Chúng tôi nhảy múa suốt đêm ở bữa tiệc."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-party.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-party.ogg"
     },
     {
       "rank": 309,
       "lemma": "run",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/rən/",
+      "ipa": "/rˈʌn/",
       "definition": "to move fast using your legs",
       "definition_vi": "chạy",
       "examples": [
@@ -3442,14 +3807,16 @@
           "sentence": "I run in the park every morning.",
           "sentence_vi": "Tôi chạy bộ trong công viên mỗi sáng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-run.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-run.ogg"
     },
     {
       "rank": 313,
       "lemma": "country",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ˈkəntri/",
+      "ipa": "/kˈʌntri/",
       "definition": "an area of land with its own government",
       "definition_vi": "quốc gia",
       "examples": [
@@ -3461,14 +3828,16 @@
           "sentence": "She has visited more than ten countries, and her favourite country is Japan.",
           "sentence_vi": "Cô ấy đã đến hơn mười quốc gia, và quốc gia cô thích nhất là Nhật Bản."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-country.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-country.ogg"
     },
     {
       "rank": 314,
       "lemma": "open",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/ˈoʊpən/",
+      "ipa": "/ˈoʊpʌn/",
       "definition": "to move something so it is no longer closed",
       "definition_vi": "mở",
       "examples": [
@@ -3480,14 +3849,16 @@
           "sentence": "The shop opens at nine every morning.",
           "sentence_vi": "Cửa hàng mở cửa lúc chín giờ mỗi sáng."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-open.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-open.ogg"
     },
     {
       "rank": 317,
       "lemma": "thank",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/θæŋk/",
+      "ipa": "/θˈæŋk/",
       "definition": "to tell someone you are grateful",
       "definition_vi": "cảm ơn",
       "examples": [
@@ -3499,14 +3870,16 @@
           "sentence": "She thanked the teacher after the lesson.",
           "sentence_vi": "Cô ấy cảm ơn giáo viên sau bài học."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-thank.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-thank.ogg"
     },
     {
       "rank": 318,
       "lemma": "child",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ʧaɪld/",
+      "ipa": "/tʃˈaɪɫd/",
       "definition": "a young person who is not yet an adult",
       "definition_vi": "đứa trẻ",
       "examples": [
@@ -3518,14 +3891,16 @@
           "sentence": "Every child needs love and care.",
           "sentence_vi": "Mỗi đứa trẻ đều cần tình yêu và sự chăm sóc."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-child.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-child.ogg"
     },
     {
       "rank": 319,
       "lemma": "everyone",
       "pos": "pronoun",
       "cefr_level": "A1",
-      "ipa": "/ˈɛvriˌwən/",
+      "ipa": "/ˈɛvriwʌn/",
       "definition": "all the people in a group",
       "definition_vi": "mọi người",
       "examples": [
@@ -3537,14 +3912,16 @@
           "sentence": "Good morning, everyone! Please sit down.",
           "sentence_vi": "Chào buổi sáng, mọi người! Xin hãy ngồi xuống."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-everyone.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-everyone.ogg"
     },
     {
       "rank": 326,
       "lemma": "black",
       "pos": "adjective",
       "cefr_level": "A1",
-      "ipa": "/blæk/",
+      "ipa": "/bɫˈæk/",
       "definition": "having the darkest colour, like night",
       "definition_vi": "màu đen",
       "examples": [
@@ -3556,14 +3933,16 @@
           "sentence": "The cat has black fur and green eyes.",
           "sentence_vi": "Con mèo có bộ lông đen và mắt xanh."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-uk-black.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-uk-black.ogg"
     },
     {
       "rank": 331,
       "lemma": "together",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/təˈgɛðər/",
+      "ipa": "/tʌgˈɛðɝ/",
       "definition": "with each other, in the same place",
       "definition_vi": "cùng nhau",
       "examples": [
@@ -3575,14 +3954,16 @@
           "sentence": "The children played together in the garden.",
           "sentence_vi": "Những đứa trẻ chơi cùng nhau trong vườn."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-together.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-together.ogg"
     },
     {
       "rank": 334,
       "lemma": "car",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/kɑr/",
+      "ipa": "/kˈɑr/",
       "definition": "a vehicle with four wheels for driving",
       "definition_vi": "xe hơi, ô tô",
       "examples": [
@@ -3594,14 +3975,16 @@
           "sentence": "We washed the car in front of the house.",
           "sentence_vi": "Chúng tôi rửa xe hơi trước nhà."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-car.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-car.ogg"
     },
     {
       "rank": 335,
       "lemma": "face",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/feɪs/",
+      "ipa": "/fˈeɪs/",
       "definition": "the front part of the head",
       "definition_vi": "mặt, khuôn mặt",
       "examples": [
@@ -3613,14 +3996,16 @@
           "sentence": "The boy had a big smile on his face.",
           "sentence_vi": "Cậu bé có nụ cười lớn trên khuôn mặt."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-face.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-face.ogg"
     },
     {
       "rank": 336,
       "lemma": "five",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/faɪv/",
+      "ipa": "/fˈaɪv/",
       "definition": "the number after four",
       "definition_vi": "số năm",
       "examples": [
@@ -3632,14 +4017,16 @@
           "sentence": "The bus comes every five minutes.",
           "sentence_vi": "Xe buýt đến mỗi năm phút một lần."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-five.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-five.ogg"
     },
     {
       "rank": 338,
       "lemma": "maybe",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/ˈmeɪbi/",
+      "ipa": "/mˈeɪbi/",
       "definition": "possibly, perhaps it is true",
       "definition_vi": "có thể, có lẽ",
       "examples": [
@@ -3651,14 +4038,16 @@
           "sentence": "Maybe he forgot about our meeting today.",
           "sentence_vi": "Có lẽ anh ấy quên cuộc họp hôm nay."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-maybe.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-maybe.ogg"
     },
     {
       "rank": 341,
       "lemma": "story",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/ˈstɔri/",
+      "ipa": "/stˈɔri/",
       "definition": "a telling of events, real or imagined",
       "definition_vi": "câu chuyện",
       "examples": [
@@ -3670,14 +4059,16 @@
           "sentence": "This story is about a brave little dog.",
           "sentence_vi": "Câu chuyện này về một chú chó nhỏ dũng cảm."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-story.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-story.ogg"
     },
     {
       "rank": 342,
       "lemma": "working",
       "pos": "verb",
       "cefr_level": "A1",
-      "ipa": "/ˈwərkɪŋ/",
+      "ipa": "/wˈɝkɪŋ/",
       "definition": "doing a job or task",
       "definition_vi": "đang làm việc",
       "examples": [
@@ -3689,14 +4080,16 @@
           "sentence": "My sister is working at a hospital this year.",
           "sentence_vi": "Chị tôi đang làm việc ở bệnh viện năm nay."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-working.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-working.ogg"
     },
     {
       "rank": 344,
       "lemma": "games",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/geɪmz/",
+      "ipa": "/gˈeɪmz/",
       "definition": "activities people play for fun",
       "definition_vi": "trò chơi",
       "examples": [
@@ -3708,14 +4101,16 @@
           "sentence": "We watched the Olympic games on TV last night.",
           "sentence_vi": "Chúng tôi xem Thế vận hội trên TV tối qua."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-games.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-games.ogg"
     },
     {
       "rank": 350,
       "lemma": "news",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/nuz/",
+      "ipa": "/nˈuz/",
       "definition": "new information about things that happened recently",
       "definition_vi": "tin tức",
       "examples": [
@@ -3727,14 +4122,16 @@
           "sentence": "Did you hear the news about the new teacher?",
           "sentence_vi": "Bạn có nghe tin về giáo viên mới chưa?"
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-news.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-news.ogg"
     },
     {
       "rank": 353,
       "lemma": "book",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/bʊk/",
+      "ipa": "/bˈʊk/",
       "definition": "pages with words that you read",
       "definition_vi": "sách",
       "examples": [
@@ -3746,14 +4143,16 @@
           "sentence": "I read a book every night before bed.",
           "sentence_vi": "Tôi đọc một cuốn sách mỗi tối trước khi ngủ."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-book.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-book.ogg"
     },
     {
       "rank": 354,
       "lemma": "early",
       "pos": "adverb",
       "cefr_level": "A1",
-      "ipa": "/ˈərli/",
+      "ipa": "/ˈɝɫi/",
       "definition": "before the usual time or before others",
       "definition_vi": "sớm",
       "examples": [
@@ -3765,14 +4164,16 @@
           "sentence": "The bus arrived ten minutes early.",
           "sentence_vi": "Xe buýt đến sớm mười phút."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-early.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-early.ogg"
     },
     {
       "rank": 355,
       "lemma": "friend",
       "pos": "noun",
       "cefr_level": "A1",
-      "ipa": "/frɛnd/",
+      "ipa": "/frˈɛnd/",
       "definition": "a person you like and enjoy being with",
       "definition_vi": "bạn",
       "examples": [
@@ -3784,7 +4185,9 @@
           "sentence": "She is a good friend to everyone.",
           "sentence_vi": "Cô ấy là một người bạn tốt với mọi người."
         }
-      ]
+      ],
+      "audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-friend.ogg",
+      "audio_attribution": "https://commons.wikimedia.org/wiki/File:En-us-friend.ogg"
     },
     {
       "rank": 359,
@@ -13952,6 +14355,24 @@
       ]
     },
     {
+      "rank": 8553,
+      "lemma": "headphone",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a thing you wear on your ears to listen to music",
+      "definition_vi": "tai nghe",
+      "examples": [
+        {
+          "sentence": "I wear headphones when I listen to music on the bus.",
+          "sentence_vi": "Tôi đeo tai nghe khi nghe nhạc trên xe buýt."
+        },
+        {
+          "sentence": "Please put on your headphones so you don't wake the baby.",
+          "sentence_vi": "Vui lòng đeo tai nghe để không đánh thức em bé."
+        }
+      ]
+    },
+    {
       "rank": 8611,
       "lemma": "spoon",
       "pos": "noun",
@@ -14347,6 +14768,438 @@
         {
           "sentence": "The book costs eighty dollars.",
           "sentence_vi": "Cuốn sách giá tám mươi đô la."
+        }
+      ]
+    },
+    {
+      "rank": 10583,
+      "lemma": "notebook",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a small book for writing notes in",
+      "definition_vi": "vở ghi chép",
+      "examples": [
+        {
+          "sentence": "I write new English words in my notebook every day.",
+          "sentence_vi": "Tôi viết các từ tiếng Anh mới vào vở mỗi ngày."
+        },
+        {
+          "sentence": "She forgot her notebook at home today.",
+          "sentence_vi": "Hôm nay cô ấy quên vở ở nhà."
+        }
+      ]
+    },
+    {
+      "rank": 10597,
+      "lemma": "rainy",
+      "pos": "adjective",
+      "cefr_level": "A1",
+      "definition": "with a lot of rain",
+      "definition_vi": "có mưa, mưa nhiều",
+      "examples": [
+        {
+          "sentence": "It is a rainy day, so take your umbrella.",
+          "sentence_vi": "Hôm nay trời mưa, nên mang ô theo."
+        },
+        {
+          "sentence": "April is often rainy in this part of the country.",
+          "sentence_vi": "Tháng tư thường mưa nhiều ở vùng này."
+        }
+      ]
+    },
+    {
+      "rank": 10623,
+      "lemma": "thirsty",
+      "pos": "adjective",
+      "cefr_level": "A1",
+      "definition": "feeling that you need to drink water",
+      "definition_vi": "khát, khát nước",
+      "examples": [
+        {
+          "sentence": "I am thirsty after running in the park.",
+          "sentence_vi": "Tôi khát sau khi chạy bộ trong công viên."
+        },
+        {
+          "sentence": "The thirsty dog drank all the water in its bowl.",
+          "sentence_vi": "Con chó khát đã uống hết nước trong bát."
+        }
+      ]
+    },
+    {
+      "rank": 10941,
+      "lemma": "strawberry",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a small sweet red fruit with tiny seeds on the outside",
+      "definition_vi": "quả dâu tây",
+      "examples": [
+        {
+          "sentence": "I put a strawberry on top of the cake.",
+          "sentence_vi": "Tôi đặt một quả dâu tây lên trên chiếc bánh."
+        },
+        {
+          "sentence": "She loves strawberry ice cream in summer.",
+          "sentence_vi": "Cô ấy thích kem dâu tây vào mùa hè."
+        }
+      ]
+    },
+    {
+      "rank": 11608,
+      "lemma": "sleepy",
+      "pos": "adjective",
+      "cefr_level": "A1",
+      "definition": "feeling that you want to sleep",
+      "definition_vi": "buồn ngủ",
+      "examples": [
+        {
+          "sentence": "The baby is sleepy after her bath.",
+          "sentence_vi": "Em bé buồn ngủ sau khi tắm."
+        },
+        {
+          "sentence": "I feel sleepy in the afternoon.",
+          "sentence_vi": "Tôi cảm thấy buồn ngủ vào buổi chiều."
+        }
+      ]
+    },
+    {
+      "rank": 11940,
+      "lemma": "poop",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "solid waste from the body (informal word)",
+      "definition_vi": "phân (từ thân mật)",
+      "examples": [
+        {
+          "sentence": "The dog left poop on the grass.",
+          "sentence_vi": "Con chó để lại phân trên cỏ."
+        },
+        {
+          "sentence": "The baby needs a diaper change; she just pooped.",
+          "sentence_vi": "Em bé cần thay tã; em vừa đi tiêu."
+        }
+      ]
+    },
+    {
+      "rank": 12250,
+      "lemma": "goodnight",
+      "pos": "phrase",
+      "cefr_level": "A1",
+      "definition": "what you say when someone goes to bed or leaves at night",
+      "definition_vi": "chúc ngủ ngon",
+      "examples": [
+        {
+          "sentence": "Mom kissed me and said goodnight.",
+          "sentence_vi": "Mẹ hôn tôi và chúc ngủ ngon."
+        },
+        {
+          "sentence": "I said goodnight to my friends before leaving.",
+          "sentence_vi": "Tôi chúc ngủ ngon các bạn trước khi ra về."
+        }
+      ]
+    },
+    {
+      "rank": 12291,
+      "lemma": "ow",
+      "pos": "phrase",
+      "cefr_level": "A1",
+      "definition": "a sound you make when you feel sudden pain",
+      "definition_vi": "ôi, ối (kêu đau)",
+      "examples": [
+        {
+          "sentence": "Ow! That bee just stung my arm.",
+          "sentence_vi": "Ôi! Con ong vừa đốt tay tôi."
+        },
+        {
+          "sentence": "Ow, I hit my head on the door.",
+          "sentence_vi": "Ôi, tôi đập đầu vào cửa."
+        }
+      ]
+    },
+    {
+      "rank": 12384,
+      "lemma": "carrot",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a long orange vegetable that grows under the ground",
+      "definition_vi": "cà rốt",
+      "examples": [
+        {
+          "sentence": "Rabbits love to eat carrot.",
+          "sentence_vi": "Thỏ thích ăn cà rốt."
+        },
+        {
+          "sentence": "Add two carrots to the soup, please.",
+          "sentence_vi": "Hãy thêm hai củ cà rốt vào canh."
+        }
+      ]
+    },
+    {
+      "rank": 12843,
+      "lemma": "refrigerator",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a machine that keeps food cold",
+      "definition_vi": "tủ lạnh",
+      "examples": [
+        {
+          "sentence": "Put the milk in the refrigerator, please.",
+          "sentence_vi": "Hãy đặt sữa vào tủ lạnh."
+        },
+        {
+          "sentence": "There is nothing to eat in the refrigerator.",
+          "sentence_vi": "Trong tủ lạnh không có gì để ăn cả."
+        }
+      ]
+    },
+    {
+      "rank": 13201,
+      "lemma": "nineteen",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "the number after eighteen and before twenty",
+      "definition_vi": "mười chín",
+      "examples": [
+        {
+          "sentence": "My brother is nineteen years old.",
+          "sentence_vi": "Anh trai tôi mười chín tuổi."
+        },
+        {
+          "sentence": "The bus leaves at nineteen minutes past six.",
+          "sentence_vi": "Xe buýt rời đi lúc sáu giờ mười chín phút."
+        }
+      ]
+    },
+    {
+      "rank": 13398,
+      "lemma": "pineapple",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a large sweet fruit with yellow flesh and spiky skin",
+      "definition_vi": "trái dứa (thơm)",
+      "examples": [
+        {
+          "sentence": "I love eating fresh pineapple in the summer.",
+          "sentence_vi": "Tôi thích ăn dứa tươi vào mùa hè."
+        },
+        {
+          "sentence": "She cut the pineapple into small pieces for the fruit salad.",
+          "sentence_vi": "Cô ấy cắt dứa thành miếng nhỏ cho món salad trái cây."
+        }
+      ]
+    },
+    {
+      "rank": 13567,
+      "lemma": "mummy",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a child's word for mother, or a preserved dead body",
+      "definition_vi": "mẹ (cách gọi của trẻ em); xác ướp",
+      "examples": [
+        {
+          "sentence": "Mummy, can I have some ice cream?",
+          "sentence_vi": "Mẹ ơi, con có thể ăn kem không?"
+        },
+        {
+          "sentence": "We saw an ancient mummy in the museum.",
+          "sentence_vi": "Chúng tôi thấy một xác ướp cổ trong bảo tàng."
+        }
+      ]
+    },
+    {
+      "rank": 13885,
+      "lemma": "cloudy",
+      "pos": "adjective",
+      "cefr_level": "A1",
+      "definition": "with many clouds in the sky",
+      "definition_vi": "nhiều mây, u ám",
+      "examples": [
+        {
+          "sentence": "It is cloudy today, so the sun is hiding.",
+          "sentence_vi": "Hôm nay nhiều mây nên mặt trời bị che."
+        },
+        {
+          "sentence": "The sky was cloudy before the rain started.",
+          "sentence_vi": "Trời nhiều mây trước khi trời mưa."
+        }
+      ]
+    },
+    {
+      "rank": 13945,
+      "lemma": "kite",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a light toy that flies in the wind on a string",
+      "definition_vi": "cái diều",
+      "examples": [
+        {
+          "sentence": "The children are flying a kite on the hill.",
+          "sentence_vi": "Những đứa trẻ đang thả diều trên đồi."
+        },
+        {
+          "sentence": "My kite got stuck in a tall tree.",
+          "sentence_vi": "Con diều của tôi bị kẹt vào một cái cây cao."
+        }
+      ]
+    },
+    {
+      "rank": 14190,
+      "lemma": "poo",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "solid waste that leaves the body, a child's word",
+      "definition_vi": "cục phân (từ trẻ em dùng)",
+      "examples": [
+        {
+          "sentence": "The baby needs a nappy change; she did a poo.",
+          "sentence_vi": "Em bé cần thay tã; bé đi ị rồi."
+        },
+        {
+          "sentence": "The dog left a poo on the grass.",
+          "sentence_vi": "Con chó để lại một cục phân trên cỏ."
+        }
+      ]
+    },
+    {
+      "rank": 14255,
+      "lemma": "yummy",
+      "pos": "adjective",
+      "cefr_level": "A1",
+      "definition": "tasting very good",
+      "definition_vi": "ngon",
+      "examples": [
+        {
+          "sentence": "This cake is really yummy!",
+          "sentence_vi": "Chiếc bánh này thật ngon!"
+        },
+        {
+          "sentence": "Mom made some yummy soup for dinner.",
+          "sentence_vi": "Mẹ nấu một nồi súp ngon cho bữa tối."
+        }
+      ]
+    },
+    {
+      "rank": 15944,
+      "lemma": "yum",
+      "pos": "phrase",
+      "cefr_level": "A1",
+      "definition": "a word you say when food tastes very good",
+      "definition_vi": "ngon quá",
+      "examples": [
+        {
+          "sentence": "Yum! This cake is delicious.",
+          "sentence_vi": "Ngon quá! Bánh này thật ngon."
+        },
+        {
+          "sentence": "Yum, I love fresh mango.",
+          "sentence_vi": "Ngon quá, tôi thích xoài tươi."
+        }
+      ]
+    },
+    {
+      "rank": 16040,
+      "lemma": "hamburger",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a round sandwich with cooked meat inside",
+      "definition_vi": "bánh mì kẹp thịt bò, hamburger",
+      "examples": [
+        {
+          "sentence": "I want a hamburger and some fries, please.",
+          "sentence_vi": "Cho tôi một chiếc hamburger và ít khoai tây chiên."
+        },
+        {
+          "sentence": "He ate a big hamburger for lunch at the café.",
+          "sentence_vi": "Anh ấy ăn một chiếc hamburger to vào bữa trưa ở quán cà phê."
+        }
+      ]
+    },
+    {
+      "rank": 16366,
+      "lemma": "taxis",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "cars with a driver that you pay to take you somewhere",
+      "definition_vi": "xe tắc xi",
+      "examples": [
+        {
+          "sentence": "Taxis wait outside the airport all day.",
+          "sentence_vi": "Xe tắc xi đợi bên ngoài sân bay cả ngày."
+        },
+        {
+          "sentence": "We took two taxis to the hotel.",
+          "sentence_vi": "Chúng tôi bắt hai chiếc tắc xi đến khách sạn."
+        }
+      ]
+    },
+    {
+      "rank": 16608,
+      "lemma": "tummy",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a child's word for the stomach or belly",
+      "definition_vi": "cái bụng (trẻ em dùng)",
+      "examples": [
+        {
+          "sentence": "My tummy hurts after eating too much candy.",
+          "sentence_vi": "Bụng em đau sau khi ăn quá nhiều kẹo."
+        },
+        {
+          "sentence": "The baby laughed when his mother tickled his tummy.",
+          "sentence_vi": "Em bé cười khi mẹ chọc vào bụng."
+        }
+      ]
+    },
+    {
+      "rank": 16974,
+      "lemma": "momma",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "an informal word for your mother",
+      "definition_vi": "mẹ (cách gọi thân mật)",
+      "examples": [
+        {
+          "sentence": "Momma made pancakes for breakfast this morning.",
+          "sentence_vi": "Mẹ đã làm bánh kếp cho bữa sáng sáng nay."
+        },
+        {
+          "sentence": "The little boy ran to his momma when he fell down.",
+          "sentence_vi": "Cậu bé chạy đến với mẹ khi bị ngã."
+        }
+      ]
+    },
+    {
+      "rank": 17736,
+      "lemma": "toothbrush",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "a small brush you use to clean your teeth",
+      "definition_vi": "bàn chải đánh răng",
+      "examples": [
+        {
+          "sentence": "I brush my teeth with a toothbrush every morning.",
+          "sentence_vi": "Tôi đánh răng bằng bàn chải mỗi sáng."
+        },
+        {
+          "sentence": "Don't forget to pack your toothbrush.",
+          "sentence_vi": "Đừng quên mang theo bàn chải đánh răng."
+        }
+      ]
+    },
+    {
+      "rank": 17979,
+      "lemma": "toothpaste",
+      "pos": "noun",
+      "cefr_level": "A1",
+      "definition": "the cream you put on a brush to clean your teeth",
+      "definition_vi": "kem đánh răng",
+      "examples": [
+        {
+          "sentence": "Please buy a new tube of toothpaste at the shop.",
+          "sentence_vi": "Xin hãy mua một tuýp kem đánh răng mới ở cửa hàng."
+        },
+        {
+          "sentence": "He squeezed some toothpaste onto his brush.",
+          "sentence_vi": "Anh ấy bóp một ít kem đánh răng lên bàn chải."
         }
       ]
     }
