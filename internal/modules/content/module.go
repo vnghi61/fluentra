@@ -117,6 +117,9 @@ func (m *Module) VerificationRecorder() contract.VerificationRecorder { return m
 // (WO 22 D22-13).
 func (m *Module) VerifiedBatchPublisher() contract.VerifiedBatchPublisher { return m.service }
 
+// ReviewBacklog reports unreviewed generation batches (WO 22 Stage O).
+func (m *Module) ReviewBacklog() contract.ReviewBacklog { return m.service }
+
 // TTSCache provides caching and retrieval of synthesised speech audio.
 func (m *Module) TTSCache() contract.TTSCache { return m.service }
 

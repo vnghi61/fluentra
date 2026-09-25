@@ -1034,6 +1034,16 @@ func (r *Repository) ListReviewBatchVersionIDs(ctx context.Context, batch string
 	return ids, nil
 }
 
+// CountPendingBatchDays counts the distinct days whose batches under a prefix
+// still hold unreviewed drafts.
+func (r *Repository) CountPendingBatchDays(ctx context.Context, prefix string) (int64, error) {
+	count, err := r.queries.CountPendingBatchDays(ctx, prefix)
+	if err != nil {
+		return 0, fmt.Errorf("count pending batch days: %w", err)
+	}
+	return count, nil
+}
+
 // CountAutoPublishedOn counts the items a verifier published on a day.
 func (r *Repository) CountAutoPublishedOn(ctx context.Context, day time.Time) (int64, error) {
 	count, err := r.queries.CountAutoPublishedOn(ctx, day)

@@ -165,6 +165,7 @@ type Repository interface {
 	ListReviewBatches(ctx context.Context, limit, offset int) ([]domain.ReviewBatch, error)
 	CountReviewBatches(ctx context.Context) (int64, error)
 	ListReviewBatchVersionIDs(ctx context.Context, batch string) ([]uuid.UUID, error)
+	CountPendingBatchDays(ctx context.Context, prefix string) (int64, error)
 	CountAutoPublishedOn(ctx context.Context, day time.Time) (int64, error)
 	ListAutoPublishedOn(ctx context.Context, day time.Time, sampleSize int) ([]uuid.UUID, error)
 	InsertReviewSample(ctx context.Context, versionID uuid.UUID, batch string, sampledOn time.Time) error
@@ -1475,3 +1476,11 @@ func (s *Service) approveBatchVersion(
 	}
 	return true, nil
 }
+
+// PendingBatchDays implements contract.ReviewBacklog.
+func (s *Service) PendingBatchDays(ctx context.Context, batchPrefix string) (int, error) {
+	count, err := s.repo.CountPendingBatchDays(ctx, batchPrefix)
+	return int(count), err
+}
+
+var _ contract.ReviewBacklog = (*Service)(nil)

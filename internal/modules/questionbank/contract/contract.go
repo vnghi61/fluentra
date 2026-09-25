@@ -110,3 +110,13 @@ type Author interface {
 	PublishQuestion(ctx context.Context, id uuid.UUID) (*Question, error)
 	RetireQuestion(ctx context.Context, id uuid.UUID) (*Question, error)
 }
+
+// BatchPrefix is the start of every generation batch id for one exam version:
+// the review queue groups a run's doubts by batch, and the daily job reads how
+// many of an exam's batches wait for a person by this prefix (WO 22 Stage O).
+func BatchPrefix(examVersion string) string {
+	if examVersion == "" {
+		examVersion = "any"
+	}
+	return "bank:" + examVersion + ":"
+}

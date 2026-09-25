@@ -140,6 +140,15 @@ type VerifiedBatchPublisher interface {
 	ApproveVerifiedBatch(ctx context.Context, batch string) (int, error)
 }
 
+// ReviewBacklog says how far behind the people reviewing generated content are
+// (WO 22 Stage O): a job that generates faster than anyone reads the doubts only
+// grows a backlog.
+type ReviewBacklog interface {
+	// PendingBatchDays is how many distinct days' batches under the prefix
+	// still hold drafts nobody has reviewed.
+	PendingBatchDays(ctx context.Context, batchPrefix string) (int, error)
+}
+
 // Verification is the outcome of an independent check on a machine-authored
 // version (WO 22 Stage A).
 //

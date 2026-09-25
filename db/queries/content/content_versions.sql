@@ -177,3 +177,15 @@ SELECT COUNT(*)::bigint FROM (
       AND COALESCE(v.body->'_provenance'->>'batch', '') <> ''
     GROUP BY v.body->'_provenance'->>'batch'
 ) batches;
+
+-- name: CountPendingBatchDays :one
+-- How many distinct days a family of generation batches (one exam's, by batch
+-- prefix) left doubts nobody has reviewed yet. The daily exam job skips an
+-- exam whose doubts from two earlier days still wait (WO 22 Stage O trap 1).
+SELECT COUNT(DISTINCT batch_day)::bigint FROM (
+    SELECT (MIN(v.created_at) AT TIME ZONE 'UTC')::date AS batch_day
+    FROM content.content_versions v
+    WHERE v.status IN ('draft', 'in_review')
+      AND starts_with(v.body->'_provenance'->>'batch', sqlc.arg('prefix')::text)
+    GROUP BY v.body->'_provenance'->>'batch'
+) batches;

@@ -41,8 +41,33 @@ func (s *Service) GenerateDaily(ctx context.Context) error {
 	if s.bankAuthor == nil {
 		return nil
 	}
-	_, err := s.GenerateDailyExam(ctx, DailyExamForDay(s.clock.Now().UTC()))
+	code := DailyExamForDay(s.clock.Now().UTC())
+	if skip, err := s.reviewBacklogged(ctx, code); err != nil {
+		return err
+	} else if skip {
+		slog.InfoContext(ctx, "exam: daily generation skipped; earlier doubts wait for review", "exam", code)
+		return nil
+	}
+	_, err := s.GenerateDailyExam(ctx, code)
 	return err
+}
+
+// backlogDays is how many earlier generation days' doubts may wait before the
+// daily job stops adding to them (WO 22 Stage O trap 1).
+const backlogDays = 2
+
+// reviewBacklogged reports an exam whose escalated batches from two earlier
+// days nobody has reviewed. Days the verifier confirms everything leave no
+// batch behind, so they never trip it.
+func (s *Service) reviewBacklogged(ctx context.Context, versionCode string) (bool, error) {
+	if s.backlog == nil {
+		return false, nil
+	}
+	days, err := s.backlog.PendingBatchDays(ctx, questionbankcontract.BatchPrefix(versionCode))
+	if err != nil {
+		return false, fmt.Errorf("read the review backlog for %s: %w", versionCode, err)
+	}
+	return days >= backlogDays, nil
 }
 
 // GenerateDailyExam generates one test's worth (plus a margin) for every part
@@ -73,8 +98,17 @@ func (s *Service) GenerateDailyExam(ctx context.Context, versionCode string) (in
 	}
 	level := blueprintLevel(blueprints)
 
+	asked := 0
 	for _, part := range parts {
 		groups := groupsPerTest(part) + DailyGenerationMargin
+		// The per-run cap bounds spend: parts after it wait for the next run.
+		if s.dailyCap > 0 {
+			groups = min(groups, s.dailyCap-asked)
+			if groups <= 0 {
+				break
+			}
+		}
+		asked += groups
 		partID := part.ID
 		_, genErr := s.bankAuthor.GenerateQuestions(ctx, questionbankcontract.GenerateRequest{
 			ExamVersion: &versionCode,

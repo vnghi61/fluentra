@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	examcontract "github.com/fluentra/fluentra/internal/modules/exam/contract"
 	examjob "github.com/fluentra/fluentra/internal/modules/exam/job"
 	examrepo "github.com/fluentra/fluentra/internal/modules/exam/repository"
@@ -45,6 +46,10 @@ type Deps struct {
 	// BankAuthor generates the daily job's questions (WO 22 Stage O). Nil
 	// leaves the daily generation job a no-op.
 	BankAuthor questionbankcontract.Author
+	// ReviewBacklog lets the daily job skip an exam whose doubts wait for a
+	// person (WO 22 Stage O). DailyGenerationCap bounds one run.
+	ReviewBacklog      contentcontract.ReviewBacklog
+	DailyGenerationCap int
 }
 
 // Module represents the wired exam module.
@@ -58,19 +63,21 @@ func New(deps Deps) *Module {
 	repo := examrepo.New(deps.Pool)
 
 	svc := service.New(service.Deps{
-		Pool:         deps.Pool,
-		Repo:         repo,
-		Learning:     deps.Learning,
-		Attempts:     deps.Attempts,
-		Exposures:    deps.Exposures,
-		Lesson:       deps.Lesson,
-		Questionbank: deps.Questionbank,
-		Drawer:       deps.Drawer,
-		Clock:        deps.Clock,
-		DailyLimit:   deps.DailyLimit,
-		Enqueuer:     deps.Enqueuer,
-		Nudger:       deps.WorkerNudger,
-		BankAuthor:   deps.BankAuthor,
+		Pool:               deps.Pool,
+		Repo:               repo,
+		Learning:           deps.Learning,
+		Attempts:           deps.Attempts,
+		Exposures:          deps.Exposures,
+		Lesson:             deps.Lesson,
+		Questionbank:       deps.Questionbank,
+		Drawer:             deps.Drawer,
+		Clock:              deps.Clock,
+		DailyLimit:         deps.DailyLimit,
+		Enqueuer:           deps.Enqueuer,
+		Nudger:             deps.WorkerNudger,
+		BankAuthor:         deps.BankAuthor,
+		ReviewBacklog:      deps.ReviewBacklog,
+		DailyGenerationCap: deps.DailyGenerationCap,
 	})
 
 	handler := examhttp.NewHandler(svc)

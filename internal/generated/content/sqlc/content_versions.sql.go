@@ -68,6 +68,26 @@ func (q *Queries) BrowsePublishedContentVersions(ctx context.Context, arg Browse
 	return items, nil
 }
 
+const countPendingBatchDays = `-- name: CountPendingBatchDays :one
+SELECT COUNT(DISTINCT batch_day)::bigint FROM (
+    SELECT (MIN(v.created_at) AT TIME ZONE 'UTC')::date AS batch_day
+    FROM content.content_versions v
+    WHERE v.status IN ('draft', 'in_review')
+      AND starts_with(v.body->'_provenance'->>'batch', $1::text)
+    GROUP BY v.body->'_provenance'->>'batch'
+) batches
+`
+
+// How many distinct days a family of generation batches (one exam's, by batch
+// prefix) left doubts nobody has reviewed yet. The daily exam job skips an
+// exam whose doubts from two earlier days still wait (WO 22 Stage O trap 1).
+func (q *Queries) CountPendingBatchDays(ctx context.Context, prefix string) (int64, error) {
+	row := q.db.QueryRow(ctx, countPendingBatchDays, prefix)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countPublishedContentVersions = `-- name: CountPublishedContentVersions :one
 SELECT COUNT(*)::bigint
 FROM content.content_versions v

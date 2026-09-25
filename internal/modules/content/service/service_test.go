@@ -40,14 +40,16 @@ const (
 
 // fakeRepo is an in-memory mock repository implementing service.Repository.
 type fakeRepo struct {
-	items       map[uuid.UUID]domain.Item
-	versions    map[uuid.UUID]domain.Version
-	mediaAssets map[string]domain.MediaAsset
-	reviews     map[uuid.UUID]domain.Review
-	tags        map[uuid.UUID][]domain.TaxonomyTag
-	reports     []domain.ItemReport
-	ttsCache    map[string]string
-	queriesRun  int
+	items map[uuid.UUID]domain.Item
+	// pendingBatchDays is what CountPendingBatchDays answers.
+	pendingBatchDays int64
+	versions         map[uuid.UUID]domain.Version
+	mediaAssets      map[string]domain.MediaAsset
+	reviews          map[uuid.UUID]domain.Review
+	tags             map[uuid.UUID][]domain.TaxonomyTag
+	reports          []domain.ItemReport
+	ttsCache         map[string]string
+	queriesRun       int
 
 	// what the last ListContentItemsFiltered call was given. The window is
 	// narrowed from int to int32 on the way to the driver, and an unbounded
@@ -758,6 +760,10 @@ func (f *fakeRepo) CountReviewBatches(_ context.Context) (int64, error) {
 
 func (f *fakeRepo) ListReviewBatchVersionIDs(_ context.Context, _ string) ([]uuid.UUID, error) {
 	return nil, nil
+}
+
+func (f *fakeRepo) CountPendingBatchDays(_ context.Context, _ string) (int64, error) {
+	return f.pendingBatchDays, nil
 }
 
 func (f *fakeRepo) CountAutoPublishedOn(_ context.Context, _ time.Time) (int64, error) {

@@ -191,6 +191,8 @@ type workerConfig struct {
 	Exam struct {
 		DailySittingsLimit int  `koanf:"daily_sittings_limit"`
 		DailyGeneration    bool `koanf:"daily_generation"`
+		// DailyGenerationCap bounds the items one daily run asks for.
+		DailyGenerationCap int `koanf:"daily_generation_cap"`
 	} `koanf:"exam"`
 	SePay struct {
 		WebhookAPIKey string        `koanf:"webhook_api_key"`
@@ -315,6 +317,7 @@ func configOptions() config.Options {
 			"speech.tts_dispatch_token":      "",
 			"exam.daily_sittings_limit":      5,
 			"exam.daily_generation":          false,
+			"exam.daily_generation_cap":      300,
 			"sepay.webhook_api_key":          "",
 			"sepay.api_token":                "",
 			"sepay.account_number":           "",
@@ -1142,7 +1145,7 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 
 	if err := startSkills(
 		d.pool, d.bus, d.cron, d.workers, d.content, d.lesson, learningModule,
-		writingModule, speakingModule, d.cfg.Exam.DailyGeneration,
+		writingModule, speakingModule, d.cfg.Exam.DailyGeneration, d.cfg.Exam.DailyGenerationCap,
 	); err != nil {
 		return err
 	}
@@ -1268,7 +1271,7 @@ func newWorkerTranscriber(cfg workerConfig) media.Transcriber {
 func startSkills(
 	pool *pgxpool.Pool, bus *eventbus.InProcessBus, cron *job.CronScheduler, workers *river.Workers,
 	contentModule *content.Module, lessonModule *lesson.Module, learningModule *learning.Module,
-	writingModule *writing.Module, speakingModule *speaking.Module, dailyGeneration bool,
+	writingModule *writing.Module, speakingModule *speaking.Module, dailyGeneration bool, dailyCap int,
 ) error {
 	river.AddWorker(workers, writingModule.GradeSubmissionWorker())
 	river.AddWorker(workers, speakingModule.GradeRecordingWorker())
@@ -1296,8 +1299,10 @@ func startSkills(
 		// The bank the composer draws fixed tests from. Without it every part
 		// read as empty, and neither the daily job nor the sweep below could
 		// ever compose a test.
-		Questionbank: questionbankModule.Reader(),
-		BankAuthor:   questionbankModule.Author(),
+		Questionbank:       questionbankModule.Reader(),
+		BankAuthor:         questionbankModule.Author(),
+		ReviewBacklog:      contentModule.ReviewBacklog(),
+		DailyGenerationCap: dailyCap,
 	})
 	river.AddWorker(workers, examModule.ExpireAttemptWorker())
 	cron.Register(examModule.SweepJob())

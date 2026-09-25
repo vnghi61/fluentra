@@ -18,6 +18,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/fluentra/fluentra/internal/generated/exam/sqlc"
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	examcontract "github.com/fluentra/fluentra/internal/modules/exam/contract"
 	"github.com/fluentra/fluentra/internal/modules/exam/domain"
 	examjob "github.com/fluentra/fluentra/internal/modules/exam/job"
@@ -138,11 +139,17 @@ type Deps struct {
 	// BankAuthor generates the questions the daily job adds to the bank
 	// (WO 22 Stage O). Nil disables the job.
 	BankAuthor questionbankcontract.Author
-	Drawer     PoolDrawer
-	Clock      clock.Clock
-	DailyLimit int
-	Enqueuer   platformjob.Enqueuer
-	Nudger     WorkerNudger
+	// ReviewBacklog lets the daily job skip an exam whose doubts from two
+	// earlier days nobody has reviewed. Nil never skips.
+	ReviewBacklog contentcontract.ReviewBacklog
+	// DailyGenerationCap bounds how many items one daily run asks for; 0 is
+	// no bound beyond one test's worth.
+	DailyGenerationCap int
+	Drawer             PoolDrawer
+	Clock              clock.Clock
+	DailyLimit         int
+	Enqueuer           platformjob.Enqueuer
+	Nudger             WorkerNudger
 }
 
 // Service orchestrates exam sittings, timing, auto-submission, and scoring.
@@ -155,6 +162,8 @@ type Service struct {
 	lesson       lessoncontract.Reader
 	questionbank questionbankcontract.Reader
 	bankAuthor   questionbankcontract.Author
+	backlog      contentcontract.ReviewBacklog
+	dailyCap     int
 	drawer       PoolDrawer
 	clock        clock.Clock
 	dailyLimit   int
@@ -181,6 +190,8 @@ func New(deps Deps) *Service {
 		lesson:       deps.Lesson,
 		questionbank: deps.Questionbank,
 		bankAuthor:   deps.BankAuthor,
+		backlog:      deps.ReviewBacklog,
+		dailyCap:     deps.DailyGenerationCap,
 		drawer:       deps.Drawer,
 		clock:        clk,
 		dailyLimit:   dailyLimit,

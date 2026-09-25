@@ -250,7 +250,7 @@ func (s *Service) GenerateQuestions(ctx context.Context, req contract.GenerateRe
 		Purpose:   "bank",
 		// One batch id per run, so the doubts of one generation are reviewed
 		// together (WO 22 Stage A.4).
-		Batch:           fmt.Sprintf("bank:%s:%s", req.Kind, time.Now().UTC().Format("20060102T150405")),
+		Batch:           generationBatch(req),
 		ExamConstraints: examConstraints,
 	})
 	if err != nil {
@@ -318,6 +318,16 @@ func (s *Service) GenerateQuestions(ctx context.Context, req contract.GenerateRe
 	}
 
 	return createdQuestions, nil
+}
+
+// generationBatch is one run's batch id: the exam version first, so the daily
+// job can count an exam's unreviewed batches, then the kind and the time.
+func generationBatch(req contract.GenerateRequest) string {
+	version := ""
+	if req.ExamVersion != nil {
+		version = *req.ExamVersion
+	}
+	return fmt.Sprintf("%s%s:%s", contract.BatchPrefix(version), req.Kind, time.Now().UTC().Format("20060102T150405"))
 }
 
 // bankIfVerified puts a question whose version is already published into the
