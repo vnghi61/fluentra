@@ -64,8 +64,9 @@ func seedExamFixtures(
 	})
 	examMod := exam.New(exam.Deps{Pool: pool, Questionbank: questionbankMod.Reader()})
 
-	published, drafted, questions := 0, 0, 0
 	for _, file := range files {
+		// Per file: the line printed below is one exam version's.
+		published, drafted, questions := 0, 0, 0
 		for _, item := range file.Items {
 			versionID, itemPublished, err := authorExamItem(ctx, pool, author, recorder, adminID, item)
 			if err != nil {
@@ -184,7 +185,9 @@ func ensureBankQuestion(
 		Kind:          item.Kind,
 		Skill:         item.Skill,
 		CEFRLevel:     item.CEFRLevel,
-		QuestionCount: 1,
+		// The group's size, not 1: a Part 3 conversation recorded as one
+		// question never fits a part of threes, and no test could be composed.
+		QuestionCount: questionbankdomain.QuestionCountFromBody(item.Kind, item.Body),
 		Fingerprint:   fingerprint,
 		Provenance:    map[string]any{"content_version_id": versionID.String()},
 		Status:        questionbankdomain.StatusDraft,

@@ -505,16 +505,7 @@ func (s *Service) RetireQuestion(ctx context.Context, id uuid.UUID) (*contract.Q
 }
 
 func determineQuestionCount(kind string, body json.RawMessage) int {
-	var parsed struct {
-		Questions []json.RawMessage `json:"questions"`
-	}
-	if err := json.Unmarshal(body, &parsed); err == nil && len(parsed.Questions) > 0 {
-		return len(parsed.Questions)
-	}
-	if kind == contract.KindTextCompletion {
-		return 4
-	}
-	return 1
+	return domain.QuestionCountFromBody(kind, body)
 }
 
 func determineSkill(kind string) string {
