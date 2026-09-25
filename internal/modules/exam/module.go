@@ -115,6 +115,11 @@ func (m *Module) SweepJob() platformjob.CronJob {
 	return examjob.SweepExpiredJob(m.service)
 }
 
+// ComposeFixedTestsJob returns the hourly fixed-test sweep (WO 22 Stage O).
+func (m *Module) ComposeFixedTestsJob() platformjob.CronJob {
+	return examjob.ComposeFixedTestsJob(m.service)
+}
+
 // DailyGenerationJob returns the daily generation cron job (WO 22 Stage O).
 func (m *Module) DailyGenerationJob() platformjob.CronJob {
 	return examjob.DailyGenerationJob(m.service)

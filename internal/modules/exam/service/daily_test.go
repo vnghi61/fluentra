@@ -109,3 +109,39 @@ func TestGenerateDailyExam_GeneratesEachPartThenComposes(t *testing.T) {
 	assert.Equal(t, 3+service.DailyGenerationMargin, bank.calls[0].Count)
 	assert.Equal(t, 1, composed, "a full test's worth composes one numbered test")
 }
+
+// TestComposeAllFixedTests_ComposesWhatTheBankCanFill is the Stage O sweep: a
+// bank a person or a verifier filled after the daily job gets its next
+// numbered test, with no generation involved.
+func TestComposeAllFixedTests_ComposesWhatTheBankCanFill(t *testing.T) {
+	partID := uuid.New()
+	versionID := uuid.New()
+
+	repo := newMockExamRepo()
+	repo.version = &domain.ExamVersion{ID: versionID, Code: "TOEIC_LR_2026"}
+	repo.parts = []*domain.ExamPart{{
+		ID: partID, VersionID: versionID, Section: testSkillListening, PartNumber: 1,
+		Kind: kindListeningComprehension, QuestionCount: 3, GroupSize: 1,
+	}}
+	repo.blueprint = &domain.Blueprint{
+		ID: uuid.New(), VersionID: versionID, Name: "toeic_default",
+		CefrDistribution: json.RawMessage(`{"B2": 1.0}`),
+	}
+	questions := make([]*questionbankcontract.Question, 0, 3)
+	for i := 0; i < 3; i++ {
+		actID := uuid.New()
+		questions = append(questions, &questionbankcontract.Question{
+			ID: uuid.New(), ActivityID: &actID, ExamPartID: &partID,
+			Kind: kindListeningComprehension, CEFRLevel: "B2", QuestionCount: 1,
+		})
+	}
+	svc := service.New(service.Deps{
+		Repo:         repo,
+		Questionbank: &fakeQuestionbank{byPart: map[uuid.UUID][]*questionbankcontract.Question{partID: questions}},
+	})
+
+	require.NoError(t, svc.ComposeAllFixedTests(context.Background()))
+	require.Len(t, repo.mockTests, 1, "one test's worth composes exactly one numbered test")
+	require.NotNil(t, repo.mockTests[0].Number)
+	assert.Equal(t, 1, *repo.mockTests[0].Number)
+}

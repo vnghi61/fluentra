@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/fluentra/fluentra/internal/modules/exam/domain"
@@ -114,4 +115,41 @@ func blueprintLevel(blueprints []*domain.Blueprint) string {
 		}
 	}
 	return best
+}
+
+// ComposeAllFixedTests composes the next numbered fixed tests of every exam in
+// the rotation that its published bank can fill (WO 22 Stage O).
+//
+// The daily job composes right after it generates, but most questions reach the
+// bank later: a batch a person approves, or a verifier's publish consumed after
+// the job returned. This sweep is what makes Test N+1 appear the day a full
+// disjoint test's worth exists, whoever published the last question. One exam
+// failing does not stop the others.
+func (s *Service) ComposeAllFixedTests(ctx context.Context) error {
+	if s.repo == nil {
+		return errors.New("repository not configured")
+	}
+	var firstErr error
+	for _, code := range DailyExamRotation {
+		version, err := s.repo.GetExamVersionByCode(ctx, code)
+		if err != nil || version == nil {
+			continue
+		}
+		blueprints, err := s.repo.ListBlueprintsByVersionID(ctx, version.ID)
+		if err != nil {
+			firstErr = errors.Join(firstErr, fmt.Errorf("list blueprints for %s: %w", code, err))
+			continue
+		}
+		for _, blueprint := range blueprints {
+			count, err := s.ComposeNextFixedTests(ctx, blueprint.ID)
+			if err != nil {
+				firstErr = errors.Join(firstErr, fmt.Errorf("compose fixed tests for %s: %w", code, err))
+				continue
+			}
+			if count > 0 {
+				slog.InfoContext(ctx, "exam: composed fixed tests", "exam", code, "count", count)
+			}
+		}
+	}
+	return firstErr
 }

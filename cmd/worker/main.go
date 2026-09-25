@@ -1288,15 +1288,20 @@ func startSkills(
 		ExamParts:     lazyExamParts{of: &examModule},
 	})
 	examModule = exam.New(exam.Deps{
-		Pool:       pool,
-		Learning:   learningModule.SittingAnswerSubmitter(),
-		Attempts:   learningModule.AttemptOutcomeReader(),
-		Exposures:  learningModule.ItemExposureRecorder(),
-		Lesson:     lessonModule.Reader(),
-		BankAuthor: questionbankModule.Author(),
+		Pool:      pool,
+		Learning:  learningModule.SittingAnswerSubmitter(),
+		Attempts:  learningModule.AttemptOutcomeReader(),
+		Exposures: learningModule.ItemExposureRecorder(),
+		Lesson:    lessonModule.Reader(),
+		// The bank the composer draws fixed tests from. Without it every part
+		// read as empty, and neither the daily job nor the sweep below could
+		// ever compose a test.
+		Questionbank: questionbankModule.Reader(),
+		BankAuthor:   questionbankModule.Author(),
 	})
 	river.AddWorker(workers, examModule.ExpireAttemptWorker())
 	cron.Register(examModule.SweepJob())
+	cron.Register(examModule.ComposeFixedTestsJob())
 	if dailyGeneration {
 		cron.Register(examModule.DailyGenerationJob())
 	}

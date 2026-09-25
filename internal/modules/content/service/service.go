@@ -1394,6 +1394,10 @@ func (s *Service) ApproveReviewBatch(
 		if err != nil {
 			return err
 		}
+		versionIDs, err = topicsLast(txCtx, repo, versionIDs)
+		if err != nil {
+			return err
+		}
 		for _, versionID := range versionIDs {
 			if _, skip := rejected[versionID]; skip {
 				if _, err := repo.CreateReview(
@@ -1434,4 +1438,25 @@ func (s *Service) ApproveReviewBatch(
 		return 0, err
 	}
 	return approved, nil
+}
+
+// topicsLast orders a batch so a Foundation topic is published after the
+// exercises, quiz and review of the same batch: its publication gate
+// (BR-FOUNDATION-05) needs them, and one topic ahead of them would fail the
+// whole batch's transaction. The order is otherwise kept.
+func topicsLast(ctx context.Context, repo Repository, versionIDs []uuid.UUID) ([]uuid.UUID, error) {
+	ordered := make([]uuid.UUID, 0, len(versionIDs))
+	var topics []uuid.UUID
+	for _, id := range versionIDs {
+		version, err := repo.GetVersionByID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if version.Kind == KindFoundationTopic {
+			topics = append(topics, id)
+			continue
+		}
+		ordered = append(ordered, id)
+	}
+	return append(ordered, topics...), nil
 }
