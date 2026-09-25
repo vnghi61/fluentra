@@ -636,6 +636,8 @@ needs AI provider keys or network access, and two decisions only a person can ma
 
 ### Commands to run with AI keys and network
 
+Step by step, with checks and troubleshooting: [wo22-local-runbook.md](wo22-local-runbook.md).
+
 Set `AI_PROVIDER_1_*` and a second provider of a different model, and `AI_AUTO_PUBLISH=true`, so the
 verifier can publish; with one model everything waits for a person.
 
