@@ -6,7 +6,7 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: content
-tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews, item_reports, review_samples, tts_cache, taxonomy_prerequisites]
+tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews, item_reports, review_samples, foundation_course_nodes, tts_cache, taxonomy_prerequisites]
 depends_on: [storage, search, audit, ai, media]
 depended_on_by: [lesson, learning, vocabulary, grammar, reading, listening, speaking, writing, questionbank]
 spec_version: 1.0.0
@@ -106,6 +106,7 @@ Migrations: `db/migrations/content/` · Queries: `db/queries/content/`
 | `content.content_reviews` | Review workflow record | `version_id`, `reviewer_id`, `decision`, `comments` |
 | `content.item_reports` | Learner issue reports on content versions | `content_version_id`, `user_id`, `reason`, `note`. Unique on (content_version_id, user_id). |
 | `content.review_samples` | Auto-published versions drawn for a person to spot-check (WO 22 Stage A.5) | `version_id` PK, `batch` (sample/report), `sampled_on`, `decision` (kept/rejected), `decided_by`, `decided_at` |
+| `content.foundation_course_nodes` | The Foundation course map: every spine node in exactly one of the thirteen courses (WO 22 Stage E) | PK (`course_slug`, `node_id`), `position`. Unique on `node_id`. |
 | `content.tts_cache` | Pre-generated synthesised speech audio keyed by text hash and voice | `text_hash`, `voice`, `engine`, `engine_version`, `object_key`, `created_at` |
 | `content.taxonomy_prerequisites` | Prerequisite DAG edges between taxonomy nodes in the same strand | `node_id`, `requires_node_id`, `created_at`. Unique on (node_id, requires_node_id). |
 
