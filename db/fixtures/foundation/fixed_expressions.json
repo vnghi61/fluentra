@@ -1,11 +1,334 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1381405Z",
+  "generated_at": "2026-09-25T18:49:49.2603274Z",
   "node": {
     "namespace": "vocabulary",
     "code": "FIXED_EXPRESSIONS",
     "label": "Fixed Expressions",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-fixed-expressions-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence using the fixed expression 'make up your mind': You need to decide soon which course you want to study.",
+        "acceptable": [
+          "You need to make up your mind soon which course you want to study.",
+          "You must make up your mind soon about which course to study."
+        ],
+        "_provenance": {
+          "batch": "foundation:FIXED_EXPRESSIONS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:45:41Z"
+          },
+          "ai_request_id": "f68bd889-bccb-4f46-8866-78c704f9c941",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item requires transforming a simple sentence using the fixed expression 'make up your mind', an idiomatic phrasal expression. While idiomatic phrasings are often flagged at B2, this is a very common, high-frequency expression taught at B1, and the source sentence (modal 'need to', wh-clause) is clearly B1-level. The transformation task is moderately demanding but appropriate for B1 learners.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "You need to make up your mind soon about which course you want to study."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The fixed expression 'make up your mind' means to decide. It replaces the verb 'decide' and is followed by 'about' + noun/gerund or a wh-clause.",
+          "explanation_vi": "Cụm cố định 'make up your mind' nghĩa là quyết định. Nó thay thế động từ 'decide' và thường đi với 'about' + danh từ hoặc mệnh đề wh."
+        },
+        "correct_answer": "You need to make up your mind soon about which course you want to study."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:45:41Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-ex-fixed-expressions-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "After thinking about the job offer for weeks, she finally ___ her mind to accept it.",
+        "options": [
+          {
+            "id": "A",
+            "text": "made up"
+          },
+          {
+            "id": "B",
+            "text": "makes up"
+          },
+          {
+            "id": "C",
+            "text": "is making up"
+          },
+          {
+            "id": "D",
+            "text": "has made up"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FIXED_EXPRESSIONS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:45:07Z"
+          },
+          "ai_request_id": "e61ddb07-47f9-4a87-bf30-aac1e9c59bec",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests past simple tense choice within a fixed idiom ('make up one's mind'), with distractors spanning present simple, present continuous, and present perfect. The sentence context is clear and the vocabulary is everyday (job offer, accept, decide), fitting B1: learners at this level handle past simple vs. present perfect contrasts and common idiomatic expressions. The idiom itself is common rather than advanced, so it does not push to B2.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The fixed expression 'make up one's mind' means to decide. The past simple 'made up' is correct because the decision is a completed past action, signalled by 'finally' and the past context 'After thinking... for weeks'.",
+          "explanation_vi": "Cụm cố định 'make up one's mind' nghĩa là quyết định. Thì quá khứ đơn 'made up' đúng vì quyết định là hành động đã hoàn thành trong quá khứ, được chỉ ra bởi 'finally' và ngữ cảnh quá khứ 'After thinking... for weeks'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:45:07Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-ex-fixed-expressions-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "I was going to call you last night, but it completely ___ my mind.",
+        "options": [
+          {
+            "id": "A",
+            "text": "slipped"
+          },
+          {
+            "id": "B",
+            "text": "dropped"
+          },
+          {
+            "id": "C",
+            "text": "fell"
+          },
+          {
+            "id": "D",
+            "text": "passed"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FIXED_EXPRESSIONS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:44:56Z"
+          },
+          "ai_request_id": "a9b9cc87-6825-4044-8e93-05224f77c768",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the fixed idiom 'slip one's mind' (to forget), a common idiomatic expression typically learned at B1. The sentence itself is simple past context, but the distractors (dropped, fell, escaped) require knowledge of the specific collocation, making it appropriate for B1 rather than A2.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The fixed expression 'slip one's mind' means to forget something.",
+          "explanation_vi": "Cụm cố định 'slip one's mind' nghĩa là quên mất điều gì đó."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:44:56Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-fixed-expressions",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "We were planning to leave early, but ___ the end we decided to stay another night.",
+        "options": [
+          {
+            "id": "A",
+            "text": "at"
+          },
+          {
+            "id": "B",
+            "text": "in"
+          },
+          {
+            "id": "C",
+            "text": "by"
+          },
+          {
+            "id": "D",
+            "text": "on"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FIXED_EXPRESSIONS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:45:54Z"
+          },
+          "ai_request_id": "b4f0cee4-eadb-4435-bc53-1e52940382c9",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the fixed prepositional expression 'in the end' vs 'at the end', a common B1-level collocation/confusable point. The sentence uses simple past tense and everyday vocabulary, but distinguishing these near-synonymous phrases requires more than A2 knowledge, fitting B1.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'In the end' is a fixed expression meaning 'finally' or 'after considering everything'. It is not interchangeable with 'at the end', which refers to the final point of something (e.g. 'at the end of the film').",
+          "explanation_vi": "'In the end' là thành ngữ cố định nghĩa là 'cuối cùng, sau khi cân nhắc mọi thứ'. Nó không thể thay bằng 'at the end', vốn chỉ điểm kết thúc của một sự vật (ví dụ: 'at the end of the film')."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:45:54Z"
+      }
+    },
+    {
+      "slug": "foundation-review-fixed-expressions",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Choose the correct fixed expression to complete the sentence: I don't want to talk about it now — let's ___ it until tomorrow.",
+        "options": [
+          {
+            "id": "A",
+            "text": "leave"
+          },
+          {
+            "id": "B",
+            "text": "take"
+          },
+          {
+            "id": "C",
+            "text": "put"
+          },
+          {
+            "id": "D",
+            "text": "give"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FIXED_EXPRESSIONS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:46:04Z"
+          },
+          "ai_request_id": "61e60af0-94ac-4cc7-8524-60c507d84d10",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests a common fixed expression ('leave it until tomorrow') in a simple everyday context. While the vocabulary is basic, recognizing the correct collocation among plausible verbs (take, put, give) requires familiarity with idiomatic usage beyond A2, fitting B1.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The fixed expression 'leave it' means to postpone or delay something until a later time. 'Let's leave it until tomorrow' is a common idiomatic way to say you will deal with it later.",
+          "explanation_vi": "Cụm cố định 'leave it' nghĩa là trì hoãn việc gì đó đến lúc khác. 'Let's leave it until tomorrow' là cách nói thông dụng để nói rằng bạn sẽ xử lý việc đó sau."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:46:04Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-fixed-expressions",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "COLLOCATIONS",
+          "IDIOMS_INFORMAL",
+          "PHRASAL_VERBS"
+        ],
+        "examples": [
+          {
+            "note": "'A piece of cake' is an idiom meaning something is very easy. It has nothing to do with actual cake; the whole phrase must be learned as one unit.",
+            "text": "Don't worry about the test — it was a piece of cake."
+          },
+          {
+            "note": "'On purpose' is a fixed expression meaning 'deliberately/intentionally'. It always uses 'on', never 'for' or 'by'.",
+            "text": "I'm sorry I broke the vase — I didn't do it on purpose."
+          },
+          {
+            "note": "'It's up to + person' means that person has the right to decide. The structure is fixed: 'up to', not 'up for' or 'up with'.",
+            "text": "It's up to you where we eat tonight."
+          }
+        ],
+        "objective": "Understand what fixed expressions (idioms and set phrases) are, recognize common B1-level fixed expressions, and use them correctly and naturally in everyday conversation and writing.",
+        "_provenance": {
+          "batch": "foundation:FIXED_EXPRESSIONS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:46:21Z"
+          },
+          "ai_request_id": "48c77b67-e3f7-4d29-ad57-db8b0278ee17",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Fixed expressions are groups of words that are used together with a meaning that cannot always be worked out from the individual words. They include idioms (e.g. 'piece of cake' = very easy), set phrases (e.g. 'by the way', 'as far as I know'), and collocations that always appear in the same form. Key principles: (1) The wording is fixed — you cannot usually change the words or their order (we say 'by the way', not 'by the road'). (2) Many fixed expressions are figurative, so translate the whole expression, not word by word. (3) They are often informal, so they suit conversation more than formal writing. (4) Learn them as complete chunks, including their grammar (e.g. 'make up one's mind' needs a possessive: 'make up YOUR mind'). Common B1 examples: 'piece of cake', 'it's up to you', 'take it easy', 'on purpose', 'out of order', 'as soon as possible', 'get on someone's nerves', 'make ends meet'.",
+          "vi": "Cụm từ cố định (fixed expressions) là những nhóm từ luôn đi cùng nhau với nghĩa mà không thể suy ra từ nghĩa của từng từ riêng lẻ. Chúng bao gồm thành ngữ (ví dụ: 'piece of cake' = việc rất dễ dàng), cụm từ cố định (ví dụ: 'by the way' = nhân tiện) và các kết hợp từ luôn xuất hiện dưới cùng một dạng. Nguyên tắc quan trọng: (1) Hình thức là cố định — bạn thường không thể thay đổi từ hay trật tự từ (phải nói 'by the way', không nói 'by the road'). (2) Nhiều cụm từ mang nghĩa bóng, nên phải dịch cả cụm chứ không dịch từng từ — đây là lỗi phổ biến nhất của người Việt khi gặp thành ngữ tiếng Anh. (3) Phần lớn mang tính thân mật, phù hợp với hội thoại hơn văn viết trang trọng. (4) Hãy học cả cụm như một khối hoàn chỉnh, kể cả ngữ pháp của nó (ví dụ: 'make up one's mind' cần sở hữu cách: 'make up YOUR mind'). Một số cụm phổ biến ở trình độ B1: 'piece of cake', 'it's up to you', 'take it easy', 'on purpose', 'out of order', 'as soon as possible', 'get on someone's nerves', 'make ends meet'."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Fixed expressions cannot have their words changed. The idiom is 'a piece of cake', not 'a piece of bread' or 'a slice of cake'. Learners must memorize the exact wording.",
+            "right": "The math exam was very easy — it was a piece of cake.",
+            "wrong": "The math exam was very easy — it was a piece of bread."
+          },
+          {
+            "why": "The preposition in a fixed expression is fixed too. The correct form is 'on purpose' (= deliberately); 'by purpose' is not an English expression.",
+            "right": "She broke my phone on purpose.",
+            "wrong": "She broke my phone by purpose."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:46:21Z"
+      }
+    }
+  ]
 }

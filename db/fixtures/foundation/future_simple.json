@@ -1,11 +1,296 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1473903Z",
+  "generated_at": "2026-09-25T18:49:49.2711327Z",
   "node": {
     "namespace": "grammar",
     "code": "FUTURE_SIMPLE",
     "label": "Future Simple",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-future-simple-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence as a promise using 'will': I promise that I am going to call you tonight.",
+        "acceptable": [
+          "I will call you tonight.",
+          "I'll call you tonight.",
+          "I promise I will call you tonight.",
+          "I promise I'll call you tonight."
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_SIMPLE:20260923T171444",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "a45d3caa-4d00-40a2-83d5-6d4994182d69",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item involves transforming 'be going to' into 'will' with simple, everyday vocabulary ('visit my grandmother next weekend'). Both structures are typically taught at A2, and the sentence transformation is straightforward with no complex syntax or advanced vocabulary.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "I will visit my grandmother next weekend."
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Will' + base verb is used for promises: 'I will call you tonight.' 'Going to' is better for plans made before speaking, so a promise sounds more natural with 'will'.",
+          "explanation_vi": "'Will' + động từ nguyên mẫu dùng để hứa: 'I will call you tonight.' 'Going to' phù hợp hơn với kế hoạch đã định trước, nên lời hứa dùng 'will' nghe tự nhiên hơn."
+        },
+        "correct_answer": "I will call you tonight."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-future-simple-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "A: The phone is ringing! B: Don't get up — I ___ it.",
+        "options": [
+          {
+            "id": "A",
+            "text": "answer"
+          },
+          {
+            "id": "B",
+            "text": "will answer"
+          },
+          {
+            "id": "C",
+            "text": "answered"
+          },
+          {
+            "id": "D",
+            "text": "am answer"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_SIMPLE:20260923T171444",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "1f83bda7-445e-420c-bef3-fd2e2a4a387c",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the future simple 'will be' for predictions, a basic tense typically introduced at A2. The sentence uses simple, everyday vocabulary ('weather', 'tomorrow') and a short, simple structure, matching A2 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "B decides to answer at the moment of speaking, so we use 'will' + base verb for a spontaneous decision: 'I will (I'll) answer it.'",
+          "explanation_vi": "B quyết định nghe máy ngay lúc nói, nên dùng 'will' + động từ nguyên mẫu cho quyết định tức thời: 'I will (I'll) answer it.'"
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-future-simple-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "I think it ___ rain tomorrow, so let's take an umbrella.",
+        "options": [
+          {
+            "id": "A",
+            "text": "will"
+          },
+          {
+            "id": "B",
+            "text": "rains"
+          },
+          {
+            "id": "C",
+            "text": "rained"
+          },
+          {
+            "id": "D",
+            "text": "is rain"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_SIMPLE:20260923T171444",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "97b8bcf8-c42c-418e-9b5e-6913fdeefb81",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the future simple with 'will' for predictions, a structure typically introduced at A2. The sentence is short, uses very common vocabulary (rain, tomorrow, umbrella), and distractors are simple tense forms, making it appropriate for A2 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Future Simple 'will + base verb' is used for predictions about the future.",
+          "explanation_vi": "Thì tương lai đơn 'will + động từ nguyên mẫu' dùng để dự đoán điều sẽ xảy ra trong tương lai."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-future-simple",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Don't worry about the weather. I'm sure it ___ better tomorrow.",
+        "options": [
+          {
+            "id": "A",
+            "text": "will get"
+          },
+          {
+            "id": "B",
+            "text": "gets"
+          },
+          {
+            "id": "C",
+            "text": "got"
+          },
+          {
+            "id": "D",
+            "text": "is getting"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_SIMPLE:20260923T171444",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "71839608-d180-4a74-ab8a-af463783d8c9",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the future simple 'will' for predictions, a basic grammar point typically introduced at A2. The sentence uses simple, everyday vocabulary ('weather', 'tomorrow') and a short, simple structure, matching A2 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The Future Simple 'will get' is used to make a prediction or express certainty about a future event. 'I'm sure' signals a prediction about tomorrow.",
+          "explanation_vi": "Thì tương lai đơn 'will get' được dùng để đưa ra dự đoán hoặc diễn tả sự chắc chắn về một sự việc trong tương lai. Cụm 'I'm sure' (tôi chắc chắn) báo hiệu một dự đoán về ngày mai."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-future-simple",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Tomorrow, my family and I ___ our grandparents in the countryside.",
+        "options": [
+          {
+            "id": "A",
+            "text": "will visit"
+          },
+          {
+            "id": "B",
+            "text": "visited"
+          },
+          {
+            "id": "C",
+            "text": "visit"
+          },
+          {
+            "id": "D",
+            "text": "was visiting"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_SIMPLE:20260923T171444",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "2cb292d5-3b56-4053-9157-712726519f72",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests Future Simple with 'will', a basic tense typically introduced at A2. Vocabulary is simple and familiar (family, visit, countryside), and the sentence structure is a single simple sentence with a clear time marker, matching A2 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The time marker 'Tomorrow' shows a future action, so we use the Future Simple: 'will' + base verb ('will visit').",
+          "explanation_vi": "Dấu hiệu thời gian 'Tomorrow' (ngày mai) cho biết hành động xảy ra trong tương lai, nên dùng thì tương lai đơn: 'will' + động từ nguyên mẫu ('will visit')."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-future-simple",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "GOING_TO_FUTURE",
+          "PRESENT_CONTINUOUS_FOR_FUTURE",
+          "TIME_CLAUSES_FUTURE"
+        ],
+        "examples": [
+          {
+            "note": "Prediction about the future with 'will' + base verb, introduced by 'I think'.",
+            "text": "I think it will rain tomorrow, so take an umbrella."
+          },
+          {
+            "note": "Spontaneous decision made at the moment of speaking, using the contraction 'I'll'.",
+            "text": "That bag looks heavy. I'll help you carry it."
+          },
+          {
+            "note": "Yes/no question form: 'Will' + subject + base verb.",
+            "text": "Will you come to my birthday party on Saturday?"
+          }
+        ],
+        "objective": "Understand the formation and core uses of the Future Simple tense (will + base verb), including affirmative, negative, and question forms, and use it accurately to talk about predictions, spontaneous decisions, promises, and offers.",
+        "_provenance": {
+          "batch": "foundation:FUTURE_SIMPLE:20260923T171444",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "5bffa10e-c4cb-4ec8-8b2d-051d5dc347d4",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "The Future Simple is formed with 'will' + the base form of the verb (no 'to', no -s, no -ing). It is used to: (1) make predictions about the future, often with 'I think', 'probably', 'maybe' (It will rain tomorrow.); (2) make spontaneous decisions made at the moment of speaking (I'll help you with that bag.); (3) make promises and offers (I'll call you later. / I'll carry it for you.); and (4) talk about future facts (She will be 20 next year.). Negatives use 'will not' or the contraction 'won't'. Questions invert 'will' with the subject: 'Will you come to the party?'. Contractions: I will = I'll, will not = won't. Do not confuse 'will' with 'going to': 'will' is for predictions and instant decisions, while 'going to' is for plans already decided before speaking.",
+          "vi": "Thì tương lai đơn được tạo bằng 'will' + động từ nguyên mẫu (không 'to', không thêm -s, không -ing). Cấu trúc: (+) S + will + V; (–) S + will not (won't) + V; (?) Will + S + V? Cách dùng chính: (1) dự đoán về tương lai, thường đi với 'I think', 'probably', 'maybe' (It will rain tomorrow.); (2) quyết định ngay tại lúc nói (I'll help you.); (3) lời hứa, lời đề nghị (I'll call you later.); (4) sự thật trong tương lai (She will be 20 next year.). Lưu ý: 'will' dùng cho dự đoán và quyết định tức thời, còn 'going to' dùng cho kế hoạch đã định trước. Sau 'will' không dùng thì quá khứ hay thêm 'to'. Dạng viết tắt: I'll, you'll, won't."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "After 'will', always use the base form of the verb. Never add -s, -ed, or -ing after a modal verb like 'will'.",
+            "right": "She will come to the party tomorrow.",
+            "wrong": "She will comes to the party tomorrow."
+          },
+          {
+            "why": "'Will' is a modal verb and is followed directly by the bare infinitive (base verb) without 'to'.",
+            "right": "I will call you later.",
+            "wrong": "I will to call you later."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

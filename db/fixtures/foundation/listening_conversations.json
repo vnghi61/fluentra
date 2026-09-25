@@ -1,11 +1,411 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1800528Z",
+  "generated_at": "2026-09-25T18:49:49.2978371Z",
   "node": {
     "namespace": "skill",
     "code": "LISTENING_CONVERSATIONS",
     "label": "Listening: Conversations",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-listening-conversations-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Read this line from a conversation between two friends: 'I didn't hear the announcement because the airport was too noisy.' Rewrite the sentence beginning with 'The airport was so':",
+        "acceptable": [
+          "The airport was so noisy that I could not hear the announcement.",
+          "The airport was so noisy (that) I didn't hear the announcement."
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING_CONVERSATIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "49feb417-16ac-45b4-9620-1d2c0cb83ba4",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item requires transforming a sentence using the 'so + adjective + that' result clause structure, a connector pattern typically introduced at B1. The source sentence uses simple past and a 'too + adjective' structure (A2-level), but the transformation demands understanding of result clauses and clause linking, which aligns with B1 connectors. Vocabulary is everyday (airport, announcement, noisy).",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "The airport was so noisy that I didn't hear the announcement."
+          }
+        },
+        "explanation": {
+          "explanation_en": "In the 'so + adjective + that' structure, 'so noisy' describes the degree of the noise, and 'that' introduces the result clause. The negative result 'I didn't hear the announcement' follows naturally from the original sentence.",
+          "explanation_vi": "Trong cấu trúc 'so + tính từ + that', 'so noisy' diễn tả mức độ ồn ào, và 'that' giới thiệu mệnh đề kết quả. Kết quả phủ định 'I didn't hear the announcement' theo sau một cách tự nhiên từ câu gốc."
+        },
+        "correct_answer": "The airport was so noisy that I didn't hear the announcement."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-listening-conversations-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "In the conversation, Anna says: 'Sorry I missed your call earlier — I ___ dinner when you rang.' Which tense correctly completes her sentence?",
+        "options": [
+          {
+            "id": "A",
+            "text": "cooked"
+          },
+          {
+            "id": "B",
+            "text": "was cooking"
+          },
+          {
+            "id": "C",
+            "text": "have cooked"
+          },
+          {
+            "id": "D",
+            "text": "am cooking"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING_CONVERSATIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "55c78775-7498-400a-9a7f-448938a9445b",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests past continuous vs. simple past in an interrupted-action context, a classic B1 grammar point. Vocabulary is simple, but the distractors (present perfect, present continuous) require understanding of tense-time reference beyond A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In a conversation about a past phone call, 'was cooking' (past continuous) describes an action in progress at the moment the call happened. Simple past 'cooked' suggests the action was finished, 'have cooked' does not fit a specific past moment, and 'am cooking' is present.",
+          "explanation_vi": "Trong cuộc hội thoại về một cuộc điện thoại trong quá khứ, 'was cooking' (thì quá khứ tiếp diễn) diễn tả hành động đang diễn ra tại thời điểm cuộc gọi xảy ra. 'Cooked' gợi ý hành động đã xong, 'have cooked' không phù hợp với một thời điểm xác định trong quá khứ, và 'am cooking' là thì hiện tại."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-listening-conversations-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "B1",
+      "body": {
+        "passage": "Mai and Tom met at a coffee shop near the train station.\n\nMai: Tom! I haven't seen you since the end of last term. How was your internship?\n\nTom: It was great, thanks. I worked at a small marketing company in the city centre. The people were friendly, and I learned a lot about social media advertising. The only problem was the commute — I spent almost two hours on the bus every day.\n\nMai: Two hours? That's exhausting. Why didn't you move closer?\n\nTom: I thought about it, but flats near the office were too expensive. Anyway, it finished last Friday, so I'm free again. What about you? Did you get the summer job at the hotel?\n\nMai: Yes, I start next Monday. I'll be working at the reception desk three days a week. I'm a little nervous because I've never worked with guests before, but my cousin did the same job last year, so she's giving me some tips.\n\nTom: That's smart. Well, good luck — let's meet again before you start.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "Where did Tom do his internship?",
+            "options": [
+              {
+                "id": "A",
+                "text": "At a hotel in the city centre"
+              },
+              {
+                "id": "B",
+                "text": "At a small marketing company"
+              },
+              {
+                "id": "C",
+                "text": "At a coffee shop near the station"
+              },
+              {
+                "id": "D",
+                "text": "At a social media company abroad"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Tom says he worked at a small marketing company in the city centre.",
+              "explanation_vi": "Tom nói rằng anh ấy đã thực tập tại một công ty marketing nhỏ ở trung tâm thành phố."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "What was the main disadvantage of Tom's internship?",
+            "options": [
+              {
+                "id": "A",
+                "text": "The colleagues were unfriendly"
+              },
+              {
+                "id": "B",
+                "text": "The work was too difficult"
+              },
+              {
+                "id": "C",
+                "text": "The daily journey took a long time"
+              },
+              {
+                "id": "D",
+                "text": "The salary was very low"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Tom complains that he spent almost two hours on the bus every day, so the commute was the problem.",
+              "explanation_vi": "Tom than phiền rằng mỗi ngày anh ấy mất gần hai giờ trên xe buýt, nên việc đi lại là vấn đề lớn nhất."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "Why didn't Tom move closer to his workplace?",
+            "options": [
+              {
+                "id": "A",
+                "text": "He preferred living with his family"
+              },
+              {
+                "id": "B",
+                "text": "Flats near the office cost too much"
+              },
+              {
+                "id": "C",
+                "text": "He couldn't find any flats available"
+              },
+              {
+                "id": "D",
+                "text": "The office was going to relocate"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Tom explains that flats near the office were too expensive, so he decided not to move.",
+              "explanation_vi": "Tom giải thích rằng các căn hộ gần văn phòng quá đắt, nên anh ấy quyết định không chuyển đi."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "How many days a week will Mai work at the hotel?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Two"
+              },
+              {
+                "id": "B",
+                "text": "Three"
+              },
+              {
+                "id": "C",
+                "text": "Four"
+              },
+              {
+                "id": "D",
+                "text": "Five"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Mai says she will work at the reception desk three days a week.",
+              "explanation_vi": "Mai nói rằng cô ấy sẽ làm việc ở quầy lễ tân ba ngày mỗi tuần."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "How does Mai feel about her new job, and why?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Confident, because she has done similar work before"
+              },
+              {
+                "id": "B",
+                "text": "Nervous, because it will be her first time working with guests"
+              },
+              {
+                "id": "C",
+                "text": "Unhappy, because the hours are too long"
+              },
+              {
+                "id": "D",
+                "text": "Excited, because the pay is very good"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Mai admits she is a little nervous because she has never worked with guests before.",
+              "explanation_vi": "Mai thừa nhận cô ấy hơi lo lắng vì trước đây chưa bao giờ làm việc với khách."
+            },
+            "correct_option_id": "B"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING_CONVERSATIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "f31198fb-8581-4161-812a-ec2dc4e05cfc",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The passage is a dialogue using present perfect ('I haven't seen you', 'I've never worked'), past simple, and everyday work/school vocabulary (internship, commute, reception desk), matching B1 descriptors. Questions require locating explicit details and simple paraphrase, appropriate for B1 rather than A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "B",
+              "q2": "C",
+              "q3": "B",
+              "q4": "B",
+              "q5": "B"
+            }
+          }
+        },
+        "passage_title": "A Chat at the Coffee Shop"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-listening-conversations",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "In a conversation, a friend says: 'Oh great, another meeting. Just what I needed today.' Her tone is flat and she sighs. What does she most likely mean?",
+        "options": [
+          {
+            "id": "A",
+            "text": "She is genuinely excited about the meeting."
+          },
+          {
+            "id": "B",
+            "text": "She is being sarcastic and does not want the meeting."
+          },
+          {
+            "id": "C",
+            "text": "She forgot about the meeting until now."
+          },
+          {
+            "id": "D",
+            "text": "She needs more information about the meeting."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING_CONVERSATIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "3890d7e6-901e-4101-b718-1b6dc05b3503",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item requires understanding implied meaning through tone and sarcasm ('Just what I needed'), which goes beyond literal comprehension. Vocabulary is simple, but interpreting sarcasm from context is a B1-level pragmatic skill; it is not complex enough for B2, which involves more demanding implicit meaning.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In conversations, meaning often comes from tone and context, not just words. A flat tone and a sigh with 'Just what I needed' signals sarcasm, meaning the speaker is annoyed, not excited.",
+          "explanation_vi": "Trong hội thoại, ý nghĩa thường được thể hiện qua ngữ điệu và ngữ cảnh, không chỉ qua từ ngữ. Giọng điệu đều đều kèm tiếng thở dài với câu 'Just what I needed' cho thấy sự mỉa mai — người nói đang khó chịu chứ không hào hứng."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-listening-conversations",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "In a conversation, a customer says: 'Well, I was hoping for a table by the window, but I suppose this one near the door is fine.' What does the customer most likely mean?",
+        "options": [
+          {
+            "id": "A",
+            "text": "She is completely happy with the table near the door."
+          },
+          {
+            "id": "B",
+            "text": "She prefers a window table but will accept the one near the door."
+          },
+          {
+            "id": "C",
+            "text": "She wants to leave the restaurant immediately."
+          },
+          {
+            "id": "D",
+            "text": "She is asking for a table in another restaurant."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING_CONVERSATIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "09808106-cd1d-4efc-832c-4853d5a574a0",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests understanding of hedging language and implied meaning ('I suppose... is fine'), which requires inference beyond literal words. However, the vocabulary and sentence structures are simple and everyday, and the distractors are clearly distinguishable, making it accessible at B1 rather than C1. It fits the B1 target of understanding main points and some implied meaning in standard speech.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In everyday conversations, speakers often soften disagreement with phrases like 'I suppose... is fine'. This signals polite reluctance: she wanted a window table but is willing to accept the alternative. Listening for tone and hedging language is key to understanding implied meaning.",
+          "explanation_vi": "Trong hội thoại hằng ngày, người nói thường làm mềm sự không đồng ý bằng các cụm từ như 'I suppose... is fine'. Điều này cho thấy cô ấy muốn bàn gần cửa sổ nhưng vẫn chấp nhận bàn gần cửa. Khi nghe, cần chú ý giọng điệu và ngôn ngữ giảm nhẹ để hiểu ý ngầm."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-listening-conversations",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "LISTENING_MONOLOGUES",
+          "DISCOURSE_MARKERS",
+          "MAKING_SUGGESTIONS"
+        ],
+        "examples": [
+          {
+            "note": "The word 'Actually' signals a correction or change of plan — a very common pattern in B1 listening tasks. The key detail (Saturday) comes after the correction, so listen to the end of the turn.",
+            "text": "A: Shall we meet at the café on Friday? B: Actually, I can't make Friday. How about Saturday morning instead?"
+          },
+          {
+            "note": "'Well, to be honest' introduces a mixed opinion. B1 listeners must catch both the negative point ('a bit long') and the positive one ('brilliant') to understand the full attitude.",
+            "text": "A: So, what did you think of the film? B: Well, to be honest, it was a bit long, but the acting was brilliant."
+          }
+        ],
+        "objective": "Understand and apply strategies for listening to everyday conversations at CEFR B1 level, including identifying speakers' main ideas, attitudes, and key details such as time, place, and purpose.",
+        "_provenance": {
+          "batch": "foundation:LISTENING_CONVERSATIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "e1be5a03-49e9-4af9-823b-bce8f76bf371",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At B1 level, listening to conversations means following the flow of a dialogue between two or more speakers in everyday situations (shopping, travel, appointments, small talk). Key strategies include: (1) Listening for gist first — catch the general topic and purpose before focusing on details. (2) Identifying speakers by voice, role, and turn-taking cues like 'Well...', 'Actually...', 'By the way...'. (3) Recognizing discourse markers that signal changes of topic or opinion ('anyway', 'so', 'you know', 'I mean'). (4) Listening for function: is the speaker suggesting, complaining, agreeing, or politely refusing? (5) Catching key details: numbers, times, places, and dates, which are often rephrased or corrected mid-conversation ('Let's make it 4:30 instead of 4:00'). Train yourself not to panic when you miss a word — conversations usually repeat or paraphrase important information.",
+          "vi": "Ở trình độ B1, nghe hội thoại nghĩa là bạn phải theo được mạch hội thoại giữa hai hoặc nhiều người trong các tình huống thường ngày (mua sắm, đi lại, hẹn hò, trò chuyện xã giao). Các chiến lược quan trọng gồm: (1) Nghe ý chính trước — nắm chủ đề và mục đích của cuộc hội thoại rồi mới tập trung vào chi tiết. (2) Xác định ai đang nói bằng giọng nói, vai trò và các cụm chuyển lượt như 'Well...', 'Actually...', 'By the way...'. (3) Nhận biết các từ nối hội thoại (discourse markers) báo hiệu thay đổi chủ đề hoặc quan điểm: 'anyway', 'so', 'you know', 'I mean'. (4) Nghe để hiểu chức năng: người nói đang gợi ý, phàn nàn, đồng ý hay từ chối khéo? (5) Nắm thông tin then chốt: số, giờ, địa điểm, ngày tháng — thường được nhắc lại hoặc sửa giữa chừng ('Let's make it 4:30 instead of 4:00'). Đừng hoảng khi bỏ lỡ một từ — thông tin quan trọng trong hội thoại thường được lặp lại hoặc diễn đạt lại."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In natural conversations, speakers frequently change or correct arrangements mid-dialogue. Listening tests at B1 deliberately include these corrections, so the first-mentioned detail is often a distractor, not the answer.",
+            "right": "Wait until the end of the relevant exchange and choose the final, corrected detail (4:30).",
+            "wrong": "Choosing the first time or place you hear (e.g., answering '4:00' when the speaker later says 'Let's make it 4:30 instead')."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

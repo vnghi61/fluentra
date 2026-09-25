@@ -1,11 +1,294 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2903829Z",
+  "generated_at": "2026-09-25T18:49:49.3989537Z",
   "node": {
     "namespace": "vocabulary",
     "code": "SPOKEN_EXPRESSIONS",
     "label": "Spoken Expressions",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-spoken-expressions-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence using 'Let's': 'How about we go to the cinema tonight?'",
+        "acceptable": [
+          "Let us go to the cinema tonight.",
+          "Let's go to the movies tonight."
+        ],
+        "_provenance": {
+          "batch": "foundation:SPOKEN_EXPRESSIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "4cf0a12c-1315-4168-b394-3f41973e1a65",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item involves a simple sentence transformation using 'Let's' and 'How about we...', both common informal suggestion forms taught at A2. Vocabulary is everyday ('go to the cinema tonight') and the grammar required is basic.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Let's go to the cinema tonight."
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Let's' is a common spoken expression used to make suggestions. It means 'let us' and is followed by the base form of the verb. 'How about we...' and 'Let's...' are both informal ways to suggest an activity.",
+          "explanation_vi": "'Let's' là cách diễn đạt nói thường dùng để đưa ra gợi ý, rủi rê. Nó là dạng rút gọn của 'let us' và theo sau là động từ nguyên mẫu. 'How about we...' và 'Let's...' đều là cách đề xuất hoạt động thân mật, tự nhiên trong giao tiếp."
+        },
+        "correct_answer": "Let's go to the cinema tonight."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-spoken-expressions-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "A friend says: 'I'm bored. Let's do something fun!' You want to suggest watching a movie. You say: 'How about ___ a movie tonight?'",
+        "options": [
+          {
+            "id": "A",
+            "text": "watch"
+          },
+          {
+            "id": "B",
+            "text": "watching"
+          },
+          {
+            "id": "C",
+            "text": "to watch"
+          },
+          {
+            "id": "D",
+            "text": "watched"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPOKEN_EXPRESSIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "23759794-129b-4810-ae02-c94fbf6821cf",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the fixed spoken expression 'How about + V-ing' for making suggestions, using simple everyday vocabulary and a short, simple sentence context. This is a common A2-level communicative structure.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'How about...?' is a common spoken expression for making suggestions, and it is followed by a verb in the -ing form: 'How about watching a movie?'",
+          "explanation_vi": "'How about...?' là cách nói thông dụng để gợi ý trong giao tiếp, sau nó động từ phải ở dạng V-ing: 'How about watching a movie?'"
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-spoken-expressions-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "You didn't hear what your friend said. You say: '___?'",
+        "options": [
+          {
+            "id": "A",
+            "text": "Pardon"
+          },
+          {
+            "id": "B",
+            "text": "Goodbye"
+          },
+          {
+            "id": "C",
+            "text": "No way"
+          },
+          {
+            "id": "D",
+            "text": "After you"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPOKEN_EXPRESSIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "3a6c5ba1-27c0-441b-b637-3f5cdf6be1ef",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic greetings ('Good morning', 'Goodbye', etc.), which are among the very first everyday expressions learned at A1. The prompt is a simple present sentence with extremely common vocabulary, well below A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Pardon?' (or 'Sorry?') is a polite way to ask someone to repeat. 'No way!' shows surprise, and 'After you' lets someone go first.",
+          "explanation_vi": "'Pardon?' (hoặc 'Sorry?') là cách lịch sự để nhờ người khác nhắc lại. 'No way!' thể hiện sự ngạc nhiên, còn 'After you' là nhường người khác đi trước."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-spoken-expressions",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Your friend sees you in the morning and says: 'How's it going?' What is the best way to reply?",
+        "options": [
+          {
+            "id": "A",
+            "text": "It's going to the store."
+          },
+          {
+            "id": "B",
+            "text": "Not bad, thanks! And you?"
+          },
+          {
+            "id": "C",
+            "text": "Yes, I am going."
+          },
+          {
+            "id": "D",
+            "text": "I went yesterday."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPOKEN_EXPRESSIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "3ee6fa41-548e-48f7-8313-f6b17bcba015",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests a common informal greeting 'How's it going?' and a simple polite reply. Vocabulary and grammar are basic everyday expressions; the distractors are simple. The idiomatic nature of the greeting slightly exceeds A1, fitting A2 well.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'How's it going?' is a friendly spoken greeting meaning 'How are you?'. A natural reply is 'Not bad, thanks! And you?' — not a literal answer about going somewhere.",
+          "explanation_vi": "'How's it going?' là lời chào thân mật trong giao tiếp, có nghĩa là 'Bạn thế nào?'. Câu trả lời tự nhiên là 'Not bad, thanks! And you?' — không phải trả lời theo nghĩa đen về việc đi đâu đó."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-spoken-expressions",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "When you meet your friend in the morning, which expression is the most natural way to greet them?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Good morning! How are you?"
+          },
+          {
+            "id": "B",
+            "text": "Good night! See you later."
+          },
+          {
+            "id": "C",
+            "text": "Sorry, I have to go now."
+          },
+          {
+            "id": "D",
+            "text": "Nice to meet you at last."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPOKEN_EXPRESSIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "23860397-7115-4c6c-a25d-b34bec88156d",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic fixed greeting phrases ('Good morning', 'Nice to meet you') with very common vocabulary and simple sentences, which are core A1 everyday expressions. It is slightly below the target A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Good morning! How are you?' is the natural spoken greeting used when meeting someone in the morning. 'Good night' is used when leaving in the evening, 'Sorry, I have to go' is used to end a conversation, and 'Nice to meet you' is used when meeting someone for the first time.",
+          "explanation_vi": "'Good morning! How are you?' là lời chào tự nhiên khi gặp ai đó vào buổi sáng. 'Good night' dùng khi chia tay vào buổi tối, 'Sorry, I have to go' dùng để kết thúc cuộc trò chuyện, còn 'Nice to meet you' dùng khi lần đầu gặp ai đó."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-spoken-expressions",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "GREETINGS_AND_INTRODUCTIONS",
+          "POLITE_REQUESTS",
+          "CONVERSATIONAL_RESPONSES"
+        ],
+        "examples": [
+          {
+            "note": "'How's it going?' is an informal greeting meaning 'How are you?'. The natural reply is a short positive phrase like 'Not bad' or 'Pretty good', often followed by 'And you?' to return the question.",
+            "text": "A: How's it going? — B: Not bad, thanks. And you?"
+          },
+          {
+            "note": "'Excuse me' is a polite expression used to get attention or apologize for interrupting. It is very useful when asking someone to repeat something in a shop, street, or classroom.",
+            "text": "Excuse me, could you say that again, please?"
+          },
+          {
+            "note": "'No way!' expresses surprise or disbelief in informal speech. It is a reaction phrase, not a literal refusal, and is followed here by 'Congratulations!' to show happiness for the other person.",
+            "text": "A: I got a new job! — B: No way! Congratulations!"
+          }
+        ],
+        "objective": "Understand and correctly use common spoken expressions and conversational phrases (e.g., greetings, responses, fillers, and polite expressions) in everyday English conversations at CEFR A2 level.",
+        "_provenance": {
+          "batch": "foundation:SPOKEN_EXPRESSIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "eb8463dd-eaa2-444f-81dc-5874dd5173f4",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Spoken expressions are fixed phrases that native speakers use in everyday conversation. They often do not follow strict grammar rules, so it is best to learn them as whole chunks. Key categories include: (1) Greetings and farewells: 'Hi!', 'How's it going?', 'See you later!'; (2) Polite expressions: 'Excuse me', 'Never mind', 'After you'; (3) Responses and reactions: 'No way!', 'Really?', 'That sounds great!', 'I'm not sure'; (4) Fillers and hesitation: 'Well...', 'You know', 'Let me see'; (5) Checking understanding: 'Sorry?', 'Pardon?', 'What do you mean?'. These expressions make speech sound natural and friendly. Pay attention to intonation: 'Really?' with rising tone shows surprise or interest. Many spoken expressions are informal, so avoid them in formal writing.",
+          "vi": "Các thành ngữ nói (spoken expressions) là những cụm từ cố định người bản xứ dùng hằng ngày trong hội thoại. Chúng thường không theo ngữ pháp chặt chẽ, nên tốt nhất là học cả cụm như một khối trọn vẹn. Các nhóm chính gồm: (1) Chào hỏi và tạm biệt: 'Hi!', 'How's it going?', 'See you later!'; (2) Câu lịch sự: 'Excuse me', 'Never mind', 'After you'; (3) Phản hồi và bày tỏ cảm xúc: 'No way!', 'Really?', 'That sounds great!', 'I'm not sure'; (4) Từ đệm khi suy nghĩ: 'Well...', 'You know', 'Let me see'; (5) Hỏi lại khi chưa nghe rõ: 'Sorry?', 'Pardon?', 'What do you mean?'. Những cụm từ này giúp lời nói tự nhiên, thân thiện hơn. Lưu ý ngữ điệu: 'Really?' với ngữ điệu lên thể hiện sự ngạc nhiên hoặc quan tâm. Nhiều thành ngữ nói mang tính thân mật, không nên dùng trong văn viết trang trọng. Người Việt học tiếng Anh thường dịch từng từ (ví dụ dịch 'How's it going?' thành 'Nó đi thế nào?') — đây là lỗi cần tránh, vì nghĩa thật là 'Dạo này thế nào?'."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'How's it going?' is a fixed greeting expression, not a real question about how something travels or moves. Learners should not answer literally; the expected response is a short evaluation like 'Pretty good' or 'Not bad'.",
+            "right": "How's it going? — Pretty good, thanks. And you?",
+            "wrong": "How is it going? — It goes well, I go to work by bus."
+          },
+          {
+            "why": "Bare 'What?' sounds rude in English. Polite spoken expressions like 'Sorry?', 'Pardon?', or 'Could you say that again, please?' are the appropriate ways to ask someone to repeat.",
+            "right": "When you don't hear someone, say: 'Sorry?' or 'Pardon? Could you repeat that, please?'",
+            "wrong": "When you don't hear someone, say: 'What? What you say?'"
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

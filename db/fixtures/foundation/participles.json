@@ -1,11 +1,294 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2000709Z",
+  "generated_at": "2026-09-25T18:49:49.3207798Z",
   "node": {
     "namespace": "grammar",
     "code": "PARTICIPLES",
     "label": "Participles",
     "cefr_level": "B2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-participles-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Rewrite the sentence using a perfect participle clause: 'Because she had spent the whole night revising, she felt confident about the exam.' Begin your answer with 'Having'.",
+        "acceptable": [
+          "Having spent the whole night revising, she felt confident about her exam.",
+          "Having spent the whole night revising, she felt confident for the exam."
+        ],
+        "_provenance": {
+          "batch": "foundation:PARTICIPLES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8f32a386-55ac-4bf3-8068-b0fe0cf8602f",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "Transforming a past perfect reason clause into a perfect participle clause ('Having + past participle') requires understanding of advanced clause reduction, subject agreement across clauses, and punctuation—typical B2 grammar content. Vocabulary is accessible, but the syntactic operation is beyond B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Having spent the whole night revising, she felt confident about the exam."
+          }
+        },
+        "explanation": {
+          "explanation_en": "A perfect participle clause ('Having + past participle') replaces a clause stating a reason for an action that happened earlier. 'Having spent the whole night revising' concisely expresses 'Because she had spent the whole night revising'. The participle clause is separated from the main clause by a comma, and the subject of both clauses must be the same ('she').",
+          "explanation_vi": "Mệnh đề phân từ hoàn thành ('Having + quá khứ phân từ') thay thế mệnh đề chỉ lý do cho hành động xảy ra trước. 'Having spent the whole night revising' diễn đạt gọn ý 'Because she had spent the whole night revising'. Mệnh đề phân từ được ngăn cách với mệnh đề chính bằng dấu phẩy, và chủ ngữ của hai mệnh đề phải giống nhau ('she')."
+        },
+        "correct_answer": "Having spent the whole night revising, she felt confident about the exam."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-participles-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "___ from thousands of applicants, the new project manager started work on Monday.",
+        "options": [
+          {
+            "id": "A",
+            "text": "Choosing"
+          },
+          {
+            "id": "B",
+            "text": "Having chosen"
+          },
+          {
+            "id": "C",
+            "text": "Chosen"
+          },
+          {
+            "id": "D",
+            "text": "To choose"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PARTICIPLES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8df68ce7-1d73-4c74-8840-ec2599f55312",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests reduced passive participial clauses (past participle 'Chosen' as a fronted modifier), which requires understanding of passive voice and complex sentence structure — a B2 grammar point. The distractors (active participles, infinitive) demand awareness of voice and participial syntax beyond B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past participle 'Chosen' is used because the manager receives the action: the manager was chosen from the applicants. 'Choosing' and 'Having chosen' would mean the manager did the choosing, and 'To choose' expresses purpose, which does not fit.",
+          "explanation_vi": "Quá khứ phân từ 'Chosen' được dùng vì người quản lý là đối tượng nhận hành động: người đó được chọn từ các ứng viên. 'Choosing' và 'Having chosen' nghĩa là người quản lý đi chọn, còn 'To choose' chỉ mục đích nên không phù hợp."
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-participles-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "___ from the rain by their waterproof jackets, the hikers finally reached the mountain hut just before nightfall.",
+        "options": [
+          {
+            "id": "A",
+            "text": "Protecting"
+          },
+          {
+            "id": "B",
+            "text": "Protected"
+          },
+          {
+            "id": "C",
+            "text": "Having protected"
+          },
+          {
+            "id": "D",
+            "text": "To protect"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PARTICIPLES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "ac4399de-4f1a-4679-834c-8126a30fc07d",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests reduced passive participle clauses (past participle as sentence opener), a B2-level grammatical structure. Distractors like 'Having protected' and 'Protecting' require understanding of active vs. passive participle meaning, which is beyond B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past participle 'Protected' forms a reduced passive participle clause: the hikers were protected from the rain, so we use 'Protected from the rain, the hikers...'. 'Protecting' would incorrectly mean the hikers were protecting something else.",
+          "explanation_vi": "Quá khứ phân từ 'Protected' tạo thành mệnh đề phân từ bị động rút gọn: những người leo núi được che chắn khỏi mưa, nên dùng 'Protected from the rain, the hikers...'. Nếu dùng 'Protecting' sẽ sai nghĩa, vì khi đó họ là người che chắn cho ai đó."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-participles",
+      "kind": "foundation_quiz",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "___ from the previous meeting, the manager decided to postpone the launch until all reports had been reviewed.",
+        "options": [
+          {
+            "id": "A",
+            "text": "Learning"
+          },
+          {
+            "id": "B",
+            "text": "Having learned"
+          },
+          {
+            "id": "C",
+            "text": "Learned"
+          },
+          {
+            "id": "D",
+            "text": "To learn"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PARTICIPLES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "824581f6-6066-484d-a54d-da101c2f28dd",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests perfect participle clauses (having + past participle), an advanced non-finite structure typically introduced at B2. The sentence also contains complex vocabulary (postpone, launch, reviewed) and a two-action past sequence requiring understanding of time relationships, consistent with B2 grammar descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Having learned' is a perfect participle clause. It shows that the action of learning (from the previous meeting) was completed before the manager made the decision. Use the perfect participle (having + past participle) when one action clearly happens before another in the past.",
+          "explanation_vi": "'Having learned' là mệnh đề phân từ hoàn thành, diễn tả hành động 'học được' (từ cuộc họp trước) đã hoàn thành trước khi người quản lý đưa ra quyết định. Dùng phân từ hoàn thành (having + quá khứ phân từ) khi một hành động xảy ra rõ ràng trước hành động khác trong quá khứ."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-participles",
+      "kind": "foundation_review",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "___ by the negative reviews, the restaurant decided to completely change its menu.",
+        "options": [
+          {
+            "id": "A",
+            "text": "Having shocked"
+          },
+          {
+            "id": "B",
+            "text": "Shocked"
+          },
+          {
+            "id": "C",
+            "text": "Shocking"
+          },
+          {
+            "id": "D",
+            "text": "To shock"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PARTICIPLES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "c7d3629a-30f1-4f23-896f-f61bceca731d",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests participle clauses (past participle for passive meaning) in a reduced passive construction, a grammar point typically mastered at B2. Distractors require understanding of active vs. passive participle distinctions, and vocabulary like 'negative reviews' fits B2-level concrete/abstract topics.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past participle 'Shocked' is used because the restaurant received the shock (passive meaning). 'Shocking' would mean the restaurant shocked someone else, and 'Having shocked' is active too.",
+          "explanation_vi": "Quá khứ phân từ 'Shocked' được dùng vì nhà hàng là bên bị sốc (nghĩa bị động). 'Shocking' nghĩa là nhà hàng làm người khác sốc, còn 'Having shocked' cũng mang nghĩa chủ động."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-participles",
+      "kind": "foundation_topic",
+      "cefr_level": "B2",
+      "body": {
+        "related": [
+          "GERUNDS_AND_INFINITIVES",
+          "PASSIVE_VOICE",
+          "REDUCED_RELATIVE_CLAUSES"
+        ],
+        "examples": [
+          {
+            "note": "Present participle clause 'Walking through the old town' replaces 'While we were walking...' and shares the subject 'we' with the main clause.",
+            "text": "Walking through the old town, we discovered a charming little café."
+          },
+          {
+            "note": "Past participle clause 'Exhausted after the marathon' (= Because he was exhausted) shows a passive/completed meaning modifying the subject 'Tom'.",
+            "text": "Exhausted after the marathon, Tom slept for twelve hours."
+          },
+          {
+            "note": "Past participle 'written' in a reduced relative clause: 'which was written by a first-time author'.",
+            "text": "The novel, written by a first-time author, became an instant bestseller."
+          }
+        ],
+        "objective": "Understand the formation and core uses of the present participle (-ing) and past participle (-ed/-en) forms, including their roles in continuous tenses, perfect tenses, passive voice, adjective functions, and participle clauses.",
+        "_provenance": {
+          "batch": "foundation:PARTICIPLES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "32ace2fc-4efb-48ba-949b-314c2c0279bf",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Participles are verb forms that function like verbs and adjectives. English has two main participles: (1) the present participle, formed with the base verb + -ing (e.g., walking, studying), and (2) the past participle, typically formed with -ed for regular verbs (walked) or irregular forms (written, broken, gone). The present participle is used in continuous/progressive tenses (She is reading), in participle clauses describing simultaneous actions (Walking home, I saw an accident), and as adjectives describing an active meaning (a boring film = the film bores people). The past participle is used in perfect tenses (I have finished), in the passive voice (The window was broken), and as adjectives with a passive or completed meaning (a bored audience = the audience is bored). Participle clauses can replace full relative or adverbial clauses: 'The man standing by the door' (= who is standing), 'Exhausted by the trip, she went to bed' (= Because she was exhausted). When the subject of a participle clause is stated, it must match the main clause subject to avoid dangling participles. Note the difference between -ing and -ed adjectives: -ing describes the cause of a feeling, -ed describes the person experiencing it.",
+          "vi": "Phân từ (participle) là dạng động từ vừa mang tính động từ vừa mang tính tính từ. Tiếng Anh có hai loại chính: (1) Hiện tại phân từ (present participle) = động từ nguyên mẫu + -ing (walking, studying), và (2) Quá khứ phân từ (past participle) = động từ thêm -ed (với động từ có quy tắc) hoặc dạng bất quy tắc (written, broken, gone). Hiện tại phân từ dùng trong: các thì tiếp diễn (She is reading), mệnh đề phân từ chỉ hành động đồng thời (Walking home, I saw an accident), và làm tính từ mang nghĩa chủ động (a boring film = bộ phim gây nhàm chán). Quá khứ phân từ dùng trong: các thì hoàn thành (I have finished), câu bị động (The window was broken), và làm tính từ mang nghĩa bị động hoặc hoàn thành (a bored audience = khán giả cảm thấy chán). Mệnh đề phân từ có thể thay thế mệnh đề quan hệ hoặc mệnh đề trạng ngữ: 'The man standing by the door' (= who is standing). Lưu ý quan trọng: chủ ngữ của mệnh đề phân từ phải trùng với chủ ngữ của mệnh đề chính, nếu không sẽ tạo ra 'dangling participle' (phân từ lơ lửng) - lỗi phổ biến. Phân biệt tính từ -ing và -ed: -ing mô tả nguồn gây cảm xúc, -ed mô tả người trải nghiệm cảm xúc (boring/bored, interesting/interested)."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "This is a dangling participle: the implied subject of 'walking' must be the subject of the main clause. Trees cannot walk, so the main clause needs a subject ('I') that matches the participle's action.",
+            "right": "Walking down the street, I noticed the trees looking beautiful in autumn.",
+            "wrong": "Walking down the street, the trees looked beautiful in autumn."
+          },
+          {
+            "why": "-ing adjectives describe the source of a feeling (the lecture causes boredom), while -ed adjectives describe the person experiencing it (students are bored).",
+            "right": "The lecture was very boring, so most students left early.",
+            "wrong": "The lecture was very bored, so most students left early."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

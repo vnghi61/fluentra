@@ -1,11 +1,445 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2851315Z",
+  "generated_at": "2026-09-25T18:49:49.393565Z",
   "node": {
     "namespace": "skill",
     "code": "SPEAKING_SENTENCES",
     "label": "Speaking: Sentences",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-speaking-sentences-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'Because': She was hungry, so she made a big sandwich.",
+        "acceptable": [
+          "Because she was hungry, she made herself a big sandwich.",
+          "She made a big sandwich because she was hungry."
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "541b20e7-ba02-47e8-8e46-638afb59cb5b",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item requires transforming a simple 'so' sentence into a 'because' clause using past simple and everyday vocabulary. Basic conjunctions and simple sentence transformation are A2-level skills, matching the target level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Because she was hungry, she made a big sandwich."
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use 'Because' to join the reason clause with the result. When 'Because' starts the sentence, do not use 'so' in the main clause. You may also put the 'because' clause at the end.",
+          "explanation_vi": "Dùng 'Because' để nối mệnh đề chỉ lý do với kết quả. Khi 'Because' đứng đầu câu, không dùng 'so' ở mệnh đề chính. Bạn cũng có thể đặt mệnh đề 'because' ở cuối câu."
+        },
+        "correct_answer": "Because she was hungry, she made a big sandwich."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-speaking-sentences-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Yesterday, my friend and I ___ to the market and bought some fresh fruit.",
+        "options": [
+          {
+            "id": "A",
+            "text": "go"
+          },
+          {
+            "id": "B",
+            "text": "went"
+          },
+          {
+            "id": "C",
+            "text": "are going"
+          },
+          {
+            "id": "D",
+            "text": "will go"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "d02aa104-74d5-4ec5-8395-b43154e9192b",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests past simple tense choice with a clear time marker 'yesterday', using high-frequency vocabulary and a simple sentence structure. Distractors include present, present continuous, and future forms, which is typical A2-level tense discrimination.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The time word 'yesterday' shows the action happened in the past, so we use the past simple 'went'.",
+          "explanation_vi": "Từ chỉ thời gian 'yesterday' (hôm qua) cho thấy hành động đã xảy ra trong quá khứ, nên ta dùng thì quá khứ đơn 'went'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-speaking-sentences-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "A2",
+      "body": {
+        "passage": "Last Sunday, Mai received a phone call from her grandmother, who lives in a small village near the mountains. Grandma spoke slowly and clearly because she wanted Mai to understand every word. \"I am making your favourite cake on Saturday,\" she said. \"Please come early, and bring your brother too.\" Mai was very happy. She wrote down the time and place in her notebook so she would not forget. On Saturday morning, Mai and her brother took a bus to the village. The trip took two hours, but the children did not feel tired because they were excited. When they arrived, Grandma was waiting at the gate with a big smile. The kitchen smelled wonderful. After lunch, Grandma told them funny stories about her childhood, and they laughed together all afternoon. Before they left, she gave them a box of cake to take home. Mai promised to call her every week.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "Why did Grandma speak slowly on the phone?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Because she was tired"
+              },
+              {
+                "id": "B",
+                "text": "Because she wanted Mai to understand every word"
+              },
+              {
+                "id": "C",
+                "text": "Because the phone was broken"
+              },
+              {
+                "id": "D",
+                "text": "Because she was telling a story"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says Grandma spoke slowly and clearly because she wanted Mai to understand every word.",
+              "explanation_vi": "Đoạn văn nói rằng bà nói chậm và rõ vì bà muốn Mai hiểu từng từ."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "What did Grandma ask Mai to do?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Come early and bring her brother"
+              },
+              {
+                "id": "B",
+                "text": "Send a letter before Saturday"
+              },
+              {
+                "id": "C",
+                "text": "Buy a cake at the market"
+              },
+              {
+                "id": "D",
+                "text": "Take a taxi to the village"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Grandma said, \"Please come early, and bring your brother too.\"",
+              "explanation_vi": "Bà nói: \"Hãy đến sớm và mang theo em trai của con nữa.\""
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "Why did Mai write the time and place in her notebook?",
+            "options": [
+              {
+                "id": "A",
+                "text": "To show it to her teacher"
+              },
+              {
+                "id": "B",
+                "text": "To practise her writing"
+              },
+              {
+                "id": "C",
+                "text": "So she would not forget"
+              },
+              {
+                "id": "D",
+                "text": "To send it to her brother"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage states she wrote it down so she would not forget.",
+              "explanation_vi": "Đoạn văn cho biết Mai ghi lại để không quên."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "How long did the bus trip take?",
+            "options": [
+              {
+                "id": "A",
+                "text": "One hour"
+              },
+              {
+                "id": "B",
+                "text": "Two hours"
+              },
+              {
+                "id": "C",
+                "text": "Three hours"
+              },
+              {
+                "id": "D",
+                "text": "Four hours"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says the trip took two hours.",
+              "explanation_vi": "Đoạn văn nói rằng chuyến đi mất hai tiếng."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "What did Grandma do after lunch?",
+            "options": [
+              {
+                "id": "A",
+                "text": "She slept in her room"
+              },
+              {
+                "id": "B",
+                "text": "She told funny stories about her childhood"
+              },
+              {
+                "id": "C",
+                "text": "She went to the market"
+              },
+              {
+                "id": "D",
+                "text": "She baked another cake"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "After lunch, Grandma told them funny stories about her childhood.",
+              "explanation_vi": "Sau bữa trưa, bà kể những câu chuyện vui về thời thơ ấu của bà."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q6",
+            "type": "multiple_choice",
+            "prompt": "What did Mai promise at the end of the visit?",
+            "options": [
+              {
+                "id": "A",
+                "text": "To visit every weekend"
+              },
+              {
+                "id": "B",
+                "text": "To send money every month"
+              },
+              {
+                "id": "C",
+                "text": "To call her every week"
+              },
+              {
+                "id": "D",
+                "text": "To write a letter every day"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The last sentence says Mai promised to call her grandmother every week.",
+              "explanation_vi": "Câu cuối cho biết Mai hứa sẽ gọi điện cho bà mỗi tuần."
+            },
+            "correct_option_id": "C"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "74d8b809-5f21-4851-8b1d-abc4a86f5ab7",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The passage uses simple past-tense narration, everyday vocabulary (cake, bus, village, kitchen), basic conjunctions, and short compound sentences. All six questions require literal retrieval of explicitly stated details, matching A2 reading comprehension descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "B",
+              "q2": "A",
+              "q3": "C",
+              "q4": "B",
+              "q5": "B",
+              "q6": "C"
+            }
+          }
+        },
+        "passage_title": "A Message from Grandma"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-speaking-sentences",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "When you speak about your daily routine, which sentence is correct and natural?",
+        "options": [
+          {
+            "id": "A",
+            "text": "I every morning get up at six o'clock."
+          },
+          {
+            "id": "B",
+            "text": "I get up at six o'clock every morning."
+          },
+          {
+            "id": "C",
+            "text": "Every morning at six o'clock get up I."
+          },
+          {
+            "id": "D",
+            "text": "At six o'clock I every morning get up."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "0416090e-e21c-445c-8aa6-70bd70cda052",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic word order in simple present sentences about daily routines ('I get up at six o'clock every morning'), using very common vocabulary and time expressions. This matches A2 (routine tasks, simple sentences), though it is accessible even to strong A1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In a natural spoken sentence, the subject comes first, followed by the verb, then the time expression: 'I get up at six o'clock every morning.' Time expressions usually go at the end of the sentence.",
+          "explanation_vi": "Trong câu nói tự nhiên, chủ ngữ đứng trước, sau đó là động từ, rồi đến cụm chỉ thời gian: 'I get up at six o'clock every morning.' Cụm thời gian thường đứng cuối câu."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-speaking-sentences",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Which sentence is the best complete spoken answer to the question: 'What did you do last weekend?'",
+        "options": [
+          {
+            "id": "A",
+            "text": "Went to the beach."
+          },
+          {
+            "id": "B",
+            "text": "I went to the beach with my family."
+          },
+          {
+            "id": "C",
+            "text": "Beach, family, Sunday."
+          },
+          {
+            "id": "D",
+            "text": "I go to the beach yesterday."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "de6c1103-3707-4602-897d-ef24857d522e",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests past simple tense ('went') and basic sentence completeness with everyday vocabulary ('beach', 'family', 'weekend'), which aligns with A2 descriptors. The distractors test simple fragment vs. complete sentence and tense agreement, all within A2 range.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A complete spoken sentence needs a subject, a verb in the correct past tense, and clear details. Option B has 'I' (subject), 'went' (past tense), and extra information. Option A and C are fragments, and Option D mixes present tense 'go' with 'yesterday'.",
+          "explanation_vi": "Một câu nói hoàn chỉnh cần có chủ ngữ, động từ đúng thì quá khứ và thông tin rõ ràng. Đáp án B có chủ ngữ 'I', động từ quá khứ 'went' và thông tin bổ sung. Đáp án A và C là cụm từ thiếu thành phần, còn đáp án D dùng thì hiện tại 'go' với 'yesterday' là sai."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-speaking-sentences",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "GRAMMAR_PRESENT_SIMPLE",
+          "GRAMMAR_QUESTIONS_YES_NO",
+          "SPEAKING_CONVERSATION_BASICS"
+        ],
+        "examples": [
+          {
+            "note": "Shows SVO order, frequency adverb 'usually' before the main verb, and connecting two ideas with 'but'.",
+            "text": "I usually have breakfast at seven o'clock, but today I'm late."
+          },
+          {
+            "note": "Demonstrates a yes/no question with auxiliary 'do' before the subject and a matching short answer.",
+            "text": "Do you want to go to the cinema tonight? — Yes, I do!"
+          }
+        ],
+        "objective": "Understand the formation and core uses of simple spoken sentences at CEFR A2 level, including correct subject-verb-object word order, basic question forms, and short answers, so learners can confidently build and speak complete sentences in everyday conversations.",
+        "_provenance": {
+          "batch": "foundation:SPEAKING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "fb4e753d-0459-40c4-9864-38c81d3d7bb8",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At A2 level, speaking in sentences means moving beyond single words to produce complete, natural sentences. The basic English sentence follows Subject + Verb + Object (SVO) order: 'I like coffee.' Adverbs of frequency (always, usually, often, sometimes, never) go before the main verb but after the verb 'be': 'I usually walk to work' but 'She is always late.' To ask questions, use auxiliary verbs (do/does/did, is/are, can, will) before the subject: 'Do you like coffee?' 'Can you help me?' For short answers, repeat the auxiliary: 'Yes, I do.' / 'No, she isn't.' Keep spoken sentences short and clear; connect two ideas with 'and', 'but', or 'because': 'I stayed home because I was tired.' When speaking, remember to pronounce the -s ending on third-person verbs (he works) and use contractions (I'm, don't, can't) to sound natural.",
+          "vi": "Ở trình độ A2, nói thành câu có nghĩa là bạn phải nói những câu hoàn chỉnh thay vì chỉ nói từ đơn. Câu tiếng Anh cơ bản theo trật tự Chủ ngữ + Động từ + Tân ngữ (SVO): 'I like coffee.' (Tôi thích cà phê.) Trạng từ chỉ tần suất (always, usually, often, sometimes, never) đứng trước động từ thường nhưng sau động từ 'be': 'I usually walk to work' nhưng 'She is always late.' Để hỏi, đặt trợ động từ (do/does/did, is/are, can, will) trước chủ ngữ: 'Do you like coffee?' 'Can you help me?' Khi trả lời ngắn, lặp lại trợ động từ: 'Yes, I do.' / 'No, she isn't.' Khi nói, hãy giữ câu ngắn gọn và rõ ràng; có thể nối hai ý bằng 'and', 'but' hoặc 'because': 'I stayed home because I was tired.' Lưu ý phát âm đuôi -s ở ngôi thứ ba số ít (he works) và dùng dạng rút gọn (I'm, don't, can't) để nghe tự nhiên hơn. Người Việt thường quên chủ ngữ hoặc động từ 'be' vì tiếng Việt không có — hãy luôn nói đủ 'I am', 'She is', 'They are'."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Most yes/no questions need an auxiliary (do/does/is/are/can) before the subject. A statement with rising intonation ('You like coffee?') is used only to check something or show surprise, not as a normal question.",
+            "right": "Do you like coffee?",
+            "wrong": "You like coffee?"
+          },
+          {
+            "why": "Frequency adverbs like 'always' come after the verb 'be' but before other main verbs. Placing 'always' before 'is' breaks the standard word order.",
+            "right": "She is always late.",
+            "wrong": "She always is late."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

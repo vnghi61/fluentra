@@ -1,11 +1,342 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.113423Z",
+  "generated_at": "2026-09-25T18:49:49.2374354Z",
   "node": {
     "namespace": "vocabulary",
     "code": "COMPOUND_WORDS",
     "label": "Compound Words",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-compound-words-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence using a compound word beginning with 'sun': We sat outside in the warm light of the sun all afternoon.",
+        "acceptable": [
+          "We sat outside in the warm sunshine all afternoon.",
+          "We sat outside in warm sunshine all afternoon.",
+          "We sat outside in the warm sunshine the whole afternoon.",
+          "We sat outside in the warm sunlight all afternoon."
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPOUND_WORDS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:38:08Z"
+          },
+          "ai_request_id": "6969942a-6ce1-4a4c-8f9f-3a3fb1ad3c40",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The task requires forming a simple compound noun ('sunshine') from a simple sentence with basic past simple structure. Compound word formation with high-frequency vocabulary is typically A2-level; the sentence itself is simple and the transformation is mechanical, below B1 complexity.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "We sat outside in the warm sunshine all afternoon."
+          }
+        },
+        "explanation": {
+          "explanation_en": "A compound word combines two words into one. 'Sun' + 'shine' = 'sunshine', a single noun meaning the light and warmth of the sun. Other common compound words with 'sun' include 'sunlight' and 'sunrise'.",
+          "explanation_vi": "Từ ghép kết hợp hai từ thành một. 'Sun' + 'shine' = 'sunshine', một danh từ nghĩa là ánh nắng mặt trời. Các từ ghép khác với 'sun' gồm 'sunlight' và 'sunrise'."
+        },
+        "correct_answer": "We sat outside in the warm sunshine all afternoon."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:38:08Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-ex-compound-words-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Last week, my brother ___ a new smartphone because his old one broke.",
+        "options": [
+          {
+            "id": "A",
+            "text": "buys"
+          },
+          {
+            "id": "B",
+            "text": "bought"
+          },
+          {
+            "id": "C",
+            "text": "has bought"
+          },
+          {
+            "id": "D",
+            "text": "is buying"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPOUND_WORDS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:37:58Z"
+          },
+          "ai_request_id": "7b59d817-5a05-4120-87ef-a70f33f1fab4",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests simple past tense with a clear time marker 'last week', which is an A2-level grammar point. The distractor 'has bought' (present perfect) is a B1 feature, but the core tested structure and vocabulary (everyday words like 'bought', 'broke') are A2. Slightly below the B1 target.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The time expression 'last week' signals a finished past action, so the simple past 'bought' is correct. Note the compound word 'smartphone' (smart + phone), a common B1 compound noun.",
+          "explanation_vi": "Cụm thời gian 'last week' chỉ hành động đã kết thúc trong quá khứ, nên dùng thì quá khứ đơn 'bought'. Chú ý từ ghép 'smartphone' (smart + phone), một danh từ ghép phổ biến ở trình độ B1."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:37:58Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-ex-compound-words-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "We stopped at a ___ on the motorway to buy some coffee and petrol.",
+        "options": [
+          {
+            "id": "A",
+            "text": "bus station"
+          },
+          {
+            "id": "B",
+            "text": "service station"
+          },
+          {
+            "id": "C",
+            "text": "train station"
+          },
+          {
+            "id": "D",
+            "text": "police station"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPOUND_WORDS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:37:49Z"
+          },
+          "ai_request_id": "da5defe7-f80b-434d-bdcb-0c989cde80b9",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests a compound noun ('service station') requiring understanding of context clues (motorway, coffee, petrol) and distinguishing near-synonymous 'station' compounds. Vocabulary is everyday but the distractors are plausible, making it appropriate for B1 rather than A2.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A 'service station' is a compound noun for a place beside a motorway where drivers can buy fuel, food and drinks. A 'bus station' and a 'train station' are for public transport, and a 'police station' is a police building.",
+          "explanation_vi": "'Service station' là danh từ ghép chỉ trạm dừng ven đường cao tốc nơi tài xế mua xăng, đồ ăn và thức uống. 'Bus station' và 'train station' là bến xe buýt và nhà ga tàu, còn 'police station' là đồn cảnh sát."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:37:49Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-quiz-compound-words",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Choose the correct compound word to complete the sentence: My grandfather loves reading the ___ every morning with his coffee.",
+        "options": [
+          {
+            "id": "A",
+            "text": "newspaper"
+          },
+          {
+            "id": "B",
+            "text": "news paper"
+          },
+          {
+            "id": "C",
+            "text": "paper news"
+          },
+          {
+            "id": "D",
+            "text": "newsprint paper"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPOUND_WORDS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:38:31Z"
+          },
+          "ai_request_id": "9e9d2913-cb36-4d46-b7fa-fe43756efcbb",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests recognition of a common compound word ('newspaper') within a simple present-tense sentence using everyday vocabulary. The metalanguage 'compound word' is explained simply, and the task requires only basic lexical knowledge, placing it at A2 rather than B1.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A compound word is made of two words joined together to create a new meaning. 'Newspaper' (news + paper) is written as one word and refers to the printed publication people read daily.",
+          "explanation_vi": "Từ ghép (compound word) được tạo bởi hai từ kết hợp lại mang nghĩa mới. 'Newspaper' (news + paper) viết liền là một từ, nghĩa là tờ báo in hằng ngày."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:38:31Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-review-compound-words",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Which word is a compound word formed by joining two complete words together?",
+        "options": [
+          {
+            "id": "A",
+            "text": "sunflower"
+          },
+          {
+            "id": "B",
+            "text": "beautiful"
+          },
+          {
+            "id": "C",
+            "text": "quickly"
+          },
+          {
+            "id": "D",
+            "text": "hopeful"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPOUND_WORDS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:38:41Z"
+          },
+          "ai_request_id": "ee271ca3-b209-4186-9392-0b684624a130",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic word-formation awareness (compound vs. derived words) using very common vocabulary (sunflower, beautiful, quickly, hopeful). The prompt is a simple question, and the metalanguage (compound word, suffix) is minimal. This is more accessible than typical B1 items, fitting A2.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Sunflower' is a compound word made from two complete words, 'sun' + 'flower'. 'Beautiful' and 'hopeful' are derived words with suffixes, and 'quickly' is an adverb with a suffix.",
+          "explanation_vi": "'Sunflower' là từ ghép được tạo từ hai từ hoàn chỉnh 'sun' + 'flower'. 'Beautiful' và 'hopeful' là từ phái sinh có hậu tố, còn 'quickly' là trạng từ có hậu tố."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:38:41Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-topic-compound-words",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "WORD_FORMATION",
+          "ADJECTIVES_ORDER",
+          "PREFIXES_SUFFIXES"
+        ],
+        "examples": [
+          {
+            "note": "Closed compound nouns: 'notebook' (note + book) and 'toothbrush' (tooth + brush) are written as single words.",
+            "text": "She bought a new notebook and a toothbrush at the supermarket."
+          },
+          {
+            "note": "Hyphenated compounds: 'mother-in-law' is always hyphenated; 'well-known' is hyphenated because it comes before the noun 'artist'.",
+            "text": "My mother-in-law is a well-known artist who works from home."
+          },
+          {
+            "note": "Open compounds: 'bus station' and 'ice cream' are written as separate words but function as single units of meaning.",
+            "text": "We stopped at the bus station to get some ice cream."
+          }
+        ],
+        "objective": "Understand the three forms of English compound words (closed, hyphenated, and open) and correctly recognize, form, and use common compound nouns, adjectives, and verbs in everyday communication.",
+        "_provenance": {
+          "batch": "foundation:COMPOUND_WORDS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:39:00Z"
+          },
+          "ai_request_id": "49eca2db-b3aa-4f66-a278-545ef6f32337",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "A compound word is formed when two or more words join together to create a new word with its own meaning. English compounds appear in three forms: (1) Closed compounds, written as one word (e.g., 'notebook', 'sunflower', 'bedroom'); (2) Hyphenated compounds, joined with a hyphen (e.g., 'mother-in-law', 'well-known', 'check-in'); (3) Open compounds, written as separate words but functioning as one unit (e.g., 'ice cream', 'post office', 'bus stop'). Compound nouns often combine a noun + noun ('toothbrush'), adjective + noun ('blackboard'), or verb + noun ('swimming pool'). Compound adjectives frequently use the pattern adjective/adverb + present participle ('good-looking') or noun + past participle ('handmade'), especially before a noun: 'a well-known singer'. Note that when a compound adjective comes after the verb, the hyphen is usually dropped: 'The singer is well known.' There is no complete rule for which form a compound takes, so learners should memorize common compounds and check a dictionary. Meaning is not always predictable: a 'greenhouse' is a glass building for plants, not a house painted green.",
+          "vi": "Từ ghép (compound word) là khi hai từ trở lên kết hợp lại tạo thành một từ mới mang nghĩa riêng. Trong tiếng Anh có ba dạng từ ghép: (1) Từ ghép khép kín – viết liền thành một từ (ví dụ: 'notebook' – vở, 'bedroom' – phòng ngủ); (2) Từ ghép có gạch nối – các thành phần nối bằng dấu gạch ngang (ví dụ: 'mother-in-law' – mẹ chồng/mẹ vợ, 'well-known' – nổi tiếng); (3) Từ ghép mở – viết rời nhau nhưng vẫn hoạt động như một đơn vị nghĩa (ví dụ: 'ice cream' – kem, 'bus stop' – bến xe). Danh từ ghép thường là danh từ + danh từ ('toothbrush' – bàn chải đánh răng) hoặc động từ thêm -ing + danh từ ('swimming pool' – hồ bơi). Tính từ ghép thường có dạng: tính từ/trạng từ + V-ing ('good-looking' – ưa nhìn) hoặc danh từ + quá khứ phân từ ('handmade' – làm thủ công), và thường có gạch nối khi đứng trước danh từ: 'a well-known singer'. Tuy nhiên, khi đứng sau động từ, ta thường bỏ gạch nối: 'The singer is well known.' Không có quy tắc cố định để biết từ ghép viết liền, có gạch nối hay viết rời, nên người học cần ghi nhớ từ vựng thông dụng và tra từ điển. Lưu ý: nghĩa của từ ghép không phải lúc nào cũng đoán được – 'greenhouse' là nhà kính để trồng cây, không phải ngôi nhà màu xanh."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "When a compound adjective like 'well-known' comes directly before the noun it describes, it must be hyphenated to show the two words act as a single adjective. Without the hyphen, the sentence is ambiguous.",
+            "right": "He is a well-known football player.",
+            "wrong": "He is a well known football player."
+          },
+          {
+            "why": "'A green house' means a house that is green in color, while 'a greenhouse' (one word) is a glass building for growing plants. Writing the compound as one or two words completely changes the meaning.",
+            "right": "My father grows tomatoes in a greenhouse.",
+            "wrong": "My father grows tomatoes in a green house."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:39:00Z"
+      }
+    }
+  ]
 }

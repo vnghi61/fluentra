@@ -1,11 +1,246 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2642268Z",
+  "generated_at": "2026-09-25T18:49:49.3738377Z",
   "node": {
     "namespace": "grammar",
     "code": "RELATIVE_CLAUSES",
     "label": "Relative Clauses",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-relative-clauses-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence using a relative clause with 'who': The woman lives next door. She is a doctor.",
+        "acceptable": [
+          "The woman who lives next door is a doctor.",
+          "The woman that lives next door is a doctor."
+        ],
+        "_provenance": {
+          "batch": "foundation:RELATIVE_CLAUSES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "0d4d0007-c85b-4b72-8d98-fb992d83ab24",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "Forming a subject relative clause with 'who' and removing the repeated subject is a classic B1 grammar transformation; the vocabulary is simple but the syntactic operation exceeds A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "The woman who lives next door is a doctor."
+          }
+        },
+        "explanation": {
+          "explanation_en": "Combine the two sentences with the relative pronoun 'who', which refers to a person (the woman) and acts as the subject of the relative clause. The repeated subject 'she' is removed.",
+          "explanation_vi": "Nối hai câu bằng đại từ quan hệ 'who', dùng để chỉ người (the woman) và làm chủ ngữ của mệnh đề quan hệ. Chủ ngữ lặp lại 'she' được bỏ đi."
+        },
+        "correct_answer": "The woman who lives next door is a doctor."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-relative-clauses-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "The engineer ___ designed the bridge won an international award last year.",
+        "options": [
+          {
+            "id": "A",
+            "text": "who"
+          },
+          {
+            "id": "B",
+            "text": "which"
+          },
+          {
+            "id": "C",
+            "text": "whose"
+          },
+          {
+            "id": "D",
+            "text": "whom"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:RELATIVE_CLAUSES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8b3f8fee-f992-4f03-9d19-34232aa99aec",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "Defining relative clauses with subject relative pronouns ('who' vs 'which/whose/whom') are typically introduced at B1. The sentence uses familiar vocabulary and simple past tense, with the difficulty coming solely from the relative pronoun choice, matching B1 grammar objectives.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Who' is the relative pronoun used for people as the subject of the relative clause. 'Which' is for things, 'whose' shows possession, and 'whom' is an object pronoun, not a subject.",
+          "explanation_vi": "'Who' là đại từ quan hệ dùng cho người khi làm chủ ngữ của mệnh đề quan hệ. 'Which' dùng cho vật, 'whose' chỉ sự sở hữu, còn 'whom' là đại từ tân ngữ, không dùng làm chủ ngữ."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-relative-clauses",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "The book ___ I borrowed from the library was really interesting.",
+        "options": [
+          {
+            "id": "A",
+            "text": "who"
+          },
+          {
+            "id": "B",
+            "text": "which"
+          },
+          {
+            "id": "C",
+            "text": "whose"
+          },
+          {
+            "id": "D",
+            "text": "where"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:RELATIVE_CLAUSES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "ad0a737c-7c75-49ef-aea0-606221c40908",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic relative pronouns (who/which/whose/where) with a simple sentence and common vocabulary. Relative clauses are typically introduced at A2 and consolidated at B1; this single-clause gap-fill with basic distractors is at the lower end, closer to A2, though acceptable as a foundation quiz for B1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Which' is the relative pronoun used for things. 'The book' is a thing, so we say 'the book which I borrowed'. 'Who' is for people, 'whose' shows possession, and 'where' refers to places.",
+          "explanation_vi": "'Which' là đại từ quan hệ dùng cho vật. 'The book' là một vật, nên ta nói 'the book which I borrowed'. 'Who' dùng cho người, 'whose' chỉ sự sở hữu, còn 'where' dùng cho nơi chốn."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-relative-clauses",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "I have a friend ___ father is a pilot.",
+        "options": [
+          {
+            "id": "A",
+            "text": "who"
+          },
+          {
+            "id": "B",
+            "text": "whose"
+          },
+          {
+            "id": "C",
+            "text": "which"
+          },
+          {
+            "id": "D",
+            "text": "where"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:RELATIVE_CLAUSES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "28778354-fbdc-48bf-99d5-842aa4b95ff1",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests relative pronouns (which/who/whose/where) in defining relative clauses, a grammar point typically introduced at B1. The sentence itself is simple, but distinguishing between relative pronouns including possessive 'whose' requires B1-level grammatical awareness.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Whose' shows possession: the father belongs to my friend. 'Who' would need a verb after it, 'which' is for things, and 'where' is for places.",
+          "explanation_vi": "'Whose' chỉ sự sở hữu: người bố là của bạn tôi. 'Who' cần một động từ theo sau, 'which' dùng cho vật, còn 'where' dùng cho nơi chốn."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-relative-clauses",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "PRONOUNS",
+          "SUBORDINATE_CLAUSES",
+          "COMMA_USAGE"
+        ],
+        "examples": [
+          {
+            "note": "Defining relative clause with 'who' identifying which woman is meant; no commas used.",
+            "text": "The woman who lives next door is a nurse."
+          },
+          {
+            "note": "Non-defining clause with 'which' adding extra information; commas are required and 'that' cannot replace 'which'.",
+            "text": "Da Lat, which is famous for its flowers, is a popular tourist destination."
+          },
+          {
+            "note": "'Where' introduces a relative clause of place, replacing 'at which'.",
+            "text": "This is the hotel where we stayed last summer."
+          }
+        ],
+        "objective": "Understand the formation and core uses of relative clauses (who, whom, whose, which, that, where, when) to identify, describe, and add information about people, things, places, and times in both defining and non-defining contexts.",
+        "_provenance": {
+          "batch": "foundation:RELATIVE_CLAUSES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "c22f4d8d-041a-4a6c-bb02-17178f29763f",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "A relative clause is a subordinate clause that gives more information about a noun (the antecedent). It is introduced by a relative pronoun (who, whom, whose, which, that) or relative adverb (where, when, why). Defining relative clauses identify exactly which person or thing we mean and are NOT separated by commas: 'The man who called you is my brother.' Non-defining relative clauses add extra, non-essential information and ARE separated by commas: 'My brother, who lives in Hanoi, is a doctor.' In defining clauses, 'that' can replace 'who' or 'which', and the relative pronoun can be omitted when it is the object of the clause: 'The book (that) I bought was expensive.' Use 'who' for people, 'which' for things, 'whose' for possession, 'where' for places, 'when' for times, and 'why' for reasons. In non-defining clauses, 'that' is not allowed and the pronoun cannot be omitted. Formal English may use 'whom' as the object pronoun for people.",
+          "vi": "Mệnh đề quan hệ là mệnh đề phụ bổ sung thông tin cho một danh từ (tiền ngữ). Nó được giới thiệu bởi đại từ quan hệ (who, whom, whose, which, that) hoặc trạng từ quan hệ (where, when, why). Mệnh đề quan hệ xác định (defining) giúp xác định chính xác người/vật đang nói đến và KHÔNG dùng dấu phẩy: 'The man who called you is my brother.' Mệnh đề quan hệ không xác định (non-defining) chỉ thêm thông tin phụ, KHÔNG thiết yếu, và PHẢI có dấu phẩy: 'My brother, who lives in Hanoi, is a doctor.' Trong mệnh đề xác định, 'that' có thể thay 'who' hoặc 'which', và đại từ quan hệ có thể bị lược bỏ khi nó làm tân ngữ: 'The book (that) I bought was expensive.' Dùng 'who' cho người, 'which' cho vật, 'whose' chỉ sở hữu, 'where' cho nơi chốn, 'when' cho thời gian, 'why' cho lý do. Trong mệnh đề không xác định, không được dùng 'that' và không được lược bỏ đại từ. Trong văn phong trang trọng, 'whom' được dùng làm tân ngữ chỉ người."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In non-defining relative clauses (set off by commas), 'that' cannot be used; 'who' must be used for people.",
+            "right": "My father, who is 60 years old, still works every day.",
+            "wrong": "My father, that is 60 years old, still works every day."
+          },
+          {
+            "why": "The relative pronoun 'which' already functions as the object of 'bought', so the extra object pronoun 'it' is redundant and must be removed.",
+            "right": "The book which I bought yesterday is very interesting.",
+            "wrong": "The book which I bought it yesterday is very interesting."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

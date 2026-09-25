@@ -1,11 +1,446 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.3246514Z",
+  "generated_at": "2026-09-25T18:49:49.4269998Z",
   "node": {
     "namespace": "skill",
     "code": "WRITING_PARAGRAPHS",
     "label": "Writing: Paragraphs",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-writing-paragraphs-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Combine these three sentences into one short paragraph with good flow, beginning with 'Last weekend': I visited my grandmother. She cooked a big lunch. We talked for hours.",
+        "acceptable": [
+          "Last weekend I visited my grandmother, and she cooked a big lunch. After that, we talked for hours.",
+          "Last weekend, I visited my grandmother and she cooked a big lunch. Then we talked for hours.",
+          "Last weekend, I visited my grandmother. She cooked a big lunch, and we talked for hours."
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8b4c7cb6-75f5-42ee-a594-aa457a552fe8",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The task uses simple past tense sentences and basic linking words (and, then, after that), which align with A2 descriptors. Combining short sentences into a simple paragraph is a routine writing task at this level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Last weekend, I visited my grandmother, and she cooked a big lunch. After that, we talked for hours."
+          }
+        },
+        "explanation": {
+          "explanation_en": "A good paragraph connects related sentences with linking words (and, then, after that) instead of writing short, separate sentences. This makes the writing flow naturally.",
+          "explanation_vi": "Một đoạn văn tốt cần nối các câu liên quan bằng từ nối (and, then, after that) thay vì viết những câu ngắn riêng lẻ, giúp bài viết mạch lạc và tự nhiên hơn."
+        },
+        "correct_answer": "Last weekend, I visited my grandmother, and she cooked a big lunch. After that, we talked for hours."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-writing-paragraphs-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Last night, I ___ a paragraph about my best friend, and today I will check it again before I give it to my teacher.",
+        "options": [
+          {
+            "id": "A",
+            "text": "write"
+          },
+          {
+            "id": "B",
+            "text": "wrote"
+          },
+          {
+            "id": "C",
+            "text": "am writing"
+          },
+          {
+            "id": "D",
+            "text": "will write"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8ba878dd-eaa6-4b94-b78a-dfc1eb40d7b5",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests past simple tense choice with a clear time marker 'Last night', which is a core A2 grammar point. Vocabulary is simple and familiar (paragraph, best friend, teacher), and distractors span basic tenses. Suitable for A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The time marker 'Last night' shows a finished action in the past, so the past simple 'wrote' is correct. When writing a paragraph, use past simple for completed past events.",
+          "explanation_vi": "Cụm thời gian 'Last night' cho thấy hành động đã hoàn tất trong quá khứ, nên phải dùng thì quá khứ đơn 'wrote'. Khi viết đoạn văn, dùng thì quá khứ đơn để kể về sự việc đã xảy ra."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-writing-paragraphs-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "A2",
+      "body": {
+        "passage": "A good paragraph is like a small box of ideas. It has one main idea, and every sentence in the paragraph helps to explain that idea. Most paragraphs have three parts. The first part is the topic sentence. This sentence tells the reader what the paragraph is about. The second part is the body. Here, the writer gives details, examples, or reasons to support the main idea. Usually, a paragraph has two or three supporting sentences in the body. The last part is the closing sentence. It finishes the paragraph and often repeats the main idea in different words. When you write a paragraph, remember to keep all your sentences about the same topic. If a sentence talks about something new, it is better to start a new paragraph. Also, use linking words like 'first', 'next', and 'finally' to connect your ideas. A clear paragraph is easy to read, and your readers will understand your message quickly.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "What does the passage say a good paragraph should have?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Many different main ideas"
+              },
+              {
+                "id": "B",
+                "text": "One main idea"
+              },
+              {
+                "id": "C",
+                "text": "Only one sentence"
+              },
+              {
+                "id": "D",
+                "text": "No closing sentence"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The first sentence of the passage says a good paragraph has one main idea, and every sentence helps to explain it.",
+              "explanation_vi": "Câu đầu của bài đọc nói rằng một đoạn văn tốt chỉ có một ý chính, và mọi câu đều giúp giải thích ý đó."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "What is the job of the topic sentence?",
+            "options": [
+              {
+                "id": "A",
+                "text": "It tells the reader what the paragraph is about."
+              },
+              {
+                "id": "B",
+                "text": "It gives examples and reasons."
+              },
+              {
+                "id": "C",
+                "text": "It finishes the paragraph."
+              },
+              {
+                "id": "D",
+                "text": "It starts a new paragraph."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage states that the topic sentence tells the reader what the paragraph is about.",
+              "explanation_vi": "Bài đọc nêu rõ câu chủ đề cho người đọc biết đoạn văn viết về điều gì."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "How many supporting sentences does the body of a paragraph usually have?",
+            "options": [
+              {
+                "id": "A",
+                "text": "One"
+              },
+              {
+                "id": "B",
+                "text": "Two or three"
+              },
+              {
+                "id": "C",
+                "text": "Five or six"
+              },
+              {
+                "id": "D",
+                "text": "Ten"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says a paragraph usually has two or three supporting sentences in the body.",
+              "explanation_vi": "Bài đọc cho biết phần thân đoạn văn thường có hai hoặc ba câu hỗ trợ."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "What does the closing sentence often do?",
+            "options": [
+              {
+                "id": "A",
+                "text": "It gives a new main idea."
+              },
+              {
+                "id": "B",
+                "text": "It asks the reader a question."
+              },
+              {
+                "id": "C",
+                "text": "It repeats the main idea in different words."
+              },
+              {
+                "id": "D",
+                "text": "It lists linking words."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage explains that the closing sentence finishes the paragraph and often repeats the main idea in different words.",
+              "explanation_vi": "Bài đọc giải thích rằng câu kết thúc đoạn văn và thường nhắc lại ý chính bằng cách diễn đạt khác."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "What should you do if a sentence talks about something new?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Delete the sentence."
+              },
+              {
+                "id": "B",
+                "text": "Put it at the end of the paragraph."
+              },
+              {
+                "id": "C",
+                "text": "Start a new paragraph."
+              },
+              {
+                "id": "D",
+                "text": "Make it the topic sentence."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage advises starting a new paragraph when a sentence talks about something new.",
+              "explanation_vi": "Bài đọc khuyên nên bắt đầu một đoạn văn mới khi một câu nói về một chủ đề mới."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q6",
+            "type": "multiple_choice",
+            "prompt": "Why are linking words like 'first', 'next', and 'finally' used in a paragraph?",
+            "options": [
+              {
+                "id": "A",
+                "text": "To connect your ideas"
+              },
+              {
+                "id": "B",
+                "text": "To make the paragraph longer"
+              },
+              {
+                "id": "C",
+                "text": "To start a new topic"
+              },
+              {
+                "id": "D",
+                "text": "To repeat the main idea"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says linking words like 'first', 'next', and 'finally' are used to connect your ideas.",
+              "explanation_vi": "Bài đọc nói rằng các từ nối như 'first', 'next' và 'finally' được dùng để kết nối các ý tưởng của bạn."
+            },
+            "correct_option_id": "A"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "0488684b-cf12-49ce-ad01-5c04ab3994ed",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The passage uses simple, mostly present-tense sentences with common vocabulary (paragraph, sentence, idea, example). Sentence structures are short and clear, with basic connectors like 'first', 'next', 'finally'. Questions are literal comprehension checks with straightforward distractors, matching A2 reading comprehension expectations.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "B",
+              "q2": "A",
+              "q3": "B",
+              "q4": "C",
+              "q5": "C",
+              "q6": "A"
+            }
+          }
+        },
+        "passage_title": "How to Write a Good Paragraph"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-writing-paragraphs",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Which sentence is the best topic sentence for a paragraph about a weekend trip to the beach?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Last weekend, I went to the beach with my family, and it was a wonderful trip."
+          },
+          {
+            "id": "B",
+            "text": "My brother likes swimming, but I prefer reading books at home."
+          },
+          {
+            "id": "C",
+            "text": "The bus to the city leaves every thirty minutes in the morning."
+          },
+          {
+            "id": "D",
+            "text": "I usually eat rice for breakfast because it is quick and easy to make."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8dc4a48e-8e82-4c93-90d3-360e0fb9dc48",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses simple past tense, basic conjunctions (and, but, because), and high-frequency everyday vocabulary. The task of identifying a topic sentence is a basic reading skill, and all options are short, simple sentences within A2 range.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A topic sentence introduces the main idea of the paragraph. Option A clearly states the topic (a weekend trip to the beach) and gives the main idea (it was a wonderful trip). The other sentences talk about different topics and do not fit the paragraph.",
+          "explanation_vi": "Câu chủ đề giới thiệu ý chính của đoạn văn. Phương án A nêu rõ chủ đề (chuyến đi biển cuối tuần) và ý chính (chuyến đi rất tuyệt). Các câu còn lại nói về chủ đề khác nên không phù hợp với đoạn văn."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-writing-paragraphs",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Which sentence is a well-organized paragraph with a clear topic sentence and supporting details?",
+        "options": [
+          {
+            "id": "A",
+            "text": "I like coffee. Coffee comes from beans. Beans are seeds. Seeds grow in soil."
+          },
+          {
+            "id": "B",
+            "text": "My favorite place is the beach. First, I love swimming in the sea. Second, I enjoy eating ice cream there. Finally, the beach is a great place to relax with friends."
+          },
+          {
+            "id": "C",
+            "text": "The beach is nice. My dog is small. I eat rice every day. Cars are fast."
+          },
+          {
+            "id": "D",
+            "text": "Swimming is fun. Swimming is fun. Swimming is really fun. Swimming is very, very fun."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "c81c80b5-d0cd-4648-8045-797840d8eb74",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses simple present sentences, high-frequency vocabulary, and basic sequencing connectors ('First', 'Second', 'Finally'). The task of identifying a well-organized paragraph with a topic sentence is a foundational writing-awareness skill appropriate for A2 learners, and all option texts consist of short, simple sentences.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A good paragraph has a topic sentence that states the main idea, followed by supporting details connected with linking words like 'First', 'Second', and 'Finally'. Option B does this clearly, while the others lack focus or organization.",
+          "explanation_vi": "Một đoạn văn tốt cần có câu chủ đề nêu ý chính, theo sau là các chi tiết hỗ trợ được nối bằng từ liên kết như 'First', 'Second', 'Finally'. Phương án B làm điều này rõ ràng, trong khi các phương án khác thiếu trọng tâm hoặc không có tổ chức."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-writing-paragraphs",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "WRITING_SENTENCES",
+          "WRITING_CONNECTORS",
+          "WRITING_SIMPLE_PAST"
+        ],
+        "examples": [
+          {
+            "note": "This paragraph has a clear topic sentence ('My favorite place is the park'), three supporting sentences with details, and stays on one topic in the present simple tense.",
+            "text": "My favorite place is the park near my house. I go there every weekend. I like to walk and watch the birds. The park is quiet and beautiful."
+          },
+          {
+            "note": "A narrative paragraph using the past simple consistently, with a concluding sentence ('It was a wonderful trip') that restates the main idea.",
+            "text": "Last summer, I visited my grandmother in Hue. We cooked together every day. She told me many stories about her life. It was a wonderful trip."
+          }
+        ],
+        "objective": "Understand the basic structure of an English paragraph and write a simple, well-organized paragraph with a topic sentence, supporting sentences, and a concluding sentence at CEFR A2 level.",
+        "_provenance": {
+          "batch": "foundation:WRITING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "09cf4178-8cfa-42c8-924a-ead04df78da7",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "A paragraph is a group of sentences about one main idea. A good A2-level paragraph has three parts: (1) a topic sentence that states the main idea, usually at the beginning; (2) two or three supporting sentences that give details, reasons, or examples; and (3) an optional concluding sentence that restates the main idea. Keep your sentences simple (subject + verb + object), use connectors like 'and', 'but', 'because', and 'so' to link ideas, and stay on one topic. Indent the first line or leave a blank line between paragraphs. Write in the same tense throughout unless the meaning changes.",
+          "vi": "Đoạn văn là một nhóm câu nói về cùng một ý chính. Một đoạn văn đơn giản ở trình độ A2 gồm ba phần: (1) câu chủ đề (topic sentence) nêu ý chính, thường đặt ở đầu đoạn; (2) hai đến ba câu hỗ trợ đưa chi tiết, lý do hoặc ví dụ; (3) câu kết luận (không bắt buộc) nhắc lại ý chính. Viết câu đơn giản (chủ ngữ + động từ + tân ngữ), dùng từ nối như 'and', 'but', 'because', 'so' để liên kết ý, và chỉ viết về một chủ đề duy nhất. Lưu ý: đừng viết nhiều ý khác nhau trong một đoạn, giữ thì nhất quán, và xuống dòng hoặc thụt lề đầu dòng khi bắt đầu đoạn mới."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Every sentence in a paragraph must support the same main idea. Mixing unrelated topics (a brother's city, the weather) makes the paragraph confusing. Choose one topic and give related details only.",
+            "right": "I like coffee. I drink it every morning. Coffee is very popular in Vietnam. I usually drink it with friends.",
+            "wrong": "I like coffee. My brother lives in Da Nang. Coffee is very popular in Vietnam. The weather is hot today."
+          },
+          {
+            "why": "Keep the tense consistent within a paragraph. Switching between present, present continuous, and past without a reason makes the writing unclear.",
+            "right": "My family is big. We eat dinner together every evening. My mother cooks delicious rice.",
+            "wrong": "My family is big. We are eating dinner now. My mother cooked rice yesterday."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

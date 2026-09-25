@@ -1,11 +1,246 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1431666Z",
+  "generated_at": "2026-09-25T18:49:49.2657637Z",
   "node": {
     "namespace": "grammar",
     "code": "FUTURE_PERFECT",
     "label": "Future Perfect",
     "cefr_level": "B2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-future-perfect-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Rewrite the sentence using 'By the time': She will finish her degree next June, and after that she will start looking for a job. Begin with: 'She will have finished...'",
+        "acceptable": [
+          "She will have finished her degree by the time she starts looking for a job.",
+          "By the time she starts looking for a job, she will have finished her degree."
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_PERFECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "f805d419-fed9-425c-b82d-51a5664984f7",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item requires transforming a sentence into the future perfect with 'by the time + present simple', a structure typically taught at B2. The vocabulary is simple, but the grammatical manipulation and understanding of future time relationships exceed B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "She will have finished her degree by the time she starts looking for a job."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The future perfect 'will have finished' describes an action that will be completed before another future action. 'By the time + present simple' introduces the later future event, so the earlier action takes the future perfect form.",
+          "explanation_vi": "Thì tương lai hoàn thành 'will have finished' diễn tả hành động sẽ hoàn thành trước một hành động khác trong tương lai. 'By the time + thì hiện tại đơn' giới thiệu sự việc xảy ra sau, nên hành động xảy ra trước phải dùng thì tương lai hoàn thành."
+        },
+        "correct_answer": "She will have finished her degree by the time she starts looking for a job."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-future-perfect-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "By the end of next month, the construction team ___ the new bridge completely.",
+        "options": [
+          {
+            "id": "A",
+            "text": "will finish"
+          },
+          {
+            "id": "B",
+            "text": "will have finished"
+          },
+          {
+            "id": "C",
+            "text": "will be finishing"
+          },
+          {
+            "id": "D",
+            "text": "have finished"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_PERFECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "bfc020e3-96ca-4d39-b2f9-d30a21a26180",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests the future perfect tense ('will have finished') against future simple, future continuous, and present perfect distractors. The future perfect with a 'by + future time' marker is typically mastered at B1-B2; distinguishing it from the future continuous requires B2-level tense discrimination, matching the target level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The future perfect 'will have finished' is used for an action that will be completed before a specific point in the future ('by the end of next month').",
+          "explanation_vi": "Thì tương lai hoàn thành 'will have finished' dùng để diễn tả một hành động sẽ hoàn thành trước một mốc thời gian xác định trong tương lai ('by the end of next month')."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-future-perfect",
+      "kind": "foundation_quiz",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "By the time you arrive at the office tomorrow morning, the manager ___ the quarterly report.",
+        "options": [
+          {
+            "id": "A",
+            "text": "will finish"
+          },
+          {
+            "id": "B",
+            "text": "will have finished"
+          },
+          {
+            "id": "C",
+            "text": "has finished"
+          },
+          {
+            "id": "D",
+            "text": "is finishing"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_PERFECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "24e55244-e0db-4a63-b1ec-863f3a08ba5e",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the future perfect tense ('will have finished' with 'by the time'), which is typically introduced at B1 level. The sentence is short, uses common vocabulary (office, manager, report), and the distractors are straightforward. While future perfect can appear in B2 syllabi, the simple context and single-clause structure make this accessible to B1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The future perfect 'will have finished' describes an action that will be completed before a specific point in the future ('by the time you arrive tomorrow').",
+          "explanation_vi": "Thì tương lai hoàn thành 'will have finished' diễn tả một hành động sẽ hoàn tất trước một mốc thời gian xác định trong tương lai ('by the time you arrive tomorrow')."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-future-perfect",
+      "kind": "foundation_review",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "By next Friday, the team ___ the final report for the client.",
+        "options": [
+          {
+            "id": "A",
+            "text": "will finish"
+          },
+          {
+            "id": "B",
+            "text": "will have finished"
+          },
+          {
+            "id": "C",
+            "text": "will be finishing"
+          },
+          {
+            "id": "D",
+            "text": "have finished"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_PERFECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "4d1ab1ae-b3b9-4d7f-9aca-d13627d62f4f",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the future perfect tense, which is typically introduced at B1-B2; the sentence itself is simple with common vocabulary, and the distractors (future simple, future continuous, present perfect) are all B1-level structures. The target B2 is slightly high for this straightforward grammar point.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The future perfect 'will have finished' describes an action that will be completed before a specific point in the future ('by next Friday').",
+          "explanation_vi": "Thì tương lai hoàn thành 'will have finished' diễn tả hành động sẽ hoàn thành trước một mốc thời gian xác định trong tương lai ('by next Friday')."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-future-perfect",
+      "kind": "foundation_topic",
+      "cefr_level": "B2",
+      "body": {
+        "related": [
+          "FUTURE_SIMPLE",
+          "FUTURE_PERFECT_CONTINUOUS",
+          "TIME_CLAUSES"
+        ],
+        "examples": [
+          {
+            "note": "A future deadline ('by 2030') with an action completed before that point; 'will have mapped' = will have + past participle.",
+            "text": "By 2030, scientists will have mapped most of the ocean floor."
+          },
+          {
+            "note": "Contrasts completion (future perfect) with an ongoing state; 'by then' marks the future reference point.",
+            "text": "Don't call me at 8 p.m. — I will have finished dinner by then, but I'll be relaxing."
+          },
+          {
+            "note": "In the time clause 'by the time you arrive', the present simple is used even though the meaning is future.",
+            "text": "By the time you arrive at the station, the train will have left."
+          }
+        ],
+        "objective": "Understand the formation and core uses of the future perfect tense (will have + past participle) to describe actions that will be completed before a specific point in the future, and use it accurately with time expressions such as 'by', 'by the time', and 'before'.",
+        "_provenance": {
+          "batch": "foundation:FUTURE_PERFECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "2ae4a477-9ac0-4a06-8d5a-b1cb48cd49b8",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "The future perfect is formed with 'will have' + the past participle (V3): affirmative 'will have done', negative 'will not (won't) have done', and interrogative 'Will you have done...?'. It describes an action that will be finished before a certain moment or deadline in the future. It is typically used with time expressions that mark a future deadline: 'by 2030', 'by next Monday', 'by the time you arrive', 'before the meeting starts', 'in two years' time'. The emphasis is on completion, not duration: 'By 6 p.m., I will have finished the report' means the report will be complete at or before 6 p.m. The future perfect can also express assumptions about the present or recent past ('They will have received the email by now' = they have probably received it). Note that the future perfect often appears with simple present or future simple clauses: 'By the time she arrives, we will have eaten.' Do not use it for actions still in progress at the future moment — use the future perfect continuous ('will have been doing') instead.",
+          "vi": "Thì tương lai hoàn thành được cấu tạo bằng 'will have' + quá khứ phân từ (V3): khẳng định 'will have done', phủ định 'will not (won't) have done', nghi vấn 'Will you have done...?'. Thì này diễn tả một hành động sẽ hoàn tất trước một mốc thời gian xác định trong tương lai, thường đi kèm các cụm từ chỉ mốc thời gian như 'by 2030', 'by next Monday', 'by the time you arrive', 'before the meeting starts'. Trọng tâm là sự HOÀN THÀNH, không phải quá trình kéo dài: 'By 6 p.m., I will have finished the report' nghĩa là báo cáo sẽ xong trước hoặc đúng 6 giờ. Ngoài ra, tương lai hoàn thành còn dùng để suy đoán về hiện tại hoặc quá khứ gần ('They will have received the email by now' = chắc hẳn họ đã nhận được email). Lưu ý: mệnh đề chỉ thời gian thường dùng thì hiện tại đơn ('By the time she arrives, we will have eaten'), không dùng 'will' trong mệnh đề đó. Nếu muốn nhấn mạnh hành động kéo dài liên tục đến mốc thời gian đó, hãy dùng tương lai hoàn thành tiếp diễn ('will have been doing')."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In time clauses introduced by 'by the time', 'when', 'before', or 'after', the present simple is used for future meaning; 'will' should appear only in the main clause.",
+            "right": "By the time she arrives, we will have eaten dinner.",
+            "wrong": "By the time she will arrive, we will have eaten dinner."
+          },
+          {
+            "why": "After 'will have' use the past participle (V3), not the base form.",
+            "right": "By next year, I will have finished the course.",
+            "wrong": "By next year, I will have finish the course."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

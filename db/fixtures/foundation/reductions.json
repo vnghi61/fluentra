@@ -1,11 +1,391 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2609767Z",
+  "generated_at": "2026-09-25T18:49:49.3712054Z",
   "node": {
     "namespace": "pronunciation",
     "code": "REDUCTIONS",
     "label": "Reductions",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-reductions-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "In informal spoken English, someone says \"I'm ___ call you later tonight.\" Which reduced form correctly fills the blank?",
+        "options": [
+          {
+            "id": "A",
+            "text": "gonna"
+          },
+          {
+            "id": "B",
+            "text": "wanna"
+          },
+          {
+            "id": "C",
+            "text": "gotta"
+          },
+          {
+            "id": "D",
+            "text": "hafta"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:REDUCTIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "60ddbada-ea87-4f52-a906-c5b5d7acc7ef",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests recognition of informal spoken contractions ('gonna', 'wanna', 'gotta', 'hafta') in a simple future-plan context. While the sentence structure itself is A2-level, familiarity with reduced spoken forms and register awareness (informal vs. standard English) typically emerges around B1, matching the target level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In fast, informal speech, 'going to' is commonly reduced to 'gonna' when talking about future plans: 'I'm gonna call you later.' 'Wanna' = want to, 'gotta' = have got to, and 'hafta' = have to, so they do not fit the meaning of a future action.",
+          "explanation_vi": "Trong văn nói thân mật, 'going to' thường được rút gọn thành 'gonna' khi nói về kế hoạch tương lai: 'I'm gonna call you later.' 'Wanna' = want to, 'gotta' = have got to, 'hafta' = have to, nên không phù hợp với ý nghĩa hành động trong tương lai."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-reductions-listening-comprehension-3",
+      "kind": "listening_comprehension",
+      "cefr_level": "B1",
+      "body": {
+        "title": "Weekend Plans",
+        "script": "Hey, Jake! Are you gonna come to the beach with us tomorrow? A bunch of us are gonna meet at the station around nine. Sam wanted to drive, but he's gotta work till eight, so we're taking the bus instead. You don't hafta bring anything — just your swimsuit and some sunscreen. Oh, and Mia says she's kinda tired, so she might leave early. Lemme know by tonight if you're in, 'cause I hafta book the tickets before ten. Cool? See ya tomorrow!",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "How will the group travel to the beach?",
+            "options": [
+              {
+                "id": "A",
+                "text": "By car"
+              },
+              {
+                "id": "B",
+                "text": "By bus"
+              },
+              {
+                "id": "C",
+                "text": "By train"
+              },
+              {
+                "id": "D",
+                "text": "By bicycle"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The speaker says Sam wanted to drive but has to work, so 'we're taking the bus instead.'",
+              "explanation_vi": "Người nói cho biết Sam định lái xe nhưng phải làm việc, nên 'we're taking the bus instead' — cả nhóm đi xe buýt."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "What time does the speaker need to book the tickets by?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Eight o'clock"
+              },
+              {
+                "id": "B",
+                "text": "Nine o'clock"
+              },
+              {
+                "id": "C",
+                "text": "Ten o'clock"
+              },
+              {
+                "id": "D",
+                "text": "Tonight at midnight"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The speaker says 'I hafta book the tickets before ten' — 'hafta' is the reduced form of 'have to.'",
+              "explanation_vi": "Người nói nói 'I hafta book the tickets before ten' — 'hafta' là dạng rút gọn của 'have to', nghĩa là phải đặt vé trước 10 giờ."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "What does the speaker ask Jake to bring?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Food and drinks"
+              },
+              {
+                "id": "B",
+                "text": "A bus ticket"
+              },
+              {
+                "id": "C",
+                "text": "His swimsuit and sunscreen"
+              },
+              {
+                "id": "D",
+                "text": "Nothing at all"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The speaker says 'You don't hafta bring anything — just your swimsuit and some sunscreen.'",
+              "explanation_vi": "Người nói nói 'You don't hafta bring anything — just your swimsuit and some sunscreen', tức Jake chỉ cần mang đồ bơi và kem chống nắng."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "Why might Mia leave early?",
+            "options": [
+              {
+                "id": "A",
+                "text": "She has to work"
+              },
+              {
+                "id": "B",
+                "text": "She is kind of tired"
+              },
+              {
+                "id": "C",
+                "text": "She doesn't like the beach"
+              },
+              {
+                "id": "D",
+                "text": "She has to catch a train"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The speaker says 'Mia says she's kinda tired' — 'kinda' is the reduced form of 'kind of.'",
+              "explanation_vi": "Người nói nói 'Mia says she's kinda tired' — 'kinda' là dạng rút gọn của 'kind of', nghĩa là Mia hơi mệt nên có thể về sớm."
+            },
+            "correct_option_id": "B"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:REDUCTIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "4a316443-de0f-46e5-80a7-9f9623ff6b68",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The listening item uses clear standard speech about everyday weekend plans with simple multiple-choice questions. However, it includes reduced forms ('hafta', 'kinda') and connected speech typical of natural B1-level listening, requiring learners to decode informal pronunciation beyond A2. Vocabulary and grammar (modal 'have to', simple present) are within B1 range.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "B",
+              "q2": "C",
+              "q3": "C",
+              "q4": "B"
+            }
+          }
+        }
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-reductions-speaking-task-2",
+      "kind": "speaking_task",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Talk about a time you had to give someone directions or explain how to do something. What did you say, and how did it go? Try to speak naturally, linking your words together the way native speakers do (for example, saying 'gonna' for 'going to' or 'wanna' for 'want to').",
+        "task_type": "respond",
+        "_provenance": {
+          "batch": "foundation:REDUCTIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "308cd7f8-484b-46cd-85dc-e24044dd8b1c",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The task asks learners to narrate a past personal experience (giving directions/explaining how to do something) in 45 seconds, which aligns with B1 descriptors of describing experiences and events in simple connected speech. The vocabulary is everyday, and the focus on natural reductions ('gonna', 'wanna') targets fluency and connected speech typical of B1 pronunciation goals. No complex syntax or abstract topics are required, so B1 is appropriate.",
+          "prompt_version": "item_generate.v1"
+        },
+        "explanation": {
+          "text": "A strong answer describes the situation, what you explained, and the result. Focus on natural connected speech: use common reductions such as 'gonna' (going to), 'wanna' (want to), 'gotta' (have got to), and 'kinda' (kind of). Linking words smoothly shows fluency and natural pronunciation at B1 level.",
+          "text_vi": "Câu trả lời tốt cần nêu tình huống, nội dung bạn giải thích và kết quả. Tập trung vào cách nói nối từ tự nhiên: dùng các dạng rút gọn phổ biến như 'gonna' (going to), 'wanna' (want to), 'gotta' (have got to), 'kinda' (kind of). Nối từ trôi chảy thể hiện sự lưu loát và phát âm tự nhiên ở trình độ B1."
+        },
+        "speaking_time_seconds": 45
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-reductions",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "In natural spoken English, how is the phrase 'want to' usually pronounced when speaking quickly?",
+        "options": [
+          {
+            "id": "A",
+            "text": "want to (two full words, /wɒnt tuː/)"
+          },
+          {
+            "id": "B",
+            "text": "wanna (/wɒnə/)"
+          },
+          {
+            "id": "C",
+            "text": "wantcha (/wɒntʃə/)"
+          },
+          {
+            "id": "D",
+            "text": "wanna-ta (/wɒnə tuː/)"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:REDUCTIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "6afd6517-ef18-47f0-9b16-505c843b3308",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests recognition of the common spoken reduction 'wanna', a feature of natural connected speech typically introduced at B1 when learners work with authentic listening. Vocabulary and grammar are simple, but awareness of pronunciation reduction requires more than A2-level familiarity.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In fast, natural speech, 'want to' is commonly reduced to 'wanna' (/wɒnə/). This is a very common spoken reduction, e.g. 'I wanna go home.' Note: 'wantcha' would be a reduction of 'want you', not 'want to'.",
+          "explanation_vi": "Trong lời nói nhanh và tự nhiên, 'want to' thường được rút gọn thành 'wanna' (/wɒnə/), ví dụ 'I wanna go home.' Lưu ý: 'wantcha' là dạng rút gọn của 'want you', không phải 'want to'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-reductions",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "In fast, natural spoken English, the phrase 'want to go' is usually pronounced ___.",
+        "options": [
+          {
+            "id": "A",
+            "text": "'wanna go'"
+          },
+          {
+            "id": "B",
+            "text": "'want to go' with two clear, separate words"
+          },
+          {
+            "id": "C",
+            "text": "'wan-tuh goo' with a strong 't' sound"
+          },
+          {
+            "id": "D",
+            "text": "'wanty go' with a long 'ee' sound"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:REDUCTIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "a0d9aa70-4eba-4915-a27e-d8b0f15deafd",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests recognition of connected-speech reductions ('wanna', 'gonna', 'gotta'), a listening/pronunciation awareness skill typically introduced at B1. Vocabulary is simple, but understanding natural spoken reductions requires more than A2-level listening competence, matching the target B1 level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In connected speech, 'want to' is commonly reduced to 'wanna' (e.g., 'I wanna go home'). The 't' merges with 'to', and the vowel weakens. Recognizing reductions like 'wanna', 'gonna' (going to), and 'gotta' (got to) is essential for understanding natural spoken English.",
+          "explanation_vi": "Trong lời nói nhanh và tự nhiên, 'want to' thường được rút gọn thành 'wanna' (ví dụ: 'I wanna go home'). Âm 't' nối với 'to' và nguyên âm được yếu đi. Việc nhận biết các dạng rút gọn như 'wanna', 'gonna' (going to) và 'gotta' (got to) rất quan trọng để hiểu tiếng Anh giao tiếp tự nhiên."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-reductions",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "CONTRACTIONS",
+          "LINKING_SOUNDS",
+          "WEAK_FORMS",
+          "INFORMAL_ENGLISH"
+        ],
+        "examples": [
+          {
+            "note": "'Gonna' = 'going to', expressing a future plan. Informal spoken English; in writing you would say 'I'm going to call you tomorrow.'",
+            "text": "I'm gonna call you tomorrow after work."
+          },
+          {
+            "note": "'Wanna' = 'want to' and 'gotta' = 'have got to / have to'. Two reductions in one sentence, typical of casual conversation.",
+            "text": "I wanna travel to Da Nang this summer, but I gotta save money first."
+          },
+          {
+            "note": "'Lemme' = 'let me'. Very common in spoken requests. Notice the sentence ends with 'okay?' which signals informal speech.",
+            "text": "Lemme know if you're coming to the party, okay?"
+          }
+        ],
+        "objective": "Understand and master the most common English pronunciation reductions (gonna, wanna, gotta, lemme, gimme, dunno, kinda, sorta) so learners can recognize them in fast natural speech and use them appropriately in informal spoken English.",
+        "_provenance": {
+          "batch": "foundation:REDUCTIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "51cd2d39-d3c7-4b90-b1c0-042a4205961a",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Reductions (also called contractions of phrases or 'relaxed pronunciation') occur when speakers combine and simplify words in fast, natural speech. Function words and common verb phrases lose syllables and merge together. The most common reductions are: GOING TO → GONNA (/ˈɡɒnə/), WANT TO → WANNA (/ˈwɒnə/), HAVE GOT TO / HAVE TO → GOTTA (/ˈɡɒtə/), LET ME → LEMME (/ˈlɛmi/), GIVE ME → GIMME (/ˈɡɪmi/), DON'T KNOW → DUNNO (/dəˈnoʊ/), KIND OF → KINDA (/ˈkaɪndə/), and SORT OF → SORTA (/ˈsɔːrtə/). Key principles: (1) Reductions are informal and belong mainly in spoken English — casual conversation, movies, songs, texts between friends. (2) They should NOT be used in formal writing, academic essays, business emails, or presentations. (3) The reduced form usually keeps the same meaning as the full form; only the register (level of formality) changes. (4) Note that 'gonna' can only replace 'going to' when it expresses a future plan or prediction, not when 'going to' means physical movement (e.g., 'I'm going to the store' cannot become 'I'm gonna the store'). (5) Listening recognition is just as important as production: knowing reductions helps learners understand native speakers who almost never say 'going to' as two fully pronounced words in casual speech.",
+          "vi": "Giảm âm (reductions) là hiện tượng người bản xứ nói nhanh, gộp và rút gọn các từ thông dụng lại với nhau. Đây là điểm rất quan trọng để người học Việt Nam hiểu phim, bài hát và hội thoại tự nhiên, vì người bản xứ hầu như không phát âm 'going to' thành hai từ đầy đủ trong giao tiếp thân mật. Các dạng phổ biến nhất: GOING TO → GONNA, WANT TO → WANNA, HAVE GOT TO / HAVE TO → GOTTA, LET ME → LEMME, GIVE ME → GIMME, DON'T KNOW → DUNNO, KIND OF → KINDA, SORT OF → SORTA. Lưu ý quan trọng: (1) Chỉ dùng giảm âm trong văn nói thân mật hoặc nhắn tin với bạn bè; KHÔNG dùng trong văn viết trang trọng, email công việc, bài luận học thuật. (2) Nghĩa không đổi, chỉ đổi mức độ trang trọng. (3) Cẩn thận: 'gonna' chỉ thay cho 'going to' khi diễn tả tương lai (kế hoạch, dự đoán), KHÔNG dùng khi 'going to' chỉ sự di chuyển — ví dụ 'I'm going to the store' không thể nói thành 'I'm gonna the store'. (4) Khi mới học, hãy luyện nghe nhận diện trước, sau đó mới dùng trong nói; nếu phát âm sai 'gonna' thành 'go-na' với âm 'o' đầy đủ sẽ nghe rất lạ."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'Gonna' can only replace 'going to' when it introduces a verb (future intention). When 'going to' is followed by a place (movement meaning), it must be pronounced fully and cannot be reduced.",
+            "right": "I'm going to the supermarket to buy some milk. / I'm gonna buy some milk at the supermarket.",
+            "wrong": "I'm gonna the supermarket to buy some milk."
+          },
+          {
+            "why": "Reductions like 'wanna', 'gonna', 'gotta' are informal spoken forms. Using them in formal or professional writing sounds unprofessional; use the full forms or more polite equivalents such as 'would like to'.",
+            "right": "Dear Mr. Smith, I would like to confirm our meeting on Monday. Best regards, Lan.",
+            "wrong": "Dear Mr. Smith, I wanna confirm our meeting on Monday. Best regards, Lan."
+          },
+          {
+            "why": "Reduction changes pronunciation but not grammar. Third-person singular subjects still require 'doesn't'; learners sometimes drop the -s agreement when using reduced forms.",
+            "right": "He doesn't wanna go.",
+            "wrong": "He don't wanna go."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

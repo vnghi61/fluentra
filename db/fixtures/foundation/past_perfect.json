@@ -1,11 +1,242 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2100489Z",
+  "generated_at": "2026-09-25T18:49:49.3306926Z",
   "node": {
     "namespace": "grammar",
     "code": "PAST_PERFECT",
     "label": "Past Perfect",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-past-perfect-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'By the time': The guests arrived. Before that, we had already cleaned the whole house.",
+        "acceptable": [
+          "By the time the guests arrived, we had cleaned the whole house.",
+          "By the time the guests arrived, we had already cleaned the entire house."
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_PERFECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "847ae996-7664-4c5b-9f79-b663e8f89130",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests past perfect with 'By the time' connectors, which aligns with B1 grammar (past perfect and connectors are typically introduced at B1). Vocabulary is simple and everyday.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "By the time the guests arrived, we had already cleaned the whole house."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past perfect 'had cleaned' shows that the cleaning was completed before another past event (the guests' arrival). When combining the two sentences with 'By the time', the earlier action must use the past perfect.",
+          "explanation_vi": "Thì quá khứ hoàn thành 'had cleaned' diễn tả hành động đã hoàn thành trước một sự việc khác trong quá khứ (khi khách đến). Khi nối hai câu bằng 'By the time', hành động xảy ra trước phải dùng thì quá khứ hoàn thành."
+        },
+        "correct_answer": "By the time the guests arrived, we had already cleaned the whole house."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-past-perfect-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "When I got to the cinema, my friends ___ the tickets already, so we went straight in.",
+        "options": [
+          {
+            "id": "A",
+            "text": "bought"
+          },
+          {
+            "id": "B",
+            "text": "had bought"
+          },
+          {
+            "id": "C",
+            "text": "have bought"
+          },
+          {
+            "id": "D",
+            "text": "were buying"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_PERFECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "f1bbdf28-f4d8-47d6-ba13-4c5295c3f9bf",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "Past perfect vs past simple contrast is a classic B1 grammar point; the sentence is short and uses everyday vocabulary, with distractors testing tense discrimination.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Past perfect 'had bought' is used because the buying happened before another past event (arriving at the cinema).",
+          "explanation_vi": "Thì quá khứ hoàn thành 'had bought' được dùng vì hành động mua vé đã xảy ra trước một sự việc khác trong quá khứ (khi đến rạp chiếu phim)."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-past-perfect",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "When I got to the cinema, the film ___ already started, so I missed the first ten minutes.",
+        "options": [
+          {
+            "id": "A",
+            "text": "has"
+          },
+          {
+            "id": "B",
+            "text": "had"
+          },
+          {
+            "id": "C",
+            "text": "was"
+          },
+          {
+            "id": "D",
+            "text": "did"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_PERFECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "5ba04846-30ea-49c2-9d3f-07cc59d19738",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the past perfect ('had started') in a two-action past narrative, a grammar point typically introduced at B1. Vocabulary (cinema, missed the first ten minutes) is familiar, and distractors are simple auxiliaries, making the item appropriate for B1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past perfect 'had started' shows that one action (the film starting) was completed before another past action (arriving at the cinema).",
+          "explanation_vi": "Thì quá khứ hoàn thành 'had started' diễn tả một hành động (phim bắt đầu) đã hoàn thành trước một hành động khác trong quá khứ (đến rạp chiếu phim)."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-past-perfect",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "After she ___ her homework, she went out with her friends.",
+        "options": [
+          {
+            "id": "A",
+            "text": "had finished"
+          },
+          {
+            "id": "B",
+            "text": "has finished"
+          },
+          {
+            "id": "C",
+            "text": "finishes"
+          },
+          {
+            "id": "D",
+            "text": "was finishing"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_PERFECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "6d9a2efc-74df-4027-bf11-38624cc95476",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the past perfect ('had started') in a two-past-events context, a grammar point typically introduced at B1. Vocabulary (cinema, missed the first ten minutes) is familiar, and the sentence structure is simple, keeping the item accessible at B1 rather than B2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Finishing the homework happened before going out, so the earlier action takes the past perfect 'had finished' and the later one the past simple 'went'.",
+          "explanation_vi": "Làm xong bài tập xảy ra trước khi đi chơi, nên hành động trước dùng quá khứ hoàn thành 'had finished', hành động sau dùng quá khứ đơn 'went'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-past-perfect",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "PAST_SIMPLE",
+          "PAST_PERFECT_CONTINUOUS",
+          "REPORTED_SPEECH"
+        ],
+        "examples": [
+          {
+            "note": "The film started first (past perfect), then we arrived (past simple). 'By the time' signals that one action was completed before another.",
+            "text": "By the time we got to the cinema, the film had already started."
+          },
+          {
+            "note": "Losing the keys happened before the attempt to enter; the past perfect clarifies the cause-and-effect order of past events.",
+            "text": "She couldn't get into the house because she had lost her keys."
+          }
+        ],
+        "objective": "Understand the formation and core uses of the past perfect tense (had + past participle), including how to describe an action completed before another past action, and use it accurately in narratives and with time expressions such as 'before', 'after', 'by the time', and 'already'.",
+        "_provenance": {
+          "batch": "foundation:PAST_PERFECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "e5d03369-b197-451e-85ed-9bddf3f8e961",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "The past perfect is formed with 'had' + the past participle of the main verb (e.g., 'had finished', 'had gone', 'had eaten'). It is the same for all subjects (I/you/he/she/it/we/they had). The past perfect describes an action or state that was completed BEFORE another point or event in the past. It creates a 'past within the past': when two past events are mentioned, the earlier one takes the past perfect and the later one takes the past simple. For example: 'When I arrived, the train had already left.' (First the train left, then I arrived.) It is commonly used with time expressions such as 'before', 'after', 'by the time', 'already', 'just', 'never', and 'when'. It is also used in reported speech ('She said she had seen the film') and with third conditional sentences ('If I had known, I would have told you'). Use the past perfect only when the sequence of past events matters and is not already clear; if events happen in chronological order, the past simple alone is usually enough.",
+          "vi": "Quá khứ hoàn thành (Past Perfect) được cấu tạo bằng 'had' + quá khứ phân từ (V3/V-ed), ví dụ: 'had finished', 'had gone'. Thể thức này giống nhau với mọi chủ ngữ (I/you/he/she/it/we/they had). Thì này dùng để diễn tả một hành động đã hoàn thành TRƯỚC một thời điểm hoặc hành động khác trong quá khứ — tức là 'quá khứ của quá khứ'. Khi kể về hai sự việc trong quá khứ, sự việc xảy ra trước dùng quá khứ hoàn thành, sự việc xảy ra sau dùng quá khứ đơn. Ví dụ: 'When I arrived, the train had already left.' (Tàu rời đi trước, tôi đến sau.) Các trạng từ thường đi kèm: 'before', 'after', 'by the time', 'already', 'just', 'never', 'when'. Ngoài ra, quá khứ hoàn thành còn dùng trong câu tường thuật ('She said she had seen the film') và câu điều kiện loại ba ('If I had known, I would have told you'). Lưu ý: chỉ dùng quá khứ hoàn thành khi thứ tự sự việc quan trọng và chưa rõ ràng; nếu các sự việc diễn ra tuần tự theo trình tự, chỉ cần quá khứ đơn."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "The train's departure happened before the arrival, so the earlier action must be in the past perfect ('had left'). Using only the past simple makes the two actions seem simultaneous or in the wrong order.",
+            "right": "When I arrived at the station, the train had already left.",
+            "wrong": "When I arrived at the station, the train already left."
+          },
+          {
+            "why": "Only the FIRST (earlier) action takes the past perfect; the later action takes the past simple. Using the past perfect for both actions is unnecessary and incorrect.",
+            "right": "After I had finished my homework, I watched TV.",
+            "wrong": "After I had finished my homework, I had watched TV."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

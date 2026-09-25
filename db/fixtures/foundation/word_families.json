@@ -1,11 +1,290 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.3105273Z",
+  "generated_at": "2026-09-25T18:49:49.4149262Z",
   "node": {
     "namespace": "vocabulary",
     "code": "WORD_FAMILIES",
     "label": "Word Families",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-word-families-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence using the noun form of the verb 'decide': After they decided to move abroad, their lives changed completely. Begin your answer with: 'Their decision...'",
+        "acceptable": [
+          "Their decision to move abroad completely changed their lives.",
+          "Their decision to move abroad changed their life completely."
+        ],
+        "_provenance": {
+          "batch": "foundation:WORD_FAMILIES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "ecbf8080-9710-4fca-9f24-9a134d11adb8",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item requires transforming a verb into a noun (decide → decision) and restructuring a sentence, which involves word-family knowledge and clause manipulation typical of B1. The vocabulary is familiar and the transformation is guided by a sentence starter, keeping it within B1 rather than B2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Their decision to move abroad changed their lives completely."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The verb 'decide' becomes the noun 'decision' in the same word family (decide → decision → decisive). When transforming, the subject changes and the noun becomes the new subject of the sentence: 'Their decision to move abroad changed their lives completely.'",
+          "explanation_vi": "Động từ 'decide' chuyển thành danh từ 'decision' trong cùng họ từ (decide → decision → decisive). Khi chuyển đổi, danh từ trở thành chủ ngữ mới của câu: 'Their decision to move abroad changed their lives completely.'"
+        },
+        "correct_answer": "Their decision to move abroad changed their lives completely."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-word-families-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "After weeks of careful thought, she finally ___ to accept the new job offer last Friday.",
+        "options": [
+          {
+            "id": "A",
+            "text": "decision"
+          },
+          {
+            "id": "B",
+            "text": "decided"
+          },
+          {
+            "id": "C",
+            "text": "decisive"
+          },
+          {
+            "id": "D",
+            "text": "deciding"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WORD_FAMILIES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "a57c625e-b9b4-4852-81c7-9a651984a19b",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests past simple tense recognition with a time marker ('last Friday') and word-family discrimination (decide/decision/decisive/deciding). Past simple is an A2 grammar point, and the vocabulary is common. The distractors require basic part-of-speech awareness, but the overall task is below B1 complexity.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The sentence needs a finite verb in the past simple tense because of 'last Friday'. 'Decided' is the past form of the verb 'decide'. The other options are different members of the same word family: 'decision' is a noun, 'decisive' is an adjective, and 'deciding' is an -ing form that cannot act as the main verb here.",
+          "explanation_vi": "Câu cần một động từ chia ở thì quá khứ đơn vì có cụm 'last Friday'. 'Decided' là dạng quá khứ của động từ 'decide'. Các lựa chọn khác thuộc cùng họ từ: 'decision' là danh từ, 'decisive' là tính từ, và 'deciding' là dạng V-ing không thể làm động từ chính trong câu."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-word-families-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Please drive ___. The road is wet and slippery.",
+        "options": [
+          {
+            "id": "A",
+            "text": "careful"
+          },
+          {
+            "id": "B",
+            "text": "carefully"
+          },
+          {
+            "id": "C",
+            "text": "care"
+          },
+          {
+            "id": "D",
+            "text": "careless"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WORD_FAMILIES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "4e2b9562-6513-4cab-8758-b58934b515a1",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the common collocation 'make a decision' and word-form distinction (noun vs adjective/gerund), which aligns with B1 vocabulary and word-formation skills. The sentence context is clear and standard.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The blank describes how to drive, so we need the adverb 'carefully'. 'Careful' is the adjective, 'care' is the noun/verb, and 'careless' means the opposite.",
+          "explanation_vi": "Chỗ trống mô tả cách lái xe nên cần trạng từ 'carefully'. 'Careful' là tính từ, 'care' là danh từ/động từ, còn 'careless' mang nghĩa ngược lại."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-word-families",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Choose the correct word form to complete the sentence: After a long discussion, the committee finally made a ___ about the new project.",
+        "options": [
+          {
+            "id": "A",
+            "text": "decide"
+          },
+          {
+            "id": "B",
+            "text": "decision"
+          },
+          {
+            "id": "C",
+            "text": "decisive"
+          },
+          {
+            "id": "D",
+            "text": "deciding"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WORD_FAMILIES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "71b44d69-b4ae-467a-96cc-d0847b64534b",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic word-form knowledge (decide/decision/decisive/deciding) in a simple sentence with common vocabulary ('made a decision'). Word-family noun/verb/adjective distinction is typically an A2-level task; the sentence structure is simple past with no complex syntax. It is slightly below the requested B1 target.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The word 'decision' is the noun form of the verb 'decide'. After 'made a', we need a noun: 'made a decision'. 'Decisive' is an adjective and 'deciding' is a gerund/participle, which do not fit here.",
+          "explanation_vi": "'Decision' là danh từ của động từ 'decide'. Sau 'made a' ta cần một danh từ: 'made a decision'. 'Decisive' là tính từ và 'deciding' là danh động từ/phân từ, không phù hợp trong câu này."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-word-families",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "My uncle takes beautiful photos of nature. He is a professional ___.",
+        "options": [
+          {
+            "id": "A",
+            "text": "photographer"
+          },
+          {
+            "id": "B",
+            "text": "photograph"
+          },
+          {
+            "id": "C",
+            "text": "photography"
+          },
+          {
+            "id": "D",
+            "text": "photographic"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WORD_FAMILIES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "ba1abf21-b2df-4fba-973f-0d20b79dcf9c",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests word family derivation (photograph/photographer/photography/photographic), a typical B1 vocabulary skill. The sentence context is simple, but the derived forms and the abstract noun 'photography' exceed A2; the task is a guided foundation review, so it sits at B1 rather than B2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The word family of 'photograph' includes photograph (noun/verb), photographer (person), photography (activity) and photographic (adjective). After 'a professional' we need the noun for a person: 'photographer'.",
+          "explanation_vi": "Họ từ của 'photograph' gồm photograph (danh từ/động từ), photographer (người), photography (hoạt động) và photographic (tính từ). Sau 'a professional' cần danh từ chỉ người: 'photographer'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-word-families",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "PREFIXES_AND_SUFFIXES",
+          "PARTS_OF_SPEECH",
+          "ADVERB_FORMATION"
+        ],
+        "examples": [
+          {
+            "note": "'careful' (adjective) and 'carefully' (adverb) both come from 'care'; 'decision' is the noun from the verb 'decide'.",
+            "text": "She made a careful decision after thinking about the problem carefully."
+          },
+          {
+            "note": "Family of 'explain': explanation (noun, irregular spelling); 'helpful' (help + -ful); 'quickly' (quick + -ly).",
+            "text": "His explanation of the new system was very helpful, and everyone understood it quickly."
+          }
+        ],
+        "objective": "Understand how English word families are built by adding prefixes and suffixes to base words, and correctly use related noun, verb, adjective, and adverb forms in B1-level speaking and writing.",
+        "_provenance": {
+          "batch": "foundation:WORD_FAMILIES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "07114ae5-c964-4129-92c2-27ff03a600f3",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "A word family is a group of words that share the same base (root) word but belong to different parts of speech. For example, from the base 'care' we get: care (noun/verb), careful (adjective), carefully (adverb), and careless (adjective). Learning word families helps you expand vocabulary quickly and build grammatically correct sentences. Common suffixes include: -tion/-sion (decide → decision), -ment (develop → development), -ness (happy → happiness), -ity (able → ability), -er/-or (teach → teacher), -ful/-less (help → helpful/helpless), -ly (quick → quickly), and -ive/-able (create → creative, accept → acceptable). Common prefixes include: un- (happy → unhappy), in-/im- (correct → incorrect, possible → impossible), re- (write → rewrite), and dis- (agree → disagree). Be careful: some words change spelling when suffixes are added (decide → decision, happy → happiness), and some families are irregular (explain → explanation, not 'explaination'). Not every base word produces every form, so it is best to learn families as complete sets.",
+          "vi": "Nhóm từ vựng (word family) là tập hợp các từ có cùng một gốc nhưng thuộc các từ loại khác nhau. Ví dụ từ gốc 'care': care (danh từ/động từ), careful (tính từ), carefully (trạng từ), careless (tính từ). Học theo nhóm từ giúp bạn mở rộng vốn từ nhanh và viết câu đúng ngữ pháp. Các hậu tố phổ biến: -tion/-sion (decide → decision), -ment (develop → development), -ness (happy → happiness), -ity (able → ability), -er/-or (teach → teacher), -ful/-less (help → helpful/helpless), -ly (quick → quickly), -ive/-able (create → creative, accept → acceptable). Tiền tố phổ biến: un- (unhappy), in-/im- (incorrect, impossible), re- (rewrite), dis- (disagree). Lưu ý: một số từ thay đổi chính tả khi thêm hậu tố (decide → decision, happy → happiness), một số dạng bất quy tắc (explain → explanation, KHÔNG phải 'explaination'). Không phải từ gốc nào cũng có đủ mọi dạng, nên hãy học cả nhóm từ như một bộ hoàn chỉnh."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "The noun form of 'explain' is 'explanation', not 'explaination'. Some verbs change spelling irregularly when the -tion suffix is added, so these forms must be memorized.",
+            "right": "He gave a very good explanation of the rules.",
+            "wrong": "He gave a very good explaination of the rules."
+          },
+          {
+            "why": "The base word 'care' is a noun/verb. To describe a person's character, you need the adjective form: 'caring' or 'careful'. Using the base form as an adjective is a common word-family error.",
+            "right": "She is a very caring person and always helps others.",
+            "wrong": "She is a very care person and always helps others."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2438983Z",
+  "generated_at": "2026-09-25T18:49:49.3586775Z",
   "node": {
     "namespace": "skill",
     "code": "READING",
@@ -56,6 +56,7 @@
         "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:25:16Z"
@@ -235,6 +236,7 @@
         "passage_title": "Mai's Saturday"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:24:24Z"
@@ -414,6 +416,7 @@
         "passage_title": "Mai's Day at the Market"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:25:07Z"
@@ -467,6 +470,7 @@
         "correct_option_id": "B"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:25:27Z"
@@ -520,6 +524,7 @@
         "correct_option_id": "B"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:25:41Z"
@@ -572,6 +577,7 @@
         ]
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:25:56Z"

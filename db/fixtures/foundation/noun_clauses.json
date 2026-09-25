@@ -1,11 +1,295 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1958039Z",
+  "generated_at": "2026-09-25T18:49:49.3149449Z",
   "node": {
     "namespace": "grammar",
     "code": "NOUN_CLAUSES",
     "label": "Noun Clauses",
     "cefr_level": "B2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-noun-clauses-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Rewrite the sentence using a noun clause beginning with 'what': Nobody could explain the reason for his sudden resignation.",
+        "acceptable": [
+          "Nobody could explain what caused him to resign suddenly.",
+          "Nobody could explain what made him resign so suddenly.",
+          "Nobody could explain what caused his sudden resignation."
+        ],
+        "_provenance": {
+          "batch": "foundation:NOUN_CLAUSES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "2d654b21-9cbf-4d68-92a0-bf901099609a",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item requires transforming a phrase into a noun clause with 'what' as subject, understanding clause functions, and maintaining statement word order—advanced syntactic manipulation typical of B2 grammar work. Vocabulary like 'resignation' is also B2-appropriate.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Nobody could explain what made him resign suddenly."
+          }
+        },
+        "explanation": {
+          "explanation_en": "A noun clause beginning with 'what' functions as the object of the verb 'explain'. The phrase 'the reason for his sudden resignation' is replaced by the clause 'what made him resign suddenly', where 'what' acts as the subject of the clause. Note that the noun clause keeps normal statement word order (no inversion).",
+          "explanation_vi": "Mệnh đề danh ngữ bắt đầu bằng 'what' đóng vai trò là tân ngữ của động từ 'explain'. Cụm 'the reason for his sudden resignation' được thay bằng mệnh đề 'what made him resign suddenly', trong đó 'what' làm chủ ngữ của mệnh đề. Lưu ý mệnh đề danh ngữ giữ trật tự từ của câu trần thuật (không đảo ngữ)."
+        },
+        "correct_answer": "Nobody could explain what made him resign suddenly."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-noun-clauses-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "The committee has not yet decided ___ the new policy will take effect next month or in January.",
+        "options": [
+          {
+            "id": "A",
+            "text": "whether"
+          },
+          {
+            "id": "B",
+            "text": "that"
+          },
+          {
+            "id": "C",
+            "text": "what"
+          },
+          {
+            "id": "D",
+            "text": "which"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:NOUN_CLAUSES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8c6baf7c-a47e-4748-9618-a3e4001d5c87",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests a noun clause with 'whether' vs 'that' in a single, clear sentence with everyday vocabulary. While noun clauses are slightly above basic level, this distinction is typically mastered at B1; it does not require the complex syntax or abstract vocabulary expected at B2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A noun clause introduced by 'whether' expresses an alternative or choice between two possibilities ('next month or in January'). 'That' would state a fact, not a choice, so it does not fit the meaning here.",
+          "explanation_vi": "Mệnh đề danh từ bắt đầu bằng 'whether' diễn tả sự lựa chọn giữa hai khả năng ('tháng sau hoặc tháng Giêng'). 'That' dùng để khẳng định một sự việc, không phù hợp với ý nghĩa lựa chọn ở đây."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-noun-clauses-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "The committee could not agree on ___ the new policy would benefit all employees.",
+        "options": [
+          {
+            "id": "A",
+            "text": "whether"
+          },
+          {
+            "id": "B",
+            "text": "that"
+          },
+          {
+            "id": "C",
+            "text": "what"
+          },
+          {
+            "id": "D",
+            "text": "which"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:NOUN_CLAUSES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "7d322717-abea-4aaf-9720-dc5591ea0007",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests noun clause connectors after prepositional verbs ('agree on whether...'), requiring discrimination between 'whether', 'that', 'what', and 'which' in an abstract, formal context (committee policy debate). This subordinating-clause nuance and abstract topic align with B2 rather than B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The noun clause after 'agree on' expresses an open question with two possible answers (yes or no), so 'whether' is required. 'That' would state a fact as certain, which contradicts 'could not agree'.",
+          "explanation_vi": "Mệnh đề danh từ sau 'agree on' diễn tả câu hỏi mở với hai khả năng (có hoặc không), nên phải dùng 'whether'. 'That' khẳng định một sự việc chắc chắn, mâu thuẫn với 'could not agree'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-noun-clauses",
+      "kind": "foundation_quiz",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Complete the sentence: I don't know ___ the manager will accept our proposal or not.",
+        "options": [
+          {
+            "id": "A",
+            "text": "whether"
+          },
+          {
+            "id": "B",
+            "text": "that"
+          },
+          {
+            "id": "C",
+            "text": "what"
+          },
+          {
+            "id": "D",
+            "text": "which"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:NOUN_CLAUSES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "84703311-4be4-45df-b146-db69483ad59f",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests noun clauses with 'whether... or not' after 'I don't know', a grammar point typically introduced at B1. Vocabulary ('manager', 'proposal', 'accept') is work-related but common, and the sentence structure is simple. While noun clauses can extend into B2, this specific whether/or not pattern is standard B1-level grammar practice.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In noun clauses after 'I don't know', 'whether... or not' introduces an indirect yes/no question. 'That' cannot be used with 'or not', and 'what' or 'which' would require a noun phrase to refer to.",
+          "explanation_vi": "Trong mệnh đề danh từ sau 'I don't know', 'whether... or not' được dùng để giới thiệu câu hỏi gián tiếp dạng có/không. 'That' không thể đi cùng 'or not', còn 'what' hoặc 'which' cần có danh từ để chỉ đối tượng."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-noun-clauses",
+      "kind": "foundation_review",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Choose the correct sentence that contains a noun clause functioning as the object of the verb 'know':",
+        "options": [
+          {
+            "id": "A",
+            "text": "I don't know where she put the keys."
+          },
+          {
+            "id": "B",
+            "text": "She lives in a city where the air is clean."
+          },
+          {
+            "id": "C",
+            "text": "Do you know the woman who called earlier?"
+          },
+          {
+            "id": "D",
+            "text": "We visited the town where they met."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:NOUN_CLAUSES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "7076f931-ac35-4983-a68a-8befb4494a83",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests distinguishing noun clauses from relative clauses using simple, everyday sentences (know + where, relative 'where/who'). While metalinguistic clause-type analysis adds some challenge, the vocabulary and syntax are at B1 level; the target B2 is not matched.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In option A, 'where she put the keys' is a noun clause acting as the object of 'know'. The other options contain adjective (relative) clauses modifying nouns, not noun clauses.",
+          "explanation_vi": "Ở phương án A, 'where she put the keys' là mệnh đề danh từ làm tân ngữ cho động từ 'know'. Các phương án còn lại chứa mệnh đề quan hệ (tính từ) bổ nghĩa cho danh từ, không phải mệnh đề danh từ."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-noun-clauses",
+      "kind": "foundation_topic",
+      "cefr_level": "B2",
+      "body": {
+        "related": [
+          "REPORTED_SPEECH",
+          "EMBEDDED_QUESTIONS",
+          "WH_QUESTIONS"
+        ],
+        "examples": [
+          {
+            "note": "A wh-clause functioning as the subject of the sentence; the verb 'surprised' is singular because the whole clause counts as one subject.",
+            "text": "What she said at the meeting surprised everyone."
+          },
+          {
+            "note": "An embedded yes/no question after the adjective 'sure'; 'whether' is used because it appears with 'or not'.",
+            "text": "I'm not sure whether we should accept the offer or not."
+          },
+          {
+            "note": "A polite embedded question: statement order (the station is), not question order ('where is the nearest station').",
+            "text": "Could you tell me where the nearest station is?"
+          }
+        ],
+        "objective": "Understand the formation and core uses of noun clauses (that-clauses, wh-clauses, and if/whether-clauses) as subjects, objects, and complements, and correctly choose between if/whether and wh-words in embedded questions.",
+        "_provenance": {
+          "batch": "foundation:NOUN_CLAUSES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "bc161fda-6254-4672-b868-42cb733bcbbe",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "A noun clause is a dependent clause that functions as a noun within a sentence — as a subject, object, complement, or object of a preposition. There are three main types: (1) 'that'-clauses, used after verbs of reporting, thinking, and feeling (say, believe, know, hope) and after adjectives (glad, sure, obvious); 'that' is often omitted in object position in informal English. (2) Wh-clauses, introduced by question words (what, where, when, why, how, who, which, whose) or by whether/if. Crucially, wh-clauses use STATEMENT word order (subject before verb), not question word order: 'I don't know where he lives,' not 'where does he live.' (3) If/whether-clauses, used for yes/no embedded questions; 'whether' is preferred after prepositions, before 'or not', and as a subject ('Whether he comes is uncertain'). Noun clauses take singular verbs when they act as subjects. Word order inside the clause is the single most important rule: embedded questions never use auxiliary inversion.",
+          "vi": "Mệnh đề danh từ là mệnh đề phụ đóng vai trò như một danh từ trong câu — làm chủ ngữ, tân ngữ, bổ ngữ hoặc tân ngữ của giới từ. Có ba loại chính: (1) Mệnh đề 'that': dùng sau các động từ tường thuật, suy nghĩ, cảm xúc (say, believe, know, hope) và sau tính từ (glad, sure, obvious); trong văn nói, 'that' thường được lược bỏ khi mệnh đề làm tân ngữ. (2) Mệnh đề wh: bắt đầu bằng từ hỏi (what, where, when, why, how, who, whether...). Quy tắc quan trọng nhất: mệnh đề wh dùng TRẬT TỰ CÂU TRẦN THUẬT (chủ ngữ đứng trước động từ), KHÔNG đảo trợ động từ như câu hỏi trực tiếp. Ví dụ: 'I don't know where he lives' (đúng), KHÔNG nói 'where does he live'. (3) Mệnh đề if/whether: dùng cho câu hỏi có/không được nhúng vào câu. Dùng 'whether' (không dùng 'if') sau giới từ, trước 'or not', và khi làm chủ ngữ. Khi mệnh đề danh từ làm chủ ngữ, động từ chia số ít. Lưu ý: không dùng 'do/does/did' trong mệnh đề wh trừ khi hỏi nhấn mạnh."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Embedded (indirect) questions use statement word order: subject before verb, with no auxiliary 'does'. The auxiliary inversion of direct questions ('Where does he live?') must disappear inside a noun clause.",
+            "right": "I don't know where he lives.",
+            "wrong": "I don't know where does he live."
+          },
+          {
+            "why": "'If' cannot follow a preposition ('depends on...') or combine with 'or not' in this position; 'whether' is required after prepositions and before 'or not'.",
+            "right": "Whether he will come depends on whether it rains or not.",
+            "wrong": "Whether he will come depends on if it rains or not."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

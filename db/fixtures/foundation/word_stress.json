@@ -1,6 +1,6 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.3137671Z",
+  "generated_at": "2026-09-25T18:49:49.4170196Z",
   "node": {
     "namespace": "pronunciation",
     "code": "WORD_STRESS",
@@ -36,6 +36,7 @@
         "speaking_time_seconds": 45
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:59:43Z"
@@ -89,6 +90,7 @@
         "correct_option_id": "C"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T15:00:52Z"
@@ -142,6 +144,7 @@
         "correct_option_id": "C"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T15:01:03Z"
@@ -203,6 +206,7 @@
         ]
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T15:01:29Z"

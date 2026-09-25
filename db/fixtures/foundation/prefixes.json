@@ -1,11 +1,293 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2205176Z",
+  "generated_at": "2026-09-25T18:49:49.3401539Z",
   "node": {
     "namespace": "vocabulary",
     "code": "PREFIXES",
     "label": "Prefixes",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-prefixes-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence using the opposite meaning with the prefix 'un-': 'My brother is very happy today.' Begin your sentence with 'My brother is very ___ today.'",
+        "acceptable": [
+          "My brother is very unhappy today."
+        ],
+        "_provenance": {
+          "batch": "foundation:PREFIXES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8eb7f14e-dea7-4952-ae4c-ea0148397491",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses a simple present sentence with very common vocabulary ('happy', 'brother', 'today') and asks learners to apply the basic prefix 'un-', a typical A2-level word formation task. The sentence transformation is straightforward and matches A2 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "My brother is very unhappy today."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The prefix 'un-' is added to adjectives to give them the opposite meaning. 'Happy' becomes 'unhappy', meaning sad or not happy.",
+          "explanation_vi": "Tiền tố 'un-' được thêm vào tính từ để tạo nghĩa trái ngược. 'Happy' trở thành 'unhappy', có nghĩa là buồn hoặc không vui."
+        },
+        "correct_answer": "My brother is very unhappy today."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-prefixes-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Yesterday, Tom ___ his bike and rode to school.",
+        "options": [
+          {
+            "id": "A",
+            "text": "unlocked"
+          },
+          {
+            "id": "B",
+            "text": "unpacked"
+          },
+          {
+            "id": "C",
+            "text": "unfolded"
+          },
+          {
+            "id": "D",
+            "text": "undressed"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PREFIXES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "9e96d3ce-7d24-47e1-9d74-f6405ff58be6",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests past simple with a time marker ('yesterday') and common 'un-' prefixed vocabulary in a simple everyday context (broken bike, walking to school), matching A2 descriptors. The distractors are plausible but the target word 'unfastened' is slightly less common, keeping it at the upper A2 range.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The prefix 'un-' reverses an action: 'unlock' means to open something that was locked. Tom opened the lock on his bike so he could ride it.",
+          "explanation_vi": "Tiền tố 'un-' đảo ngược hành động: 'unlock' nghĩa là mở khóa. Tom mở khóa xe đạp để đạp xe đến trường."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-prefixes-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "I didn't hear the recording clearly, so I asked the teacher to ___ it.",
+        "options": [
+          {
+            "id": "A",
+            "text": "replay"
+          },
+          {
+            "id": "B",
+            "text": "unlearn"
+          },
+          {
+            "id": "C",
+            "text": "misread"
+          },
+          {
+            "id": "D",
+            "text": "prewatch"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PREFIXES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "4a81e8fc-cb95-4d1d-88e9-dcc561ca9a9a",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The sentence uses simple past tense and everyday vocabulary ('understand', 'lesson', 'teacher', 'again'), fitting A2. The task tests the common prefix 're-' with familiar words like 'replay', 'unlearn', and 'misread', which are accessible at A2, though awareness of prefixes adds slight challenge.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The prefix 're-' means 'again'. 'Replay' means to play or present something again so it can be understood better. 'Un-' means the opposite, 'mis-' means wrongly, and 'prewatch' is not a real word.",
+          "explanation_vi": "Tiền tố 're-' có nghĩa là 'lại, một lần nữa'. 'Replay' nghĩa là phát lại để hiểu rõ hơn. 'Un-' mang nghĩa ngược lại, 'mis-' nghĩa là làm sai, còn 'prewatch' không phải là từ thật."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-prefixes",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Choose the correct word to complete the sentence: The weather was cold and ___, so we stayed inside all day.",
+        "options": [
+          {
+            "id": "A",
+            "text": "unfriendly"
+          },
+          {
+            "id": "B",
+            "text": "unpleasant"
+          },
+          {
+            "id": "C",
+            "text": "unlucky"
+          },
+          {
+            "id": "D",
+            "text": "unusual"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PREFIXES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "b9838e53-1fae-4d52-b385-f731739c8ffc",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the common prefix 'un-' with high-frequency adjectives (unpleasant, unfriendly, unlucky, unusual) in a simple past-tense sentence about everyday weather. Vocabulary and structure are typical of A2 word-formation practice.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The prefix 'un-' means 'not'. 'Unpleasant' means 'not pleasant' — bad weather that makes you want to stay inside. 'Unfriendly' describes people, 'unlucky' describes bad luck, and 'unusual' means strange or rare.",
+          "explanation_vi": "Tiền tố 'un-' mang nghĩa 'không'. 'Unpleasant' nghĩa là 'không dễ chịu' — thời tiết xấu khiến ta muốn ở trong nhà. 'Unfriendly' dùng cho con người, 'unlucky' nghĩa là kém may mắn, còn 'unusual' nghĩa là khác thường."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-prefixes",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Choose the word that correctly completes the sentence: My dad was unhappy because I ___ the rules of the game.",
+        "options": [
+          {
+            "id": "A",
+            "text": "misunderstood"
+          },
+          {
+            "id": "B",
+            "text": "understood"
+          },
+          {
+            "id": "C",
+            "text": "understand"
+          },
+          {
+            "id": "D",
+            "text": "understanding"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PREFIXES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "782dc7b1-723e-42ba-ae32-d4783f2bf8cf",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests past simple tense and a common prefix (mis-) in a simple everyday sentence. Vocabulary ('understand', 'rules', 'unhappy') and sentence structure are basic, matching A2 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The prefix 'mis-' means 'wrongly' or 'badly'. 'Misunderstood' means 'understood wrongly', which explains why Dad was unhappy. The other options do not fit the meaning or the past tense needed here.",
+          "explanation_vi": "Tiền tố 'mis-' có nghĩa là 'sai' hoặc 'không đúng'. 'Misunderstood' nghĩa là 'hiểu sai', điều này giải thích vì sao bố không vui. Các phương án còn lại không phù hợp về nghĩa hoặc không đúng thì quá khứ cần dùng."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-prefixes",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "SUFFIXES",
+          "OPPOSITE_ADJECTIVES",
+          "WORD_FORMATION"
+        ],
+        "examples": [
+          {
+            "note": "un- + happy = not happy. The prefix un- gives the opposite meaning of the base word.",
+            "text": "She was unhappy because it rained all weekend."
+          },
+          {
+            "note": "re- + write = write again. The prefix re- means 'do the action again'.",
+            "text": "Please rewrite this paragraph; there are too many mistakes."
+          },
+          {
+            "note": "im- + possible = not possible. Use im- (not in-) before words starting with p, b, or m.",
+            "text": "It is impossible to finish this job in one hour."
+          }
+        ],
+        "objective": "Understand the formation and core uses of common English prefixes (un-, re-, dis-, in-, im-, pre-) to build new words and guess the meaning of unfamiliar vocabulary.",
+        "_provenance": {
+          "batch": "foundation:PREFIXES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "d13aed68-8869-4097-9389-14b9eedc02b8",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "A prefix is a group of letters added to the BEGINNING of a word to change its meaning. Prefixes never change the word class (a verb stays a verb), but they change the meaning. Common A2-level prefixes: un- (not, opposite: unhappy, unfair), in-/im- (not: incorrect, impossible — use im- before p, b, m), dis- (not, opposite: dislike, disagree), re- (again: rewrite, redo), pre- (before: prepay, preschool). Learning prefixes helps you understand many new words without a dictionary. Note: some words simply take a fixed prefix (e.g., 'discuss' is not 'dis- + cuss').",
+          "vi": "Tiền tố (prefix) là một nhóm chữ cái được thêm vào ĐẦU từ để thay đổi nghĩa của từ. Tiền tố không đổi từ loại (động từ vẫn là động từ) mà chỉ đổi nghĩa. Các tiền tố phổ biến ở trình độ A2: un- (không, trái nghĩa: unhappy = không vui), in-/im- (không: incorrect = không đúng; dùng im- trước các từ bắt đầu bằng p, b, m: impossible), dis- (không, trái nghĩa: dislike = không thích), re- (làm lại: rewrite = viết lại), pre- (trước: prepay = trả trước). Học tiền tố giúp bạn đoán nghĩa của nhiều từ mới mà không cần từ điển. Lưu ý: một số từ có tiền tố cố định (ví dụ 'discuss' không phải 'dis-' + 'cuss'), nên đừng tách từ ra một cách máy móc."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "The negative prefix in- changes to im- before words beginning with p, b, or m (impossible, impatient, impolite).",
+            "right": "It is impossible to park here.",
+            "wrong": "It is inpossible to park here."
+          },
+          {
+            "why": "'Dislike' is already a complete verb (dis- + like). Do not add another intensifier like 'very' before it; use 'really dislike' or 'strongly dislike'.",
+            "right": "I really dislike cold coffee.",
+            "wrong": "I very dislike cold coffee."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

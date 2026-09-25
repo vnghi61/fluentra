@@ -1,6 +1,6 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.3187685Z",
+  "generated_at": "2026-09-25T18:49:49.4221583Z",
   "node": {
     "namespace": "skill",
     "code": "WRITING",
@@ -9,38 +9,300 @@
   },
   "items": [
     {
-      "slug": "foundation-ex-writing-writing-prompt-1",
-      "kind": "writing_prompt",
+      "slug": "foundation-ex-writing-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
       "cefr_level": "A1",
       "body": {
-        "topic": "Family \u0026 Friends",
-        "prompt": "Write about your family. Who is in your family? What do they do? What do you like to do together? Write 5-7 simple sentences.",
-        "min_words": 40,
+        "prompt": "Rewrite the sentence beginning with 'I like': She likes coffee.",
+        "acceptable": [
+          "I like coffee too."
+        ],
         "_provenance": {
-          "batch": "foundation:WRITING:20260923T150704",
+          "batch": "foundation:WRITING:20260925T183651",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent blind solve failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T18:37:07Z"
+          },
+          "ai_request_id": "7ed03761-8184-424f-baa8-d1aba8e77f62",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item requires only a simple subject-verb agreement transformation in the present simple with very common vocabulary (like, coffee), which matches A1 descriptors.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "I like coffee."
+          }
+        },
+        "explanation": {
+          "explanation_en": "Change the subject 'she' to 'I' and keep the verb 'like' in its base form after 'I'. The object 'coffee' stays the same.",
+          "explanation_vi": "Đổi chủ ngữ 'she' thành 'I' và giữ động từ 'like' ở dạng nguyên mẫu sau 'I'. Tân ngữ 'coffee' giữ nguyên."
+        },
+        "correct_answer": "I like coffee."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T18:37:07Z",
+        "reason": "independent blind solve failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-ex-writing-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, Mai ___ an email to her teacher in English.",
+        "options": [
+          {
+            "id": "A",
+            "text": "writes"
+          },
+          {
+            "id": "B",
+            "text": "is writing"
+          },
+          {
+            "id": "C",
+            "text": "wrote"
+          },
+          {
+            "id": "D",
+            "text": "will write"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING:20260925T183651",
           "model": "glm-5.3-flash",
           "purpose": "foundation",
           "verification": {
             "model": "qwen/qwen3.8-27b",
             "verdict": "confirmed",
-            "checked_at": "2026-09-23T15:10:14Z"
+            "checked_at": "2026-09-25T18:37:17Z"
           },
-          "ai_request_id": "038746a1-8266-4d76-a17f-beb3520ce9bb",
+          "ai_request_id": "d0e93026-7f41-4b77-9ba3-6e350f7c5c8e",
           "cefr_estimate": "A1",
-          "cefr_reasoning": "The prompt asks for 5-7 simple sentences about family using simple present tense and very common vocabulary (family members, jobs, shared activities). The 40-word minimum and 15-minute limit are appropriate for A1 writers, and the explanation explicitly targets simple present, short clear sentences.",
-          "prompt_version": "item_generate.v1"
+          "cefr_reasoning": "The item tests present simple for daily routines with very common vocabulary ('every morning', 'email', 'teacher'), matching A1 descriptors. Distractors are simple tense alternatives, keeping the task accessible at A1 level.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
         },
         "explanation": {
-          "explanation_en": "A strong A1 response uses simple present tense sentences, names family members, describes their jobs or ages, and includes one sentence about a shared activity. Keep sentences short and clear.",
-          "explanation_vi": "Một bài viết tốt ở trình độ A1 dùng câu đơn với thì hiện tại đơn, nêu tên các thành viên trong gia đình, mô tả công việc hoặc tuổi của họ, và có một câu về hoạt động chung. Giữ câu ngắn và rõ ràng."
+          "explanation_en": "'Every morning' shows a daily habit, so we use the present simple: 'writes'. In writing, the present simple is used to describe routines and regular activities.",
+          "explanation_vi": "'Every morning' cho thấy thói quen hàng ngày, nên dùng thì hiện tại đơn: 'writes'. Khi viết, thì hiện tại đơn được dùng để miêu tả thói quen và hoạt động thường xuyên."
         },
-        "model_answer": "I have a small family. There are four people in my family: my father, my mother, my sister, and me. My father is a teacher. He works at a school near our house. My mother is a nurse. She works at a big hospital. My sister is ten years old. She likes to draw pictures. On the weekend, we go to the park together. We play football and eat ice cream. I love my family very much because they are kind and funny.",
-        "time_limit_minutes": 15
+        "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
-        "checked_at": "2026-09-23T15:10:14Z"
+        "checked_at": "2026-09-25T18:37:17Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-writing-writing-prompt-1",
+      "kind": "writing_prompt",
+      "cefr_level": "A1",
+      "body": {
+        "topic": "Friends \u0026 Family",
+        "prompt": "Write about your best friend. Who is he or she? What does he or she look like? What do you like to do together?",
+        "min_words": 60,
+        "_provenance": {
+          "batch": "foundation:WRITING:20260925T183651",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T18:37:00Z"
+          },
+          "ai_request_id": "17839402-3f8f-49b3-a804-e92f2cee5ae5",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The prompt asks for a short (60-word) personal description using simple present tense, basic vocabulary (friend, appearance, activities), and short clear sentences — all characteristic of A1 writing tasks. The three guiding questions scaffold the response with everyday expressions only.",
+          "prompt_version": "item_generate.v2"
+        },
+        "explanation": {
+          "explanation_en": "A strong A1 response uses simple present tense, short clear sentences, and answers all three parts: who the friend is, what he or she looks like, and activities you do together.",
+          "explanation_vi": "Một bài viết tốt ở trình độ A1 dùng thì hiện tại đơn, câu ngắn rõ ràng và trả lời đủ ba phần: bạn đó là ai, ngoại hình như thế nào, và các hoạt động bạn hay làm cùng nhau."
+        },
+        "model_answer": "My best friend is Mai. She is my classmate at school. Mai is twenty years old, and she is from Da Nang. She is tall and has long black hair. Her eyes are big and she has a beautiful smile. Mai is very kind and funny. She always helps me when I have problems. We like to do many things together. On weekends, we go to the coffee shop and talk about our week. We also like to watch movies at my house. Sometimes we go to the park and ride our bikes. Mai likes music, so we often listen to songs together. She is learning English, and I help her with new words. I am happy because Mai is my best friend. I hope we can be friends for a long time.",
+        "time_limit_minutes": 20
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T18:37:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-writing",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Which sentence uses correct word order for writing a simple English sentence?",
+        "options": [
+          {
+            "id": "A",
+            "text": "I breakfast eat at 7 a.m."
+          },
+          {
+            "id": "B",
+            "text": "I eat breakfast at 7 a.m."
+          },
+          {
+            "id": "C",
+            "text": "Eat I breakfast at 7 a.m."
+          },
+          {
+            "id": "D",
+            "text": "At 7 a.m. breakfast I eat."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING:20260925T183651",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T18:37:24Z"
+          },
+          "ai_request_id": "a9e5d59e-d951-46f6-b070-07d869ee0e6a",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic subject-verb-object word order using very common vocabulary ('I eat breakfast at 7 a.m.') and simple present tense, matching A1 descriptors. Distractors are simple rearrangements of the same words.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A simple English sentence follows the order subject + verb + object (+ time): 'I eat breakfast at 7 a.m.' The other options break this basic word order.",
+          "explanation_vi": "Câu đơn tiếng Anh theo trật tự: chủ ngữ + động từ + tân ngữ (+ thời gian): 'I eat breakfast at 7 a.m.' Các phương án khác sai trật tự từ cơ bản này."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T18:37:24Z"
+      }
+    },
+    {
+      "slug": "foundation-review-writing",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Choose the correct word to complete this sentence about writing: When you write a letter, you start with 'Dear ___'.",
+        "options": [
+          {
+            "id": "A",
+            "text": "Goodbye"
+          },
+          {
+            "id": "B",
+            "text": "Sir or Madam"
+          },
+          {
+            "id": "C",
+            "text": "See you"
+          },
+          {
+            "id": "D",
+            "text": "Best wishes"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING:20260925T183651",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T18:37:42Z"
+          },
+          "ai_request_id": "da3c5b1a-334a-4ed2-bcf1-a4d2ae509364",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very simple vocabulary and a basic sentence frame ('When you write a letter, you start with...'). The target phrase 'Dear Sir or Madam' is a fixed, commonly taught greeting formula introduced at beginner level, and distractors are simple everyday phrases. Suitable for A1.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In formal letter writing, we begin with a greeting such as 'Dear Sir or Madam' when we do not know the person's name.",
+          "explanation_vi": "Trong viết thư trang trọng, ta bắt đầu bằng lời chào như 'Dear Sir or Madam' khi không biết tên người nhận."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T18:37:42Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-writing",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "GRAMMAR_SIMPLE_PRESENT",
+          "GRAMMAR_SUBJECT_PRONOUNS",
+          "VOCAB_DAILY_ACTIVITIES"
+        ],
+        "examples": [
+          {
+            "note": "Two simple sentences introducing yourself. Each starts with a capital letter and ends with a period, following SVO order.",
+            "text": "My name is Lan. I live in Hanoi."
+          },
+          {
+            "note": "Two short ideas joined with 'but' to show contrast. A comma comes before 'but'.",
+            "text": "I like coffee, but my brother likes tea."
+          }
+        ],
+        "objective": "Understand and master how to write simple sentences at CEFR A1 level, including basic word order (subject + verb + object), capitalization, and ending punctuation.",
+        "_provenance": {
+          "batch": "foundation:WRITING:20260925T183651",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T18:37:48Z"
+          },
+          "ai_request_id": "4df9e47b-3239-4d6c-a4d4-8e420cc21c7b",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At A1 level, writing starts with simple sentences. A basic English sentence follows the order: Subject + Verb + Object (SVO). For example: 'I eat rice.' The subject tells who or what, the verb tells the action, and the object receives the action. Every sentence must begin with a capital letter and end with a period (.), a question mark (?), or an exclamation mark (!). Keep sentences short and clear: one idea per sentence. Use common linking words like 'and' and 'but' to join two short ideas: 'I like tea and she likes coffee.' When writing about yourself, use 'I' (always capitalized). Check your writing for three things: correct word order, capital letters, and punctuation.",
+          "vi": "Ở trình độ A1, việc viết bắt đầu bằng câu đơn. Câu tiếng Anh cơ bản theo trật tự: Chủ ngữ + Động từ + Tân ngữ (SVO). Ví dụ: 'I eat rice.' (Tôi ăn cơm). Chủ ngữ trả lời câu hỏi 'ai hoặc cái gì', động từ chỉ hành động, tân ngữ nhận hành động. Mỗi câu phải viết hoa chữ cái đầu và kết thúc bằng dấu chấm (.), dấu hỏi (?) hoặc dấu chấm than (!). Mỗi câu chỉ nên chứa một ý, ngắn và rõ ràng. Có thể dùng 'and' (và) hoặc 'but' (nhưng) để nối hai ý ngắn: 'I like tea and she likes coffee.' Khi viết về bản thân, luôn viết hoa chữ 'I'. Khi kiểm tra bài viết, hãy chú ý ba điểm: trật tự từ, chữ cái viết hoa và dấu câu. Lưu ý: tiếng Việt có thể bỏ chủ ngữ, nhưng tiếng Anh luôn phải có chủ ngữ rõ ràng."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "The pronoun 'I' is always capitalized in English, sentence beginnings must be capitalized, and every sentence needs ending punctuation (a period here).",
+            "right": "I live in Hanoi.",
+            "wrong": "i live in hanoi"
+          },
+          {
+            "why": "English uses fixed Subject + Verb + Object word order. Unlike Vietnamese, the verb cannot come first in a normal statement.",
+            "right": "I eat rice every day.",
+            "wrong": "Eat rice I every day."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T18:37:48Z"
       }
     }
   ]

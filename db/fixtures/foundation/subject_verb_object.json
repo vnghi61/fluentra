@@ -1,11 +1,290 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2934361Z",
+  "generated_at": "2026-09-25T18:49:49.401491Z",
   "node": {
     "namespace": "grammar",
     "code": "SUBJECT_VERB_OBJECT",
     "label": "Subject-Verb-Object",
     "cefr_level": "A1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-subject-verb-object-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Rewrite the sentence in the past simple, beginning with 'Yesterday': I eat an apple.",
+        "acceptable": [
+          "Yesterday, I ate an apple.",
+          "I ate an apple yesterday."
+        ],
+        "_provenance": {
+          "batch": "foundation:SUBJECT_VERB_OBJECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "410720e2-5331-45b4-ae79-1a600184bbdf",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item requires transforming a simple present sentence into the past simple ('eat' → 'ate'), which is an A2-level grammar skill. Although targeted at A1, past simple forms and sentence transformation tasks exceed A1 (which focuses on present simple and fixed phrases). Vocabulary is very basic, so the item sits at A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Yesterday I ate an apple."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The sentence follows the Subject-Verb-Object pattern: 'I' (subject) + 'ate' (past simple of 'eat') + 'an apple' (object). The time word 'Yesterday' goes at the beginning.",
+          "explanation_vi": "Câu theo cấu trúc Chủ ngữ - Động từ - Tân ngữ: 'I' (chủ ngữ) + 'ate' (quá khứ của 'eat') + 'an apple' (tân ngữ). Trạng ngữ thời gian 'Yesterday' đặt ở đầu câu."
+        },
+        "correct_answer": "Yesterday I ate an apple."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-subject-verb-object-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, my father ___ a newspaper and drinks coffee.",
+        "options": [
+          {
+            "id": "A",
+            "text": "reads"
+          },
+          {
+            "id": "B",
+            "text": "read"
+          },
+          {
+            "id": "C",
+            "text": "reading"
+          },
+          {
+            "id": "D",
+            "text": "is read"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SUBJECT_VERB_OBJECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "acc28336-ae43-427c-8e7a-3f1ad73b5bbb",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests third-person singular -s in the present simple with everyday vocabulary (father, newspaper, coffee) and a simple time expression ('every morning'), matching A1 descriptors. Distractors are basic verb forms.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The sentence follows Subject-Verb-Object order: 'my father' (subject) + 'reads' (verb) + 'a newspaper' (object). 'Every morning' shows a daily habit, so we use the present simple. With 'he/she/my father', the verb takes -s: 'reads'.",
+          "explanation_vi": "Câu theo trật tự Chủ ngữ - Động từ - Tân ngữ: 'my father' (chủ ngữ) + 'reads' (động từ) + 'a newspaper' (tân ngữ). 'Every morning' chỉ thói quen hàng ngày nên dùng thì hiện tại đơn. Với chủ ngữ ngôi thứ ba số ít, động từ thêm -s: 'reads'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-subject-verb-object-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, my sister ___ breakfast for the family.",
+        "options": [
+          {
+            "id": "A",
+            "text": "makes"
+          },
+          {
+            "id": "B",
+            "text": "make"
+          },
+          {
+            "id": "C",
+            "text": "making"
+          },
+          {
+            "id": "D",
+            "text": "made yesterday"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SUBJECT_VERB_OBJECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "eb13ee84-9e07-4a2a-9650-1c415d7c78d4",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests third-person singular -s in the present simple with very common vocabulary ('every morning', 'sister', 'breakfast'), which is core A1 grammar. Distractors are simple and the sentence is short and everyday.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The sentence follows the Subject-Verb-Object pattern: 'my sister' (subject) + verb + 'breakfast' (object). With 'every morning' (present simple) and a third-person singular subject 'my sister', the verb takes -s: 'makes'.",
+          "explanation_vi": "Câu theo cấu trúc Chủ ngữ - Động từ - Tân ngữ: 'my sister' (chủ ngữ) + động từ + 'breakfast' (tân ngữ). Với 'every morning' (thì hiện tại đơn) và chủ ngữ ngôi thứ ba số ít 'my sister', động từ thêm -s: 'makes'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-subject-verb-object",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Choose the correct sentence with Subject-Verb-Object order: 'The girl ___ an apple.'",
+        "options": [
+          {
+            "id": "A",
+            "text": "eats"
+          },
+          {
+            "id": "B",
+            "text": "eat"
+          },
+          {
+            "id": "C",
+            "text": "eating"
+          },
+          {
+            "id": "D",
+            "text": "eaten"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SUBJECT_VERB_OBJECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "02fce5b5-4542-4999-a259-3621dc6b3e81",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic third-person singular -s in the simple present with very common vocabulary ('girl', 'eat', 'apple'), which is core A1 grammar. The distractors (eat, eating, eaten) are simple and the explanation uses basic SVO terminology, keeping the overall demand at A1 level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In a Subject-Verb-Object sentence, the subject 'The girl' is third-person singular, so the verb takes -s: 'The girl eats an apple.'",
+          "explanation_vi": "Trong câu theo trật tự Chủ ngữ - Động từ - Tân ngữ, chủ ngữ 'The girl' là ngôi thứ ba số ít nên động từ thêm -s: 'The girl eats an apple.'"
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-subject-verb-object",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Choose the correct sentence with Subject-Verb-Object order: Which sentence is correct?",
+        "options": [
+          {
+            "id": "A",
+            "text": "The cat eats fish."
+          },
+          {
+            "id": "B",
+            "text": "Eats the cat fish."
+          },
+          {
+            "id": "C",
+            "text": "Fish eats the cat."
+          },
+          {
+            "id": "D",
+            "text": "The cat fish eats."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SUBJECT_VERB_OBJECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "ad105cdb-a683-4b9e-bbe5-10582edf87e4",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic Subject-Verb-Object word order using very common vocabulary ('cat', 'eats', 'fish') and simple present tense, which aligns with A1 descriptors. The distractors are simple word-order variations, and the explanation is basic, making this appropriate for absolute beginners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In English, a simple sentence follows the Subject-Verb-Object order: 'The cat' (subject) + 'eats' (verb) + 'fish' (object).",
+          "explanation_vi": "Trong tiếng Anh, câu đơn theo trật tự Chủ ngữ - Động từ - Tân ngữ: 'The cat' (chủ ngữ) + 'eats' (động từ) + 'fish' (tân ngữ)."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-subject-verb-object",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "PRESENT_SIMPLE",
+          "SUBJECT_VERB_AGREEMENT",
+          "ARTICLES_A_AN_THE"
+        ],
+        "examples": [
+          {
+            "note": "Subject 'She' + verb 'reads' (with -s for third person singular) + object 'a book'. The object answers 'reads what?'",
+            "text": "She reads a book every night."
+          },
+          {
+            "note": "Subject 'They' + verb 'play' (no -s with they) + object 'football'. The object answers 'play what?'",
+            "text": "They play football after school."
+          }
+        ],
+        "objective": "Understand the formation and core uses of the Subject-Verb-Object (SVO) structure in simple English sentences, and correctly build basic affirmative sentences with a subject, a verb, and an object.",
+        "_provenance": {
+          "batch": "foundation:SUBJECT_VERB_OBJECT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "19c36870-b17c-494b-8143-157daa37c7f8",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Most simple English sentences follow the pattern Subject + Verb + Object (SVO). The subject is the person or thing doing the action (e.g., I, you, he, she, we, they, or a noun like 'the dog'). The verb shows the action (e.g., eat, play, read, like). The object receives the action and answers 'what?' or 'whom?' after the verb (e.g., rice, football, a book). Example: 'I eat rice.' — 'I' is the subject, 'eat' is the verb, 'rice' is the object. The word order is fixed in English: the subject always comes before the verb, and the object comes after the verb. This is different from Vietnamese, where word order can be more flexible. Remember: subject and verb must agree — use 'eat' with I/you/we/they, but 'eats' with he/she/it. Not every sentence needs an object; some verbs (like 'sleep', 'come') can stand alone, but when there is an object, it must come right after the verb.",
+          "vi": "Phần lớn câu đơn trong tiếng Anh theo cấu trúc Chủ ngữ + Động từ + Tân ngữ (SVO). Chủ ngữ là người hoặc vật thực hiện hành động (I, you, he, she, we, they, hoặc danh từ như 'the dog'). Động từ chỉ hành động (eat, play, read, like). Tân ngữ là người/vật nhận hành động, trả lời câu hỏi 'cái gì?' hoặc 'ai?' sau động từ (rice, football, a book). Ví dụ: 'I eat rice' — 'I' là chủ ngữ, 'eat' là động từ, 'rice' là tân ngữ. Trật tự từ trong tiếng Anh là cố định: chủ ngữ luôn đứng trước động từ, tân ngữ đứng sau động từ. Điều này khác với tiếng Việt, nơi trật tự từ linh hoạt hơn — người học Việt Nam cần đặc biệt chú ý không đảo trật tự này. Lưu ý: chủ ngữ và động từ phải hòa hợp — dùng 'eat' với I/you/we/they, nhưng 'eats' với he/she/it. Không phải câu nào cũng cần tân ngữ (ví dụ 'sleep', 'come' có thể đứng một mình), nhưng khi có tân ngữ, tân ngữ phải đứng ngay sau động từ."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In English, the object must come after the verb. The SVO order is fixed; putting the object before the verb follows Vietnamese-style order and is incorrect in English.",
+            "right": "I eat rice.",
+            "wrong": "I rice eat."
+          },
+          {
+            "why": "With third person singular subjects (he, she, it) in the present simple, the verb must add -s/-es. Subject-verb agreement is required even in simple SVO sentences.",
+            "right": "She eats an apple.",
+            "wrong": "She eat an apple."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

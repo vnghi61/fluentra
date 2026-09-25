@@ -1,11 +1,421 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2574416Z",
+  "generated_at": "2026-09-25T18:49:49.3685906Z",
   "node": {
     "namespace": "skill",
     "code": "READING_VOCABULARY_IN_CONTEXT",
     "label": "Reading: Vocabulary in Context",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-reading-vocabulary-in-context-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence using the word 'despite' so that the meaning stays the same: 'The weather was terrible, but the festival attracted thousands of visitors.' Begin with: 'Despite...'",
+        "acceptable": [
+          "Despite the terrible weather, the festival attracted thousands of visitors.",
+          "Despite terrible weather, the festival attracted thousands of visitors.",
+          "Despite the bad weather, the festival attracted thousands of visitors."
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_VOCABULARY_IN_CONTEXT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "d333a9c8-8af3-4818-bfff-ddb647d9d91d",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the connector 'despite' + noun phrase, a classic B1-level grammar transformation. The source sentence uses simple past and 'but', both A2, but the transformation requires understanding clause-to-phrase reduction and contrast connectors, which aligns with B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Despite the terrible weather, the festival attracted thousands of visitors."
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Despite' is followed by a noun phrase (the terrible weather), not a clause, and it replaces 'but' to show contrast. Understanding the context shows 'terrible weather' captures the meaning of 'the weather was terrible'.",
+          "explanation_vi": "'Despite' đứng trước một cụm danh từ (the terrible weather), không phải một mệnh đề, và thay cho 'but' để diễn tả sự tương phản. Dựa vào ngữ cảnh, 'terrible weather' giữ nguyên nghĩa của 'the weather was terrible'."
+        },
+        "correct_answer": "Despite the terrible weather, the festival attracted thousands of visitors."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-reading-vocabulary-in-context-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "When I got home, I realised that I ___ my keys at the office, so I couldn't get inside.",
+        "options": [
+          {
+            "id": "A",
+            "text": "left"
+          },
+          {
+            "id": "B",
+            "text": "have left"
+          },
+          {
+            "id": "C",
+            "text": "had left"
+          },
+          {
+            "id": "D",
+            "text": "was leaving"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_VOCABULARY_IN_CONTEXT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "4cda8e11-2309-4045-818e-fdff87e7d0a9",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests past perfect vs. past simple in a clear two-event past sequence, a classic B1 grammar point. Vocabulary (realised, get inside, keys) is common and the sentence structure is simple, so it is not B2; past perfect is beyond A2, so B1 fits.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Past perfect 'had left' is used because leaving the keys happened before the later past event (realising at home). The context words 'realised' and 'so I couldn't get inside' signal a sequence of past events, and vocabulary like 'realised' and 'get inside' must be understood in context to choose the correct tense.",
+          "explanation_vi": "Thì quá khứ hoàn thành 'had left' được dùng vì hành động để quên chìa khóa xảy ra trước sự việc quá khứ khác (nhận ra khi về nhà). Các từ ngữ trong ngữ cảnh như 'realised' và 'couldn't get inside' giúp người học hiểu trình tự sự việc để chọn đúng thì."
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-reading-vocabulary-in-context-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "B1",
+      "body": {
+        "passage": "When Maya moved to her new neighbourhood, she felt lonely and missed the green spaces of her hometown. One morning, she noticed an empty lot behind the library with a small sign: 'Community Garden - Volunteers Welcome'. Curious, she decided to investigate. The following Saturday, she joined a group of about fifteen residents who were digging, planting, and chatting happily. An elderly man named Mr. Alvarez handed her a shovel and explained that the garden had been abandoned for years until the neighbours transformed it together. 'Everyone contributes something,' he said. 'Some people bring seeds, others bring tools, and a few simply bring enthusiasm.' Maya was assigned a small plot where she planted tomatoes and herbs. Over the following months, she not only learned about gardening but also made genuine friends. By summer, the garden was flourishing, and Maya realised that the empty lot had given her far more than fresh vegetables - it had given her a sense of belonging.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "In the passage, the word 'investigate' is closest in meaning to:",
+            "options": [
+              {
+                "id": "A",
+                "text": "find out more about it"
+              },
+              {
+                "id": "B",
+                "text": "buy it immediately"
+              },
+              {
+                "id": "C",
+                "text": "avoid it completely"
+              },
+              {
+                "id": "D",
+                "text": "clean it up"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Maya was 'curious' about the sign, so she decided to investigate, meaning she wanted to learn more about the garden by going there.",
+              "explanation_vi": "Maya 'tò mò' về tấm biển, nên cô quyết định tìm hiểu, nghĩa là cô muốn tìm hiểu thêm về khu vườn bằng cách đến đó."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "The word 'abandoned' in the passage describes the garden as:",
+            "options": [
+              {
+                "id": "A",
+                "text": "full of vegetables"
+              },
+              {
+                "id": "B",
+                "text": "not cared for or used"
+              },
+              {
+                "id": "C",
+                "text": "recently built"
+              },
+              {
+                "id": "D",
+                "text": "very expensive"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "'Abandoned' means left without care or use. The text says the garden had been abandoned for years until neighbours transformed it.",
+              "explanation_vi": "'Abandoned' nghĩa là bị bỏ hoang, không được chăm sóc hay sử dụng. Văn bản cho biết khu vườn bị bỏ hoang nhiều năm cho đến khi các hàng xóm cải tạo lại."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "What does Mr. Alvarez mean when he says some people 'simply bring enthusiasm'?",
+            "options": [
+              {
+                "id": "A",
+                "text": "They donate money to the garden."
+              },
+              {
+                "id": "B",
+                "text": "They contribute energy and a positive attitude."
+              },
+              {
+                "id": "C",
+                "text": "They only visit the garden once."
+              },
+              {
+                "id": "D",
+                "text": "They prefer to work alone."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Mr. Alvarez explains that everyone contributes differently; bringing 'enthusiasm' means contributing excitement and positive energy rather than objects.",
+              "explanation_vi": "Ông Alvarez giải thích rằng mỗi người đóng góp theo cách khác nhau; mang lại 'sự nhiệt tình' nghĩa là đóng góp năng lượng tích cực thay vì đồ vật."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "The phrase 'a sense of belonging' in the last sentence suggests that Maya felt:",
+            "options": [
+              {
+                "id": "A",
+                "text": "accepted as part of the community"
+              },
+              {
+                "id": "B",
+                "text": "tired of gardening"
+              },
+              {
+                "id": "C",
+                "text": "lost in a big city"
+              },
+              {
+                "id": "D",
+                "text": "eager to move away"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "A 'sense of belonging' means feeling accepted and connected. Maya was lonely at first, but through the garden she made genuine friends and felt part of the community.",
+              "explanation_vi": "'A sense of belonging' nghĩa là cảm giác được chấp nhận và gắn kết. Ban đầu Maya cô đơn, nhưng nhờ khu vườn, cô kết bạn chân thành và cảm thấy mình là một phần của cộng đồng."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "Which word best describes the garden by the end of the summer?",
+            "options": [
+              {
+                "id": "A",
+                "text": "abandoned"
+              },
+              {
+                "id": "B",
+                "text": "empty"
+              },
+              {
+                "id": "C",
+                "text": "flourishing"
+              },
+              {
+                "id": "D",
+                "text": "hidden"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage states that 'by summer, the garden was flourishing', meaning it was growing well and thriving.",
+              "explanation_vi": "Bài đọc nói rằng 'đến mùa hè, khu vườn đang phát triển mạnh mẽ (flourishing)', nghĩa là vườn đang sinh trưởng tốt và trù phú."
+            },
+            "correct_option_id": "C"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_VOCABULARY_IN_CONTEXT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "83900165-eb2b-442e-a77d-d1550797eaeb",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The passage uses clear standard narrative prose with past simple, past continuous, and present perfect ('had been abandoned', 'has given' style constructions), plus common connectors ('not only...but also', 'by summer'). Vocabulary like 'investigate', 'abandoned', 'flourishing', and 'a sense of belonging' stretches toward B1/B2 but is supported by context and the questions test inference at a moderate level. Overall it matches B1: main points of clear standard text with some idiomatic phrasing.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "A",
+              "q2": "B",
+              "q3": "B",
+              "q4": "A",
+              "q5": "C"
+            }
+          }
+        },
+        "passage_title": "The Community Garden"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-reading-vocabulary-in-context",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Read the sentence: 'The new manager decided to postpone the meeting until next week because several key staff members were still abroad.' What does 'postpone' mean in this context?",
+        "options": [
+          {
+            "id": "A",
+            "text": "to cancel completely"
+          },
+          {
+            "id": "B",
+            "text": "to delay until a later time"
+          },
+          {
+            "id": "C",
+            "text": "to shorten in length"
+          },
+          {
+            "id": "D",
+            "text": "to move to an earlier date"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_VOCABULARY_IN_CONTEXT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "2123a4ec-0aa3-4486-bafa-d3e93e68cd68",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the meaning of 'postpone' in a clear, standard sentence about a work/school topic. The vocabulary (decided, staff members, abroad) and sentence structure are typical of B1, and distinguishing 'postpone' from 'cancel' requires contextual inference appropriate to B1 rather than A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In context, the meeting is not cancelled but moved to a later time ('until next week'), so 'postpone' means to delay. 'Cancel' would mean it will not happen at all, and the sentence clearly gives a future time.",
+          "explanation_vi": "Trong ngữ cảnh, cuộc họp không bị hủy mà được dời sang thời điểm khác ('until next week'), nên 'postpone' có nghĩa là trì hoãn. 'Cancel' nghĩa là hủy bỏ hoàn toàn, trong khi câu cho thấy rõ thời gian trong tương lai."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-reading-vocabulary-in-context",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Read the sentence: 'Despite the heavy rain, the outdoor concert went ahead as planned, and the crowd stayed until the very end.' What does the phrase 'went ahead' mean in this context?",
+        "options": [
+          {
+            "id": "A",
+            "text": "was cancelled"
+          },
+          {
+            "id": "B",
+            "text": "took place as planned"
+          },
+          {
+            "id": "C",
+            "text": "moved to another location"
+          },
+          {
+            "id": "D",
+            "text": "started later than expected"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_VOCABULARY_IN_CONTEXT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "c0179e39-cc05-4b79-9396-24d5ba0b34fd",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests understanding of the phrasal expression 'went ahead' in context, requiring inference from contrastive connector 'despite' and contextual clues. Vocabulary and sentence structure are clear and standard, matching B1; the idiomatic phrasal verb meaning is slightly above A2 but well within B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Went ahead' means the event happened as planned. The context clue 'Despite the heavy rain' shows the concert was not cancelled, and 'the crowd stayed until the very end' confirms it actually took place.",
+          "explanation_vi": "'Went ahead' nghĩa là sự kiện vẫn diễn ra như kế hoạch. Cụm 'Despite the heavy rain' cho thấy buổi hòa nhạc không bị hủy, và 'the crowd stayed until the very end' xác nhận nó thực sự đã diễn ra."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-reading-vocabulary-in-context",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "READING_SKIMMING_SCANNING",
+          "WORD_FORMATION_PREFIXES_SUFFIXES",
+          "READING_INFERENCE_MAIN_IDEA"
+        ],
+        "examples": [
+          {
+            "note": "The clause after the dash is a restatement clue: it explains that 'frugal' means careful with money (thrifty).",
+            "text": "My grandfather is very frugal — he never spends money on things he doesn't really need."
+          },
+          {
+            "note": "'Unlike' signals a contrast clue: since the brother is talkative, 'reserved' must mean quiet and not talkative.",
+            "text": "Unlike her talkative brother, Mia is quite reserved and rarely speaks in groups."
+          },
+          {
+            "note": "'Such as' introduces examples, showing that 'medication' means medicines/drugs in general.",
+            "text": "The doctor prescribed some medication, such as antibiotics and painkillers, to treat the infection."
+          }
+        ],
+        "objective": "Understand and apply strategies for inferring the meaning of unfamiliar vocabulary from context clues in reading passages, including definition clues, examples, contrast, cause-and-effect, and word-formation clues.",
+        "_provenance": {
+          "batch": "foundation:READING_VOCABULARY_IN_CONTEXT:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "5ad9fb5c-2329-4cef-9b77-662142cd1b11",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "When reading at B1 level, you will meet words you do not know. Instead of stopping to check a dictionary, skilled readers use context clues to guess meaning. Main types of clues: (1) Definition or restatement: the text explains the word directly, often signaled by 'is', 'means', 'that is', 'in other words', or commas/dashes around a paraphrase. (2) Examples: phrases like 'such as', 'for example', 'including' show what category the word belongs to. (3) Contrast: signal words like 'but', 'however', 'unlike', 'on the other hand' show the unknown word is the opposite of a known word. (4) Cause and effect: 'because', 'since', 'as a result', 'therefore' let you infer meaning from the logic of the sentence. (5) General sense/tone: the overall topic and surrounding words suggest whether the word is positive or negative. (6) Word formation: prefixes (un-, re-, dis-), suffixes (-tion, -ful, -less) and roots help you build meaning. Practical steps: read the whole sentence, then the sentences before and after; decide the part of speech (noun, verb, adjective); replace the unknown word with your guess and check if the sentence still makes sense. Do not expect a perfect definition — a close approximation is enough for reading comprehension.",
+          "vi": "Khi đọc ở trình độ B1, bạn sẽ gặp nhiều từ mới. Người đọc giỏi không dừng lại tra từ điển mà dùng 'dấu hiệu ngữ cảnh' (context clues) để đoán nghĩa. Các loại dấu hiệu chính: (1) Định nghĩa hoặc diễn giải lại: câu văn giải thích trực tiếp từ đó, thường có 'is', 'means', 'that is', 'in other words', hoặc cụm diễn giải đặt giữa hai dấu phẩy/gạch ngang. (2) Ví dụ: các cụm 'such as', 'for example', 'including' cho biết từ đó thuộc nhóm nào. (3) Tương phản: các từ như 'but', 'however', 'unlike', 'on the other hand' cho thấy từ lạ có nghĩa ngược với từ quen. (4) Nguyên nhân – kết quả: 'because', 'since', 'as a result', 'therefore' giúp suy ra nghĩa qua logic câu. (5) Sắc thái chung: chủ đề đoạn văn và các từ xung quanh gợi ý từ đó mang nghĩa tích cực hay tiêu cực. (6) Hình thái từ: tiền tố (un-, re-, dis-), hậu tố (-tion, -ful, -less) và gốc từ giúp bạn dựng nghĩa. Các bước thực hành: đọc cả câu, rồi đọc câu trước và câu sau; xác định từ loại (danh từ, động từ, tính từ); thay từ lạ bằng phán đoán của bạn và kiểm tra câu có còn hợp lý không. Không cần nghĩa chính xác tuyệt đối — một phán đoán gần đúng là đủ để hiểu bài đọc."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Contrast signal words reverse the direction of meaning. Learners who ignore them often guess the wrong meaning; e.g., in 'He is usually lazy, but today he was diligent', 'diligent' must mean hard-working, not lazy.",
+            "right": "Treat 'however', 'but', 'unlike', and 'in contrast' as signals that the unknown word means the OPPOSITE of the idea before it.",
+            "wrong": "Seeing the word 'however' and assuming the unknown word after it has the same meaning as the previous clause."
+          },
+          {
+            "why": "Checking every word breaks reading fluency and focus. For reading comprehension, an approximate meaning inferred from context is usually sufficient, and over-reliance on the dictionary prevents learners from developing inference skills.",
+            "right": "Guess the meaning from context first, mark the word, and only check the dictionary if the word appears repeatedly or blocks understanding of the whole passage.",
+            "wrong": "Stopping to look up every unknown word in the dictionary, losing track of the main idea of the passage."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.0959888Z",
+  "generated_at": "2026-09-25T18:49:49.217326Z",
   "node": {
     "namespace": "grammar",
     "code": "CLAUSES",
@@ -56,6 +56,7 @@
         "correct_option_id": "B"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:48:56Z"
@@ -109,6 +110,7 @@
         "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:50:21Z"
@@ -162,6 +164,7 @@
         "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:50:44Z"
@@ -223,6 +226,7 @@
         ]
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:51:25Z"

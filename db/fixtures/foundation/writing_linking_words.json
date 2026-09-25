@@ -1,11 +1,451 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.3219676Z",
+  "generated_at": "2026-09-25T18:49:49.4250536Z",
   "node": {
     "namespace": "skill",
     "code": "WRITING_LINKING_WORDS",
     "label": "Writing: Linking Words",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-writing-linking-words-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence using 'because of': The match was cancelled. The weather was terrible.",
+        "acceptable": [
+          "The match was cancelled because of terrible weather.",
+          "Because of the terrible weather, the match was cancelled.",
+          "Because of terrible weather, the match was cancelled."
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_LINKING_WORDS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "ff393b16-4c7c-451d-8103-3fb24deef6be",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item requires transforming a clause into a noun phrase with the connector 'because of', a linking-phrase distinction typically taught at B1. Vocabulary is simple, but the grammatical restructuring (clause-to-phrase conversion, word order 'the terrible weather') goes beyond A2 basic conjunctions and matches B1 connector work.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "The match was cancelled because of the terrible weather."
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Because of' is a linking phrase followed by a noun or noun phrase, not a full clause. Here, 'the weather was terrible' becomes the noun phrase 'the terrible weather'. You may also place 'Because of...' at the start of the sentence, followed by a comma.",
+          "explanation_vi": "'Because of' là cụm từ nối theo sau là danh từ hoặc cụm danh từ, không phải một mệnh đề đầy đủ. Ở đây, 'the weather was terrible' được đổi thành cụm danh từ 'the terrible weather'. Bạn cũng có thể đặt 'Because of...' ở đầu câu, theo sau là dấu phẩy."
+        },
+        "correct_answer": "The match was cancelled because of the terrible weather."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-writing-linking-words-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "The tickets were expensive; ___, the concert was completely sold out.",
+        "options": [
+          {
+            "id": "A",
+            "text": "however"
+          },
+          {
+            "id": "B",
+            "text": "because"
+          },
+          {
+            "id": "C",
+            "text": "so"
+          },
+          {
+            "id": "D",
+            "text": "therefore"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_LINKING_WORDS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "7a4a91e2-4acb-480a-a084-93349860b157",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests contrastive linking words (however, because, so, therefore) with simple past-tense clauses and everyday vocabulary. Connector choice between contrast and cause/result is a typical B1 grammar focus; distractors are plausible but the vocabulary and syntax remain simple.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'However' is a linking word that shows contrast between two clauses. The expensive tickets and the sold-out concert are contrasting facts, so 'however' fits. 'Because', 'so', and 'therefore' express cause and result, which does not match the meaning here.",
+          "explanation_vi": "'However' là từ nối diễn tả sự tương phản giữa hai mệnh đề. Giá vé đắt và việc concert bán hết vé là hai sự việc tương phản, nên 'however' phù hợp. 'Because', 'so' và 'therefore' diễn tả nguyên nhân – kết quả, không hợp với nghĩa của câu."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-writing-linking-words-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "B1",
+      "body": {
+        "passage": "Last spring, the residents of Maple Street decided to turn an empty lot into a community garden. At first, many people were doubtful because the soil was poor and nobody had experience with gardening. However, a retired teacher named Mrs. Chen offered to lead the project. She organised weekly meetings so that everyone could share ideas and divide the work. Moreover, she contacted a local farm, which donated free seeds and tools. Although progress was slow in the beginning, by summer the garden was full of tomatoes, beans, and sunflowers. In addition, the garden brought neighbours closer together; people who had never spoken before now chatted every evening. Because of this success, the city council decided to fund two more gardens in other neighbourhoods. Therefore, what started as a small experiment became a model for the whole town. As a result of working together, the residents learned that cooperation can transform even the most unpromising place.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "Why were many residents doubtful at first?",
+            "options": [
+              {
+                "id": "A",
+                "text": "They had no money to buy seeds."
+              },
+              {
+                "id": "B",
+                "text": "The soil was poor and they lacked gardening experience."
+              },
+              {
+                "id": "C",
+                "text": "The city council refused to help them."
+              },
+              {
+                "id": "D",
+                "text": "Mrs. Chen did not want to lead the project."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says people were doubtful 'because the soil was poor and nobody had experience with gardening.' The word 'because' signals the reason.",
+              "explanation_vi": "Bài đọc nói rằng mọi người nghi ngờ 'bởi vì đất kém màu mỡ và không ai có kinh nghiệm làm vườn.' Từ 'because' chỉ ra lý do."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "What did Mrs. Chen do to help residents share ideas and divide the work?",
+            "options": [
+              {
+                "id": "A",
+                "text": "She organised weekly meetings."
+              },
+              {
+                "id": "B",
+                "text": "She wrote letters to the city council."
+              },
+              {
+                "id": "C",
+                "text": "She hired workers from a local farm."
+              },
+              {
+                "id": "D",
+                "text": "She taught evening gardening classes."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The connector 'so that' shows purpose: she organised weekly meetings so that everyone could share ideas and divide the work.",
+              "explanation_vi": "Cụm từ nối 'so that' chỉ mục đích: bà tổ chức các buổi họp hàng tuần để mọi người có thể chia sẻ ý tưởng và phân chia công việc."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "Who donated seeds and tools for the garden?",
+            "options": [
+              {
+                "id": "A",
+                "text": "The city council"
+              },
+              {
+                "id": "B",
+                "text": "The residents of Maple Street"
+              },
+              {
+                "id": "C",
+                "text": "A local farm"
+              },
+              {
+                "id": "D",
+                "text": "Mrs. Chen's former students"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage states: 'Moreover, she contacted a local farm, which donated free seeds and tools.'",
+              "explanation_vi": "Bài đọc ghi rõ: 'Ngoài ra, bà đã liên hệ với một trang trại địa phương, nơi đã tặng hạt giống và dụng cụ miễn phí.'"
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "What was an additional benefit of the garden besides growing vegetables?",
+            "options": [
+              {
+                "id": "A",
+                "text": "It made the neighbourhood richer."
+              },
+              {
+                "id": "B",
+                "text": "It helped neighbours get to know each other."
+              },
+              {
+                "id": "C",
+                "text": "It reduced traffic on Maple Street."
+              },
+              {
+                "id": "D",
+                "text": "It provided jobs for unemployed people."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "'In addition' introduces an extra benefit: neighbours who had never spoken before now chatted every evening.",
+              "explanation_vi": "'In addition' giới thiệu một lợi ích thêm: những người hàng xóm trước đây chưa từng nói chuyện nay trò chuyện mỗi tối."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "What did the city council do because of the garden's success?",
+            "options": [
+              {
+                "id": "A",
+                "text": "They gave Mrs. Chen an award."
+              },
+              {
+                "id": "B",
+                "text": "They bought the empty lot from the residents."
+              },
+              {
+                "id": "C",
+                "text": "They funded two more gardens in other neighbourhoods."
+              },
+              {
+                "id": "D",
+                "text": "They started a gardening course in local schools."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The phrase 'Because of this success' signals the result: the council decided to fund two more gardens.",
+              "explanation_vi": "Cụm từ 'Because of this success' chỉ ra kết quả: hội đồng thành phố quyết định tài trợ thêm hai khu vườn nữa."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q6",
+            "type": "multiple_choice",
+            "prompt": "Which sentence best summarises the writer's main message?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Gardening is difficult without professional training."
+              },
+              {
+                "id": "B",
+                "text": "Working together can improve even an unpromising place."
+              },
+              {
+                "id": "C",
+                "text": "City councils should always fund local projects."
+              },
+              {
+                "id": "D",
+                "text": "Older people make the best community leaders."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The final sentence, introduced by 'As a result of', states that cooperation can transform even the most unpromising place — the central message.",
+              "explanation_vi": "Câu kết, được dẫn dắt bằng 'As a result of', khẳng định rằng sự hợp tác có thể biến đổi ngay cả nơi kém thuận lợi nhất — đây là thông điệp chính."
+            },
+            "correct_option_id": "B"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_LINKING_WORDS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "63c9f086-4307-4965-9744-20c8c7c5e209",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The passage uses clear, standard narrative prose with past simple, connectors (however, moreover, although, therefore, as a result), and everyday vocabulary. Questions test literal comprehension and one main-idea inference, with plausible distractors — typical B1 reading comprehension. Some vocabulary (unpromising, donated, fund) sits at the upper A2/B1 range, matching the target level well.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "B",
+              "q2": "A",
+              "q3": "C",
+              "q4": "B",
+              "q5": "C",
+              "q6": "B"
+            }
+          }
+        },
+        "passage_title": "The Community Garden"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-writing-linking-words",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "I wanted to buy the concert tickets, ___ they had already sold out.",
+        "options": [
+          {
+            "id": "A",
+            "text": "so"
+          },
+          {
+            "id": "B",
+            "text": "but"
+          },
+          {
+            "id": "C",
+            "text": "because"
+          },
+          {
+            "id": "D",
+            "text": "or"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_LINKING_WORDS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "762eda28-3022-4341-aee6-5e78eac84124",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests a basic contrastive conjunction ('but') in a simple past-tense sentence with everyday vocabulary. Basic conjunctions and simple sentences are A2 descriptors; the item is below the B1 target.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'But' is a linking word that shows contrast between two ideas: wanting to buy tickets and the fact that they were sold out.",
+          "explanation_vi": "'But' là từ nối diễn tả sự tương phản giữa hai ý: muốn mua vé và việc vé đã bán hết."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-writing-linking-words",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "I wanted to buy the concert tickets online, ___ the website was down all evening.",
+        "options": [
+          {
+            "id": "A",
+            "text": "so"
+          },
+          {
+            "id": "B",
+            "text": "but"
+          },
+          {
+            "id": "C",
+            "text": "because"
+          },
+          {
+            "id": "D",
+            "text": "or"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_LINKING_WORDS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "3e364a7e-a9bb-4d9a-bcf7-7912d7015e15",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic contrastive conjunctions (but, so, because, although) in a simple past-tense sentence with everyday vocabulary. Basic conjunctions and simple sentences are A2 descriptors; B1 connectors typically involve more complex linking of ideas. The item is slightly below the requested B1 target.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'But' shows contrast between two ideas: wanting to buy tickets and the website being down. 'So' shows a result, 'because' gives a reason, and 'or' offers a choice.",
+          "explanation_vi": "'But' diễn tả sự tương phản giữa hai ý: muốn mua vé và trang web không hoạt động. 'So' chỉ kết quả, 'because' chỉ lý do, còn 'or' đưa ra lựa chọn."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-writing-linking-words",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "WRITING_PARAGRAPH_STRUCTURE",
+          "WRITING_PUNCTUATION_COMMA",
+          "GRAMMAR_CONJUNCTIONS"
+        ],
+        "examples": [
+          {
+            "note": "'But' joins two contrasting clauses in one sentence, preceded by a comma.",
+            "text": "I studied hard for the exam, but the questions were very difficult."
+          },
+          {
+            "note": "'However' shows contrast but must start a new clause after a semicolon or full stop, followed by a comma.",
+            "text": "The weather was terrible; however, we decided to continue our trip."
+          },
+          {
+            "note": "'Although' introduces a concession clause; when it comes first, a comma separates it from the main clause.",
+            "text": "Although she was nervous, she gave an excellent presentation."
+          }
+        ],
+        "objective": "Understand and correctly use common linking words (and, but, so, because, however, although, therefore) to connect ideas within sentences and across paragraphs in written English.",
+        "_provenance": {
+          "batch": "foundation:WRITING_LINKING_WORDS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "40a2d01c-f82f-4c9b-a2e7-48a2de03624d",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Linking words (connectors) show logical relationships between ideas. 'And' adds information; 'but' and 'however' show contrast; 'so' and 'therefore' show result; 'because' and 'as' show reason; 'although' and 'even though' show concession. Coordinating conjunctions (and, but, so) join two clauses with a comma: 'I was tired, so I went to bed.' Subordinators (because, although) can start the sentence, but then you need a comma: 'Although it rained, we went out.' Adverbs like 'however' and 'therefore' start a new sentence and are followed by a comma. Choose the connector that matches the meaning: contrast, cause, result, or addition. Vary your connectors to make writing flow naturally instead of repeating 'and' or 'but'.",
+          "vi": "Từ nối (linking words) giúp thể hiện mối quan hệ logic giữa các ý trong câu và đoạn văn. 'And' dùng để thêm thông tin; 'but' và 'however' diễn tả sự tương phản; 'so' và 'therefore' diễn tả kết quả; 'because' diễn tả nguyên nhân; 'although' diễn tả sự nhượng bộ (dù... nhưng...). Lưu ý quan trọng: 'however' và 'therefore' là trạng từ nối, phải bắt đầu câu mới và theo sau là dấu phẩy, không dùng chúng để nối hai mệnh đề trong cùng một câu. Khi 'although' đứng đầu câu, phải có dấu phẩy ngăn cách với mệnh đề chính. Tránh lặp lại chỉ 'and' hoặc 'but' — hãy đa dạng từ nối để bài viết mạch lạc, tự nhiên hơn. Người Việt thường dịch 'mặc dù... nhưng...' thành 'although... but...' — đây là lỗi sai vì tiếng Anh chỉ dùng một trong hai từ.",
+          "note": ""
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In English, 'although' and 'but' cannot be used together in the same sentence because both express contrast. Use one or the other: 'Although it was raining, we went...' or 'It was raining, but we went...'",
+            "right": "Although it was raining, we went to the beach.",
+            "wrong": "Although it was raining, but we went to the beach."
+          },
+          {
+            "why": "'However' is a linking adverb, not a conjunction. It cannot join two clauses with just a comma; it needs a semicolon or full stop before it and a comma after it.",
+            "right": "I was tired; however, I finished my homework.",
+            "wrong": "I was tired, however I finished my homework."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

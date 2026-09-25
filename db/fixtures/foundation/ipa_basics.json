@@ -1,6 +1,6 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1714638Z",
+  "generated_at": "2026-09-25T18:49:49.2903486Z",
   "node": {
     "namespace": "pronunciation",
     "code": "IPA_BASICS",
@@ -56,6 +56,7 @@
         "correct_option_id": "B"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:39:14Z"
@@ -206,6 +207,7 @@
         }
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:40:35Z"
@@ -259,6 +261,7 @@
         "correct_option_id": "B"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:40:51Z"
@@ -316,6 +319,7 @@
         ]
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:41:33Z"

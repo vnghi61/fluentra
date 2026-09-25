@@ -1,6 +1,6 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1613939Z",
+  "generated_at": "2026-09-25T18:49:49.2821502Z",
   "node": {
     "namespace": "vocabulary",
     "code": "IDIOMS",
@@ -42,9 +42,298 @@
         "correct_answer": "The exam was a piece of cake for me."
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T16:14:31Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-idioms-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "When the manager announced the surprise bonus, everyone ___ because they were over the moon.",
+        "options": [
+          {
+            "id": "A",
+            "text": "cheered"
+          },
+          {
+            "id": "B",
+            "text": "cheers"
+          },
+          {
+            "id": "C",
+            "text": "will cheer"
+          },
+          {
+            "id": "D",
+            "text": "is cheering"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:IDIOMS:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199079, Requested 1010. Please try again in 38.448s. Need more tokens? Upgrade to Dev Tier today at https://conso, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:14:09Z"
+          },
+          "ai_request_id": "f23b206f-e4a8-4d77-9ed1-b3ab187ea418",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests simple past tense choice with a clear time anchor ('announced'), which is an A2-level grammar point. The distractors are straightforward tense contrasts. The idiom 'over the moon' adds slight lexical challenge, but the core grammar task is below B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The sentence describes a completed past event ('announced'), so the simple past 'cheered' is correct. The idiom 'over the moon' means extremely happy, which explains why everyone cheered.",
+          "explanation_vi": "Câu mô tả một sự việc đã xảy ra trong quá khứ ('announced'), nên dùng thì quá khứ đơn 'cheered'. Thành ngữ 'over the moon' nghĩa là cực kỳ vui mừng, giải thích vì sao mọi người đã reo hò."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:14:09Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199079, Requested 1010. Please try again in 38.448s. Need more tokens? Upgrade to Dev Tier today at https://conso, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-ex-idioms-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "When the fire alarm went off, everyone stayed calm instead of ___.",
+        "options": [
+          {
+            "id": "A",
+            "text": "losing their heads"
+          },
+          {
+            "id": "B",
+            "text": "pulling their legs"
+          },
+          {
+            "id": "C",
+            "text": "keeping an eye on things"
+          },
+          {
+            "id": "D",
+            "text": "putting their feet up"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:IDIOMS:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199117, Requested 1181. Please try again in 2m8.735999999s. Need more tokens? Upgrade to Dev Tier today at https:, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:13:53Z"
+          },
+          "ai_request_id": "96fb3729-8c26-41c9-8d84-607aaaba4811",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests idiomatic phrasings ('lose your head', 'pull someone's leg', 'keep an eye on', 'put your feet up'), which CEFR descriptors place at B2. Although the sentence structure is simple and the target level is B1, distinguishing between several idioms and understanding their figurative meanings requires B2-level lexical knowledge.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The idiom 'lose your head' means to panic or become unable to think clearly. The sentence contrasts staying calm with panicking, so 'losing their heads' is correct. 'Pull someone's leg' means to joke with someone, 'keep an eye on' means to watch carefully, and 'put your feet up' means to relax.",
+          "explanation_vi": "Thành ngữ 'lose your head' có nghĩa là hoảng loạn, mất bình tĩnh và không suy nghĩ được. Câu này đối lập giữa việc giữ bình tĩnh và hoảng loạn, nên 'losing their heads' là đúng. 'Pull someone's leg' nghĩa là trêu đùa ai đó, 'keep an eye on' nghĩa là để mắt theo dõi, còn 'put your feet up' nghĩa là nghỉ ngơi thư giãn."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:13:53Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199117, Requested 1181. Please try again in 2m8.735999999s. Need more tokens? Upgrade to Dev Tier today at https:, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-quiz-idioms",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "What does 'get back on his feet' mean in this sentence? After losing his job, it took him months to get back on his feet.",
+        "options": [
+          {
+            "id": "A",
+            "text": "recover and become independent again"
+          },
+          {
+            "id": "B",
+            "text": "start a new job immediately"
+          },
+          {
+            "id": "C",
+            "text": "move to a different city"
+          },
+          {
+            "id": "D",
+            "text": "stand up for long periods of time"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:IDIOMS:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199825, Requested 862. Please try again in 4m56.784s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:14:47Z"
+          },
+          "ai_request_id": "f8f0583b-09ce-4893-b275-99b2558603db",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests an idiomatic expression ('get back on your feet'), which CEFR descriptors place at B2 (idiomatic phrasings). The sentence itself is simple past, but the target knowledge is figurative idiom comprehension, exceeding B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The idiom 'get back on your feet' means to recover from a difficulty or setback and return to a normal, stable situation, such as being financially independent again.",
+          "explanation_vi": "Thành ngữ 'get back on your feet' nghĩa là phục hồi sau một khó khăn hoặc thất bại và trở lại tình trạng ổn định, bình thường, ví dụ như tự chủ về tài chính trở lại."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:14:47Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199825, Requested 862. Please try again in 4m56.784s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-review-idioms",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Choose the correct meaning of the idiom in this sentence: 'When my boss asked who had broken the printer, I decided to bite the bullet and admit it was me.' What does 'bite the bullet' mean?",
+        "options": [
+          {
+            "id": "A",
+            "text": "To get very angry and shout at someone"
+          },
+          {
+            "id": "B",
+            "text": "To accept something difficult and deal with it bravely"
+          },
+          {
+            "id": "C",
+            "text": "To eat quickly because you are in a hurry"
+          },
+          {
+            "id": "D",
+            "text": "To avoid telling the truth to stay out of trouble"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:IDIOMS:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199751, Requested 1335. Please try again in 7m49.152s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:15:19Z"
+          },
+          "ai_request_id": "4f202692-5d52-4f5c-b86c-f527f0fc215d",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests an idiomatic expression ('bite the bullet'), which CEFR descriptors place at B2 ('idiomatic phrasings'). The sentence itself uses past simple and past perfect ('had broken'), and the distractors require understanding of figurative vs literal meaning, making it slightly above B1 despite the target level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The idiom 'bite the bullet' means to force yourself to do something unpleasant or difficult that you have been avoiding, accepting it with courage. In the sentence, the speaker bravely admitted a mistake, which fits this meaning.",
+          "explanation_vi": "Thành ngữ 'bite the bullet' nghĩa là dũng cảm chấp nhận và đối mặt với điều khó khăn, khó chịu mà mình đang né tránh. Trong câu, người nói đã can đảm thừa nhận lỗi của mình, phù hợp với nghĩa này."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:15:19Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199751, Requested 1335. Please try again in 7m49.152s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-topic-idioms",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "PHRASAL_VERBS",
+          "COLLOCATIONS",
+          "SLANG_AND_INFORMAL_ENGLISH"
+        ],
+        "examples": [
+          {
+            "note": "'Break the ice' = to do or say something to reduce tension and start conversation in an awkward social situation. The idiom is fixed; you cannot say 'break the frost'.",
+            "text": "It was my first day at the new school, so I told a joke to break the ice."
+          },
+          {
+            "note": "'Be fed up with + noun/gerund' means to be annoyed or bored with something that has continued too long. Note the preposition 'with' and the -ing form after it.",
+            "text": "I'm fed up with waiting for the bus every morning — it's always late."
+          },
+          {
+            "note": "'A piece of cake' = something very easy. It is informal and usually used in speech, not formal writing.",
+            "text": "The exam was a piece of cake — I finished it in twenty minutes."
+          }
+        ],
+        "objective": "Understand what English idioms are, recognize common high-frequency idioms at B1 level, and use them correctly and naturally in everyday conversation and writing.",
+        "_provenance": {
+          "batch": "foundation:IDIOMS:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199699, Requested 2609. Please try again in 16m37.056s. Need more tokens? Upgrade to Dev Tier today at https://co, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:15:43Z"
+          },
+          "ai_request_id": "b23ac738-e2a5-4697-83c8-cda4a2e40e18",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "An idiom is a fixed expression whose meaning cannot be understood by looking at the individual words. For example, 'break the ice' means to start a conversation, not to break frozen water. Idioms are usually fixed: you cannot change the words or their order ('kick the bucket', not 'kick the pail'). At B1 level, learners should focus on high-frequency, everyday idioms, often built around common verbs (get, take, make, put) or familiar topics (time, money, feelings). Key principles: (1) Learn idioms as whole chunks, including their grammar pattern (e.g., 'be fed up with + noun/gerund'). (2) Pay attention to register — many idioms are informal and suit conversation more than academic writing. (3) Notice that idioms often carry connotations (positive, negative, or humorous). (4) Do not translate idioms word-for-word from your own language; the images are usually different. A good strategy is to learn each idiom with one natural example sentence and reuse that pattern.",
+          "vi": "Thành ngữ (idiom) là một cụm từ cố định có nghĩa không thể suy ra từ nghĩa đen của từng từ. Ví dụ 'break the ice' nghĩa là 'phá băng, bắt đầu câu chuyện', không phải 'làm vỡ nước đá'. Thành ngữ thường cố định: không được thay đổi từ vựng hay trật tự từ ('kick the bucket' chứ không phải 'kick the pail'). Ở trình độ B1, người học nên tập trung vào các thành ngữ thông dụng hằng ngày, thường xoay quanh các động từ phổ biến (get, take, make, put) hoặc chủ đề quen thuộc (thời gian, tiền bạc, cảm xúc). Một số nguyên tắc quan trọng: (1) Học thành ngữ như một khối nguyên vẹn, kèm cả cấu trúc ngữ pháp của nó (ví dụ 'be fed up with + danh từ/V-ing'). (2) Chú ý sắc thái trang trọng — nhiều thành ngữ mang tính thân mật, phù hợp với hội thoại hơn là văn viết học thuật. (3) Thành ngữ thường mang sắc thái cảm xúc (tích cực, tiêu cực hoặc hài hước). (4) Tuyệt đối không dịch từng chữ từ tiếng Việt sang tiếng Anh, vì hình ảnh trong hai ngôn ngữ thường khác nhau. Cách học hiệu quả là học mỗi thành ngữ kèm một câu ví dụ tự nhiên và dùng lại đúng mẫu câu đó."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Learners often translate directly from their first language and mix up adjective pairs like boring/bored. When using the idiom 'be fed up with', the preposition 'with' must be kept, and the thing causing the feeling is the object of 'with'.",
+            "right": "I'm fed up with this movie. / This movie is boring.",
+            "wrong": "I am very boring with this movie. (intended meaning: bored)"
+          },
+          {
+            "why": "Idioms are fixed expressions and cannot be freely rebuilt into new grammar patterns. 'A piece of cake' functions as a noun phrase describing something easy; it is not a verb construction, so you cannot 'make a piece of cake of something'.",
+            "right": "The test was a piece of cake.",
+            "wrong": "She made a piece of cake of the test."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:15:43Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199699, Requested 2609. Please try again in 16m37.056s. Need more tokens? Upgrade to Dev Tier today at https://co, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
       }
     }
   ]

@@ -1,11 +1,246 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2078184Z",
+  "generated_at": "2026-09-25T18:49:49.3274059Z",
   "node": {
     "namespace": "grammar",
     "code": "PAST_CONTINUOUS",
     "label": "Past Continuous",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-past-continuous-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'At 8 o'clock last night': They watched TV when I cooked dinner.",
+        "acceptable": [
+          "At 8 o'clock last night they were watching TV while I was cooking dinner.",
+          "At 8 o'clock last night, they were watching TV and I was cooking dinner."
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_CONTINUOUS:20260924T101943",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "1a1ce49b-1b88-4bff-8b80-ee2c90c7c48c",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item targets the past continuous with 'while' to describe two simultaneous past actions, using very common vocabulary ('watch TV', 'cook dinner'). Past continuous for interrupted/parallel past actions is typically introduced at A2, and the sentence transformation is short and formulaic, making it appropriate for A2 learners, though the transformation format adds slight challenge.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "At 8 o'clock last night, they were watching TV while I was cooking dinner."
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use the past continuous ('were watching', 'was cooking') to describe two actions in progress at the same time in the past, often joined by 'while'.",
+          "explanation_vi": "Dùng thì quá khứ tiếp diễn ('were watching', 'was cooking') để miêu tả hai hành động đang diễn ra đồng thời trong quá khứ, thường nối bằng 'while'."
+        },
+        "correct_answer": "At 8 o'clock last night, they were watching TV while I was cooking dinner."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-past-continuous-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "I ___ a shower when the phone rang.",
+        "options": [
+          {
+            "id": "A",
+            "text": "was having"
+          },
+          {
+            "id": "B",
+            "text": "had"
+          },
+          {
+            "id": "C",
+            "text": "have"
+          },
+          {
+            "id": "D",
+            "text": "am having"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_CONTINUOUS:20260924T101943",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "63044528-fca8-46dd-ada9-3bac6a226b2e",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests past continuous vs. past simple with a clear time marker ('At 8 o'clock last night') and simple everyday vocabulary. Past continuous is typically introduced at A2, and the distractors are straightforward. The sentence structure is simple, matching A2 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The longer action in progress (having a shower) takes the past continuous; the short action that interrupts it (the phone rang) takes the past simple.",
+          "explanation_vi": "Hành động dài đang diễn ra (đang tắm) dùng quá khứ tiếp diễn; hành động ngắn xen vào (điện thoại reo) dùng quá khứ đơn."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-past-continuous",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "While I ___ dinner last night, my brother was watching TV in the living room.",
+        "options": [
+          {
+            "id": "A",
+            "text": "cooked"
+          },
+          {
+            "id": "B",
+            "text": "was cooking"
+          },
+          {
+            "id": "C",
+            "text": "am cooking"
+          },
+          {
+            "id": "D",
+            "text": "cook"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_CONTINUOUS:20260924T101943",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "03bcfe4c-4cfc-400c-bd3f-34508bebe95a",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the past continuous in a simple 'while' sentence with everyday vocabulary (dinner, TV, living room). Past continuous with 'while' is commonly introduced at A2, and the sentence structure is simple and concrete, matching the target level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past continuous 'was cooking' describes an action in progress at a specific time in the past, often used with 'while' alongside another past continuous action.",
+          "explanation_vi": "Thì quá khứ tiếp diễn 'was cooking' diễn tả hành động đang xảy ra tại một thời điểm xác định trong quá khứ, thường dùng với 'while' cùng một hành động quá khứ tiếp diễn khác."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-past-continuous",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "At 8 o'clock last night, my parents ___ TV in the living room.",
+        "options": [
+          {
+            "id": "A",
+            "text": "watched"
+          },
+          {
+            "id": "B",
+            "text": "were watching"
+          },
+          {
+            "id": "C",
+            "text": "are watching"
+          },
+          {
+            "id": "D",
+            "text": "watch"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_CONTINUOUS:20260924T101943",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8d17f29c-a9ef-4584-b84a-2a4e90a60180",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the past continuous at a specific past time point, a grammar structure typically introduced at A2. Vocabulary is simple and everyday (parents, TV, living room), and the sentence is short and clear, matching A2 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past continuous 'were watching' describes an action in progress at a specific moment in the past (at 8 o'clock last night).",
+          "explanation_vi": "Thì quá khứ tiếp diễn 'were watching' diễn tả hành động đang xảy ra tại một thời điểm xác định trong quá khứ (lúc 8 giờ tối qua)."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-past-continuous",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "PAST_SIMPLE",
+          "WHILE_WHEN_CLAUSES",
+          "PRESENT_CONTINUOUS"
+        ],
+        "examples": [
+          {
+            "note": "An action in progress at a specific past time; 'was' is used with 'I'.",
+            "text": "At 7 o'clock last night, I was watching TV."
+          },
+          {
+            "note": "The longer background action (was walking) is interrupted by a shorter action (saw) in past simple.",
+            "text": "She was walking to school when she saw an accident."
+          },
+          {
+            "note": "Two simultaneous ongoing actions in the past, both in past continuous.",
+            "text": "While we were cooking, my brother was setting the table."
+          }
+        ],
+        "objective": "Understand the formation and core uses of the past continuous tense (was/were + verb-ing), including its use for actions in progress at a past moment and for interrupted or simultaneous past actions, and use it accurately in affirmative, negative, and question forms.",
+        "_provenance": {
+          "batch": "foundation:PAST_CONTINUOUS:20260924T101943",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "71732878-8d52-4d23-8fed-1bee66d8cfc8",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "The past continuous describes actions that were in progress at a specific moment in the past. Form: subject + was/were + verb-ing (I/he/she/it was; you/we/they were). Negative: add 'not' (wasn't/weren't). Questions: invert was/were with the subject (Was she working?). Main uses: (1) an action in progress at a past time: 'At 8 p.m., I was cooking dinner.' (2) a longer background action interrupted by a shorter one, with the shorter action in past simple: 'I was sleeping when the phone rang.' (3) two parallel ongoing actions: 'While they were studying, they were listening to music.' Time markers include while, when, as, at that moment, all day. Do not use past continuous with stative verbs (know, like, believe).",
+          "vi": "Quá khứ tiếp diễn diễn tả hành động đang xảy ra tại một thời điểm xác định trong quá khứ. Công thức: S + was/were + V-ing (I/he/she/it dùng was; you/we/they dùng were). Phủ định: thêm 'not' (wasn't/weren't). Nghi vấn: đảo was/were lên trước chủ ngữ (Was she working?). Cách dùng chính: (1) hành động đang diễn ra tại một thời điểm trong quá khứ: 'At 8 p.m., I was cooking dinner.' (2) hành động nền đang kéo dài thì bị một hành động ngắn hơn chen ngang — hành động chen ngang dùng quá khứ đơn: 'I was sleeping when the phone rang.' (3) hai hành động song song cùng lúc: 'While they were studying, they were listening to music.' Dấu hiệu nhận biết: while, when, as, at that moment, all day. Lưu ý: không dùng quá khứ tiếp diễn với động từ trạng thái (know, like, believe)."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Stative verbs like 'know' are not used in continuous forms; use past simple for states in the past.",
+            "right": "I knew the answer when the teacher asked me.",
+            "wrong": "I was knowing the answer when the teacher asked me."
+          },
+          {
+            "why": "'They' takes 'were', not 'was', in the past continuous.",
+            "right": "They were playing football yesterday afternoon.",
+            "wrong": "They was playing football yesterday afternoon."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

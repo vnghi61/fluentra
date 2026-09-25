@@ -1,11 +1,247 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2406764Z",
+  "generated_at": "2026-09-25T18:49:49.3565677Z",
   "node": {
     "namespace": "grammar",
     "code": "QUESTIONS_AND_NEGATIVES",
     "label": "Questions and Negatives",
     "cefr_level": "A1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-questions-and-negatives-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Rewrite the sentence as a negative: 'She likes coffee.' Begin with 'She'.",
+        "acceptable": [
+          "She doesn't like coffee.",
+          "She does not like coffee at all."
+        ],
+        "_provenance": {
+          "batch": "foundation:QUESTIONS_AND_NEGATIVES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "5d83c7f2-dcdd-44f5-9c70-ecc799492626",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests a basic present simple negative transformation with very common vocabulary ('likes coffee'), which is core A1 grammar. The explanation is simple and appropriate for beginners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "She does not like coffee."
+          }
+        },
+        "explanation": {
+          "explanation_en": "To make a negative sentence in the present simple, use 'does not' (doesn't) + the base form of the verb: 'She does not like coffee.' Do not add -s to 'like' after 'does'.",
+          "explanation_vi": "Để tạo câu phủ định ở thì hiện tại đơn, dùng 'does not' (doesn't) + động từ nguyên mẫu: 'She does not like coffee.' Sau 'does', động từ 'like' không thêm 's'."
+        },
+        "correct_answer": "She does not like coffee."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-questions-and-negatives-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "My father ___ coffee. He only drinks tea.",
+        "options": [
+          {
+            "id": "A",
+            "text": "doesn't drink"
+          },
+          {
+            "id": "B",
+            "text": "don't drink"
+          },
+          {
+            "id": "C",
+            "text": "doesn't drinks"
+          },
+          {
+            "id": "D",
+            "text": "not drink"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:QUESTIONS_AND_NEGATIVES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "0ebbc512-0328-453a-b403-8b0094fd5194",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the present simple question form with 'Does' + third person singular, using very common vocabulary ('brother', 'like', 'pizza'). This is core A1 grammar.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "With 'he/she/it' (my father), the negative is 'doesn't' + base verb: 'doesn't drink'. Do not add -s after 'doesn't'.",
+          "explanation_vi": "Với 'he/she/it' (my father), phủ định là 'doesn't' + động từ nguyên mẫu: 'doesn't drink'. Không thêm -s sau 'doesn't'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-questions-and-negatives",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Choose the correct question: '___ your brother like pizza?'",
+        "options": [
+          {
+            "id": "A",
+            "text": "Do"
+          },
+          {
+            "id": "B",
+            "text": "Does"
+          },
+          {
+            "id": "C",
+            "text": "Is"
+          },
+          {
+            "id": "D",
+            "text": "Are"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:QUESTIONS_AND_NEGATIVES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8dd9ea17-92dd-48e2-8368-1c4ee267f8cb",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the present simple third-person question form with 'Does', using very common vocabulary ('brother', 'like', 'pizza'). This is a core A1 grammar point with everyday expressions.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "With 'he/she/it' (third person singular), use 'Does' to form a present simple question: 'Does your brother like pizza?'",
+          "explanation_vi": "Với chủ ngữ 'he/she/it' (ngôi thứ ba số ít), dùng 'Does' để tạo câu hỏi ở thì hiện tại đơn: 'Does your brother like pizza?'"
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-questions-and-negatives",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Where ___ your parents live?",
+        "options": [
+          {
+            "id": "A",
+            "text": "do"
+          },
+          {
+            "id": "B",
+            "text": "does"
+          },
+          {
+            "id": "C",
+            "text": "are"
+          },
+          {
+            "id": "D",
+            "text": "is"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:QUESTIONS_AND_NEGATIVES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "e546296f-8b64-49e8-b7f4-c03644071a45",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the present simple third-person question form with 'Does', using very common vocabulary ('brother', 'like', 'pizza'). This is a core A1 grammar point.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Your parents' is plural (they), so the wh-question uses 'do' + base verb: 'Where do your parents live?'",
+          "explanation_vi": "'Your parents' là số nhiều (they), nên câu hỏi dùng 'do' + động từ nguyên mẫu: 'Where do your parents live?'"
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-questions-and-negatives",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "SIMPLE_PRESENT",
+          "SIMPLE_PAST",
+          "WH_QUESTION_WORDS",
+          "VERB_BE"
+        ],
+        "examples": [
+          {
+            "note": "Yes/no question in simple present with 'do'; the short answer repeats the auxiliary.",
+            "text": "Do you speak English? — Yes, I do."
+          },
+          {
+            "note": "Wh-question with third-person singular subject, so we use 'does' and the base verb 'live' (no -s).",
+            "text": "Where does your brother live?"
+          },
+          {
+            "note": "Past simple negative with 'did not (didn't)' + base verb 'go' — not 'went' or 'didn't went'.",
+            "text": "I didn't go to school yesterday."
+          }
+        ],
+        "objective": "Understand the formation and core uses of yes/no questions, wh-questions, and negative statements in simple present and simple past tenses, including correct use of auxiliary verbs (do/does/did) and word order.",
+        "_provenance": {
+          "batch": "foundation:QUESTIONS_AND_NEGATIVES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "020e1683-9dc5-47f8-8f94-3a031e65855b",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "In English, questions and negatives are formed with auxiliary verbs. With the verb 'be', you make questions by inverting the subject and verb (You are happy → Are you happy?) and negatives by adding 'not' (I am not tired). With all other verbs, you use the auxiliary 'do/does' (present) or 'did' (past): questions take Do/Does/Did + subject + base verb (Do you like coffee? Does she work here? Did they go?), and negatives take do/does/did + not + base verb (I don't know, He doesn't smoke, We didn't see it). Wh-questions add a question word (what, where, when, who, why, how) before the auxiliary: Where do you live? What did she say? Remember: after do/does/did, the main verb returns to its base form — never add -s or -ed to it. Short answers use the auxiliary: 'Yes, I do.' / 'No, she doesn't.'",
+          "vi": "Trong tiếng Anh, câu hỏi và câu phủ định được tạo bằng trợ động từ. Với động từ 'be', ta đảo chủ ngữ và động từ để hỏi (You are happy → Are you happy?) và thêm 'not' để phủ định (I am not tired). Với các động từ khác, dùng trợ động từ 'do/does' (hiện tại) hoặc 'did' (quá khứ): câu hỏi là Do/Does/Did + chủ ngữ + động từ nguyên mẫu (Do you like coffee? Does she work here? Did they go?), câu phủ định là do/does/did + not + động từ nguyên mẫu (I don't know, He doesn't smoke, We didn't see it). Câu hỏi Wh thêm từ để hỏi (what, where, when, who, why, how) trước trợ động từ: Where do you live? What did she say? Lưu ý quan trọng: sau do/does/did, động từ chính trở về dạng nguyên mẫu — không thêm -s hay -ed. Câu trả lời ngắn dùng trợ động từ: 'Yes, I do.' / 'No, she doesn't.'"
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "After the auxiliary 'does', the main verb must stay in its base form. The third-person -s is already shown by 'does', so it is not repeated on the main verb.",
+            "right": "Does she like coffee?",
+            "wrong": "Does she likes coffee?"
+          },
+          {
+            "why": "In past simple negatives and questions, 'did' carries the past tense, so the main verb returns to its base form: didn't go, not didn't went.",
+            "right": "I didn't go to the party.",
+            "wrong": "I didn't went to the party."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

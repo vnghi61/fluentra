@@ -1,11 +1,279 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1037284Z",
+  "generated_at": "2026-09-25T18:49:49.2251986Z",
   "node": {
     "namespace": "pronunciation",
     "code": "COMMON_PRONUNCIATION_MISTAKES",
     "label": "Common Pronunciation Mistakes",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-common-pronunciation-mistakes-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Yesterday evening, Mai ___ her favourite programme on TV after she finished her homework.",
+        "options": [
+          {
+            "id": "A",
+            "text": "watches"
+          },
+          {
+            "id": "B",
+            "text": "watched"
+          },
+          {
+            "id": "C",
+            "text": "is watching"
+          },
+          {
+            "id": "D",
+            "text": "has watched"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMMON_PRONUNCIATION_MISTAKES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:34:11Z"
+          },
+          "ai_request_id": "c8dba273-7391-4456-9910-ab1e42871930",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests past simple with a clear time marker 'Yesterday evening', which is core A2 grammar. Distractors include present simple, present continuous, and present perfect; the present perfect option slightly stretches beyond A2 but the target structure and vocabulary are simple and familiar, matching A2.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The time marker 'Yesterday evening' requires the past simple, so 'watched' is correct. Note the pronunciation: 'watched' ends in the /t/ sound (/wɒtʃt/), not /ɪd/, because the verb ends in the sound /tʃ/. Learners often mispronounce -ed endings, so practise saying 'watched' as one syllable.",
+          "explanation_vi": "Dấu hiệu thời gian 'Yesterday evening' yêu cầu thì quá khứ đơn, nên 'watched' là đúng. Lưu ý phát âm: 'watched' kết thúc bằng âm /t/ (/wɒtʃt/), không phải /ɪd/, vì động từ kết thúc bằng âm /tʃ/. Người học thường phát âm sai đuôi -ed, hãy luyện nói 'watched' chỉ với một âm tiết."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:34:11Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-common-pronunciation-mistakes-speaking-task-2",
+      "kind": "speaking_task",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Talk about your favourite food and what you usually eat in a day. Try to use these words in your answer: 'vegetables', 'comfortable', 'clothes', and 'restaurant'. Speak for 45 seconds.",
+        "task_type": "respond",
+        "_provenance": {
+          "batch": "foundation:COMMON_PRONUNCIATION_MISTAKES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:34:24Z"
+          },
+          "ai_request_id": "ffa7fc65-3e67-4ee3-8870-4c93d2966567",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The task asks about familiar everyday topics (food, daily routine) using simple present and common vocabulary, matching A2 descriptors. The target words are common but include pronunciation challenges (vegetables, comfortable, clothes, restaurant) that are appropriate at A2, where learners consolidate everyday vocabulary and pronunciation. The 45-second simple response format suits A2 speaking ability.",
+          "prompt_version": "item_generate.v2"
+        },
+        "explanation": {
+          "text": "This task targets common pronunciation mistakes at A2 level. Learners often mispronounce 'vegetables' (/ˈvedʒtəbəlz/, not 've-ge-ta-bles'), 'comfortable' (/ˈkʌmftəbəl/, not 'com-for-ta-ble'), 'clothes' (/kləʊðz/, not 'clo-thes'), and 'restaurant' (/ˈrestrɒnt/, not 'res-tau-rant'). Encourage learners to say these words clearly and naturally while answering.",
+          "text_vi": "Nhiệm vụ này nhắm đến các lỗi phát âm thường gặp ở trình độ A2. Người học thường phát âm sai 'vegetables' (/ˈvedʒtəbəlz/, không phải 've-ge-ta-bles'), 'comfortable' (/ˈkʌmftəbəl/, không phải 'com-for-ta-ble'), 'clothes' (/kləʊðz/, không phải 'clo-thes') và 'restaurant' (/ˈrestrɒnt/, không phải 'res-tau-rant'). Khuyến khích người học phát âm các từ này rõ ràng và tự nhiên khi trả lời."
+        },
+        "speaking_time_seconds": 45
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:34:24Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-quiz-common-pronunciation-mistakes",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Which word has the /ɪ/ sound in the first syllable (NOT /iː/)?",
+        "options": [
+          {
+            "id": "A",
+            "text": "live (verb)"
+          },
+          {
+            "id": "B",
+            "text": "leave"
+          },
+          {
+            "id": "C",
+            "text": "eat"
+          },
+          {
+            "id": "D",
+            "text": "sea"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMMON_PRONUNCIATION_MISTAKES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:34:57Z"
+          },
+          "ai_request_id": "344a28fa-3b00-4bfd-ad3e-55cab12bc35b",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses very common A1/A2 vocabulary (live, leave, eat, sea) and tests basic vowel sound discrimination, a typical A2 phonemic awareness task. The prompt is a simple question; the explanation mentions phonetic symbols, but the item itself remains accessible at A2.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The verb 'live' is pronounced /lɪv/ with the short /ɪ/ sound, while 'leave', 'eat' and 'sea' all have the long /iː/ sound. Vietnamese learners often confuse these two vowel sounds.",
+          "explanation_vi": "Động từ 'live' phát âm là /lɪv/ với nguyên âm ngắn /ɪ/, trong khi 'leave', 'eat' và 'sea' đều có nguyên âm dài /iː/. Người học Việt Nam thường nhầm lẫn hai âm nguyên âm này."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:34:57Z"
+      }
+    },
+    {
+      "slug": "foundation-review-common-pronunciation-mistakes",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Which word has the same pronunciation of 'ch' as in the word 'chef'?",
+        "options": [
+          {
+            "id": "A",
+            "text": "chair"
+          },
+          {
+            "id": "B",
+            "text": "school"
+          },
+          {
+            "id": "C",
+            "text": "machine"
+          },
+          {
+            "id": "D",
+            "text": "cheap"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMMON_PRONUNCIATION_MISTAKES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:35:05Z"
+          },
+          "ai_request_id": "98b3af86-f982-446d-9ef4-04c8776c60b4",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests recognition of the /ʃ/ pronunciation of 'ch' in common words (chef, machine), using simple everyday vocabulary and a short, simple question. This phonics-level discrimination task with familiar words fits A2.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In 'chef' and 'machine', the letters 'ch' are pronounced /ʃ/ like 'sh'. In 'chair' and 'cheap', 'ch' is /tʃ/, and in 'school' it is /k/.",
+          "explanation_vi": "Trong 'chef' và 'machine', chữ 'ch' được phát âm là /ʃ/ giống âm 'sh'. Trong 'chair' và 'cheap', 'ch' phát âm là /tʃ/, còn trong 'school' là /k/."
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:35:05Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-common-pronunciation-mistakes",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "WORD_STRESS",
+          "MINIMAL_PAIRS",
+          "ENGLISH_SOUNDS_TH_S"
+        ],
+        "examples": [
+          {
+            "note": "Pronounce the final /d/ in 'need' and /d/ in 'bread' clearly — do not drop final consonants.",
+            "text": "I need to buy some bread at the store."
+          },
+          {
+            "note": "Contrasts /ʃ/ ('she', 'shirt'), /θ/ ('thinks'), /ð/ ('this') and /tʃ/ ('cheap'). Practise each sound separately.",
+            "text": "She thinks this shirt is very cheap."
+          },
+          {
+            "note": "Keep consonant clusters together: 'stopped' /stɒpt/ and 'street' /striːt/ — do not insert an extra vowel.",
+            "text": "I stopped at the street to take a photo."
+          }
+        ],
+        "objective": "Recognize and correct the most common pronunciation mistakes Vietnamese learners make when speaking English, including final consonants, consonant clusters, the /s/, /ʃ/, /θ/ sounds, and English word stress.",
+        "_provenance": {
+          "batch": "foundation:COMMON_PRONUNCIATION_MISTAKES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:35:26Z"
+          },
+          "ai_request_id": "e7a0cd19-c99d-4079-91dc-3ea0fd5c7a83",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Vietnamese learners of English often make predictable pronunciation mistakes because Vietnamese and English sound systems are very different. The most common problems are: (1) Dropping final consonants — Vietnamese syllables usually end in a vowel or a limited set of consonants (/p, t, k, m, n, ŋ/), so learners often say 'I need' as 'I nee' or 'best' as 'bes'. Always pronounce the final sound clearly. (2) Simplifying consonant clusters — English allows several consonants together (e.g., 'st', 'sp', 'str'), but Vietnamese does not, so learners insert an extra vowel: 'stop' becomes 'sə-top'. Keep the cluster together: /stɒp/. (3) Confusing /s/ and /ʃ/ — 'see' and 'she' sound the same to many learners. /ʃ/ requires rounded lips and the tongue pulled slightly back. (4) Confusing /θ/ and /ð/ (as in 'think' and 'this') with /s/, /z/, or /t/ — put your tongue tip lightly between your teeth. (5) Wrong word stress — English stress changes meaning ('REcord' = noun, 'reCORD' = verb), while Vietnamese uses tones instead. Learn which syllable is stressed in each new word. Being aware of these five areas and practicing them deliberately will greatly improve intelligibility.",
+          "vi": "Người Việt học tiếng Anh thường gặp những lỗi phát âm dễ đoán vì hệ thống âm thanh của hai ngôn ngữ rất khác nhau. Năm lỗi phổ biến nhất là: (1) Bỏ quên âm cuối — trong tiếng Việt, âm cuối chỉ có hạn (/p, t, k, m, n, ŋ/ và thường không bật hơi rõ), nên người học hay đọc 'I need' thành 'I nee' hoặc 'best' thành 'bes'. Hãy phát âm rõ âm cuối, kể cả khi nó không được nhấn mạnh. (2) Đơn giản hóa cụm phụ âm — tiếng Anh cho phép nhiều phụ âm đứng cạnh nhau (st, sp, str...), nhưng tiếng Việt thì không, nên người học thường chèn thêm một nguyên âm: 'stop' thành 'sơ-top'. Hãy đọc cả cụm phụ âm liền nhau: /stɒp/. (3) Nhầm /s/ và /ʃ/ — 'see' và 'she' nghe giống nhau với nhiều người Việt. Để đọc /ʃ/, hãy tròn môi và lùi lưỡi về sau một chút. (4) Nhầm /θ/, /ð/ (trong 'think', 'this') với /s/, /z/ hoặc /t/ — hãy đặt nhẹ đầu lưỡi giữa hai hàm răng. (5) Sai trọng âm từ — trọng âm trong tiếng Anh làm thay đổi nghĩa ('REcord' = danh từ, 'reCORD' = động từ), trong khi tiếng Việt dùng thanh điệu. Khi học từ mới, hãy luôn học cả vị trí trọng âm của từ đó. Nhận diện và luyện tập có chủ đích năm điểm này sẽ giúp bạn nói tiếng Anh dễ hiểu hơn rất nhiều."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Vietnamese syllables rarely end in /t/ with a clear release, so learners drop it. The final /t/ must be pronounced, even lightly, or the word becomes unclear.",
+            "right": "I live in a small flat /flæt/.",
+            "wrong": "I live in a small 'flat' pronounced as /fla/ without the final /t/."
+          },
+          {
+            "why": "English consonant clusters like /st/ must be pronounced together. Inserting a vowel adds an extra syllable and changes the rhythm of the sentence.",
+            "right": "Pronouncing 'stop' as /stɒp/.",
+            "wrong": "Pronouncing 'stop' as /səˈtɒp/ with an extra vowel."
+          },
+          {
+            "why": "Confusing /s/ and /ʃ/ can change the meaning of a word entirely and sometimes cause embarrassment. Round your lips and pull the tongue slightly back for /ʃ/.",
+            "right": "Distinguish clearly: 'see' /siː/ vs 'she' /ʃiː/.",
+            "wrong": "Saying 'see' /siː/ when you mean 'she' /ʃiː/, or 'sip' when you mean 'ship'."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:35:26Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    }
+  ]
 }

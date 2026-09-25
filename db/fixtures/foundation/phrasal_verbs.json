@@ -1,11 +1,299 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2176402Z",
+  "generated_at": "2026-09-25T18:49:49.3380571Z",
   "node": {
     "namespace": "grammar",
     "code": "PHRASAL_VERBS",
     "label": "Phrasal Verbs",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-phrasal-verbs-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence using the phrasal verb 'put off': They decided to postpone the meeting until next week.",
+        "acceptable": [
+          "They decided to put the meeting off until next week.",
+          "They decided to put it off until next week."
+        ],
+        "_provenance": {
+          "batch": "foundation:PHRASAL_VERBS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "92b4c81d-652c-40a6-993b-eae9a2e1e01c",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the common phrasal verb 'put off' (postpone), a B1-level vocabulary item, and requires understanding of separable phrasal verb word order with noun vs. pronoun objects. The source sentence is simple past with routine vocabulary, and the transformation task (paraphrasing with a phrasal verb) matches B1 grammar competence. It is beyond A2 (learners at A2 rarely control separable phrasal verbs) but well below B2, which involves more complex structures.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "They decided to put off the meeting until next week."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The phrasal verb 'put off' means to postpone something to a later time. With a noun object, the particle can come before or after the object ('put off the meeting' / 'put the meeting off'), but with a pronoun it must go in between ('put it off').",
+          "explanation_vi": "Cụm động từ 'put off' có nghĩa là trì hoãn việc gì đến thời điểm muộn hơn. Khi tân ngữ là danh từ, tiểu từ có thể đứng trước hoặc sau tân ngữ ('put off the meeting' / 'put the meeting off'), nhưng khi tân ngữ là đại từ thì tiểu từ phải đứng ở giữa ('put it off')."
+        },
+        "correct_answer": "They decided to put off the meeting until next week."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-phrasal-verbs-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "We had to ___ the meeting until next Monday because the manager was ill.",
+        "options": [
+          {
+            "id": "A",
+            "text": "put off"
+          },
+          {
+            "id": "B",
+            "text": "put on"
+          },
+          {
+            "id": "C",
+            "text": "put up"
+          },
+          {
+            "id": "D",
+            "text": "put away"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PHRASAL_VERBS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "038db2c7-9280-47a5-8fb4-6b5e15aed61b",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests phrasal verb discrimination ('put off' vs 'put on/up/away'), which requires understanding of idiomatic multi-word verbs. The sentence itself is simple past with everyday work/school vocabulary, but distinguishing phrasal verb meanings is typically a B1-level skill, matching the target level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The phrasal verb 'put off' means to postpone something to a later time. 'Put on' means to wear, 'put up' means to tolerate or build, and 'put away' means to store something.",
+          "explanation_vi": "Cụm động từ 'put off' có nghĩa là hoãn lại một việc đến thời điểm khác. 'Put on' nghĩa là mặc vào, 'put up' nghĩa là chịu đựng hoặc xây dựng, còn 'put away' nghĩa là cất đi."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-phrasal-verbs-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "We ___ our trip because my mother was ill, so we will go next month instead.",
+        "options": [
+          {
+            "id": "A",
+            "text": "put off"
+          },
+          {
+            "id": "B",
+            "text": "missed out"
+          },
+          {
+            "id": "C",
+            "text": "got over"
+          },
+          {
+            "id": "D",
+            "text": "took up"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PHRASAL_VERBS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "f400d39b-c3a6-4d51-953c-cfac6a93ab73",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests phrasal verb meaning in context (put off, missed out, got over, took up), which is typical B1 vocabulary work. The sentence itself is simple past with everyday travel vocabulary, accessible at B1; distractors require understanding of common multi-word verbs, slightly above A2 but well within B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The phrasal verb 'put off' means to postpone. The trip was moved to next month. 'Missed out' means to lose an opportunity, 'got over' means to recover from something, and 'took up' means to start a hobby.",
+          "explanation_vi": "Cụm động từ 'put off' nghĩa là hoãn lại. Chuyến đi được dời sang tháng sau. 'Missed out' nghĩa là bỏ lỡ cơ hội, 'got over' nghĩa là vượt qua/khỏi bệnh, còn 'took up' nghĩa là bắt đầu một sở thích."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-phrasal-verbs",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Choose the correct phrasal verb: The meeting was ___ until next Monday because the manager was ill.",
+        "options": [
+          {
+            "id": "A",
+            "text": "put off"
+          },
+          {
+            "id": "B",
+            "text": "put on"
+          },
+          {
+            "id": "C",
+            "text": "taken off"
+          },
+          {
+            "id": "D",
+            "text": "called in"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PHRASAL_VERBS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "dcac2e27-474d-4819-875f-0be1245a2946",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests a common phrasal verb ('put off') in a simple passive sentence about a work/school context. Phrasal verbs like 'put off', 'put on', 'take off' are typically introduced at B1, and the distractors are comparably common. The sentence structure (passive past simple) is accessible, making this a solid B1 vocabulary item.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Put off' means to postpone something to a later time. 'Put on' means to wear or start, 'taken off' means removed or left the ground, and 'called in' means to ask someone to come or report sick to work.",
+          "explanation_vi": "'Put off' có nghĩa là hoãn lại đến thời điểm sau. 'Put on' nghĩa là mặc vào hoặc bắt đầu, 'taken off' nghĩa là cởi ra hoặc cất cánh, còn 'called in' nghĩa là gọi ai đó đến hoặc xin nghỉ phép."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-phrasal-verbs",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Our flight was delayed, so we decided to ___ at a hotel near the airport until the next morning.",
+        "options": [
+          {
+            "id": "A",
+            "text": "check in"
+          },
+          {
+            "id": "B",
+            "text": "give up"
+          },
+          {
+            "id": "C",
+            "text": "put off"
+          },
+          {
+            "id": "D",
+            "text": "turn down"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PHRASAL_VERBS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "25c0460d-70e2-442f-8be9-b9f29f89f467",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests common phrasal verbs (check in, give up, put off, turn down) in a simple past-tense travel context. Phrasal verbs of this type are typically introduced at B1; the sentence structure is simple, but the lexical knowledge required (distinguishing four phrasal verbs) matches B1 expectations.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Check in' means to arrive and register at a hotel. 'Give up' means to stop trying, 'put off' means to postpone, and 'turn down' means to refuse.",
+          "explanation_vi": "'Check in' nghĩa là đến và làm thủ tục nhận phòng tại khách sạn. 'Give up' nghĩa là từ bỏ, 'put off' nghĩa là trì hoãn, còn 'turn down' nghĩa là từ chối."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-phrasal-verbs",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "PREPOSITIONS",
+          "VERB_PATTERNS_GERUNDS_INFINITIVES",
+          "TRANSITIVE_INTRANSITIVE_VERBS"
+        ],
+        "examples": [
+          {
+            "note": "Three-word phrasal verb 'look forward to' = to feel excited about something in the future. Note that 'to' here is a preposition, so it is followed by a gerund (seeing), not the base verb.",
+            "text": "I'm looking forward to seeing you next week."
+          },
+          {
+            "note": "'Turn off' is separable, so the pronoun 'it' must go between the verb and the particle: 'turn it off', not 'turn off it'.",
+            "text": "Can you turn it off, please? The noise is bothering me."
+          },
+          {
+            "note": "'Take after' is transitive and inseparable, meaning to resemble a family member. The object 'her mother' must come after the particle; it can never be separated.",
+            "text": "She takes after her mother — they're both very patient."
+          }
+        ],
+        "objective": "Understand what phrasal verbs are, recognize their four main types (separable, inseparable, transitive, intransitive), and correctly use common B1-level phrasal verbs in sentences, including proper pronoun placement with separable verbs.",
+        "_provenance": {
+          "batch": "foundation:PHRASAL_VERBS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "c1772cba-366a-40f0-94db-d7af49a022d6",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "A phrasal verb is a combination of a verb plus one or more particles (adverbs or prepositions, e.g., up, out, on, off) that together create a new meaning, often different from the original verb. For example, 'give up' means to stop trying, not literally to give something upward. Phrasal verbs are extremely common in spoken and informal English.\n\nThere are four main types:\n1. Intransitive (no object): 'get up', 'come back', 'sit down' — 'I get up at 6 a.m.'\n2. Transitive inseparable (object must come after the particle): 'look after', 'run into', 'put up with' — 'She looks after her grandmother.'\n3. Transitive separable (object can go between the verb and particle, or after): 'turn on/off', 'pick up', 'put on' — 'Turn on the light' or 'Turn the light on.'\n4. Three-word phrasal verbs: 'get on with', 'look forward to', 'put up with' — 'I look forward to meeting you.'\n\nKey rule: With separable phrasal verbs, when the object is a pronoun (it, him, her, them), the pronoun MUST go between the verb and the particle: 'Turn it on' (never 'Turn on it'). Some phrasal verbs have idiomatic meanings ('give up' = quit), while others are more literal ('sit down'). Because the meaning is often unpredictable, phrasal verbs should be learned as whole units, like vocabulary items.",
+          "vi": "Cụm động từ (phrasal verb) là sự kết hợp giữa một động từ và một hoặc nhiều tiểu từ (trạng từ hoặc giới từ như up, out, on, off), tạo nên nghĩa mới, thường khác hoàn toàn nghĩa gốc của động từ. Ví dụ: 'give up' nghĩa là bỏ cuộc, không phải 'đưa lên'. Cụm động từ rất phổ biến trong tiếng Anh giao tiếp và văn viết thân mật.\n\nCó bốn loại chính:\n1. Không cần tân ngữ (intransitive): 'get up' (thức dậy), 'come back' (trở về) — 'I get up at 6 a.m.'\n2. Cần tân ngữ, không tách được (inseparable): tân ngữ phải đứng SAU tiểu từ, như 'look after' (chăm sóc), 'run into' (tình cờ gặp) — 'She looks after her grandmother.'\n3. Cần tân ngữ, tách được (separable): tân ngữ có thể đứng giữa động từ và tiểu từ hoặc sau, như 'turn on/off', 'pick up' — 'Turn on the light' hoặc 'Turn the light on.'\n4. Cụm ba từ: 'get on with' (hòa hợp với), 'look forward to' (mong chờ) — 'I look forward to meeting you.'\n\nLưu ý quan trọng: Với cụm động từ tách được, khi tân ngữ là đại từ (it, him, her, them), đại từ BẮT BUỘC đứng giữa động từ và tiểu từ: 'Turn it on' (không nói 'Turn on it'). Nhiều cụm động từ mang nghĩa thành ngữ, không đoán được từ nghĩa từng chữ, nên người học cần học chúng như những đơn vị từ vựng hoàn chỉnh, kèm ví dụ cụ thể."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "With separable phrasal verbs, object pronouns (it, him, her, them) must be placed between the verb and the particle. 'Turn on it' is incorrect because pronouns cannot follow the particle in separable phrasal verbs.",
+            "right": "Can you turn it on?",
+            "wrong": "Can you turn on it?"
+          },
+          {
+            "why": "Learners often add unnecessary prepositions by analogy with phrasal verbs. 'Discuss' is a regular transitive verb and takes a direct object without a preposition. Not every verb needs a particle.",
+            "right": "I will discuss the plan with my boss.",
+            "wrong": "I will discuss about the plan with my boss."
+          },
+          {
+            "why": "'Look after' is an inseparable phrasal verb, so the object must always come after the complete phrase. Inseparable phrasal verbs can never be split, even when the object is a noun.",
+            "right": "She looks after her grandmother.",
+            "wrong": "She looks her grandmother after."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

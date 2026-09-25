@@ -1,11 +1,420 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2527406Z",
+  "generated_at": "2026-09-25T18:49:49.3659373Z",
   "node": {
     "namespace": "skill",
     "code": "READING_SENTENCES",
     "label": "Reading: Sentences",
     "cefr_level": "A1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-reading-sentences-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'She': My brother plays football every weekend. (Use 'She' instead of 'My brother'.)",
+        "acceptable": [
+          "She plays football at the weekend.",
+          "She plays football on weekends."
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8436fbd0-64e5-4c2f-81b5-ded38303e299",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests simple present third-person singular verb agreement ('plays') with very common vocabulary, which is core A1 grammar.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "She plays football every weekend."
+          }
+        },
+        "explanation": {
+          "explanation_en": "When the subject changes from 'my brother' to 'she', the verb stays the same because 'she' is also third person singular, so we use 'plays' with -s.",
+          "explanation_vi": "Khi đổi chủ ngữ từ 'my brother' sang 'she', động từ vẫn giữ nguyên vì 'she' cũng là ngôi thứ ba số ít, nên ta dùng 'plays' có đuôi -s."
+        },
+        "correct_answer": "She plays football every weekend."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-reading-sentences-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, Mai ___ to school by bus, but today she is walking because the bus is late.",
+        "options": [
+          {
+            "id": "A",
+            "text": "goes"
+          },
+          {
+            "id": "B",
+            "text": "went"
+          },
+          {
+            "id": "C",
+            "text": "go"
+          },
+          {
+            "id": "D",
+            "text": "is going"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "4c6d4a59-c9c0-400b-9add-45a9a08c7ae4",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the present simple for daily habits with third-person singular -s ('goes'), which is core A1 grammar. Vocabulary ('every morning', 'school', 'bus') is very common. The contrast clause 'today she is walking' introduces present continuous, slightly stretching the item, but the target structure remains basic present simple, appropriate for A1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Every morning' shows a daily habit, so we use the present simple. 'Mai' is third person singular, so the verb takes -s: 'goes'. 'Today she is walking' describes today only, so the contrast confirms the habitual present simple in the first clause.",
+          "explanation_vi": "'Every morning' (mỗi sáng) chỉ thói quen hằng ngày, nên dùng thì hiện tại đơn. 'Mai' là ngôi thứ ba số ít, nên động từ thêm -s: 'goes'. Câu 'today she is walking' chỉ nói về hôm nay, làm nổi bật sự đối lập với thói quen ở mệnh đề đầu."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-reading-sentences-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "A1",
+      "body": {
+        "passage": "Mai gets up at six o'clock every Saturday. She helps her mother at the market. They sell fruit and vegetables. Mai puts apples, bananas, and oranges on the table. Her mother gives her the money box.\n\nMany people come to their table. A man buys five apples. A woman buys two kilos of oranges. Mai's friend Linh comes with her father. Linh buys a big banana and smiles at Mai.\n\nAt twelve o'clock, they go home. Mai is tired, but she is happy. Her mother says, \"You are a good helper.\" Mai smiles. She likes Saturdays at the market very much.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "What time does Mai get up on Saturdays?",
+            "options": [
+              {
+                "id": "A",
+                "text": "At five o'clock"
+              },
+              {
+                "id": "B",
+                "text": "At six o'clock"
+              },
+              {
+                "id": "C",
+                "text": "At seven o'clock"
+              },
+              {
+                "id": "D",
+                "text": "At twelve o'clock"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The first sentence says Mai gets up at six o'clock every Saturday.",
+              "explanation_vi": "Câu đầu tiên nói rằng Mai thức dậy lúc sáu giờ vào mỗi sáng thứ Bảy."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "What do Mai and her mother sell at the market?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Bread and milk"
+              },
+              {
+                "id": "B",
+                "text": "Fish and rice"
+              },
+              {
+                "id": "C",
+                "text": "Fruit and vegetables"
+              },
+              {
+                "id": "D",
+                "text": "Books and pens"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says they sell fruit and vegetables at the market.",
+              "explanation_vi": "Bài đọc nói rằng họ bán trái cây và rau ở chợ."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "How many apples does the man buy?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Two"
+              },
+              {
+                "id": "B",
+                "text": "Three"
+              },
+              {
+                "id": "C",
+                "text": "Five"
+              },
+              {
+                "id": "D",
+                "text": "Ten"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says a man buys five apples.",
+              "explanation_vi": "Bài đọc nói rằng một người đàn ông mua năm quả táo."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "Who comes to the market with Linh?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Her mother"
+              },
+              {
+                "id": "B",
+                "text": "Her father"
+              },
+              {
+                "id": "C",
+                "text": "Her sister"
+              },
+              {
+                "id": "D",
+                "text": "Her teacher"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says Linh comes to the market with her father.",
+              "explanation_vi": "Bài đọc nói rằng Linh đến chợ cùng với bố của cô ấy."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "How does Mai feel at twelve o'clock?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Tired but happy"
+              },
+              {
+                "id": "B",
+                "text": "Sad and tired"
+              },
+              {
+                "id": "C",
+                "text": "Angry but calm"
+              },
+              {
+                "id": "D",
+                "text": "Hungry and cold"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says Mai is tired, but she is happy.",
+              "explanation_vi": "Bài đọc nói rằng Mai mệt nhưng cô ấy vui vẻ."
+            },
+            "correct_option_id": "A"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "1da1c88d-c082-4f3b-bdbc-b5d51d4c4400",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The passage uses very short simple sentences, present simple tense, and highly common everyday vocabulary (market, fruit, apples, happy, tired). All five questions require literal retrieval of explicitly stated details with no inference, matching A1 reading comprehension descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "B",
+              "q2": "C",
+              "q3": "C",
+              "q4": "B",
+              "q5": "A"
+            }
+          }
+        },
+        "passage_title": "Mai's Day at the Market"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-reading-sentences",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Read the sentence: 'Tom gets up at seven o'clock and drinks a glass of milk.' What does Tom do at seven o'clock?",
+        "options": [
+          {
+            "id": "A",
+            "text": "He goes to bed."
+          },
+          {
+            "id": "B",
+            "text": "He gets up."
+          },
+          {
+            "id": "C",
+            "text": "He eats dinner."
+          },
+          {
+            "id": "D",
+            "text": "He watches TV."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "96904f1b-eaf9-4740-9571-d988590ba617",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very simple present-tense sentences with high-frequency vocabulary (gets up, drinks milk, seven o'clock) and a basic reading comprehension question, fully matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The sentence says 'Tom gets up at seven o'clock', so at seven o'clock he gets up.",
+          "explanation_vi": "Câu nói 'Tom gets up at seven o'clock', nghĩa là lúc bảy giờ Tom thức dậy."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-reading-sentences",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Read the sentence: 'My sister gets up at six o'clock every morning.' What time does she get up?",
+        "options": [
+          {
+            "id": "A",
+            "text": "At five o'clock"
+          },
+          {
+            "id": "B",
+            "text": "At six o'clock"
+          },
+          {
+            "id": "C",
+            "text": "At seven o'clock"
+          },
+          {
+            "id": "D",
+            "text": "At eight o'clock"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "d568ed6e-0870-4f9a-bb5e-548b092b7ab6",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses simple present tense, very common vocabulary (sister, gets up, o'clock), and a short simple sentence requiring literal reading comprehension, matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The sentence says 'My sister gets up at six o'clock every morning,' so the correct answer is six o'clock.",
+          "explanation_vi": "Câu nói 'Chị tôi thức dậy lúc sáu giờ mỗi sáng,' nên đáp án đúng là sáu giờ."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-reading-sentences",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "GRAMMAR_SIMPLE_PRESENT",
+          "GRAMMAR_SUBJECT_VERB_OBJECT",
+          "VOCAB_DAILY_ROUTINES"
+        ],
+        "examples": [
+          {
+            "note": "A simple S+V sentence with a place detail. Subject: 'My sister'; verb: 'works'; extra information: 'in a hospital' (place).",
+            "text": "My sister works in a hospital."
+          },
+          {
+            "note": "A compound sentence joined by 'but'. Shows negation ('do not eat') and how two simple sentences connect.",
+            "text": "I do not eat meat, but I eat fish."
+          },
+          {
+            "note": "Demonstrates identifying the real subject ('The bus') even when other nouns ('school') appear earlier in the phrase.",
+            "text": "The bus to school leaves at 7 a.m."
+          }
+        ],
+        "objective": "Understand how to read and understand simple English sentences at CEFR A1 level, including recognizing basic sentence structure (subject + verb + object), common sight words, and extracting key information from short everyday sentences.",
+        "_provenance": {
+          "batch": "foundation:READING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "32cda895-ca3e-4a7c-b7b9-57d6def6bc17",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At A1 level, reading sentences means understanding short, simple sentences about everyday topics. A basic English sentence usually follows the pattern Subject + Verb + Object (e.g., 'I like coffee'). Learners should learn to: (1) identify the subject (who or what), (2) find the verb (the action or state), and (3) notice extra details like time, place, or objects. Word order in English is fixed: the subject normally comes before the verb. Common function words (a, an, the, is, are, in, on, at, my, your) appear constantly and should be recognized instantly. Reading strategies include reading slowly word by word at first, using context to guess unknown words, and re-reading to confirm meaning. Sentences may be statements ('She is a teacher'), negatives ('He does not like fish'), or questions ('Where do you live?'). Recognizing capital letters, full stops, and question marks helps identify sentence type and boundaries.",
+          "vi": "Ở trình độ A1, đọc câu có nghĩa là hiểu được những câu ngắn, đơn giản về các chủ đề hàng ngày. Một câu tiếng Anh cơ bản thường theo cấu trúc Chủ ngữ + Động từ + Tân ngữ (ví dụ: 'I like coffee'). Người học cần: (1) xác định chủ ngữ (ai hoặc cái gì), (2) tìm động từ (hành động hoặc trạng thái), và (3) chú ý các chi tiết bổ sung như thời gian, nơi chốn. Trật tự từ trong tiếng Anh cố định: chủ ngữ thường đứng trước động từ — điều này khác với tiếng Việt ở một số trường hợp. Các từ chức năng phổ biến (a, an, the, is, are, in, on, at, my, your) xuất hiện liên tục và cần được nhận biết ngay lập tức. Chiến lược đọc gồm: đọc chậm từng từ lúc đầu, dùng ngữ cảnh để đoán từ lạ, và đọc lại để xác nhận nghĩa. Dấu chấm câu (chữ hoa đầu câu, dấu chấm, dấu hỏi) giúp nhận diện loại câu và ranh giới câu."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Learners often take the first noun as the subject. The true subject is the head noun before the prepositional phrase ('to school' only describes which bus). Identifying the verb first ('leaves') and asking 'what leaves?' helps find the real subject.",
+            "right": "The subject is 'The bus' — the sentence means the bus leaves at 7 a.m.",
+            "wrong": "Reading 'The bus to school leaves at 7 a.m.' and thinking 'school' is the subject."
+          },
+          {
+            "why": "English word order is fixed: the object usually comes directly after the verb, and adverbs like 'very much' go at the end. Reading with English structure in mind, not Vietnamese structure, prevents misunderstanding.",
+            "right": "The sentence is 'I like coffee very much.'",
+            "wrong": "Translating word by word and getting confused by fixed English word order, e.g., reading 'I like very much coffee'."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

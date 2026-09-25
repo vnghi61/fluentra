@@ -1,11 +1,293 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1936427Z",
+  "generated_at": "2026-09-25T18:49:49.3124237Z",
   "node": {
     "namespace": "grammar",
     "code": "NOUNS",
     "label": "Nouns",
     "cefr_level": "A1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-nouns-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Rewrite the sentence in the plural: 'The child has a new toy.' Begin with 'The children'.",
+        "acceptable": [
+          "The children have new toys."
+        ],
+        "_provenance": {
+          "batch": "foundation:NOUNS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "39f2b45c-1de6-4f69-a86d-0d854e1fa686",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very common vocabulary (child, toy, have) and simple present tense. The only challenge is the irregular plural 'children', which is among the most basic irregular plurals taught at A1 level. The sentence transformation task is simple and guided by a given sentence starter, making it appropriate for A1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "The children have new toys."
+          }
+        },
+        "explanation": {
+          "explanation_en": "When we make the sentence plural, the noun 'child' becomes the irregular plural 'children', the verb 'has' becomes 'have', and 'a new toy' becomes 'new toys'. Remember: child → children is an irregular plural form.",
+          "explanation_vi": "Khi chuyển câu sang số nhiều, danh từ 'child' trở thành số nhiều bất quy tắc 'children', động từ 'has' trở thành 'have', và 'a new toy' trở thành 'new toys'. Lưu ý: child → children là dạng số nhiều bất quy tắc."
+        },
+        "correct_answer": "The children have new toys."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-nouns-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "There are three ___ of apples on the table.",
+        "options": [
+          {
+            "id": "A",
+            "text": "boxs"
+          },
+          {
+            "id": "B",
+            "text": "boxes"
+          },
+          {
+            "id": "C",
+            "text": "box"
+          },
+          {
+            "id": "D",
+            "text": "box's"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:NOUNS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "72c503e6-2ad9-44b4-a689-8c23b72f1193",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic plural noun formation (box → boxes) with very common vocabulary ('three', 'apples', 'table') and simple present 'there are', all typical of A1. Distractors are simple, and the rule (-x → -es) is an early beginner grammar point.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The sentence uses 'three', so we need the plural noun. Nouns ending in -x form the plural by adding -es: box → boxes.",
+          "explanation_vi": "Câu có 'three' (ba) nên cần danh từ số nhiều. Danh từ kết thúc bằng -x thêm -es để tạo số nhiều: box → boxes."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-nouns-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "There are three ___ on the table.",
+        "options": [
+          {
+            "id": "A",
+            "text": "book"
+          },
+          {
+            "id": "B",
+            "text": "books"
+          },
+          {
+            "id": "C",
+            "text": "bookes"
+          },
+          {
+            "id": "D",
+            "text": "book's"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:NOUNS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "e623bd31-be70-478e-8cce-355a9248ac18",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic plural noun formation after a number, using very common vocabulary ('book', 'table') and a simple present 'there are' structure, which matches A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "After 'three' (a number greater than one), we use the plural noun 'books'. The plural of 'book' is formed by adding -s.",
+          "explanation_vi": "Sau số đếm 'three' (lớn hơn một), ta dùng danh từ số nhiều 'books'. Số nhiều của 'book' được tạo bằng cách thêm -s."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-nouns",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Which word is a noun?",
+        "options": [
+          {
+            "id": "A",
+            "text": "run"
+          },
+          {
+            "id": "B",
+            "text": "happy"
+          },
+          {
+            "id": "C",
+            "text": "teacher"
+          },
+          {
+            "id": "D",
+            "text": "quickly"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:NOUNS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "855d2035-bc10-4527-b787-147d8dcad5b8",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very common vocabulary (run, happy, teacher, quickly) and a simple prompt. However, it requires metalinguistic awareness of grammatical categories (noun, verb, adjective, adverb), which is slightly beyond pure A1 language use, but the vocabulary and sentence structures remain basic. Overall it fits A1 with minor metalinguistic demand.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A noun is a person, place, or thing. 'Teacher' is a person, so it is a noun. 'Run' is a verb, 'happy' is an adjective, and 'quickly' is an adverb.",
+          "explanation_vi": "Danh từ là người, nơi chốn hoặc sự vật. 'Teacher' (giáo viên) chỉ người, nên là danh từ. 'Run' là động từ, 'happy' là tính từ, và 'quickly' là trạng từ."
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-nouns",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Choose the correct plural: one baby, two ___.",
+        "options": [
+          {
+            "id": "A",
+            "text": "babys"
+          },
+          {
+            "id": "B",
+            "text": "babies"
+          },
+          {
+            "id": "C",
+            "text": "babyes"
+          },
+          {
+            "id": "D",
+            "text": "baby"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:NOUNS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "7845efec-d754-4906-8d29-695f99c1b992",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very common vocabulary (teacher, happy, run, quickly) and a simple question requiring basic word-class recognition, matching A1-level everyday words and simple explanations.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Baby' ends in a consonant + y, so we change y to i and add -es: baby → babies.",
+          "explanation_vi": "'Baby' tận cùng bằng phụ âm + y, nên đổi y thành i rồi thêm -es: baby → babies."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-nouns",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "COUNTABLE_AND_UNCOUNTABLE_NOUNS",
+          "ARTICLES_A_AN_THE",
+          "PLURAL_NOUNS_IRREGULAR"
+        ],
+        "examples": [
+          {
+            "note": "'Books' is the plural of 'book' (add -s); 'pen' stays singular because there is only one.",
+            "text": "I have two books and one pen."
+          },
+          {
+            "note": "'Children' is the irregular plural of 'child' — it does not take -s.",
+            "text": "There are three children in the park."
+          },
+          {
+            "note": "'Water' is an uncountable noun, so it has no plural form and no article 'a'.",
+            "text": "She drinks water every morning."
+          }
+        ],
+        "objective": "Understand what nouns are, recognize the difference between singular and plural nouns, and form regular and basic irregular plurals correctly in simple sentences.",
+        "_provenance": {
+          "batch": "foundation:NOUNS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "87c04c6c-01bb-4f17-8edd-4ffa5cb2f50c",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "A noun is a word that names a person, place, thing, or idea. Examples: teacher, city, book, happiness. Nouns can be singular (one) or plural (more than one). Most nouns form the plural by adding -s: book → books, dog → dogs. Nouns ending in -s, -sh, -ch, -x, or -o often add -es: bus → buses, watch → watches, box → boxes. Nouns ending in a consonant + y change y to i and add -es: city → cities, baby → babies. Some common nouns are irregular: man → men, woman → women, child → children, person → people, foot → feet, tooth → teeth. Some nouns do not change at all: fish, sheep. Nouns are also divided into countable nouns (book, apple — we can count them) and uncountable nouns (water, money, information — we cannot count them directly). At A1 level, focus on recognizing nouns in simple sentences and forming correct plurals.",
+          "vi": "Danh từ (noun) là từ dùng để chỉ người, nơi chốn, sự vật hoặc ý niệm. Ví dụ: teacher (giáo viên), city (thành phố), book (sách), happiness (niềm hạnh phúc). Danh từ có thể ở số ít (một) hoặc số nhiều (nhiều hơn một). Phần lớn danh từ tạo số nhiều bằng cách thêm -s: book → books, dog → dogs. Danh từ tận cùng bằng -s, -sh, -ch, -x hoặc -o thường thêm -es: bus → buses, watch → watches, box → boxes. Danh từ tận cùng bằng phụ âm + y thì đổi y thành i rồi thêm -es: city → cities, baby → babies. Một số danh từ bất quy tắc cần nhớ: man → men, woman → women, child → children, person → people, foot → feet, tooth → teeth. Một số danh từ không đổi: fish, sheep. Ngoài ra, danh từ chia thành danh từ đếm được (book, apple — đếm được) và danh từ không đếm được (water, money, information — không đếm trực tiếp được, không thêm -s và không dùng a/an). Ở trình độ A1, bạn cần nhận biết danh từ trong câu đơn và tạo dạng số nhiều đúng."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'Child' has an irregular plural: child → children. It never becomes 'childs'.",
+            "right": "I saw three children in the garden.",
+            "wrong": "I saw three childs in the garden."
+          },
+          {
+            "why": "Countable nouns after numbers greater than one must be in the plural form, so 'book' becomes 'books'.",
+            "right": "I have two books.",
+            "wrong": "I have two book."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

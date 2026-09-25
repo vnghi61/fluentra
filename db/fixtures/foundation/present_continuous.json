@@ -1,11 +1,251 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2247935Z",
+  "generated_at": "2026-09-25T18:49:49.3438315Z",
   "node": {
     "namespace": "grammar",
     "code": "PRESENT_CONTINUOUS",
     "label": "Present Continuous",
     "cefr_level": "A1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-present-continuous-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Rewrite the sentence in the Present Continuous, beginning with 'Look!': She plays with her dog in the garden.",
+        "acceptable": [
+          "Look! She's playing with her dog in the garden.",
+          "Look! She is playing with her dog in the garden now."
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "d6a0b9c6-c62c-46e3-81c7-0bc07f1c84ac",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests a very basic transformation from simple present to present continuous with common vocabulary ('play', 'dog', 'garden'), appropriate for A1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Look! She is playing with her dog in the garden."
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use 'Look!' to show something is happening right now, so we use the Present Continuous: am/is/are + verb-ing. 'She plays' becomes 'she is playing'.",
+          "explanation_vi": "Dùng 'Look!' để chỉ hành động đang diễn ra ngay lúc này, nên dùng thì hiện tại tiếp diễn: am/is/are + động từ thêm -ing. 'She plays' chuyển thành 'she is playing'."
+        },
+        "correct_answer": "Look! She is playing with her dog in the garden."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-present-continuous-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "___ you listening to me right now?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Are"
+          },
+          {
+            "id": "B",
+            "text": "Do"
+          },
+          {
+            "id": "C",
+            "text": "Is"
+          },
+          {
+            "id": "D",
+            "text": "Does"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "6c3bf742-0e79-4ce2-89d8-08b2d2506a0c",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests present continuous with simple, high-frequency vocabulary ('children', 'football', 'park') and clear time markers ('Look!', 'right now'). This is a basic tense choice appropriate for A1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Present continuous questions put am/is/are before the subject. With 'you', we use 'Are': 'Are you listening?'",
+          "explanation_vi": "Câu hỏi hiện tại tiếp diễn đưa am/is/are lên trước chủ ngữ. Với 'you' dùng 'Are': 'Are you listening?'"
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-present-continuous",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Look! The children ___ football in the park.",
+        "options": [
+          {
+            "id": "A",
+            "text": "play"
+          },
+          {
+            "id": "B",
+            "text": "plays"
+          },
+          {
+            "id": "C",
+            "text": "are playing"
+          },
+          {
+            "id": "D",
+            "text": "played"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "49f385f2-6553-414d-830f-ebc418f23261",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the present continuous with very common vocabulary ('Look!', 'children', 'football', 'park'), which is appropriate for A1 learners. The prompt is a simple sentence and the distractors cover basic verb forms.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The word 'Look!' shows the action is happening right now, so we use the present continuous: 'are' + verb-ing.",
+          "explanation_vi": "Từ 'Look!' cho thấy hành động đang diễn ra ngay lúc này, nên ta dùng thì hiện tại tiếp diễn: 'are' + động từ thêm -ing."
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-present-continuous",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Please be quiet. The baby ___ in the next room.",
+        "options": [
+          {
+            "id": "A",
+            "text": "is sleeping"
+          },
+          {
+            "id": "B",
+            "text": "sleeps"
+          },
+          {
+            "id": "C",
+            "text": "sleep"
+          },
+          {
+            "id": "D",
+            "text": "are sleeping"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "34701508-e2c5-4b2c-861d-973e2671a1a6",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the present continuous with very common vocabulary (children, football, park) and a simple contextual cue ('Look!'), matching A1-level grammar and vocabulary.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Please be quiet' shows the action is happening now, so we use the present continuous. 'The baby' is singular, so it takes 'is': 'is sleeping'.",
+          "explanation_vi": "'Please be quiet' cho thấy hành động đang diễn ra, nên dùng hiện tại tiếp diễn. 'The baby' là số ít nên dùng 'is': 'is sleeping'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-present-continuous",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "PRESENT_SIMPLE",
+          "VERB_ING_SPELLING",
+          "STATIVE_VERBS"
+        ],
+        "examples": [
+          {
+            "note": "Action happening right now at the moment of speaking; formed with 'is' + reading.",
+            "text": "She is reading a book in the garden."
+          },
+          {
+            "note": "Negative form (are not) and a temporary situation happening around now.",
+            "text": "They are not watching TV because they are studying for a test."
+          },
+          {
+            "note": "Question form with inversion, used for an arranged future plan.",
+            "text": "Are you coming to the party tonight?"
+          }
+        ],
+        "objective": "Understand the formation and core uses of the present continuous tense (am/is/are + verb-ing) to describe actions happening now and temporary situations.",
+        "_provenance": {
+          "batch": "foundation:PRESENT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "5969ddee-9d00-4af5-8b48-ce8db370f7b3",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "The present continuous tense describes actions happening at the moment of speaking or around the present time. Form: subject + am/is/are + verb-ing. Use 'am' with I, 'is' with he/she/it, and 'are' with you/we/they. To make the -ing form, add -ing to most verbs (work → working); drop the final -e (make → making); double the final consonant in short stressed words (run → running, sit → sitting). Negative: add 'not' after am/is/are (I am not working). Questions: invert am/is/are with the subject (Are you working?). Use the present continuous for: (1) actions happening right now (She is cooking dinner), (2) temporary situations (I am staying with my aunt this week), and (3) arranged future plans (We are meeting Tom tomorrow). Time expressions often used: now, right now, at the moment, today, this week. Do not use it with stative verbs like know, like, want, or believe.",
+          "vi": "Thì hiện tại tiếp diễn dùng để diễn tả hành động đang xảy ra ngay lúc nói hoặc trong khoảng thời gian hiện tại. Công thức: chủ ngữ + am/is/are + động từ thêm -ing. Dùng 'am' với I, 'is' với he/she/it, 'are' với you/we/they. Cách thêm -ing: hầu hết động từ chỉ thêm -ing (work → working); bỏ chữ 'e' cuối (make → making); nhân đôi phụ âm cuối với động từ ngắn, một âm tiết, kết thúc bằng phụ âm sau nguyên âm (run → running, sit → sitting). Phủ định: thêm 'not' sau am/is/are (I am not working). Câu hỏi: đảo am/is/are lên trước chủ ngữ (Are you working?). Cách dùng: (1) hành động đang diễn ra ngay bây giờ (She is cooking dinner), (2) tình huống tạm thời (I am staying with my aunt this week), (3) kế hoạch đã sắp xếp trong tương lai gần (We are meeting Tom tomorrow). Tránh nhầm với thì hiện tại đơn: 'I work' là việc thường xuyên, còn 'I am working' là đang làm bây giờ. Lưu ý: không dùng hiện tại tiếp diễn với động từ trạng thái như know, like, want, believe."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Stative verbs like know, like, want, and believe describe states, not actions, so they are not used in continuous forms.",
+            "right": "I know the answer.",
+            "wrong": "I am knowing the answer."
+          },
+          {
+            "why": "The present continuous requires the -ing form of the verb after am/is/are; the base form 'work' cannot follow 'is'.",
+            "right": "She is working now.",
+            "wrong": "She is work now."
+          },
+          {
+            "why": "Short verbs ending in consonant-vowel-consonant double the final consonant before adding -ing: run → running.",
+            "right": "He is running in the park.",
+            "wrong": "He is runing in the park."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

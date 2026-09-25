@@ -1,6 +1,6 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.227532Z",
+  "generated_at": "2026-09-25T18:49:49.347573Z",
   "node": {
     "namespace": "grammar",
     "code": "PRESENT_PERFECT",
@@ -13,39 +13,41 @@
       "kind": "grammar_sentence_transform",
       "cefr_level": "B1",
       "body": {
-        "prompt": "Rewrite the sentence using the present perfect, beginning with 'She': She moved to this city in 2019, and she still lives here now.",
+        "prompt": "Rewrite the sentence beginning with 'I have never': This is my first time visiting Japan.",
         "acceptable": [
-          "She has lived in this city since 2019 and she still lives here.",
-          "She has been living in this city since 2019.",
-          "She has lived here since 2019."
+          "I have never been to Japan before.",
+          "I have never visited Japan before this."
         ],
         "_provenance": {
-          "batch": "foundation:PRESENT_PERFECT:20260923T133300",
+          "batch": "foundation:PRESENT_PERFECT:20260925T183356",
           "model": "glm-5.3-flash",
           "purpose": "foundation",
           "verification": {
-            "model": "qwen/qwen3.8-27b",
-            "verdict": "confirmed",
-            "checked_at": "2026-09-23T13:33:47Z"
+            "model": "unknown",
+            "reason": "the independent blind answer does not match the key: score=0 correct=false",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T18:34:08Z"
           },
-          "ai_request_id": "cb95ee07-97c4-49d4-bce0-048adcacb403",
+          "ai_request_id": "4ee75e30-2f51-4245-80a8-2445c2551fe6",
           "cefr_estimate": "B1",
-          "cefr_reasoning": "The item targets the present perfect with 'since', a grammar point explicitly listed at B1. The source sentence uses simple past and basic vocabulary, and the transformation requires understanding the connection between past and present, which is typical B1-level work.",
-          "prompt_version": "item_generate.v1",
+          "cefr_reasoning": "The item tests the present perfect with 'have never + past participle' and its equivalence to 'This is my first time...', a classic B1 grammar transformation. Vocabulary is simple, and the transformation requires understanding of present perfect for life experiences, which is explicitly a B1 descriptor.",
+          "prompt_version": "item_generate.v2",
           "blind_solve_answer": {
-            "answer": "She has lived in this city since 2019."
+            "answer": "I have never visited Japan before."
           }
         },
         "explanation": {
-          "explanation_en": "The present perfect ('has lived') connects a past action to the present. Because she still lives there, we use 'since' + a point in time (2019) to show when the situation started.",
-          "explanation_vi": "Thì hiện tại hoàn thành ('has lived') nối liền hành động trong quá khứ với hiện tại. Vì cô ấy vẫn đang sống ở đó, ta dùng 'since' + mốc thời gian (2019) để chỉ thời điểm bắt đầu."
+          "explanation_en": "The present perfect 'have never + past participle' expresses an experience that has not happened up to now, which matches 'This is my first time...'.",
+          "explanation_vi": "Thì hiện tại hoàn thành với 'have never + quá khứ phân từ' diễn tả trải nghiệm chưa từng xảy ra cho đến bây giờ, tương đương với câu 'Đây là lần đầu tiên...'."
         },
-        "correct_answer": "She has lived in this city since 2019."
+        "correct_answer": "I have never visited Japan before."
       },
       "verification": {
-        "confirmed": true,
-        "model": "qwen/qwen3.8-27b",
-        "checked_at": "2026-09-23T13:33:47Z"
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T18:34:08Z",
+        "reason": "the independent blind answer does not match the key: score=0 correct=false"
       }
     },
     {
@@ -53,15 +55,15 @@
       "kind": "grammar_tense_choice",
       "cefr_level": "B1",
       "body": {
-        "prompt": "I ___ this movie three times, and I still enjoy watching it.",
+        "prompt": "I ___ that film last week, and I really liked it.",
         "options": [
           {
             "id": "A",
-            "text": "have seen"
+            "text": "saw"
           },
           {
             "id": "B",
-            "text": "saw"
+            "text": "have seen"
           },
           {
             "id": "C",
@@ -73,85 +75,33 @@
           }
         ],
         "_provenance": {
-          "batch": "foundation:PRESENT_PERFECT:20260923T133300",
+          "batch": "foundation:PRESENT_PERFECT:20260925T183356",
           "model": "glm-5.3-flash",
           "purpose": "foundation",
           "verification": {
             "model": "qwen/qwen3.8-27b",
             "verdict": "confirmed",
-            "checked_at": "2026-09-23T13:33:35Z"
+            "checked_at": "2026-09-25T18:34:01Z"
           },
-          "ai_request_id": "1a4389da-850f-4661-9120-10f42f4d7db1",
+          "ai_request_id": "c62c7e9c-5068-4840-81ac-03add3a609fd",
           "cefr_estimate": "B1",
-          "cefr_reasoning": "The item tests the present perfect ('have seen') with 'three times' for unspecified past experience, a grammar point explicitly associated with B1. The sentence is simple and vocabulary is everyday, but the tense contrast (present perfect vs. past simple) requires B1-level understanding.",
-          "prompt_version": "item_generate.v1",
+          "cefr_reasoning": "The item tests the present perfect with 'already', a grammar point explicitly associated with B1. Vocabulary and sentence structure are simple, but the tense distinction (present perfect vs. past simple) requires B1-level understanding.",
+          "prompt_version": "item_generate.v2",
           "blind_solve_answer": {
             "selected_option_id": "A"
           }
         },
         "explanation": {
-          "explanation_en": "The present perfect 'have seen' is used for an experience that happened at an unspecified time before now, often with 'three times'.",
-          "explanation_vi": "Thì hiện tại hoàn thành 'have seen' dùng để diễn tả trải nghiệm đã xảy ra tại thời điểm không xác định trong quá khứ, thường đi với 'three times'."
+          "explanation_en": "'Last week' is a finished time, so we use the past simple 'saw'. The present perfect cannot be used with a specific finished time.",
+          "explanation_vi": "'Last week' là thời gian đã kết thúc nên dùng quá khứ đơn 'saw'. Không dùng hiện tại hoàn thành với mốc thời gian đã kết thúc."
         },
         "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
-        "checked_at": "2026-09-23T13:33:35Z"
-      }
-    },
-    {
-      "slug": "foundation-ex-present-perfect-grammar-tense-choice-3",
-      "kind": "grammar_tense_choice",
-      "cefr_level": "B1",
-      "body": {
-        "prompt": "I ___ this movie three times, and I still love it.",
-        "options": [
-          {
-            "id": "A",
-            "text": "have seen"
-          },
-          {
-            "id": "B",
-            "text": "saw"
-          },
-          {
-            "id": "C",
-            "text": "see"
-          },
-          {
-            "id": "D",
-            "text": "am seeing"
-          }
-        ],
-        "_provenance": {
-          "batch": "foundation:PRESENT_PERFECT:20260923T133300",
-          "model": "glm-5.3-flash",
-          "purpose": "foundation",
-          "verification": {
-            "model": "qwen/qwen3.8-27b",
-            "verdict": "confirmed",
-            "checked_at": "2026-09-23T13:34:03Z"
-          },
-          "ai_request_id": "2291a8e8-e132-480b-a505-00ec9d15dbe2",
-          "cefr_estimate": "B1",
-          "cefr_reasoning": "The item tests present perfect vs. past simple choice, a grammar point explicitly listed at B1. Vocabulary is simple, but the tense discrimination requires B1-level understanding of unspecified past time with quantity expressions.",
-          "prompt_version": "item_generate.v1",
-          "blind_solve_answer": {
-            "selected_option_id": "A"
-          }
-        },
-        "explanation": {
-          "explanation_en": "The present perfect 'have seen' is used for an experience that happened at an unspecified time before now, especially with a quantity like 'three times'.",
-          "explanation_vi": "Thì hiện tại hoàn thành 'have seen' dùng để diễn tả một trải nghiệm đã xảy ra tại thời điểm không xác định trong quá khứ, đặc biệt khi có số lần như 'three times'."
-        },
-        "correct_option_id": "A"
-      },
-      "verification": {
-        "confirmed": true,
-        "model": "qwen/qwen3.8-27b",
-        "checked_at": "2026-09-23T13:34:03Z"
+        "checked_at": "2026-09-25T18:34:01Z"
       }
     },
     {
@@ -195,6 +145,7 @@
         "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "person",
         "confirmed": false,
         "checked_at": "0001-01-01T00:00:00Z"
       }
@@ -220,36 +171,153 @@
           },
           {
             "id": "D",
-            "text": "will see"
+            "text": "see"
           }
         ],
         "_provenance": {
-          "batch": "foundation:PRESENT_PERFECT:20260923T133300",
+          "batch": "foundation:PRESENT_PERFECT:20260925T183356",
           "model": "glm-5.3-flash",
           "purpose": "foundation",
           "verification": {
             "model": "qwen/qwen3.8-27b",
             "verdict": "confirmed",
-            "checked_at": "2026-09-23T13:34:15Z"
+            "checked_at": "2026-09-25T18:34:20Z"
           },
-          "ai_request_id": "210bf165-8943-4791-9f63-197c8056cc48",
+          "ai_request_id": "7f595796-ccd5-41d9-b8b9-4f6e83ed5fed",
           "cefr_estimate": "B1",
-          "cefr_reasoning": "The item tests the present perfect tense with 'already', a grammar point explicitly associated with B1. The sentence is simple and vocabulary is common, but distinguishing present perfect from past simple requires B1-level understanding.",
-          "prompt_version": "item_generate.v1",
+          "cefr_reasoning": "The item tests the present perfect with 'already' and repeated experience, a grammar point explicitly aligned with B1. Vocabulary is simple, but distinguishing present perfect from past simple is a B1-level skill.",
+          "prompt_version": "item_generate.v2",
           "blind_solve_answer": {
             "selected_option_id": "A"
           }
         },
         "explanation": {
-          "explanation_en": "The present perfect 'have seen' is used for an action that happened at an unspecified time before now and is connected to the present. The word 'already' is a common signal of the present perfect.",
-          "explanation_vi": "Thì hiện tại hoàn thành 'have seen' dùng để diễn tả hành động đã xảy ra tại thời điểm không xác định trong quá khứ nhưng vẫn liên quan đến hiện tại. Từ 'already' là dấu hiệu thường gặp của thì hiện tại hoàn thành."
+          "explanation_en": "The present perfect 'have seen' is used for an experience that happened at an unstated time before now. The word 'already' and the idea of repeated experience up to the present signal the present perfect, not the past simple.",
+          "explanation_vi": "Thì hiện tại hoàn thành 'have seen' dùng để nói về một trải nghiệm đã xảy ra tại thời điểm không xác định trước hiện tại. Từ 'already' và ý nghĩa trải nghiệm lặp lại đến hiện tại là dấu hiệu của thì hiện tại hoàn thành, không phải quá khứ đơn."
         },
         "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
-        "checked_at": "2026-09-23T13:34:15Z"
+        "checked_at": "2026-09-25T18:34:20Z"
+      }
+    },
+    {
+      "slug": "foundation-review-present-perfect",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "She ___ in Hanoi since 2019, and she still loves the city.",
+        "options": [
+          {
+            "id": "A",
+            "text": "has lived"
+          },
+          {
+            "id": "B",
+            "text": "lives"
+          },
+          {
+            "id": "C",
+            "text": "lived"
+          },
+          {
+            "id": "D",
+            "text": "is living"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRESENT_PERFECT:20260925T183356",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T18:34:26Z"
+          },
+          "ai_request_id": "b9dc376c-f5d0-4637-b686-a13608172896",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the present perfect with 'already' and adverbial frequency ('three times'), a grammar point explicitly associated with B1. Vocabulary is simple, but distinguishing present perfect from past simple requires B1-level grammatical awareness.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Since 2019' marks a starting point, and the situation continues now, so we use the present perfect: 'has lived'.",
+          "explanation_vi": "'Since 2019' là mốc bắt đầu và sự việc vẫn tiếp diễn đến nay, nên dùng hiện tại hoàn thành: 'has lived'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T18:34:26Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-present-perfect",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "PAST_SIMPLE",
+          "FOR_SINCE",
+          "PRESENT_PERFECT_CONTINUOUS"
+        ],
+        "examples": [
+          {
+            "note": "'Just' + present perfect shows a recently completed action with a present result — the homework is done now.",
+            "text": "I have just finished my homework, so I can watch TV now."
+          },
+          {
+            "note": "'Since' + a point in time shows an action that started in the past and continues to the present.",
+            "text": "She has worked at this company since 2019."
+          },
+          {
+            "note": "'Ever' in a question asks about life experience at any time up to now — no specific time is mentioned.",
+            "text": "Have you ever tried Vietnamese street food?"
+          }
+        ],
+        "objective": "Understand the formation and core uses of the present perfect tense (have/has + past participle), including its use for life experiences, unfinished time, and past actions with present results, and distinguish it from the past simple.",
+        "_provenance": {
+          "batch": "foundation:PRESENT_PERFECT:20260925T183356",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T18:34:30Z"
+          },
+          "ai_request_id": "3139d15b-8de7-4794-a4b4-098d54182d69",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "The present perfect is formed with have/has + the past participle of the main verb (e.g., 'have eaten', 'has gone'). It connects the past to the present. Use it: (1) for life experiences without a specific time — 'I have visited Japan'; (2) for situations that started in the past and continue now, often with 'for' and 'since' — 'She has lived here for five years'; (3) for recent actions with a present result — 'I have lost my keys (so I can't open the door)'. Common signal words include: ever, never, just, already, yet, recently, so far, for, since. Do NOT use the present perfect with finished time expressions like 'yesterday', 'last week', or 'in 2010' — use the past simple instead. Remember: 'have been to' = visited and returned; 'have gone to' = went and is still there.",
+          "vi": "Thì hiện tại hoàn thành được tạo bằng have/has + quá khứ phân từ (V3), ví dụ 'have eaten', 'has gone'. Thì này nối quá khứ với hiện tại, dùng để: (1) nói về kinh nghiệm trong đời mà không nói rõ thời gian cụ thể — 'I have visited Japan' (Tôi đã từng đến Nhật); (2) diễn tả sự việc bắt đầu trong quá khứ và vẫn tiếp tục đến bây giờ, thường đi với 'for' (trong khoảng) và 'since' (từ khi) — 'She has lived here for five years'; (3) hành động vừa xảy ra còn để lại kết quả ở hiện tại — 'I have lost my keys' (Tôi đã làm mất chìa khóa, nên giờ không mở cửa được). Các từ tín hiệu thường gặp: ever, never, just, already, yet, recently, so far, for, since. Lưu ý quan trọng: KHÔNG dùng hiện tại hoàn thành với các cụm thời gian đã kết thúc như 'yesterday', 'last week', 'in 2010' — phải dùng quá khứ đơn. Phân biệt 'have been to' (đã đi và đã về) và 'have gone to' (đã đi và vẫn còn ở đó)."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'Last week' is a finished time expression, so the past simple must be used. The present perfect cannot be combined with specific past times like 'yesterday', 'last week', or 'in 2010'.",
+            "right": "I saw that movie last week.",
+            "wrong": "I have seen that movie last week."
+          },
+          {
+            "why": "The present perfect requires the past participle (V3), not the past simple form. 'Went' is the past simple of 'go'; the past participle is 'gone'.",
+            "right": "She has gone to the market.",
+            "wrong": "She has went to the market."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T18:34:30Z"
       }
     }
   ]

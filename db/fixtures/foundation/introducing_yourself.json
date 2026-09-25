@@ -1,6 +1,6 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1677732Z",
+  "generated_at": "2026-09-25T18:49:49.287661Z",
   "node": {
     "namespace": "pattern",
     "code": "INTRODUCING_YOURSELF",
@@ -41,6 +41,7 @@
         "correct_answer": "My name is Anna."
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T13:47:28Z"
@@ -80,6 +81,7 @@
         "correct_answer": "Hi, my name is Anna."
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T13:47:55Z"
@@ -133,6 +135,7 @@
         "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T13:47:42Z"
@@ -186,6 +189,7 @@
         "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T13:48:06Z"
@@ -239,6 +243,7 @@
         "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T13:48:43Z"
@@ -296,6 +301,7 @@
         ]
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T13:49:15Z"

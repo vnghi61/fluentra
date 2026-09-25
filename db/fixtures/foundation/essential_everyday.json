@@ -1,6 +1,6 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1330481Z",
+  "generated_at": "2026-09-25T18:49:49.2551171Z",
   "node": {
     "namespace": "vocabulary",
     "code": "ESSENTIAL_EVERYDAY",
@@ -56,6 +56,7 @@
         "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T13:45:36Z"
@@ -109,6 +110,7 @@
         "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T13:45:19Z"
@@ -162,6 +164,7 @@
         "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T13:46:40Z"
@@ -215,6 +218,7 @@
         "correct_option_id": "A"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T13:46:50Z"
@@ -272,6 +276,7 @@
         ]
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T13:47:17Z"

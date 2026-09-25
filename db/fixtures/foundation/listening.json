@@ -1,6 +1,6 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1768206Z",
+  "generated_at": "2026-09-25T18:49:49.2951018Z",
   "node": {
     "namespace": "skill",
     "code": "LISTENING",
@@ -182,6 +182,7 @@
         }
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T13:58:14Z"
@@ -238,6 +239,7 @@
         "correct_option_id": "C"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:00:39Z"
@@ -294,6 +296,7 @@
         "correct_option_id": "B"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:01:16Z"
@@ -351,6 +354,7 @@
         ]
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T14:01:33Z"

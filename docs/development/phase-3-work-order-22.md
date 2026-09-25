@@ -626,8 +626,8 @@ needs AI provider keys or network access, and two decisions only a person can ma
 |---|---|---|---|
 | A — verifier | Done: excluded model in the cache key, batches, sample, `ApproveVerifiedBatch` | — | — |
 | B — DB first | Done: words and phrases | — | — |
-| C/D — words | Done: `scripts/vocab-source-list.py`, `vocabgen` top-up, `-pronounce`, rank decks | **6,056 of 10,000** words; no IPA/audio beyond what the CMU pass gave | Top-up and pronunciation runs (below) |
-| E–H — Foundation | Done: 13 courses, Phase 2 content moved, per-node publish | **27 of 93** nodes have content | `cmd/foundation -missing` (below) |
+| C/D — words | Done: `scripts/vocab-source-list.py`, `vocabgen` top-up, `-pronounce`, rank decks | **10,000** words (2026-09-26); IPA from the CMU pass, no audio yet | `-pronounce` (below; slow, see note) |
+| E–H — Foundation | Done: 13 courses, Phase 2 content moved, per-node publish | **93 of 93** nodes have content (2026-09-26); 70 of them reviewed by Claude, see note | A person spot-checks the Claude-reviewed nodes |
 | I — format spec | Done: one schema, enforced by generator, verifier, composer and runner | — | **Sign-off** (below) |
 | J/K/L — tests, practice, hub | Done | — | — |
 | M — media | Done: Part 1 from a credited photograph; Task 1 chart drawn from the model's data (SVG data URI, see note); two voices | Photo fixture **empty** | A person fills `toeic-part1-photos.json` |
@@ -660,6 +660,19 @@ verifier can publish; with one model everything waits for a person.
 - **Part 1 in the daily job.** The worker has no photo source (no config key names one), so the daily
   job skips TOEIC Part 1 with a warning. TOEIC fixed tests keep composing while `cmd/examgen` has left
   spare Part 1 items; after that, Part 1 needs another `cmd/examgen` run with new photographs.
+- **Foundation review by Claude, not a person (2026-09-25/26).** At the owner's request Claude stood in
+  for the person D22-1 names on the 70 nodes the verifier escalated; most escalations were provider
+  quota failures, not doubts. Every item was read: 103 were corrected before approval (wrong keys,
+  second correct answers, copied questions, explanations that contradicted the topic, Chinese
+  characters in Vietnamese text) and 19 were left as drafts. The `content_reviews` rows say "Reviewed
+  by Claude (AI)", but the fixture format only knows `verifier` and `person`, so these items export as
+  `approved_by: person`. A person should spot-check them before this counts as sign-off.
+- **Approve batch was a no-op until 6540127.** The handler passed the escaped batch id
+  (`foundation%3A…`) to the service, which matched nothing and answered 200 with `approved: 0`.
+- **`-pronounce` is slow.** `api.dictionaryapi.dev` answered in about 20 s per request on 2026-09-26,
+  so a full run takes days, not an hour. The command resumes: rerun it until every word is looked up.
+  Runbook step 1.3 (CMU IPA via Python) was skipped: no Python on the machine, and every word already
+  has IPA.
 - **Licences.** wordfreq's data is CC BY-SA 4.0 (its code is Apache-2.0); the vocabulary fixture header
   says so. Word recordings accept CC0, CC BY and CC BY-SA; Part 1 photographs only CC0 and CC BY.
 

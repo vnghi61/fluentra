@@ -1,11 +1,300 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1495189Z",
+  "generated_at": "2026-09-25T18:49:49.2741806Z",
   "node": {
     "namespace": "grammar",
     "code": "GERUNDS_AND_INFINITIVES",
     "label": "Gerunds and Infinitives",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-gerunds-and-infinitives-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'She can't stand': She really dislikes waiting in long queues at the supermarket.",
+        "acceptable": [
+          "She can't stand waiting in long queues at the supermarket.",
+          "She cannot stand waiting in long queues at the supermarket.",
+          "She can't stand waiting in long queues in the supermarket."
+        ],
+        "_provenance": {
+          "batch": "foundation:GERUNDS_AND_INFINITIVES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "d4d3e5d6-ae4c-4eea-8a3a-993daa7329b5",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the gerund after 'can't stand' and 'dislike', a verb-pattern point typically taught at B1. Vocabulary is everyday ('waiting in long queues at the supermarket'), and the transformation requires understanding of verb + -ing complementation, which goes beyond A2 but is not as complex as B2 structures like passive or conditionals.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "I can't stand waiting in long queues at the supermarket."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The verb 'stand' in the expression 'can't stand' is followed by a gerund (-ing form), not an infinitive. 'Dislikes' also takes a gerund, so 'dislikes waiting' becomes 'can't stand waiting'.",
+          "explanation_vi": "Động từ 'stand' trong cụm 'can't stand' phải theo sau bởi danh động từ (dạng -ing), không dùng động từ nguyên mẫu có 'to'. 'Dislikes' cũng đi với danh động từ, nên 'dislikes waiting' chuyển thành 'can't stand waiting'."
+        },
+        "correct_answer": "She can't stand waiting in long queues at the supermarket."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-gerunds-and-infinitives-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "My parents don't allow me ___ out late on school nights, but they let me ___ video games until 9 p.m.",
+        "options": [
+          {
+            "id": "A",
+            "text": "to stay / play"
+          },
+          {
+            "id": "B",
+            "text": "staying / to play"
+          },
+          {
+            "id": "C",
+            "text": "to stay / to play"
+          },
+          {
+            "id": "D",
+            "text": "staying / play"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:GERUNDS_AND_INFINITIVES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "e89a0a8d-79cc-4ff1-9a50-8ad05adfbc84",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the verb patterns 'allow someone to do' vs 'let someone do' (bare infinitive), a classic B1-level grammar point. Vocabulary and sentence structure are simple, but the distinction requires knowledge of verb complementation beyond A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Allow' takes the pattern 'allow someone TO DO something', while 'let' takes 'let someone DO something' (bare infinitive). So: 'allow me to stay out' and 'let me play video games'.",
+          "explanation_vi": "'Allow' dùng cấu trúc 'allow someone TO DO something', còn 'let' dùng 'let someone DO something' (động từ nguyên mẫu không 'to'). Vì vậy: 'allow me to stay out' và 'let me play video games'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-gerunds-and-infinitives-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "My sister decided ___ a new language this year, and she hopes ___ fluent by summer.",
+        "options": [
+          {
+            "id": "A",
+            "text": "learning / to become"
+          },
+          {
+            "id": "B",
+            "text": "to learn / to become"
+          },
+          {
+            "id": "C",
+            "text": "to learn / becoming"
+          },
+          {
+            "id": "D",
+            "text": "learning / becoming"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:GERUNDS_AND_INFINITIVES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "db02a7f8-2eea-474d-947c-d6271885d24f",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests verb patterns (decide/hope + to-infinitive vs gerund), a grammar point typically introduced at A2-B1. The sentence uses simple present with everyday vocabulary, and the distractors require learners to know which verbs take infinitives versus gerunds, a classic B1-level distinction.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The verb 'decide' is followed by an infinitive with 'to' (decide to learn), and 'hope' is also followed by an infinitive with 'to' (hope to become). Some verbs take gerunds, but 'decide' and 'hope' are not among them.",
+          "explanation_vi": "Động từ 'decide' và 'hope' đều được theo sau bởi động từ nguyên mẫu có 'to' (decide to learn, hope to become). Một số động từ khác lại đi với danh động từ (V-ing), nhưng 'decide' và 'hope' không thuộc nhóm đó."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-gerunds-and-infinitives",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "My brother suggested ___ a taxi instead of walking in the rain.",
+        "options": [
+          {
+            "id": "A",
+            "text": "to take"
+          },
+          {
+            "id": "B",
+            "text": "taking"
+          },
+          {
+            "id": "C",
+            "text": "take"
+          },
+          {
+            "id": "D",
+            "text": "taken"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:GERUNDS_AND_INFINITIVES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "d302e4d9-d15a-4ea3-b668-c84fea85c9c2",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests verb patterns (suggest + gerund), a grammar point typically introduced at B1. The sentence itself is simple, but the gerund/infinitive distinction after 'suggest' requires intermediate-level grammatical knowledge beyond A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The verb 'suggest' is followed by a gerund (-ing form), not an infinitive. So we say 'suggested taking', not 'suggested to take'.",
+          "explanation_vi": "Động từ 'suggest' luôn được theo sau bởi danh động từ (dạng V-ing), không dùng động từ nguyên mẫu có 'to'. Vì vậy phải nói 'suggested taking', không nói 'suggested to take'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-gerunds-and-infinitives",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "My parents don't allow me ___ out late on school nights.",
+        "options": [
+          {
+            "id": "A",
+            "text": "to stay"
+          },
+          {
+            "id": "B",
+            "text": "staying"
+          },
+          {
+            "id": "C",
+            "text": "stay"
+          },
+          {
+            "id": "D",
+            "text": "stayed"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:GERUNDS_AND_INFINITIVES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8936a80d-de89-4de1-9c6e-688d862f0cb2",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the verb pattern 'allow someone to do something' vs. gerund, a common verb-structure point typically taught at B1. The sentence itself is simple, but the distractor contrast (infinitive vs. gerund with 'allow') requires intermediate grammatical awareness beyond A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The verb 'allow' takes the pattern 'allow someone to do something', so the infinitive 'to stay' is correct. Note: 'allow' + gerund is only used without an object (e.g., 'They don't allow staying out late').",
+          "explanation_vi": "Động từ 'allow' theo cấu trúc 'allow someone to do something', nên phải dùng infinitive 'to stay'. Lưu ý: 'allow' + V-ing chỉ dùng khi không có tân ngữ (ví dụ: 'They don't allow staying out late')."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-gerunds-and-infinitives",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "VERB_PATTERNS",
+          "PREPOSITIONS",
+          "USED_TO_AND_BE_USED_TO"
+        ],
+        "examples": [
+          {
+            "note": "'enjoy' is always followed by a gerund, while 'afford' is always followed by an infinitive.",
+            "text": "I enjoy watching movies in English, but I can't afford to buy a cinema ticket every week."
+          },
+          {
+            "note": "'stop + gerund' means quitting a habit; 'stop + to-infinitive' means pausing in order to do something.",
+            "text": "She stopped drinking coffee because it kept her awake, but she stopped to buy a latte on the way home."
+          },
+          {
+            "note": "'Before' is a preposition here, so it takes a gerund; 'be used to' also takes a gerund (contrast with 'used to + base verb').",
+            "text": "Before going to bed, I'm used to reading a few pages of a novel."
+          }
+        ],
+        "objective": "Understand the formation and core uses of gerunds (-ing forms) and infinitives (to + verb), and master which verbs, expressions, and structures require each form.",
+        "_provenance": {
+          "batch": "foundation:GERUNDS_AND_INFINITIVES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "0cebe0bf-bc4c-41fc-8f56-bd8ddd861300",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "A gerund is the -ing form of a verb used as a noun (e.g., 'Swimming is fun.'). An infinitive is 'to' + the base verb (e.g., 'I want to swim.'). Some verbs are followed only by a gerund (enjoy, avoid, finish, mind, suggest, consider, practise): 'I enjoy reading.' Others are followed only by the infinitive (want, decide, hope, plan, promise, refuse, agree, offer): 'She decided to leave.' Some verbs can take both with little change in meaning (start, begin, continue, like, love, hate), while others change meaning: 'stop to smoke' (pause in order to smoke) vs. 'stop smoking' (quit the habit); 'remember to lock' (not forget a duty) vs. 'remember locking' (recall a past memory); 'try to open' (attempt) vs. 'try opening' (experiment). After prepositions, always use a gerund: 'good at cooking', 'interested in learning', 'before going'. Common expressions: 'It's no use crying', 'look forward to seeing you' (to here is a preposition). Adjective + infinitive: 'happy to help', 'difficult to understand'. Gerunds can be subjects ('Reading helps you relax'), while infinitives often follow 'it' as a dummy subject: 'It helps to read regularly.'",
+          "vi": "Danh động từ (gerund) là dạng V-ing của động từ dùng như danh từ (VD: 'Swimming is fun.' – Bơi lội rất vui). Động từ nguyên mẫu có 'to' (infinitive) là 'to' + động từ gốc (VD: 'I want to swim.'). Một số động từ chỉ đi với V-ing: enjoy, avoid, finish, mind, suggest, consider, practise (VD: 'I enjoy reading.'). Một số khác chỉ đi với to-infinitive: want, decide, hope, plan, promise, refuse, agree, offer (VD: 'She decided to leave.'). Một số động từ đi với cả hai mà nghĩa gần như không đổi: start, begin, continue, like, love, hate. Nhưng có nhóm đổi nghĩa: 'stop to smoke' (dừng lại ĐỂ hút thuốc) khác 'stop smoking' (bỏ thuốc); 'remember to lock' (nhớ phải khóa – việc cần làm) khác 'remember locking' (nhớ đã từng khóa – ký ức quá khứ); 'try to open' (cố gắng mở) khác 'try opening' (thử mở xem sao). Sau giới từ luôn dùng V-ing: 'good at cooking', 'interested in learning', 'before going'. Lưu ý cụm 'look forward to seeing you' – 'to' ở đây là giới từ nên phải dùng V-ing. Tính từ + to-infinitive: 'happy to help', 'difficult to understand'. V-ing có thể làm chủ ngữ ('Reading helps you relax'), còn infinitive thường đi sau chủ ngữ giả 'it': 'It helps to read regularly.'"
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In 'look forward to', the word 'to' is a preposition, not part of an infinitive, so it must be followed by a gerund (-ing form).",
+            "right": "I look forward to hearing from you soon.",
+            "wrong": "I look forward to hear from you soon."
+          },
+          {
+            "why": "'Suggest' is always followed by a gerund, never by an infinitive.",
+            "right": "She suggested going to the new restaurant.",
+            "wrong": "She suggested to go to the new restaurant."
+          },
+          {
+            "why": "'Want' is always followed by the to-infinitive; it never takes a gerund.",
+            "right": "I want to go home early today.",
+            "wrong": "I want going home early today."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

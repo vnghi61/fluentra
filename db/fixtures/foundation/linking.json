@@ -1,11 +1,433 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1736293Z",
+  "generated_at": "2026-09-25T18:49:49.2924416Z",
   "node": {
     "namespace": "pronunciation",
     "code": "LINKING",
     "label": "Linking",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-linking-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Yesterday, when I ___ at the noticeboard, I saw the new schedule.",
+        "options": [
+          {
+            "id": "A",
+            "text": "look"
+          },
+          {
+            "id": "B",
+            "text": "looked"
+          },
+          {
+            "id": "C",
+            "text": "am looking"
+          },
+          {
+            "id": "D",
+            "text": "will look"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LINKING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199403, Requested 1049. Please try again in 3m15.263999999s. Need more tokens? Upgrade to Dev Tier today at https, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:38:01Z"
+          },
+          "ai_request_id": "66b58b9b-fd61-4a08-883c-6758602262a9",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests past simple tense choice with a clear time marker ('Yesterday'), which is an A2-level grammar point. The distractors (present simple, present continuous, future) are basic tenses, and the sentence uses everyday vocabulary. The explanation adds a pronunciation note (linked /t/ sound), which is slightly above the core grammar demand but does not raise the item to B1. Target level B1 is not met; the item is easier than requested.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The time marker 'Yesterday' requires the past simple, so 'looked' is correct. Note the pronunciation: 'looked' ends in the /t/ sound, and when followed by 'at' it links smoothly as 'looked-at' /lʊkt æt/, not 'look-ed'.",
+          "explanation_vi": "Từ chỉ thời gian 'Yesterday' yêu cầu thì quá khứ đơn, nên 'looked' là đáp án đúng. Về phát âm: 'looked' kết thúc bằng âm /t/, và khi đứng trước 'at' nó được nối âm tự nhiên thành 'looked-at' /lʊkt æt/, không đọc là 'look-ed'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:38:01Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199403, Requested 1049. Please try again in 3m15.263999999s. Need more tokens? Upgrade to Dev Tier today at https, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-ex-linking-listening-comprehension-3",
+      "kind": "listening_comprehension",
+      "cefr_level": "B1",
+      "body": {
+        "title": "Train Station Announcement",
+        "script": "Good evening, passengers. This is an announcement for the eight o'clock express to Manchester. The train is now arriving at platform four. Please stand back from the edge of the platform and wait until the doors open. Passengers with large bags, please put them in the overhead racks. A quick reminder: this train stops at Leeds, but it does not stop at York. If you need to get to York, please change at Leeds and take a local service. The journey takes about two hours in total. Tickets will be checked on board, so please keep them ready. Thank you, and have a pleasant trip.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "Which platform is the Manchester express arriving at?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Platform two"
+              },
+              {
+                "id": "B",
+                "text": "Platform three"
+              },
+              {
+                "id": "C",
+                "text": "Platform four"
+              },
+              {
+                "id": "D",
+                "text": "Platform eight"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The announcement says the train is 'now arriving at platform four'. Note the linking in 'arriving at': the /ŋ/ joins the vowel of 'at'.",
+              "explanation_vi": "Thông báo cho biết tàu 'đang đến ở sân ga số bốn'. Chú ý nối âm trong 'arriving at': âm /ŋ/ nối với nguyên âm của 'at'."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "What should passengers who want to go to York do?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Wait for the next express"
+              },
+              {
+                "id": "B",
+                "text": "Change trains at Leeds"
+              },
+              {
+                "id": "C",
+                "text": "Get off at Manchester"
+              },
+              {
+                "id": "D",
+                "text": "Take a bus from the station"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The announcement says the express does not stop at York, so passengers must 'change at Leeds and take a local service'.",
+              "explanation_vi": "Thông báo cho biết chuyến tốc hành không dừng ở York, nên hành khách phải 'đổi tàu ở Leeds và đi tuyến tàu địa phương'."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "How long does the whole journey take?",
+            "options": [
+              {
+                "id": "A",
+                "text": "About one hour"
+              },
+              {
+                "id": "B",
+                "text": "About two hours"
+              },
+              {
+                "id": "C",
+                "text": "About three hours"
+              },
+              {
+                "id": "D",
+                "text": "About four hours"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The speaker says 'The journey takes about two hours in total.'",
+              "explanation_vi": "Người thông báo nói 'Chuyến đi mất khoảng hai giờ tính tổng cộng.'"
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "In the announcement, you hear 'stand back from the edge of the platform'. How is 'edge of' most likely pronounced by a natural speaker?",
+            "options": [
+              {
+                "id": "A",
+                "text": "With a clear pause between 'edge' and 'of'"
+              },
+              {
+                "id": "B",
+                "text": "Linked together, sounding like 'e-djof'"
+              },
+              {
+                "id": "C",
+                "text": "With 'edge' pronounced twice"
+              },
+              {
+                "id": "D",
+                "text": "With 'of' pronounced as a long 'oof'"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "'Edge' ends in the consonant /dʒ/ and 'of' begins with a vowel, so the consonant links to the vowel: 'edge of' sounds like 'e-djof'. This linking is why learners may miss word boundaries.",
+              "explanation_vi": "'Edge' kết thúc bằng phụ âm /dʒ/ và 'of' bắt đầu bằng nguyên âm, nên phụ âm nối sang nguyên âm: 'edge of' nghe như 'e-djof'. Vì nối âm nên người học dễ không nghe ra ranh giới giữa các từ."
+            },
+            "correct_option_id": "B"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LINKING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199291, Requested 2334. Please try again in 11m42s. Need more tokens? Upgrade to Dev Tier today at https://consol, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:38:50Z"
+          },
+          "ai_request_id": "53517692-f3dc-44c0-abde-0535f4ce1186",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item is a train station announcement listening task with clear standard speech, simple factual questions (platform, journey time, transfer instructions), and one question on connected-speech linking. Vocabulary and structures are routine travel-related, matching B1 'main points of clear standard input'; the linking-awareness question adds a slight challenge but stays within B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "C",
+              "q2": "B",
+              "q3": "B",
+              "q4": "B"
+            }
+          }
+        }
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:38:50Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199291, Requested 2334. Please try again in 11m42s. Need more tokens? Upgrade to Dev Tier today at https://consol, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-ex-linking-speaking-task-2",
+      "kind": "speaking_task",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Describe a memorable trip you have taken. Where did you go, who did you go with, and what did you enjoy most about it? Speak for about 45 seconds.",
+        "task_type": "respond",
+        "_provenance": {
+          "batch": "foundation:LINKING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199353, Requested 1323. Please try again in 4m52.032s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:38:23Z"
+          },
+          "ai_request_id": "3b896ea3-0889-42ff-9953-e8841289e2c3",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The task requires sustained personal narration using past tenses, basic connectors ('and', 'but', 'because'), and organized multi-part structure, which aligns with B1 speaking descriptors. The added focus on linking/pronunciation awareness slightly raises demand above A2 but stays within B1.",
+          "prompt_version": "item_generate.v1"
+        },
+        "explanation": {
+          "text": "Structure your answer in three parts: where and when you went, who accompanied you, and what you enjoyed most. Pay attention to linking words smoothly between words, e.g. 'went_on', 'a lot_of', 'trip_to', 'with_my friends' — link consonant to vowel sounds naturally instead of pausing between each word. Use past tenses correctly and connect ideas with 'and', 'but', 'because'.",
+          "text_vi": "Trả lời theo ba phần: bạn đã đi đâu và khi nào, ai đi cùng, và điều bạn thích nhất. Chú ý nối âm (linking) giữa các từ một cách tự nhiên, ví dụ 'went_on', 'a lot_of', 'trip_to', 'with_my friends' — nối âm phụ âm với nguyên âm thay vì ngắt nghỉ giữa từng từ. Dùng đúng thì quá khứ và nối ý bằng 'and', 'but', 'because'."
+        },
+        "speaking_time_seconds": 45
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:38:23Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199353, Requested 1323. Please try again in 4m52.032s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-quiz-linking",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "In natural spoken English, which sentence shows correct linking of the final consonant to the following vowel sound?",
+        "options": [
+          {
+            "id": "A",
+            "text": "\"Turn off\" is pronounced as \"tur-noff\" with the /n/ joining the next word"
+          },
+          {
+            "id": "B",
+            "text": "\"Turn off\" is pronounced with a full stop between the two words"
+          },
+          {
+            "id": "C",
+            "text": "\"Turn off\" is pronounced as \"tur-off\" with the /n/ dropped completely"
+          },
+          {
+            "id": "D",
+            "text": "\"Turn off\" is pronounced as \"turn-uh-off\" with an extra vowel added"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LINKING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:39:14Z"
+          },
+          "ai_request_id": "e43fe9f3-2310-4bf1-8977-02c1fa494eb3",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests consonant-to-vowel linking, a pronunciation awareness topic. The vocabulary and sentence structures in the prompt and options are simple and clear, but the metalinguistic concept (connected speech, linking sounds) requires comprehension beyond A2, fitting B1's 'main points of clear standard input'.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In connected speech, when a word ends in a consonant sound and the next word begins with a vowel sound, the consonant links to the vowel. So 'turn off' sounds like 'tur-noff', with the /n/ moving smoothly into 'off'. This is called consonant-to-vowel linking.",
+          "explanation_vi": "Trong lời nói tự nhiên, khi một từ kết thúc bằng âm phụ âm và từ tiếp theo bắt đầu bằng âm nguyên âm, phụ âm đó sẽ nối liền với nguyên âm. Vì vậy 'turn off' được đọc như 'tur-noff', với âm /n/ nối liền sang 'off'. Đây gọi là hiện tượng nối âm phụ âm – nguyên âm."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:39:14Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-review-linking",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Which sentence is pronounced with natural linking, where the final consonant sound connects smoothly to the next word?",
+        "options": [
+          {
+            "id": "A",
+            "text": "She is an excellent singer — 'an excellent' sounds like /əˈneksələnt/"
+          },
+          {
+            "id": "B",
+            "text": "He stopped suddenly, with a clear pause between both words"
+          },
+          {
+            "id": "C",
+            "text": "They each took one, pronouncing 'each' and 'took' separately"
+          },
+          {
+            "id": "D",
+            "text": "We arrived late, saying 'arrived' and 'late' with a strong gap"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LINKING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:39:40Z"
+          },
+          "ai_request_id": "a504c90e-0b4b-4577-9ac1-5366898fa334",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests connected speech (linking), a listening/pronunciation awareness topic typically introduced at B1. Vocabulary and sentence structures in the options are simple (A2-level), but the metalinguistic concept of consonant-to-vowel linking and IPA transcription requires B1-level learner awareness. Target level B1 is appropriate.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In natural spoken English, linking (connected speech) joins the final consonant of one word to the vowel of the next word. In 'an excellent', the /n/ at the end of 'an' links to the vowel /e/ of 'excellent', so it sounds like one smooth unit: /əˈneksələnt/. The other options describe unnatural pauses between words.",
+          "explanation_vi": "Trong tiếng Anh nói tự nhiên, hiện tượng nối âm (linking) gắn âm phụ âm cuối của từ này với nguyên âm đầu của từ kế tiếp. Trong 'an excellent', âm /n/ cuối từ 'an' nối với nguyên âm /e/ của 'excellent', nên nghe như một cụm liền mạch: /əˈneksələnt/. Các phương án khác mô tả cách ngắt nghỉ không tự nhiên giữa các từ."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:39:40Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-topic-linking",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "PRONUNCIATION_WEAK_FORMS",
+          "PRONUNCIATION_WORD_STRESS",
+          "PRONUNCIATION_ELISION"
+        ],
+        "examples": [
+          {
+            "note": "'Turn off' is linked: the final /n/ of 'turn' joins the vowel of 'off', so it sounds like 'tur-noff'. This is consonant-to-vowel linking.",
+            "text": "Please turn off the lights when you leave."
+          },
+          {
+            "note": "Both are consonant-to-vowel linking: 'an excellent' sounds like 'a-nexcellent' and 'all agree' like 'a-lagree'.",
+            "text": "She's an excellent teacher, and her students all agree."
+          },
+          {
+            "note": "'far away' uses linking /r/: the written 'r' in 'far' is pronounced because 'away' begins with a vowel, so it sounds like 'fa-raway'.",
+            "text": "There's a pharmacy far away from here."
+          }
+        ],
+        "objective": "Understand and master linking (connected speech) in English pronunciation, including consonant-to-vowel linking, linking /r/, and intrusive sounds, so that learners can both speak more fluently and understand natural spoken English.",
+        "_provenance": {
+          "batch": "foundation:LINKING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 198994, Requested 2906. Please try again in 13m40.8s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:41:00Z"
+          },
+          "ai_request_id": "4d95d7c1-7090-486a-a3b5-f40f5c5e3b3f",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Linking is the way words join smoothly together in natural spoken English. Instead of pronouncing each word separately, native speakers connect the end of one word to the beginning of the next. There are three main types: (1) Consonant-to-vowel linking: when a word ends in a consonant and the next word begins with a vowel, the consonant 'jumps over' to the next word, e.g. 'turn off' sounds like 'tur-noff', 'an apple' sounds like 'a-napple'. (2) Linking /r/: in non-rhotic accents (British English), a written 'r' at the end of a word is silent unless the next word begins with a vowel, e.g. 'far away' sounds like 'fa-raway', but 'far too' has no /r/. (3) Intrusive sounds: when a word ends in a vowel and the next begins with a vowel, speakers insert a small /w/, /j/, or /r/ sound to connect them, e.g. 'go on' sounds like 'go-won', 'I agree' sounds like 'I-yagree', 'law and order' sounds like 'law-rand order'. Mastering linking makes your speech sound more natural and fluent, and dramatically improves your listening comprehension, because words you know may sound completely different when linked.",
+          "vi": "Liên kết (linking) là cách các từ được nối liền mạch với nhau trong tiếng Anh tự nhiên. Người bản xứ không phát âm từng từ một cách tách rời, mà nối âm cuối của từ này với âm đầu của từ kế tiếp. Có ba loại chính: (1) Nối phụ âm với nguyên âm: khi từ trước kết thúc bằng phụ âm và từ sau bắt đầu bằng nguyên âm, phụ âm đó 'nhảy sang' từ sau, ví dụ 'turn off' nghe như 'tur-noff', 'an apple' nghe như 'a-napple'. (2) Nối âm /r/: trong giọng Anh-Anh, chữ 'r' cuối từ thường không phát âm, trừ khi từ sau bắt đầu bằng nguyên âm, ví dụ 'far away' nghe như 'fa-raway', nhưng 'far too' thì không có /r/. (3) Chèn âm phụ: khi từ trước kết thúc bằng nguyên âm và từ sau bắt đầu bằng nguyên âm, người nói thường chèn thêm âm nhỏ /w/, /j/ hoặc /r/ để nối, ví dụ 'go on' nghe như 'go-won', 'I agree' nghe như 'I-yagree', 'law and order' nghe như 'law-rand order'. Làm chủ linking giúp bạn nói tự nhiên, trôi chảy hơn và cải thiện mạnh kỹ năng nghe, vì những từ bạn đã biết có thể nghe hoàn toàn khác khi được nối âm."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "English is a stress-timed language where words flow together within a phrase. Pronouncing words separately sounds unnatural and robotic, and it also prevents learners from recognising linked words when listening, since native speakers almost always link a final consonant to a following vowel.",
+            "right": "Linking smoothly: 'tur-noff the lights' with no break between the words.",
+            "wrong": "Pronouncing each word separately: 'turn... off... the... lights' with a pause and glottal stop between 'turn' and 'off'."
+          },
+          {
+            "why": "When two vowel sounds meet across word boundaries, English speakers insert a small glide sound (/w/, /j/, or /r/) to connect them smoothly. The inserted sound must be very light and unstressed; making it too strong or pausing instead breaks the natural rhythm of the sentence.",
+            "right": "Say 'law-rand order' with a light, quick intrusive /r/ connecting the two vowel sounds.",
+            "wrong": "Saying 'law and order' with a hard stop between 'law' and 'and', or inserting a full 'r' sound written as 'law-r-and' with strong stress."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:41:00Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 198994, Requested 2906. Please try again in 13m40.8s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    }
+  ]
 }

@@ -1,11 +1,293 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.3159805Z",
+  "generated_at": "2026-09-25T18:49:49.4196568Z",
   "node": {
     "namespace": "vocabulary",
     "code": "WORKPLACE_VOCABULARY",
     "label": "Workplace Vocabulary",
     "cefr_level": "B2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-workplace-vocabulary-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Rewrite the sentence using the noun form: 'The manager decided to postpone the deadline.' Begin with: 'The manager made ___'",
+        "acceptable": [
+          "The manager made the decision to postpone the deadline."
+        ],
+        "_provenance": {
+          "batch": "foundation:WORKPLACE_VOCABULARY:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "116e58a4-d50c-4afd-b9c5-9181d128ec8d",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The transformation 'decide to postpone' → 'made a decision to postpone' involves a common collocation and simple infinitive structure. While nominalisation is highlighted in the explanation, the vocabulary and syntax are routine workplace English, more aligned with B1 than B2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "The manager made a decision to postpone the deadline."
+          }
+        },
+        "explanation": {
+          "explanation_en": "In workplace English, the verb 'decide' is often nominalised as 'make a decision'. This transformation tests the common collocation 'make a decision' plus 'to + infinitive', which is frequent in professional communication.",
+          "explanation_vi": "Trong tiếng Anh công sở, động từ 'decide' thường được danh từ hoá thành 'make a decision'. Cấu trúc này kiểm tra collocation phổ biến 'make a decision' kết hợp với 'to + động từ nguyên mẫu', thường gặp trong giao tiếp chuyên nghiệp."
+        },
+        "correct_answer": "The manager made a decision to postpone the deadline."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-workplace-vocabulary-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Before she was promoted to team leader, Mai ___ as a junior analyst at the firm for three years, handling client reports and deadlines.",
+        "options": [
+          {
+            "id": "A",
+            "text": "has worked"
+          },
+          {
+            "id": "B",
+            "text": "had been working"
+          },
+          {
+            "id": "C",
+            "text": "works"
+          },
+          {
+            "id": "D",
+            "text": "is working"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WORKPLACE_VOCABULARY:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "107cd77a-e13a-4c25-b0a2-ac27ffd12b39",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests the past perfect continuous ('had been working'), a tense typically introduced and mastered at B2. The distractors include present perfect and simple forms, requiring learners to sequence two past events (duration before promotion), which demands B2-level tense discrimination. Vocabulary (promotion, junior analyst, deadlines) is workplace-register but accessible at B1-B2, so the grammar structure is the main difficulty driver, aligning with the target B2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past perfect continuous 'had been working' describes an ongoing workplace activity (working as a junior analyst) that continued up to a later past event (her promotion to team leader). Workplace terms like 'team leader', 'junior analyst', 'client reports' and 'deadlines' anchor the timeline: the employment period ended before the promotion.",
+          "explanation_vi": "Thì quá khứ hoàn thành tiếp diễn 'had been working' diễn tả một công việc kéo dài (làm chuyên viên phân tích tập sự) tiếp diễn cho đến một sự kiện quá khứ khác (việc được thăng chức làm trưởng nhóm). Các từ ngữ nơi làm việc như 'team leader', 'junior analyst', 'client reports' và 'deadlines' xác lập mốc thời gian: giai đoạn làm việc đó kết thúc trước khi được thăng chức."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-workplace-vocabulary-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "After the merger, the company announced that all employees would receive ___ training to help them adapt to the new systems.",
+        "options": [
+          {
+            "id": "A",
+            "text": "mandatory"
+          },
+          {
+            "id": "B",
+            "text": "optional"
+          },
+          {
+            "id": "C",
+            "text": "temporary"
+          },
+          {
+            "id": "D",
+            "text": "casual"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WORKPLACE_VOCABULARY:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "b1f73a3b-7896-4443-87b7-b096f3647456",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The target word 'mandatory' is a formal, less common adjective typically acquired at B2, and the distractors (optional, temporary, casual) require understanding of nuanced contrasts. The sentence context (merger, workplace training) is abstract/professional, matching B2 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Mandatory' means required by rules or law; in a workplace context, mandatory training is training that all employees must complete. The other options do not fit the idea of required workplace training.",
+          "explanation_vi": "'Mandatory' nghĩa là bắt buộc theo quy định; trong ngữ cảnh nơi làm việc, khóa đào tạo bắt buộc là khóa mà tất cả nhân viên phải tham gia. Các lựa chọn khác không phù hợp với ý nghĩa 'bắt buộc'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-workplace-vocabulary",
+      "kind": "foundation_quiz",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "During the performance review, her manager suggested she take on more ___ to prepare for a leadership role.",
+        "options": [
+          {
+            "id": "A",
+            "text": "responsibility"
+          },
+          {
+            "id": "B",
+            "text": "equipment"
+          },
+          {
+            "id": "C",
+            "text": "stationery"
+          },
+          {
+            "id": "D",
+            "text": "furniture"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WORKPLACE_VOCABULARY:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "b569c68f-9ff9-4fa9-9889-8312f4090239",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests the workplace collocation 'take on responsibility' within a performance review context, requiring recognition of an idiomatic phrasal verb collocation typical of B2. While the distractor vocabulary (equipment, stationery, furniture) is accessible, the contextual and collocational judgment needed aligns with B2 descriptors on work-related abstract topics.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Take on responsibility' is a common workplace collocation meaning to accept additional duties or tasks. The other options are nouns for physical objects, which do not fit the context of preparing for a leadership role.",
+          "explanation_vi": "'Take on responsibility' là cụm từ thông dụng trong môi trường công sở, nghĩa là nhận thêm nhiệm vụ hoặc trách nhiệm. Các lựa chọn còn lại là danh từ chỉ đồ vật, không phù hợp với ngữ cảnh chuẩn bị cho vai trò lãnh đạo."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-workplace-vocabulary",
+      "kind": "foundation_review",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "After the merger, all employees were asked to ___ their job descriptions to the HR department for review.",
+        "options": [
+          {
+            "id": "A",
+            "text": "submit"
+          },
+          {
+            "id": "B",
+            "text": "dismiss"
+          },
+          {
+            "id": "C",
+            "text": "recruit"
+          },
+          {
+            "id": "D",
+            "text": "postpone"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WORKPLACE_VOCABULARY:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "5c50b477-4ab4-470e-8246-8540be40a270",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests workplace vocabulary (submit, dismiss, recruit, postpone) in a single clear sentence with passive voice. 'Submit' and 'recruit' are common B1-level workplace words; the distractors are also familiar. The sentence structure is simple, so the item is slightly below the requested B2, fitting B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Submit' means to formally send or hand in a document to a person or department, which fits the workplace context of sending job descriptions to HR for review. 'Dismiss' means to reject or remove from a job, 'recruit' means to hire new staff, and 'postpone' means to delay.",
+          "explanation_vi": "'Submit' nghĩa là nộp hoặc gửi chính thức một tài liệu cho ai đó hoặc một bộ phận, phù hợp với ngữ cảnh nơi làm việc là nộp bản mô tả công việc cho phòng nhân sự xem xét. 'Dismiss' nghĩa là sa thải hoặc bác bỏ, 'recruit' nghĩa là tuyển dụng nhân viên mới, còn 'postpone' nghĩa là trì hoãn."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-workplace-vocabulary",
+      "kind": "foundation_topic",
+      "cefr_level": "B2",
+      "body": {
+        "related": [
+          "BUSINESS_EMAIL_ETIQUETTE",
+          "PHRASAL_VERBS_WORK",
+          "FORMAL_VS_INFORMAL_REGISTER"
+        ],
+        "examples": [
+          {
+            "note": "Demonstrates two key collocations: 'meet a deadline' (complete work on time) and 'be snowed under' (have too much work). Also shows polite hedging with 'I'm afraid'.",
+            "text": "I'm afraid I can't meet the Friday deadline because I'm snowed under with the quarterly report."
+          },
+          {
+            "note": "Uses 'take the minutes' (record what is said in a meeting) and 'follow up on' (check back on something later) — both essential office collocations in a polite request.",
+            "text": "Could you take the minutes at tomorrow's meeting and follow up on the client's feedback afterwards?"
+          },
+          {
+            "note": "Shows performance vocabulary: 'get promoted', 'go above and beyond' (do more than required), 'meet/exceed targets', and 'take on responsibility'.",
+            "text": "She was promoted after consistently going above and beyond her targets and taking on extra responsibility."
+          }
+        ],
+        "objective": "Understand and master essential workplace vocabulary at B2 level, including common collocations for meetings, deadlines, performance, and office communication, so that learners can accurately describe work tasks, responsibilities, and professional situations in both spoken and written English.",
+        "_provenance": {
+          "batch": "foundation:WORKPLACE_VOCABULARY:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8b107423-b327-4b8f-a29f-162fdb129e1c",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Workplace vocabulary at B2 level goes beyond basic job words (employee, boss, salary) and focuses on high-frequency collocations and semi-formal expressions used in professional settings. Key areas include: (1) Meetings and communication: 'call a meeting', 'take minutes', 'follow up on', 'touch base', 'circulate a report'. (2) Deadlines and workload: 'meet a deadline', 'miss a deadline', 'be snowed under', 'handle a heavy workload', 'work overtime'. (3) Performance and career: 'meet targets', 'go above and beyond', 'take on more responsibility', 'get promoted', 'give/receive feedback'. (4) Problems and change: 'raise a concern', 'resolve an issue', 'implement a new policy', 'streamline a process'. Notice that many workplace expressions are verb–noun collocations (e.g., 'meet a deadline', NOT 'reach a deadline'), and many nouns are frequently used with 'make' or 'do' in fixed ways (e.g., 'make a proposal', 'do paperwork'). Register matters: B2 learners should distinguish neutral phrasal verbs ('sort out', 'chase up') from more formal single-word verbs ('resolve', 'follow up'), and use hedging language ('I was wondering if...', 'Would it be possible to...') when making requests to colleagues or managers.",
+          "vi": "Từ vựng nơi công sở ở trình độ B2 không chỉ dừng lại ở các từ cơ bản (nhân viên, sếp, lương) mà tập trung vào các collocation (kết hợp từ) tần suất cao và cách diễn đạt bán trang trọng trong môi trường chuyên nghiệp. Các nhóm từ quan trọng gồm: (1) Họp và giao tiếp: 'call a meeting' (triệu họp), 'take minutes' (ghi biên bản), 'follow up on' (theo sát/tiếp nối), 'touch base' (liên hệ cập nhật). (2) Thời hạn và khối lượng công việc: 'meet a deadline' (đúng hạn — lưu ý dùng MEET, không dùng 'reach'), 'be snowed under' (quá tải công việc), 'work overtime' (làm thêm giờ). (3) Hiệu suất và sự nghiệp: 'meet targets' (đạt chỉ tiêu), 'take on more responsibility' (nhận thêm trách nhiệm), 'get promoted' (được thăng chức), 'give/receive feedback' (đưa/nhận phản hồi). (4) Vấn đề và thay đổi: 'raise a concern' (nêu băn khoăn), 'resolve an issue' (giải quyết vấn đề), 'implement a policy' (triển khai chính sách). Lưu ý quan trọng: nhiều cụm từ là kết hợp cố định giữa động từ và danh từ — học thuộc nguyên cụm thay vì dịch từng từ, vì dịch từ tiếng Việt sang tiếng Anh dễ tạo ra collocation sai (ví dụ 'đạt deadline' không phải 'reach a deadline'). Ngoài ra, cần phân biệt register: cụm động từ thân mật ('sort out') với động từ đơn trang trọng hơn ('resolve'), và dùng câu hỏi lịch sự ('Would it be possible to...?') khi đề nghị đồng nghiệp hoặc cấp trên."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "English uses fixed collocations: we 'meet' a deadline (not 'reach' or 'catch' it), and we 'work' overtime (not 'make' overtime). Vietnamese learners often translate directly from 'đạt deadline' and 'làm thêm giờ', producing unnatural verb choices. Always learn the verb and noun together as a chunk.",
+            "right": "I need to meet the deadline by Friday and work overtime tonight.",
+            "wrong": "I need to reach the deadline by Friday and make overtime tonight."
+          },
+          {
+            "why": "'Feedback' is an uncountable noun in English and has no plural form. To express quantity, use 'a lot of feedback', 'some feedback', or 'a piece of feedback'.",
+            "right": "My boss gave me a lot of feedback about my presentation.",
+            "wrong": "My boss gave me a lot of feedbacks about my presentation."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1014535Z",
+  "generated_at": "2026-09-25T18:49:49.2225797Z",
   "node": {
     "namespace": "grammar",
     "code": "COMMON_GRAMMAR_MISTAKES",
@@ -9,56 +9,332 @@
   },
   "items": [
     {
+      "slug": "foundation-ex-common-grammar-mistakes-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'She said that': 'I am going to the market now,' she said.",
+        "acceptable": [
+          "She said that she was going to the market then.",
+          "She said she was going to the market then.",
+          "She said that she was going to the market at that time.",
+          "She said that she was going to the market at that moment."
+        ],
+        "_provenance": {
+          "batch": "foundation:COMMON_GRAMMAR_MISTAKES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:33:11Z"
+          },
+          "ai_request_id": "21215aac-130b-4685-aebf-ff0b0bed9933",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "Reported speech with backshift of present continuous to past continuous, pronoun changes, and time expression changes ('now' → 'then') exceeds A2 grammar scope and is typically introduced at B1 level.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "She said that she was going to the market then."
+          }
+        },
+        "explanation": {
+          "explanation_en": "In reported speech, present continuous 'am going' changes to past continuous 'was going', 'I' changes to 'she', and 'now' changes to 'then'. A common mistake is keeping the original tense or pronoun.",
+          "explanation_vi": "Trong câu tường thuật, hiện tại tiếp diễn 'am going' đổi thành quá khứ tiếp diễn 'was going', đại từ 'I' đổi thành 'she', và 'now' đổi thành 'then'. Lỗi thường gặp là giữ nguyên thì hoặc đại từ gốc."
+        },
+        "correct_answer": "She said that she was going to the market then."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:33:11Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
       "slug": "foundation-ex-common-grammar-mistakes-grammar-tense-choice-1",
       "kind": "grammar_tense_choice",
       "cefr_level": "A2",
       "body": {
-        "prompt": "She didn't ___ to school yesterday because she was sick.",
+        "prompt": "Yesterday she ___ to the market because it was raining.",
         "options": [
           {
             "id": "A",
-            "text": "went"
+            "text": "didn't go"
           },
           {
             "id": "B",
-            "text": "go"
+            "text": "didn't went"
           },
           {
             "id": "C",
-            "text": "goes"
+            "text": "doesn't went"
           },
           {
             "id": "D",
-            "text": "going"
+            "text": "not went"
           }
         ],
         "_provenance": {
-          "batch": "foundation:COMMON_GRAMMAR_MISTAKES:20260923T155218",
+          "batch": "foundation:COMMON_GRAMMAR_MISTAKES:20260925T162328",
           "model": "glm-5.3-flash",
           "purpose": "foundation",
           "verification": {
             "model": "qwen/qwen3.8-27b",
             "verdict": "confirmed",
-            "checked_at": "2026-09-23T15:52:29Z"
+            "checked_at": "2026-09-25T16:33:00Z"
           },
-          "ai_request_id": "dd4ffe33-231c-4aae-983d-230090276bff",
+          "ai_request_id": "867be486-f824-4c36-804d-6eb83ff65d23",
           "cefr_estimate": "A2",
-          "cefr_reasoning": "The item tests past simple negative with 'didn't' + base form, a core A2 grammar point, using simple everyday vocabulary and a familiar context (school, sickness).",
-          "prompt_version": "item_generate.v1",
+          "cefr_reasoning": "The item tests past simple negation with 'didn't' + base form, a core A2 grammar point. Vocabulary ('market', 'raining', 'yesterday') is simple and everyday, and the distractor 'didn't went' targets a typical A2 learner error.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A common mistake is using the past form after 'didn't'. After the auxiliary 'did', use the base form: 'didn't go', not 'didn't went'.",
+          "explanation_vi": "Lỗi thường gặp là dùng dạng quá khứ sau 'didn't'. Sau trợ động từ 'did' phải dùng động từ nguyên mẫu: 'didn't go', không dùng 'didn't went'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:33:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-common-grammar-mistakes-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "My sister ___ in Hanoi since 2020.",
+        "options": [
+          {
+            "id": "A",
+            "text": "lives"
+          },
+          {
+            "id": "B",
+            "text": "has lived"
+          },
+          {
+            "id": "C",
+            "text": "is living"
+          },
+          {
+            "id": "D",
+            "text": "lived"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMMON_GRAMMAR_MISTAKES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:33:20Z"
+          },
+          "ai_request_id": "12874d98-20df-4867-a8bc-bbfd2e2046e0",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the present perfect with 'since' + point in time, which is explicitly a B1 grammar feature per CEFR descriptors. The vocabulary is simple, but the tense choice requires B1-level knowledge of the present perfect.",
+          "prompt_version": "item_generate.v2",
           "blind_solve_answer": {
             "selected_option_id": "B"
           }
         },
         "explanation": {
-          "explanation_en": "A common grammar mistake is using the past tense after 'didn't'. After the auxiliary 'did/didn't', always use the base form of the verb: 'didn't go', not 'didn't went'.",
-          "explanation_vi": "Lỗi ngữ pháp phổ biến là dùng thì quá khứ sau 'didn't'. Sau trợ động từ 'did/didn't', luôn dùng dạng nguyên thể của động từ: 'didn't go', không dùng 'didn't went'."
+          "explanation_en": "A common mistake is using the present simple with 'since'. With 'since' + a point in time and an action continuing until now, use the present perfect: 'has lived'.",
+          "explanation_vi": "Lỗi thường gặp là dùng thì hiện tại đơn với 'since'. Với 'since' + mốc thời gian và hành động kéo dài đến bây giờ, phải dùng thì hiện tại hoàn thành: 'has lived'."
         },
         "correct_option_id": "B"
       },
       "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:33:20Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-quiz-common-grammar-mistakes",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Choose the correct sentence: Which one has NO grammar mistake?",
+        "options": [
+          {
+            "id": "A",
+            "text": "She don't like coffee."
+          },
+          {
+            "id": "B",
+            "text": "He doesn't like coffee."
+          },
+          {
+            "id": "C",
+            "text": "He doesn't likes coffee."
+          },
+          {
+            "id": "D",
+            "text": "He not like coffee."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMMON_GRAMMAR_MISTAKES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:33:29Z"
+          },
+          "ai_request_id": "e57c475c-b34a-434b-a176-44475b136df0",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic present simple negation with 'doesn't' using very common vocabulary (like, coffee) and simple sentences, which is A1-level grammar.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "With 'he/she/it' in the present simple, we use 'doesn't' + the base verb: 'He doesn't like coffee.' 'Don't' is wrong with 'he', and 'doesn't likes' wrongly adds -s after 'doesn't'.",
+          "explanation_vi": "Với chủ ngữ 'he/she/it' ở thì hiện tại đơn, ta dùng 'doesn't' + động từ nguyên mẫu: 'He doesn't like coffee.' 'Don't' sai với 'he', và 'doesn't likes' sai vì thêm -s sau 'doesn't'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
-        "checked_at": "2026-09-23T15:52:29Z"
+        "checked_at": "2026-09-25T16:33:29Z"
+      }
+    },
+    {
+      "slug": "foundation-review-common-grammar-mistakes",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Choose the correct sentence: Which sentence has NO grammar mistake?",
+        "options": [
+          {
+            "id": "A",
+            "text": "She don't like coffee."
+          },
+          {
+            "id": "B",
+            "text": "He goes to school every day."
+          },
+          {
+            "id": "C",
+            "text": "They is my friends."
+          },
+          {
+            "id": "D",
+            "text": "I am agree with you."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMMON_GRAMMAR_MISTAKES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:33:40Z"
+          },
+          "ai_request_id": "2fec9204-0aaa-462f-b208-894dc819f921",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic present simple grammar (third-person -s, do/does negation, subject-verb agreement) with very common everyday vocabulary ('coffee', 'school', 'friends'). Recognizing common learner errors like 'She don't' and 'I am agree' requires slightly more than pure A1 recognition, fitting A2 foundation review well.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'He goes' is correct: third person singular takes -s in the present simple. The other options have common mistakes: 'She don't' should be 'She doesn't', 'They is' should be 'They are', and 'I am agree' should be 'I agree'.",
+          "explanation_vi": "'He goes' đúng: ngôi thứ ba số ít thêm -s ở thì hiện tại đơn. Các câu khác có lỗi phổ biến: 'She don't' phải là 'She doesn't', 'They is' phải là 'They are', và 'I am agree' phải là 'I agree'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:33:40Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-common-grammar-mistakes",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "PRESENT_SIMPLE",
+          "ARTICLES_A_AN_THE",
+          "PREPOSITIONS_OF_TIME"
+        ],
+        "examples": [
+          {
+            "note": "Correct subject-verb agreement: 'goes' with -s because the subject is 'she' (third person singular).",
+            "text": "She goes to school by bus every morning."
+          },
+          {
+            "note": "Shows correct articles ('an' before vowel sound) and prepositions of time: 'on' + day, 'at' + clock time, 'in' + part of day.",
+            "text": "I have an English lesson on Monday at 9 o'clock in the morning."
+          },
+          {
+            "note": "'Many' is used with the countable noun 'students'; 'much' is used with the uncountable noun 'time'.",
+            "text": "There are many students in the class, but not much time."
+          }
+        ],
+        "objective": "Understand and master the most common grammar mistakes at A2 level, including subject-verb agreement, using 'a/an/the' correctly, prepositions of time, and confusing word pairs, so learners can identify and correct these errors in their own writing and speaking.",
+        "_provenance": {
+          "batch": "foundation:COMMON_GRAMMAR_MISTAKES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:33:53Z"
+          },
+          "ai_request_id": "57e7ee33-6e39-499c-831f-96a6fe449b44",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At A2 level, learners often make predictable grammar mistakes. The most frequent ones are: (1) Subject-verb agreement: use 'is' with he/she/it and 'are' with I/you/we/they; add -s to verbs in the present simple for he/she/it (he works, not he work). (2) Articles: use 'a' before consonant sounds (a book), 'an' before vowel sounds (an apple), and 'the' when the thing is already known or specific. (3) Prepositions of time: use 'at' for clock times (at 7 o'clock), 'on' for days (on Monday), and 'in' for months, years, and parts of the day (in May, in 2024, in the morning). (4) Word confusion: 'much' with uncountable nouns (much water) and 'many' with countable nouns (many books). Learning to notice and fix these mistakes will make your English clearer and more accurate.",
+          "vi": "Ở trình độ A2, người học Việt Nam thường mắc những lỗi ngữ pháp dễ đoán trước. Những lỗi phổ biến nhất là: (1) Hòa hợp chủ ngữ - động từ: dùng 'is' với he/she/it và 'are' với I/you/we/they; thêm -s vào động từ ở thì hiện tại đơn khi chủ ngữ là he/she/it (he works, không phải he work). (2) Mạo từ: dùng 'a' trước âm phụ âm (a book), 'an' trước âm nguyên âm (an apple), và 'the' khi sự vật đã được biết đến hoặc xác định. (3) Giới từ chỉ thời gian: dùng 'at' cho giờ (at 7 o'clock), 'on' cho ngày (on Monday), và 'in' cho tháng, năm và các buổi trong ngày (in May, in 2024, in the morning). (4) Nhầm lẫn từ: dùng 'much' với danh từ không đếm được (much water) và 'many' với danh từ đếm được (many books). Lưu ý: người Việt thường quên thêm -s vì tiếng Việt không biến đổi động từ, và hay nhầm 'in/on/at' vì cách dùng khác tiếng Việt. Việc nhận biết và sửa các lỗi này sẽ giúp bạn nói và viết tiếng Anh chính xác hơn."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In the present simple, verbs take -s when the subject is he, she, or it. Vietnamese does not change verbs, so learners often forget this rule.",
+            "right": "He works in a hospital.",
+            "wrong": "He work in a hospital."
+          },
+          {
+            "why": "Use 'on' with days of the week. 'In' is only for months, years, seasons, and parts of the day.",
+            "right": "I go to school on Monday.",
+            "wrong": "I go to school in Monday."
+          },
+          {
+            "why": "Use 'an' before words that begin with a vowel sound, like 'apple'. Use 'a' before consonant sounds.",
+            "right": "I bought an apple yesterday.",
+            "wrong": "I bought a apple yesterday."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:33:53Z"
       }
     }
   ]

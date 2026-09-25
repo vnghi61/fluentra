@@ -1,6 +1,6 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1189879Z",
+  "generated_at": "2026-09-25T18:49:49.2421107Z",
   "node": {
     "namespace": "grammar",
     "code": "CONJUNCTIONS",
@@ -9,11 +9,215 @@
   },
   "items": [
     {
+      "slug": "foundation-ex-conjunctions-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'Both ... and': She likes coffee. Her brother likes coffee too.",
+        "acceptable": [
+          "Both she and her brother like coffee.",
+          "Both her brother and she like coffee."
+        ],
+        "_provenance": {
+          "batch": "foundation:CONJUNCTIONS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:40:21Z"
+          },
+          "ai_request_id": "68c44b5e-f189-46b6-8c90-eb282930dda2",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses simple present tense, very common vocabulary (coffee, brother, like), and a basic correlative conjunction 'both ... and'. Sentence transformation is simple and the explanation is straightforward, fitting A2.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "Both she and her brother like coffee."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The correlative conjunction 'both ... and' joins two subjects that share the same idea. When two subjects are joined by 'both ... and', the verb is plural ('like').",
+          "explanation_vi": "Liên từ kết hợp 'both ... and' nối hai chủ ngữ có cùng ý. Khi hai chủ ngữ được nối bằng 'both ... and', động từ ở dạng số nhiều ('like')."
+        },
+        "correct_answer": "Both she and her brother like coffee."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:40:21Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-ex-conjunctions-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Do you want to eat now, ___ shall we wait for Tom?",
+        "options": [
+          {
+            "id": "A",
+            "text": "and"
+          },
+          {
+            "id": "B",
+            "text": "or"
+          },
+          {
+            "id": "C",
+            "text": "but"
+          },
+          {
+            "id": "D",
+            "text": "so"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:CONJUNCTIONS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:40:13Z"
+          },
+          "ai_request_id": "c0f9612b-54cc-46a9-a543-084c4977613a",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic conjunctions (but, and, or, so) in a simple past-tense sentence with everyday vocabulary, matching A2 descriptors for simple sentences and basic connectors.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use 'or' to offer a choice between two options: eating now or waiting for Tom.",
+          "explanation_vi": "Dùng 'or' để đưa ra lựa chọn giữa hai phương án: ăn ngay hoặc chờ Tom."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:40:13Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-conjunctions-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "It was very cold outside, ___ I put on my warm coat.",
+        "options": [
+          {
+            "id": "A",
+            "text": "but"
+          },
+          {
+            "id": "B",
+            "text": "or"
+          },
+          {
+            "id": "C",
+            "text": "so"
+          },
+          {
+            "id": "D",
+            "text": "because"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:CONJUNCTIONS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:40:36Z"
+          },
+          "ai_request_id": "cd7a9803-5b2f-4075-b7f9-defd1222864c",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests a basic coordinating conjunction ('but') in a simple past-tense sentence with everyday vocabulary, matching A2 descriptors for simple sentences and basic conjunctions.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use 'so' to show a result: the cold weather is the reason, and putting on a coat is the result.",
+          "explanation_vi": "Dùng 'so' để chỉ kết quả: trời lạnh là nguyên nhân, mặc áo khoác ấm là kết quả."
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:40:36Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-conjunctions",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "I wanted to go to the party, ___ I was too tired.",
+        "options": [
+          {
+            "id": "A",
+            "text": "but"
+          },
+          {
+            "id": "B",
+            "text": "and"
+          },
+          {
+            "id": "C",
+            "text": "or"
+          },
+          {
+            "id": "D",
+            "text": "so"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:CONJUNCTIONS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:40:45Z"
+          },
+          "ai_request_id": "85fb6cb7-191b-48a6-9394-62ea1da0ecee",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic conjunction 'but' joining two contrasting clauses with simple past tense and everyday vocabulary, matching A2 descriptors for simple sentences and basic conjunctions.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use 'but' to join two contrasting ideas: wanting to go versus being too tired.",
+          "explanation_vi": "Dùng 'but' để nối hai ý tương phản: muốn đi dự tiệc nhưng lại quá mệt."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:40:45Z"
+      }
+    },
+    {
       "slug": "foundation-review-conjunctions",
       "kind": "foundation_review",
       "cefr_level": "A2",
       "body": {
-        "prompt": "I wanted to go for a walk, ___ it started to rain heavily.",
+        "prompt": "I wanted to go for a walk, ___ it was raining heavily.",
         "options": [
           {
             "id": "A",
@@ -33,32 +237,95 @@
           }
         ],
         "_provenance": {
-          "batch": "foundation:CONJUNCTIONS:20260923T155218",
+          "batch": "foundation:CONJUNCTIONS:20260925T162328",
           "model": "glm-5.3-flash",
           "purpose": "foundation",
           "verification": {
             "model": "qwen/qwen3.8-27b",
             "verdict": "confirmed",
-            "checked_at": "2026-09-23T16:08:36Z"
+            "checked_at": "2026-09-25T16:40:55Z"
           },
-          "ai_request_id": "492a3de5-e1cf-4f7b-ab6e-6a6c8ac8f26c",
+          "ai_request_id": "13596f88-85a7-47b4-814f-65324768066e",
           "cefr_estimate": "A2",
-          "cefr_reasoning": "The item tests the basic conjunction 'but' for contrast in a simple past-tense sentence with everyday vocabulary, matching A2 descriptors (simple sentences, past simple, basic conjunctions).",
-          "prompt_version": "item_generate.v1",
+          "cefr_reasoning": "The item tests basic conjunctions (but, so, or, because) in a simple past-tense sentence with everyday vocabulary, matching A2 descriptors for basic connectors and simple sentences.",
+          "prompt_version": "item_generate.v2",
           "blind_solve_answer": {
             "selected_option_id": "B"
           }
         },
         "explanation": {
-          "explanation_en": "Use the conjunction 'but' to show contrast between two ideas: wanting to go for a walk and the rain stopping it.",
-          "explanation_vi": "Dùng liên từ 'but' để diễn tả sự tương phản giữa hai ý: muốn đi dạo và việc trời mưa to ngăn cản điều đó."
+          "explanation_en": "Use 'but' to join two contrasting ideas: wanting to go out versus the rain stopping it.",
+          "explanation_vi": "Dùng 'but' để nối hai ý tương phản: muốn đi dạo nhưng trời mưa to ngăn lại."
         },
         "correct_option_id": "B"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
-        "checked_at": "2026-09-23T16:08:36Z"
+        "checked_at": "2026-09-25T16:40:55Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-conjunctions",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "SENTENCE_STRUCTURE",
+          "COMPOUND_SENTENCES",
+          "LINKING_WORDS"
+        ],
+        "examples": [
+          {
+            "note": "BUT joins two complete clauses to show contrast. A comma comes before 'but'.",
+            "text": "I wanted to call you, but my phone battery died."
+          },
+          {
+            "note": "SO shows the result of the first clause. 'Because' could express the same idea in reverse: 'She made a big dinner because she was hungry.'",
+            "text": "She was hungry, so she made a big dinner."
+          },
+          {
+            "note": "ALTHOUGH starts the sentence to show surprising contrast. Note: no 'but' in the second clause.",
+            "text": "Although he is only six, he can swim very well."
+          }
+        ],
+        "objective": "Understand the formation and core uses of basic coordinating conjunctions (and, but, or, so) and common linking words (because, although) to join words, phrases, and clauses in everyday sentences.",
+        "_provenance": {
+          "batch": "foundation:CONJUNCTIONS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:41:11Z"
+          },
+          "ai_request_id": "37eb8f76-224a-4de6-ba59-a82683ec35c9",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Conjunctions are words that connect words, phrases, or sentences. At A2 level, the most important conjunctions are the coordinating conjunctions AND, BUT, OR, and SO, plus the subordinating conjunctions BECAUSE and ALTHOUGH.\n\n1. AND adds information: 'I like tea and coffee.' It joins two nouns, two verbs, two adjectives, or two whole sentences.\n2. BUT shows contrast or a difference: 'I like coffee, but I don't drink it every day.'\n3. OR shows a choice between options: 'Do you want tea or coffee?'\n4. SO shows a result or consequence: 'It was raining, so I stayed at home.'\n5. BECAUSE gives a reason: 'I stayed at home because it was raining.'\n6. ALTHOUGH shows an unexpected contrast between two clauses: 'Although it was raining, we went out.'\n\nKey rules:\n- When joining two complete sentences with AND, BUT, or SO, use a comma before the conjunction: 'I was tired, so I went to bed.'\n- BECAUSE and ALTHOUGH introduce a reason or contrast clause and connect it to the main clause. You can start the sentence with them: 'Because it was raining, I stayed at home.'\n- Use ALTHOUGH or BUT for contrast, but not both together in the same sentence pair.\n- Do not use SO and BECAUSE together to link the same two clauses.",
+          "vi": "Liên từ (conjunction) là từ dùng để nối hai từ, hai cụm từ hoặc hai câu. Ở trình độ A2, các liên từ quan trọng nhất là AND (và), BUT (nhưng), OR (hoặc), SO (nên/vì vậy) và BECAUSE (bởi vì), ALTHOUGH (mặc dù).\n\n1. AND dùng để thêm thông tin: 'I like tea and coffee.' (Tôi thích trà và cà phê.)\n2. BUT diễn tả sự tương phản, trái ngược: 'I like coffee, but I don't drink it every day.'\n3. OR diễn tả sự lựa chọn: 'Do you want tea or coffee?' (Bạn muốn trà hay cà phê?)\n4. SO diễn tả kết quả: 'It was raining, so I stayed at home.' (Trời mưa nên tôi ở nhà.)\n5. BECAUSE nêu lý do: 'I stayed at home because it was raining.'\n6. ALTHOUGH diễn tả sự tương phản bất ngờ giữa hai mệnh đề: 'Although it was raining, we went out.' (Mặc dù trời mưa, chúng tôi vẫn đi ra ngoài.)\n\nLưu ý quan trọng:\n- Khi nối hai câu hoàn chỉnh bằng AND, BUT hoặc SO, cần đặt dấu phẩy trước liên từ.\n- BECAUSE và ALTHOUGH có thể đứng đầu câu, sau đó có dấu phẩy: 'Because it was raining, I stayed at home.'\n- KHÔNG dùng cả ALTHOUGH và BUT trong cùng một câu (lỗi rất phổ biến của người Việt vì tiếng Việt có cấu trúc 'mặc dù... nhưng...').\n- KHÔNG dùng cả SO và BECAUSE cùng lúc để nối hai mệnh đề giống nhau."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In English, you use EITHER 'although' OR 'but' to show contrast, never both in the same sentence. This mistake comes from translating the Vietnamese pattern 'mặc dù... nhưng...'.",
+            "right": "Although it was cold, we went swimming.",
+            "wrong": "Although it was cold, but we went swimming."
+          },
+          {
+            "why": "Use 'because' to give a reason or 'so' to give a result, not both to link the same two clauses. This error comes from the Vietnamese pattern 'vì... nên...'.",
+            "right": "I was tired, so I went to bed early.",
+            "wrong": "Because I was tired, so I went to bed early."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:41:11Z"
       }
     }
   ]

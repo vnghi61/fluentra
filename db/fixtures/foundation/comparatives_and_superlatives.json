@@ -1,11 +1,279 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1090962Z",
+  "generated_at": "2026-09-25T18:49:49.2313576Z",
   "node": {
     "namespace": "grammar",
     "code": "COMPARATIVES_AND_SUPERLATIVES",
     "label": "Comparatives and Superlatives",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-comparatives-and-superlatives-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence using the comparative of 'good', beginning with 'My new phone is': My old phone was not as good as my new phone.",
+        "acceptable": [
+          "My new phone is better than my old phone.",
+          "My new phone is better than my old one.",
+          "My new phone is better than the old one."
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPARATIVES_AND_SUPERLATIVES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:35:45Z"
+          },
+          "ai_request_id": "ee89c32c-1fa5-42c5-a55c-759eed029f80",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the irregular comparative 'better than', a basic comparative structure typically introduced at A2. Vocabulary is simple and everyday (phone, good, old), and the sentence transformation is a routine task. The explanation is simple, though the concept of irregular adjectives slightly stretches A2, keeping confidence moderate.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "My new phone is better than my old phone."
+          }
+        },
+        "explanation": {
+          "explanation_en": "When comparing two things, use the comparative form. 'Good' is irregular, so its comparative is 'better', followed by 'than'.",
+          "explanation_vi": "Khi so sánh hai sự vật, dùng dạng so sánh hơn. 'Good' là tính từ bất quy tắc, dạng so sánh hơn là 'better', theo sau là 'than'."
+        },
+        "correct_answer": "My new phone is better than my old phone."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:35:45Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-ex-comparatives-and-superlatives-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "This is ___ film I have ever seen. I want to watch it again!",
+        "options": [
+          {
+            "id": "A",
+            "text": "the best"
+          },
+          {
+            "id": "B",
+            "text": "better"
+          },
+          {
+            "id": "C",
+            "text": "the goodest"
+          },
+          {
+            "id": "D",
+            "text": "the most good"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPARATIVES_AND_SUPERLATIVES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:35:35Z"
+          },
+          "ai_request_id": "e6f1db55-b8b8-4fb2-b8c4-85121faa2c6e",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic comparative forms of short adjectives ('cheaper than'), which is a standard A2 grammar point. The sentence is simple, vocabulary is everyday ('phone', 'old', 'cheap'), and distractors test common errors at this level.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Good' is irregular: good → better → the best. 'I have ever seen' compares this film with every film, so we need the superlative 'the best'.",
+          "explanation_vi": "'Good' là tính từ bất quy tắc: good → better → the best. 'I have ever seen' so sánh bộ phim này với mọi bộ phim đã xem, nên cần so sánh nhất 'the best'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:35:35Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-comparatives-and-superlatives",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "My new phone is ___ than my old one.",
+        "options": [
+          {
+            "id": "A",
+            "text": "more cheap"
+          },
+          {
+            "id": "B",
+            "text": "cheaper"
+          },
+          {
+            "id": "C",
+            "text": "cheapest"
+          },
+          {
+            "id": "D",
+            "text": "the cheaper"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPARATIVES_AND_SUPERLATIVES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:36:02Z"
+          },
+          "ai_request_id": "92e7e746-aa4d-4ef0-b0cc-7703dcc7e001",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the comparative form of a one-syllable adjective ('cheaper than'), a basic grammar point typically introduced at A2. Vocabulary is simple and everyday ('phone', 'cheap'), and the sentence structure is a simple comparative construction.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "For one-syllable adjectives like 'cheap', add '-er' to form the comparative: 'cheaper than'. 'More cheap' is incorrect, and 'cheapest' is a superlative.",
+          "explanation_vi": "Với tính từ một âm tiết như 'cheap', thêm '-er' để tạo so sánh hơn: 'cheaper than'. 'More cheap' sai, và 'cheapest' là so sánh nhất."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:36:02Z"
+      }
+    },
+    {
+      "slug": "foundation-review-comparatives-and-superlatives",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Mount Everest is ___ mountain in the world.",
+        "options": [
+          {
+            "id": "A",
+            "text": "the highest"
+          },
+          {
+            "id": "B",
+            "text": "higher"
+          },
+          {
+            "id": "C",
+            "text": "the most high"
+          },
+          {
+            "id": "D",
+            "text": "highest than"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPARATIVES_AND_SUPERLATIVES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:36:12Z"
+          },
+          "ai_request_id": "c7a177ae-304f-4529-aa25-0175c3340343",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic comparative forms of one-syllable adjectives ('cheaper than'), a grammar point typically introduced at A2. Vocabulary is simple and everyday ('phone', 'cheap', 'old'), and the sentence structure is a simple comparative construction. This aligns well with the requested A2 level.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "To say one thing is the most of a whole group ('in the world'), use the superlative with 'the': 'the highest'. 'High' is short, so it takes -est, not 'most'.",
+          "explanation_vi": "Khi nói một vật đứng đầu cả nhóm ('in the world'), dùng so sánh nhất với 'the': 'the highest'. 'High' là tính từ ngắn nên thêm -est, không dùng 'most'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:36:12Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-comparatives-and-superlatives",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "ADJECTIVES_BASICS",
+          "AS_AS_COMPARISON",
+          "ADVERBS_COMPARISON"
+        ],
+        "examples": [
+          {
+            "note": "Short adjectives take -er + 'than' to compare two people.",
+            "text": "My brother is taller than me, but I am faster than him."
+          },
+          {
+            "note": "Long adjectives use 'the most' + adjective for superlatives; 'in the city' shows the group.",
+            "text": "This is the most expensive hotel in the city."
+          },
+          {
+            "note": "'Good' is irregular: good → better → the best.",
+            "text": "Today the weather is better than yesterday."
+          }
+        ],
+        "objective": "Understand and correctly form comparative and superlative adjectives (adding -er/-est or using more/most), and use them with 'than' and 'the' to compare people, things, and actions in everyday contexts.",
+        "_provenance": {
+          "batch": "foundation:COMPARATIVES_AND_SUPERLATIVES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:36:25Z"
+          },
+          "ai_request_id": "194447b6-7b47-4240-88b4-ca51a5b79e05",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Comparatives compare two things; superlatives show which is the most of a group. For short adjectives (one syllable, e.g., tall, fast), add -er/-est: tall → taller → the tallest. For adjectives ending in -e, add -r/-st (nice → nicer → the nicest). For one-syllable adjectives ending in consonant-vowel-consonant, double the final consonant (big → bigger → the biggest). For two-syllable adjectives ending in -y, change y to i and add -er/-est (happy → happier → the happiest). For longer adjectives (two or more syllables), use more/most: expensive → more expensive → the most expensive. Some adjectives are irregular: good → better → the best; bad → worse → the worst; far → farther/further → the farthest/furthest. Use 'than' after comparatives (She is taller than me) and 'the' before superlatives (He is the tallest in the class). You can strengthen comparisons with 'much', 'a lot', or 'a little' (much better), and use 'as ... as' for equal comparison (as tall as).",
+          "vi": "So sánh hơn (comparative) dùng để so sánh hai người hoặc hai vật; so sánh nhất (superlative) dùng để chỉ người/vật nổi bật nhất trong một nhóm. Với tính từ ngắn (một âm tiết như tall, fast), thêm -er/-est: tall → taller → the tallest. Tính từ tận cùng bằng -e thì thêm -r/-st (nice → nicer → the nicest). Tính từ một âm tiết có mẫu phụ âm–nguyên âm–phụ âm thì nhân đôi phụ âm cuối (big → bigger → the biggest). Tính từ hai âm tiết tận cùng bằng -y thì đổi y thành i rồi thêm -er/-est (happy → happier → the happiest). Với tính từ dài (hai âm tiết trở lên), dùng more/most: expensive → more expensive → the most expensive. Một số tính từ bất quy tắc cần học thuộc: good → better → the best; bad → worse → the worst; far → farther → the farthest. Sau so sánh hơn dùng 'than' (She is taller than me), trước so sánh nhất luôn có 'the' (He is the tallest in the class). Có thể nhấn mạnh bằng much, a lot, a little (much better), và dùng cấu trúc 'as ... as' để so sánh bằng nhau (as tall as). Lưu ý: không được dùng cả -er và more cùng lúc (sai: more taller)."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Never use 'more' together with the -er form. Choose one: either 'taller' or 'more tall' (which is incorrect for short adjectives). The correct comparative of 'tall' is simply 'taller'.",
+            "right": "She is taller than her sister.",
+            "wrong": "She is more taller than her sister."
+          },
+          {
+            "why": "Short one-syllable adjectives form the superlative with -est, not with 'most'. Also remember to include 'the' before superlatives.",
+            "right": "He is the tallest in the class.",
+            "wrong": "He is the most tall in the class."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:36:25Z"
+      }
+    }
+  ]
 }

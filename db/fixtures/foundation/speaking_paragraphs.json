@@ -1,11 +1,416 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2801019Z",
+  "generated_at": "2026-09-25T18:49:49.3887395Z",
   "node": {
     "namespace": "skill",
     "code": "SPEAKING_PARAGRAPHS",
     "label": "Speaking: Paragraphs",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-speaking-paragraphs-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'To sum up': In conclusion, I believe that learning a language opens many doors, so everyone should try it.",
+        "acceptable": [
+          "To sum up, I believe learning a language opens many doors, so everyone should try it.",
+          "To sum up, I think that learning a language opens many doors, so everyone should try it."
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "552fe702-9724-425f-b922-111059737748",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests a simple linking-phrase substitution ('In conclusion' → 'To sum up') within a straightforward compound sentence using basic connectors ('so') and common vocabulary. This matches B1 connector/linking-phrase skills.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "To sum up, I believe that learning a language opens many doors, so everyone should try it."
+          }
+        },
+        "explanation": {
+          "explanation_en": "'To sum up' is a common linking phrase used to introduce the final paragraph of a spoken or written response. It replaces 'In conclusion' and signals to the listener that you are finishing your main points, which is an important skill when organising a spoken paragraph.",
+          "explanation_vi": "'To sum up' là cụm từ nối thường dùng để mở đầu đoạn kết trong bài nói hoặc bài viết. Nó thay thế cho 'In conclusion' và báo hiệu cho người nghe rằng bạn đang chốt lại các ý chính — một kỹ năng quan trọng khi tổ chức đoạn nói mạch lạc."
+        },
+        "correct_answer": "To sum up, I believe that learning a language opens many doors, so everyone should try it."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-speaking-paragraphs-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "In a spoken presentation about your hometown, you say: 'I ___ there since I was ten years old, and I still love walking along the river every weekend.' Which form completes your spoken paragraph correctly?",
+        "options": [
+          {
+            "id": "A",
+            "text": "lived"
+          },
+          {
+            "id": "B",
+            "text": "have lived"
+          },
+          {
+            "id": "C",
+            "text": "was living"
+          },
+          {
+            "id": "D",
+            "text": "will live"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "d500914c-6ff3-4e6e-8b7e-8ffc1ddf3da5",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the present perfect with 'since' linking a past starting point to the present, which is a core B1 grammar point. The distractors (past simple, past continuous, future) are plausible but the target structure and connected-discourse context align with B1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In connected spoken paragraphs, use the present perfect 'have lived' with 'since' to link a past starting point to the present, which also connects naturally to the present-tense statement that follows ('I still love').",
+          "explanation_vi": "Trong đoạn nói liên kết, dùng thì hiện tại hoàn thành 'have lived' với 'since' để nối điểm bắt đầu trong quá khứ với hiện tại, đồng thời liên kết tự nhiên với câu ở thì hiện tại đi sau ('I still love')."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-speaking-paragraphs-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "B1",
+      "body": {
+        "passage": "Last spring, the residents of Maple Street decided to transform an empty lot into a community garden. At first, the idea seemed simple, but the work turned out to be harder than anyone expected.\n\nThe first stage was preparation. Volunteers spent two weekends clearing rubbish, pulling out weeds, and testing the soil. Some neighbours donated tools, while a local company provided free seeds and young plants.\n\nThe next stage was the hardest. Because the summer was unusually dry, the group had to water the plants every morning before work. Mrs. Tran, a retired teacher, organised a schedule so that everyone took turns. Thanks to her careful planning, no one felt overworked.\n\nBy autumn, the garden was full of tomatoes, herbs, and sunflowers. The residents now hold a small monthly meeting there to discuss future projects. What began as an empty, forgotten space has become the green heart of the neighbourhood, proving that teamwork can change a community.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "What is the main idea of the passage?",
+            "options": [
+              {
+                "id": "A",
+                "text": "A neighbourhood turned an empty lot into a successful community garden through teamwork."
+              },
+              {
+                "id": "B",
+                "text": "Mrs. Tran became the leader of the whole neighbourhood."
+              },
+              {
+                "id": "C",
+                "text": "A local company wanted to buy land on Maple Street."
+              },
+              {
+                "id": "D",
+                "text": "The residents failed to grow vegetables because of dry weather."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage describes how residents prepared, worked through difficulties, and finally created a thriving garden together, showing teamwork as the central theme.",
+              "explanation_vi": "Bài văn mô tả cách cư dân chuẩn bị, vượt qua khó khăn và cùng nhau tạo ra một khu vườn phát triển tốt, cho thấy tinh thần hợp tác là chủ đề trung tâm."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "What is the main purpose of the second paragraph?",
+            "options": [
+              {
+                "id": "A",
+                "text": "To describe the final harvest of vegetables."
+              },
+              {
+                "id": "B",
+                "text": "To explain how the residents prepared the land."
+              },
+              {
+                "id": "C",
+                "text": "To describe the monthly meetings in autumn."
+              },
+              {
+                "id": "D",
+                "text": "To explain why the summer was unusually dry."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The second paragraph focuses on preparation: clearing rubbish, pulling weeds, testing soil, and receiving tools and seeds.",
+              "explanation_vi": "Đoạn hai tập trung vào khâu chuẩn bị: dọn rác, nhổ cỏ, kiểm tra đất và nhận dụng cụ cùng hạt giống."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "Why was Mrs. Tran's schedule important?",
+            "options": [
+              {
+                "id": "A",
+                "text": "It helped residents share the watering work fairly."
+              },
+              {
+                "id": "B",
+                "text": "It taught children how to plant sunflowers."
+              },
+              {
+                "id": "C",
+                "text": "It convinced the company to donate more seeds."
+              },
+              {
+                "id": "D",
+                "text": "It reduced the cost of tools for the garden."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The third paragraph says she organised a schedule so everyone took turns, and thanks to her planning no one felt overworked.",
+              "explanation_vi": "Đoạn ba cho biết bà tổ chức lịch trực để mọi người thay phiên nhau tưới cây, nhờ kế hoạch của bà không ai cảm thấy quá tải."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "Which paragraph describes the biggest difficulty the group faced?",
+            "options": [
+              {
+                "id": "A",
+                "text": "The first paragraph"
+              },
+              {
+                "id": "B",
+                "text": "The second paragraph"
+              },
+              {
+                "id": "C",
+                "text": "The third paragraph"
+              },
+              {
+                "id": "D",
+                "text": "The fourth paragraph"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The third paragraph states 'The next stage was the hardest' because of the unusually dry summer requiring daily watering.",
+              "explanation_vi": "Đoạn ba nêu rõ 'Giai đoạn tiếp theo là khó nhất' vì mùa hè khô hạn bất thường đòi hỏi phải tưới nước mỗi ngày."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "What do the residents do in the garden now?",
+            "options": [
+              {
+                "id": "A",
+                "text": "They sell vegetables to a local company."
+              },
+              {
+                "id": "B",
+                "text": "They hold monthly meetings to plan future projects."
+              },
+              {
+                "id": "C",
+                "text": "They water the plants every morning."
+              },
+              {
+                "id": "D",
+                "text": "They clear rubbish every weekend."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The final paragraph says residents now hold a small monthly meeting there to discuss future projects.",
+              "explanation_vi": "Đoạn cuối cho biết cư dân hiện tổ chức cuộc họp nhỏ hàng tháng tại đó để thảo luận các dự án tương lai."
+            },
+            "correct_option_id": "B"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "82b1d25f-f441-47f7-b2fc-eff8ec40f1e4",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The passage uses clear, standard narrative prose with past simple, some present perfect ('has become'), connectors (because, while, thanks to), and everyday vocabulary. Questions require main idea identification, paragraph purpose, and inference—typical B1 reading comprehension skills. Distractors are plausible but not overly subtle, keeping difficulty at B1 rather than B2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "A",
+              "q2": "B",
+              "q3": "A",
+              "q4": "C",
+              "q5": "B"
+            }
+          }
+        },
+        "passage_title": "The Community Garden"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-speaking-paragraphs",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "When giving a longer spoken answer (a spoken paragraph), which structure makes it easiest for the listener to follow?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Start with a main point, add supporting details and examples, then finish with a short concluding sentence."
+          },
+          {
+            "id": "B",
+            "text": "Say as many unrelated ideas as possible in a short time to show fluency."
+          },
+          {
+            "id": "C",
+            "text": "Begin with the smallest detail and never state your main idea."
+          },
+          {
+            "id": "D",
+            "text": "Repeat the same sentence several times to fill the speaking time."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "37ddfdfc-4ef5-4c21-9fa4-113fb0c42e65",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item uses clear, standard sentences about paragraph structure (topic sentence, supporting details, conclusion) with common connectors and everyday vocabulary. The distractors are simple and the concept of organizing spoken discourse aligns with B1 speaking descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A well-organized spoken paragraph has a clear topic sentence, supporting details or examples, and a brief conclusion. This structure helps the listener follow your ideas, unlike listing unrelated points or repeating yourself.",
+          "explanation_vi": "Một đoạn nói tốt cần có câu chủ đề rõ ràng, các chi tiết hoặc ví dụ hỗ trợ, và một câu kết luận ngắn. Cấu trúc này giúp người nghe dễ theo dõi ý của bạn, khác với việc liệt kê các ý không liên quan hay lặp lại câu."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-speaking-paragraphs",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "When giving a longer spoken answer, you should organise your ideas into a clear paragraph structure. Which of the following is the best way to begin a spoken paragraph?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Start with a topic sentence that introduces the main idea of the paragraph."
+          },
+          {
+            "id": "B",
+            "text": "Start with the smallest detail so the listener can guess the topic."
+          },
+          {
+            "id": "C",
+            "text": "Start with a completely unrelated story to get the listener's attention."
+          },
+          {
+            "id": "D",
+            "text": "Start by repeating the question word by word without adding any information."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "21d0b3e3-7d90-4d63-8a27-70c700e96c1d",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item uses clear standard sentences with common vocabulary (topic sentence, supporting details, organise ideas) and modal verbs ('you should organise'), matching B1 descriptors. The distractors are simple and the metalinguistic concept of paragraph structure is appropriate for B1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In spoken paragraphs, a clear topic sentence at the beginning tells the listener what the paragraph is about. Supporting details and examples should follow, and a brief concluding sentence can wrap up the idea.",
+          "explanation_vi": "Trong đoạn nói, câu chủ đề rõ ràng ở đầu đoạn giúp người nghe biết đoạn nói về điều gì. Sau đó là các chi tiết và ví dụ hỗ trợ, và có thể kết thúc bằng một câu tóm tắt ngắn."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-speaking-paragraphs",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "SPEAKING_OPINIONS",
+          "SPEAKING_DESCRIBE_EXPERIENCES",
+          "GRAMMAR_LINKING_WORDS"
+        ],
+        "examples": [
+          {
+            "note": "A complete spoken paragraph: topic sentence ('I really enjoy my neighborhood...'), supporting details with linkers ('First of all', 'Also', 'For example'), and a concluding sentence ('In short...').",
+            "text": "I really enjoy my neighborhood for several reasons. First of all, it's very quiet and safe. Also, there are lots of shops and cafés nearby. For example, I can walk to the bakery in five minutes. In short, it's a comfortable and convenient place to live."
+          },
+          {
+            "note": "Uses alternative signposting phrases ('To begin with', 'In addition', 'For instance', 'To sum up') to organize the paragraph naturally in speech.",
+            "text": "Learning English online has many advantages. To begin with, you can study anytime and anywhere. In addition, online courses are usually cheaper than classes at a language school. For instance, I take lessons on my phone during my lunch break. To sum up, online learning is flexible and affordable."
+          }
+        ],
+        "objective": "Understand and master how to build and deliver a well-organized spoken paragraph in English, including a clear topic sentence, supporting details with linking words, and a concluding sentence.",
+        "_provenance": {
+          "batch": "foundation:SPEAKING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "93c1327a-6875-4ac8-94f1-bb722f29810b",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "A spoken paragraph is a short block of speech (usually 4–8 sentences) that develops ONE main idea. It has three parts: (1) a TOPIC SENTENCE that states the main idea, (2) SUPPORTING SENTENCES that give reasons, examples, or details, and (3) a CONCLUDING SENTENCE that restates or summarizes the idea. Use linking words to connect ideas smoothly: 'First of all', 'For example', 'Also', 'However', 'In short'. In speaking, keep sentences short and natural, use signposting phrases ('Let me give you an example', 'To sum up'), and avoid jumping between unrelated ideas. One paragraph = one topic; if you change the topic, start a new paragraph with a new topic sentence.",
+          "vi": "Đoạn văn nói là một khối lời nói ngắn (thường 4–8 câu) chỉ phát triển MỘT ý chính. Nó gồm ba phần: (1) CÂU CHỦ ĐỀ nêu ý chính, (2) CÁC CÂU HỖ TRỢ đưa ra lý do, ví dụ hoặc chi tiết, và (3) CÂU KẾT LUẬN tóm tắt ý chính. Dùng từ nối để liên kết mạch lạc: 'First of all', 'For example', 'Also', 'However', 'In short'. Khi nói, hãy dùng câu ngắn, tự nhiên, dùng các cụm dẫn dắt ('Let me give you an example', 'To sum up'), và tránh nhảy từ ý này sang ý khác không liên quan. Một đoạn = một chủ đề; nếu đổi chủ đề, hãy bắt đầu đoạn mới với câu chủ đề mới."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Each paragraph should develop only ONE main idea. Mixing unrelated topics (food, job, cities) without a clear topic sentence confuses the listener. State the main idea first, then support it with related details and linkers.",
+            "right": "I like my city for several reasons. First of all, the food is delicious. Also, there are many interesting places to visit. In short, my city is a great place to live.",
+            "wrong": "I like my city. The food in Vietnam is delicious. My job is very busy. So, I think cities are interesting."
+          },
+          {
+            "why": "Repeating the same word or idea is not supporting detail. Supporting sentences must add NEW information — reasons, examples, or specific details — connected with linking words.",
+            "right": "My best friend is very kind. For example, he always helps me when I have problems. Also, he listens carefully when I need to talk. That's why I consider him my best friend.",
+            "wrong": "My best friend is very kind. He is kind. Kind people are good. I said he is kind."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

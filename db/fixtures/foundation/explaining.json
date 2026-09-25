@@ -1,11 +1,324 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1359943Z",
+  "generated_at": "2026-09-25T18:49:49.2576324Z",
   "node": {
     "namespace": "pattern",
     "code": "EXPLAINING",
     "label": "Explaining",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-explaining-grammar-sentence-transform-1",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'The reason why': He was late because the traffic was terrible.",
+        "acceptable": [
+          "The reason why he was late is that the traffic was terrible.",
+          "The reason why he was late was the terrible traffic."
+        ],
+        "_provenance": {
+          "batch": "foundation:EXPLAINING:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:43:53Z"
+          },
+          "ai_request_id": "7f15a09d-2f26-4389-87b8-a072b731b8d0",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item requires transforming a simple 'because' sentence into a 'The reason why... was that...' structure, a connector-focused transformation typical of B1 grammar practice. Vocabulary is simple and the target structure is a common B1-level pattern.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "The reason why he was late was that the traffic was terrible."
+          }
+        },
+        "explanation": {
+          "explanation_en": "When explaining a cause with 'The reason why', use 'The reason why + subject + verb + is/was + that + clause'. 'Because' is replaced by 'that', and 'because' must not appear again in the sentence.",
+          "explanation_vi": "Khi giải thích nguyên nhân bằng 'The reason why', ta dùng cấu trúc 'The reason why + chủ ngữ + động từ + was/is + that + mệnh đề'. Từ 'because' được thay bằng 'that' sau 'was', và không được lặp lại 'because' trong câu."
+        },
+        "correct_answer": "The reason why he was late was that the traffic was terrible."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:43:53Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-ex-explaining-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence using 'The reason why ... is that ...': She was late because the bus broke down.",
+        "acceptable": [
+          "The reason why she was late was that the bus broke down.",
+          "The reason why she was late is that the bus had broken down."
+        ],
+        "_provenance": {
+          "batch": "foundation:EXPLAINING:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:44:12Z"
+          },
+          "ai_request_id": "8067bdf6-bb2f-4f08-b66a-73fb3865677d",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item requires transforming a simple 'because' sentence into the 'The reason why ... is that ...' pattern, a connector-focused structure typical of B1 grammar practice. Vocabulary is simple (late, bus broke down), and the target structure is a common B1-level emphasis/cause pattern rather than advanced cleft syntax.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "The reason why she was late is that the bus broke down."
+          }
+        },
+        "explanation": {
+          "explanation_en": "To explain a cause, use the pattern 'The reason why + subject + verb + is/was that + cause'. The 'because' clause becomes the 'that' clause, and no extra 'because' is needed.",
+          "explanation_vi": "Để giải thích nguyên nhân, dùng cấu trúc 'The reason why + chủ ngữ + động từ + is/was that + nguyên nhân'. Mệnh đề 'because' trở thành mệnh đề 'that' và không cần thêm 'because' nữa."
+        },
+        "correct_answer": "The reason why she was late is that the bus broke down."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:44:12Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-ex-explaining-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "In her presentation, the engineer explained how the new water filter ___ impurities from the liquid.",
+        "options": [
+          {
+            "id": "A",
+            "text": "removes"
+          },
+          {
+            "id": "B",
+            "text": "removed"
+          },
+          {
+            "id": "C",
+            "text": "is removing"
+          },
+          {
+            "id": "D",
+            "text": "has removed"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:EXPLAINING:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:44:03Z"
+          },
+          "ai_request_id": "07a66e4e-1930-4964-82ae-df88d1580f89",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests choosing between present simple, past simple, present continuous, and present perfect in a reported-explanation context. The distractors (past simple, present continuous, present perfect) require understanding of tense contrast beyond A2, and the vocabulary (impurities, filter) is technical but accessible, fitting B1.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "When explaining how a device or process works, we use the present simple to describe general facts and permanent characteristics, even if the explanation happened in the past ('explained how...').",
+          "explanation_vi": "Khi giải thích cách một thiết bị hoặc quy trình hoạt động, ta dùng thì hiện tại đơn để mô tả sự thật chung và đặc điểm cố định, ngay cả khi lời giải thích diễn ra trong quá khứ ('explained how...')."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:44:03Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-explaining",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Which sentence best EXPLAINS why the ground is wet? Choose the correct explanation.",
+        "options": [
+          {
+            "id": "A",
+            "text": "Because it rained last night"
+          },
+          {
+            "id": "B",
+            "text": "Because the sun is shining"
+          },
+          {
+            "id": "C",
+            "text": "Because the wind is strong"
+          },
+          {
+            "id": "D",
+            "text": "Because it is very hot"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:EXPLAINING:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:44:21Z"
+          },
+          "ai_request_id": "c15a29ae-224f-4396-b7f4-4c04099c3d7e",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses simple present/past sentences, basic conjunction 'because', and everyday vocabulary (rain, ground, wet). This matches A2 (basic conjunctions, simple sentences) rather than B1.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "To explain something, we use 'because' to give the cause. Rain is the only option that logically explains why the ground would be wet.",
+          "explanation_vi": "Để giải thích một sự việc, ta dùng 'because' để nêu nguyên nhân. Mưa là lựa chọn duy nhất giải thích hợp lý tại sao mặt đất bị ướt."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:44:21Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-review-explaining",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "When you explain how something works, which phrase is best to introduce the first step?",
+        "options": [
+          {
+            "id": "A",
+            "text": "First of all"
+          },
+          {
+            "id": "B",
+            "text": "In conclusion"
+          },
+          {
+            "id": "C",
+            "text": "On the other hand"
+          },
+          {
+            "id": "D",
+            "text": "As a result"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:EXPLAINING:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:44:31Z"
+          },
+          "ai_request_id": "0c41c526-a61a-4da2-9349-aec2d62bf25b",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests recognition of basic discourse markers ('First of all', 'In conclusion', 'On the other hand', 'As a result') in simple, everyday contexts. The prompt uses simple present and common vocabulary, and the connectors themselves are typically introduced at A2, below the requested B1.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'First of all' signals the beginning of a step-by-step explanation. 'In conclusion' ends an explanation, 'on the other hand' contrasts ideas, and 'as a result' shows a consequence.",
+          "explanation_vi": "'First of all' dùng để mở đầu một lời giải thích theo từng bước. 'In conclusion' dùng để kết thúc, 'on the other hand' để đối lập ý, còn 'as a result' để chỉ kết quả."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:44:31Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-topic-explaining",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "BECAUSE_VS_SO",
+          "DUE_TO_VS_BECAUSE_OF",
+          "LINKING_WORDS_RESULT"
+        ],
+        "examples": [
+          {
+            "note": "'So' introduces the result of the cause stated in the first clause. A comma usually comes before 'so' when it joins two clauses.",
+            "text": "I couldn't sleep last night, so I feel exhausted today."
+          },
+          {
+            "note": "A more formal explaining pattern: 'The reason (why) + clause + is (that) + clause.' Use 'that' rather than 'because' in careful written English.",
+            "text": "The reason she was late is that her train was cancelled."
+          },
+          {
+            "note": "When 'because' begins the sentence, a comma separates the reason from the main clause.",
+            "text": "Because it was raining, we decided to stay indoors."
+          }
+        ],
+        "objective": "Understand the formation and core uses of the pattern 'explaining' — using because, so, that's why, and the reason is to give clear reasons and explanations in spoken and written English.",
+        "_provenance": {
+          "batch": "foundation:EXPLAINING:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:44:47Z"
+          },
+          "ai_request_id": "540a2531-7b09-4535-b345-39157b36625e",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Explaining means giving reasons or causes for actions, situations, or opinions. At B1 level, learners should connect a cause and its result using several common patterns: (1) 'because' + clause introduces the reason: 'I stayed home because I was tired.' (2) 'so' + clause introduces the result: 'I was tired, so I stayed home.' (3) 'That's why' + clause emphasizes the result after stating the cause: 'I was tired. That's why I stayed home.' (4) 'The reason (why)... is (that)...' is a more formal structure: 'The reason I called is that I need your help.' Note that 'because' and 'so' cannot be used together in one clause pair (no 'because... so...' in English, unlike some other languages). 'Due to' and 'owing to' are followed by nouns or noun phrases, not full clauses: 'The flight was delayed due to bad weather.' Punctuation matters: when 'because' starts the sentence, use a comma before the main clause; when it follows the main clause, no comma is needed.",
+          "vi": "Giải thích (explaining) là nêu lý do hoặc nguyên nhân cho một hành động, tình huống hay ý kiến. Ở trình độ B1, người học cần nối nguyên nhân và kết quả bằng các mẫu câu phổ biến: (1) 'because' + mệnh đề chỉ lý do: 'I stayed home because I was tired.' (Tôi ở nhà vì tôi mệt.) (2) 'so' + mệnh đề chỉ kết quả: 'I was tired, so I stayed home.' (Tôi mệt nên tôi ở nhà.) (3) 'That's why' nhấn mạnh kết quả sau khi nêu nguyên nhân: 'I was tired. That's why I stayed home.' (4) 'The reason (why)... is (that)...' trang trọng hơn: 'The reason I called is that I need your help.' Lưu ý quan trọng: tiếng Anh KHÔNG dùng cả 'because' và 'so' trong cùng một cặp mệnh đề (khác với thói quen dùng 'vì... nên...' trong tiếng Việt). 'Due to' và 'owing to' theo sau là danh từ hoặc cụm danh từ, không phải mệnh đề đầy đủ: 'The flight was delayed due to bad weather.' Dấu phẩy: khi 'because' đứng đầu câu, dùng dấu phẩy trước mệnh đề chính; khi 'because' đứng sau mệnh đề chính thì không cần dấu phẩy."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "English uses only one connector between a cause and its result. 'Because' marks the cause and 'so' marks the result, so combining them in one sentence is redundant and ungrammatical — a common transfer error from Vietnamese 'vì... nên...'.",
+            "right": "Because I was tired, I went to bed early. / I was tired, so I went to bed early.",
+            "wrong": "Because I was tired, so I went to bed early."
+          },
+          {
+            "why": "'Due to' must be followed by a noun or noun phrase, not a full clause. If you want to use a clause with a subject and verb, use 'because' or 'since' instead.",
+            "right": "The match was cancelled due to the rain. / The match was cancelled because it was raining.",
+            "wrong": "The match was cancelled due to it was raining."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:44:47Z"
+      }
+    }
+  ]
 }

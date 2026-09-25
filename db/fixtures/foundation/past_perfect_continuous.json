@@ -1,11 +1,294 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2127316Z",
+  "generated_at": "2026-09-25T18:49:49.3328226Z",
   "node": {
     "namespace": "grammar",
     "code": "PAST_PERFECT_CONTINUOUS",
     "label": "Past Perfect Continuous",
     "cefr_level": "B2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-past-perfect-continuous-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'By the time': She was exhausted because she had been working on the project for twelve hours before the deadline arrived.",
+        "acceptable": [
+          "By the time the deadline arrived, she had been working on the project for twelve hours and was exhausted.",
+          "By the time the deadline arrived, she had been working on the project for twelve hours; she was exhausted."
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_PERFECT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "3f4bedc8-9ac2-48bb-85b4-20df57335b60",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item requires transforming a sentence using the past perfect continuous ('had been working') with 'By the time', a structure typically introduced at B2. The vocabulary is accessible, but the tense manipulation and duration-before-past-event logic demand B2-level grammatical control.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "By the time the deadline arrived, she had been working on the project for twelve hours, so she was exhausted."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past perfect continuous ('had been working') describes an activity that continued over a period of time up to a later past event. When rephrasing with 'By the time', the ongoing action must keep the past perfect continuous form, showing duration ('for twelve hours') leading up to the deadline.",
+          "explanation_vi": "Thì quá khứ hoàn thành tiếp diễn ('had been working') diễn tả một hành động kéo dài trong một khoảng thời gian cho đến một sự kiện khác trong quá khứ. Khi viết lại với 'By the time', hành động kéo dài phải giữ dạng quá khứ hoàn thành tiếp diễn, thể hiện khoảng thời gian ('for twelve hours') trước khi hạn chót đến."
+        },
+        "correct_answer": "By the time the deadline arrived, she had been working on the project for twelve hours, so she was exhausted."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-past-perfect-continuous-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "The investigators finally found the missing documents after they ___ through the archives for nearly three hours.",
+        "options": [
+          {
+            "id": "A",
+            "text": "have been searching"
+          },
+          {
+            "id": "B",
+            "text": "had been searching"
+          },
+          {
+            "id": "C",
+            "text": "were searching"
+          },
+          {
+            "id": "D",
+            "text": "are searching"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_PERFECT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "329fa89b-2bc7-435e-8f13-d5a37a57c9e1",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests the past perfect continuous ('had been searching'), a tense typically introduced at B2 level. The distractors include present perfect continuous and past simple/continuous, requiring learners to distinguish duration before a past reference point — a B2-level grammatical distinction. Vocabulary ('investigators', 'archives') is moderately advanced but accessible.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past perfect continuous 'had been searching' describes an ongoing activity that continued for a period of time before another past event (finding the documents). It emphasises the duration of the earlier action.",
+          "explanation_vi": "Thì quá khứ hoàn thành tiếp diễn 'had been searching' diễn tả một hành động kéo dài liên tục trước một sự việc khác trong quá khứ (việc tìm thấy tài liệu), nhấn mạnh độ dài thời gian của hành động đó."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-past-perfect-continuous-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "The investigators finally found the cause of the fire after they ___ for weeks without any real progress.",
+        "options": [
+          {
+            "id": "A",
+            "text": "had been searching"
+          },
+          {
+            "id": "B",
+            "text": "have been searching"
+          },
+          {
+            "id": "C",
+            "text": "were searching"
+          },
+          {
+            "id": "D",
+            "text": "search"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_PERFECT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "5ffe69a6-4e4f-4066-a91d-af4a3e752818",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests the past perfect continuous ('had been searching'), a tense typically introduced at B2. The distractors include the present perfect continuous and past perfect simple, requiring learners to distinguish aspect and time reference in a past narrative context, which exceeds B1 expectations.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past perfect continuous 'had been searching' describes an ongoing activity that continued for a period of time before another past event (finding the cause). It emphasises the duration of the search leading up to the discovery.",
+          "explanation_vi": "Thì quá khứ hoàn thành tiếp diễn 'had been searching' diễn tả một hoạt động kéo dài liên tục trước một sự việc khác trong quá khứ (việc tìm ra nguyên nhân hỏa hoạn), nhấn mạnh tính kéo dài của hành động tìm kiếm trước khi có kết quả."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-past-perfect-continuous",
+      "kind": "foundation_quiz",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Before the fire brigade arrived, the neighbours ___ to put out the fire for nearly half an hour.",
+        "options": [
+          {
+            "id": "A",
+            "text": "had been trying"
+          },
+          {
+            "id": "B",
+            "text": "have been trying"
+          },
+          {
+            "id": "C",
+            "text": "were trying"
+          },
+          {
+            "id": "D",
+            "text": "are trying"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_PERFECT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8b0be773-e8e4-433f-a04c-c7680c6f5207",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests the past perfect continuous ('had been trying'), a tense typically introduced at B2 level. Distinguishing it from past continuous and present perfect continuous requires understanding of tense sequencing relative to a past reference point, which exceeds B1 grammar expectations.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past perfect continuous ('had been trying') describes an action that continued over a period of time before another past event (the fire brigade's arrival). 'Were trying' lacks the 'before another past action' meaning, and 'have been trying' is present tense, which cannot be used with a past reference point.",
+          "explanation_vi": "Thì quá khứ hoàn thành tiếp diễn ('had been trying') diễn tả một hành động kéo dài trong một khoảng thời gian trước một sự việc khác trong quá khứ (khi lính cứu hỏa đến). 'Were trying' thiếu ý nghĩa 'trước một hành động quá khứ khác', còn 'have been trying' là thì hiện tại, không dùng được với mốc thời gian trong quá khứ."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-past-perfect-continuous",
+      "kind": "foundation_review",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "By the time the rescue team arrived, the climbers ___ for help for nearly twelve hours.",
+        "options": [
+          {
+            "id": "A",
+            "text": "had been calling"
+          },
+          {
+            "id": "B",
+            "text": "have been calling"
+          },
+          {
+            "id": "C",
+            "text": "were calling"
+          },
+          {
+            "id": "D",
+            "text": "called"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_PERFECT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "bf761089-dffa-415f-b584-74eff4f02b43",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests the past perfect continuous ('had been calling'), a tense typically introduced at B2 level, combined with the 'by the time + past simple' structure requiring understanding of time relationships between past events. Vocabulary (rescue team, climbers) is accessible, but the grammar focus and distractor design (present perfect continuous, past continuous, past simple) demand B2-level tense discrimination.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past perfect continuous 'had been calling' describes an action that continued over a period of time before another past event (the rescue team's arrival). It emphasises the duration of the activity leading up to that point in the past.",
+          "explanation_vi": "Thì quá khứ hoàn thành tiếp diễn 'had been calling' diễn tả một hành động kéo dài trong một khoảng thời gian trước một sự việc khác trong quá khứ (khi đội cứu hộ đến), nhấn mạnh sự kéo dài của hành động cho đến thời điểm đó."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-past-perfect-continuous",
+      "kind": "foundation_topic",
+      "cefr_level": "B2",
+      "body": {
+        "related": [
+          "PAST_PERFECT_SIMPLE",
+          "PAST_CONTINUOUS",
+          "REPORTED_SPEECH_TENSE_SHIFTS"
+        ],
+        "examples": [
+          {
+            "note": "Emphasizes the duration of the activity (five years) that continued up to the past event (moving to Canada).",
+            "text": "She had been studying English for five years before she moved to Canada."
+          },
+          {
+            "note": "Used to explain a past cause or reason; the rain was in progress before and up to the observed result.",
+            "text": "The ground was wet because it had been raining all night."
+          },
+          {
+            "note": "Shows an ongoing activity interrupted by a past event, with 'by the time' marking the reference point.",
+            "text": "By the time the train finally arrived, we had been waiting for over two hours."
+          }
+        ],
+        "objective": "Understand the formation and core uses of the Past Perfect Continuous (had been + V-ing), including how it expresses the duration of an activity that continued up to a point in the past, and use it accurately in narration and reporting.",
+        "_provenance": {
+          "batch": "foundation:PAST_PERFECT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "a72f2697-5a3d-4e8b-ab50-ae117aecb889",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "The Past Perfect Continuous is formed with 'had been' + the present participle (V-ing): I had been working, she had been waiting. It is used to talk about an action or state that was in progress over a period of time before another past event or moment. It emphasizes the duration or continuous nature of the earlier activity, often answering 'how long?'. Typical time markers include 'for', 'since', 'all day', 'by the time'. It is frequently used to give background reasons or causes for a past situation (e.g., 'He was tired because he had been working all night'), and in reported speech to shift 'have/has been + V-ing' back one tense ('I have been waiting' → 'She said she had been waiting'). Unlike the Past Perfect Simple, which focuses on completed actions or results, the Past Perfect Continuous focuses on the ongoing process. State verbs (know, believe, own, love) are normally not used in continuous forms; use the Past Perfect Simple instead ('I had known her for years', not 'I had been knowing').",
+          "vi": "Quá khứ hoàn thành tiếp diễn được cấu thành bằng 'had been' + động từ thêm -ing: I had been working, she had been waiting. Thì này dùng để nói về một hành động diễn ra và kéo dài trong một khoảng thời gian trước một sự kiện hoặc thời điểm khác trong quá khứ. Nó nhấn mạnh tính kéo dài hoặc liên tục của hành động, thường trả lời câu hỏi 'bao lâu?'. Các dấu hiệu thời gian thường gặp: 'for', 'since', 'all day', 'by the time'. Thì này cũng thường dùng để nêu nguyên nhân hoặc bối cảnh cho một tình huống trong quá khứ (ví dụ: 'He was tired because he had been working all night' – Cậu ấy mệt vì đã làm việc cả đêm). Trong câu tường thuật, 'have/has been + V-ing' được lùi về 'had been + V-ing' ('I have been waiting' → 'She said she had been waiting'). Khác với Quá khứ hoàn thành đơn (nhấn mạnh hành động đã hoàn thành hoặc kết quả), Quá khứ hoàn thành tiếp diễn nhấn mạnh quá trình đang diễn ra. Lưu ý: động từ trạng thái (know, believe, own, love) thường không dùng ở dạng tiếp diễn; hãy dùng Quá khứ hoàn thành đơn ('I had known her for years', không nói 'I had been knowing')."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "State verbs such as 'know', 'believe', 'love', and 'own' describe states, not ongoing actions, so they are not used in continuous forms. Use the Past Perfect Simple instead.",
+            "right": "I had known him since childhood.",
+            "wrong": "I had been knowing him since childhood."
+          },
+          {
+            "why": "When the reference point is in the past, use 'had been + V-ing', not 'has/have been + V-ing'.",
+            "right": "She was tired because she had been working all night.",
+            "wrong": "She was tired because she has been working all night."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

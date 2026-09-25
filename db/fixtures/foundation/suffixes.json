@@ -1,11 +1,294 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2957148Z",
+  "generated_at": "2026-09-25T18:49:49.403791Z",
   "node": {
     "namespace": "vocabulary",
     "code": "SUFFIXES",
     "label": "Suffixes",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-suffixes-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence using the word 'careful' (the adjective form of 'care'): She drives with care.",
+        "acceptable": [
+          "She is a careful driver.",
+          "She drives carefully."
+        ],
+        "_provenance": {
+          "batch": "foundation:SUFFIXES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "88bc0199-3abf-4a25-8fe1-f5255ed0d14b",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses simple present tense and very common vocabulary ('care', 'drive'). The transformation requires understanding word formation (noun to adjective with suffix '-ful'), which is a slight stretch beyond pure A2, but the sentence structure and vocabulary remain basic, making A2 appropriate.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "She is a careful driver."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The noun 'care' becomes the adjective 'careful' by adding the suffix '-ful'. The phrase 'drives with care' can be rewritten as 'is a careful driver'. The adverb form is 'carefully'.",
+          "explanation_vi": "Danh từ 'care' thêm hậu tố '-ful' sẽ thành tính từ 'careful'. Cụm 'drives with care' có thể viết lại thành 'is a careful driver'. Trạng từ của nó là 'carefully'."
+        },
+        "correct_answer": "She is a careful driver."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-suffixes-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "My grandmother walks very ___ because she is afraid of falling.",
+        "options": [
+          {
+            "id": "A",
+            "text": "careful"
+          },
+          {
+            "id": "B",
+            "text": "carefully"
+          },
+          {
+            "id": "C",
+            "text": "carefulness"
+          },
+          {
+            "id": "D",
+            "text": "care"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SUFFIXES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "421b3697-d3b3-46a3-b96a-9daa942add31",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic adjective-to-adverb formation (careful → carefully) in a simple present-tense sentence with everyday vocabulary, matching A2 word-formation and grammar skills.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The blank modifies the verb 'walks', so we need an adverb. We form many adverbs by adding the suffix '-ly' to an adjective: careful → carefully.",
+          "explanation_vi": "Chỗ trống bổ nghĩa cho động từ 'walks', nên ta cần một trạng từ. Nhiều trạng từ được tạo bằng cách thêm hậu tố '-ly' vào tính từ: careful → carefully."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-suffixes-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "My uncle drives a bus every day. He is a bus ___.",
+        "options": [
+          {
+            "id": "A",
+            "text": "driver"
+          },
+          {
+            "id": "B",
+            "text": "drive"
+          },
+          {
+            "id": "C",
+            "text": "driving"
+          },
+          {
+            "id": "D",
+            "text": "drove"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SUFFIXES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "b5d6021a-7262-4d07-bd9f-26e9b0e6587d",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the derivational suffix '-er' with simple, familiar vocabulary (teacher, driver, singer) in a short simple sentence. The target word 'repairer' is slightly less common, but the context clue 'fixes broken machines' makes it accessible at A2, matching the requested level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The suffix '-er' turns a verb into a noun for the person who does the action: drive → driver.",
+          "explanation_vi": "Hậu tố '-er' biến động từ thành danh từ chỉ người thực hiện hành động: drive → driver (tài xế)."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-suffixes",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Which word means 'a person who teaches'?",
+        "options": [
+          {
+            "id": "A",
+            "text": "teach"
+          },
+          {
+            "id": "B",
+            "text": "teacher"
+          },
+          {
+            "id": "C",
+            "text": "teaching"
+          },
+          {
+            "id": "D",
+            "text": "teaches"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SUFFIXES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "b8203cfe-01bb-409a-8aaa-94bd835acd5f",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic derivational morphology (-er suffix forming agent nouns) using very common vocabulary (teach/teacher). This word-formation awareness and simple prompt are appropriate for A2 learners, above A1 which focuses on isolated common words without morphological analysis.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The suffix '-er' is added to a verb to make a noun for a person who does that action: teach → teacher.",
+          "explanation_vi": "Hậu tố '-er' được thêm vào động từ để tạo danh từ chỉ người thực hiện hành động đó: teach → teacher (giáo viên)."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-suffixes",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Which word uses the suffix '-er' correctly to mean 'a person who does something'?",
+        "options": [
+          {
+            "id": "A",
+            "text": "teach → teacher"
+          },
+          {
+            "id": "B",
+            "text": "quick → quicker"
+          },
+          {
+            "id": "C",
+            "text": "happy → happier"
+          },
+          {
+            "id": "D",
+            "text": "tall → taller"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SUFFIXES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "63e61e9e-3694-4892-a391-17fcbcd1df35",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic word formation with the common suffix '-er' using very high-frequency vocabulary (teach, quick, happy, tall). The prompt is a simple sentence, and the concept of agent nouns vs. comparatives is accessible at A2 level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The suffix '-er' can make a noun meaning 'a person who does an action': teach → teacher. In the other options, '-er' makes the comparative form of an adjective (quicker, happier, taller), not a person.",
+          "explanation_vi": "Hậu tố '-er' có thể tạo danh từ chỉ 'người thực hiện hành động': teach → teacher. Trong các lựa chọn khác, '-er' tạo dạng so sánh hơn của tính từ (quicker, happier, taller), không phải chỉ người."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-suffixes",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "PREFIXES",
+          "ADVERBS_FORMATION",
+          "WORD_FORMATION"
+        ],
+        "examples": [
+          {
+            "note": "'Care' + -ful makes the adjective 'careful'; 'drive' + -er makes the noun 'driver' (a person who drives).",
+            "text": "My brother is a very careful driver."
+          },
+          {
+            "note": "'Quiet' + -ly makes the adverb 'quietly', describing how the action was done.",
+            "text": "She opened the door quietly because the baby was sleeping."
+          },
+          {
+            "note": "'Use' + -less makes the adjective 'useless', meaning 'without use'.",
+            "text": "This old phone is useless — the battery is dead."
+          }
+        ],
+        "objective": "Understand the formation and core uses of common English suffixes (-er, -ful, -less, -ly, -ness) to build new words and recognize word classes.",
+        "_provenance": {
+          "batch": "foundation:SUFFIXES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "204d9f76-f839-4dd3-8de3-5a8be8221b52",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "A suffix is a group of letters added to the end of a word to change its meaning or word class. Suffixes help you build vocabulary without learning completely new words. Common suffixes at this level: (1) -er makes nouns for people or things that do an action (teach → teacher, work → worker). (2) -ful makes adjectives meaning 'full of' or 'having' (help → helpful, care → careful). (3) -less makes adjectives meaning 'without' (hope → hopeless, use → useless). (4) -ly makes adverbs from adjectives (quick → quickly, slow → slowly). (5) -ness makes nouns from adjectives, meaning a state or quality (happy → happiness, kind → kindness). Note: some spelling changes happen — happy ends in 'y', so it becomes 'happiness' (y → i). Also, -ful has one 'l', and -less has two 's'. Some words with -er are about things, not people (printer, cooker).",
+          "vi": "Hậu tố là nhóm chữ cái thêm vào cuối từ để thay đổi nghĩa hoặc loại từ. Hậu tố giúp bạn mở rộng vốn từ mà không cần học từ hoàn toàn mới. Các hậu tố phổ biến ở trình độ này: (1) -er tạo danh từ chỉ người hoặc vật thực hiện hành động (teach → teacher, work → worker). (2) -ful tạo tính từ nghĩa 'đầy' hoặc 'có' (help → helpful, care → careful). (3) -less tạo tính từ nghĩa 'không có' (hope → hopeless, use → useless). (4) -ly tạo trạng từ từ tính từ (quick → quickly, slow → slowly). (5) -ness tạo danh từ từ tính từ, chỉ trạng thái hoặc phẩm chất (happy → happiness, kind → kindness). Lưu ý: có một số thay đổi chính tả — happy kết thúc bằng 'y' nên thành 'happiness' (y → i). Ngoài ra, -ful chỉ có một chữ 'l', còn -less có hai chữ 's'. Một số từ với -er chỉ về đồ vật chứ không phải người (printer, cooker)."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "The suffix -ful is always spelled with only one 'l'. Writing 'carefull' with two 'l's is a common spelling error.",
+            "right": "He is a careful student.",
+            "wrong": "He is a carefull student."
+          },
+          {
+            "why": "To describe how an action is done, you need an adverb, not an adjective. Add -ly to the adjective 'beautiful' to make the adverb 'beautifully'.",
+            "right": "She sings beautifully.",
+            "wrong": "She sings beautiful."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

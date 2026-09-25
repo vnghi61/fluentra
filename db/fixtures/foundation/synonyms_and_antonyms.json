@@ -1,11 +1,291 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.3012233Z",
+  "generated_at": "2026-09-25T18:49:49.4079571Z",
   "node": {
     "namespace": "vocabulary",
     "code": "SYNONYMS_AND_ANTONYMS",
     "label": "Synonyms and Antonyms",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-synonyms-and-antonyms-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence with the same meaning, using 'not' and the opposite of 'difficult': This exam is difficult for most students.",
+        "acceptable": [
+          "This exam is not easy for most students.",
+          "This exam isn't easy for most students.",
+          "This exam is not simple for most students."
+        ],
+        "_provenance": {
+          "batch": "foundation:SYNONYMS_AND_ANTONYMS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "6d62add0-83f0-4a53-8577-2cbf264be54e",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The task only requires replacing 'difficult' with its antonym 'easy' in a simple present-tense sentence with basic vocabulary. This is a simple lexical substitution task well within A2, below the target B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "This exam is easy for most students."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The antonym of 'difficult' is 'easy'. Saying 'not' + the antonym keeps the original meaning: 'difficult' ≈ 'not easy'.",
+          "explanation_vi": "Từ trái nghĩa của 'difficult' là 'easy'. Dùng 'not' + từ trái nghĩa sẽ giữ nguyên nghĩa gốc: 'difficult' ≈ 'not easy'."
+        },
+        "correct_answer": "This exam is not easy for most students."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-synonyms-and-antonyms-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "The manager decided to expand the factory instead of ___ it, because demand for the product was rising, not falling.",
+        "options": [
+          {
+            "id": "A",
+            "text": "reducing"
+          },
+          {
+            "id": "B",
+            "text": "increasing"
+          },
+          {
+            "id": "C",
+            "text": "improving"
+          },
+          {
+            "id": "D",
+            "text": "raising"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SYNONYMS_AND_ANTONYMS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "aae11828-c63a-46a9-b1aa-fc0ab5c56c55",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests gerund after 'instead of' plus antonym vocabulary (expand/reduce), which aligns with B1 grammar and vocabulary. The sentence is a clear standard context with work-related topic, distractors are plausible but resolvable at B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The sentence contrasts two opposite actions: 'expand' (make bigger) and its antonym 'reduce' (make smaller). The phrase 'instead of' is followed by a gerund, so 'reducing' is correct. 'Increasing' and 'raising' are synonyms of growing, not antonyms of 'expand', and 'improving' means making better, not smaller.",
+          "explanation_vi": "Câu tương phản giữa hai hành động trái nghĩa: 'expand' (mở rộng) và từ trái nghĩa 'reduce' (thu nhỏ). Cụm 'instead of' theo sau là danh động từ, nên 'reducing' đúng. 'Increasing' và 'raising' đồng nghĩa với tăng lên chứ không trái nghĩa với 'expand', còn 'improving' nghĩa là cải thiện chứ không phải thu nhỏ."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-synonyms-and-antonyms-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Choose the word that is the OPPOSITE (antonym) of 'generous': My uncle is very ___, so he never shares anything with anyone.",
+        "options": [
+          {
+            "id": "A",
+            "text": "stingy"
+          },
+          {
+            "id": "B",
+            "text": "kind"
+          },
+          {
+            "id": "C",
+            "text": "wealthy"
+          },
+          {
+            "id": "D",
+            "text": "polite"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SYNONYMS_AND_ANTONYMS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8f456d37-077e-4cbf-b89e-dfd2a40382fa",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The target word 'stingy' is a less common adjective typically acquired around B1, and the task requires understanding antonym relationships beyond basic vocabulary. The sentence context is simple, but the distractors ('kind', 'wealthy', 'polite') require distinguishing synonyms/related concepts from true antonyms, which fits B1-level lexical discrimination.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Stingy' means unwilling to give or share, which is the direct antonym of 'generous' (willing to give freely). The other options are synonyms or unrelated words.",
+          "explanation_vi": "'Stingy' nghĩa là keo kiệt, không muốn cho hay chia sẻ — trái nghĩa với 'generous' (rộng rãi, hào phóng). Các lựa chọn khác là từ đồng nghĩa hoặc không liên quan."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-synonyms-and-antonyms",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Choose the word that is a SYNONYM of 'difficult': The exam was very difficult for most students.",
+        "options": [
+          {
+            "id": "A",
+            "text": "challenging"
+          },
+          {
+            "id": "B",
+            "text": "easy"
+          },
+          {
+            "id": "C",
+            "text": "simple"
+          },
+          {
+            "id": "D",
+            "text": "boring"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SYNONYMS_AND_ANTONYMS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "a895d47f-95f1-411f-b2a2-fe67c2bab494",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic synonym recognition with very common vocabulary ('difficult', 'easy', 'simple', 'boring') in a simple sentence. This is well below B1; it fits A2, where learners handle familiar everyday words and simple sentences.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Challenging' means hard to do, so it is a synonym of 'difficult'. 'Easy' and 'simple' are antonyms, and 'boring' describes something uninteresting, not difficulty.",
+          "explanation_vi": "'Challenging' nghĩa là khó, thử thách, nên là từ đồng nghĩa với 'difficult'. 'Easy' và 'simple' là từ trái nghĩa, còn 'boring' nghĩa là nhàm chán, không liên quan đến độ khó."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-synonyms-and-antonyms",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Choose the word that is the ANTONYM (opposite) of 'ancient'.",
+        "options": [
+          {
+            "id": "A",
+            "text": "modern"
+          },
+          {
+            "id": "B",
+            "text": "old"
+          },
+          {
+            "id": "C",
+            "text": "historic"
+          },
+          {
+            "id": "D",
+            "text": "antique"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SYNONYMS_AND_ANTONYMS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "5a82e308-2732-41e8-a0a1-eefa6e64b972",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic synonym recognition of common adjectives (difficult, easy, simple, boring, challenging), which is A2-level vocabulary. The distractors are simple and the task requires only basic lexical knowledge, below the B1 target.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Ancient' means very old, so its antonym is 'modern'. 'Old', 'historic' and 'antique' are all close in meaning to 'ancient'.",
+          "explanation_vi": "'Ancient' nghĩa là rất cổ xưa, nên từ trái nghĩa là 'modern' (hiện đại). 'Old', 'historic' và 'antique' đều gần nghĩa với 'ancient'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-synonyms-and-antonyms",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "WORD_FAMILIES",
+          "COLLOCATIONS",
+          "PARAPHRASING"
+        ],
+        "examples": [
+          {
+            "note": "'Small' and 'high' could be replaced by synonyms 'tiny' (more intense) and 'expensive' (more natural with rent/money). Choosing the right synonym depends on collocation.",
+            "text": "The apartment is very small, but the rent is quite high."
+          },
+          {
+            "note": "'Delighted' (very happy) and 'disappointed' are near-antonyms showing contrast between two people in one sentence.",
+            "text": "I was delighted to hear that she passed the exam; her brother, however, was disappointed."
+          }
+        ],
+        "objective": "Understand what synonyms and antonyms are, learn to identify and use common synonym pairs and antonym pairs accurately, and choose the most appropriate word depending on context and register.",
+        "_provenance": {
+          "batch": "foundation:SYNONYMS_AND_ANTONYMS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "96643ad6-2139-483a-a3ef-cac30b7b49ea",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Synonyms are words with similar meanings (e.g., 'big' and 'large'); antonyms are words with opposite meanings (e.g., 'hot' and 'cold'). Using synonyms helps you avoid repetition and sound more natural, while antonyms help you express contrast precisely. However, synonyms are rarely perfectly interchangeable: they often differ in register (formal vs. informal), intensity, or collocation. For example, 'slim', 'thin', and 'skinny' all describe low body weight, but 'slim' is polite, 'thin' is neutral, and 'skinny' can sound negative. Antonyms come in three types: complementary (one or the other, e.g., 'alive/dead'), gradable (with degrees, e.g., 'hot/cold'), and relational opposites (e.g., 'buy/sell'). When learning new vocabulary, always record it with at least one synonym and one antonym to build word families and improve paraphrasing skills, which are essential for reading comprehension and writing.",
+          "vi": "Từ đồng nghĩa (synonyms) là những từ có nghĩa gần giống nhau (ví dụ: 'big' và 'large'); từ trái nghĩa (antonyms) là những từ có nghĩa đối lập (ví dụ: 'hot' và 'cold'). Dùng từ đồng nghĩa giúp bạn tránh lặp từ và viết tự nhiên hơn, còn từ trái nghĩa giúp diễn đạt sự tương phản rõ ràng. Tuy nhiên, các từ đồng nghĩa hiếm khi thay thế nhau hoàn toàn: chúng thường khác nhau về mức độ trang trọng, cường độ hoặc cách kết hợp từ (collocation). Ví dụ: 'slim', 'thin', 'skinny' đều chỉ người gầy, nhưng 'slim' mang nghĩa lịch sự, 'thin' trung tính, còn 'skinny' có thể nghe tiêu cực. Từ trái nghĩa có ba loại: bổ sung (chỉ chọn một, ví dụ 'alive/dead'), có mức độ (ví dụ 'hot/cold'), và đối lập quan hệ (ví dụ 'buy/sell'). Khi học từ mới, hãy ghi kèm ít nhất một từ đồng nghĩa và một từ trái nghĩa để xây dựng hệ thống từ vựng và nâng cao kỹ năng diễn đạt lại (paraphrase) — rất quan trọng cho đọc hiểu và viết."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'Cheap' and 'low' are synonyms in meaning, but they collocate differently: things are cheap, while prices are low or high. Using 'cheap' with 'price' is a common collocation error even though the words seem interchangeable.",
+            "right": "The price of this phone is very low. / This phone is very cheap.",
+            "wrong": "The price of this phone is very cheap."
+          },
+          {
+            "why": "'Living' and 'alive' are synonyms, but 'alive' is the natural adjective used after the verb 'be' to contrast with 'dead'. 'Living' usually appears before a noun (e.g., 'living things').",
+            "right": "My grandfather is very old, but he is not dead — he is still alive.",
+            "wrong": "My grandfather is very old, but he is not dead — he is living."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

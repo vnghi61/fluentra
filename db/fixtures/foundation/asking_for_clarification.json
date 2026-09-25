@@ -1,11 +1,321 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.090493Z",
+  "generated_at": "2026-09-25T18:49:49.2122429Z",
   "node": {
     "namespace": "pattern",
     "code": "ASKING_FOR_CLARIFICATION",
     "label": "Asking for Clarification",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-asking-for-clarification-grammar-sentence-transform-1",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence as a polite request for clarification, beginning with 'Could you': I don't understand what you mean by 'flexible working hours'.",
+        "acceptable": [
+          "Could you clarify what you mean by 'flexible working hours'?",
+          "Could you tell me what you mean by 'flexible working hours'?"
+        ],
+        "_provenance": {
+          "batch": "foundation:ASKING_FOR_CLARIFICATION:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:30:22Z"
+          },
+          "ai_request_id": "857c8db8-0a6f-4064-a745-ee3be88bb3ed",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item requires transforming a statement into an indirect question with 'Could you + explain/clarify + what you mean by...'. This involves modal verbs for politeness and embedded (indirect) questions, which are typical B1 grammar points. Vocabulary ('flexible working hours', 'clarify') is workplace-related and standard, matching B1 descriptors for work topics and clear standard input.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "Could you explain what you mean by 'flexible working hours'?"
+          }
+        },
+        "explanation": {
+          "explanation_en": "To ask for clarification politely, we use 'Could you + explain/clarify + what you mean by...?' This indirect question form is more polite than 'What do you mean?' and is common in professional communication.",
+          "explanation_vi": "Để hỏi lại một cách lịch sự, ta dùng cấu trúc 'Could you + explain/clarify + what you mean by...?' Dạng câu hỏi gián tiếp này lịch sự hơn 'What do you mean?' và thường dùng trong giao tiếp công việc."
+        },
+        "correct_answer": "Could you explain what you mean by 'flexible working hours'?"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:30:22Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-asking-for-clarification-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'Could you': \"What does this word mean?\" (Ask for clarification politely in class.)",
+        "acceptable": [
+          "Could you tell me what this word means, please?",
+          "Could you explain what this word means?",
+          "Could you tell me what this word means?"
+        ],
+        "_provenance": {
+          "batch": "foundation:ASKING_FOR_CLARIFICATION:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:30:42Z"
+          },
+          "ai_request_id": "b9c2dfe7-2aef-4d0e-b503-89289693098f",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item requires transforming a direct wh-question into an indirect question with a modal ('Could you explain/tell me what this word means'), involving word-order change and politeness softening. Indirect questions and modal requests are typical B1 grammar points, matching the target level.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "Could you please explain what this word means?"
+          }
+        },
+        "explanation": {
+          "explanation_en": "To ask for clarification politely, use 'Could you + explain/tell me + wh-clause', and add 'please' to soften the request. The direct question 'What does this word mean?' becomes an indirect question after 'Could you', so the word order changes to statement order (what this word means).",
+          "explanation_vi": "Để hỏi lại cho rõ một cách lịch sự, dùng 'Could you + explain/tell me + mệnh đề wh-', và thêm 'please' để câu hỏi mềm mỏng hơn. Câu hỏi trực tiếp 'What does this word mean?' trở thành câu hỏi gián tiếp sau 'Could you', nên trật tự từ đổi sang trật tự câu khẳng định (what this word means)."
+        },
+        "correct_answer": "Could you explain what this word means, please?"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:30:42Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-asking-for-clarification-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "During the meeting, the speaker spoke too fast, so Mai raised her hand and said, \"Sorry, could you speak more slowly? I ___ quite catch what you said.\"",
+        "options": [
+          {
+            "id": "A",
+            "text": "don't"
+          },
+          {
+            "id": "B",
+            "text": "didn't"
+          },
+          {
+            "id": "C",
+            "text": "haven't"
+          },
+          {
+            "id": "D",
+            "text": "wasn't"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ASKING_FOR_CLARIFICATION:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:30:33Z"
+          },
+          "ai_request_id": "d80d7dfe-82d4-4d8a-81aa-99cc79ddb055",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests past simple ('didn't catch') in a short everyday sentence. Past simple is an A2 descriptor; the distractors (present simple, present perfect, past continuous) are common but the target structure is basic. Vocabulary is simple and the context is a routine classroom/meeting situation. Slightly below the requested B1.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "When asking for clarification about something that was just said, we use the past simple: 'I didn't quite catch what you said.' The missing words refer to the speech that already happened.",
+          "explanation_vi": "Khi xin người khác nói lại hoặc làm rõ điều vừa nói, ta dùng thì quá khứ đơn: 'I didn't quite catch what you said.' vì lời nói đó đã xảy ra trong quá khứ."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:30:33Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-quiz-asking-for-clarification",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "You didn't hear your teacher clearly. Which phrase is best for asking her to repeat?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Sorry, could you say that again?"
+          },
+          {
+            "id": "B",
+            "text": "I don't want to listen."
+          },
+          {
+            "id": "C",
+            "text": "That's very interesting."
+          },
+          {
+            "id": "D",
+            "text": "See you tomorrow."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ASKING_FOR_CLARIFICATION:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:30:55Z"
+          },
+          "ai_request_id": "a96a0261-92d4-4fdc-91e6-fa8773e956e9",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests a simple polite formula ('Sorry, could you say that again?') with basic vocabulary and a short, clear prompt. This functional clarification phrase is typically taught at A2, below the B1 target.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Sorry, could you say that again?' is a polite way to ask for clarification when you did not hear or understand something.",
+          "explanation_vi": "'Sorry, could you say that again?' là cách lịch sự để xin nhắc lại khi bạn không nghe rõ hoặc chưa hiểu điều gì đó."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:30:55Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-review-asking-for-clarification",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "During a project meeting, a colleague uses the technical term 'deliverables' and you are not sure exactly what she includes in it. Which phrase is the most appropriate B1-level way to ask for clarification?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Sorry, say that again?"
+          },
+          {
+            "id": "B",
+            "text": "What do you mean by 'deliverables' exactly?"
+          },
+          {
+            "id": "C",
+            "text": "Deliverables is a strange word, isn't it?"
+          },
+          {
+            "id": "D",
+            "text": "I don't care about deliverables."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ASKING_FOR_CLARIFICATION:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:31:11Z"
+          },
+          "ai_request_id": "e6d46056-33b4-4487-96f3-07123ef1fec4",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item targets polite clarification requests in a work context ('What do you mean by ... exactly?'), which aligns with B1 descriptors for handling main points of clear standard input on familiar work topics. Vocabulary is accessible and distractors test pragmatic appropriateness rather than complex grammar.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "At B1 level, asking for clarification politely and specifically means checking the meaning of a particular word or idea, e.g. 'What do you mean by ... exactly?' or 'Could you explain what you mean by ...?'. Option A is too basic and informal, and C and D do not request clarification at all.",
+          "explanation_vi": "Ở trình độ B1, cách hỏi lại để làm rõ một cách lịch sự và cụ thể là kiểm tra nghĩa của một từ hoặc ý tưởng nhất định, ví dụ 'What do you mean by ... exactly?' hoặc 'Could you explain what you mean by ...?'. Phương án A quá đơn giản và suồng sã, còn C và D không hề yêu cầu làm rõ."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:31:11Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-asking-for-clarification",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "INDIRECT_QUESTIONS",
+          "POLITE_REQUESTS",
+          "CHECKING_UNDERSTANDING"
+        ],
+        "examples": [
+          {
+            "note": "A polite way to ask for repetition. 'I didn't catch that' means you didn't hear or understand the previous statement.",
+            "text": "Sorry, I didn't catch that. Could you say it again, please?"
+          },
+          {
+            "note": "A checking question that restates the speaker's idea to confirm your understanding. Note the rising intonation at the end.",
+            "text": "Do you mean we should submit the report by Friday instead of Monday?"
+          },
+          {
+            "note": "'What do you mean by + noun/phrase?' asks the speaker to explain a specific word or expression they used.",
+            "text": "What do you mean by 'flexible hours'? Does that mean I can choose my start time?"
+          }
+        ],
+        "objective": "Understand and master the key phrases and structures used to ask for clarification in English, including 'Could you say that again?', 'What do you mean by...?', 'Do you mean...?', and 'Sorry, I'm not sure I understand', and use them appropriately in conversations at CEFR B1 level.",
+        "_provenance": {
+          "batch": "foundation:ASKING_FOR_CLARIFICATION:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:31:26Z"
+          },
+          "ai_request_id": "091d4f5f-435e-48c5-8f64-7358f9d55400",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Asking for clarification is an essential communication strategy used when you do not fully understand what someone has said. At B1 level, learners should move beyond simply saying 'What?' and use polite, functional phrases. Common patterns include: (1) Asking for repetition: 'Sorry, could you repeat that?' / 'Could you say that again, please?' (2) Asking for meaning: 'What do you mean by...?' / 'What does ... mean?' (3) Checking understanding: 'Do you mean (that)...?' / 'So, you're saying that...?' (4) Expressing partial understanding politely: 'Sorry, I'm not sure I follow you.' / 'I don't quite understand.' These phrases are usually softened with 'sorry' or 'excuse me' to sound polite rather than confrontational. Rising intonation on yes/no checking questions ('Do you mean...?') signals that you are seeking confirmation. Using these strategies keeps conversations flowing and prevents misunderstandings.",
+          "vi": "Hỏi để làm rõ (asking for clarification) là chiến lược giao tiếp quan trọng khi bạn chưa hiểu hết điều người khác nói. Ở trình độ B1, người học cần tránh chỉ nói 'What?' (có thể nghe thô) và thay bằng các mẫu câu lịch sự: (1) Xin nhắc lại: 'Sorry, could you repeat that?' / 'Could you say that again, please?' (2) Hỏi ý nghĩa: 'What do you mean by...?' / 'What does ... mean?' (3) Kiểm tra lại hiểu biết: 'Do you mean (that)...?' / 'So, you're saying that...?' (4) Thể hiện mình chưa hiểu một cách khéo léo: 'Sorry, I'm not sure I follow you.' / 'I don't quite understand.' Các cụm từ này thường thêm 'sorry' hoặc 'excuse me' ở đầu để nghe lịch sự, không gây cảm giác phản đối. Với câu kiểm tra dạng yes/no ('Do you mean...?'), dùng ngữ điệu lên cuối câu để thể hiện bạn đang xác nhận lại. Sử dụng thành thạo các mẫu này giúp cuộc trò chuyện liền mạch và tránh hiểu lầm."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Bare 'What?' sounds rude in English, and 'I don't understand you say' is grammatically incorrect. Use a softener like 'Sorry' plus a complete structure such as 'I don't quite understand' followed by a polite request.",
+            "right": "Sorry, I don't quite understand. Could you explain that again?",
+            "wrong": "What? I don't understand you say."
+          },
+          {
+            "why": "'Explain' requires the preposition 'to' before the person (explain something to someone), and in an embedded question the word order is subject + verb ('what deadline means'), not question order ('what means deadline').",
+            "right": "Can you explain to me what 'deadline' means?",
+            "wrong": "Can you explain me what means 'deadline'?"
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:31:26Z"
+      }
+    }
+  ]
 }

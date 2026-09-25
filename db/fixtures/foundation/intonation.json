@@ -1,11 +1,429 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1642361Z",
+  "generated_at": "2026-09-25T18:49:49.2847929Z",
   "node": {
     "namespace": "pronunciation",
     "code": "INTONATION",
     "label": "Intonation",
     "cefr_level": "B2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-intonation-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Complete the sentence with the correct verb form. Remember that a falling intonation on the tag suggests the speaker expects agreement: You've already submitted the report to the committee, ___?",
+        "options": [
+          {
+            "id": "A",
+            "text": "haven't you"
+          },
+          {
+            "id": "B",
+            "text": "didn't you"
+          },
+          {
+            "id": "C",
+            "text": "don't you"
+          },
+          {
+            "id": "D",
+            "text": "weren't you"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:INTONATION:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199652, Requested 1014. Please try again in 4m47.712s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:16:02Z"
+          },
+          "ai_request_id": "fdcec9fc-8b36-438d-a116-653a56080faa",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests question tags with the present perfect, a structure typically introduced and consolidated at B1. The vocabulary ('submitted the report to the committee') is standard work/school language, and the distractors are simple auxiliary contrasts. While the falling-intonation nuance adds slight depth, the core grammar point (tag questions with present perfect) aligns with B1 rather than B2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The main clause uses the present perfect ('You've already submitted'), so the tag question must repeat the same auxiliary: 'haven't you'. When spoken with falling intonation, the tag signals that the speaker is fairly sure of the answer and expects the listener to agree, rather than genuinely asking.",
+          "explanation_vi": "Mệnh đề chính dùng thì hiện tại hoàn thành ('You've already submitted'), nên câu hỏi đuôi phải lặp lại trợ động từ đó: 'haven't you'. Khi đọc với ngữ điệu xuống, câu hỏi đuôi cho thấy người nói khá chắc chắn về câu trả lời và mong người nghe đồng ý, chứ không phải đang hỏi thật."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:16:02Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199652, Requested 1014. Please try again in 4m47.712s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-ex-intonation-listening-comprehension-3",
+      "kind": "listening_comprehension",
+      "cefr_level": "B2",
+      "body": {
+        "title": "The Restaurant Reservation Call",
+        "script": "Hi, is this the Blue Olive restaurant? Great. I'd like to book a table for Saturday evening. For eight people? No, sorry — for four people, at seven o'clock. Could you make sure it's a quiet table, away from the kitchen? Thanks. And one more thing — is the set menu available that night? It isn't? Oh, that's a shame. Well, we'll order from the regular menu, then. See you Saturday. Bye!",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "The speaker says 'For eight people?' with rising intonation. What does this signal?",
+            "options": [
+              {
+                "id": "A",
+                "text": "She is confirming information she is unsure about."
+              },
+              {
+                "id": "B",
+                "text": "She is angry about the booking."
+              },
+              {
+                "id": "C",
+                "text": "She wants a table for eight people."
+              },
+              {
+                "id": "D",
+                "text": "She is ending the conversation."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Rising intonation on 'For eight people?' signals a checking or clarifying question — she repeats what she heard to confirm it, and then corrects it to four people.",
+              "explanation_vi": "Ngữ điệu lên ở câu 'For eight people?' thể hiện câu hỏi xác nhận lại thông tin — người nói nhắc lại điều mình nghe được để kiểm tra, sau đó đính chính là bốn người."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "How many people is the table for?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Eight"
+              },
+              {
+                "id": "B",
+                "text": "Four"
+              },
+              {
+                "id": "C",
+                "text": "Seven"
+              },
+              {
+                "id": "D",
+                "text": "Two"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "After repeating 'For eight people?' with rising intonation, the speaker corrects herself: 'No, sorry — for four people.'",
+              "explanation_vi": "Sau khi nhắc lại 'For eight people?' với ngữ điệu lên, người nói đính chính: 'No, sorry — for four people' (không, cho bốn người)."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "The phrase 'Oh, that's a shame' is said with falling intonation and a sigh. What attitude does this convey?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Disappointment"
+              },
+              {
+                "id": "B",
+                "text": "Confusion"
+              },
+              {
+                "id": "C",
+                "text": "Excitement"
+              },
+              {
+                "id": "D",
+                "text": "Indifference"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "'That's a shame' with falling intonation expresses disappointment that the set menu is not available that night.",
+              "explanation_vi": "Câu 'That's a shame' với ngữ điệu xuống thể hiện sự thất vọng vì thực đơn set không có sẵn vào tối hôm đó."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "What does the speaker decide to do about the food?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Cancel the reservation"
+              },
+              {
+                "id": "B",
+                "text": "Choose a different restaurant"
+              },
+              {
+                "id": "C",
+                "text": "Order from the regular menu"
+              },
+              {
+                "id": "D",
+                "text": "Come on a different night"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "She says 'Well, we'll order from the regular menu, then,' accepting the situation after learning the set menu is unavailable.",
+              "explanation_vi": "Cô ấy nói 'Well, we'll order from the regular menu, then', chấp nhận tình huống sau khi biết thực đơn set không có sẵn."
+            },
+            "correct_option_id": "C"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:INTONATION:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199516, Requested 2018. Please try again in 11m2.688s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:17:01Z"
+          },
+          "ai_request_id": "c09464d4-1238-4840-beaa-6d9bb2b99941",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests a simple restaurant reservation dialogue with short, clear utterances ('For eight people?', 'That's a shame', 'we'll order from the regular menu'). Vocabulary and grammar are routine; the main challenge is recognizing intonation for checking, correction, and attitude, which is a B1-level listening skill (understanding main points and speaker attitude in clear standard speech). It falls short of B2's complex, abstract, or idiomatic demands.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "A",
+              "q2": "B",
+              "q3": "A",
+              "q4": "C"
+            }
+          }
+        }
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:17:01Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199516, Requested 2018. Please try again in 11m2.688s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-ex-intonation-speaking-task-2",
+      "kind": "speaking_task",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Tell me about a time you had to give someone surprising or unexpected news. What did you say, and how did you say it? In your answer, try to show your feelings through your voice — for example, use rising intonation to show surprise or doubt, and falling intonation when you state facts or finish your thoughts.",
+        "task_type": "respond",
+        "_provenance": {
+          "batch": "foundation:INTONATION:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199591, Requested 1368. Please try again in 6m54.287999999s. Need more tokens? Upgrade to Dev Tier today at https, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:16:29Z"
+          },
+          "ai_request_id": "ceb07494-bb09-4acf-bef2-9fdaac6f3d6d",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The task requires narrating a personal experience while deliberately controlling intonation (rising vs. falling pitch) to convey emotion — a suprasegmental skill aligned with B2 phonological control descriptors. The prompt involves abstract reflection on how something was said, not just what, and the expected response includes exclamations, reported reactions, and emotional nuance beyond B1's simple storytelling. Vocabulary in the exemplars ('You're moving to Canada?', 'I couldn't believe it.') is idiomatic and natural. The 45-second spontaneous delivery with metalinguistic awareness of prosody fits B2 rather than B1.",
+          "prompt_version": "item_generate.v1"
+        },
+        "explanation": {
+          "text": "This task assesses intonation control at B2 level. A strong response tells a short, clear story while deliberately varying pitch: rising intonation on questions, exclamations of surprise, or uncertain statements (e.g., 'You're moving to Canada?'), and falling intonation on completed statements and key facts (e.g., 'I couldn't believe it.'). Examiners listen for natural stress-timed rhythm, meaningful pauses, and pitch movement that matches the speaker's emotions rather than flat, monotone delivery.",
+          "text_vi": "Nhiệm vụ này đánh giá khả năng kiểm soát ngữ điệu ở trình độ B2. Câu trả lời tốt cần kể một câu chuyện ngắn, rõ ràng đồng thời thay đổi cao độ có chủ đích: ngữ điệu lên cho câu hỏi, sự ngạc nhiên hoặc điều chưa chắc chắn (ví dụ: 'You're moving to Canada?'), và ngữ điệu xuống cho câu khẳng định hoàn chỉnh và thông tin chính (ví dụ: 'I couldn't believe it.'). Người chấm lắng nghe nhịp điệu tự nhiên, các khoảng ngừng có ý nghĩa và sự lên xuống giọng phù hợp với cảm xúc, thay vì nói đều đều, phẳng lặng."
+        },
+        "speaking_time_seconds": 45
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:16:29Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199591, Requested 1368. Please try again in 6m54.287999999s. Need more tokens? Upgrade to Dev Tier today at https, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-quiz-intonation",
+      "kind": "foundation_quiz",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "A friend says, in genuine surprise: 'You paid HOW MUCH for that bag?' What does the speaker's voice most likely do?",
+        "options": [
+          {
+            "id": "A",
+            "text": "The voice falls on 'much', sounding calm and matter-of-fact."
+          },
+          {
+            "id": "B",
+            "text": "The voice rises sharply on 'much', sounding shocked and questioning."
+          },
+          {
+            "id": "C",
+            "text": "The voice stays completely flat across the whole sentence."
+          },
+          {
+            "id": "D",
+            "text": "The voice rises on 'You' and falls on 'bag'."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:INTONATION:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199475, Requested 1048. Please try again in 3m45.936s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:17:19Z"
+          },
+          "ai_request_id": "a51f0008-9d20-4b4d-be9f-7a032184c7d7",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests recognition of rising intonation for surprise, a suprasegmental feature typically introduced at B1. Vocabulary is simple ('shocked', 'matter-of-fact' slightly challenging but context-supported), and the sentence structure is basic. It is easier than typical B2 content, which involves complex syntax and abstract topics.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Rising intonation on the stressed word signals surprise or disbelief. A sharp rise on 'much' conveys shock at the price, while falling intonation would sound like a neutral statement.",
+          "explanation_vi": "Ngữ điệu lên giọng (rising intonation) ở từ được nhấn mạnh thể hiện sự ngạc nhiên hoặc không tin. Giọng tăng đột ngột ở từ 'much' diễn tả sự sốc về giá, trong khi ngữ điệu xuống sẽ nghe như một câu khẳng định bình thường."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:17:19Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199475, Requested 1048. Please try again in 3m45.936s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-review-intonation",
+      "kind": "foundation_review",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Which sentence uses rising intonation correctly at the end?",
+        "options": [
+          {
+            "id": "A",
+            "text": "'You're coming to the party, aren't you?' (expecting agreement, falling tone)"
+          },
+          {
+            "id": "B",
+            "text": "'Would you like tea or coffee?' (rising on both choices)"
+          },
+          {
+            "id": "C",
+            "text": "'You haven't seen my keys, have you?' (genuine uncertainty, rising tone)"
+          },
+          {
+            "id": "D",
+            "text": "'Where did you put the report?' (rising tone on a wh-question)"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:INTONATION:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199432, Requested 1056. Please try again in 3m30.816s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:17:38Z"
+          },
+          "ai_request_id": "a257ae46-564c-4b9c-9bbd-d0fabe8fcd20",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests intonation patterns of tag, wh-, and alternative questions using simple, everyday sentences. While the metalinguistic concept of intonation is somewhat advanced, the vocabulary and sentence structures are at B1 level, and this topic is commonly taught at B1 rather than B2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Tag questions show rising intonation when the speaker is genuinely unsure and expects an answer; falling intonation is used when the speaker expects agreement. Wh-questions normally take falling intonation, and in alternative questions each choice typically has rising intonation with a fall on the final choice.",
+          "explanation_vi": "Câu hỏi đuôi dùng ngữ điệu lên khi người nói thực sự không chắc chắn và mong đợi câu trả lời; ngữ điệu xuống được dùng khi người nói mong đợi sự đồng ý. Câu hỏi với từ để hỏi (wh-question) thường có ngữ điệu xuống, và trong câu hỏi lựa chọn, mỗi phương án thường có ngữ điệu lên với ngữ điệu xuống ở lựa chọn cuối."
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:17:38Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199432, Requested 1056. Please try again in 3m30.816s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-topic-intonation",
+      "kind": "foundation_topic",
+      "cefr_level": "B2",
+      "body": {
+        "related": [
+          "SENTENCE_STRESS",
+          "TAG_QUESTIONS",
+          "WH_VS_YES_NO_QUESTIONS"
+        ],
+        "examples": [
+          {
+            "note": "Contrast: the main falling tone moves to 'she', correcting the listener's idea of who stole the money.",
+            "text": "I didn't say he stole the money — she did. ↘"
+          },
+          {
+            "note": "In lists, the voice rises on each non-final item to signal the list is unfinished, then falls on the final item to show completion.",
+            "text": "I'd like eggs, toast ↗, orange juice ↗, and coffee. ↘"
+          }
+        ],
+        "objective": "Understand and master the core functions of English intonation — rising, falling, and fall-rise tones — and apply them correctly to signal statements, questions, lists, contrast, and attitude in natural spoken English.",
+        "_provenance": {
+          "batch": "foundation:INTONATION:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199239, Requested 2358. Please try again in 11m29.904s. Need more tokens? Upgrade to Dev Tier today at https://co, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:19:01Z"
+          },
+          "ai_request_id": "6869d2b4-a4bf-4fd3-98f8-68f5d4f009e7",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Intonation is the rise and fall of the voice across a sentence. The most important pitch movement happens on the tonic (nuclear) syllable — the last stressed word carrying the key information. The three main tones are: (1) FALLING ↘ — used for finished statements, wh-questions (What happened?), commands, and exclamations; it sounds definite and complete. (2) RISING ↗ — used for yes/no questions (Are you ready?), polite requests, unfinished thoughts, and lists (rising on all items, falling on the last); it sounds open or incomplete. (3) FALL-RISE ↘↗ — signals contrast, doubt, reservation, or polite disagreement ('It's good, but...'). Intonation also changes meaning: the same words with different tones can express surprise, sarcasm, or hesitation. In tag questions, a falling tag means you expect agreement, while a rising tag means you are genuinely unsure. Vietnamese is a tonal language where pitch distinguishes word meaning, so learners must learn to treat English pitch as sentence-level melody rather than word-level tone.",
+          "vi": "Ngữ điệu (intonation) là sự lên xuống của giọng nói trong câu. Điểm nhấn cao độ quan trọng nhất rơi vào âm tiết chính (tonic syllable) — thường là từ nhấn cuối cùng mang thông tin then chốt. Ba kiểu ngữ điệu chính: (1) TÔNG XUỐNG ↘ — dùng cho câu khẳng định đã kết thúc, câu hỏi wh (What happened?), mệnh lệnh và câu cảm thán; nghe dứt khoát, hoàn chỉnh. (2) TÔNG LÊN ↗ — dùng cho câu hỏi yes/no (Are you ready?), lời đề nghị lịch sự, ý chưa nói hết, và khi liệt kê (lên ở các mục, xuống ở mục cuối); nghe mở, chưa hoàn tất. (3) TÔNG XUỐNG-RỒI-LÊN ↘↗ — thể hiện sự tương phản, nghi ngờ, giữ ý hoặc bất đồng lịch sự ('It's good, but...'). Ngữ điệu còn thay đổi nghĩa: cùng một câu nói với tông khác nhau có thể diễn tả ngạc nhiên, mỉa mai hay do dự. Với câu hỏi đuôi, đuôi xuống giọng nghĩa là bạn chắc chắn người nghe sẽ đồng ý; đuôi lên giọng nghĩa là bạn thật sự chưa chắc. Lưu ý quan trọng cho người Việt: tiếng Việt là ngôn ngữ thanh điệu (cao độ phân biệt nghĩa của TỪ), còn tiếng Anh dùng cao độ làm 'giai điệu của CÂU' — đừng áp dụng thanh tiếng Việt vào từ tiếng Anh, và đừng nói đều đều (flat) vì sẽ nghe nhàm chán hoặc thiếu tự nhiên."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Wh-questions normally take a falling tone because they ask for specific information and sound complete. A rising tone on a wh-question can sound surprised, doubtful, or as if you didn't hear and are asking the person to repeat.",
+            "right": "Where are you going? ↘",
+            "wrong": "Saying 'Where are you going? ↗' with a rising tone like a yes/no question."
+          },
+          {
+            "why": "Flat intonation sounds robotic and can make the listener think you are bored or unsure. English relies on pitch movement on the tonic syllable to signal whether a message is finished, open, or contrastive — this is essential for natural, intelligible speech.",
+            "right": "Let the pitch fall on the last stressed word of statements: 'I finished the report. ↘'",
+            "wrong": "Reading every sentence with flat, level pitch (no rise or fall), as if each syllable has equal stress."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:19:01Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199239, Requested 2358. Please try again in 11m29.904s. Need more tokens? Upgrade to Dev Tier today at https://co, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    }
+  ]
 }

@@ -1,11 +1,247 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1453141Z",
+  "generated_at": "2026-09-25T18:49:49.2677849Z",
   "node": {
     "namespace": "grammar",
     "code": "FUTURE_PERFECT_CONTINUOUS",
     "label": "Future Perfect Continuous",
     "cefr_level": "C1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-future-perfect-continuous-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "C1",
+      "body": {
+        "prompt": "Rewrite the sentence using the Future Perfect Continuous, beginning with 'By next June': She has been working at the laboratory for five years, and she will still be there in June.",
+        "acceptable": [
+          "By next June she will have been working at the laboratory for five years.",
+          "By next June, she will have been working in the laboratory for five years.",
+          "By next June, she'll have been working at the laboratory for five years."
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_PERFECT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "46ef4787-028c-4d24-b3ae-06ff65a35311",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item targets the Future Perfect Continuous, a complex perfect-aspect structure typically taught at B2. The transformation requires understanding duration + future reference point, which exceeds B1 but is not as demanding as typical C1 items (cleft sentences, inversion, nuanced lexis).",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "By next June, she will have been working at the laboratory for five years."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The Future Perfect Continuous (will have been + V-ing) describes an action in progress over a duration up to a specific point in the future. 'By next June' marks that future point, and 'for five years' expresses the duration, so 'will have been working' is required.",
+          "explanation_vi": "Thì Tương lai hoàn thành tiếp diễn (will have been + V-ing) diễn tả một hành động đang diễn ra kéo dài cho đến một mốc thời gian xác định trong tương lai. 'By next June' đánh dấu mốc thời gian đó và 'for five years' thể hiện khoảng thời gian, nên phải dùng 'will have been working'."
+        },
+        "correct_answer": "By next June, she will have been working at the laboratory for five years."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-future-perfect-continuous-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "C1",
+      "body": {
+        "prompt": "By next June, the research team ___ the Arctic ice samples for two full years.",
+        "options": [
+          {
+            "id": "A",
+            "text": "will have been analysing"
+          },
+          {
+            "id": "B",
+            "text": "will be analysing"
+          },
+          {
+            "id": "C",
+            "text": "will have analysed"
+          },
+          {
+            "id": "D",
+            "text": "is analysing"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_PERFECT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "ea605d53-1091-4cd4-a180-3d7df100aa6b",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests the future perfect continuous, a complex tense typically introduced at B2 rather than C1. The sentence itself is a single clause with concrete vocabulary ('research team', 'Arctic ice samples'), and the distractors are straightforward. While the target level is C1, the linguistic demand of the item aligns more closely with B2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The future perfect continuous 'will have been analysing' emphasises the ongoing duration of an activity up to a specific point in the future ('by next June'), especially with a time expression like 'for two full years'.",
+          "explanation_vi": "Thì tương lai hoàn thành tiếp diễn 'will have been analysing' nhấn mạnh tính liên tục của một hoạt động kéo dài cho đến một mốc thời gian trong tương lai ('by next June'), đặc biệt khi có cụm thời gian như 'for two full years'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-future-perfect-continuous",
+      "kind": "foundation_quiz",
+      "cefr_level": "C1",
+      "body": {
+        "prompt": "By next June, she ___ at this company for exactly ten years.",
+        "options": [
+          {
+            "id": "A",
+            "text": "will work"
+          },
+          {
+            "id": "B",
+            "text": "will have been working"
+          },
+          {
+            "id": "C",
+            "text": "will be working"
+          },
+          {
+            "id": "D",
+            "text": "has been working"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_PERFECT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "3e59ab50-aea9-4a77-b9ec-bfd5790bedbf",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests the future perfect continuous tense ('will have been working'), a complex aspectual structure typically introduced at B2. The sentence itself is short and uses common vocabulary, so while the target level was C1, the actual linguistic demand fits B2 rather than C1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The future perfect continuous ('will have been working') is used to describe an action that will have been in progress for a duration of time up to a specific point in the future. The time marker 'By next June' plus the duration 'for exactly ten years' signals this tense.",
+          "explanation_vi": "Thì tương lai hoàn thành tiếp diễn ('will have been working') dùng để diễn tả một hành động sẽ đang kéo dài trong một khoảng thời gian cho đến một mốc thời gian xác định trong tương lai. Cụm 'By next June' kết hợp với khoảng thời gian 'for exactly ten years' là dấu hiệu nhận biết của thì này."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-future-perfect-continuous",
+      "kind": "foundation_review",
+      "cefr_level": "C1",
+      "body": {
+        "prompt": "Next month, I ___ my best friend for twenty years.",
+        "options": [
+          {
+            "id": "A",
+            "text": "will have known"
+          },
+          {
+            "id": "B",
+            "text": "will have been knowing"
+          },
+          {
+            "id": "C",
+            "text": "will know"
+          },
+          {
+            "id": "D",
+            "text": "am knowing"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:FUTURE_PERFECT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "38c39925-9d5a-45c4-a74b-3fcc5e7ae0f0",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests the future perfect continuous ('will have been working'), a complex tense typically mastered at B2. The sentence itself is simple, but the grammar point goes beyond B1's present perfect and modal verbs, while not reaching C1's advanced syntax or nuanced vocabulary.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Know' is a stative verb, so it is not used in continuous forms. To show duration up to a future point with a stative verb, use the future perfect simple: 'will have known'.",
+          "explanation_vi": "'Know' là động từ chỉ trạng thái nên không dùng ở dạng tiếp diễn. Để diễn tả khoảng thời gian kéo dài đến một mốc tương lai với động từ trạng thái, dùng tương lai hoàn thành đơn: 'will have known'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-future-perfect-continuous",
+      "kind": "foundation_topic",
+      "cefr_level": "C1",
+      "body": {
+        "related": [
+          "FUTURE_PERFECT_SIMPLE",
+          "FUTURE_CONTINUOUS",
+          "PRESENT_PERFECT_CONTINUOUS"
+        ],
+        "examples": [
+          {
+            "note": "Emphasizes the total duration of an ongoing activity (learning English) up to a future point ('by next month').",
+            "text": "By next month, I will have been learning English for five years."
+          },
+          {
+            "note": "Used with 'by the time...' clause to show how long the activity will have lasted when another future event occurs.",
+            "text": "She will have been driving for six hours by the time she reaches Hanoi."
+          },
+          {
+            "note": "Common with verbs like live, work, study to mark anniversaries or milestones of continuous activity.",
+            "text": "In June, they will have been living in this city for twenty years."
+          }
+        ],
+        "objective": "Understand the formation and core uses of the Future Perfect Continuous (will have been + V-ing), including how it expresses duration of an activity up to a point in the future, and use it accurately in context.",
+        "_provenance": {
+          "batch": "foundation:FUTURE_PERFECT_CONTINUOUS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "187e5681-96a0-4138-80b8-b4bd9d01e536",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "The Future Perfect Continuous is formed with 'will have been' + the present participle (V-ing): 'She will have been working here for ten years by next June.' It is used to emphasize the DURATION of an ongoing activity up to a specific point in the future, often with time expressions such as 'by + time', 'by the time...', 'for + period'. It typically appears with dynamic verbs (work, study, live, wait, drive) and duration phrases. It is rarely used with stative verbs (know, be, love); with these, the Future Perfect Simple is preferred ('I will have known him for five years'). Compare: Future Perfect Simple highlights completion or result ('I will have finished the report by 5 p.m.'), while Future Perfect Continuous highlights the continuous process and its duration ('By 5 p.m., I will have been writing the report for three hours'). In formal or passive contexts, the continuous passive is awkward, so the simple form is used instead.",
+          "vi": "Thì Tương lai hoàn thành tiếp diễn được cấu tạo bằng 'will have been' + V-ing: 'She will have been working here for ten years by next June.' Thì này nhấn mạnh THỜI LƯỢNG của một hành động kéo dài đến một mốc thời gian trong tương lai, thường đi cùng 'by + thời điểm', 'by the time...', 'for + khoảng thời gian'. Thì này thường dùng với động từ chỉ hành động (work, study, live, wait, drive) và cụm từ chỉ thời lượng. Với động từ trạng thái (know, be, love), dùng Tương lai hoàn thành đơn ('I will have known him for five years'). Phân biệt: Tương lai hoàn thành đơn nhấn mạnh sự hoàn thành ('I will have finished the report by 5 p.m.'), còn Tương lai hoàn thành tiếp diễn nhấn mạnh quá trình và thời lượng ('By 5 p.m., I will have been writing the report for three hours'). Lưu ý: người Việt hay nhầm 'by' với 'until' — 'by' nghĩa là 'trước hoặc vào đúng thời điểm đó', không phải 'cho đến khi'."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "The Future Continuous ('will be working') describes an action in progress at a future moment, but cannot express duration leading up to that point. To show how long the activity will have lasted by a future time, the Future Perfect Continuous ('will have been working') is required.",
+            "right": "By 2030, I will have been working at this company for ten years.",
+            "wrong": "By 2030, I will be working at this company for ten years."
+          },
+          {
+            "why": "Stative verbs like 'know', 'be', and 'love' are not normally used in continuous forms. With such verbs, use the Future Perfect Simple instead.",
+            "right": "Next year, I will have known her for a decade.",
+            "wrong": "Next year, I will have been knowing her for a decade."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

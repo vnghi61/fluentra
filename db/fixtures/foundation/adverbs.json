@@ -1,11 +1,334 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.0791784Z",
+  "generated_at": "2026-09-25T18:49:49.2014108Z",
   "node": {
     "namespace": "grammar",
     "code": "ADVERBS",
     "label": "Adverbs",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-adverbs-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence using the adverb 'carefully': He drives his car in a careful way.",
+        "acceptable": [
+          "He carefully drives his car."
+        ],
+        "_provenance": {
+          "batch": "foundation:ADVERBS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:27:36Z"
+          },
+          "ai_request_id": "1ea6e4b9-b2dd-462e-aea9-232fe0565050",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests converting a simple phrase 'in a careful way' into the adverb 'carefully' in a basic present simple sentence. Vocabulary and grammar are elementary, and adverbs of manner are typically introduced at A2, matching the target level.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "He drives his car carefully."
+          }
+        },
+        "explanation": {
+          "explanation_en": "We can replace the phrase 'in a careful way' with the adverb 'carefully'. Adverbs of manner usually go after the verb or at the end of the sentence: 'He drives his car carefully.'",
+          "explanation_vi": "Chúng ta có thể thay cụm 'in a careful way' bằng trạng từ 'carefully'. Trạng từ chỉ cách thức thường đứng sau động từ hoặc ở cuối câu: 'He drives his car carefully.'"
+        },
+        "correct_answer": "He drives his car carefully."
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:27:36Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-adverbs-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "My sister ___ finishes her homework before dinner, so she never worries about it later.",
+        "options": [
+          {
+            "id": "A",
+            "text": "usually"
+          },
+          {
+            "id": "B",
+            "text": "usual"
+          },
+          {
+            "id": "C",
+            "text": "usualness"
+          },
+          {
+            "id": "D",
+            "text": "more usual"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ADVERBS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:27:26Z"
+          },
+          "ai_request_id": "55a0975a-f21d-4c6c-859d-1f87966ac568",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests adverb of frequency placement with simple present, a typical A2 grammar point. Vocabulary is everyday and the sentence is simple.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "We need an adverb of frequency to describe how often she does something. 'Usually' is the adverb form and goes before the main verb 'finishes'.",
+          "explanation_vi": "Chúng ta cần một trạng từ chỉ tần suất để mô tả cô ấy làm việc đó thường xuyên như thế nào. 'Usually' là dạng trạng từ và đứng trước động từ chính 'finishes'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:27:26Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-adverbs-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "My grandfather walks very ___ because of his bad knee.",
+        "options": [
+          {
+            "id": "A",
+            "text": "slow"
+          },
+          {
+            "id": "B",
+            "text": "slowly"
+          },
+          {
+            "id": "C",
+            "text": "slower"
+          },
+          {
+            "id": "D",
+            "text": "slowness"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ADVERBS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:27:45Z"
+          },
+          "ai_request_id": "711f6c76-d4d2-44ac-bba3-d6a10b411397",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests a simple adverb of manner (slowly) in a basic present simple sentence with everyday vocabulary, matching A2 word formation and grammar knowledge.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "An adverb of manner (slowly) is needed to describe how the verb 'walks' is done. 'Slow' is an adjective, 'slower' is a comparative, and 'slowness' is a noun.",
+          "explanation_vi": "Cần dùng trạng từ chỉ cách thức (slowly) để bổ nghĩa cho động từ 'walks'. 'Slow' là tính từ, 'slower' là dạng so sánh hơn, còn 'slowness' là danh từ."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:27:45Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-adverbs",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Choose the correct adverb: He drives his car very ___.",
+        "options": [
+          {
+            "id": "A",
+            "text": "careful"
+          },
+          {
+            "id": "B",
+            "text": "carefully"
+          },
+          {
+            "id": "C",
+            "text": "care"
+          },
+          {
+            "id": "D",
+            "text": "careless"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ADVERBS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:27:52Z"
+          },
+          "ai_request_id": "e7b16775-76e5-44cd-af10-9a4518f9c424",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "Simple sentence with common vocabulary testing adjective-to-adverb formation (careful → carefully), a typical A2 grammar point.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "An adverb is needed to describe how he drives the verb 'drives'. The adverb form of 'careful' is 'carefully'.",
+          "explanation_vi": "Cần dùng trạng từ để bổ nghĩa cho động từ 'drives' (lái xe như thế nào). Trạng từ của 'careful' là 'carefully'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:27:52Z"
+      }
+    },
+    {
+      "slug": "foundation-review-adverbs",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Choose the correct adverb: My grandfather walks very ___ because his legs are weak.",
+        "options": [
+          {
+            "id": "A",
+            "text": "slowly"
+          },
+          {
+            "id": "B",
+            "text": "slow"
+          },
+          {
+            "id": "C",
+            "text": "slowness"
+          },
+          {
+            "id": "D",
+            "text": "slower"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ADVERBS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:28:00Z"
+          },
+          "ai_request_id": "42b8d178-d215-400c-b82d-2d6e669118b8",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests a basic adverb of manner (slowly vs slow) in a simple present-tense sentence with everyday vocabulary, matching A2 grammar awareness of adverbs modifying verbs.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "An adverb of manner (slowly) describes how an action is done and modifies the verb 'walks'. The adjective 'slow' cannot modify a verb.",
+          "explanation_vi": "Trạng từ chỉ cách thức (slowly) mô tả cách thực hiện hành động và bổ nghĩa cho động từ 'walks'. Tính từ 'slow' không thể bổ nghĩa cho động từ."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:28:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-adverbs",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "ADJECTIVES",
+          "PRESENT_SIMPLE",
+          "FREQUENCY_ADVERBS"
+        ],
+        "examples": [
+          {
+            "note": "The adverb 'beautifully' (beautiful + ly) comes after the verb and describes how she sings (manner).",
+            "text": "She sings beautifully."
+          },
+          {
+            "note": "'Usually' is a frequency adverb placed before the main verb 'walk'; 'yesterday' is a time adverb at the end of the clause.",
+            "text": "I usually walk to school, but yesterday I went by bus."
+          },
+          {
+            "note": "With the verb 'to be', the frequency adverb 'always' goes after the verb, not before it.",
+            "text": "He is always late for class."
+          }
+        ],
+        "objective": "Understand what adverbs are, recognize the main types (manner, time, frequency, degree), form adverbs from adjectives with -ly, and place adverbs correctly in simple sentences.",
+        "_provenance": {
+          "batch": "foundation:ADVERBS:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:28:11Z"
+          },
+          "ai_request_id": "0c60d701-cfbb-4e49-9618-e9f08e115f35",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "An adverb is a word that describes a verb, an adjective, or another adverb. It tells us how, when, how often, or to what degree something happens. Most adverbs of manner are formed by adding -ly to an adjective: quick → quickly, slow → slowly, careful → carefully. Some spelling changes apply: easy → easily, happy → happily, terrible → terribly. Some words are irregular: good → well, fast → fast, hard → hard (hardly means 'almost not'). Adverbs of frequency (always, usually, often, sometimes, never) normally go before the main verb but after the verb 'to be': 'I always get up early' but 'She is always late.' Adverbs of manner usually go after the verb: 'He drives carefully.' Adverbs of time can go at the end or the beginning: 'I saw him yesterday.'",
+          "vi": "Trạng từ (adverb) là từ bổ nghĩa cho động từ, tính từ hoặc một trạng từ khác, cho biết hành động diễn ra như thế nào (cách thức), khi nào (thời gian), bao lâu một lần (tần suất) hay ở mức độ nào. Phần lớn trạng từ chỉ cách thức được tạo bằng cách thêm -ly vào tính từ: quick → quickly, slow → slowly. Lưu ý một số thay đổi chính tả: easy → easily (bỏ y thêm ily), happy → happily. Một số từ bất quy tắc: good → well, fast → fast, hard → hard (chú ý hardly nghĩa là 'hầu như không', khác với hard 'vất vả'). Vị trí rất quan trọng: trạng từ tần suất (always, usually, often, sometimes, never) đứng trước động từ thường nhưng sau động từ 'to be': 'I always get up early' nhưng 'She is always late.' Trạng từ cách thức thường đứng sau động từ: 'He drives carefully.' Trạng từ thời gian thường đứng cuối câu hoặc đầu câu: 'I saw him yesterday.' Người Việt học tiếng Anh thường nhầm vị trí trạng từ vì tiếng Việt đặt trạng từ linh hoạt hơn, nên cần luyện vị trí chuẩn."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'Good' is an adjective and can only describe a noun. To describe a verb (how she drives), we need the irregular adverb 'well'.",
+            "right": "She drives very well.",
+            "wrong": "She drives very good."
+          },
+          {
+            "why": "Frequency adverbs like 'always' must come before the main verb 'go', not after it.",
+            "right": "I always go to school by bike.",
+            "wrong": "I go always to school by bike."
+          },
+          {
+            "why": "'Fast' is both an adjective and an adverb with the same form; adding -ly is incorrect.",
+            "right": "He runs fast.",
+            "wrong": "He runs fastly."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:28:11Z"
+      }
+    }
+  ]
 }

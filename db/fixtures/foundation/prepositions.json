@@ -1,11 +1,294 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2226468Z",
+  "generated_at": "2026-09-25T18:49:49.3422451Z",
   "node": {
     "namespace": "grammar",
     "code": "PREPOSITIONS",
     "label": "Prepositions",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-prepositions-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'There is': I have a small park near my house.",
+        "acceptable": [
+          "There is a small park near to my house.",
+          "There is a small park close to my house."
+        ],
+        "_provenance": {
+          "batch": "foundation:PREPOSITIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "9a5123c5-1c78-46ee-b495-a28076b63f7e",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item requires transforming a simple sentence using 'There is + a/an + noun' with the basic preposition 'near'. This involves elementary existential structures and very common vocabulary, matching A2 (and arguably A1) grammar. The transformation task adds slight complexity, making A2 appropriate.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "There is a small park near my house."
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use the structure 'There is + a/an + noun' to say that something exists. The preposition 'near' shows the location of the park in relation to the house.",
+          "explanation_vi": "Dùng cấu trúc 'There is + a/an + danh từ' để nói rằng có sự tồn tại của một vật nào đó. Giới từ 'near' chỉ vị trí của công viên gần với ngôi nhà."
+        },
+        "correct_answer": "There is a small park near my house."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-prepositions-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "The bank opens ___ 8 a.m. and closes ___ 4 p.m. every weekday.",
+        "options": [
+          {
+            "id": "A",
+            "text": "at / at"
+          },
+          {
+            "id": "B",
+            "text": "in / in"
+          },
+          {
+            "id": "C",
+            "text": "on / on"
+          },
+          {
+            "id": "D",
+            "text": "at / in"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PREPOSITIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "76304a3c-5086-4aed-9c7e-d578ed5d74b7",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic prepositions of time (at/in/on) with clock times, a common A2 grammar point. Vocabulary is simple everyday language (bank, opens, closes), and the sentence structure is a simple present-tense sentence. This matches the A2 target level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use the preposition 'at' with clock times: 'at 8 a.m.' and 'at 4 p.m.' Use 'in' for parts of the day (in the morning) and 'on' for days and dates.",
+          "explanation_vi": "Dùng giới từ 'at' với giờ cụ thể: 'at 8 a.m.' và 'at 4 p.m.' Dùng 'in' cho các phần trong ngày (in the morning) và 'on' cho ngày, thứ trong tuần."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-prepositions-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "I usually go to school ___ bicycle, but today I came ___ bus because of the rain.",
+        "options": [
+          {
+            "id": "A",
+            "text": "by / by"
+          },
+          {
+            "id": "B",
+            "text": "by / on"
+          },
+          {
+            "id": "C",
+            "text": "on / by"
+          },
+          {
+            "id": "D",
+            "text": "with / in"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PREPOSITIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "dfcede16-87e9-42b5-a108-18f532c6b0c7",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the basic preposition 'by' for means of transport, a common A2-level grammar point. The sentence uses simple present and past simple with everyday vocabulary (school, bicycle, bus, rain), matching A2 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "We use 'by' for means of transport: 'by bicycle', 'by bus'. The preposition 'by' is used before transport nouns without an article.",
+          "explanation_vi": "Giới từ 'by' được dùng để chỉ phương tiện đi lại: 'by bicycle' (đi xe đạp), 'by bus' (đi xe buýt). Trước danh từ phương tiện với 'by' không dùng mạo từ."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-prepositions",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "The cat is hiding ___ the sofa, so we can't see it.",
+        "options": [
+          {
+            "id": "A",
+            "text": "behind"
+          },
+          {
+            "id": "B",
+            "text": "between"
+          },
+          {
+            "id": "C",
+            "text": "above"
+          },
+          {
+            "id": "D",
+            "text": "along"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PREPOSITIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "aacd69e5-4718-4e71-9c83-ad1e36dcd8fc",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic prepositions of place (behind, between, above, along) in a simple present-tense sentence with common vocabulary, matching A2 level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Behind' is a preposition of place meaning 'at the back of' something, which explains why the cat cannot be seen.",
+          "explanation_vi": "'Behind' là giới từ chỉ vị trí, có nghĩa là 'phía sau' một vật, điều này giải thích vì sao con mèo không thể nhìn thấy."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-prepositions",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "There is a beautiful picture ___ the wall in my bedroom.",
+        "options": [
+          {
+            "id": "A",
+            "text": "on"
+          },
+          {
+            "id": "B",
+            "text": "at"
+          },
+          {
+            "id": "C",
+            "text": "in"
+          },
+          {
+            "id": "D",
+            "text": "under"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PREPOSITIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "c8505288-0d63-4b8d-ba51-7b45720e0f6e",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic prepositions of place (under, on, at, between) in a simple present sentence with common vocabulary, matching A2-level foundation review content.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use 'on' for things touching a surface, such as a wall or a table: 'a picture on the wall'.",
+          "explanation_vi": "Dùng 'on' cho vật nằm trên hoặc gắn trên một bề mặt như tường, bàn: 'a picture on the wall'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-prepositions",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "PREPOSITIONS_OF_TIME",
+          "PREPOSITIONS_OF_PLACE",
+          "PRESENT_SIMPLE"
+        ],
+        "examples": [
+          {
+            "note": "'At' is used for the exact clock time, while 'in' is used for the part of the day (the morning).",
+            "text": "I usually get up at 6:30 in the morning."
+          },
+          {
+            "note": "'On' shows something is on a surface; 'next to' shows position beside another object.",
+            "text": "My keys are on the table, next to the lamp."
+          },
+          {
+            "note": "'To' shows movement or direction towards a place; 'every Saturday' needs no preposition.",
+            "text": "She goes to the library every Saturday."
+          }
+        ],
+        "objective": "Understand the formation and core uses of common prepositions of time, place, and movement (in, on, at, to, from, under, next to, between), and use them correctly in simple everyday sentences.",
+        "_provenance": {
+          "batch": "foundation:PREPOSITIONS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "3e1481f7-78e4-42c3-b5df-37617c6621e1",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Prepositions are small words that show relationships between things: where something is, when something happens, or how things connect. At A2 level, the most important groups are: (1) Prepositions of TIME: 'at' for exact times (at 7 o'clock, at night), 'on' for days and dates (on Monday, on 5 May), and 'in' for months, years, seasons, and parts of the day (in July, in 2024, in the morning). (2) Prepositions of PLACE: 'at' for a specific point (at the bus stop), 'on' for surfaces (on the table), 'in' for enclosed spaces (in the room). Other useful place prepositions include 'under' (below something), 'next to' (beside), and 'between' (in the middle of two things). (3) Prepositions of MOVEMENT: 'to' shows direction (go to school), 'from' shows origin (come from Vietnam). Key principles: prepositions usually come before a noun or pronoun; a preposition + noun forms a prepositional phrase; and many preposition uses are fixed, so it is best to learn common combinations as chunks (e.g., 'at home', 'on foot', 'in a hurry').",
+          "vi": "Giới từ (preposition) là những từ nhỏ dùng để chỉ mối quan hệ về nơi chốn, thời gian hoặc phương hướng. Ở trình độ A2, cần nắm ba nhóm chính: (1) Giới từ chỉ THỜI GIAN: 'at' dùng cho giờ chính xác (at 7 o'clock, at night); 'on' dùng cho ngày và thứ (on Monday, on 5 May); 'in' dùng cho tháng, năm, mùa và các buổi trong ngày (in July, in 2024, in the morning). (2) Giới từ chỉ NƠI CHỐN: 'at' chỉ một điểm cụ thể (at the bus stop); 'on' chỉ bề mặt (on the table); 'in' chỉ không gian kín (in the room). Ngoài ra còn có 'under' (dưới), 'next to' (bên cạnh), 'between' (ở giữa hai vật). (3) Giới từ chỉ CHUYỂN ĐỘNG: 'to' chỉ hướng đi (go to school), 'from' chỉ nguồn gốc (come from Vietnam). Lưu ý quan trọng: giới từ đứng trước danh từ hoặc đại từ; nhiều cụm giới từ là cố định, nên hãy học theo cụm trọn như 'at home', 'on foot', 'in a hurry'. Người Việt thường nhầm vì tiếng Việt dùng 'vào', 'trên', 'ở' linh hoạt hơn tiếng Anh."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Use 'in' for years and 'on' for days of the week. Days and dates always take 'on', never 'in'.",
+            "right": "I was born on a Monday in 1998.",
+            "wrong": "I was born in a Monday in 1998."
+          },
+          {
+            "why": "'Home' is used without 'to' in the expression 'go home' because it functions like an adverb of destination, not a normal noun with a preposition.",
+            "right": "I go home after work.",
+            "wrong": "I go to home after work."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

@@ -1,11 +1,416 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2466804Z",
+  "generated_at": "2026-09-25T18:49:49.3611713Z",
   "node": {
     "namespace": "skill",
     "code": "READING_MAIN_IDEA_AND_DETAIL",
     "label": "Reading: Main Idea and Detail",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-reading-main-idea-and-detail-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Read the mini-passage: 'Last weekend, the town held its first recycling fair. The main attraction was a workshop where children learned to turn plastic bottles into plant pots. Over two hundred visitors attended, and the mayor promised to make the fair an annual event.' Now rewrite the sentence beginning with 'The most important thing about the fair was': The workshop where children made plant pots from bottles was the fair's main attraction.",
+        "acceptable": [
+          "The most important thing about the fair was the workshop where children learned to turn plastic bottles into plant pots.",
+          "The most important thing about the fair was the workshop where children turned plastic bottles into plant pots."
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_MAIN_IDEA_AND_DETAIL:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "643b5a8e-51fb-4288-b404-be7fbc50c35e",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The task requires reading a short passage with past simple and relative clauses, identifying the main idea, and restating it with a given cue. Vocabulary is everyday (recycling fair, workshop, plant pots), and the transformation is a straightforward paraphrase, fitting B1 rather than A2 (which involves simpler sentences) or B2 (which involves more complex structures).",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "The most important thing about the fair was the workshop where children learned to turn plastic bottles into plant pots."
+          }
+        },
+        "explanation": {
+          "explanation_en": "This task tests identifying the main idea of a short text and restating it in a new sentence structure. The passage states the main attraction was the workshop where children turned plastic bottles into plant pots, so the rewritten sentence must keep this key detail while following the given cue.",
+          "explanation_vi": "Bài tập này kiểm tra khả năng xác định ý chính của một đoạn văn ngắn và diễn đạt lại bằng cấu trúc câu mới. Đoạn văn cho biết điểm hấp dẫn nhất là buổi workshop nơi trẻ em biến chai nhựa thành chậu cây, nên câu viết lại phải giữ chi tiết quan trọng này và tuân theo gợi ý đã cho."
+        },
+        "correct_answer": "The most important thing about the fair was the workshop where children made plant pots from plastic bottles."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-reading-main-idea-and-detail-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Read the detail from the article: 'Last month, the city opened a new library. By the time the mayor gave her speech, hundreds of people ___ already waiting outside.' Which tense correctly completes the sentence according to the article's details?",
+        "options": [
+          {
+            "id": "A",
+            "text": "are"
+          },
+          {
+            "id": "B",
+            "text": "were"
+          },
+          {
+            "id": "C",
+            "text": "will be"
+          },
+          {
+            "id": "D",
+            "text": "have been"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_MAIN_IDEA_AND_DETAIL:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "38a80b72-e8c9-4651-9a18-87073bd86eb6",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item requires choosing between past simple, past continuous, present perfect, and future forms based on contextual time markers ('last month', 'by the time'). Distinguishing past continuous from present perfect in narrative context is a typical B1 grammar task; vocabulary is standard.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The article says the library opened 'last month', so the events are in the past. The people were waiting before the mayor's speech, so the past continuous 'were waiting' is correct.",
+          "explanation_vi": "Bài viết nói thư viện mở cửa 'tháng trước', nên các sự việc xảy ra trong quá khứ. Mọi người đã chờ trước bài phát biểu của thị trưởng, nên thì quá khứ tiếp diễn 'were waiting' là đúng."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-reading-main-idea-and-detail-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "B1",
+      "body": {
+        "passage": "When Maya moved to the city, she missed the fresh vegetables she used to grow with her grandmother in the countryside. Her apartment had no garden, but she noticed an empty piece of land behind her building that nobody used. At first, it was full of rubbish and old furniture. Maya asked her neighbours if they would like to help her clean it up and turn it into a garden. To her surprise, more than twenty people joined the first working day. Together, they removed the rubbish, built wooden boxes for planting, and carried soil from a local farm. Within six months, the space was full of tomatoes, herbs, and flowers. The garden also changed the neighbourhood in unexpected ways. People who had never spoken to each other before now shared tools, seeds, and recipes. Children learned where their food came from, and older residents taught others traditional growing methods. The city council was so impressed that it created three more community gardens in other areas.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "What is the main idea of the passage?",
+            "options": [
+              {
+                "id": "A",
+                "text": "A woman starts a garden that brings her community together."
+              },
+              {
+                "id": "B",
+                "text": "The city council forces residents to clean up empty land."
+              },
+              {
+                "id": "C",
+                "text": "Growing vegetables in a city is cheaper than buying them."
+              },
+              {
+                "id": "D",
+                "text": "Maya's grandmother taught her how to cook traditional food."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage describes how Maya's idea to create a garden led to neighbours cooperating and more gardens being built, so the central idea is about a garden uniting the community.",
+              "explanation_vi": "Bài đọc mô tả cách ý tưởng làm vườn của Maya khiến hàng xóm hợp tác và thành phố xây thêm nhiều vườn nữa, nên ý chính là về một khu vườn gắn kết cộng đồng."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "Why did Maya want to start a garden?",
+            "options": [
+              {
+                "id": "A",
+                "text": "She wanted to sell vegetables to her neighbours."
+              },
+              {
+                "id": "B",
+                "text": "She missed growing fresh vegetables like she did in the countryside."
+              },
+              {
+                "id": "C",
+                "text": "The city council asked her to clean the empty land."
+              },
+              {
+                "id": "D",
+                "text": "She needed a place for her children to play."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The first sentence says Maya missed the fresh vegetables she used to grow with her grandmother in the countryside.",
+              "explanation_vi": "Câu đầu tiên cho biết Maya nhớ những rau quả tươi mà cô từng trồng cùng bà ở nông thôn."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "What was the empty land like before the neighbours cleaned it?",
+            "options": [
+              {
+                "id": "A",
+                "text": "It was full of rubbish and old furniture."
+              },
+              {
+                "id": "B",
+                "text": "It was already a small farm."
+              },
+              {
+                "id": "C",
+                "text": "It was a car park for the building."
+              },
+              {
+                "id": "D",
+                "text": "It was locked by the city council."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage states that at first the land was full of rubbish and old furniture.",
+              "explanation_vi": "Bài đọc nói rằng ban đầu mảnh đất đầy rác và đồ nội thất cũ."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "How did the garden change the neighbourhood in unexpected ways?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Property prices in the area increased quickly."
+              },
+              {
+                "id": "B",
+                "text": "Residents who didn't know each other began sharing things and knowledge."
+              },
+              {
+                "id": "C",
+                "text": "The local school started teaching gardening classes."
+              },
+              {
+                "id": "D",
+                "text": "Neighbours began selling vegetables at a market."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says people who had never spoken before shared tools, seeds, and recipes, and older residents taught traditional methods.",
+              "explanation_vi": "Bài đọc cho biết những người trước đây chưa từng nói chuyện nay chia sẻ dụng cụ, hạt giống và công thức, và người lớn tuổi dạy phương pháp trồng truyền thống."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "What did the city council do as a result of the garden's success?",
+            "options": [
+              {
+                "id": "A",
+                "text": "It gave Maya money to buy more soil."
+              },
+              {
+                "id": "B",
+                "text": "It built three more community gardens in other areas."
+              },
+              {
+                "id": "C",
+                "text": "It turned the garden into a public park."
+              },
+              {
+                "id": "D",
+                "text": "It invited residents to a special ceremony."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The final sentence states the council was so impressed that it created three more community gardens in other areas.",
+              "explanation_vi": "Câu cuối cho biết hội đồng thành phố ấn tượng đến mức xây thêm ba vườn cộng đồng ở khu vực khác."
+            },
+            "correct_option_id": "B"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_MAIN_IDEA_AND_DETAIL:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "b0994ad4-4975-4454-b5f7-db0486097b85",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The passage uses clear standard narrative prose with past simple, some present perfect ('had never spoken'), modal verbs ('would like'), and connectors ('at first', 'to her surprise', 'as a result'). Vocabulary is mostly familiar with a few B1-level items (neighbours, residents, council, recipes). Questions require main-idea identification and detail retrieval, appropriate for B1 reading comprehension.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "A",
+              "q2": "B",
+              "q3": "A",
+              "q4": "B",
+              "q5": "B"
+            }
+          }
+        },
+        "passage_title": "The Community Garden"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-reading-main-idea-and-detail",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Read the short passage and choose the main idea: 'Last weekend, Mai visited her grandmother in the countryside. They cooked traditional food together, walked through the rice fields, and looked at old family photos. Mai said the best part was simply talking with her grandmother, who told her stories about her childhood. Although the village was quiet and there was little to do, Mai felt happy and relaxed the whole time.' What is the main idea of the passage?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Mai enjoyed spending simple, meaningful time with her grandmother."
+          },
+          {
+            "id": "B",
+            "text": "The village had many exciting activities for visitors."
+          },
+          {
+            "id": "C",
+            "text": "Mai's grandmother was an excellent cook of traditional food."
+          },
+          {
+            "id": "D",
+            "text": "Mai found the countryside boring and wanted to leave early."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_MAIN_IDEA_AND_DETAIL:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "3ad9895e-e01a-483d-936b-0182be2c0a83",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The passage uses simple past tense and everyday vocabulary (A2-level), but the task requires identifying a main idea versus supporting details and distractors, including an inference-based distractor (D), which demands B1-level reading comprehension. The vocabulary and sentence structures are clear and standard, consistent with B1 'main points of clear standard input.'",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The main idea is the overall message of the passage. Although the text mentions cooking, walking, and photos, these are supporting details. The passage repeatedly emphasizes that Mai felt happy and that talking with her grandmother was the best part, so option A best expresses the main idea.",
+          "explanation_vi": "Ý chính là thông điệp chung của đoạn văn. Dù đoạn văn nhắc đến nấu ăn, đi bộ và xem ảnh, đó chỉ là các chi tiết hỗ trợ. Đoạn văn nhấn mạnh Mai cảm thấy vui vẻ và việc trò chuyện với bà là điều tuyệt nhất, nên phương án A thể hiện ý chính tốt nhất."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-reading-main-idea-and-detail",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Read the paragraph: 'More and more people in Hanoi are cycling to work. Bikes are cheap to buy and cost nothing to run. Cycling is also good exercise, and in heavy traffic it is often faster than going by car.' What is the main idea of the paragraph?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Cycling to work is becoming popular because it has many advantages."
+          },
+          {
+            "id": "B",
+            "text": "Bikes are cheap to buy."
+          },
+          {
+            "id": "C",
+            "text": "Traffic in Hanoi is very heavy."
+          },
+          {
+            "id": "D",
+            "text": "Cars are faster than bikes in the city."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_MAIN_IDEA_AND_DETAIL:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "ed318420-a173-4826-81d7-d5ba6c923abd",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The passage uses simple past tense, basic conjunctions ('although'), and everyday vocabulary about a familiar personal topic. The main-idea question is straightforward with clearly distinguishable distractors. This is more typical of A2 than B1, though it sits at the upper A2 boundary.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The first sentence is the topic sentence and the others give reasons. Option A covers the whole paragraph. B is only one detail, C is not the point, and D contradicts the text.",
+          "explanation_vi": "Câu đầu là câu chủ đề, các câu sau nêu lý do. Phương án A bao quát cả đoạn. B chỉ là một chi tiết, C không phải ý chính, còn D trái với nội dung đoạn văn."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-reading-main-idea-and-detail",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "READING_SKIMMING_AND_SCANNING",
+          "READING_INFERENCE_AND_CONTEXT_CLUES",
+          "PARAGRAPH_STRUCTURE_TOPIC_SENTENCE"
+        ],
+        "examples": [
+          {
+            "note": "The first sentence is the topic sentence (main idea: people prefer working from home). The following sentences are supporting details giving reasons and evidence.",
+            "text": "Many people today prefer working from home. First, it saves time because they do not have to commute. In addition, they can arrange their day more flexibly, and some studies show they are often more productive."
+          },
+          {
+            "note": "The main idea is in the first sentence; the specific crops and the consequence are details that support and prove it.",
+            "text": "Bees are essential to farming around the world. They pollinate crops such as apples, almonds, and strawberries, and without them, harvests would fall dramatically."
+          }
+        ],
+        "objective": "Understand how to identify the main idea of a text and distinguish it from supporting details, and apply strategies such as topic sentences, skimming, and detail-matching to answer main idea and detail questions accurately at CEFR B1 level.",
+        "_provenance": {
+          "batch": "foundation:READING_MAIN_IDEA_AND_DETAIL:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "cd7f3c9e-071a-4226-9be5-49bffca9923c",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "The main idea is the central point a writer wants to communicate — what the whole text or paragraph is mostly about. Supporting details are facts, examples, reasons, or statistics that explain or prove the main idea. At B1 level, you should learn three key strategies: (1) Find the topic sentence — often (but not always) the first or last sentence of a paragraph, it states the main idea; other sentences give details. (2) Skim before you read closely — read quickly for the general message, paying attention to titles, headings, and repeated words, which often point to the topic. (3) Distinguish main idea from detail when answering questions: a correct main-idea answer covers the WHOLE paragraph, not just one part, and is usually a general statement, not a specific fact. Detail questions, by contrast, ask about specific information — scan the text for keywords from the question and read that sentence carefully. Beware of answer options that are true but too narrow (a detail), too broad (go beyond the text), or not mentioned at all. A useful test: ask yourself, 'Does this sentence need the other sentences to be understood, or do the other sentences support it?' The one being supported is the main idea.",
+          "vi": "Ý chính (main idea) là điểm trung tâm mà tác giả muốn truyền đạt — đoạn văn hoặc cả bài viết chủ yếu nói về điều gì. Chi tiết hỗ trợ (supporting details) là các sự thật, ví dụ, lý do hoặc số liệu dùng để giải thích hoặc chứng minh ý chính. Ở trình độ B1, bạn nên nắm ba chiến lược quan trọng: (1) Tìm câu chủ đề (topic sentence) — thường (nhưng không phải luôn luôn) nằm ở đầu hoặc cuối đoạn, câu này nêu ý chính; các câu còn lại đưa chi tiết. (2) Đọc lướt (skim) trước khi đọc kỹ — đọc nhanh để nắm thông điệp chung, chú ý tiêu đề, đề mục và các từ lặp lại nhiều lần vì chúng thường chỉ ra chủ đề. (3) Phân biệt ý chính với chi tiết khi trả lời câu hỏi: đáp án đúng cho câu hỏi ý chính phải bao quát TOÀN BỘ đoạn văn, không chỉ một phần, và thường là câu khái quát chứ không phải một sự kiện cụ thể. Ngược lại, câu hỏi chi tiết hỏi về thông tin cụ thể — hãy quét văn bản để tìm từ khóa trong câu hỏi rồi đọc kỹ câu đó. Cẩn thận với các đáp án: đúng nhưng quá hẹp (chỉ là chi tiết), quá rộng (vượt ra ngoài nội dung bài), hoặc hoàn toàn không được đề cập. Cách kiểm tra hữu ích: tự hỏi 'Câu này có cần các câu khác để hiểu được không, hay các câu khác hỗ trợ nó?' Câu được hỗ trợ chính là ý chính."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "A main idea must summarize the entire paragraph. An option based on a single supporting detail is too narrow, even if it is factually correct. Test each option by asking whether it covers all the key sentences, not just one.",
+            "right": "Choose the general statement that covers the whole paragraph: 'Many people prefer working from home because of its advantages.'",
+            "wrong": "Choosing an answer that is true but only covers one sentence of the paragraph as the 'main idea' (e.g., choosing 'Working from home saves commuting time' for the paragraph above)."
+          },
+          {
+            "why": "Topic sentences can appear at the beginning, end, or middle of a paragraph, or even be implied rather than stated directly. Relying only on position leads to wrong answers; always verify by checking how the other sentences relate to the candidate main idea.",
+            "right": "Check the first AND last sentences, and skim the whole paragraph before deciding where the main idea is stated.",
+            "wrong": "Assuming the main idea is always in the first sentence of the paragraph."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

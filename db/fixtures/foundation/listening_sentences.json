@@ -1,11 +1,449 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1846846Z",
+  "generated_at": "2026-09-25T18:49:49.3045216Z",
   "node": {
     "namespace": "skill",
     "code": "LISTENING_SENTENCES",
     "label": "Listening: Sentences",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-listening-sentences-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "title": "Listening: Sentence Transformation Drill",
+        "prompt": "Listen to Tom's message. Then rewrite this sentence using 'must': Tom has to work at his uncle's shop on Saturday morning. Begin with 'Tom '.",
+        "acceptable": [
+          "Tom must work at his uncle's shop that Saturday morning.",
+          "Tom must work in his uncle's shop on Saturday morning."
+        ],
+        "transcript": "Hi Anna, this is Tom. I'm calling about our football match on Saturday. I'm sorry, but I can't play because I have to work at my uncle's shop that morning. My uncle needs help because it's very busy. Maybe we can meet after the match and watch a film together. Call me back when you are free. Thanks!",
+        "_provenance": {
+          "batch": "foundation:LISTENING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "f465e49c-9821-44d2-9925-dcf854c61ea1",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The listening script uses short, simple sentences with high-frequency vocabulary (football match, shop, film, call back) and basic connectors. The transformation task targets 'have to' → 'must', a basic modal of obligation typically introduced at A2. The prompt is clearly scaffolded ('Begin with Tom'), keeping cognitive demand low and matching the requested A2 level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Tom must work at his uncle's shop on Saturday morning."
+          }
+        },
+        "explanation": {
+          "explanation_en": "In the message, Tom says he 'has to work at his uncle's shop' on Saturday morning. 'Have to' and 'must' both express obligation, so the sentence can be rewritten as 'Tom must work at his uncle's shop on Saturday morning.'",
+          "explanation_vi": "Trong tin nhắn, Tom nói anh ấy 'has to work at his uncle's shop' vào sáng thứ Bảy. 'Have to' và 'must' đều diễn tả sự bắt buộc, nên câu có thể viết lại là 'Tom must work at his uncle's shop on Saturday morning.'"
+        },
+        "audio_script": "Hi Anna, this is Tom. I'm calling about our football match on Saturday. I'm sorry, but I can't play because I have to work at my uncle's shop that morning. My uncle needs help because it's very busy. Maybe we can meet after the match and watch a film together. Call me back when you are free. Thanks!",
+        "correct_answer": "Tom must work at his uncle's shop on Saturday morning."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-listening-sentences-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Complete the sentence you hear: Yesterday, while I ___ dinner, my brother called me.",
+        "options": [
+          {
+            "id": "A",
+            "text": "cooked"
+          },
+          {
+            "id": "B",
+            "text": "was cooking"
+          },
+          {
+            "id": "C",
+            "text": "am cooking"
+          },
+          {
+            "id": "D",
+            "text": "have cooked"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "c9e91bf0-7dc8-4df8-a2a6-d0a92ca0b540",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the past continuous vs. past simple contrast in a classic interruption pattern ('while I was cooking... my brother called'), which is typically introduced at A2. Vocabulary is everyday and the sentence structure is simple, making it appropriate for the requested A2 level, though the two-tense interaction gives it slight B1 lean.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The past continuous 'was cooking' describes an action in progress in the past that was interrupted by another past action ('my brother called'). In the audio sentence, the ongoing action takes the past continuous form.",
+          "explanation_vi": "Thì quá khứ tiếp diễn 'was cooking' diễn tả hành động đang xảy ra trong quá khứ thì bị một hành động khác xen vào ('my brother called'). Trong câu nghe, hành động đang diễn ra phải dùng thì quá khứ tiếp diễn."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-listening-sentences-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "A2",
+      "body": {
+        "passage": "Mai is a student from Vietnam. She studies English at a small school in her city. Every morning, her teacher plays short sentences on a CD, and the students write what they hear. At first, this was very difficult for Mai. The sentences were fast, and she could only understand a few words. She often felt nervous when the CD stopped and the teacher asked, \"What did you hear?\" Last month, Mai started a new habit. Every evening, she listens to easy English sentences on her phone for fifteen minutes. She listens to each sentence two or three times and repeats it slowly. She also writes the new words in a small blue notebook. Now, her listening is much better. In class yesterday, she understood eight sentences out of ten, and her teacher smiled at her. Mai is happy because she can understand her English-speaking friends online, too. She wants to visit Australia next year, and she knows that good listening will help her talk with people there.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "What does Mai's teacher do every morning?",
+            "options": [
+              {
+                "id": "A",
+                "text": "She plays short sentences on a CD."
+              },
+              {
+                "id": "B",
+                "text": "She reads a long story to the class."
+              },
+              {
+                "id": "C",
+                "text": "She shows English movies."
+              },
+              {
+                "id": "D",
+                "text": "She asks students to sing songs."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says: 'Every morning, her teacher plays short sentences on a CD, and the students write what they hear.'",
+              "explanation_vi": "Bài đọc nói rằng: 'Mỗi sáng, cô giáo phát những câu ngắn trên đĩa CD, và học sinh viết lại những gì các em nghe được.'"
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "How did Mai feel about listening exercises at first?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Excited"
+              },
+              {
+                "id": "B",
+                "text": "Nervous"
+              },
+              {
+                "id": "C",
+                "text": "Bored"
+              },
+              {
+                "id": "D",
+                "text": "Angry"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage states: 'She often felt nervous when the CD stopped and the teacher asked, \"What did you hear?\"'",
+              "explanation_vi": "Bài đọc cho biết: 'Cô ấy thường cảm thấy lo lắng khi đĩa CD dừng lại và cô giáo hỏi: \"Em nghe được gì?\"'"
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "How long does Mai listen to English every evening?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Five minutes"
+              },
+              {
+                "id": "B",
+                "text": "Ten minutes"
+              },
+              {
+                "id": "C",
+                "text": "Fifteen minutes"
+              },
+              {
+                "id": "D",
+                "text": "Thirty minutes"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says she 'listens to easy English sentences on her phone for fifteen minutes' every evening.",
+              "explanation_vi": "Bài đọc nói rằng mỗi tối cô ấy 'nghe các câu tiếng Anh dễ trên điện thoại trong mười lăm phút'."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "Where does Mai write her new words?",
+            "options": [
+              {
+                "id": "A",
+                "text": "In a red notebook"
+              },
+              {
+                "id": "B",
+                "text": "In a small blue notebook"
+              },
+              {
+                "id": "C",
+                "text": "On her phone"
+              },
+              {
+                "id": "D",
+                "text": "On the classroom wall"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage states: 'She also writes the new words in a small blue notebook.'",
+              "explanation_vi": "Bài đọc cho biết: 'Cô ấy cũng viết các từ mới vào một cuốn sổ nhỏ màu xanh dương.'"
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "How many sentences did Mai understand in class yesterday?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Five out of ten"
+              },
+              {
+                "id": "B",
+                "text": "Six out of ten"
+              },
+              {
+                "id": "C",
+                "text": "Eight out of ten"
+              },
+              {
+                "id": "D",
+                "text": "All ten"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says: 'In class yesterday, she understood eight sentences out of ten.'",
+              "explanation_vi": "Bài đọc nói rằng: 'Hôm qua trong lớp, cô ấy hiểu được tám câu trong mười câu.'"
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q6",
+            "type": "multiple_choice",
+            "prompt": "Why does Mai want to have good listening skills?",
+            "options": [
+              {
+                "id": "A",
+                "text": "To become an English teacher"
+              },
+              {
+                "id": "B",
+                "text": "To watch movies without subtitles"
+              },
+              {
+                "id": "C",
+                "text": "To talk with people in Australia next year"
+              },
+              {
+                "id": "D",
+                "text": "To pass a difficult exam"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says she wants to visit Australia next year and good listening will help her talk with people there.",
+              "explanation_vi": "Bài đọc nói rằng cô ấy muốn sang Australia vào năm tới, và kỹ năng nghe tốt sẽ giúp cô ấy trò chuyện với người ở đó."
+            },
+            "correct_option_id": "C"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "66afd3f2-ab4b-49ef-8e0b-0c42fada98ae",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The passage uses simple sentences, past simple and present simple, high-frequency vocabulary, and basic connectors. Questions require literal detail retrieval only, matching A2 reading comprehension.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "A",
+              "q2": "B",
+              "q3": "C",
+              "q4": "B",
+              "q5": "C",
+              "q6": "C"
+            }
+          }
+        },
+        "passage_title": "Learning to Listen"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-listening-sentences",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Listen to the sentence: 'My sister usually takes the bus to work because her office is far from home.' How does the sister usually go to work?",
+        "options": [
+          {
+            "id": "A",
+            "text": "By car"
+          },
+          {
+            "id": "B",
+            "text": "By bus"
+          },
+          {
+            "id": "C",
+            "text": "By bicycle"
+          },
+          {
+            "id": "D",
+            "text": "On foot"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8f468ee9-98ac-44d6-aff5-81fe6e076730",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses simple present tense, high-frequency transport vocabulary (bus, car, bicycle, on foot), and a single simple sentence with a basic causal clause ('because'). Listening for key words in short, clear sentences matches A2 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The sentence clearly says 'takes the bus to work', so the correct answer is 'By bus'. Listen for key words like 'bus' and 'work' to catch the main information in a sentence.",
+          "explanation_vi": "Câu nói rõ 'takes the bus to work', nên đáp án đúng là 'By bus'. Hãy lắng nghe các từ khóa như 'bus' và 'work' để nắm thông tin chính trong câu."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-listening-sentences",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Listen to the sentence: 'My sister usually takes the bus to work because her office is far from our house.' What does the sentence tell you?",
+        "options": [
+          {
+            "id": "A",
+            "text": "The speaker's sister walks to work every day."
+          },
+          {
+            "id": "B",
+            "text": "The speaker's sister goes to work by bus."
+          },
+          {
+            "id": "C",
+            "text": "The office is near their house."
+          },
+          {
+            "id": "D",
+            "text": "The speaker's sister drives a car to work."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "991b66da-9068-4a51-a4df-19d9abb04f9d",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses simple present tense, high-frequency vocabulary (sister, bus, work, house), and a basic causal conjunction ('because'). The listening task requires only literal comprehension of a single short sentence, matching A2 descriptors for routine, familiar matters.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The sentence says the sister 'takes the bus to work', which means she goes to work by bus. The other options contradict the sentence.",
+          "explanation_vi": "Câu nói rằng chị gái 'đi xe buýt đến chỗ làm', nghĩa là chị ấy đi làm bằng xe buýt. Các đáp án khác đều trái với nội dung câu."
+        },
+        "audio_script": "My sister usually takes the bus to work because her office is far from our house.",
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-listening-sentences",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "LISTENING_WORDS",
+          "LISTENING_DIALOGUES",
+          "GRAMMAR_QUESTION_FORMS"
+        ],
+        "examples": [
+          {
+            "note": "A statement with falling intonation. Key information words: 'bus', 'leaves', 'half past eight' - the time detail is what listeners must catch; 'at' and 'every' are spoken weakly.",
+            "text": "The bus leaves at half past eight every morning."
+          },
+          {
+            "note": "A polite indirect question. After 'Could you tell me', the words go in statement order ('where the nearest bank is'), not question order ('where is the nearest bank'). Key words: 'bank', 'nearest'.",
+            "text": "Could you tell me where the nearest bank is?"
+          }
+        ],
+        "objective": "Understand and master listening to simple spoken English sentences at A2 level: identifying key words, recognizing common sentence patterns (statements, questions, commands), and catching important details such as time, place, and numbers in everyday conversations.",
+        "_provenance": {
+          "batch": "foundation:LISTENING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "09a016c9-9781-4d20-ae2f-83135fcba814",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At A2 level, listening to sentences means understanding short, clear, spoken sentences about everyday topics. Key skills include: (1) Listening for key words - content words like nouns, verbs, numbers, and time expressions carry the main meaning, while small function words (a, the, to, of) are often reduced or weak in natural speech. (2) Recognizing sentence types by their sound: statements usually fall in intonation at the end, yes/no questions often rise, and wh-questions (what, where, when) usually fall. (3) Catching details: numbers, days, times, and places are often the focus of listening tasks, so train your ear to notice them. (4) Handling connected speech: words link together (e.g., 'next_time' sounds like 'neks-time'), and sounds disappear (e.g., 'I don't know' sounds like 'I dunno'). Don't try to understand every word - focus on the main message and the information words. Practice by listening to short dialogues, then checking with the transcript.",
+          "vi": "Ở trình độ A2, nghe câu đơn giản nghĩa là hiểu được các câu ngắn, rõ ràng về chủ đề hàng ngày. Các kỹ năng quan trọng gồm: (1) Nghe từ khóa - danh từ, động từ, con số và từ chỉ thời gian mang ý nghĩa chính, trong khi các từ nhỏ (a, the, to, of) thường được đọc nhẹ hoặc lướt qua trong lời nói tự nhiên. (2) Nhận biết loại câu qua ngữ điệu: câu trần thuật thường có ngữ điệu đi xuống cuối câu, câu hỏi Có/Không thường đi lên, còn câu hỏi với từ để hỏi (what, where, when) thường đi xuống. (3) Nắm bắt chi tiết: số, ngày, giờ, địa điểm thường là trọng tâm của bài nghe, nên hãy luyện tai để chú ý đến chúng. (4) Xử lý hiện tượng nối âm: các từ nối liền với nhau (ví dụ 'next time' nghe như 'neks-time') và một số âm biến mất (ví dụ 'I don't know' nghe như 'I dunno'). Đừng cố hiểu từng từ một - hãy tập trung vào thông điệp chính và các từ chứa thông tin. Luyện tập bằng cách nghe hội thoại ngắn rồi đối chiếu với bản ghi chép."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Natural speech is fast and connected; function words are reduced and hard to catch. Focusing on every word causes learners to fall behind the speaker and lose the overall meaning. Identifying key words first is the strategy used in real communication and in listening exams.",
+            "right": "Listen for the key content words (who, what, when, where, how many) and build the meaning from them.",
+            "wrong": "Trying to translate and understand every single word while listening, and missing the sentence's main message."
+          },
+          {
+            "why": "The contracted 'd' in 'I'd' is very short in fast speech, so learners often miss it. The difference between 'I like' (a general preference) and 'I'd like' (a polite request) changes the meaning completely. Train your ear for contractions like I'd, I'll, he's, and they're.",
+            "right": "I'd like two tickets, please.",
+            "wrong": "Hearing 'I'd like two tickets' as 'I like two tickets'."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

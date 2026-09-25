@@ -1,11 +1,336 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1211252Z",
+  "generated_at": "2026-09-25T18:49:49.244745Z",
   "node": {
     "namespace": "vocabulary",
     "code": "CONVERSION",
     "label": "Conversion",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-conversion-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence using the noun form of the word in capitals: The new policy will BENEFIT everyone in the company. Begin with: 'The new policy will be of ___'",
+        "acceptable": [
+          "The new policy will be of benefit to everybody in the company.",
+          "The new policy will be of benefit to all the employees in the company."
+        ],
+        "_provenance": {
+          "batch": "foundation:CONVERSION:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:41:39Z"
+          },
+          "ai_request_id": "2d2e05dd-93ea-486e-9b3f-95272ca04301",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item requires transforming a verb into a noun within the fixed phrase 'be of benefit to', which involves recognizing a semi-formal structure. The vocabulary ('policy', 'benefit') and sentence complexity are accessible at B1, though the 'be of + noun' pattern leans toward the upper end of B1.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "The new policy will be of benefit to everyone in the company."
+          }
+        },
+        "explanation": {
+          "explanation_en": "This tests word conversion: the verb 'benefit' changes to the noun 'benefit' in the fixed phrase 'be of benefit to someone'. The structure 'be of + noun' is a common way to express a quality in formal English.",
+          "explanation_vi": "Bài tập kiểm tra chuyển đổi từ loại: động từ 'benefit' được chuyển thành danh từ 'benefit' trong cụm cố định 'be of benefit to someone'. Cấu trúc 'be of + danh từ' là cách diễn đạt trang trọng để nói về đặc điểm hoặc lợi ích."
+        },
+        "correct_answer": "The new policy will be of benefit to everyone in the company."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:41:39Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-ex-conversion-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "The security guard ___ the visitors through to the meeting room after checking their badges.",
+        "options": [
+          {
+            "id": "A",
+            "text": "escorted"
+          },
+          {
+            "id": "B",
+            "text": "escort"
+          },
+          {
+            "id": "C",
+            "text": "escorting"
+          },
+          {
+            "id": "D",
+            "text": "was escort"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:CONVERSION:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:41:29Z"
+          },
+          "ai_request_id": "8ef3b2ce-20cb-4028-8ad6-91fa44ac2af3",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests simple past tense choice with common vocabulary ('security guard', 'visitors', 'meeting room'). Past simple is an A2-level grammar point, and the distractors are straightforward. The explanation mentions conversion of a noun to a verb, but the task itself is well below B1 complexity.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The sentence describes a completed past action, so the simple past 'escorted' is correct. Note that 'escort' is a noun converted into a verb here, showing how English words can change word class without changing form.",
+          "explanation_vi": "Câu diễn tả hành động đã hoàn thành trong quá khứ nên dùng thì quá khứ đơn 'escorted'. Lưu ý 'escort' là danh từ được chuyển đổi thành động từ, cho thấy tiếng Anh có thể đổi từ loại mà không đổi hình thái từ."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:41:29Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-ex-conversion-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "The company decided to ___ all its customers about the change in opening hours.",
+        "options": [
+          {
+            "id": "A",
+            "text": "email"
+          },
+          {
+            "id": "B",
+            "text": "envelope"
+          },
+          {
+            "id": "C",
+            "text": "letter"
+          },
+          {
+            "id": "D",
+            "text": "postbox"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:CONVERSION:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:41:19Z"
+          },
+          "ai_request_id": "a7d3cdd1-3470-44f9-b671-0c78461f5f89",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests noun-to-verb conversion ('email') in a work-related context with vocabulary like 'decided', 'customers', 'opening hours'. The distractors are common A2-level nouns, but recognizing the verb slot and the conversion pattern requires B1-level lexical awareness.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Email' is a noun that has been converted into a verb, meaning to send someone an email. Nouns like 'envelope', 'letter' and 'postbox' cannot be used as verbs here.",
+          "explanation_vi": "'Email' là danh từ được chuyển đổi thành động từ, nghĩa là gửi email cho ai đó. Các từ như 'envelope', 'letter' và 'postbox' không thể dùng làm động từ trong câu này."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:41:19Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-conversion",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Choose the correct word form: The company decided to ___ the old factory into modern apartments.",
+        "options": [
+          {
+            "id": "A",
+            "text": "conversion"
+          },
+          {
+            "id": "B",
+            "text": "convert"
+          },
+          {
+            "id": "C",
+            "text": "converted"
+          },
+          {
+            "id": "D",
+            "text": "convertible"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:CONVERSION:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:41:49Z"
+          },
+          "ai_request_id": "8278940a-acfa-4d21-ac6c-6373bd47ce10",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests word form choice after 'decided to' (infinitive + base verb), distinguishing noun/verb/adjective forms of 'convert'. The vocabulary (convert, conversion, convertible) and the infinitive pattern are typical B1-level grammar and lexis; the sentence context is simple and concrete.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "After 'decided to', we need the base form of the verb. 'Convert' is the verb form of the noun 'conversion', meaning to change something into a different form or use.",
+          "explanation_vi": "Sau 'decided to' cần dùng dạng nguyên thể của động từ. 'Convert' là dạng động từ của danh từ 'conversion', nghĩa là biến đổi cái gì đó thành một hình thức hoặc công dụng khác."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:41:49Z"
+      }
+    },
+    {
+      "slug": "foundation-review-conversion",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Choose the correct word: After dinner, let's go for a ___ in the park.",
+        "options": [
+          {
+            "id": "A",
+            "text": "walk"
+          },
+          {
+            "id": "B",
+            "text": "walking"
+          },
+          {
+            "id": "C",
+            "text": "walked"
+          },
+          {
+            "id": "D",
+            "text": "walker"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:CONVERSION:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:41:59Z"
+          },
+          "ai_request_id": "3ad01436-9a88-4412-8cbf-2d988a681610",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic word formation (verb 'decide' → noun 'decision') in a simple past-tense sentence with common vocabulary ('make a decision', 'sell his car'). Word-form conversion of familiar verbs is typically A2-level; the sentence structure is simple and the distractors are straightforward. Slightly below the requested B1 target.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Walk' is a verb converted into a noun with no change of form: 'go for a walk'. After 'a' we need a noun, and the converted noun keeps the same spelling as the verb.",
+          "explanation_vi": "'Walk' là động từ được chuyển thành danh từ mà không đổi hình thức: 'go for a walk'. Sau 'a' cần một danh từ, và danh từ chuyển đổi giữ nguyên cách viết của động từ."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:41:59Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-topic-conversion",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "WORD_FORMATION_PREFIXES_SUFFIXES",
+          "COMPOUND_NOUNS",
+          "PHRASAL_VERBS"
+        ],
+        "examples": [
+          {
+            "note": "'text' is normally a noun (a written message), but here it is converted into a verb meaning 'to send a message'.",
+            "text": "Could you text me when you arrive?"
+          },
+          {
+            "note": "'poor' is an adjective converted to a noun phrase 'the poor', meaning poor people in general (plural meaning).",
+            "text": "The government should do more to help the poor."
+          },
+          {
+            "note": "'water' (noun) is used as a verb meaning 'to give water to'.",
+            "text": "I need to water the plants before we leave."
+          }
+        ],
+        "objective": "Understand and master conversion (zero-derivation) in English vocabulary: how words change word class (noun, verb, adjective, adverb) without changing form, and how to recognize and use common converted words accurately.",
+        "_provenance": {
+          "batch": "foundation:CONVERSION:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:42:14Z"
+          },
+          "ai_request_id": "a4eaa003-c1e7-4a56-a95d-896f6c2b2500",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Conversion (also called zero derivation) is a word-formation process in which a word moves from one word class to another without any change in spelling or pronunciation. English uses this process very productively. Common patterns include: (1) Noun → Verb: 'water' (n) → 'to water the plants' (v); 'email', 'text', 'google', 'hand', 'eye', 'butter'. (2) Verb → Noun: 'to run' → 'a run'; 'to walk' → 'a walk'; often with stress shift in two-syllable words: reCORD (v) → REcord (n), preSENT (v) → PREsent (n). (3) Adjective → Verb: 'clean' → 'to clean the kitchen'; 'empty' → 'to empty the bin'. (4) Adjective → Noun: 'the rich', 'the poor', 'the elderly' (referring to groups of people, always with 'the' and a plural meaning). The meaning of the converted word is usually related to the original, but context and sentence position (before/after articles, after modals, etc.) tell you its word class. Learners should use function clues: a word after 'a/the' or 'some' is likely a noun; a word after 'to', 'will', or in verb position is likely a verb.",
+          "vi": "Chuyển đổi từ loại (conversion) là quá trình hình thành từ trong đó một từ đổi từ loại (danh từ, động từ, tính từ, trạng từ) mà KHÔNG thay đổi hình thức viết hay phát âm. Đây là đặc điểm rất phổ biến của tiếng Anh. Các dạng thường gặp: (1) Danh từ → động từ: 'water' (nước) → 'to water the plants' (tưới cây); 'email', 'text', 'google'. (2) Động từ → danh từ: 'to run' → 'a run'; với từ hai âm tiết thường đổi trọng âm: reCORD (động từ) → REcord (danh từ). (3) Tính từ → động từ: 'clean' → 'to clean the kitchen'; 'empty' → 'to empty the bin'. (4) Tính từ → danh từ chỉ nhóm người: 'the rich' (người giàu), 'the poor' (người nghèo) — luôn có 'the' và mang nghĩa số nhiều. Cách nhận biết từ loại: từ đứng sau 'a/the/some' thường là danh từ; từ đứng sau 'to', 'will' hoặc ở vị trí vị ngữ thường là động từ. Lưu ý: nghĩa của từ chuyển đổi thường liên quan đến nghĩa gốc, nên cần dựa vào ngữ cảnh để xác định."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "In two-syllable noun–verb pairs formed by conversion, the noun is stressed on the first syllable (PREsent) and the verb on the second (preSENT). Using the wrong stress can confuse listeners about the word class.",
+            "right": "She gave me a PREsent for my birthday, and I will preSENT it to my friends tonight.",
+            "wrong": "She gave me a present for my birthday, and I will present it to my friends tonight. (with identical stress on 'present' in both uses)"
+          },
+          {
+            "why": "Adjectives converted to nouns with 'the' (the rich, the poor, the elderly) take a plural verb because they refer to a group of people.",
+            "right": "The rich are getting richer.",
+            "wrong": "The rich is getting richer."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:42:14Z"
+      }
+    }
+  ]
 }

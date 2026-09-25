@@ -1,6 +1,6 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1979369Z",
+  "generated_at": "2026-09-25T18:49:49.3177963Z",
   "node": {
     "namespace": "pattern",
     "code": "OFFERING",
@@ -42,9 +42,284 @@
         "correct_answer": "Would you like some tea?"
       },
       "verification": {
+        "approved_by": "verifier",
         "confirmed": true,
         "model": "qwen/qwen3.8-27b",
         "checked_at": "2026-09-23T15:48:27Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-offering-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'Would you like': Do you want a cup of tea?",
+        "acceptable": [
+          "Would you like some tea?",
+          "Would you like a cup of tea"
+        ],
+        "_provenance": {
+          "batch": "foundation:OFFERING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199493, Requested 657. Please try again in 1m4.8s. Need more tokens? Upgrade to Dev Tier today at https://console, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:49:00Z"
+          },
+          "ai_request_id": "f2ebfb36-c00e-48bb-9671-9217d0fa5d28",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item involves transforming a simple everyday sentence using the polite offer form 'Would you like', which is a common A2-level functional expression with basic vocabulary and simple syntax.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Would you like a cup of tea?"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Would you like...' is the polite form used to make an offer. It replaces the more direct 'Do you want...'.",
+          "explanation_vi": "'Would you like...' là cách hỏi lịch sự để đưa ra lời mời hoặc đề nghị, thay cho cách nói trực tiếp 'Do you want...'."
+        },
+        "correct_answer": "Would you like a cup of tea?"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:49:00Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199493, Requested 657. Please try again in 1m4.8s. Need more tokens? Upgrade to Dev Tier today at https://console, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-ex-offering-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "A: Would you like some more cake? B: ___ I'm full.",
+        "options": [
+          {
+            "id": "A",
+            "text": "No, thank you."
+          },
+          {
+            "id": "B",
+            "text": "Yes, I like."
+          },
+          {
+            "id": "C",
+            "text": "No, I don't like."
+          },
+          {
+            "id": "D",
+            "text": "Yes, I would like."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:OFFERING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199539, Requested 1727. Please try again in 9m6.911999999s. Need more tokens? Upgrade to Dev Tier today at https:, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:48:40Z"
+          },
+          "ai_request_id": "26da5bb8-17cb-4687-95ad-372f30f5e3dd",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the polite offer structure 'Would you like...?' versus 'Do you like...?', using simple everyday vocabulary (cup of tea). This functional distinction is typically taught at A2, and the distractors are simple, making the item appropriate for the target level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "B is full, so B declines politely with 'No, thank you.' Answers like 'No, I don't like' or 'Yes, I would like' are incomplete and sound impolite.",
+          "explanation_vi": "B đã no nên từ chối lịch sự bằng 'No, thank you.' Những câu như 'No, I don't like' hay 'Yes, I would like' bị thiếu và nghe không lịch sự."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:48:40Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199539, Requested 1727. Please try again in 9m6.911999999s. Need more tokens? Upgrade to Dev Tier today at https:, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-quiz-offering",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "It's cold outside. ___ you like a cup of hot tea?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Do"
+          },
+          {
+            "id": "B",
+            "text": "Would"
+          },
+          {
+            "id": "C",
+            "text": "Are"
+          },
+          {
+            "id": "D",
+            "text": "Will"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:OFFERING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199465, Requested 936. Please try again in 2m53.232s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:49:12Z"
+          },
+          "ai_request_id": "cf343234-923d-44e3-93b2-93a0efcf7c61",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the polite offer structure 'Would you like...?' vs 'Do you like...?', a common functional distinction taught at A2. Vocabulary is simple and everyday, and the sentence is short and routine, matching A2 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "We use 'Would you like...?' to make a polite offer. 'Do you like...?' asks about a general preference, not an offer.",
+          "explanation_vi": "Dùng 'Would you like...?' để đưa ra lời đề nghị một cách lịch sự. 'Do you like...?' hỏi về sở thích nói chung, không phải lời mời."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:49:12Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199465, Requested 936. Please try again in 2m53.232s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-review-offering",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Your friend is carrying a lot of heavy bags. What do you say to offer help?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Let me help you with those bags."
+          },
+          {
+            "id": "B",
+            "text": "You must carry the bags."
+          },
+          {
+            "id": "C",
+            "text": "Do you like bags?"
+          },
+          {
+            "id": "D",
+            "text": "I am helping the bags."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:OFFERING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199423, Requested 1011. Please try again in 3m7.488s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:49:29Z"
+          },
+          "ai_request_id": "0b89bf62-e60a-4e2d-8bc7-4a2b9928912a",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the polite offer pattern 'Would you like...?' with simple, everyday vocabulary and short sentences. While 'would' is a modal, this fixed polite formula is typically taught at A2, and all options are simple single-clause sentences.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Let me...' is a common way to offer help. 'Do you like...?' asks about preferences, and 'You must...' is an order, not an offer.",
+          "explanation_vi": "'Let me...' là cách thông dụng để đề nghị giúp đỡ. 'Do you like...?' hỏi về sở thích, còn 'You must...' là mệnh lệnh, không phải lời đề nghị."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:49:29Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199423, Requested 1011. Please try again in 3m7.488s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-topic-offering",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "MODAL_WOULD",
+          "POLITE_REQUESTS",
+          "COUNTABLE_UNCOUNTABLE_NOUNS"
+        ],
+        "examples": [
+          {
+            "note": "A polite offer of a drink. 'Some' is used with uncountable nouns like coffee, tea, water.",
+            "text": "Would you like some coffee?"
+          },
+          {
+            "note": "A polite invitation using 'Would you like + to + infinitive'. A natural reply is 'I'd love to.'",
+            "text": "Would you like to come to dinner on Friday?"
+          },
+          {
+            "note": "Offering help or service, common in shops and cafés; the reply politely declines.",
+            "text": "Can I get you anything? — No, thank you. I'm fine."
+          }
+        ],
+        "objective": "Understand the formation and core uses of the pattern 'Would you like...?' and other common structures for offering food, drink, and help politely, and respond appropriately in everyday situations.",
+        "_provenance": {
+          "batch": "foundation:OFFERING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199367, Requested 2118. Please try again in 10m41.52s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:49:53Z"
+          },
+          "ai_request_id": "277cea19-ab1f-489f-b8c8-7a76cb95cb4d",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "In English, we often offer things (food, drinks, help) using polite set patterns. The most common are: (1) 'Would you like + noun?' — e.g., 'Would you like some tea?' (2) 'Would you like + to + infinitive?' — e.g., 'Would you like to sit down?' (3) 'Do you want + noun / to + infinitive?' — more direct and informal, used with friends. (4) 'Can I get you...?' / 'Let me...' — offering help. Note that 'Would you like...?' is polite and does not mean the same as 'Do you like...?', which asks about general preference. Typical short answers: 'Yes, please.', 'No, thank you.', 'That would be great.', 'I'd love to.' Avoid answering 'Yes, I would like' alone; add 'please' or give a full sentence.",
+          "vi": "Trong tiếng Anh, khi mời hoặc đề nghị ai đó thứ gì (đồ ăn, đồ uống, sự giúp đỡ), ta dùng các mẫu câu lịch sự: (1) 'Would you like + danh từ?' — 'Would you like some tea?' (Bạn dùng trà nhé?) (2) 'Would you like + to + động từ nguyên mẫu?' — 'Would you like to sit down?' (Bạn muốn ngồi xuống chứ?) (3) 'Do you want...?' — thân mật, trực tiếp hơn, chỉ dùng với bạn bè thân thiết. (4) 'Can I get you...?' / 'Let me...' — dùng để đề nghị giúp đỡ. Lưu ý quan trọng: 'Would you like...?' là lời mời lịch sự, KHÔNG giống 'Do you like...?' (hỏi về sở thích nói chung). Ví dụ: 'Would you like coffee?' = mời cà phê; 'Do you like coffee?' = hỏi bạn có thích cà phê không. Khi trả lời, dùng 'Yes, please.' / 'No, thank you.' / 'I'd love to.' — đừng trả lời cụt 'Yes, I would like' vì nghe thiếu lịch sự."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'Do you like...?' asks about general preference (whether someone likes tea in general), not an offer. To offer something now, use 'Would you like...?'.",
+            "right": "Would you like some tea?",
+            "wrong": "Do you like some tea?"
+          },
+          {
+            "why": "'Drink' as a noun needs an article or determiner ('a drink', 'something to drink'). Without it, the sentence is grammatically incomplete.",
+            "right": "Would you like a drink? / Would you like something to drink?",
+            "wrong": "Would you like drink?"
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:49:53Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199367, Requested 2118. Please try again in 10m41.52s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
       }
     }
   ]

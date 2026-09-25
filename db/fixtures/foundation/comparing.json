@@ -1,11 +1,322 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1112381Z",
+  "generated_at": "2026-09-25T18:49:49.2334783Z",
   "node": {
     "namespace": "pattern",
     "code": "COMPARING",
     "label": "Comparing",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-comparing-grammar-sentence-transform-1",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence using the comparative structure beginning with 'My laptop is...': Tom's phone is cheaper than my laptop.",
+        "acceptable": [
+          "My laptop is more expensive than Tom's phone is.",
+          "My laptop costs more than Tom's phone."
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPARING:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:36:34Z"
+          },
+          "ai_request_id": "c7dfa379-fdd2-4a0b-b6fa-98cc1448b720",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic comparative forms (cheaper/more expensive), which are typically introduced at A2. The sentence transformation is simple and the vocabulary is everyday; it falls below the B1 target.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "My laptop is more expensive than Tom's phone."
+          }
+        },
+        "explanation": {
+          "explanation_en": "When comparing two things, you can reverse the comparison. 'Cheaper than' becomes 'more expensive than' because 'expensive' is a long adjective and takes 'more' instead of the '-er' ending.",
+          "explanation_vi": "Khi so sánh hai sự vật, bạn có thể đảo chiều phép so sánh. 'Cheaper than' (rẻ hơn) trở thành 'more expensive than' (đắt hơn) vì 'expensive' là tính từ dài và phải dùng 'more' thay vì đuôi '-er'."
+        },
+        "correct_answer": "My laptop is more expensive than Tom's phone."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:36:34Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-ex-comparing-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence so it keeps the same meaning, beginning with 'My brother is not as...': My brother is less careful than my sister.",
+        "acceptable": [
+          "My brother isn't as careful as my sister.",
+          "My brother is not as careful as my sister is."
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPARING:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:37:02Z"
+          },
+          "ai_request_id": "4f18c267-0695-41e5-ad73-70d5cf7f5d78",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests comparative structures ('less ... than' → 'not as ... as'), a transformation typically introduced and consolidated at B1. Vocabulary is simple, but the negative equality comparison structure goes beyond A2 basics and is a standard B1 grammar point.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "My brother is not as careful as my sister."
+          }
+        },
+        "explanation": {
+          "explanation_en": "To compare two people, 'less careful than' can be rewritten using the negative equality structure 'not as + adjective + as'. The adjective stays in its base form: 'not as careful as'.",
+          "explanation_vi": "Để so sánh hai người, cấu trúc 'less careful than' có thể được viết lại bằng cấu trúc phủ định bằng 'not as + tính từ + as'. Tính từ giữ nguyên dạng gốc: 'not as careful as'."
+        },
+        "correct_answer": "My brother is not as careful as my sister."
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:37:02Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-comparing-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "This year's festival was ___ exciting than the one we attended last summer.",
+        "options": [
+          {
+            "id": "A",
+            "text": "much more"
+          },
+          {
+            "id": "B",
+            "text": "the most"
+          },
+          {
+            "id": "C",
+            "text": "as much"
+          },
+          {
+            "id": "D",
+            "text": "very more"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPARING:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:36:44Z"
+          },
+          "ai_request_id": "fa99333f-288d-4a0f-bc07-8da0d5621909",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests comparative structures with 'much more ... than', a standard B1 grammar point. Vocabulary (festival, exciting, attend) is common, and the sentence is simple past context. Distractors require understanding comparative vs superlative and 'as ... as' patterns, consistent with B1 rather than A2.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "When comparing two things, use the comparative form: 'much more exciting than'. 'The most' is for comparing three or more things, and 'as much' does not fit the comparative pattern with 'than'.",
+          "explanation_vi": "Khi so sánh hai sự việc, dùng dạng so sánh hơn: 'much more exciting than'. 'The most' dùng cho so sánh nhất với ba sự việc trở lên, còn 'as much' không phù hợp với cấu trúc so sánh hơn có 'than'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:36:44Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-comparing",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "My brother is two years ___ than me, but we are almost the same height.",
+        "options": [
+          {
+            "id": "A",
+            "text": "older"
+          },
+          {
+            "id": "B",
+            "text": "oldest"
+          },
+          {
+            "id": "C",
+            "text": "old"
+          },
+          {
+            "id": "D",
+            "text": "more old"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPARING:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:37:12Z"
+          },
+          "ai_request_id": "3569d84a-2d23-47fb-a175-ee4f854545e9",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic comparative adjectives ('older than'), a grammar point typically mastered at A2. The sentence uses simple present and everyday vocabulary, well below B1 complexity.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "When comparing two people or things, use the comparative form 'older' with 'than'. 'Oldest' is a superlative used for three or more, and 'more old' is incorrect because short adjectives take '-er'.",
+          "explanation_vi": "Khi so sánh hai người hoặc hai sự vật, dùng dạng so sánh hơn 'older' kèm với 'than'. 'Oldest' là so sánh nhất dùng cho ba đối tượng trở lên, và 'more old' sai vì tính từ ngắn thêm '-er'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:37:12Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-review-comparing",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "My new apartment is ___ than my old one.",
+        "options": [
+          {
+            "id": "A",
+            "text": "more spacious"
+          },
+          {
+            "id": "B",
+            "text": "spacier"
+          },
+          {
+            "id": "C",
+            "text": "most spacious"
+          },
+          {
+            "id": "D",
+            "text": "as spacious"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:COMPARING:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "the independent verifier answered \"doubt\"",
+            "verdict": "doubt",
+            "checked_at": "2026-09-25T16:37:23Z"
+          },
+          "ai_request_id": "3ce14d7c-f8cf-4b54-96e7-3dea37912df1",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic comparative forms ('more + adjective + than') with simple everyday vocabulary and a simple sentence structure. Comparative adjectives are typically introduced at A2, not B1; the distractors and prompt are straightforward, making this below the requested B1 level.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "When comparing two things with a two-syllable adjective ending in -ous, use 'more' + adjective + 'than'. 'Most spacious' is for superlatives (three or more things), and 'as spacious' is used for equal comparison, not with 'than'.",
+          "explanation_vi": "Khi so sánh hai vật với tính từ hai âm tiết kết thúc bằng -ous, dùng 'more' + tính từ + 'than'. 'Most spacious' dùng cho so sánh cao nhất (từ ba vật trở lên), còn 'as spacious' dùng cho so sánh ngang bằng, không đi với 'than'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-25T16:37:23Z",
+        "reason": "the independent verifier answered \"doubt\""
+      }
+    },
+    {
+      "slug": "foundation-topic-comparing",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "SUPERLATIVES",
+          "AS_AS_COMPARISON",
+          "QUANTIFIERS"
+        ],
+        "examples": [
+          {
+            "note": "Short adjective 'easy' → 'easier' (y→i + -er); 'much' intensifies the comparative; 'than' introduces the second element of comparison.",
+            "text": "This exercise is much easier than the one we did yesterday."
+          },
+          {
+            "note": "'not as + adjective + as' shows unequal comparison; 'faster than' is a comparative adverb comparing how two people perform an action.",
+            "text": "My brother isn't as tall as me, but he runs faster than I do."
+          },
+          {
+            "note": "'The + comparative, the + comparative' expresses that two things change together: more practice leads to more confidence.",
+            "text": "The more you practise speaking, the more confident you become."
+          }
+        ],
+        "objective": "Understand the formation and core uses of comparative structures (comparative adjectives/adverbs, 'as ... as', 'more/fewer/less + noun') to compare people, things, and actions accurately at CEFR B1 level.",
+        "_provenance": {
+          "batch": "foundation:COMPARING:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:37:39Z"
+          },
+          "ai_request_id": "4aa5f186-e798-46f9-b408-52b6e4b62d2a",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "To compare two things, use a comparative adjective or adverb + 'than': 'taller than', 'more interesting than'. Short adjectives (one syllable, and many two-syllable ones) take '-er' (taller, cheaper, happier — note y→i); longer adjectives take 'more' (more expensive, more difficult). Some adjectives are irregular: good→better, bad→worse, far→farther/further, little→less, much/many→more. For equal comparison, use 'as + adjective/adverb + as' ('as busy as') and for unequal comparison 'not as ... as' or 'not so ... as'. When comparing quantities, use 'more/fewer + countable nouns' (fewer cars) and 'more/less + uncountable nouns' (less time, less money). You can strengthen comparatives with 'much', 'far', 'a lot', 'a bit', or 'slightly' (much better), but never use 'very' with a comparative. 'The + comparative, the + comparative' expresses parallel change ('The sooner, the better'), and 'the + comparative + of the two' identifies one of a pair. Avoid double comparatives ('more taller').",
+          "vi": "Để so sánh hai người hoặc hai sự vật, dùng tính từ/trạng từ ở dạng so sánh hơn + 'than': 'taller than', 'more interesting than'. Tính từ ngắn (một âm tiết và nhiều tính từ hai âm tiết) thêm '-er' (taller, cheaper, happier — lưu ý y đổi thành i trước khi thêm -er); tính từ dài dùng 'more' (more expensive, more difficult). Một số tính từ bất quy tắc cần nhớ: good→better, bad→worse, far→farther/further, little→less, much/many→more. Để so sánh bằng nhau, dùng cấu trúc 'as + tính từ/trạng từ + as' ('as busy as' — bận rộn như); để nói không bằng, dùng 'not as ... as'. Khi so sánh số lượng: 'more/fewer + danh từ đếm được' (fewer cars — ít xe hơn) và 'more/less + danh từ không đếm được' (less time — ít thời gian hơn). Có thể nhấn mạnh so sánh hơn bằng 'much', 'far', 'a lot', 'a bit', 'slightly' (much better — tốt hơn nhiều), nhưng KHÔNG dùng 'very' trước so sánh hơn. Cấu trúc 'The + so sánh hơn, the + so sánh hơn' diễn tả hai sự việc cùng thay đổi ('The sooner, the better' — càng sớm càng tốt). Tuyệt đối tránh lỗi so sánh kép như 'more taller'."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Never combine 'more' with an '-er' comparative — this is a double comparative. Use only one comparative form ('bigger') and, if you want to intensify it, use 'much', 'far', or 'a lot' instead of 'more'.",
+            "right": "This city is much bigger than my hometown.",
+            "wrong": "This city is more bigger than my hometown."
+          },
+          {
+            "why": "'Friends' is a countable plural noun, so it requires 'fewer'. Use 'less' only with uncountable nouns (less water, less time).",
+            "right": "She has fewer friends than her sister.",
+            "wrong": "She has less friends than her sister."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:37:39Z"
+      }
+    }
+  ]
 }

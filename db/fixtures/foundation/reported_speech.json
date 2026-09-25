@@ -1,11 +1,246 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2663598Z",
+  "generated_at": "2026-09-25T18:49:49.3754107Z",
   "node": {
     "namespace": "grammar",
     "code": "REPORTED_SPEECH",
     "label": "Reported Speech",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-reported-speech-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence in reported speech, beginning with 'She said that': 'I will call you tomorrow,' she said.",
+        "acceptable": [
+          "She said that she would call me the following day.",
+          "She said (that) she would call me the next day."
+        ],
+        "_provenance": {
+          "batch": "foundation:REPORTED_SPEECH:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "d342f201-e7f0-47fe-a99b-8583e93a6671",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "Reported speech with backshifting of 'will' to 'would', pronoun changes, and time expression shifts ('tomorrow' → 'the next day') is a classic B1 grammar topic. The sentence is short and the transformation is standard, matching the B1 target level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "She said that she would call me the next day."
+          }
+        },
+        "explanation": {
+          "explanation_en": "In reported speech, 'will' changes to 'would', 'I' changes to 'she', 'you' changes to 'me', and time expressions like 'tomorrow' change to 'the next day' or 'the following day'.",
+          "explanation_vi": "Trong câu tường thuật, 'will' đổi thành 'would', 'I' đổi thành 'she', 'you' đổi thành 'me', và các cụm chỉ thời gian như 'tomorrow' đổi thành 'the next day' hoặc 'the following day'."
+        },
+        "correct_answer": "She said that she would call me the next day."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-reported-speech-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "She told me that she ___ the report the day before.",
+        "options": [
+          {
+            "id": "A",
+            "text": "has finished"
+          },
+          {
+            "id": "B",
+            "text": "is finishing"
+          },
+          {
+            "id": "C",
+            "text": "had finished"
+          },
+          {
+            "id": "D",
+            "text": "will finish"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:REPORTED_SPEECH:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "08613ba7-6b32-4852-8a01-f25aee9b12bb",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests reported speech with backshift from present perfect to past perfect, a grammar point typically introduced at B1. The sentence is short and clear, and the distractors are straightforward tense forms, making it appropriate for B1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In reported speech, present perfect 'have finished' becomes past perfect 'had finished', and 'yesterday' becomes 'the day before'.",
+          "explanation_vi": "Trong câu tường thuật, thì hiện tại hoàn thành 'have finished' chuyển thành quá khứ hoàn thành 'had finished', và 'yesterday' chuyển thành 'the day before'."
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-reported-speech",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Direct speech: \"I will call you tomorrow,\" she said. Which is the correct reported speech?",
+        "options": [
+          {
+            "id": "A",
+            "text": "She said she will call me tomorrow."
+          },
+          {
+            "id": "B",
+            "text": "She said she would call me the next day."
+          },
+          {
+            "id": "C",
+            "text": "She said she would call me tomorrow."
+          },
+          {
+            "id": "D",
+            "text": "She says she would call me the next day."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:REPORTED_SPEECH:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "e82dd7ab-c8e4-4cac-8a81-2e3f0051ae07",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests reported speech with backshift of modal 'will' to 'would' and time expression 'tomorrow' to 'the next day', a classic B1 grammar point. Vocabulary is simple and sentences are short, so it is not B2; it goes beyond A2 which only covers basic past simple and direct statements.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In reported speech, 'will' changes to 'would' and 'tomorrow' changes to 'the next day' because the reporting verb 'said' is in the past.",
+          "explanation_vi": "Trong câu tường thuật, 'will' đổi thành 'would' và 'tomorrow' đổi thành 'the next day' vì động từ tường thuật 'said' ở thì quá khứ."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-reported-speech",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Direct speech: 'Where do you live?' he asked me. Which is the correct reported question?",
+        "options": [
+          {
+            "id": "A",
+            "text": "He asked me where I lived."
+          },
+          {
+            "id": "B",
+            "text": "He asked me where did I live."
+          },
+          {
+            "id": "C",
+            "text": "He asked me where do I live."
+          },
+          {
+            "id": "D",
+            "text": "He asked me where I lived?"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:REPORTED_SPEECH:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "46a1e0ca-c7b0-4bfa-ad97-09ac4d8bd1e3",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "Reported speech with backshift of 'will' to 'would' and time expression changes is a classic B1 grammar point; vocabulary is simple and the sentence structures are clear.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Reported questions use statement word order (subject before verb, no 'do/did') and end with a full stop. The tense backshifts: 'live' → 'lived'.",
+          "explanation_vi": "Câu hỏi tường thuật dùng trật tự câu trần thuật (chủ ngữ trước động từ, không có 'do/did') và kết thúc bằng dấu chấm. Thì lùi một bậc: 'live' → 'lived'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-reported-speech",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "TENSES_PAST_SIMPLE",
+          "PAST_PERFECT",
+          "QUESTIONS_INDIRECT"
+        ],
+        "examples": [
+          {
+            "note": "Present continuous backshifts to past continuous; 'now' becomes 'then' and 'I' becomes 'she'.",
+            "text": "\"I am watching a film now,\" she said. → She said (that) she was watching a film then."
+          },
+          {
+            "note": "Reported question uses statement word order (no inversion); past simple backshifts to past perfect.",
+            "text": "\"Where did you buy your laptop?\" he asked me. → He asked me where I had bought my laptop."
+          },
+          {
+            "note": "Negative commands use told + object + not to + infinitive.",
+            "text": "\"Don't touch the paintings,\" the guide told us. → The guide told us not to touch the paintings."
+          }
+        ],
+        "objective": "Understand the formation and core uses of reported speech (statements, questions, and commands), including tense backshift, pronoun changes, and time/place expression changes, in order to accurately report what someone else said.",
+        "_provenance": {
+          "batch": "foundation:REPORTED_SPEECH:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "a376112b-93d4-433f-9255-349459593ed1",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Reported speech (indirect speech) is used to tell someone what another person said, without quoting their exact words. When the reporting verb is in the past (said, told, asked), tenses usually 'backshift' one step into the past: present simple → past simple (I work → she worked); present continuous → past continuous (I am reading → he was reading); present perfect → past perfect (I have finished → she had finished); past simple → past perfect (I saw it → he had seen it); will → would; can → could; may → might; must → had to. Pronouns and possessives change according to who is speaking and who is being spoken about (I → he/she, my → his/her). Time and place expressions also shift: now → then, today → that day, yesterday → the day before, tomorrow → the next day/the following day, here → there, this → that. For reported questions, use statement word order (no do/does/did inversion, no question mark): 'Where do you live?' → She asked me where I lived. Yes/no questions are introduced by if or whether. Commands and requests use told/asked + object + (not) to + infinitive: 'Sit down' → He told me to sit down; 'Don't be late' → She asked me not to be late. Note: 'say' is used without a direct person object (He said (that)...), while 'tell' needs one (He told me...). Backshift is optional when the information is still true or the reporting verb is in the present.",
+          "vi": "Câu tường thuật (reported speech) dùng để kể lại lời của người khác mà không trích dẫn nguyên văn. Khi động từ tường thuật ở quá khứ (said, told, asked), thì của động từ thường 'lùi' về quá khứ một bậc: hiện tại đơn → quá khứ đơn (I work → she worked); hiện tại tiếp diễn → quá khứ tiếp diễn; hiện tại hoàn thành → quá khứ hoàn thành; quá khứ đơn → quá khứ hoàn thành; will → would; can → could; may → might; must → had to. Đại từ nhân xưng và sở hữu cũng thay đổi theo người nói (I → he/she, my → his/her). Các từ chỉ thời gian và nơi chốn thay đổi: now → then, today → that day, yesterday → the day before, tomorrow → the next day, here → there, this → that. Với câu hỏi tường thuật, dùng trật tự từ của câu trần thuật (không đảo ngữ do/does/did, không dấu hỏi): 'Where do you live?' → She asked me where I lived. Câu hỏi Có/Không dùng if hoặc whether. Câu mệnh lệnh, yêu cầu dùng told/asked + tân ngữ + (not) to + động từ nguyên mẫu: 'Sit down' → He told me to sit down. Lưu ý: 'say' không cần tân ngữ người (He said that...), còn 'tell' phải có tân ngữ (He told me...). Không cần lùi thì nếu thông tin vẫn còn đúng hoặc động từ tường thuật ở hiện tại."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Reported questions use statement word order: no auxiliary 'do' and no inversion. The question word is followed by subject + verb, and the tense backshifts to the past.",
+            "right": "She asked me where I lived.",
+            "wrong": "She asked me where do I live."
+          },
+          {
+            "why": "'Say' cannot take a person as a direct object. Use 'tell + person' or 'say (that) + clause' without the person.",
+            "right": "He told me that he was tired. / He said (that) he was tired.",
+            "wrong": "He said me that he was tired."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

@@ -1,11 +1,472 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1821791Z",
+  "generated_at": "2026-09-25T18:49:49.3004862Z",
   "node": {
     "namespace": "skill",
     "code": "LISTENING_PHRASES",
     "label": "Listening: Phrases",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-listening-phrases-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence in reported speech beginning with 'She said': She said, \"I am listening to the radio now.\"",
+        "acceptable": [
+          "She said she was listening to the radio then.",
+          "She said that she was listening to the radio at that time."
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING_PHRASES:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:46:06Z"
+          },
+          "ai_request_id": "f0dd20e2-4fab-4c2d-bdb4-5764aac30409",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "Reported speech with tense backshift (present continuous to past continuous) and time/place word changes is a B1 grammar point, not A2. The transformation requires understanding of pronoun shifts and 'now' to 'then' changes, which exceeds A2 simple sentence skills.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "She said she was listening to the radio then."
+          }
+        },
+        "explanation": {
+          "explanation_en": "In reported speech, the present continuous 'am listening' changes to past continuous 'was listening', 'I' becomes 'she', and 'now' changes to 'then'.",
+          "explanation_vi": "Trong câu tường thuật, thì hiện tại tiếp diễn 'am listening' đổi thành quá khứ tiếp diễn 'was listening', 'I' đổi thành 'she', và 'now' đổi thành 'then'."
+        },
+        "correct_answer": "She said that she was listening to the radio then."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:46:06Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-ex-listening-phrases-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Listen to the conversation. Tom asks: 'What were you doing when the team scored the first goal?' Anna answers: 'I ___ dinner with my family in the kitchen.'",
+        "options": [
+          {
+            "id": "A",
+            "text": "was eating"
+          },
+          {
+            "id": "B",
+            "text": "ate"
+          },
+          {
+            "id": "C",
+            "text": "am eating"
+          },
+          {
+            "id": "D",
+            "text": "have eaten"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING_PHRASES:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:45:50Z"
+          },
+          "ai_request_id": "b6f7133f-25ed-49d5-845f-4df73342d896",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item targets the past continuous ('was eating') in a simple, familiar context (football match, dinner, homework). Vocabulary is high-frequency and sentences are short and clear. Although the distractors include present perfect ('have eaten'), which is slightly above A2, the tested structure—past continuous for an action in progress at a past moment—is commonly taught at A2, and the dialogue uses only simple past and past continuous forms. This matches the requested A2 level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Anna describes an action in progress at a specific moment in the past, so the past continuous 'was eating' is correct. This matches the listening phrase 'What were you doing when...?'",
+          "explanation_vi": "Anna miêu tả một hành động đang diễn ra tại một thời điểm cụ thể trong quá khứ, nên dùng thì quá khứ tiếp diễn 'was eating'. Câu này khớp với cụm từ nghe được 'What were you doing when...?'"
+        },
+        "context_script": "Anna: Hi Tom! Did you watch the football match last night?\nTom: Yes, I did! It was amazing. Our team won two goals to one.\nAnna: Great! I missed it. I was doing my homework while the match was on.\nTom: You should watch it online. By the way, what were you doing when the team scored the first goal?\nAnna: I was eating dinner with my family in the kitchen.",
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:45:50Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-ex-listening-phrases-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "A2",
+      "body": {
+        "passage": "Last week, Mai called a hotel in Da Lat to book a room for her family. When the receptionist answered, Mai said, \"Excuse me, could you help me, please? I'd like to book a double room for three nights.\" The receptionist replied, \"Of course, no problem. When would you like to arrive?\" Mai said, \"We're arriving on Friday, the tenth of June.\" The receptionist checked the computer and said, \"I'm afraid the double rooms are fully booked that weekend. Would a twin room be OK?\" Mai asked, \"How much is it per night?\" \"It's 700,000 dong, breakfast included,\" the receptionist answered. Mai thought for a moment and said, \"That sounds fine. I'll take it.\" The receptionist said, \"Great. Could I have your name, please?\" \"My name is Mai Nguyen, and my phone number is 0905 123 456,\" Mai said. \"Thank you. We'll see you on Friday,\" the receptionist said. \"See you then. Have a nice day!\"",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "What did Mai want to do at the beginning of the call?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Cancel a room booking"
+              },
+              {
+                "id": "B",
+                "text": "Book a double room for three nights"
+              },
+              {
+                "id": "C",
+                "text": "Ask about breakfast prices"
+              },
+              {
+                "id": "D",
+                "text": "Change her phone number"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Mai says, \"I'd like to book a double room for three nights,\" so she wanted to book a double room.",
+              "explanation_vi": "Mai nói: \"I'd like to book a double room for three nights\", nghĩa là cô muốn đặt một phòng đôi cho ba đêm."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "Why couldn't the hotel give Mai a double room?",
+            "options": [
+              {
+                "id": "A",
+                "text": "The double rooms were fully booked that weekend"
+              },
+              {
+                "id": "B",
+                "text": "The hotel was closed in June"
+              },
+              {
+                "id": "C",
+                "text": "Mai did not have enough money"
+              },
+              {
+                "id": "D",
+                "text": "The receptionist did not like Mai"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The receptionist says, \"I'm afraid the double rooms are fully booked that weekend.\"",
+              "explanation_vi": "Nhân viên lễ tân nói: \"I'm afraid the double rooms are fully booked that weekend\" – các phòng đôi đã hết cho cuối tuần đó."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "How much does the twin room cost per night?",
+            "options": [
+              {
+                "id": "A",
+                "text": "500,000 dong with breakfast"
+              },
+              {
+                "id": "B",
+                "text": "700,000 dong without breakfast"
+              },
+              {
+                "id": "C",
+                "text": "700,000 dong with breakfast"
+              },
+              {
+                "id": "D",
+                "text": "900,000 dong with breakfast"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The receptionist says, \"It's 700,000 dong, breakfast included.\"",
+              "explanation_vi": "Nhân viên nói: \"It's 700,000 dong, breakfast included\" – giá 700.000 đồng, đã bao gồm bữa sáng."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "Which polite phrase does the receptionist use to say sorry about the double rooms?",
+            "options": [
+              {
+                "id": "A",
+                "text": "\"No problem\""
+              },
+              {
+                "id": "B",
+                "text": "\"I'm afraid\""
+              },
+              {
+                "id": "C",
+                "text": "\"That sounds fine\""
+              },
+              {
+                "id": "D",
+                "text": "\"See you then\""
+              }
+            ],
+            "explanation": {
+              "explanation_en": "\"I'm afraid...\" is a polite phrase used to give bad news or say sorry.",
+              "explanation_vi": "\"I'm afraid...\" là cụm từ lịch sự dùng để đưa tin xấu hoặc xin lỗi một cách khéo léo."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "What information does Mai give at the end of the call?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Her email address and home address"
+              },
+              {
+                "id": "B",
+                "text": "Her name and phone number"
+              },
+              {
+                "id": "C",
+                "text": "Her passport number"
+              },
+              {
+                "id": "D",
+                "text": "Her credit card details"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Mai says, \"My name is Mai Nguyen, and my phone number is 0905 123 456.\"",
+              "explanation_vi": "Mai nói: \"My name is Mai Nguyen, and my phone number is 0905 123 456\" – cô cung cấp tên và số điện thoại."
+            },
+            "correct_option_id": "B"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING_PHRASES:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199166, Requested 2703. Please try again in 13m27.407999999s. Need more tokens? Upgrade to Dev Tier today at http, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:46:39Z"
+          },
+          "ai_request_id": "2256c0d5-054a-4a0c-8160-ca125afdaa86",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The passage is a simple dialogue about a routine task (booking a hotel room) using short sentences, past simple narration, common everyday vocabulary, and polite fixed expressions ('I'd like to', 'I'm afraid', 'no problem'). Questions test literal comprehension with clear distractors, matching A2 descriptors for familiar, routine matters.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "B",
+              "q2": "A",
+              "q3": "C",
+              "q4": "B",
+              "q5": "B"
+            }
+          }
+        },
+        "passage_title": "A Phone Call to the Hotel"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:46:39Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199166, Requested 2703. Please try again in 13m27.407999999s. Need more tokens? Upgrade to Dev Tier today at http, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-quiz-listening-phrases",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Listen to the audio: 'Excuse me, could you tell me where the bus station is?' What is the speaker doing?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Asking for directions"
+          },
+          {
+            "id": "B",
+            "text": "Buying a bus ticket"
+          },
+          {
+            "id": "C",
+            "text": "Saying goodbye to a friend"
+          },
+          {
+            "id": "D",
+            "text": "Inviting someone to a party"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:LISTENING_PHRASES:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:46:55Z"
+          },
+          "ai_request_id": "ecbec20d-1102-4b4b-ba8d-93d18f10da65",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses a simple, polite formulaic question ('Excuse me, could you tell me where... is?') with common vocabulary about asking for directions, matching A2 routine communicative tasks. Options are short, familiar phrases.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The phrase 'Excuse me, could you tell me where... is?' is a polite way to ask for directions to a place.",
+          "explanation_vi": "Câu 'Excuse me, could you tell me where... is?' là cách hỏi đường lịch sự đến một địa điểm."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:46:55Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-review-listening-phrases",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "title": "At the Coffee Shop",
+        "prompt": "Listen to the conversation at the coffee shop. Which phrase does the customer use to order politely?",
+        "script": "Good afternoon! Welcome to Sunny Coffee. What can I get for you today? ... I'd like a small iced coffee, please. ... Sure! Would you like anything to eat with that? We have fresh croissants and chocolate cake. ... Hmm, a croissant sounds good. ... Great! That will be six dollars. For here or to go? ... To go, please. ... No problem. Your order will be ready in five minutes. Thank you, and have a nice day!",
+        "options": [
+          {
+            "id": "A",
+            "text": "\"Give me a coffee now.\""
+          },
+          {
+            "id": "B",
+            "text": "\"I'd like a small iced coffee, please.\""
+          },
+          {
+            "id": "C",
+            "text": "\"Do you want a croissant?\""
+          },
+          {
+            "id": "D",
+            "text": "\"That will be six dollars.\""
+          }
+        ],
+        "transcript": "Good afternoon! Welcome to Sunny Coffee. What can I get for you today? ... I'd like a small iced coffee, please. ... Sure! Would you like anything to eat with that? We have fresh croissants and chocolate cake. ... Hmm, a croissant sounds good. ... Great! That will be six dollars. For here or to go? ... To go, please. ... No problem. Your order will be ready in five minutes. Thank you, and have a nice day!",
+        "_provenance": {
+          "batch": "foundation:LISTENING_PHRASES:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:47:15Z"
+          },
+          "ai_request_id": "62a59277-8f8d-45de-8535-9df16d5cfa22",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item uses simple, high-frequency vocabulary and a basic polite ordering phrase ('I'd like... please') typical of A2 listening tasks. Distractors are short, simple sentences. The task requires distinguishing speakers in a routine transaction, consistent with A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In the recording, the customer says 'I'd like a small iced coffee, please.' This is a polite phrase for ordering. Option C is said by the shop worker, and option D is said by the worker to give the price.",
+          "explanation_vi": "Trong đoạn ghi âm, khách hàng nói 'I'd like a small iced coffee, please.' Đây là câu lịch sự dùng để gọi món. Phương án C là nhân viên nói, và phương án D là nhân viên nói để báo giá."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:47:15Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Request too large for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1024. The request's expected output tokens exceed the enforced limit; reduce max_tokens (or the requ, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-topic-listening-phrases",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "LISTENING_GREETINGS",
+          "SPEAKING_POLITE_REQUESTS",
+          "VOCAB_COMMON_EXPRESSIONS"
+        ],
+        "examples": [
+          {
+            "note": "A polite request using 'Could you...?' – softer and more polite than 'Can you...?'. Common in shops, streets, and travel situations.",
+            "text": "Could you help me with this bag, please?"
+          },
+          {
+            "note": "A common offer phrase. 'Would you like...?' is more polite than 'Do you want...?'. The expected answers are 'Yes, please.' or 'No, thank you.'",
+            "text": "Would you like something to drink?"
+          },
+          {
+            "note": "'Here you are.' is a fixed phrase used when giving something to someone; it does not mean 'you are here'. The natural response is 'Thank you.'",
+            "text": "Here you are. – Oh, thank you very much!"
+          }
+        ],
+        "objective": "Understand and recognize common everyday English phrases and fixed expressions in spoken audio (e.g., greetings, polite requests, and responses) at CEFR A2 level, so the learner can identify their meaning and function when listening.",
+        "_provenance": {
+          "batch": "foundation:LISTENING_PHRASES:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 198964, Requested 2398. Please try again in 9m48.384s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:48:07Z"
+          },
+          "ai_request_id": "aee865cf-c134-49e4-8d2b-5195e51f557c",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "When listening to spoken English, many key messages come in the form of fixed phrases rather than single words. At A2 level, learners should learn to recognize common functional phrases such as greetings ('How's it going?'), polite requests ('Could you...?', 'Can I...?'), offers ('Would you like...?'), and common responses ('No problem.', 'Never mind.', 'Here you are.'). These phrases often have meanings that differ from the individual words, so it is important to learn them as whole units. In fast speech, words are often linked or reduced (e.g., 'What do you...' sounds like 'Whaddya...'), so recognizing the whole phrase pattern helps comprehension. Pay attention to intonation: rising intonation in 'Would you like some tea?' signals an offer or question, while falling intonation in 'Here you are.' signals completion. When listening, first identify the function (greeting, request, offer, apology, thanks), then match it to the phrase you know.",
+          "vi": "Khi nghe tiếng Anh giao tiếp, nhiều thông tin quan trọng được diễn đạt bằng các cụm từ cố định (fixed phrases) thay vì từng từ riêng lẻ. Ở trình độ A2, người học cần nhận diện được các cụm từ chức năng thường gặp như: lời chào ('How's it going?' – 'Dạo này thế nào?'), lời đề nghị lịch sự ('Could you...?', 'Can I...?'), lời mời ('Would you like...?'), và các câu trả lời thông dụng ('No problem.' – 'Không sao đâu.', 'Never mind.' – 'Đừng để tâm.', 'Here you are.' – 'Của bạn đây.'). Lưu ý quan trọng: nghĩa của cả cụm thường khác nghĩa tổng của từng từ, ví dụ 'How's it going?' không phải là câu hỏi về việc 'đi' đâu, mà chỉ là cách chào hỏi. Trong lời nói nhanh, các từ thường được nối âm hoặc rút gọn (ví dụ 'What do you...' nghe như 'Whaddya...'), vì vậy hãy luyện nghe nhận diện cả cụm thay vì cố nghe từng từ. Ngoài ra, hãy chú ý ngữ điệu: ngữ điệu lên cuối câu trong 'Would you like some tea?' cho thấy đó là lời mời/câu hỏi, còn ngữ điệu xuống trong 'Here you are.' cho thấy câu đã hoàn tất. Mẹo nghe hiệu quả: trước tiên xác định chức năng của câu (chào, xin, mời, xin lỗi, cảm ơn), sau đó đối chiếu với cụm từ đã học."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'How's it going?' is a fixed greeting phrase meaning 'How are you?', not a question about movement or travel. Learners should recognize the whole phrase as a greeting unit and respond with a standard greeting reply.",
+            "right": "Answer: 'Fine, thanks. And you?' or 'Not bad!'",
+            "wrong": "Hearing 'How's it going?' and answering literally: 'I am going by bus.'"
+          },
+          {
+            "why": "In natural spoken English, function words are reduced and linked ('What do you' → 'whaddya'). Listening for whole phrase patterns instead of individual words greatly improves comprehension at A2 level.",
+            "right": "Recognize the reduced phrase pattern: 'Whaddya want?' = 'What do you want?'",
+            "wrong": "Trying to catch every single word and getting lost when speech is fast: 'What...do...you...want?'"
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:48:07Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 198964, Requested 2398. Please try again in 9m48.384s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    }
+  ]
 }

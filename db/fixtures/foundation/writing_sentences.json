@@ -1,11 +1,445 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.3285282Z",
+  "generated_at": "2026-09-25T18:49:49.4290355Z",
   "node": {
     "namespace": "skill",
     "code": "WRITING_SENTENCES",
     "label": "Writing: Sentences",
     "cefr_level": "A1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-writing-sentences-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'There is': I have a big dog in my garden.",
+        "acceptable": [
+          "There is a big dog in the garden.",
+          "There is a big dog in my yard."
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "9e8a6074-a01e-49a1-aceb-9786fd0fb878",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item practices 'There is' with a/an + noun, a core A1 existential structure, using very simple present-tense vocabulary ('big dog', 'garden'). The transformation is mechanical and appropriate for A1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "There is a big dog in my garden."
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use 'There is' + a/an + noun to say that something exists. 'I have a big dog' becomes 'There is a big dog' with the same meaning.",
+          "explanation_vi": "Dùng 'There is' + a/an + danh từ để nói rằng có sự tồn tại của một vật. Câu 'I have a big dog' có thể viết lại thành 'There is a big dog' với nghĩa tương đương."
+        },
+        "correct_answer": "There is a big dog in my garden."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-writing-sentences-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Every morning, my father ___ coffee before he goes to work.",
+        "options": [
+          {
+            "id": "A",
+            "text": "drinks"
+          },
+          {
+            "id": "B",
+            "text": "drink"
+          },
+          {
+            "id": "C",
+            "text": "drinking"
+          },
+          {
+            "id": "D",
+            "text": "is drink"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "b412c8dd-55c7-4d02-baf9-6303fcaca18e",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests third-person singular -s in the present simple with everyday vocabulary (morning, coffee, work), matching A1 descriptors. Distractors are simple and the sentence structure is basic.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "For daily routines, use the present simple. 'My father' is third person singular, so the verb takes -s: 'drinks'.",
+          "explanation_vi": "Với thói quen hằng ngày, dùng thì hiện tại đơn. 'My father' là ngôi thứ ba số ít nên động từ thêm -s: 'drinks'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-writing-sentences-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "A1",
+      "body": {
+        "passage": "Last Saturday, I visited my uncle's farm with my family. We got up early and drove for two hours. The farm was big and green. There were many animals: cows, chickens, and two dogs. My uncle gave us breakfast first. We ate eggs and bread with milk. After breakfast, I helped my uncle feed the chickens. My sister gave water to the dogs. In the afternoon, we picked apples from the trees. The apples were red and sweet. We took a big bag of apples home. Before we left, my uncle said, \"Come again next month!\" I was tired, but I was very happy. It was a wonderful day.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "When did the writer visit the farm?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Last Sunday"
+              },
+              {
+                "id": "B",
+                "text": "Last Saturday"
+              },
+              {
+                "id": "C",
+                "text": "Next month"
+              },
+              {
+                "id": "D",
+                "text": "Last month"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The first sentence says 'Last Saturday, I visited my uncle's farm.'",
+              "explanation_vi": "Câu đầu tiên nói 'Last Saturday, I visited my uncle's farm' (Thứ Bảy tuần trước, tôi đã đến thăm trang trại của chú)."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "What did the family eat for breakfast?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Apples and bread"
+              },
+              {
+                "id": "B",
+                "text": "Eggs and milk"
+              },
+              {
+                "id": "C",
+                "text": "Chicken and rice"
+              },
+              {
+                "id": "D",
+                "text": "Bread and water"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says 'We ate eggs and bread with milk.'",
+              "explanation_vi": "Bài đọc nói 'We ate eggs and bread with milk' (Chúng tôi ăn trứng và bánh mì với sữa)."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "Who gave water to the dogs?",
+            "options": [
+              {
+                "id": "A",
+                "text": "The writer"
+              },
+              {
+                "id": "B",
+                "text": "The uncle"
+              },
+              {
+                "id": "C",
+                "text": "The writer's sister"
+              },
+              {
+                "id": "D",
+                "text": "The mother"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says 'My sister gave water to the dogs.'",
+              "explanation_vi": "Bài đọc nói 'My sister gave water to the dogs' (Chị của tôi cho chó uống nước)."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "What did they do in the afternoon?",
+            "options": [
+              {
+                "id": "A",
+                "text": "They fed the chickens"
+              },
+              {
+                "id": "B",
+                "text": "They picked apples"
+              },
+              {
+                "id": "C",
+                "text": "They drove home"
+              },
+              {
+                "id": "D",
+                "text": "They ate breakfast"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says 'In the afternoon, we picked apples from the trees.'",
+              "explanation_vi": "Bài đọc nói 'In the afternoon, we picked apples from the trees' (Buổi chiều, chúng tôi hái táo từ những cây)."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "Which sentence from the passage is a complete, correct sentence?",
+            "options": [
+              {
+                "id": "A",
+                "text": "The farm was big and green."
+              },
+              {
+                "id": "B",
+                "text": "Big and green the farm was."
+              },
+              {
+                "id": "C",
+                "text": "Was big and green the farm."
+              },
+              {
+                "id": "D",
+                "text": "The farm big and green was."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "A correct English sentence follows the order subject + verb + rest: 'The farm (subject) was (verb) big and green.' The other options put the verb in the wrong place.",
+              "explanation_vi": "Một câu tiếng Anh đúng theo trật tự chủ ngữ + động từ + phần còn lại: 'The farm (chủ ngữ) was (động từ) big and green.' Các lựa chọn khác đặt động từ sai vị trí."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q6",
+            "type": "multiple_choice",
+            "prompt": "Which sentence correctly joins these two ideas: 'I was tired.' + 'I was happy.'?",
+            "options": [
+              {
+                "id": "A",
+                "text": "I was tired, but I was very happy."
+              },
+              {
+                "id": "B",
+                "text": "I was tired but I was very happy was."
+              },
+              {
+                "id": "C",
+                "text": "Tired I was, happy I was very."
+              },
+              {
+                "id": "D",
+                "text": "I was very happy but was tired I."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage uses 'I was tired, but I was very happy.' We join two sentences with 'but' after a comma, keeping normal word order.",
+              "explanation_vi": "Bài đọc dùng 'I was tired, but I was very happy.' Ta nối hai câu bằng 'but' sau dấu phẩy, giữ trật tự từ bình thường."
+            },
+            "correct_option_id": "A"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "425e5fde-8f3f-4cca-9787-350e662f4e20",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The passage uses very short, simple sentences with high-frequency vocabulary (farm, animals, eggs, apples), simple past of common verbs (visited, ate, gave), and basic conjunctions ('but', 'and'). Questions test literal detail retrieval and basic sentence structure, all matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "B",
+              "q2": "B",
+              "q3": "C",
+              "q4": "B",
+              "q5": "A",
+              "q6": "A"
+            }
+          }
+        },
+        "passage_title": "My Day at the Farm"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-writing-sentences",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Which sentence has the correct word order?",
+        "options": [
+          {
+            "id": "A",
+            "text": "I every day go to school."
+          },
+          {
+            "id": "B",
+            "text": "I go to school every day."
+          },
+          {
+            "id": "C",
+            "text": "Every day go I to school."
+          },
+          {
+            "id": "D",
+            "text": "To school I go every day."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "a17e648b-6683-4003-9f2d-9d4f07d29b39",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic SVO word order with simple present tense and very common vocabulary ('go to school every day'), matching A1 descriptors. Distractors are simple rearrangements, and the explanation is elementary.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In a simple English sentence, the order is Subject + Verb + Object/Place + Time: 'I go to school every day.'",
+          "explanation_vi": "Trong câu tiếng Anh đơn giản, trật tự từ là Chủ ngữ + Động từ + Bổ ngữ/Nơi chốn + Thời gian: 'I go to school every day.'"
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-writing-sentences",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Which sentence is written correctly?",
+        "options": [
+          {
+            "id": "A",
+            "text": "My sister likes to read books every evening."
+          },
+          {
+            "id": "B",
+            "text": "My sister likes read books every evening."
+          },
+          {
+            "id": "C",
+            "text": "My sister like reading books every evening."
+          },
+          {
+            "id": "D",
+            "text": "My sister likes to reading books every evening."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:WRITING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "a1c8e82b-5562-4b89-bbb9-b5de8e3a6b32",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic present simple verb form with 'likes to read', using very common everyday vocabulary and simple sentence structure, appropriate for A1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "A correct sentence needs a subject, a verb in the right form, and an object. 'My sister likes to read books' uses the correct verb form 'likes' followed by 'to read'.",
+          "explanation_vi": "Một câu đúng cần có chủ ngữ, động từ chia đúng và tân ngữ. 'My sister likes to read books' dùng động từ 'likes' đúng dạng, theo sau là 'to read'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-writing-sentences",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "PRESENT_SIMPLE",
+          "SUBJECT_PRONOUNS",
+          "PUNCTUATION_BASICS"
+        ],
+        "examples": [
+          {
+            "note": "Basic S + V + O pattern: subject 'I', verb 'eat', object 'rice', with time phrase at the end. Starts with a capital letter and ends with a period.",
+            "text": "I eat rice every day."
+          },
+          {
+            "note": "Third-person subject 'she' takes the verb form 'plays' (with -s). The object 'football' follows the verb.",
+            "text": "She plays football with her friends."
+          }
+        ],
+        "objective": "Understand the formation and core uses of simple affirmative sentences in English (Subject + Verb + Object), and write basic sentences correctly with capital letters, word order, and end punctuation.",
+        "_provenance": {
+          "batch": "foundation:WRITING_SENTENCES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "dc3be6a9-953c-4c55-b770-db215e573aec",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "A simple English sentence follows the pattern Subject + Verb (+ Object). The subject tells who or what does the action (I, you, he, she, it, we, they, or a noun like 'Tom', 'the dog'). The verb shows the action or state (eat, go, is, have). Many sentences also have an object that receives the action (an apple, football). English word order is fixed: the subject comes first, then the verb, then the object. Every sentence starts with a capital letter and ends with a period (.), a question mark (?), or an exclamation mark (!). Unlike Vietnamese, English requires the subject in every sentence, and verbs change form with the subject (I work / she works).",
+          "vi": "Câu đơn tiếng Anh theo cấu trúc: Chủ ngữ + Động từ (+ Tân ngữ). Chủ ngữ cho biết ai hoặc cái gì thực hiện hành động (I, you, he, she, it, we, they, hoặc danh từ như 'Tom', 'the dog'). Động từ diễn tả hành động hoặc trạng thái (eat, go, is, have). Nhiều câu còn có tân ngữ nhận hành động (an apple, football). Trật tự từ trong tiếng Anh cố định: chủ ngữ đứng trước, sau đó là động từ, rồi đến tân ngữ — khác với tiếng Việt, không thể đảo trật tự này. Mỗi câu phải viết hoa chữ cái đầu và kết thúc bằng dấu chấm (.), dấu hỏi (?) hoặc dấu chấm than (!). Lưu ý quan trọng: tiếng Anh LUÔN cần chủ ngữ (không được bỏ như tiếng Việt: 'Hôm qua mưa' → 'It rained yesterday'), và động từ phải chia theo chủ ngữ (I work nhưng she works)."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "English sentences must always have a subject. Vietnamese often drops the subject ('Hàng ngày đi học'), but in English you must state who does the action.",
+            "right": "I go to school every day.",
+            "wrong": "Every day go to school."
+          },
+          {
+            "why": "With third-person singular subjects (he, she, it) in the present simple, the verb needs -s: like → likes.",
+            "right": "She likes coffee.",
+            "wrong": "She like coffee."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

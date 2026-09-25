@@ -1,11 +1,329 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.08822Z",
+  "generated_at": "2026-09-25T18:49:49.209505Z",
   "node": {
     "namespace": "grammar",
     "code": "ARTICLES",
     "label": "Articles",
     "cefr_level": "A1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-articles-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'I want': She has an orange and a banana.",
+        "acceptable": [
+          "I want an orange and a banana"
+        ],
+        "_provenance": {
+          "batch": "foundation:ARTICLES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:29:29Z"
+          },
+          "ai_request_id": "68d8a270-ffcb-4fb1-87e6-8ca4796be3c9",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic articles 'a/an' with very common food vocabulary (orange, banana) and a simple sentence transformation using 'I want' — all core A1 grammar and vocabulary.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "I want an orange and a banana."
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use the article 'an' before a noun that begins with a vowel sound (orange), and 'a' before a noun that begins with a consonant sound (banana).",
+          "explanation_vi": "Dùng mạo từ 'an' trước danh từ bắt đầu bằng nguyên âm (orange) và 'a' trước danh từ bắt đầu bằng phụ âm (banana)."
+        },
+        "correct_answer": "I want an orange and a banana."
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:29:29Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-articles-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "I want to buy ___ new phone, but I don't have ___ money today.",
+        "options": [
+          {
+            "id": "A",
+            "text": "a / any"
+          },
+          {
+            "id": "B",
+            "text": "an / some"
+          },
+          {
+            "id": "C",
+            "text": "a / a"
+          },
+          {
+            "id": "D",
+            "text": "the / any"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ARTICLES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:29:21Z"
+          },
+          "ai_request_id": "aacba0fa-da7a-4ed9-a491-4533c49c168b",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic articles (a/an) and quantifiers (some/any) in simple present sentences with very common everyday vocabulary ('buy a new phone', 'money'), which aligns with A1-level grammar.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'A' is used before 'new phone' because it starts with a consonant sound and it is one unspecified item. 'Any' is used in negative sentences with uncountable nouns like 'money'.",
+          "explanation_vi": "Dùng 'a' trước 'new phone' vì từ bắt đầu bằng phụ âm và là một vật không xác định. 'Any' dùng trong câu phủ định với danh từ không đếm được như 'money'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:29:21Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-articles-grammar-tense-choice-3",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "I bought ___ umbrella because it was raining.",
+        "options": [
+          {
+            "id": "A",
+            "text": "a"
+          },
+          {
+            "id": "B",
+            "text": "an"
+          },
+          {
+            "id": "C",
+            "text": "the"
+          },
+          {
+            "id": "D",
+            "text": "some"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ARTICLES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:29:37Z"
+          },
+          "ai_request_id": "9957eed8-3506-47b4-9a66-7f2396a91b14",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the basic article choice 'a/an' with very common vocabulary ('umbrella', 'raining') and a simple past-tense sentence, matching A1 descriptors of very common vocabulary and basic grammar.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use 'an' before a singular noun beginning with a vowel sound, like 'umbrella'.",
+          "explanation_vi": "Dùng 'an' trước danh từ số ít bắt đầu bằng nguyên âm, ví dụ 'umbrella'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:29:37Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-articles",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "I bought ___ umbrella because it was raining.",
+        "options": [
+          {
+            "id": "A",
+            "text": "a"
+          },
+          {
+            "id": "B",
+            "text": "an"
+          },
+          {
+            "id": "C",
+            "text": "the"
+          },
+          {
+            "id": "D",
+            "text": "some"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ARTICLES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:29:51Z"
+          },
+          "ai_request_id": "49701860-a0ea-4215-8913-5442352e73a5",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the basic article 'an' before a vowel sound with very common vocabulary ('umbrella', 'raining') and a simple past-tense sentence, matching A1-level grammar and vocabulary.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use 'an' before a word that begins with a vowel sound, like 'umbrella'.",
+          "explanation_vi": "Dùng 'an' trước từ bắt đầu bằng nguyên âm, ví dụ 'umbrella'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:29:51Z"
+      }
+    },
+    {
+      "slug": "foundation-review-articles",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "I bought ___ umbrella because it was raining.",
+        "options": [
+          {
+            "id": "A",
+            "text": "a"
+          },
+          {
+            "id": "B",
+            "text": "an"
+          },
+          {
+            "id": "C",
+            "text": "the"
+          },
+          {
+            "id": "D",
+            "text": "some"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ARTICLES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:30:00Z"
+          },
+          "ai_request_id": "a4558c51-ffd5-4514-b20a-6f5dea327bf1",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the basic indefinite article 'an' before a vowel sound with very common vocabulary ('umbrella', 'raining'). Simple past context aside, the grammar point and vocabulary are core A1 foundation content, matching the target level.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use 'an' before a word that begins with a vowel sound, like 'umbrella'. It is a new, unspecified item, so we use the indefinite article.",
+          "explanation_vi": "Dùng 'an' trước từ bắt đầu bằng nguyên âm, như 'umbrella'. Đây là vật mới, chưa được xác định, nên dùng mạo từ không xác định."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:30:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-articles",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "SINGULAR_AND_PLURAL_NOUNS",
+          "COUNTABLE_AND_UNCOUNTABLE_NOUNS",
+          "DEMONSTRATIVES_THIS_THAT"
+        ],
+        "examples": [
+          {
+            "note": "'A' is used before 'cat' (consonant sound /k/); 'an' is used before 'orange' (vowel sound /ɒ/).",
+            "text": "I have a cat and an orange."
+          },
+          {
+            "note": "First mention uses 'a'; the second sentence uses 'the' because we now know exactly which dress.",
+            "text": "She bought a dress. The dress is red."
+          },
+          {
+            "note": "'The' is used because the sun is unique — there is only one.",
+            "text": "The sun is bright today."
+          }
+        ],
+        "objective": "Understand the formation and core uses of the articles 'a', 'an', and 'the', and correctly choose between them in simple A1-level sentences.",
+        "_provenance": {
+          "batch": "foundation:ARTICLES:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:30:12Z"
+          },
+          "ai_request_id": "784480f3-c572-4e95-863b-5fabffec0679",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "English has three articles. 'A' and 'an' are indefinite articles, used before singular countable nouns when we mention something for the first time or talk about any one of a group. Use 'a' before words beginning with a consonant sound (a book, a car) and 'an' before words beginning with a vowel sound (an apple, an egg, an hour). Remember it is the sound, not the letter, that matters: 'a university' (because 'u' sounds like /ju:/) but 'an hour' (because 'h' is silent). 'The' is the definite article, used when the listener knows exactly which thing we mean — because it was mentioned before, it is unique, or it is clear from the situation. We say 'I have a dog. The dog is big.' We do not use an article before plural nouns when speaking generally ('Dogs are friendly') or before most proper names and uncountable nouns in general statements ('Water is important').",
+          "vi": "Tiếng Anh có ba mạo từ. 'A' và 'an' là mạo từ không xác định, dùng trước danh từ đếm được số ít khi nhắc đến sự vật lần đầu hoặc nói về bất kỳ một cái nào trong nhóm. Dùng 'a' trước từ bắt đầu bằng âm phụ âm (a book, a car) và 'an' trước từ bắt đầu bằng âm nguyên âm (an apple, an egg, an hour). Lưu ý: quan trọng là ÂM, không phải CHỮ CÁI — ví dụ 'a university' (vì 'u' đọc là /ju:/) nhưng 'an hour' (vì 'h' câm). 'The' là mạo từ xác định, dùng khi người nghe biết chính xác là sự vật nào — vì đã nhắc trước đó, nó là duy nhất, hoặc rõ ràng từ ngữ cảnh. Ví dụ: 'I have a dog. The dog is big.' (Tôi có một con chó. Con chó ấy to.) Không dùng mạo từ trước danh từ số nhiều khi nói chung ('Dogs are friendly') hay trước danh từ không đếm được khi nói chung ('Water is important')."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'Movie' begins with the consonant sound /m/, so 'a' is required. 'An' is only used before vowel sounds, not vowel letters.",
+            "right": "I saw a movie yesterday.",
+            "wrong": "I saw an movie yesterday."
+          },
+          {
+            "why": "When the noun is mentioned for the second time, we use 'the' because the listener now knows exactly which dog we are talking about.",
+            "right": "I have a dog. The dog is very cute.",
+            "wrong": "I have a dog. A dog is very cute."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:30:12Z"
+      }
+    }
+  ]
 }

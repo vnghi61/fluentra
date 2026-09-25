@@ -1,11 +1,326 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.0693778Z",
+  "generated_at": "2026-09-25T18:49:49.1915986Z",
   "node": {
     "namespace": "vocabulary",
     "code": "ACADEMIC_VOCABULARY",
     "label": "Academic Vocabulary",
     "cefr_level": "B2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-academic-vocabulary-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Rewrite the sentence using the word 'considerable': The new policy led to a significant improvement in student performance. Begin your sentence with: 'The new policy resulted in...'",
+        "acceptable": [
+          "The new policy resulted in considerable improvement in student performance.",
+          "The new policy resulted in a considerable improvement in students' performance."
+        ],
+        "_provenance": {
+          "batch": "foundation:ACADEMIC_VOCABULARY:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:23:58Z"
+          },
+          "ai_request_id": "8d4252b6-0055-4558-ad9d-8cfe90a0a344",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item requires transforming a sentence using the formal academic adjective 'considerable' and the collocation 'resulted in', which involves nuanced vocabulary substitution and academic register awareness typical of B2. The task is manageable but demands more than basic paraphrasing.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "answer": "The new policy resulted in a considerable improvement in student performance."
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Considerable' is a formal academic adjective meaning 'large or significant in amount or degree'. It is commonly used in academic writing to describe changes, improvements, or differences, and can replace 'significant' in this context.",
+          "explanation_vi": "'Considerable' là tính từ mang tính học thuật, nghĩa là 'lớn, đáng kể về số lượng hoặc mức độ'. Từ này thường được dùng trong văn viết học thuật để mô tả sự thay đổi, cải thiện hoặc khác biệt, và có thể thay thế cho 'significant' trong ngữ cảnh này."
+        },
+        "correct_answer": "The new policy resulted in a considerable improvement in student performance."
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:23:58Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-academic-vocabulary-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "Researchers have ___ that regular exercise can significantly reduce stress levels, a finding that has been widely cited in recent studies.",
+        "options": [
+          {
+            "id": "A",
+            "text": "demonstrated"
+          },
+          {
+            "id": "B",
+            "text": "demonstrate"
+          },
+          {
+            "id": "C",
+            "text": "are demonstrating"
+          },
+          {
+            "id": "D",
+            "text": "were demonstrating"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ACADEMIC_VOCABULARY:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:23:48Z"
+          },
+          "ai_request_id": "87ab01cb-7827-4091-bcff-4924b6ba7c1e",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests present perfect vs. simple past and progressive forms in an academic register. While present perfect itself is introduced at B1, the sentence features abstract academic vocabulary ('significantly reduce stress levels', 'widely cited', 'recent studies') and requires understanding of tense-aspect relevance to present discourse, which aligns with B2's complex text on abstract topics. Distractors include progressive forms, adding subtle aspect discrimination beyond B1.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The present perfect 'have demonstrated' is correct because the research finding remains relevant now and is connected to present academic discourse. The adverb 'recently' and the phrase 'has been widely cited' signal a link to the present, so a present tense form is required, and the past participle 'demonstrated' follows 'have'.",
+          "explanation_vi": "Thì hiện tại hoàn thành 'have demonstrated' được dùng vì kết quả nghiên cứu vẫn còn liên quan đến hiện tại, được thể hiện qua cụm 'has been widely cited'. Sau 'have' phải dùng quá khứ phân từ 'demonstrated'."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:23:48Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-academic-vocabulary-vocab-multiple-choice-1",
+      "kind": "vocab_multiple_choice",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "The research findings were ___ with previous studies, confirming that sleep quality significantly affects memory.",
+        "options": [
+          {
+            "id": "A",
+            "text": "consistent"
+          },
+          {
+            "id": "B",
+            "text": "contradictory"
+          },
+          {
+            "id": "C",
+            "text": "ambiguous"
+          },
+          {
+            "id": "D",
+            "text": "irrelevant"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ACADEMIC_VOCABULARY:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:23:36Z"
+          },
+          "ai_request_id": "29832f19-3b8d-4824-a7ac-1c516ae5fdc9",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests academic vocabulary ('consistent with', 'contradictory', 'ambiguous', 'irrelevant') in a research context with abstract topics like sleep quality and memory. These distractors and collocations are typical of B2-level academic English.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Consistent with' means in agreement with something. The sentence says the findings confirm previous studies, so they must agree with them.",
+          "explanation_vi": "'Consistent with' nghĩa là phù hợp, thống nhất với điều gì đó. Câu nói rằng các kết quả xác nhận các nghiên cứu trước đó, nên chúng phải thống nhất với nhau."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:23:36Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-academic-vocabulary",
+      "kind": "foundation_quiz",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "The researchers' findings were ___ on data collected over a ten-year period, making the study highly reliable.",
+        "options": [
+          {
+            "id": "A",
+            "text": "predominant"
+          },
+          {
+            "id": "B",
+            "text": "subsequent"
+          },
+          {
+            "id": "C",
+            "text": "empirical"
+          },
+          {
+            "id": "D",
+            "text": "hypothetical"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ACADEMIC_VOCABULARY:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:24:07Z"
+          },
+          "ai_request_id": "d0ef57a3-36bf-4514-8e8f-964133d7f229",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The item tests academic vocabulary discrimination (empirical vs hypothetical vs predominant vs subsequent) within an academic research context. Such low-frequency Latinate vocabulary and academic register align with B2, where learners handle technical discussions and complex texts on abstract topics.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Empirical' means based on observation or real data rather than theory, which fits the idea of findings based on ten years of collected data. 'Hypothetical' means theoretical or imagined, which contradicts the sentence.",
+          "explanation_vi": "'Empirical' nghĩa là dựa trên quan sát hoặc dữ liệu thực tế chứ không phải lý thuyết, phù hợp với ý 'các phát hiện dựa trên dữ liệu thu thập trong mười năm'. 'Hypothetical' nghĩa là giả định, trái với nội dung câu."
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:24:07Z"
+      }
+    },
+    {
+      "slug": "foundation-review-academic-vocabulary",
+      "kind": "foundation_review",
+      "cefr_level": "B2",
+      "body": {
+        "prompt": "The professor asked students to ___ their arguments with evidence from recent studies.",
+        "options": [
+          {
+            "id": "A",
+            "text": "substantiate"
+          },
+          {
+            "id": "B",
+            "text": "estimate"
+          },
+          {
+            "id": "C",
+            "text": "postpone"
+          },
+          {
+            "id": "D",
+            "text": "summarise"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:ACADEMIC_VOCABULARY:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:24:16Z"
+          },
+          "ai_request_id": "d63363ca-c9b7-4795-b533-69739d0c6dbc",
+          "cefr_estimate": "B2",
+          "cefr_reasoning": "The target word 'substantiate' is a low-frequency academic verb typically acquired at B2, and the sentence context involves academic argumentation with evidence, matching B2 descriptors for abstract topics and technical discussion.",
+          "prompt_version": "item_generate.v2",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Substantiate' means to support a claim or argument with evidence, a common verb in academic writing.",
+          "explanation_vi": "'Substantiate' nghĩa là chứng minh hoặc củng cố một lập luận bằng bằng chứng, động từ thường gặp trong văn phong học thuật."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:24:16Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-academic-vocabulary",
+      "kind": "foundation_topic",
+      "cefr_level": "B2",
+      "body": {
+        "related": [
+          "ACADEMIC_WRITING_REGISTER",
+          "COLLOCATIONS_ADVANCED",
+          "NOMINALISATION"
+        ],
+        "examples": [
+          {
+            "note": "Uses the academic verb 'indicate' with an abstract subject ('the findings') and the collocation 'contribute significantly to' — typical of academic register.",
+            "text": "The findings of this study indicate that regular exercise contributes significantly to improved mental health."
+          },
+          {
+            "note": "Demonstrates nominalisation ('decision' instead of 'decide') and the formal collocation 'have a considerable impact on', replacing the vague phrase 'a big effect'.",
+            "text": "The government's decision to increase funding had a considerable impact on educational outcomes."
+          }
+        ],
+        "objective": "Understand and master the use of high-frequency academic vocabulary, including nominalisation, key academic verbs (analyze, demonstrate, indicate, etc.), and formal collocations, in order to produce and comprehend academic texts at CEFR B2 level.",
+        "_provenance": {
+          "batch": "foundation:ACADEMIC_VOCABULARY:20260925T162328",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "qwen/qwen3.8-27b",
+            "verdict": "confirmed",
+            "checked_at": "2026-09-25T16:24:31Z"
+          },
+          "ai_request_id": "80166f28-7107-4cb3-9b4a-b836bf0bc9f3",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Academic vocabulary differs from everyday English in three main ways. First, academic writing prefers nominalisation: turning verbs and adjectives into nouns (e.g., 'decide' → 'decision', 'important' → 'importance', 'develop' → 'development'). This makes sentences more formal and allows ideas to become subjects or objects of discussion. Second, academic prose relies on a core set of versatile verbs — analyze, demonstrate, indicate, suggest, contribute, establish, evaluate, illustrate — which are often used with abstract subjects such as 'the data', 'the results', or 'this study'. For example, 'The results indicate that...' rather than 'The results show us that...'. Third, academic vocabulary depends heavily on fixed collocations: 'conduct research', 'draw a conclusion', 'raise an issue', 'play a role in', 'have an impact on'. Learning words in these chunks is more effective than learning single words. Additionally, academic English avoids contractions, phrasal verbs where a single formal verb exists ('carry out' → 'conduct'), and vague quantifiers ('a lot of' → 'a significant number of / considerable'). At B2 level, learners should recognise these patterns in reading and begin producing them in essays and reports.",
+          "vi": "Từ vựng học thuật khác với tiếng Anh thông thường ở ba điểm chính. Thứ nhất, văn phong học thuật ưu tiên danh từ hoá (nominalisation): biến động từ và tính từ thành danh từ (ví dụ: 'decide' → 'decision', 'important' → 'importance', 'develop' → 'development'). Cách này giúp câu trang trọng hơn và cho phép ý tưởng trở thành chủ ngữ hoặc đối tượng được bàn luận. Thứ hai, văn bản học thuật dựa vào một nhóm động từ trung tâm rất linh hoạt — analyze, demonstrate, indicate, suggest, contribute, establish, evaluate, illustrate — thường đi với chủ ngữ trừu tượng như 'the data', 'the results', 'this study'. Ví dụ: dùng 'The results indicate that...' thay vì 'The results show us that...'. Thứ ba, từ vựng học thuật phụ thuộc nhiều vào các cụm từ cố định (collocations): 'conduct research', 'draw a conclusion', 'raise an issue', 'play a role in', 'have an impact on'. Học theo cụm từ hiệu quả hơn học từng từ đơn lẻ. Ngoài ra, tiếng Anh học thuật tránh viết tắt (contractions), tránh cụm động từ (phrasal verbs) khi có động từ trang trọng tương đương ('carry out' → 'conduct'), và tránh lượng từ mơ hồ ('a lot of' → 'a significant number of' / 'considerable'). Ở trình độ B2, người học cần nhận diện các mẫu này khi đọc và bắt đầu vận dụng trong bài luận và báo cáo."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Academic writing avoids informal elements: 'showed us' is replaced by the impersonal academic verb 'indicated', 'a lot of' by the precise quantifier 'a significant number of', and the vague phrase 'have problems with' by the more formal collocation 'experience difficulties with'.",
+            "right": "The research indicated that a significant number of students experience difficulties with time management.",
+            "wrong": "The research showed us that a lot of students have problems with time management."
+          },
+          {
+            "why": "'Research' is uncountable (no 'a'), the correct collocation is 'conduct research on', and 'found out' is informal — 'established' is the appropriate academic verb.",
+            "right": "We conducted research on climate change and established several significant findings.",
+            "wrong": "We did a research about climate change and found out many important things."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "verifier",
+        "confirmed": true,
+        "model": "qwen/qwen3.8-27b",
+        "checked_at": "2026-09-25T16:24:31Z"
+      }
+    }
+  ]
 }

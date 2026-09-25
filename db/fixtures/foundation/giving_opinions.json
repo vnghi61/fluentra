@@ -1,11 +1,291 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1526768Z",
+  "generated_at": "2026-09-25T18:49:49.2762751Z",
   "node": {
     "namespace": "pattern",
     "code": "GIVING_OPINIONS",
     "label": "Giving Opinions",
     "cefr_level": "B1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-giving-opinions-grammar-sentence-transform-1",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'In my opinion': I think online learning is just as effective as classroom learning.",
+        "acceptable": [
+          "In my opinion online learning is just as effective as classroom learning.",
+          "In my opinion, learning online is just as effective as classroom learning."
+        ],
+        "_provenance": {
+          "batch": "foundation:GIVING_OPINIONS:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199469, Requested 798. Please try again in 1m55.344s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:11:21Z"
+          },
+          "ai_request_id": "22c47209-2a29-4d9b-a41f-239e81b554ee",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The task requires transforming a sentence using the discourse phrase 'In my opinion', which involves understanding opinion-giving expressions and comma placement. The vocabulary ('effective', 'classroom learning') and topic (online vs classroom learning) align with B1 school/everyday topics. The transformation itself is simple substitution, keeping it within B1 rather than higher levels.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "In my opinion, online learning is just as effective as classroom learning."
+          }
+        },
+        "explanation": {
+          "explanation_en": "'In my opinion' is a common phrase for giving opinions. It is usually followed by a comma when it starts a sentence, and it replaces 'I think' without changing the rest of the sentence.",
+          "explanation_vi": "'In my opinion' là cụm từ thường dùng để nêu ý kiến cá nhân. Khi đứng đầu câu, nó thường được theo sau bởi dấu phẩy và thay thế cho 'I think' mà không làm thay đổi phần còn lại của câu."
+        },
+        "correct_answer": "In my opinion, online learning is just as effective as classroom learning."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:11:21Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199469, Requested 798. Please try again in 1m55.344s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-ex-giving-opinions-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "In my ___, the new library opening hours are much more convenient for students.",
+        "options": [
+          {
+            "id": "A",
+            "text": "opinion"
+          },
+          {
+            "id": "B",
+            "text": "decision"
+          },
+          {
+            "id": "C",
+            "text": "order"
+          },
+          {
+            "id": "D",
+            "text": "place"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:GIVING_OPINIONS:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199425, Requested 877. Please try again in 2m10.464s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:11:39Z"
+          },
+          "ai_request_id": "ed9acf2c-df1a-447a-b4ee-084f23183d59",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the fixed phrase 'In my opinion', a very common expression typically learned at A2. The sentence is simple, uses everyday vocabulary (library, opening hours, convenient), and the distractors are basic nouns. This is below the B1 target.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The fixed phrase 'In my opinion' is used to give a personal view or belief about something. The other options do not form a natural expression for stating opinions.",
+          "explanation_vi": "Cụm cố định 'In my opinion' được dùng để nêu quan điểm hoặc ý kiến cá nhân về một vấn đề. Các lựa chọn khác không tạo thành cách diễn đạt tự nhiên khi đưa ra ý kiến."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:11:39Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199425, Requested 877. Please try again in 2m10.464s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-quiz-giving-opinions",
+      "kind": "foundation_quiz",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Which sentence correctly gives a personal opinion in a formal discussion?",
+        "options": [
+          {
+            "id": "A",
+            "text": "The weather is bad today."
+          },
+          {
+            "id": "B",
+            "text": "In my opinion, remote work is more productive than office work."
+          },
+          {
+            "id": "C",
+            "text": "He finished the report yesterday."
+          },
+          {
+            "id": "D",
+            "text": "There are twelve months in a year."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:GIVING_OPINIONS:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199305, Requested 998. Please try again in 2m10.896s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:12:31Z"
+          },
+          "ai_request_id": "3b4b59a1-9c56-4cb9-8948-d2f3ac5e82c8",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests recognizing opinion-giving phrases ('In my opinion, ...') in a formal discussion context, a B1-level discourse skill. Vocabulary and grammar of options are simple (A2), but the pragmatic distinction between fact and opinion in a discussion setting aligns with B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'In my opinion, ...' is a standard phrase for giving a personal opinion. The other options state facts or describe situations, not opinions.",
+          "explanation_vi": "'In my opinion, ...' là cụm từ chuẩn để nêu ý kiến cá nhân. Các câu còn lại chỉ nêu sự thật hoặc mô tả tình huống, không phải ý kiến."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:12:31Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199305, Requested 998. Please try again in 2m10.896s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-review-giving-opinions",
+      "kind": "foundation_review",
+      "cefr_level": "B1",
+      "body": {
+        "prompt": "Which sentence correctly gives a personal opinion in a formal discussion?",
+        "options": [
+          {
+            "id": "A",
+            "text": "In my opinion, remote work improves productivity."
+          },
+          {
+            "id": "B",
+            "text": "Remote work improves productivity, isn't it?"
+          },
+          {
+            "id": "C",
+            "text": "I am agree that remote work improves productivity."
+          },
+          {
+            "id": "D",
+            "text": "Remote work improves productivity, I think so too much."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:GIVING_OPINIONS:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199264, Requested 1095. Please try again in 2m35.088s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:12:50Z"
+          },
+          "ai_request_id": "d56bfafb-7351-4e06-9cd0-7409df73f972",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests opinion-giving structures ('In my opinion', 'I agree'), question tags, and common learner errors, all typical B1 grammar and functions. Vocabulary (remote work, productivity) is accessible at B1, and the distractors target known B1-level mistakes.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'In my opinion, ...' is a standard, correct pattern for giving an opinion. Option B uses an incorrect question tag, C is wrong because we say 'I agree' (not 'I am agree'), and D is ungrammatical.",
+          "explanation_vi": "'In my opinion, ...' là mẫu câu chuẩn và đúng để nêu ý kiến cá nhân. Phương án B dùng câu hỏi đuôi sai, C sai vì phải nói 'I agree' (không dùng 'I am agree'), và D không đúng ngữ pháp."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:12:50Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199264, Requested 1095. Please try again in 2m35.088s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-topic-giving-opinions",
+      "kind": "foundation_topic",
+      "cefr_level": "B1",
+      "body": {
+        "related": [
+          "AGREEING_DISAGREEING",
+          "MODAL_VERBS_SOFTENING",
+          "CONNECTORS_CONTRAST"
+        ],
+        "examples": [
+          {
+            "note": "The most common opinion pattern; 'that' is optional in everyday speech.",
+            "text": "I think (that) remote work is better for productivity."
+          },
+          {
+            "note": "'In my opinion' introduces a slightly more formal personal viewpoint, often followed by a contrast.",
+            "text": "In my opinion, the film was too long, but the acting was excellent."
+          },
+          {
+            "note": "'It seems to me (that)...' hedges the opinion, making it sound tentative and polite.",
+            "text": "It seems to me that young people spend too much time online."
+          }
+        ],
+        "objective": "Understand and master the core patterns for giving opinions in English at CEFR B1 level, including 'I think (that)...', 'In my opinion,...', 'I believe/feel (that)...', and how to agree or disagree politely.",
+        "_provenance": {
+          "batch": "foundation:GIVING_OPINIONS:20260923T161104",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199197, Requested 2447. Please try again in 11m50.208s. Need more tokens? Upgrade to Dev Tier today at https://co, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T16:13:17Z"
+          },
+          "ai_request_id": "3993567b-e657-43dd-89c7-255d5cea8677",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "To give an opinion in English, use set phrases followed by a clause or noun phrase. The most common patterns are: (1) 'I think (that) + clause' — the most neutral and frequent way to state an opinion; 'that' is optional in speech. (2) 'In my opinion, + clause' — slightly more formal, signals a personal viewpoint. (3) 'I believe / I feel (that) + clause' — 'believe' sounds stronger or more formal; 'feel' sounds softer and more personal. (4) 'If you ask me, ...' and 'The way I see it, ...' — informal spoken alternatives. (5) 'It seems to me (that) + clause' — expresses a tentative, hedged opinion. Note that after these phrases you state a full clause with subject + verb; do not use them with a bare verb. To soften an opinion, add 'I think', 'maybe', 'perhaps', or 'personally': 'Personally, I think it's too expensive.' To ask for opinions, use 'What do you think (about/of)...?', 'How do you feel about...?', or 'What's your opinion on...?'. When disagreeing, soften with 'I'm not sure', 'I don't really agree', or 'I see your point, but...' rather than a direct 'You're wrong.'",
+          "vi": "Để nêu ý kiến trong tiếng Anh, người học cần nắm các mẫu câu cố định: (1) 'I think (that) + mệnh đề' — cách phổ biến và trung lập nhất; trong văn nói có thể bỏ 'that'. (2) 'In my opinion, + mệnh đề' — trang trọng hơn, nhấn mạnh đây là quan điểm cá nhân. (3) 'I believe / I feel (that) + mệnh đề' — 'believe' mạnh và trang trọng hơn; 'feel' mềm mại, mang tính cá nhân. (4) 'If you ask me, ...' và 'The way I see it, ...' — dùng trong văn nói thân mật. (5) 'It seems to me (that) + mệnh đề' — diễn đạt ý kiến một cách dè dặt, lịch sự. Lưu ý: sau các cụm này phải là một mệnh đề đầy đủ (chủ ngữ + động từ), không được dùng với động từ nguyên mẫu. Để làm mềm ý kiến, thêm 'personally', 'maybe', 'perhaps': 'Personally, I think it's too expensive.' Khi hỏi ý kiến, dùng 'What do you think of/about...?', 'How do you feel about...?'. Khi không đồng ý, nên làm mềm bằng 'I'm not sure', 'I don't really agree', 'I see your point, but...' thay vì nói thẳng 'You're wrong' vì nghe thô lỗ. Người Việt thường dịch 'theo tôi' thành 'According to me' — đây là lỗi sai; 'according to' chỉ dùng với nguồn khác (người khác, báo chí), không dùng với bản thân."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'According to' is only used to report other people's views or sources (e.g., 'According to the news'). For your own opinion, use 'In my opinion', 'I think', or 'Personally'.",
+            "right": "In my opinion, this book is very interesting.",
+            "wrong": "According to me, this book is very interesting."
+          },
+          {
+            "why": "'Agree' is a verb in English, not an adjective, so it cannot follow 'be'. Say 'I agree' or 'I don't agree'.",
+            "right": "I agree with you.",
+            "wrong": "I am agree with you."
+          },
+          {
+            "why": "Direct disagreement sounds rude in English. Soften it with phrases like 'I see your point, but...', 'I'm not sure...', or 'That's a good point, however...'.",
+            "right": "I see your point, but I'm not sure I agree.",
+            "wrong": "You're wrong. That's not true at all."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T16:13:17Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199197, Requested 2447. Please try again in 11m50.208s. Need more tokens? Upgrade to Dev Tier today at https://co, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    }
+  ]
 }

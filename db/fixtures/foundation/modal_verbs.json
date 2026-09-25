@@ -1,11 +1,251 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.1908345Z",
+  "generated_at": "2026-09-25T18:49:49.3087449Z",
   "node": {
     "namespace": "grammar",
     "code": "MODAL_VERBS",
     "label": "Modal Verbs",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-modal-verbs-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence using 'must': It is necessary for students to wear a uniform at this school.",
+        "acceptable": [
+          "The students must wear a uniform at this school.",
+          "Students must wear uniforms at this school."
+        ],
+        "_provenance": {
+          "batch": "foundation:MODAL_VERBS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "42f33f36-7650-4c66-bb4c-ab3b4d0e365c",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item requires understanding and transforming modal verb structures ('It is necessary to...' → 'must + base verb'). Modal verbs are explicitly listed as B1 grammar in the CEFR reference descriptors, and sentence transformation tasks of this type exceed typical A2 demands, which focus on simple sentences and past simple.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Students must wear a uniform at this school."
+          }
+        },
+        "explanation": {
+          "explanation_en": "The modal verb 'must' expresses obligation or necessity. 'It is necessary to...' can be transformed into 'must + base verb' without changing the meaning.",
+          "explanation_vi": "Động từ khuyết thiếu 'must' diễn tả sự bắt buộc hoặc sự cần thiết. Cấu trúc 'It is necessary to...' có thể chuyển thành 'must + động từ nguyên mẫu' mà không thay đổi nghĩa."
+        },
+        "correct_answer": "Students must wear a uniform at this school."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-modal-verbs-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "You ___ use your phone during the exam. It is against the rules.",
+        "options": [
+          {
+            "id": "A",
+            "text": "mustn't"
+          },
+          {
+            "id": "B",
+            "text": "don't have to"
+          },
+          {
+            "id": "C",
+            "text": "should"
+          },
+          {
+            "id": "D",
+            "text": "can"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:MODAL_VERBS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "b1a3ce2e-00fd-446a-8284-55c495b99fa1",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests 'should' for advice in a simple, everyday sentence with common vocabulary. Modal 'should' for recommendations is typically introduced at A2, and the distractors (can, must not, will) are basic modals, keeping the task accessible at A2 level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Mustn't' means something is forbidden, which matches 'against the rules'. 'Don't have to' only means it is not necessary.",
+          "explanation_vi": "'Mustn't' nghĩa là bị cấm, phù hợp với 'against the rules'. 'Don't have to' chỉ có nghĩa là không cần thiết."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-modal-verbs",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "You look very tired. You ___ go to bed early tonight.",
+        "options": [
+          {
+            "id": "A",
+            "text": "should"
+          },
+          {
+            "id": "B",
+            "text": "can"
+          },
+          {
+            "id": "C",
+            "text": "must not"
+          },
+          {
+            "id": "D",
+            "text": "may not"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:MODAL_VERBS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "751f12a2-a848-4114-a009-0b55e7ad3099",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests basic modal verb 'should' for advice in a simple everyday sentence with common vocabulary ('tired', 'go to bed early'). This matches A2 descriptors for simple sentences and familiar matters; modal distinctions are basic and the distractors are straightforward.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Use 'should' to give friendly advice or a recommendation. 'Can' expresses ability or permission, and 'must not'/'may not' express prohibition, which does not fit here.",
+          "explanation_vi": "Dùng 'should' để đưa ra lời khuyên nhẹ nhàng. 'Can' diễn tả khả năng hoặc sự cho phép, còn 'must not'/'may not' diễn tả sự cấm đoán, không phù hợp trong ngữ cảnh này."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-modal-verbs",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "You ___ drink water before you exercise, but you don't have to drink a lot.",
+        "options": [
+          {
+            "id": "A",
+            "text": "should"
+          },
+          {
+            "id": "B",
+            "text": "must not"
+          },
+          {
+            "id": "C",
+            "text": "can't"
+          },
+          {
+            "id": "D",
+            "text": "would"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:MODAL_VERBS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "7137464e-6b3a-4f59-b8b7-aadeb890728e",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests modal verbs of advice and prohibition (should, must not, can't, would), which the CEFR reference places at B1. The sentence also includes the semi-modal 'don't have to', adding a nuance distinction between advice and obligation that exceeds A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Should' is used to give advice or say something is a good idea. 'Must not' and 'can't' show prohibition, and 'would' is used for hypothetical situations, so they do not fit here.",
+          "explanation_vi": "'Should' được dùng để đưa ra lời khuyên hoặc nói rằng việc gì là tốt. 'Must not' và 'can't' diễn tả sự cấm đoán, còn 'would' dùng cho tình huống giả định, nên không phù hợp ở đây."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-modal-verbs",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "VERB_PATTERNS_BASE_FORM",
+          "HAVE_TO_OBLIGATION",
+          "IMPERATIVES"
+        ],
+        "examples": [
+          {
+            "note": "'Can' expresses present ability; 'can't' is the negative form (can + not), followed by the base verb 'speak'.",
+            "text": "I can speak a little English, but I can't speak Japanese."
+          },
+          {
+            "note": "'Should' gives advice or a recommendation. It is followed directly by the base verb 'go'.",
+            "text": "You look tired. You should go to bed early tonight."
+          },
+          {
+            "note": "'Might' expresses a possibility (maybe 30-50% chance). 'Should' adds advice based on that possibility.",
+            "text": "It might rain later, so you should take an umbrella."
+          }
+        ],
+        "objective": "Understand the formation and core uses of modal verbs (can, could, may, might, must, should, will, would) to express ability, possibility, permission, obligation, and advice at CEFR A2 level.",
+        "_provenance": {
+          "batch": "foundation:MODAL_VERBS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "b72fa979-3d89-4054-b3bf-1a7344c426c0",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Modal verbs are special auxiliary verbs that add meaning to the main verb. The main modals are: can, could, may, might, must, should, will, and would. Key rules: (1) A modal verb is always followed by the base form of the verb (no 'to', no -s, no -ing): 'She can swim', not 'She can to swim' or 'She cans swim'. (2) Questions and negatives are formed without 'do': 'Can you help me?', 'You should not worry'. (3) Modals never change form — there is no -s for third person and no infinitive or past participle forms. Core uses: ABILITY: 'can' (present), 'could' (past): 'I can drive. I could read when I was four.' POSSIBILITY: 'may', 'might', 'could': 'It might rain tomorrow.' PERMISSION: 'can', 'may', 'could' (polite): 'May I leave early?' OBLIGATION/NECESSITY: 'must' (strong), 'have to' (also strong, works in all tenses): 'You must wear a seatbelt.' ADVICE: 'should', 'ought to': 'You should see a doctor.' Note: 'must not' means prohibition (don't do it), while 'don't have to' means it is not necessary. This difference is important: 'You mustn't smoke here' (it's forbidden) vs 'You don't have to smoke' (you don't need to).",
+          "vi": "Động từ khuyết thiếu (modal verbs) là các động từ đặc biệt đứng trước động từ chính để bổ sung nghĩa. Các modal chính: can, could, may, might, must, should, will, would. Quy tắc quan trọng: (1) Sau modal luôn là động từ nguyên mẫu KHÔNG 'to': 'She can swim', KHÔNG dùng 'She can to swim' hay 'She cans swim'. (2) Khi hỏi và phủ định KHÔNG dùng 'do': 'Can you help me?', 'You should not worry'. (3) Modal không bao giờ chia -s ở ngôi thứ ba và không có dạng quá khứ riêng (trừ could là quá khứ của can). Cách dùng chính: KHẢ NĂNG: 'can' (hiện tại), 'could' (quá khứ): 'I can drive.' KHẢ NĂNG XẢY RA: 'may', 'might', 'could': 'It might rain tomorrow.' (Có thể mai trời mưa.) XIN PHÉP: 'can', 'may', 'could' (lịch sự hơn): 'May I leave early?' (Tôi về sớm được không?) SỰ BẮT BUỘC: 'must' (mạnh), 'have to' (dùng được mọi thì): 'You must wear a seatbelt.' LỜI KHUYÊN: 'should': 'You should see a doctor.' (Bạn nên đi khám.) Lưu ý dễ nhầm: 'must not (mustn't)' = cấm đoán, không được làm; còn 'don't have to' = không cần thiết. Ví dụ: 'You mustn't smoke here' (Cấm hút thuốc ở đây) khác 'You don't have to smoke' (Bạn không cần hút thuốc). Đây là điểm nhiều người học Việt Nam hay nhầm."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "After a modal verb, use the base form of the verb without 'to'. 'Can to drive' is incorrect; only verbs like 'want' take the to-infinitive (e.g., 'She wants to drive').",
+            "right": "She can drive a car.",
+            "wrong": "She can to drive a car."
+          },
+          {
+            "why": "Modal verbs never take -s in the third person singular. The -s ending belongs to ordinary present simple verbs, but modals (can, must, should, etc.) stay the same for all subjects.",
+            "right": "He can swim very well.",
+            "wrong": "He cans swim very well."
+          },
+          {
+            "why": "Questions with modal verbs are formed by inverting the modal and the subject. Do not use 'do/does' with modals: 'Can you...?', not 'Do you can...?'.",
+            "right": "Can you help me?",
+            "wrong": "Do you can help me?"
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

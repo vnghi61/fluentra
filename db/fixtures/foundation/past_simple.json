@@ -1,11 +1,247 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2148628Z",
+  "generated_at": "2026-09-25T18:49:49.3354276Z",
   "node": {
     "namespace": "grammar",
     "code": "PAST_SIMPLE",
     "label": "Past Simple",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-past-simple-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence in the past simple, beginning with 'Yesterday': She walks to school and then takes the bus home.",
+        "acceptable": [
+          "Yesterday she walked to school and then took the bus home.",
+          "Yesterday, she walked to school and then took the bus home.",
+          "Yesterday she walked to school and then she took the bus home."
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_SIMPLE:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "f2ed16c7-5cde-4a67-a0ce-8cce312dcc32",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests past simple transformation with regular and irregular verbs ('walked', 'took') and a basic time marker, which aligns with A2 descriptors. The sentence structure is simple with a common conjunction ('but') and everyday vocabulary.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Yesterday she walked to school, but she took the bus."
+          }
+        },
+        "explanation": {
+          "explanation_en": "To move the sentence to the past, change the verbs to the past simple: 'walks' → 'walked' (regular) and 'takes' → 'took' (irregular).",
+          "explanation_vi": "Để chuyển câu sang quá khứ, đổi động từ sang quá khứ đơn: 'walks' → 'walked' (có quy tắc) và 'takes' → 'took' (bất quy tắc)."
+        },
+        "correct_answer": "Yesterday she walked to school and then took the bus home."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-past-simple-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "___ you watch the football match last night?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Did"
+          },
+          {
+            "id": "B",
+            "text": "Do"
+          },
+          {
+            "id": "C",
+            "text": "Were"
+          },
+          {
+            "id": "D",
+            "text": "Have"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_SIMPLE:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "0e3e18e6-9343-4e1e-918d-453d4c51281a",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests past simple tense choice with a clear time marker 'Yesterday', using high-frequency vocabulary (family, beach, sea). This matches A2 descriptors for past simple in simple sentences.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "Past simple questions use 'Did' + subject + base verb. 'Last night' is a finished past time, so 'Did you watch…?' is correct.",
+          "explanation_vi": "Câu hỏi quá khứ đơn dùng 'Did' + chủ ngữ + động từ nguyên mẫu. 'Last night' là thời gian đã qua, nên 'Did you watch…?' là đúng."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-past-simple",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Yesterday, my family and I ___ to the beach and swam all afternoon.",
+        "options": [
+          {
+            "id": "A",
+            "text": "go"
+          },
+          {
+            "id": "B",
+            "text": "went"
+          },
+          {
+            "id": "C",
+            "text": "goes"
+          },
+          {
+            "id": "D",
+            "text": "will go"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_SIMPLE:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "bde823df-f4fd-4c2b-9db3-9d4746025b19",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests past simple with a common irregular verb ('went'), signaled by the time marker 'Yesterday'. Vocabulary is everyday ('family', 'beach', 'swam'), and the sentence is simple, matching A2 descriptors for past simple and familiar topics.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The time marker 'Yesterday' shows the action happened in the past, so we use the past simple form 'went' (irregular past of 'go').",
+          "explanation_vi": "Từ chỉ thời gian 'Yesterday' (hôm qua) cho thấy hành động đã xảy ra trong quá khứ, nên ta dùng thì quá khứ đơn 'went' (dạng quá khứ bất quy tắc của 'go')."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-past-simple",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "I ___ to school yesterday because I was ill.",
+        "options": [
+          {
+            "id": "A",
+            "text": "didn't go"
+          },
+          {
+            "id": "B",
+            "text": "didn't went"
+          },
+          {
+            "id": "C",
+            "text": "not went"
+          },
+          {
+            "id": "D",
+            "text": "don't go"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PAST_SIMPLE:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "9b7f840d-a56c-4a16-b4d7-a7ae27bb36bf",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests Past Simple with a clear time marker ('Last weekend') and an irregular verb ('went'), using simple everyday vocabulary and a short sentence. This matches A2 descriptors (past simple, familiar topics).",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The negative past simple is 'didn't' + base verb: 'didn't go'. After 'didn't', the main verb stays in its base form, so 'didn't went' is wrong.",
+          "explanation_vi": "Phủ định quá khứ đơn là 'didn't' + động từ nguyên mẫu: 'didn't go'. Sau 'didn't', động từ chính giữ nguyên mẫu, nên 'didn't went' là sai."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-past-simple",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "PAST_CONTINUOUS",
+          "PRESENT_PERFECT",
+          "IRREGULAR_VERBS"
+        ],
+        "examples": [
+          {
+            "note": "Regular verb 'visit' + -ed; finished action with a specific past time expression 'last weekend'.",
+            "text": "I visited my grandparents last weekend."
+          },
+          {
+            "note": "Two irregular verbs: go → went, buy → bought; both actions are completed in the past.",
+            "text": "She went to the market yesterday and bought some fruit."
+          },
+          {
+            "note": "Question form: Did + subject + base verb; the main verb 'watch' stays in base form.",
+            "text": "Did you watch the film last night?"
+          }
+        ],
+        "objective": "Understand the formation and core uses of the Past Simple tense, including regular and irregular verb forms, negative and question structures, and time expressions commonly used with past events.",
+        "_provenance": {
+          "batch": "foundation:PAST_SIMPLE:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "c597c760-7638-4764-9af7-718a953dd3fe",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "The Past Simple is used to talk about completed actions or states in the past at a specific time (e.g., yesterday, last week, in 2010). For regular verbs, add -ed to the base form (work → worked, play → played). Verbs ending in -e add only -d (live → lived); verbs ending in consonant + y change y to i and add -ed (study → studied); short verbs with a single vowel + consonant often double the consonant (stop → stopped). Many common verbs are irregular and must be memorized (go → went, see → saw, have → had, buy → bought). The Past Simple form is the same for all persons. Negatives and questions use 'did' + base verb: 'I didn't go', 'Did you see it?'. Note that when 'did' is used, the main verb returns to its base form. Time expressions often used: yesterday, last night, last week, ago, in 2005.",
+          "vi": "Quá khứ đơn dùng để nói về hành động hoặc trạng thái đã xảy ra và kết thúc trong quá khứ, thường kèm thời điểm cụ thể (yesterday, last week, in 2010, two days ago...). Động từ có quy tắc: thêm -ed (work → worked); động từ tận cùng bằng -e chỉ thêm -d (live → lived); tận cùng là phụ âm + y thì đổi y thành i rồi thêm -ed (study → studied); động từ ngắn (một nguyên âm + một phụ âm) thường gấp đôi phụ âm cuối (stop → stopped). Nhiều động từ bất quy tắc phải học thuộc (go → went, see → saw, have → had). Lưu ý: dạng quá khứ không đổi theo chủ ngữ. Thể phủ định và nghi vấn dùng 'did': 'I didn't go', 'Did you see it?' — khi có 'did', động từ chính trở về dạng nguyên mẫu, KHÔNG chia quá khứ nữa (đừng viết 'didn't went'). Đây là lỗi phổ biến nhất của người Việt học tiếng Anh."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "After 'did/didn't', the main verb must return to its base form. 'Did' already shows the past, so 'went' is redundant and incorrect.",
+            "right": "I didn't go to school yesterday.",
+            "wrong": "I didn't went to school yesterday."
+          },
+          {
+            "why": "'Go' is an irregular verb; it does not take -ed. Its past form is 'went' and must be memorized.",
+            "right": "She went to the park.",
+            "wrong": "She goed to the park."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

@@ -1,11 +1,245 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2978691Z",
+  "generated_at": "2026-09-25T18:49:49.4058949Z",
   "node": {
     "namespace": "pattern",
     "code": "SUGGESTING",
     "label": "Suggesting",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-suggesting-grammar-sentence-transform-1",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'Why don't we': Let's go to the cinema tonight.",
+        "acceptable": [
+          "Why don't we go to the cinema tonight"
+        ],
+        "_provenance": {
+          "batch": "foundation:SUGGESTING:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "ba23d034-4b3c-474f-b3ac-d0713bb3440a",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the simple suggestion pattern 'Why don't we + base verb' as a transformation of 'Let's', using everyday vocabulary (go, cinema, tonight). This functional suggestion structure and basic sentence transformation are typical A2-level grammar.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Why don't we go to the cinema tonight?"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Why don't we + base verb' is a common pattern for making suggestions. It has the same meaning as 'Let's + base verb'. Remember to use the base form of the verb (go, not goes or going).",
+          "explanation_vi": "Cấu trúc 'Why don't we + động từ nguyên mẫu' là cách phổ biến để đưa ra lời đề nghị. Nó có nghĩa giống như 'Let's + động từ'. Nhớ dùng dạng nguyên mẫu của động từ (go, không phải goes hay going)."
+        },
+        "correct_answer": "Why don't we go to the cinema tonight?"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-suggesting-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "It's very hot today. ___ we go swimming at the beach?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Shall"
+          },
+          {
+            "id": "B",
+            "text": "Do"
+          },
+          {
+            "id": "C",
+            "text": "Am"
+          },
+          {
+            "id": "D",
+            "text": "Have"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SUGGESTING:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "a252a96e-893e-4cc7-bf2c-48e7051718dc",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the 'Shall we...?' suggestion pattern with simple everyday vocabulary (hot, swimming, beach). This fixed suggestion formula is typically taught at A2, and the distractors are basic auxiliary verbs, keeping the task accessible.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Shall we...?' is a common pattern used to make a suggestion or offer an idea to someone.",
+          "explanation_vi": "'Shall we...?' là mẫu câu thường dùng để đưa ra lời đề nghị hoặc gợi ý một ý tưởng cho ai đó."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-suggesting",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "It's very hot today. ___ go swimming in the pool!",
+        "options": [
+          {
+            "id": "A",
+            "text": "Let's"
+          },
+          {
+            "id": "B",
+            "text": "How about"
+          },
+          {
+            "id": "C",
+            "text": "Why don't"
+          },
+          {
+            "id": "D",
+            "text": "Shall"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SUGGESTING:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "077c3136-ff36-4744-bf21-2a8ef7e94223",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests the basic suggestion structure 'Let's + verb', a very common everyday expression taught at beginner level. Vocabulary (hot, go swimming, pool) and sentence structure are simple, well within A1/A2; the target A2 is appropriate but the grammar point itself is A1-level.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Let's + base verb' makes a suggestion: 'Let's go swimming!' 'How about' needs -ing (How about going…?), and 'Why don't' and 'Shall' need a subject and a question (Why don't we…? / Shall we…?).",
+          "explanation_vi": "'Let's + động từ nguyên mẫu' dùng để gợi ý: 'Let's go swimming!' 'How about' cần V-ing (How about going…?), còn 'Why don't' và 'Shall' cần chủ ngữ và dạng câu hỏi (Why don't we…? / Shall we…?)."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-suggesting",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "It's very hot today. Which sentence correctly makes a suggestion to your friend?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Let's go swimming."
+          },
+          {
+            "id": "B",
+            "text": "You must go swimming."
+          },
+          {
+            "id": "C",
+            "text": "You never go swimming."
+          },
+          {
+            "id": "D",
+            "text": "I went swimming yesterday."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SUGGESTING:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "62fccf8c-229f-4fb9-af51-596ac4a13119",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the 'Let's + verb' suggestion pattern with simple, high-frequency vocabulary and short sentences. Distractors involve basic modals and past simple, all within A2 scope. The metalinguistic distinction between suggestion and obligation is simple and appropriate for A2 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "To make a suggestion, we use the pattern 'Let's + verb' (Let's go swimming). This offers an idea for both people to do together. 'You must' is an obligation, not a suggestion.",
+          "explanation_vi": "Để đưa ra lời đề nghị, ta dùng cấu trúc 'Let's + động từ' (Let's go swimming). Câu này gợi ý một hoạt động cho cả hai người cùng làm. 'You must' diễn tả sự bắt buộc, không phải lời gợi ý."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-suggesting",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "INVITATIONS",
+          "MAKING_REQUESTS",
+          "AGREEING_AND_DISAGREEING"
+        ],
+        "examples": [
+          {
+            "note": "'Let's + base verb' is the simplest way to suggest doing something together. The reply could be 'Good idea!' or 'Sorry, I'm tired.'",
+            "text": "Let's watch a movie tonight."
+          },
+          {
+            "note": "'How about' is followed by the -ing form of the verb (going), not the base form. You can also use a noun: 'How about pizza?'",
+            "text": "How about going to the beach this weekend?"
+          },
+          {
+            "note": "'Why don't we + base verb' is a friendly question form. 'We' includes the speaker, so it means 'you and I together'.",
+            "text": "Why don't we invite Anna to the party?"
+          }
+        ],
+        "objective": "Understand and master how to make suggestions in English using 'Let's...', 'Why don't we...', 'How about...', 'Shall we...', and 'We could...' at CEFR A2 level, and respond appropriately to suggestions.",
+        "_provenance": {
+          "batch": "foundation:SUGGESTING:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "4ef7734f-18e4-4730-b89f-deb788db52b5",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Suggestions are ways to offer ideas or invite others to do something together. At A2 level, the most common patterns are: (1) 'Let's + base verb' (Let's go to the cinema.) — 'Let's' is short for 'let us' and always takes the base form of the verb. (2) 'Why don't we/you + base verb?' (Why don't we have lunch together?) — this is a friendly question form; use 'we' to include yourself, 'you' to advise the other person. (3) 'How about + noun/verb-ing?' (How about a coffee? / How about watching a film?) — note that 'How about' is followed by a noun or the -ing form, NOT the base verb. (4) 'Shall we + base verb?' (Shall we dance?) — a polite, often British suggestion form. (5) 'We could + base verb' (We could take the bus.) — 'could' makes the suggestion softer and less direct. To agree, say: 'Good idea!', 'That sounds great!', 'Sure!', 'OK!'. To disagree politely, say: 'I'm not sure about that.', 'Maybe later.', 'How about... instead?'. Remember: suggestions are not commands, so keep a friendly tone and use question forms or softeners.",
+          "vi": "Câu gợi ý (suggestion) dùng để đề nghị ai đó cùng làm việc gì hoặc đưa ra ý kiến. Ở trình độ A2, các mẫu câu phổ biến nhất là: (1) 'Let's + động từ nguyên mẫu' (Let's go to the cinema.) — 'Let's' là viết tắt của 'let us', luôn đi với động từ nguyên mẫu không 'to'. (2) 'Why don't we/you + động từ nguyên mẫu?' (Why don't we have lunch together?) — dạng câu hỏi thân thiện; dùng 'we' khi rủ cả mình cùng làm, dùng 'you' khi khuyên người kia. (3) 'How about + danh từ/V-ing?' (How about a coffee? / How about watching a film?) — LƯU Ý: sau 'How about' phải là danh từ hoặc V-ing, KHÔNG dùng động từ nguyên mẫu. (4) 'Shall we + động từ nguyên mẫu?' (Shall we dance?) — cách gợi ý lịch sự, thường dùng trong tiếng Anh-Anh. (5) 'We could + động từ nguyên mẫu' (We could take the bus.) — 'could' làm câu gợi ý nhẹ nhàng, ít trực tiếp hơn. Để đồng ý: 'Good idea!', 'That sounds great!', 'Sure!', 'OK!'. Để từ chối khéo léo: 'I'm not sure about that.', 'Maybe later.', 'How about... instead?'. Lưu ý: gợi ý khác với mệnh lệnh, nên giữ giọng thân thiện, dùng dạng câu hỏi hoặc từ làm mềm câu."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "After 'How about', use a noun or the -ing form of the verb, not the base form.",
+            "right": "How about going to the cinema?",
+            "wrong": "How about go to the cinema?"
+          },
+          {
+            "why": "'Let's' is always followed by the base form of the verb without 'to'. Never say 'Let's to + verb'.",
+            "right": "Let's go home.",
+            "wrong": "Let's to go home."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

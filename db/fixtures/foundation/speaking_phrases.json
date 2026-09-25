@@ -1,11 +1,419 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2822496Z",
+  "generated_at": "2026-09-25T18:49:49.3908579Z",
   "node": {
     "namespace": "skill",
     "code": "SPEAKING_PHRASES",
     "label": "Speaking: Phrases",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-speaking-phrases-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence as a polite spoken question beginning with 'Could you tell me': Where is the bus station?",
+        "acceptable": [
+          "Could you tell me where the bus station is, please?"
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_PHRASES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "ccb6051d-d781-4be3-8348-f0faf5d5ace5",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "Indirect questions with 'Could you tell me...' and statement word order require restructuring beyond simple A2 patterns; this transformation is typically taught at B1.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Could you tell me where the bus station is?"
+          }
+        },
+        "explanation": {
+          "explanation_en": "For polite spoken requests, use 'Could you tell me...' followed by the question word and normal statement word order (subject before verb): 'where the bus station is', not 'where is the bus station'.",
+          "explanation_vi": "Để hỏi lịch sự khi nói, dùng 'Could you tell me...' theo sau là từ để hỏi và trật tự từ như câu khẳng định (chủ ngữ trước động từ): 'where the bus station is', không dùng 'where is the bus station'."
+        },
+        "correct_answer": "Could you tell me where the bus station is?"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-speaking-phrases-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "When you meet your friend after a long time, you can ask: 'Hi Anna! I ___ you for ages! How are you?'",
+        "options": [
+          {
+            "id": "A",
+            "text": "don't see"
+          },
+          {
+            "id": "B",
+            "text": "haven't seen"
+          },
+          {
+            "id": "C",
+            "text": "didn't see"
+          },
+          {
+            "id": "D",
+            "text": "am not seeing"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_PHRASES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "9d65c4c3-7398-4ab2-853c-0d7ca022f9a5",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "The item tests the present perfect ('haven't seen ... for ages'), which the CEFR reference places at B1. Although the context is a simple greeting, the tense choice requires distinguishing present perfect from past simple and present simple, a B1-level grammar skill rather than A2.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "In friendly spoken greetings, use the present perfect 'haven't seen' with 'for ages' to talk about a period that continues up to now.",
+          "explanation_vi": "Trong lời chào thân mật khi gặp lại bạn lâu ngày, dùng thì hiện tại hoàn thành 'haven't seen' với 'for ages' để nói về khoảng thời gian kéo dài đến hiện tại."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-speaking-phrases-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "A2",
+      "body": {
+        "passage": "Anna was nervous on her first day at the English club. She did not know how to start a conversation. Her teacher, Mr. Lee, smiled and said, \"Don't worry. Let's learn some useful phrases today.\" First, they practiced greetings. \"Hello, nice to meet you!\" said Anna to a new friend. The friend smiled and answered, \"Nice to meet you too!\" Then Mr. Lee taught them how to ask for help politely. \"Excuse me, could you repeat that, please?\" Anna asked. Mr. Lee was happy and repeated the sentence slowly. At the end of the class, Anna felt much more confident. She said goodbye to her classmates: \"It was great talking with you. See you next week!\" On the bus home, Anna wrote the new phrases in her notebook. She decided to use one new phrase every day. Now, speaking English is not scary for her anymore.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "How did Anna feel at the start of the English club?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Excited"
+              },
+              {
+                "id": "B",
+                "text": "Nervous"
+              },
+              {
+                "id": "C",
+                "text": "Angry"
+              },
+              {
+                "id": "D",
+                "text": "Bored"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The first sentence says 'Anna was nervous on her first day at the English club.'",
+              "explanation_vi": "Câu đầu tiên nói rằng 'Anna was nervous on her first day at the English club' — Anna cảm thấy lo lắng vào ngày đầu tiên."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "Which phrase did Mr. Lee teach for asking help politely?",
+            "options": [
+              {
+                "id": "A",
+                "text": "\"Nice to meet you\""
+              },
+              {
+                "id": "B",
+                "text": "\"See you next week\""
+              },
+              {
+                "id": "C",
+                "text": "\"Excuse me, could you repeat that, please?\""
+              },
+              {
+                "id": "D",
+                "text": "\"It was great talking with you\""
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says Mr. Lee taught them how to ask for help politely with 'Excuse me, could you repeat that, please?'",
+              "explanation_vi": "Bài đọc cho biết thầy Lee dạy cách hỏi giúp đỡ một cách lịch sự bằng câu 'Excuse me, could you repeat that, please?'"
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "What did Anna's new friend say after 'Hello, nice to meet you!'?",
+            "options": [
+              {
+                "id": "A",
+                "text": "\"Nice to meet you too!\""
+              },
+              {
+                "id": "B",
+                "text": "\"See you later!\""
+              },
+              {
+                "id": "C",
+                "text": "\"Excuse me!\""
+              },
+              {
+                "id": "D",
+                "text": "\"Don't worry!\""
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The friend smiled and answered, 'Nice to meet you too!'",
+              "explanation_vi": "Người bạn mới mỉm cười và trả lời: 'Nice to meet you too!'"
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "What did Anna do on the bus home?",
+            "options": [
+              {
+                "id": "A",
+                "text": "She talked to a stranger."
+              },
+              {
+                "id": "B",
+                "text": "She wrote the new phrases in her notebook."
+              },
+              {
+                "id": "C",
+                "text": "She read a book about English."
+              },
+              {
+                "id": "D",
+                "text": "She practiced speaking with Mr. Lee."
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage states: 'On the bus home, Anna wrote the new phrases in her notebook.'",
+              "explanation_vi": "Bài đọc nói rằng: 'On the bus home, Anna wrote the new phrases in her notebook' — Anna ghi các cụm từ mới vào sổ tay trên xe buýt về nhà."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "What did Anna decide to do after the class?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Use one new phrase every day"
+              },
+              {
+                "id": "B",
+                "text": "Stop going to the English club"
+              },
+              {
+                "id": "C",
+                "text": "Teach her family English"
+              },
+              {
+                "id": "D",
+                "text": "Buy a new notebook"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Anna decided to use one new phrase every day.",
+              "explanation_vi": "Anna quyết định sử dụng một cụm từ mới mỗi ngày."
+            },
+            "correct_option_id": "A"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_PHRASES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "b9782780-a312-4f28-a429-3e117ca0d05c",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The passage uses simple past-tense narration, everyday vocabulary (nervous, greetings, politely, confident), and basic connectors. Questions require only literal retrieval of explicitly stated details, matching A2 reading comprehension descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "B",
+              "q2": "C",
+              "q3": "A",
+              "q4": "B",
+              "q5": "A"
+            }
+          }
+        },
+        "passage_title": "Anna's First English Class"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-speaking-phrases",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "You want to politely ask your teacher to repeat something. Which phrase is correct?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Could you say that again, please?"
+          },
+          {
+            "id": "B",
+            "text": "You say again now!"
+          },
+          {
+            "id": "C",
+            "text": "Repeat it to me fast."
+          },
+          {
+            "id": "D",
+            "text": "Say that one more time to me quick."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_PHRASES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "8054692d-65bb-4549-aa77-1877f04221b8",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests a simple polite request formula ('Could you say that again, please?') using common vocabulary and a basic modal structure. This is a routine classroom communication phrase appropriate for A2 learners, with distractors testing politeness rather than complex grammar.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Could you say that again, please?' is a polite speaking phrase used to ask someone to repeat information. Adding 'please' and using 'could you' makes the request polite and natural.",
+          "explanation_vi": "'Could you say that again, please?' là cụm từ lịch sự dùng để nhờ ai đó nhắc lại thông tin. Thêm 'please' và dùng 'could you' khiến lời yêu cầu lịch sự và tự nhiên."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-speaking-phrases",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Which phrase is the best way to politely ask for help in a shop?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Give me that bag now."
+          },
+          {
+            "id": "B",
+            "text": "Excuse me, could you help me, please?"
+          },
+          {
+            "id": "C",
+            "text": "You must help me!"
+          },
+          {
+            "id": "D",
+            "text": "I want help, hurry up."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_PHRASES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "aff8284a-cb25-4720-8bfb-bb495d00150c",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests a simple polite request formula ('Excuse me, could you help me, please?') using high-frequency vocabulary and basic modal 'could'. Distractors are simple sentences. This matches A2 functional language (making polite requests in routine situations).",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Excuse me, could you help me, please?' is a polite speaking phrase. Using 'Excuse me', 'could you', and 'please' makes a request friendly and respectful.",
+          "explanation_vi": "'Excuse me, could you help me, please?' là cụm từ lịch sự khi nhờ giúp đỡ. Dùng 'Excuse me', 'could you' và 'please' giúp lời đề nghị trở nên thân thiện và tôn trọng."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-speaking-phrases",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "SPEAKING_GREETINGS",
+          "GRAMMAR_POLITE_REQUESTS",
+          "SPEAKING_OPINIONS"
+        ],
+        "examples": [
+          {
+            "note": "A polite phrase for asking someone to repeat; 'could' makes it softer than 'Can you say that again?'",
+            "text": "Sorry, could you say that again, please?"
+          },
+          {
+            "note": "'I think' + clause is the most common A2 way to give an opinion; adding 'but' lets you agree and refuse politely at the same time.",
+            "text": "I think it's a great idea, but I'm a bit busy today."
+          },
+          {
+            "note": "'Would you mind' is always followed by a verb + -ing; it is a very polite request.",
+            "text": "Would you mind helping me with this report?"
+          }
+        ],
+        "objective": "Understand and use essential everyday speaking phrases for common A2 situations, including greetings, asking for repetition, giving opinions simply, and making polite requests, so the learner can manage basic spoken interactions with confidence.",
+        "_provenance": {
+          "batch": "foundation:SPEAKING_PHRASES:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "3f40fc41-c26f-4356-abe7-6c6ce3db60b4",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At A2 level, spoken fluency depends less on complex grammar and more on having ready-made phrases you can use instantly. This topic covers four key groups of speaking phrases. (1) Greetings and small talk: 'How's it going?', 'Nice to see you!', 'How was your weekend?' – these open conversations naturally. (2) Asking for repetition or clarification: 'Sorry, could you say that again?', 'What do you mean?', 'Can you speak more slowly, please?' – these keep a conversation going when you don't understand. (3) Giving simple opinions: 'I think...', 'In my opinion...', 'I agree / I don't agree.' – use 'I think' + a clause for the most natural, flexible option. (4) Polite requests and responses: 'Could you...?', 'Would you mind + -ing...?', and answers like 'Sure, no problem' or 'I'm afraid I can't.' Note that 'Could you...?' is more polite than 'Can you...?'. Fixed phrases should be learned as whole chunks, not word by word, because their grammar is often irregular (e.g., 'Would you mind opening the window?' uses an -ing form, not a base verb). Practice saying them aloud with natural rhythm and intonation so they come out automatically in conversation.",
+          "vi": "Ở trình độ A2, khả năng nói trôi chảy phụ thuộc nhiều vào việc thuộc lòng các cụm từ có sẵn chứ không chỉ ngữ pháp phức tạp. Chủ đề này gồm 4 nhóm chính. (1) Chào hỏi và nói chuyện phiếm: 'How's it going?', 'Nice to see you!', 'How was your weekend?' – giúp mở đầu cuộc trò chuyện tự nhiên. (2) Hỏi lại khi chưa nghe rõ: 'Sorry, could you say that again?', 'What do you mean?', 'Can you speak more slowly, please?' – giúp duy trì cuộc hội thoại khi bạn không hiểu. (3) Đưa ý kiến đơn giản: 'I think...', 'In my opinion...', 'I agree / I don't agree.' – 'I think' + mệnh đề là cách tự nhiên và linh hoạt nhất. (4) Yêu cầu lịch sự và trả lời: 'Could you...?', 'Would you mind + V-ing...?', và các câu trả lời như 'Sure, no problem' hoặc 'I'm afraid I can't.' Lưu ý 'Could you...?' lịch sự hơn 'Can you...?'. Hãy học các cụm từ này như một khối trọn vẹn, không học từng từ, vì ngữ pháp của chúng thường đặc biệt (ví dụ: 'Would you mind opening the window?' dùng dạng V-ing chứ không phải động từ nguyên mẫu). Nên tập nói to với ngữ điệu tự nhiên để khi nói thật các cụm từ này bật ra một cách tự động."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "After 'Would you mind', the verb must take the -ing form, not the infinitive with 'to'. This is a fixed pattern that must be memorized as a chunk.",
+            "right": "Would you mind opening the window?",
+            "wrong": "Would you mind to open the window?"
+          },
+          {
+            "why": "'Agree' is a verb in English, not an adjective, so it does not take the verb 'to be'. Say 'I agree' or 'I don't agree'.",
+            "right": "I agree with you.",
+            "wrong": "I am agree with you."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

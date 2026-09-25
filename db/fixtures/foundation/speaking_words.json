@@ -1,11 +1,448 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2878255Z",
+  "generated_at": "2026-09-25T18:49:49.3968523Z",
   "node": {
     "namespace": "skill",
     "code": "SPEAKING_WORDS",
     "label": "Speaking: Words",
     "cefr_level": "A1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-speaking-words-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'I like': She likes coffee.",
+        "acceptable": [
+          "I like coffee too."
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_WORDS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "30cdda01-8767-48f7-b779-520c0c29a944",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests simple present subject-verb agreement with very common vocabulary (likes coffee), a core A1 grammar point. The transformation only requires changing 'she likes' to 'I like', which is basic and appropriate for A1 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "I like coffee."
+          }
+        },
+        "explanation": {
+          "explanation_en": "Change the subject 'she' to 'I' and the verb 'likes' to 'like' for the first person. Say the new sentence aloud clearly, using the correct word 'like' without the -s ending.",
+          "explanation_vi": "Đổi chủ ngữ 'she' thành 'I' và động từ 'likes' thành 'like' cho ngôi thứ nhất. Nói câu mới to rõ, dùng từ 'like' đúng cách, không thêm đuôi -s."
+        },
+        "correct_answer": "I like coffee."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-speaking-words-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Listen! The teacher ___ to the class now.",
+        "options": [
+          {
+            "id": "A",
+            "text": "speaks"
+          },
+          {
+            "id": "B",
+            "text": "is speaking"
+          },
+          {
+            "id": "C",
+            "text": "spoke"
+          },
+          {
+            "id": "D",
+            "text": "speak"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_WORDS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "80591551-8665-4c74-a551-3213c7987ddd",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests present continuous with a simple cue word 'Listen!' and very common vocabulary ('teacher', 'class'), matching A1 descriptors. Distractors are simple present and past simple forms, keeping the task basic.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The word 'Listen!' shows the action is happening right now, so we use the present continuous 'is speaking'.",
+          "explanation_vi": "Từ 'Listen!' cho thấy hành động đang diễn ra ngay lúc này, nên dùng thì hiện tại tiếp diễn 'is speaking'."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-speaking-words-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "A1",
+      "body": {
+        "passage": "Anna is a student at a small school in the city. Every Tuesday, she goes to a speaking class. In this class, students learn new words and say them out loud. The teacher, Mr. Lee, writes ten words on the board. Then each student reads the words and makes a sentence with one word. Anna likes the word 'delicious'. She says, 'This soup is delicious!' Everyone laughs and claps. Mr. Lee says her pronunciation is very good. At first, Anna was shy. She did not want to speak because she was afraid of mistakes. Now she speaks with a big smile. She practices new words at home every night. She says each word five times and uses it in a sentence. Her dream is to talk with people from other countries. She wants to say 'Hello, my name is Anna' in many languages.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "When does Anna go to her speaking class?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Every Monday"
+              },
+              {
+                "id": "B",
+                "text": "Every Tuesday"
+              },
+              {
+                "id": "C",
+                "text": "Every Friday"
+              },
+              {
+                "id": "D",
+                "text": "Every Sunday"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says 'Every Tuesday, she goes to a speaking class.'",
+              "explanation_vi": "Bài đọc nói rằng 'Every Tuesday, she goes to a speaking class' - Anna đi học nói vào mỗi thứ Ba."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "What does Mr. Lee do at the start of the class?",
+            "options": [
+              {
+                "id": "A",
+                "text": "He sings a song"
+              },
+              {
+                "id": "B",
+                "text": "He writes ten words on the board"
+              },
+              {
+                "id": "C",
+                "text": "He gives a test"
+              },
+              {
+                "id": "D",
+                "text": "He reads a story"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage states 'Mr. Lee writes ten words on the board.'",
+              "explanation_vi": "Bài đọc cho biết thầy Lee viết mười từ lên bảng."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "Which word does Anna like?",
+            "options": [
+              {
+                "id": "A",
+                "text": "delicious"
+              },
+              {
+                "id": "B",
+                "text": "beautiful"
+              },
+              {
+                "id": "C",
+                "text": "happy"
+              },
+              {
+                "id": "D",
+                "text": "interesting"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says 'Anna likes the word delicious.'",
+              "explanation_vi": "Bài đọc nói rằng Anna thích từ 'delicious' (ngon)."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "Why did Anna not want to speak at first?",
+            "options": [
+              {
+                "id": "A",
+                "text": "She was tired"
+              },
+              {
+                "id": "B",
+                "text": "She was busy"
+              },
+              {
+                "id": "C",
+                "text": "She was afraid of mistakes"
+              },
+              {
+                "id": "D",
+                "text": "She did not like the teacher"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says she 'did not want to speak because she was afraid of mistakes.'",
+              "explanation_vi": "Bài đọc cho biết Anna không muốn nói vì cô ấy sợ mắc lỗi."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "How does Anna practice new words at home?",
+            "options": [
+              {
+                "id": "A",
+                "text": "She writes each word ten times"
+              },
+              {
+                "id": "B",
+                "text": "She says each word five times and uses it in a sentence"
+              },
+              {
+                "id": "C",
+                "text": "She listens to music"
+              },
+              {
+                "id": "D",
+                "text": "She reads a book"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says 'She says each word five times and uses it in a sentence.'",
+              "explanation_vi": "Bài đọc cho biết Anna đọc mỗi từ năm lần và dùng từ đó trong một câu."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q6",
+            "type": "multiple_choice",
+            "prompt": "What is Anna's dream?",
+            "options": [
+              {
+                "id": "A",
+                "text": "To be a teacher like Mr. Lee"
+              },
+              {
+                "id": "B",
+                "text": "To travel to many countries"
+              },
+              {
+                "id": "C",
+                "text": "To talk with people from other countries"
+              },
+              {
+                "id": "D",
+                "text": "To write a book"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The passage says 'Her dream is to talk with people from other countries.'",
+              "explanation_vi": "Bài đọc nói rằng ước mơ của Anna là được nói chuyện với người từ các nước khác."
+            },
+            "correct_option_id": "C"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_WORDS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "c73bcf92-6016-422a-8589-385a24e2e83f",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The passage uses very short, simple sentences in the present simple with a few basic past simple forms ('was', 'did not want'), everyday vocabulary (school, teacher, words, smile), and direct speech. All six questions are literal detail retrieval with distractors that are easy to eliminate, matching A1 reading comprehension descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "B",
+              "q2": "B",
+              "q3": "A",
+              "q4": "C",
+              "q5": "B",
+              "q6": "C"
+            }
+          }
+        },
+        "passage_title": "My First Speaking Class"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-speaking-words",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Which word do we use to ask about a person? For example: '___ is your teacher?'",
+        "options": [
+          {
+            "id": "A",
+            "text": "What"
+          },
+          {
+            "id": "B",
+            "text": "Who"
+          },
+          {
+            "id": "C",
+            "text": "Where"
+          },
+          {
+            "id": "D",
+            "text": "When"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_WORDS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "fa087e74-c74c-4b39-8293-0fee5874e786",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic question words (who/what/where/when) with a simple present example sentence, matching A1 everyday vocabulary and basic phrases.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "We use 'Who' to ask about a person: 'Who is your teacher?' Wh-questions like this usually end with a falling tone.",
+          "explanation_vi": "Chúng ta dùng 'Who' để hỏi về một người: 'Who is your teacher?' Câu hỏi với từ để hỏi như thế này thường xuống giọng ở cuối câu."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-speaking-words",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Which word has the stress on the FIRST syllable when you say it aloud?",
+        "options": [
+          {
+            "id": "A",
+            "text": "banana"
+          },
+          {
+            "id": "B",
+            "text": "apple"
+          },
+          {
+            "id": "C",
+            "text": "computer"
+          },
+          {
+            "id": "D",
+            "text": "tomato"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:SPEAKING_WORDS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "edf055b5-3319-41f9-a0e9-aab2ec9be6f6",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item uses very common vocabulary (apple, banana, tomato, computer) and a simple prompt about word stress. The concept of syllable stress is basic phonological awareness appropriate for A1 learners, and the explanation uses simple sentences.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Apple' is stressed on the first syllable: AP-ple. 'Banana', 'tomato' and 'computer' are all stressed on the second syllable (ba-NA-na, to-MA-to, com-PU-ter). When speaking, make the stressed syllable stronger.",
+          "explanation_vi": "'Apple' có trọng âm ở âm tiết đầu: AP-ple. 'Banana', 'tomato' và 'computer' đều có trọng âm ở âm tiết thứ hai (ba-NA-na, to-MA-to, com-PU-ter). Khi nói, hãy nhấn mạnh hơn vào âm tiết có trọng âm."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-speaking-words",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "SPEAKING_SENTENCES",
+          "GRAMMAR_QUESTION_FORMS",
+          "VOCAB_GREETINGS"
+        ],
+        "examples": [
+          {
+            "note": "A complete first-meeting exchange: greeting + self-introduction + polite closing phrase. 'Nice to meet you' is the standard response when meeting someone for the first time.",
+            "text": "Hello! My name is Lan. Nice to meet you."
+          },
+          {
+            "note": "'Excuse me' politely gets someone's attention before a question; adding 'please' at the end makes the request more polite.",
+            "text": "Excuse me, where is the bank, please?"
+          },
+          {
+            "note": "'Good night' is used when leaving or going to bed in the evening — not as a greeting when you first meet someone.",
+            "text": "Good night, Mom. See you tomorrow!"
+          }
+        ],
+        "objective": "Understand and correctly use essential survival words and phrases for basic spoken communication at A1 level, including greetings, introductions, polite expressions, and simple question words, so the learner can produce them accurately in short spoken exchanges.",
+        "_provenance": {
+          "batch": "foundation:SPEAKING_WORDS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "9b29ff3e-5911-4fbd-bdf8-abba6b313a81",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At A1 level, speaking begins with a small set of high-frequency words and fixed phrases that learners must be able to say clearly and use in the right situation. These include: (1) Greetings and farewells: 'Hello', 'Hi', 'Good morning/afternoon/evening', 'Goodbye', 'Bye', 'Good night'. (2) Introducing yourself: 'I am...' / 'I'm...', 'My name is...', 'Nice to meet you.' (3) Polite words: 'please', 'thank you', 'thanks', 'sorry', 'excuse me'. (4) Simple question words: 'What', 'Where', 'Who', 'How', 'How old', 'How many'. (5) Basic responses: 'Yes', 'No', 'OK', 'I don't know', 'I don't understand'. Key principles: choose the greeting that matches the time of day; use 'Good night' only when leaving or going to bed, not as a first greeting; use contractions ('I'm', 'What's') in natural speech; keep answers short and direct. Pronunciation matters: stress the important word in each phrase (e.g., 'Nice to MEET you') and use rising intonation for yes/no questions.",
+          "vi": "Ở trình độ A1, kỹ năng nói bắt đầu từ một nhóm nhỏ các từ và cụm từ thông dụng mà người học phải phát âm rõ và dùng đúng tình huống. Bao gồm: (1) Chào hỏi và tạm biệt: 'Hello', 'Hi', 'Good morning/afternoon/evening', 'Goodbye', 'Bye', 'Good night'. (2) Giới thiệu bản thân: 'I am...' / 'I'm...', 'My name is...', 'Nice to meet you.' (3) Từ lịch sự: 'please', 'thank you', 'sorry', 'excuse me'. (4) Từ để hỏi đơn giản: 'What', 'Where', 'Who', 'How', 'How old', 'How many'. (5) Câu trả lời cơ bản: 'Yes', 'No', 'OK', 'I don't know', 'I don't understand'. Lưu ý quan trọng: chọn lời chào phù hợp với thời điểm trong ngày; 'Good night' chỉ dùng khi chia tay hoặc đi ngủ, KHÔNG dùng để chào khi gặp mặt; trong giao tiếp tự nhiên nên dùng dạng rút gọn ('I'm', 'What's'); trả lời ngắn gọn, trực tiếp. Cần chú ý trọng âm (ví dụ: 'Nice to MEET you') và ngữ điệu lên cuối câu hỏi Yes/No."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "'Good night' is only a farewell or said before sleeping. When greeting someone in the evening, use 'Good evening'.",
+            "right": "Good evening! How are you?",
+            "wrong": "Good night! How are you?"
+          },
+          {
+            "why": "The return question is simply 'And you?' — repeating the full question 'how are you' is unnatural. Also, contractions like 'I'm' sound more natural in speech.",
+            "right": "I'm fine, thank you. And you?",
+            "wrong": "I am fine, thank you. And you how are you?"
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

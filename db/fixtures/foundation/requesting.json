@@ -1,11 +1,328 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.268967Z",
+  "generated_at": "2026-09-25T18:49:49.3786895Z",
   "node": {
     "namespace": "pattern",
     "code": "REQUESTING",
     "label": "Requesting",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-requesting-grammar-sentence-transform-1",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence as a polite request beginning with 'Could you': I want you to open the window.",
+        "acceptable": [
+          "Could you please open the window?",
+          "Could you open the window please?"
+        ],
+        "_provenance": {
+          "batch": "foundation:REQUESTING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199525, Requested 832. Please try again in 2m34.224s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:44:05Z"
+          },
+          "ai_request_id": "4dcdf4d3-1381-4e73-9b70-971022995121",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item involves transforming a simple sentence into a polite request using 'Could you' + base verb, a common A2-level functional pattern. Vocabulary is basic and the transformation requires only one simple structural change, matching A2 descriptors for routine tasks and simple sentences.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Could you please open the window?"
+          }
+        },
+        "explanation": {
+          "explanation_en": "To make a polite request, use 'Could you' + base verb. 'Could' is more polite than 'can' or 'want you to', and adding 'please' makes it friendlier.",
+          "explanation_vi": "Để đưa ra yêu cầu lịch sự, dùng 'Could you' + động từ nguyên mẫu. 'Could' lịch sự hơn 'can' hoặc 'want you to', và thêm 'please' làm câu thân thiện hơn."
+        },
+        "correct_answer": "Could you open the window, please?"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:44:05Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199525, Requested 832. Please try again in 2m34.224s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-ex-requesting-grammar-sentence-transform-3",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Rewrite the sentence beginning with 'Could you tell me': Where is the nearest bus stop?",
+        "acceptable": [
+          "Could you tell me where the nearest bus stop is?",
+          "Could you tell me where the nearest bus stop is, please?"
+        ],
+        "_provenance": {
+          "batch": "foundation:REQUESTING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199460, Requested 1144. Please try again in 4m20.928s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:44:32Z"
+          },
+          "ai_request_id": "eaeb883f-7e5b-4f3a-a6c4-b107974845a9",
+          "cefr_estimate": "B1",
+          "cefr_reasoning": "Indirect questions with 'Could you tell me' require word-order transformation and understanding of embedded questions, which exceeds A2 simple sentence skills and is typically taught at B1. Vocabulary is simple, but the grammatical operation (statement word order in an embedded clause, dropping the question mark) is a B1-level structure.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Could you tell me where the nearest bus stop is?"
+          }
+        },
+        "explanation": {
+          "explanation_en": "After 'Could you tell me', the embedded question uses statement word order: subject before verb ('where the nearest bus stop is'). The whole sentence is still a question with 'Could you', so it ends with a question mark.",
+          "explanation_vi": "Sau 'Could you tell me', câu hỏi lồng dùng trật tự câu trần thuật: chủ ngữ đứng trước động từ ('where the nearest bus stop is'). Cả câu vẫn là câu hỏi với 'Could you' nên vẫn có dấu hỏi."
+        },
+        "correct_answer": "Could you tell me where the nearest bus stop is?"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:44:32Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199460, Requested 1144. Please try again in 4m20.928s. Need more tokens? Upgrade to Dev Tier today at https://con, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-ex-requesting-grammar-tense-choice-2",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Excuse me, ___ you tell me where the train station is, please?",
+        "options": [
+          {
+            "id": "A",
+            "text": "could"
+          },
+          {
+            "id": "B",
+            "text": "do"
+          },
+          {
+            "id": "C",
+            "text": "will"
+          },
+          {
+            "id": "D",
+            "text": "must"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:REQUESTING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199495, Requested 870. Please try again in 2m37.68s. Need more tokens? Upgrade to Dev Tier today at https://conso, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:44:18Z"
+          },
+          "ai_request_id": "9d9d29c8-f9cf-47ef-838e-48b175d26b0c",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests a polite request with 'Could you...?' in a simple, everyday sentence. While modal distinctions are often introduced at B1, this is a fixed, high-frequency polite formula commonly taught at A2, with simple vocabulary and clear contextual cues ('please', 'Excuse me').",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Could you…?' is a polite request pattern, and 'please' confirms the polite tone. 'Do you tell me' and 'Must you tell me' are not requests.",
+          "explanation_vi": "'Could you…?' là mẫu câu yêu cầu lịch sự, và 'please' càng cho thấy sự lịch sự. 'Do you tell me' và 'Must you tell me' không phải là lời yêu cầu."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:44:18Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199495, Requested 870. Please try again in 2m37.68s. Need more tokens? Upgrade to Dev Tier today at https://conso, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-quiz-requesting",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "You want to borrow your friend's pen. Which sentence is the most polite way to make a request?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Give me your pen."
+          },
+          {
+            "id": "B",
+            "text": "Could I borrow your pen, please?"
+          },
+          {
+            "id": "C",
+            "text": "You give me pen now."
+          },
+          {
+            "id": "D",
+            "text": "I want your pen."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:REQUESTING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199427, Requested 886. Please try again in 2m15.216s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:44:47Z"
+          },
+          "ai_request_id": "bb2dae42-9236-4e0d-a05c-72dc075eee2e",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests a basic polite request pattern ('Could I... please?') with simple, high-frequency vocabulary and short sentences. Distractors are clearly simple. This matches A2 functional language (making polite requests), though it is accessible even at A1; A2 is appropriate.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'Could I... please?' is a polite request pattern used to ask for something politely. The other options sound rude or are grammatically incorrect.",
+          "explanation_vi": "'Could I... please?' là mẫu câu yêu cầu lịch sự khi muốn xin một thứ gì đó. Các câu còn lại nghe thô lỗ hoặc sai ngữ pháp."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:44:47Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199427, Requested 886. Please try again in 2m15.216s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-review-requesting",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Which sentence is the correct way to politely ask for something?",
+        "options": [
+          {
+            "id": "A",
+            "text": "Give me a glass of water."
+          },
+          {
+            "id": "B",
+            "text": "Could I have a glass of water, please?"
+          },
+          {
+            "id": "C",
+            "text": "You will give me a glass of water."
+          },
+          {
+            "id": "D",
+            "text": "I want a glass of water now."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:REQUESTING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199362, Requested 901. Please try again in 1m53.616s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:45:13Z"
+          },
+          "ai_request_id": "8154ffbf-cae5-4acf-9a76-09f1723d5ff3",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The item tests the polite request pattern 'Could I have... , please?' using simple, high-frequency vocabulary and a single fixed structure. While 'Could I' is a modal form, it is taught as a chunked polite formula at A2 level, and all options are short, simple sentences. This matches A2 routine-task communication.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "To make a polite request, use the pattern 'Could I have... , please?' Adding 'please' and using 'Could I' makes the request polite and friendly.",
+          "explanation_vi": "Để yêu cầu một cách lịch sự, dùng mẫu câu 'Could I have... , please?'. Thêm 'please' và dùng 'Could I' giúp lời yêu cầu trở nên lịch sự và thân thiện."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:45:13Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199362, Requested 901. Please try again in 1m53.616s. Need more tokens? Upgrade to Dev Tier today at https://cons, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    },
+    {
+      "slug": "foundation-topic-requesting",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "MODAL_VERBS_CAN_COULD",
+          "POLITE_RESPONSES",
+          "IMPERATIVES"
+        ],
+        "examples": [
+          {
+            "note": "A polite request at the dinner table using 'Could you' + base verb + 'please'.",
+            "text": "Could you pass me the salt, please?"
+          },
+          {
+            "note": "A very polite request; 'mind' is followed by the -ing form 'turning'.",
+            "text": "Would you mind turning down the music?"
+          },
+          {
+            "note": "An informal, friendly request between friends or family using 'Can you'.",
+            "text": "Can you help me with my homework?"
+          }
+        ],
+        "objective": "Understand the formation and core uses of polite request patterns with 'Can you...', 'Could you...', and 'Would you mind...' in order to make requests appropriately in everyday situations.",
+        "_provenance": {
+          "batch": "foundation:REQUESTING:20260923T153107",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "verification": {
+            "model": "unknown",
+            "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199325, Requested 1801. Please try again in 8m6.431999999s. Need more tokens? Upgrade to Dev Tier today at https:, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})",
+            "verdict": "doubt",
+            "checked_at": "2026-09-23T15:45:32Z"
+          },
+          "ai_request_id": "ca2b083d-5a39-47ca-bfc4-08c0b3613b0f",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "To make a request in English, we often use a question form. The most common patterns are: (1) 'Can you + base verb...?' – informal and friendly, used with people you know well: 'Can you help me?' (2) 'Could you + base verb...?' – more polite than 'can', suitable for most situations: 'Could you open the window, please?' (3) 'Would you mind + verb-ing...?' – very polite, often used with strangers or in formal situations: 'Would you mind closing the door?' Note that 'Would you mind' is followed by a gerund (-ing form), and the answer 'No, not at all' means you are happy to help. Adding 'please' makes any request more polite. We can also soften requests with 'Do you think you could...?' Remember: after 'Can/Could you', use the base form of the verb (no 'to', no '-ing').",
+          "vi": "Để yêu cầu ai đó làm gì trong tiếng Anh, ta thường dùng câu hỏi. Các mẫu câu phổ biến: (1) 'Can you + động từ nguyên mẫu...?' – thân mật, dùng với bạn bè, người thân: 'Can you help me?' (2) 'Could you + động từ nguyên mẫu...?' – lịch sự hơn 'can', dùng được trong hầu hết tình huống: 'Could you open the window, please?' (3) 'Would you mind + V-ing...?' – rất lịch sự, dùng với người lạ hoặc tình huống trang trọng: 'Would you mind closing the door?' Lưu ý quan trọng: sau 'Would you mind' phải dùng danh động từ (V-ing), không dùng động từ nguyên mẫu. Khi trả lời, 'No, not at all' nghĩa là 'vâng, tôi sẵn lòng giúp'. Thêm 'please' vào cuối câu khiến lời yêu cầu lịch sự hơn. Sau 'Can/Could you' luôn dùng động từ nguyên mẫu (không 'to', không '-ing')."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "After 'Would you mind', we must use the gerund (-ing form), not the infinitive with 'to'. 'Mind' is followed by a verb + -ing.",
+            "right": "Would you mind closing the window?",
+            "wrong": "Would you mind to close the window?"
+          },
+          {
+            "why": "After the modal verbs 'can' and 'could', we use the base form of the verb without 'to'.",
+            "right": "Could you help me?",
+            "wrong": "Could you to help me?"
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "model": "unknown",
+        "checked_at": "2026-09-23T15:45:32Z",
+        "reason": "independent verification call failed: ai: every provider is out of quota or unavailable: all providers failed (primary (groq-backup): ai: https://api.groq.com/openai/v1/chat/completions returned 429: {\"error\":{\"message\":\"Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_01m1nw3mn9eec8vjpg7a8c09tr` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199325, Requested 1801. Please try again in 8m6.431999999s. Need more tokens? Upgrade to Dev Tier today at https:, fallback (cerebras): ai: https://api.cerebras.ai/v1/chat/completions returned 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}, fallback (mistral): ai: https://api.mistral.ai/v1/chat/completions returned 429: {\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429})"
+      }
+    }
+  ]
 }

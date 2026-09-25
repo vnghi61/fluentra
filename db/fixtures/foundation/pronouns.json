@@ -1,11 +1,251 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2372932Z",
+  "generated_at": "2026-09-25T18:49:49.3544731Z",
   "node": {
     "namespace": "grammar",
     "code": "PRONOUNS",
     "label": "Pronouns",
     "cefr_level": "A1"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-pronouns-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "Replace 'Maria and Tom' in the second sentence with a pronoun: 'Maria and Tom are my friends. I like Maria and Tom.' Begin with 'I like'.",
+        "acceptable": [
+          "I like them.",
+          "I like them"
+        ],
+        "_provenance": {
+          "batch": "foundation:PRONOUNS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "9dd80a80-6c86-4292-98df-46d74f877eb0",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic object pronoun substitution ('them') with very common vocabulary and simple present sentences, matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "I like them."
+          }
+        },
+        "explanation": {
+          "explanation_en": "When we replace plural people (Maria and Tom) after a verb, we use the object pronoun 'them'.",
+          "explanation_vi": "Khi thay thế danh từ chỉ nhiều người (Maria and Tom) sau động từ, ta dùng đại từ tân ngữ 'them'."
+        },
+        "correct_answer": "I like them."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-pronouns-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "I have a new phone. ___ is very small and light.",
+        "options": [
+          {
+            "id": "A",
+            "text": "It"
+          },
+          {
+            "id": "B",
+            "text": "He"
+          },
+          {
+            "id": "C",
+            "text": "She"
+          },
+          {
+            "id": "D",
+            "text": "They"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRONOUNS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "e2e5ff5e-8634-4824-835c-51a5a54e6fb7",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic subject pronoun choice (We/She/They/He) with simple present tense and very common vocabulary ('walk to school', 'every morning'). This matches A1 descriptors: basic phrases, simple present, everyday expressions. The distractors are single-word pronouns, keeping cognitive load minimal.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'A phone' is one thing, so we use 'it'. 'He' and 'she' are for people, and 'they' is for more than one.",
+          "explanation_vi": "'A phone' là một đồ vật nên dùng 'it'. 'He' và 'she' dùng cho người, còn 'they' dùng cho số nhiều."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-pronouns",
+      "kind": "foundation_quiz",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "My brother and I go to school together. ___ walk every morning.",
+        "options": [
+          {
+            "id": "A",
+            "text": "He"
+          },
+          {
+            "id": "B",
+            "text": "She"
+          },
+          {
+            "id": "C",
+            "text": "We"
+          },
+          {
+            "id": "D",
+            "text": "They"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRONOUNS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "06a13e66-4ec8-42f3-8288-838635744a1d",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic subject pronouns (we) with simple present tense and very common vocabulary (brother, school, walk), matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "C"
+          }
+        },
+        "explanation": {
+          "explanation_en": "'We' is the subject pronoun for 'my brother and I' (two people including the speaker).",
+          "explanation_vi": "'We' là đại từ chủ ngữ thay cho 'my brother and I' (hai người bao gồm cả người nói)."
+        },
+        "correct_option_id": "C"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-pronouns",
+      "kind": "foundation_review",
+      "cefr_level": "A1",
+      "body": {
+        "prompt": "This is my friend Anna. I see ___ every day at school.",
+        "options": [
+          {
+            "id": "A",
+            "text": "her"
+          },
+          {
+            "id": "B",
+            "text": "she"
+          },
+          {
+            "id": "C",
+            "text": "hers"
+          },
+          {
+            "id": "D",
+            "text": "he"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:PRONOUNS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "ed0b3b37-8bc0-4476-95b7-955def087532",
+          "cefr_estimate": "A1",
+          "cefr_reasoning": "The item tests basic subject pronouns (We/They/She/He) with very common vocabulary and simple present tense, matching A1 descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "A"
+          }
+        },
+        "explanation": {
+          "explanation_en": "After a verb ('see'), we use an object pronoun. Anna is a woman, so the object pronoun is 'her'. 'She' is only used as a subject.",
+          "explanation_vi": "Sau động từ ('see') ta dùng đại từ tân ngữ. Anna là nữ nên đại từ tân ngữ là 'her'. 'She' chỉ dùng làm chủ ngữ."
+        },
+        "correct_option_id": "A"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-pronouns",
+      "kind": "foundation_topic",
+      "cefr_level": "A1",
+      "body": {
+        "related": [
+          "VERB_TO_BE",
+          "POSSESSIVE_ADJECTIVES",
+          "NOUNS_SINGULAR_PLURAL"
+        ],
+        "examples": [
+          {
+            "note": "'He' replaces 'my brother' (a male person) in the second sentence to avoid repetition.",
+            "text": "My brother is a doctor. He works in a hospital."
+          },
+          {
+            "note": "'I' is the first person subject pronoun and is always capitalized; 'it' refers back to 'coffee' (a thing).",
+            "text": "I like coffee, but it is expensive here."
+          },
+          {
+            "note": "'They' replaces two people mentioned together (Anna and Tom), showing the plural use.",
+            "text": "Anna and Tom are my friends. They live in Hanoi."
+          }
+        ],
+        "objective": "Understand the forms and core uses of basic subject pronouns (I, you, he, she, it, we, they) and use them correctly to replace nouns in simple A1-level sentences.",
+        "_provenance": {
+          "batch": "foundation:PRONOUNS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "e18cd899-5eef-49d7-a4aa-6b00e1f1a015",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "Subject pronouns replace nouns as the subject of a sentence. In English, the basic subject pronouns are: I (first person singular), you (second person singular and plural), he (masculine singular), she (feminine singular), it (things, animals, or ideas), we (first person plural), and they (third person plural). Subject pronouns always come before the verb in a normal sentence: 'She works here.' Use 'he' for a man or boy, 'she' for a woman or girl, and 'it' for objects, animals (when the gender is unknown), and abstract ideas. Use 'they' for more than one person or thing. Note that 'I' is always written with a capital letter, even in the middle of a sentence. Unlike some languages, English subject pronouns cannot usually be dropped: you must say 'It is cold', not just 'Is cold.'",
+          "vi": "Đại từ chủ ngữ dùng để thay thế danh từ khi làm chủ ngữ trong câu. Các đại từ chủ ngữ cơ bản là: I (tôi), you (bạn/các bạn - dùng cho cả số ít và số nhiều), he (anh ấy/nó - nam), she (cô ấy/nàng - nữ), it (nó - dùng cho vật, con vật hoặc ý niệm), we (chúng tôi/chúng ta), và they (họ/chúng). Trong câu khẳng định thông thường, đại từ chủ ngữ luôn đứng trước động từ: 'She works here.' Dùng 'he' cho nam giới, 'she' cho nữ giới, và 'it' cho đồ vật, con vật (khi không rõ giới tính) hoặc ý niệm trừu tượng. Dùng 'they' khi nói về nhiều người hoặc nhiều vật. Lưu ý: 'I' luôn được viết hoa ngay cả giữa câu. Khác với tiếng Việt, tiếng Anh thường không được bỏ đại từ chủ ngữ: phải nói 'It is cold' (Trời lạnh), không được nói chỉ 'Is cold'. Đây là lỗi rất phổ biến ở người học Việt Nam vì tiếng Việt thường lược bỏ chủ ngữ."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "English sentences about weather, time, and distance require the dummy subject 'it'. Unlike Vietnamese, the subject pronoun cannot be omitted.",
+            "right": "It is hot today.",
+            "wrong": "Is hot today."
+          },
+          {
+            "why": "As the subject of the sentence, you must use the subject pronoun 'I', not the object pronoun 'me'.",
+            "right": "My sister and I are students.",
+            "wrong": "My sister and me are students."
+          },
+          {
+            "why": "'Books' is plural, so the correct pronoun is 'they', not 'it', and the verb must agree ('are', not 'is').",
+            "right": "The books are on the table. They are new.",
+            "wrong": "The books is on the table. It are new."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }

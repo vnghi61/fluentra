@@ -1,11 +1,444 @@
 {
   "format": "fluentra.foundation.fixture.v1",
-  "generated_at": "2026-09-23T16:21:51.2493499Z",
+  "generated_at": "2026-09-25T18:49:49.3638058Z",
   "node": {
     "namespace": "skill",
     "code": "READING_PARAGRAPHS",
     "label": "Reading: Paragraphs",
     "cefr_level": "A2"
   },
-  "items": null
+  "items": [
+    {
+      "slug": "foundation-ex-reading-paragraphs-grammar-sentence-transform-2",
+      "kind": "grammar_sentence_transform",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Read the paragraph, then rewrite this sentence beginning with 'Although': The weather was cold, but we enjoyed walking in the forest every morning.",
+        "passage": "Last summer, my family went to the mountains for a week. The weather was cold, but we enjoyed walking in the forest every morning. One day, we saw a small river with clear water. My brother wanted to swim, but my mother said the water was too cold. In the evening, we sat near a fire and told stories. It was a simple holiday, but it was one of the best trips of my life.",
+        "acceptable": [
+          "Although the weather was cold, we enjoyed walking in the forest every day.",
+          "Although it was cold, we enjoyed walking in the forest every morning."
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "a9650038-cc64-4790-ad56-0058287c9e02",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The passage uses simple past tense and everyday vocabulary, and the task requires transforming a 'but' sentence into an 'Although' concession clause, a basic conjunction transformation appropriate for A2 learners.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answer": "Although the weather was cold, we enjoyed walking in the forest every morning."
+          }
+        },
+        "explanation": {
+          "explanation_en": "When you join two contrasting ideas with 'Although', you remove 'but'. 'Although' starts the concession clause, and the main clause follows without 'but'.",
+          "explanation_vi": "Khi nối hai ý tương phản bằng 'Although', ta bỏ 'but'. 'Although' đứng đầu mệnh đề nhượng bộ, mệnh đề chính theo sau và không dùng 'but'."
+        },
+        "passage_title": "My Trip to the Mountains",
+        "correct_answer": "Although the weather was cold, we enjoyed walking in the forest every morning."
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-reading-paragraphs-grammar-tense-choice-1",
+      "kind": "grammar_tense_choice",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Read the paragraph and choose the correct verb form: 'When they arrived at the top of the hill, the sun ___ behind the clouds.'",
+        "options": [
+          {
+            "id": "A",
+            "text": "rises"
+          },
+          {
+            "id": "B",
+            "text": "was rising"
+          },
+          {
+            "id": "C",
+            "text": "has risen"
+          },
+          {
+            "id": "D",
+            "text": "will rise"
+          }
+        ],
+        "passage": "Last weekend, Mai and her family went to the mountains. They left the city early in the morning because they wanted to see the sunrise. When they arrived at the top of the hill, the sun ___ behind the clouds. Everyone was very happy. Mai took many photos, and her brother made a small picnic. They stayed there until the afternoon, and then they drove home.",
+        "_provenance": {
+          "batch": "foundation:READING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "2c631f29-43d6-41bc-821d-96cceae6845e",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The passage uses simple past-tense narration with common vocabulary, and the target structure (past continuous interrupted by past simple with 'when') is a standard A2 grammar point. Distractors are simple and the context clearly signals an action in progress.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The paragraph is in the past tense. 'Was rising' (past continuous) shows an action in progress at the moment another past action happened ('when they arrived').",
+          "explanation_vi": "Đoạn văn được viết ở thì quá khứ. 'Was rising' (quá khứ tiếp diễn) diễn tả hành động đang xảy ra tại thời điểm một hành động quá khứ khác xảy ra ('when they arrived')."
+        },
+        "passage_title": "A Trip to the Mountains",
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-ex-reading-paragraphs-reading-comprehension-3",
+      "kind": "reading_comprehension",
+      "cefr_level": "A2",
+      "body": {
+        "passage": "Last Saturday, Mai went to the market with her grandmother. The market was very busy because it was the weekend. There were many stalls selling fruit, vegetables, fish, and flowers. Mai's grandmother wanted to buy some mangoes for a special dessert. They walked from stall to stall, looking for the best mangoes. At the third stall, a friendly seller let them try a small piece. The mango was sweet and soft, so they bought five. After that, grandmother bought some fresh fish for dinner. Mai carried the heavy bags while her grandmother talked to a neighbour. On the way home, they stopped at a small shop and grandmother bought Mai an ice cream. Mai was happy and tired. She learned that shopping at the market takes time, but fresh food tastes much better than food from the supermarket.",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "prompt": "When did Mai go to the market?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Last Saturday"
+              },
+              {
+                "id": "B",
+                "text": "Last Sunday"
+              },
+              {
+                "id": "C",
+                "text": "Yesterday morning"
+              },
+              {
+                "id": "D",
+                "text": "Last Friday"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Paragraph 1 states that Mai went to the market with her grandmother last Saturday.",
+              "explanation_vi": "Đoạn 1 cho biết Mai đi chợ với bà của cô ấy vào thứ Bảy tuần trước."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q2",
+            "type": "multiple_choice",
+            "prompt": "Why was the market busy?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Because there was a festival"
+              },
+              {
+                "id": "B",
+                "text": "Because it was the weekend"
+              },
+              {
+                "id": "C",
+                "text": "Because it was a holiday"
+              },
+              {
+                "id": "D",
+                "text": "Because it was raining"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Paragraph 1 says the market was very busy because it was the weekend.",
+              "explanation_vi": "Đoạn 1 nói chợ rất đông vì đó là cuối tuần."
+            },
+            "correct_option_id": "B"
+          },
+          {
+            "id": "q3",
+            "type": "multiple_choice",
+            "prompt": "What did grandmother want to buy for a special dessert?",
+            "options": [
+              {
+                "id": "A",
+                "text": "Fresh fish"
+              },
+              {
+                "id": "B",
+                "text": "Ice cream"
+              },
+              {
+                "id": "C",
+                "text": "Mangoes"
+              },
+              {
+                "id": "D",
+                "text": "Flowers"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Paragraph 2 says grandmother wanted to buy mangoes for a special dessert.",
+              "explanation_vi": "Đoạn 2 nói bà muốn mua xoài để làm món tráng miệng đặc biệt."
+            },
+            "correct_option_id": "C"
+          },
+          {
+            "id": "q4",
+            "type": "multiple_choice",
+            "prompt": "How did they decide the mangoes were good?",
+            "options": [
+              {
+                "id": "A",
+                "text": "The seller cooked one for them"
+              },
+              {
+                "id": "B",
+                "text": "They read about the stall online"
+              },
+              {
+                "id": "C",
+                "text": "Grandmother smelled them"
+              },
+              {
+                "id": "D",
+                "text": "They tried a small piece"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Paragraph 2 says the seller let them try a small piece, and it was sweet and soft.",
+              "explanation_vi": "Đoạn 2 nói người bán cho họ thử một miếng nhỏ, và nó ngọt và mềm."
+            },
+            "correct_option_id": "D"
+          },
+          {
+            "id": "q5",
+            "type": "multiple_choice",
+            "prompt": "What did Mai do while her grandmother talked to a neighbour?",
+            "options": [
+              {
+                "id": "A",
+                "text": "She carried the heavy bags"
+              },
+              {
+                "id": "B",
+                "text": "She ate an ice cream"
+              },
+              {
+                "id": "C",
+                "text": "She bought some fish"
+              },
+              {
+                "id": "D",
+                "text": "She looked at flowers"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "Paragraph 3 says Mai carried the heavy bags while her grandmother talked to a neighbour.",
+              "explanation_vi": "Đoạn 3 nói Mai xách những túi nặng trong khi bà nói chuyện với người hàng xóm."
+            },
+            "correct_option_id": "A"
+          },
+          {
+            "id": "q6",
+            "type": "multiple_choice",
+            "prompt": "What did Mai learn about market food?",
+            "options": [
+              {
+                "id": "A",
+                "text": "It is cheaper than supermarket food"
+              },
+              {
+                "id": "B",
+                "text": "It tastes better than supermarket food"
+              },
+              {
+                "id": "C",
+                "text": "It is faster to buy"
+              },
+              {
+                "id": "D",
+                "text": "It is easier to carry"
+              }
+            ],
+            "explanation": {
+              "explanation_en": "The last sentence says fresh food from the market tastes much better than supermarket food.",
+              "explanation_vi": "Câu cuối nói thực phẩm tươi ở chợ ngon hơn nhiều so với thực phẩm ở siêu thị."
+            },
+            "correct_option_id": "B"
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "1d9ecf70-35e4-44ea-b0ba-efa79f376d51",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The passage uses simple past-tense narration, everyday vocabulary (market, stalls, mangoes, ice cream), basic conjunctions (because, while, so), and short declarative sentences typical of A2. Questions require literal detail retrieval with no inference beyond simple cause-effect, matching A2 reading comprehension descriptors.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "answers": {
+              "q1": "A",
+              "q2": "B",
+              "q3": "C",
+              "q4": "D",
+              "q5": "A",
+              "q6": "B"
+            }
+          }
+        },
+        "passage_title": "A Day at the Market"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-quiz-reading-paragraphs",
+      "kind": "foundation_quiz",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Read this short paragraph: 'My name is Lan. I live in a small house near the river. Every morning, I water the flowers in my garden. In the evening, I cook dinner for my family. On Sundays, I visit my grandmother in the village.' What does Lan do every morning?",
+        "options": [
+          {
+            "id": "A",
+            "text": "She cooks dinner for her family."
+          },
+          {
+            "id": "B",
+            "text": "She waters the flowers in her garden."
+          },
+          {
+            "id": "C",
+            "text": "She visits her grandmother in the village."
+          },
+          {
+            "id": "D",
+            "text": "She lives in a small house near the river."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "9dbeea6d-bfc4-495e-9d8d-03944bb5185d",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The passage uses simple present tense sentences about daily routines with high-frequency vocabulary (water the flowers, cook dinner, visit grandmother). The task requires locating specific information in a short paragraph, matching A2 reading descriptors for simple, familiar texts.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The paragraph states 'Every morning, I water the flowers in my garden.' This tests the skill of reading a paragraph and locating specific daily routine information.",
+          "explanation_vi": "Đoạn văn viết 'Every morning, I water the flowers in my garden.' Câu hỏi kiểm tra kỹ năng đọc đoạn văn và tìm thông tin cụ thể về thói quen hằng ngày."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-review-reading-paragraphs",
+      "kind": "foundation_review",
+      "cefr_level": "A2",
+      "body": {
+        "prompt": "Read the short paragraph: 'My name is Lan. I live in a small house near the park. Every morning, I get up at six o'clock and have breakfast with my family. Then I ride my bike to school. After school, I do my homework and help my mother cook dinner.' What does Lan do after school?",
+        "options": [
+          {
+            "id": "A",
+            "text": "She rides her bike to the park."
+          },
+          {
+            "id": "B",
+            "text": "She does her homework and helps cook dinner."
+          },
+          {
+            "id": "C",
+            "text": "She has breakfast with her family."
+          },
+          {
+            "id": "D",
+            "text": "She gets up at six o'clock."
+          }
+        ],
+        "_provenance": {
+          "batch": "foundation:READING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "c3039c61-d067-442e-bac7-8ea6ea7f7136",
+          "cefr_estimate": "A2",
+          "cefr_reasoning": "The passage uses simple present tense, everyday vocabulary (breakfast, homework, bike, dinner), and short declarative sentences. The task requires locating specific information in a short paragraph, which matches A2 reading comprehension skills. Distractors are simple and clearly distinguishable.",
+          "prompt_version": "item_generate.v1",
+          "blind_solve_answer": {
+            "selected_option_id": "B"
+          }
+        },
+        "explanation": {
+          "explanation_en": "The last sentence of the paragraph says: 'After school, I do my homework and help my mother cook dinner.' This tests the skill of finding specific information within a paragraph.",
+          "explanation_vi": "Câu cuối của đoạn văn nói: 'Sau giờ học, em làm bài tập và giúp mẹ nấu bữa tối.' Câu hỏi này rèn kỹ năng tìm thông tin cụ thể trong đoạn văn."
+        },
+        "correct_option_id": "B"
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "slug": "foundation-topic-reading-paragraphs",
+      "kind": "foundation_topic",
+      "cefr_level": "A2",
+      "body": {
+        "related": [
+          "READING_SENTENCES",
+          "CONNECTORS_SEQUENCE",
+          "PAST_SIMPLE"
+        ],
+        "examples": [
+          {
+            "note": "A typical A2 paragraph about a daily routine. The main idea (Lan's morning routine) is in the first sentences; 'First' and 'Then' show the order of events; 'because' explains a reason.",
+            "text": "My name is Lan. I get up at six o'clock every morning. First, I take a shower and have breakfast. Then I go to work by bus because it is cheaper than driving."
+          },
+          {
+            "note": "A past-tense narrative paragraph. 'but' shows contrast and 'so' shows a result. Even if a reader doesn't know a word, surrounding words help guess the meaning.",
+            "text": "Last summer, Tom visited his grandmother in a small village. The village was quiet and beautiful, but there was no internet, so he read many books and helped her in the garden."
+          }
+        ],
+        "objective": "Understand how to read and understand short paragraphs at CEFR A2 level: identifying the main idea, finding key details, and using context clues and connecting words to follow the flow of a simple text.",
+        "_provenance": {
+          "batch": "foundation:READING_PARAGRAPHS:20260923T171602",
+          "model": "glm-5.3-flash",
+          "purpose": "foundation",
+          "ai_request_id": "df40ab50-25a1-440e-bb66-71050cf43220",
+          "prompt_version": "foundation_topic_generate.v1"
+        },
+        "explanation": {
+          "en": "At A2 level, reading paragraphs means understanding short, simple texts of 3–6 sentences about everyday topics (family, work, travel, daily routines). Use these strategies: (1) Read the title and first sentence carefully — the main idea is often stated there. (2) Look for key details (names, times, places, numbers) by scanning, not reading word by word. (3) Use context clues: if you don't know a word, guess its meaning from the words around it. (4) Follow connecting words (first, then, after that, because, but, so) to understand the order and logic of events. (5) Check your understanding by asking: What is this about? What happened? Why? Practise with short paragraphs about daily life, then answer simple questions about the main idea and details.",
+          "vi": "Ở trình độ A2, đọc đoạn văn có nghĩa là hiểu các đoạn văn ngắn, đơn giản (3–6 câu) về các chủ đề quen thuộc như gia đình, công việc, du lịch, thói quen hàng ngày. Hãy áp dụng các chiến lược sau: (1) Đọc kỹ tiêu đề và câu đầu tiên — ý chính thường nằm ở đó. (2) Tìm chi tiết quan trọng (tên, thời gian, địa điểm, con số) bằng cách đọc lướt, không đọc từng từ một. (3) Dùng ngữ cảnh để đoán nghĩa của từ mới: nếu không biết một từ, hãy đoán nghĩa dựa vào các từ xung quanh. (4) Chú ý các từ nối (first, then, after that, because, but, so) để hiểu trình tự và logic của sự việc. (5) Tự kiểm tra bằng cách hỏi: Đoạn văn nói về điều gì? Chuyện gì đã xảy ra? Tại sao? Luyện tập với các đoạn văn ngắn về đời sống hàng ngày, sau đó trả lời câu hỏi đơn giản về ý chính và chi tiết."
+        },
+        "schema_version": 1,
+        "common_mistakes": [
+          {
+            "why": "Stopping at every unknown word breaks understanding of the whole text and slows reading down. At A2 level, learners should focus on the main idea and key details; most new words can be guessed from context, and only truly important words need checking.",
+            "right": "Read the paragraph once for the general idea, then read again to find specific details, guessing unknown words from context.",
+            "wrong": "Reading a paragraph word by word and stopping at every unknown word to look it up in the dictionary."
+          }
+        ]
+      },
+      "verification": {
+        "approved_by": "person",
+        "confirmed": false,
+        "checked_at": "0001-01-01T00:00:00Z"
+      }
+    }
+  ]
 }
