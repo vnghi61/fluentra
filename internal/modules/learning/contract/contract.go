@@ -390,6 +390,17 @@ type ExamPartConstraints struct {
 	// Writing Task 1, WO 22 D22-22): the model returns the chart's data, our
 	// code draws it, and an item without one is refused.
 	VisualRequired bool `json:"visual_required,omitempty"`
+	// Recording is the part's audio as the published format states it. Without
+	// it the prompt cannot tell a monologue part from a dialogue part, and IELTS
+	// Listening Part 2 came back as interviews.
+	Recording *ExamRecording `json:"recording,omitempty"`
+}
+
+// ExamRecording is a listening part's recording: its genre ("social_monologue",
+// "academic_lecture", …) and how many voices it has.
+type ExamRecording struct {
+	Genre    string `json:"genre,omitempty"`
+	Speakers int    `json:"speakers,omitempty"`
 }
 
 // VerifyItemRequest specifies an item to verify through ItemVerifier.

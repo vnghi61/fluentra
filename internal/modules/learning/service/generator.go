@@ -230,6 +230,11 @@ func examFormat(c *learningcontract.ExamPartConstraints) string {
 	if c.MinWords > 0 {
 		lines = append(lines, fmt.Sprintf("The response must be at least %d words.", c.MinWords))
 	}
+	if c.Recording != nil {
+		if line := recordingFormat(c.Recording); line != "" {
+			lines = append(lines, line)
+		}
+	}
 	if c.Plays > 0 {
 		lines = append(lines, fmt.Sprintf("The recording is played %d time(s).", c.Plays))
 	}
@@ -240,6 +245,39 @@ func examFormat(c *learningcontract.ExamPartConstraints) string {
 		lines = append(lines, chartInstruction)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// recordingGenres words the format table's genre codes for the prompt.
+var recordingGenres = map[string]string{
+	"social_conversation":     "a conversation in an everyday social setting",
+	"social_monologue":        "one person talking about an everyday social topic",
+	"educational_discussion":  "a discussion in an education or training setting, such as students and a tutor",
+	"academic_lecture":        "a lecture on an academic subject",
+	"announcement_or_message": "a short announcement or recorded message",
+	"conversation":            "a conversation",
+	"talk":                    "a talk",
+}
+
+// recordingFormat states a part's recording: its genre and, above all, how many
+// voices it has, which a small model otherwise guesses (a Part 2 monologue came
+// back as an interview).
+func recordingFormat(r *learningcontract.ExamRecording) string {
+	genre := recordingGenres[r.Genre]
+	if genre == "" {
+		genre = strings.ReplaceAll(r.Genre, "_", " ")
+	}
+	switch {
+	case r.Speakers == 1:
+		return fmt.Sprintf("The recording is %s, spoken by exactly one person: a monologue, "+
+			"with no second voice, no interviewer and no dialogue.", genre)
+	case r.Speakers > 1:
+		return fmt.Sprintf(`The recording is %s between exactly %d speakers, written as a dialogue with "turns".`,
+			genre, r.Speakers)
+	case genre != "":
+		return "The recording is " + genre + "."
+	default:
+		return ""
+	}
 }
 
 // chartInstruction asks for a Task 1 chart as data: the model cannot draw, and a
