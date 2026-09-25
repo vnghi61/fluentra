@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -664,7 +665,12 @@ func (h *Handler) adminApproveBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A batch id holds colons, which clients escape; chi routes on the raw path,
+	// so the param arrives escaped and would match no drafts.
 	batch := chi.URLParam(r, "id")
+	if decoded, err := url.PathUnescape(batch); err == nil {
+		batch = decoded
+	}
 	var req AdminApproveBatchRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteProblem(w, r, err)
