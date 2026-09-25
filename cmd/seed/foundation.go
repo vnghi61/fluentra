@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/fluentra/fluentra/cmd/internal/foundationfixture"
 	"github.com/fluentra/fluentra/internal/modules/content"
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
+	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
@@ -51,6 +53,7 @@ func seedFoundationFixtures(
 
 	published := 0
 	drafted := 0
+	var gated []string
 	for _, file := range files {
 		for _, item := range orderedFixtureItems(file.Items) {
 			body, found, err := publishedBodyBySlug(ctx, pool, item.Slug)
@@ -90,7 +93,22 @@ func seedFoundationFixtures(
 				continue
 			}
 			if err := author.ApproveVerified(ctx, versionID, verification); err != nil {
-				return fmt.Errorf("publish %s: %w", item.Slug, err)
+				if !isPublicationGate(err) {
+					return fmt.Errorf("publish %s: %w", item.Slug, err)
+				}
+				// Confirmed, but a publication gate refuses it: a topic whose
+				// node lacks its review question, say. It waits as a draft with
+				// the reason, as it would have on the machine that generated it,
+				// and the seed goes on — one incomplete node must not leave a
+				// fresh database with no curriculum at all.
+				verification.Confirmed = false
+				verification.Reason = fmt.Sprintf("publication gate: %v", err)
+				if err := recorder.RecordVerification(ctx, versionID, verification); err != nil {
+					return fmt.Errorf("record gate for %s: %w", item.Slug, err)
+				}
+				drafted++
+				gated = append(gated, file.Node.Code)
+				continue
 			}
 			published++
 		}
@@ -98,7 +116,26 @@ func seedFoundationFixtures(
 
 	_, _ = fmt.Fprintf(out, "  ✓ Foundation fixtures: %d published, %d left as drafts, from %d node file(s)\n",
 		published, drafted, len(files))
+	if len(gated) > 0 {
+		_, _ = fmt.Fprintf(out, "  ! Not published, the node is incomplete in the fixture: %s\n",
+			strings.Join(gated, ", "))
+	}
 	return nil
+}
+
+// isPublicationGate reports a refusal by one of content's publication gates —
+// an incomplete Foundation node, media not ready — rather than a fault.
+func isPublicationGate(err error) bool {
+	var appErr *apperr.Error
+	if !errors.As(err, &appErr) {
+		return false
+	}
+	switch appErr.Code {
+	case "FOUNDATION_INCOMPLETE", "MEDIA_NOT_READY":
+		return true
+	default:
+		return false
+	}
 }
 
 // orderedFixtureItems sorts a node's items so a topic publishes after its
