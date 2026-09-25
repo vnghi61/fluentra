@@ -300,7 +300,7 @@ func (u *Uploads) labelSubmittedItems(
 	lemmas := make([]string, 0, len(entries))
 	for _, entry := range entries {
 		lemma := normaliseUploadTerm(entry.Term)
-		if lemma == "" || strings.Contains(lemma, " ") {
+		if lemma == "" {
 			continue
 		}
 		lemmas = append(lemmas, lemma)
@@ -601,6 +601,14 @@ func (u *Uploads) lookupEntry(ctx context.Context, term string) (repository.Dict
 }
 
 func (u *Uploads) verifyPhrase(ctx context.Context, item sqlc.SkillVocabUploadItem) (bool, error) {
+	// A phrase the database already holds is resolved the way a word is (WO 22
+	// Stage B): no dictionary and no model call.
+	if handled, inserted, err := u.resolveKnownWord(ctx, item); err != nil {
+		return false, err
+	} else if handled {
+		return inserted, nil
+	}
+
 	term := strings.TrimSpace(item.Term)
 	entry, err := u.lookupEntry(ctx, term)
 	if err != nil {

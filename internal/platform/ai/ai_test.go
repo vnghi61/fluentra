@@ -889,6 +889,43 @@ func TestRouter_ExcludesTheWritersModel(t *testing.T) {
 	assert.Equal(t, testOtherModel, res.Model, "the excluded writer model must not answer")
 }
 
+// TestRouter_ExclusionIsNotAnsweredFromTheWritersCache. The generator's own
+// blind solve and the independent verifier's send the same task with the same
+// inputs; a cached reply from the writer's call must not answer the verifier's.
+func TestRouter_ExclusionIsNotAnsweredFromTheWritersCache(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	writer := &namedProvider{
+		name: "writer", model: testWriterModel,
+		res: ai.Response{Text: testConfirmedVerdict, Model: testWriterModel},
+	}
+	other := &namedProvider{
+		name: "other", model: testOtherModel,
+		res: ai.Response{Text: testConfirmedVerdict, Model: testOtherModel},
+	}
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts:   registry,
+		Providers: ai.NewProviderRegistry(writer, other),
+		Cache:     ai.NewMemoryCache(),
+		Usage:     ai.NoopUsageRecorder{},
+	})
+
+	first, err := router.Complete(context.Background(), ai.Request{
+		Task: ai.TaskItemVerify, Vars: itemVerifyVars(),
+	})
+	require.NoError(t, err)
+	require.Equal(t, testWriterModel, first.Model)
+
+	res, err := router.Complete(context.Background(), ai.Request{
+		Task:         ai.TaskItemVerify,
+		Vars:         itemVerifyVars(),
+		ExcludeModel: testWriterModel,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, testOtherModel, res.Model, "the writer's cached reply must not answer an excluding call")
+}
+
 // TestRouter_ExcludingTheOnlyModelIsDisabled. With one provider configured and
 // its model excluded there is nothing independent to ask, so the call fails as
 // if no provider were configured and the caller escalates (D22-2).

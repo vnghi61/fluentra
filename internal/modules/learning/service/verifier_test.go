@@ -404,3 +404,53 @@ func TestVerifyItem_ProvenanceCheck(t *testing.T) {
 	})
 	require.NoError(t, err)
 }
+
+// TestVerifyItem_ExamStructure_IELTSGroupWithTypedAnswers is D22-25 end to end
+// at the verifier: a passage whose questions mix completion, true/false/not
+// given and multiple choice passes an IELTS part whose word limit is its
+// answers', and a completion key over that limit is refused.
+func TestVerifyItem_ExamStructure_IELTSGroupWithTypedAnswers(t *testing.T) {
+	ctx := context.Background()
+
+	svc := service.New(service.Deps{
+		Lesson:       newFakePoolLessons(),
+		LessonAuthor: newFakePoolLessons(),
+		Graders:      passingGraders(),
+		Clock:        clock.NewFake(time.Now()),
+	})
+
+	explanation := `"explanation": {"explanation_en": "See the passage.", "explanation_vi": "Xem đoạn văn."}`
+	body := func(completionKey string) json.RawMessage {
+		return json.RawMessage(`{
+			"passage": "The city opened a new library in 2020. It holds ten thousand books and a reading room.",
+			"questions": [
+				{"id": "q1", "type": "completion", "prompt": "The library holds ten thousand ___.",
+				 "key": "` + completionKey + `", ` + explanation + `},
+				{"id": "q2", "type": "completion", "prompt": "It also has a ___ room.",
+				 "key": "reading", ` + explanation + `},
+				{"id": "q3", "type": "true_false_not_given", "prompt": "The library opened in 2020.",
+				 "key": "True", ` + explanation + `},
+				{"id": "q4", "type": "multiple_choice", "prompt": "When did the library open?",
+				 "options": [{"id": "A", "text": "2020"}, {"id": "B", "text": "2019"},
+				             {"id": "C", "text": "2021"}, {"id": "D", "text": "2018"}],
+				 "correct_option_id": "A", ` + explanation + `}
+			]
+		}`)
+	}
+	constraints := &learningcontract.ExamPartConstraints{
+		QuestionsPerGroup: 4,
+		MaxWords:          2,
+		AllowedTypes:      []string{typeCompletion, typeTrueFalse, typeMultipleChoice},
+	}
+
+	err := svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind: kindReading, CEFRLevel: "B2", Body: body("books"), ExamConstraints: constraints,
+	})
+	require.NoError(t, err, "typed and true/false/not given questions are valid in an IELTS group")
+
+	err = svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind: kindReading, CEFRLevel: "B2", Body: body("very many printed books"), ExamConstraints: constraints,
+	})
+	require.Error(t, err, "a completion key over the word limit must be refused")
+	assert.Contains(t, err.Error(), "the limit is 2")
+}

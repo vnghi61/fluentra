@@ -150,12 +150,11 @@ func validateListeningExamStructure(raw json.RawMessage, c *learningcontract.Exa
 	if c.AudioRequired && strings.TrimSpace(cand.Script) == "" {
 		return errors.New("check (exam structure) failed: audio script is required")
 	}
-	wc := len(strings.Fields(cand.Script))
-	if c.MinWords > 0 && wc < c.MinWords {
-		return fmt.Errorf("check (exam structure) failed: script has %d words, want at least %d", wc, c.MinWords)
-	}
-	if c.MaxWords > 0 && wc > c.MaxWords {
-		return fmt.Errorf("check (exam structure) failed: script has %d words, want at most %d", wc, c.MaxWords)
+	// A listening part's word limit is its answers' ("NO MORE THAN TWO WORDS"),
+	// not the script's length: read as the script's, it refused every IELTS
+	// recording longer than two words.
+	if err := checkTypedAnswerLimit(cand.Questions, c.MaxWords); err != nil {
+		return err
 	}
 	return checkAllowedQuestionTypes(cand.Questions, c)
 }
@@ -177,12 +176,9 @@ func validateReadingExamStructure(raw json.RawMessage, c *learningcontract.ExamP
 			}
 		}
 	}
-	wc := len(strings.Fields(cand.Passage))
-	if c.MinWords > 0 && wc < c.MinWords {
-		return fmt.Errorf("check (exam structure) failed: passage has %d words, want at least %d", wc, c.MinWords)
-	}
-	if c.MaxWords > 0 && wc > c.MaxWords {
-		return fmt.Errorf("check (exam structure) failed: passage has %d words, want at most %d", wc, c.MaxWords)
+	// As for listening, the part's word limit is its answers', not the passage's.
+	if err := checkTypedAnswerLimit(cand.Questions, c.MaxWords); err != nil {
+		return err
 	}
 	return checkAllowedQuestionTypes(cand.Questions, c)
 }

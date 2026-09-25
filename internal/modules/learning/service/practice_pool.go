@@ -696,11 +696,10 @@ func parseReadingWithMinMax(raw []byte, minQ, maxQ int) error {
 		return fmt.Errorf("expected %d-%d questions, got %d", minQ, maxQ, len(body.Questions))
 	}
 	for i, q := range body.Questions {
-		correctOpt := q.CorrectOptionID
-		if correctOpt == "" {
-			correctOpt = q.Key
+		if strings.TrimSpace(q.Prompt) == "" {
+			return fmt.Errorf("question %d: prompt is empty", i)
 		}
-		if err := parseChoice(q.Prompt, q.Options, correctOpt); err != nil {
+		if err := checkGroupQuestion(q, 4); err != nil {
 			return fmt.Errorf("question %d: %w", i, err)
 		}
 	}
@@ -817,7 +816,7 @@ func buildOwnAnswerPayload(kind string, raw []byte) (json.RawMessage, error) {
 		}
 		answers := make(map[string]string, len(body.Questions))
 		for _, q := range body.Questions {
-			answers[q.ID] = q.CorrectOptionID
+			answers[q.ID] = questionKey(q)
 		}
 		return json.Marshal(map[string]any{keyAnswers: answers})
 	case kindTextCompletion:
@@ -901,7 +900,7 @@ func validateStructure(kind string, raw []byte) error {
 			if q.Explanation.Vi() == "" {
 				return fmt.Errorf("question %d explanation_vi is empty", i)
 			}
-			if err := checkOptions(q.Options, q.CorrectOptionID); err != nil {
+			if err := checkGroupQuestion(q, 0); err != nil {
 				return fmt.Errorf("question %d: %w", i, err)
 			}
 		}

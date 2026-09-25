@@ -154,3 +154,22 @@ func TestSubmit_LabelsKnownWordsBeforeTheJobRuns(t *testing.T) {
 	assert.Equal(t, "known", byTerm[wordLeisure])
 	assert.Equal(t, "checking", byTerm["serendipity"])
 }
+
+// TestVerifyUpload_KnownPhraseCostsNoDictionaryAndNoModel. Stage B resolves
+// phrases the way it resolves words: one the database holds costs no call.
+func TestVerifyUpload_KnownPhraseCostsNoDictionaryAndNoModel(t *testing.T) {
+	repo := newUploadRepo()
+	seedKnownWord(repo, "look after", "chăm sóc")
+	entry := item("look after", "")
+	repo.pending = []sqlc.SkillVocabUploadItem{entry}
+
+	dict := &stubDictionary{}
+	model := &stubAI{err: assert.AnError}
+	uploads, _ := newPipeline(t, repo, dict, model)
+
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	assert.Equal(t, 0, dict.calls, "a known phrase must not call the dictionary")
+	assert.Equal(t, 0, model.calls, "a known phrase must not call the model")
+	assert.Equal(t, "known_word", repo.noteCodes[entry.ID])
+}

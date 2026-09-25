@@ -72,7 +72,7 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 	// is neither read nor written.
 	cacheKey := ""
 	if tmpl.Cache {
-		cacheKey = ComputeCacheKey(req.Task, tmpl.Version, req.Vars)
+		cacheKey = ComputeCacheKey(req.Task, tmpl.Version, cacheVars(req))
 	}
 	if cached, found := r.cacheGet(ctx, cacheKey); found {
 		r.record(ctx, RequestLog{
@@ -128,6 +128,23 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 	}
 
 	return r.executeFallback(ctx, req, cacheKey, primary, chain[1:], primaryExecErr, primaryVerdict, start)
+}
+
+// cacheVars is what the cache key is computed over. An excluded model is part of
+// it: the generator's own blind solve and the independent verifier's send the
+// same task with the same inputs, and without the exclusion in the key the
+// verifier would be handed the writer's cached answer — self-review again.
+func cacheVars(req Request) map[string]any {
+	exclude := strings.ToLower(strings.TrimSpace(req.ExcludeModel))
+	if exclude == "" {
+		return req.Vars
+	}
+	vars := make(map[string]any, len(req.Vars)+1)
+	for k, v := range req.Vars {
+		vars[k] = v
+	}
+	vars["_exclude_model"] = exclude
+	return vars
 }
 
 // cacheGet reads a cached reply; an empty key is a task that is never cached.

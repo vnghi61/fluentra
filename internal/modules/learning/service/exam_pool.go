@@ -570,10 +570,11 @@ func checkListeningQuestions(
 ) error {
 	ownAnswers := make(map[string]string, len(cand.Questions))
 	for _, q := range cand.Questions {
-		if q.CorrectOptionID == "" {
-			return fmt.Errorf("question %s missing correct_option_id", q.ID)
+		key := questionKey(q)
+		if key == "" {
+			return fmt.Errorf("question %s has no answer key", q.ID)
 		}
-		ownAnswers[q.ID] = q.CorrectOptionID
+		ownAnswers[q.ID] = key
 	}
 	ownPayload, err := json.Marshal(map[string]any{keyAnswers: ownAnswers})
 	if err != nil {
@@ -584,7 +585,7 @@ func checkListeningQuestions(
 	}
 
 	for _, q := range cand.Questions {
-		if err := checkOptions(q.Options, q.CorrectOptionID); err != nil {
+		if err := checkGroupQuestion(q, 0); err != nil {
 			return fmt.Errorf("check 3 (structure) failed for question %s: %w", q.ID, err)
 		}
 		if q.Explanation == nil || strings.TrimSpace(q.Explanation.Vi()) == "" {

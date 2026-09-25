@@ -314,6 +314,19 @@ func (s *Service) GenerateQuestions(ctx context.Context, req contract.GenerateRe
 			slog.WarnContext(ctx, "could not create question bank row", "error", cErr)
 			continue
 		}
+		// An independent verifier may already have published the version inside
+		// Generate (WO 22 Stage A). Its content.published event can be consumed
+		// before this row exists, and then finds no question to put in the
+		// bank, so a published version goes into the bank here instead.
+		if ver.Status == contentStatusPublished {
+			if published, pErr := s.publishIntoBank(ctx, created, ver.ID); pErr != nil {
+				slog.WarnContext(ctx, "could not put a verified question in the bank",
+					"question_id", created.ID, "error", pErr)
+			} else if published != nil {
+				createdQuestions = append(createdQuestions, published)
+				continue
+			}
+		}
 		createdQuestions = append(createdQuestions, toContractQuestion(created))
 	}
 

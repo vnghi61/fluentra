@@ -146,6 +146,9 @@ func (s *Service) publishVerifiedDraft(
 		Kind:      req.Kind,
 		CEFRLevel: req.CEFRLevel,
 		Body:      body,
+		// Stage A's checklist includes the part's official specification: the
+		// independent judge sees the same format the generator was given.
+		OfficialSpec: examFormat(req.ExamConstraints),
 	})
 	if err != nil {
 		return err

@@ -207,13 +207,21 @@ func examFormat(c *learningcontract.ExamPartConstraints) string {
 	if c.QuestionsPerGroup > 0 {
 		lines = append(lines, fmt.Sprintf("Questions in this group: exactly %d.", c.QuestionsPerGroup))
 	}
-	if c.OptionCount > 0 {
+	switch {
+	case c.OptionCount > 0:
 		lines = append(lines, fmt.Sprintf("Options per question: exactly %d.", c.OptionCount))
-	} else {
-		lines = append(lines, "Questions are typed (no options); each answer is a short text.")
+	case isTaskOnlyPart(c.AllowedTypes):
+		// A writing or speaking task has no questions to type short answers to.
+	case len(c.AllowedTypes) > 1:
+		lines = append(lines,
+			`Completion questions have no options: their answer is typed and set in "key". `+
+				`True/false/not given questions use the key "True", "False" or "Not Given". `+
+				"Other question types carry their own options.")
+	default:
+		lines = append(lines, `Questions are typed (no options); each answer is a short text set in "key".`)
 	}
 	if c.MaxWords > 0 {
-		lines = append(lines, fmt.Sprintf("No answer may exceed %d words.", c.MaxWords))
+		lines = append(lines, fmt.Sprintf("No typed answer may exceed %d words.", c.MaxWords))
 	}
 	if c.MinWords > 0 {
 		lines = append(lines, fmt.Sprintf("The response must be at least %d words.", c.MinWords))
@@ -225,6 +233,20 @@ func examFormat(c *learningcontract.ExamPartConstraints) string {
 		lines = append(lines, "Question-type mix: "+mix+".")
 	}
 	return strings.Join(lines, "\n")
+}
+
+// isTaskOnlyPart reports a writing or speaking part: its item is one task, not
+// questions with answers.
+func isTaskOnlyPart(types []string) bool {
+	if len(types) == 0 {
+		return false
+	}
+	for _, typ := range types {
+		if typ != kindWritingPrompt && typ != kindSpeakingTask {
+			return false
+		}
+	}
+	return true
 }
 
 // formatTypeMix renders a part's question-type mix in a stable order, so the
