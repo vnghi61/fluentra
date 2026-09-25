@@ -127,7 +127,9 @@ func (f *fakeExamService) SittingsToday(_ context.Context, _ uuid.UUID) (service
 	return service.SittingsToday{Used: 1, Limit: 5}, nil
 }
 
-func (f *fakeExamService) ListCurrentExamVersions(_ context.Context) ([]service.ExamVersionDTO, error) {
+func (f *fakeExamService) ListCurrentExamVersions(
+	_ context.Context, _ uuid.UUID,
+) ([]service.ExamVersionDTO, error) {
 	return nil, nil
 }
 

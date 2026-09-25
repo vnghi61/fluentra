@@ -6577,6 +6577,11 @@ export interface components {
              * @example 5
              */
             fixed_test_count: number;
+            /**
+             * @description The calling learner's best overall score (0-100) on this version, from a full sitting in exam mode with a ready report. Absent when they have none.
+             * @example 78.5
+             */
+            best_score?: number;
             /** @description The version's structure, so a custom composition can name the parts it wants. Counts of available bank items are not here; those stay in the admin coverage report. */
             parts: {
                 /** @example 1 */

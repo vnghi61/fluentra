@@ -52,7 +52,9 @@ function versionLabel(version: ExamVersion): string {
 }
 
 /** The distinct sections a version holds, by position, in sitting order. */
-function versionSections(version: ExamVersion): { position: number; skill: string }[] {
+function versionSections(
+  version: ExamVersion,
+): { position: number; skill: string }[] {
   const seen = new Map<number, string>();
   for (const part of version.parts ?? []) {
     const position = SECTION_ORDER[part.section] ?? 0;
@@ -65,7 +67,10 @@ function versionSections(version: ExamVersion): { position: number; skill: strin
 
 /** A version's total question count, from its parts. */
 function questionCount(version: ExamVersion): number {
-  return (version.parts ?? []).reduce((sum, part) => sum + part.question_count, 0);
+  return (version.parts ?? []).reduce(
+    (sum, part) => sum + part.question_count,
+    0,
+  );
 }
 
 export function ExamHub(): React.JSX.Element {
@@ -128,7 +133,10 @@ function VersionList({
   if (versions.isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+        <Loader2
+          className="h-6 w-6 animate-spin text-primary"
+          aria-hidden="true"
+        />
       </div>
     );
   }
@@ -193,9 +201,20 @@ function VersionList({
                         defaultValue: `${version.fixed_test_count} tests`,
                       })}
                     </Badge>
+                    {version.best_score !== undefined && (
+                      <Badge variant="primary">
+                        {t("exam.hub.bestScore", {
+                          score: Math.round(version.best_score),
+                          defaultValue: `Best ${Math.round(version.best_score)}%`,
+                        })}
+                      </Badge>
+                    )}
                   </span>
                 </span>
-                <ChevronRight className="h-5 w-5 shrink-0 text-text-muted" aria-hidden="true" />
+                <ChevronRight
+                  className="h-5 w-5 shrink-0 text-text-muted"
+                  aria-hidden="true"
+                />
               </button>
             </li>
           );
@@ -234,7 +253,10 @@ function VersionTests({
       const attempt = await examApi.startMockTestAttempt(test.id, {
         mode: "exam",
       });
-      void navigate({ to: "/exams/$attemptId", params: { attemptId: attempt.id } });
+      void navigate({
+        to: "/exams/$attemptId",
+        params: { attemptId: attempt.id },
+      });
     } catch (err) {
       setError(
         problemDetail(err) ??
@@ -258,7 +280,10 @@ function VersionTests({
           {versionLabel(version)}
         </h1>
         <p className="text-sm text-text-muted">
-          {t("exam.hub.testsSubtitle", "Choose a test, or let one be drawn for you.")}
+          {t(
+            "exam.hub.testsSubtitle",
+            "Choose a test, or let one be drawn for you.",
+          )}
         </p>
       </div>
 
@@ -290,7 +315,10 @@ function VersionTests({
 
       {tests.isLoading ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+          <Loader2
+            className="h-6 w-6 animate-spin text-primary"
+            aria-hidden="true"
+          />
         </div>
       ) : items.length === 0 ? (
         <p className="rounded-xl border border-border-subtle bg-surface-muted p-4 text-sm text-text-muted">
@@ -393,7 +421,10 @@ function SitSheet({
           };
     try {
       const attempt = await examApi.startMockTestAttempt(test.id, req);
-      void navigate({ to: "/exams/$attemptId", params: { attemptId: attempt.id } });
+      void navigate({
+        to: "/exams/$attemptId",
+        params: { attemptId: attempt.id },
+      });
     } catch (err) {
       setError(
         problemDetail(err) ??
@@ -501,7 +532,12 @@ function SitSheet({
       )}
 
       <div className="flex justify-end">
-        <Button onClick={() => void start()} isLoading={busy} disabled={busy} className="gap-2">
+        <Button
+          onClick={() => void start()}
+          isLoading={busy}
+          disabled={busy}
+          className="gap-2"
+        >
           <Play className="h-4 w-4" aria-hidden="true" />
           {t("exam.hub.go", "Start")}
         </Button>

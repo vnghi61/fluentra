@@ -1336,6 +1336,7 @@
       "versionsError": "Exams could not be loaded.",
       "format": "{{count}} questions · {{minutes}} min",
       "testCount": "{{count}} tests",
+      "bestScore": "Best {{score}}%",
       "testsSubtitle": "Choose a test, or let one be drawn for you.",
       "random": "Random test",
       "custom": "Build a custom test",

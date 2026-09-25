@@ -376,6 +376,12 @@ ExamVersion:
         (WO 22 Stage J). Not distinct_tests_possible: that is what the bank
         could compose, this is what a learner can open.
       example: 5
+    best_score:
+      type: number
+      description: >-
+        The calling learner's best overall score (0-100) on this version, from a
+        full sitting in exam mode with a ready report. Absent when they have none.
+      example: 78.5
     parts:
       type: array
       description: >-

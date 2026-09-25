@@ -27,6 +27,8 @@ import (
 // ---------------------------------------------------------------------------
 
 type mockExamRepo struct {
+	// bestScore is what GetUserBestVersionScore answers.
+	bestScore  *float64
 	mu         sync.Mutex
 	exams      []sqlc.AssessExam
 	mockTests  []*domain.MockTest
@@ -313,7 +315,10 @@ func (m *mockExamRepo) ListIntegrityEvents(
 }
 
 func (m *mockExamRepo) ListCurrentExamVersions(_ context.Context) ([]*domain.ExamVersion, error) {
-	return nil, nil
+	if m.version == nil {
+		return nil, nil
+	}
+	return []*domain.ExamVersion{m.version}, nil
 }
 
 func (m *mockExamRepo) GetExamVersionByID(_ context.Context, _ uuid.UUID) (*domain.ExamVersion, error) {
@@ -360,6 +365,10 @@ func (m *mockExamRepo) GetMockTestByID(_ context.Context, _ uuid.UUID) (*domain.
 
 func (m *mockExamRepo) ListMockTestsByOwner(_ context.Context, _ *uuid.UUID) ([]*domain.MockTest, error) {
 	return m.mockTests, nil
+}
+
+func (m *mockExamRepo) GetUserBestVersionScore(_ context.Context, _, _ uuid.UUID) (*float64, error) {
+	return m.bestScore, nil
 }
 
 func (m *mockExamRepo) ListFixedMockTests(_ context.Context, _ uuid.UUID) ([]*domain.MockTest, error) {

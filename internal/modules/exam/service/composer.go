@@ -62,6 +62,9 @@ type ExamVersionDTO struct {
 	// FixedTestCount is how many numbered fixed tests exist (WO 22 Stage J):
 	// what a learner can open, never confused with DistinctTestsPossible.
 	FixedTestCount int `json:"fixed_test_count"`
+	// BestScore is the caller's best full exam-mode score on this version,
+	// 0-100; absent when they have none (WO 22 Stage L).
+	BestScore *float64 `json:"best_score,omitempty"`
 	// Parts is the version's structure: what a "custom" composition chooses
 	// between. Counts of available bank items are not here; those stay in the
 	// admin coverage report.
@@ -136,7 +139,7 @@ type ExamCoverageReportDTO struct {
 }
 
 // ListCurrentExamVersions returns all current verified exam versions with their blueprints.
-func (s *Service) ListCurrentExamVersions(ctx context.Context) ([]ExamVersionDTO, error) {
+func (s *Service) ListCurrentExamVersions(ctx context.Context, userID uuid.UUID) ([]ExamVersionDTO, error) {
 	if s.repo == nil {
 		return nil, errors.New("repository not configured")
 	}
@@ -202,6 +205,13 @@ func (s *Service) ListCurrentExamVersions(ctx context.Context) ([]ExamVersionDTO
 			DistinctTestsPossible: s.coverageForParts(ctx, v, parts).DistinctTestsPossible,
 			FixedTestCount:        fixedTests,
 		})
+		if userID != uuid.Nil {
+			best, err := s.repo.GetUserBestVersionScore(ctx, userID, v.ID)
+			if err != nil {
+				return nil, fmt.Errorf("best score on %s: %w", v.Code, err)
+			}
+			out[len(out)-1].BestScore = best
+		}
 	}
 	return out, nil
 }

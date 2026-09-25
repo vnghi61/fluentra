@@ -182,3 +182,13 @@ SELECT *
 FROM assess.integrity_events
 WHERE attempt_id = $1
 ORDER BY occurred_at ASC;
+
+-- name: GetUserBestVersionScore :one
+-- The caller's best overall score on one exam version: full sittings in exam
+-- mode with a ready report only, since a practice of one section is not
+-- comparable (WO 22 Stage L, the exam card).
+SELECT MAX(r.overall_score)::numeric AS best_score
+FROM assess.exam_attempts a
+JOIN assess.score_reports r ON r.attempt_id = a.id
+JOIN assess.exams e ON e.id = a.exam_id
+WHERE a.user_id = $1 AND e.version_id = $2 AND a.mode = 'exam' AND r.status = 'ready';

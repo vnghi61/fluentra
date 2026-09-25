@@ -98,31 +98,69 @@ describe("exam hub", () => {
       http.get(`/api/v1/exam-versions/${VERSION_ID}/tests`, () =>
         HttpResponse.json({
           items: [
-            { id: "30000000-0000-0000-0000-000000000001", number: 1, title: "Đề 1", question_count: 200, minutes: 120 },
-            { id: "30000000-0000-0000-0000-000000000002", number: 2, title: "Đề 2", question_count: 200, minutes: 120 },
-            { id: TEST_ID, number: 3, title: "Đề 3", question_count: 200, minutes: 120 },
+            {
+              id: "30000000-0000-0000-0000-000000000001",
+              number: 1,
+              title: "Đề 1",
+              question_count: 200,
+              minutes: 120,
+            },
+            {
+              id: "30000000-0000-0000-0000-000000000002",
+              number: 2,
+              title: "Đề 2",
+              question_count: 200,
+              minutes: 120,
+            },
+            {
+              id: TEST_ID,
+              number: 3,
+              title: "Đề 3",
+              question_count: 200,
+              minutes: 120,
+            },
           ],
         }),
       ),
     );
   });
 
+  it("shows how many tests exist and the learner's best score on the card", async () => {
+    server.use(
+      http.get("/api/v1/exam-versions", () =>
+        HttpResponse.json({ items: [{ ...version, best_score: 78.4 }] }),
+      ),
+    );
+    await renderHub();
+
+    expect(await screen.findByText("2 tests")).toBeInTheDocument();
+    expect(screen.getByText("Best 78%")).toBeInTheDocument();
+  });
+
   it("walks exam → Đề 3 → practice, Reading only, no limit", async () => {
     let started: unknown = null;
     server.use(
-      http.post(`/api/v1/mock-tests/${TEST_ID}/attempts`, async ({ request }) => {
-        started = await request.json();
-        return HttpResponse.json(
-          { id: "44444444-4444-4444-4444-444444444444", status: "in_progress" },
-          { status: 201 },
-        );
-      }),
+      http.post(
+        `/api/v1/mock-tests/${TEST_ID}/attempts`,
+        async ({ request }) => {
+          started = await request.json();
+          return HttpResponse.json(
+            {
+              id: "44444444-4444-4444-4444-444444444444",
+              status: "in_progress",
+            },
+            { status: 201 },
+          );
+        },
+      ),
     );
 
     await renderHub();
 
     // Level 1 → level 2.
-    fireEvent.click(await screen.findByText("TOEIC Listening & Reading (2026)"));
+    fireEvent.click(
+      await screen.findByText("TOEIC Listening & Reading (2026)"),
+    );
     const card = (await screen.findByText("Đề 3")).closest("li") as HTMLElement;
     fireEvent.click(within(card).getByRole("button", { name: "Options" }));
 
@@ -145,20 +183,28 @@ describe("exam hub", () => {
     server.use(
       http.post("/api/v1/mock-tests", async ({ request }) => {
         composed = await request.json();
-        return HttpResponse.json({ id: "99999999-0000-0000-0000-000000000001" }, { status: 201 });
+        return HttpResponse.json(
+          { id: "99999999-0000-0000-0000-000000000001" },
+          { status: 201 },
+        );
       }),
       http.post(
         "/api/v1/mock-tests/99999999-0000-0000-0000-000000000001/attempts",
         () =>
           HttpResponse.json(
-            { id: "44444444-4444-4444-4444-444444444444", status: "in_progress" },
+            {
+              id: "44444444-4444-4444-4444-444444444444",
+              status: "in_progress",
+            },
             { status: 201 },
           ),
       ),
     );
 
     await renderHub();
-    fireEvent.click(await screen.findByText("TOEIC Listening & Reading (2026)"));
+    fireEvent.click(
+      await screen.findByText("TOEIC Listening & Reading (2026)"),
+    );
     fireEvent.click(await screen.findByRole("button", { name: /Random test/ }));
 
     await screen.findByText("sitting");

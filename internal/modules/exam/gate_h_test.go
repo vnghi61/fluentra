@@ -357,6 +357,10 @@ func (r *inMemoryGateRepo) GetMockTestByID(_ context.Context, id uuid.UUID) (*do
 	defer r.mu.Unlock()
 	return r.mockTests[id], nil
 }
+func (r *inMemoryGateRepo) GetUserBestVersionScore(_ context.Context, _, _ uuid.UUID) (*float64, error) {
+	return nil, nil
+}
+
 func (r *inMemoryGateRepo) ListFixedMockTests(_ context.Context, blueprintID uuid.UUID) ([]*domain.MockTest, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

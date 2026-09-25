@@ -1336,6 +1336,7 @@
       "versionsError": "Không tải được danh sách bài thi.",
       "format": "{{count}} câu · {{minutes}} phút",
       "testCount": "{{count}} đề",
+      "bestScore": "Tốt nhất {{score}}%",
       "testsSubtitle": "Chọn một đề, hoặc để hệ thống bốc đề cho bạn.",
       "random": "Đề ngẫu nhiên",
       "custom": "Tạo đề tùy chọn",

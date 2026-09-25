@@ -592,6 +592,28 @@ func (r *Repository) ListFixedMockTests(ctx context.Context, blueprintID uuid.UU
 
 // GetLatestUserMockTestAttempt returns the caller's most recent sitting of a
 // mock test with its score report, or nil when the caller has not sat it.
+// GetUserBestVersionScore returns the caller's best full exam-mode score on a
+// version, or nil when there is none.
+func (r *Repository) GetUserBestVersionScore(ctx context.Context, userID, versionID uuid.UUID) (*float64, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	best, err := r.queries.GetUserBestVersionScore(ctx, sqlc.GetUserBestVersionScoreParams{
+		UserID: userID, VersionID: &versionID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !best.Valid {
+		return nil, nil
+	}
+	value, err := best.Float64Value()
+	if err != nil || !value.Valid {
+		return nil, err
+	}
+	return &value.Float64, nil
+}
+
 func (r *Repository) GetLatestUserMockTestAttempt(
 	ctx context.Context, userID, mockTestID uuid.UUID,
 ) (*sqlc.GetLatestUserMockTestAttemptRow, error) {

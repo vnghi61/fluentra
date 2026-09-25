@@ -207,3 +207,22 @@ func TestGenerateDailyExam_HonoursTheCap(t *testing.T) {
 	require.Len(t, bank.calls, 1)
 	assert.Equal(t, 2, bank.calls[0].Count, "the cap bounds the run")
 }
+
+// TestListCurrentExamVersions_CarriesTheCallersBestScore is Stage L's card: a
+// signed-in learner sees their best score; with no caller there is none.
+func TestListCurrentExamVersions_CarriesTheCallersBestScore(t *testing.T) {
+	repo := dailyRepo()
+	best := 78.5
+	repo.bestScore = &best
+	svc := service.New(service.Deps{Repo: repo})
+
+	versions, err := svc.ListCurrentExamVersions(context.Background(), uuid.New())
+	require.NoError(t, err)
+	require.Len(t, versions, 1)
+	require.NotNil(t, versions[0].BestScore)
+	assert.InDelta(t, 78.5, *versions[0].BestScore, 0.001)
+
+	anonymous, err := svc.ListCurrentExamVersions(context.Background(), uuid.Nil)
+	require.NoError(t, err)
+	assert.Nil(t, anonymous[0].BestScore)
+}

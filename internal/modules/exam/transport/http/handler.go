@@ -36,7 +36,7 @@ type ExamService interface {
 	GetScoreReport(ctx context.Context, userID, attemptID uuid.UUID) (*service.ScoreReportDTO, error)
 	ListUserAttempts(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]service.ExamAttemptDTO, int64, error)
 	SittingsToday(ctx context.Context, userID uuid.UUID) (service.SittingsToday, error)
-	ListCurrentExamVersions(ctx context.Context) ([]service.ExamVersionDTO, error)
+	ListCurrentExamVersions(ctx context.Context, userID uuid.UUID) ([]service.ExamVersionDTO, error)
 	ListFixedTests(
 		ctx context.Context, userID, versionID uuid.UUID,
 	) (*service.FixedTestListResponseDTO, error)
@@ -312,7 +312,12 @@ func (h *Handler) getReport(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) listExamVersions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	versions, err := h.service.ListCurrentExamVersions(ctx)
+	// The caller's best score rides on each card when there is a caller.
+	var userID uuid.UUID
+	if actor, ok := httpx.ActorFrom(ctx); ok {
+		userID = actor.UserID
+	}
+	versions, err := h.service.ListCurrentExamVersions(ctx, userID)
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
