@@ -1,7 +1,288 @@
 {
   "format": "fluentra.exam.part1photos.fixture.v1",
-  "source": "Wikimedia Commons and Openverse, photographs by link only",
-  "checked_at": "2026-09-24",
+  "source": "Openverse (Flickr and StockSnap), photographs by link only. Chosen and described by Claude (AI) at the owner's request on 2026-09-26, after viewing each image; a person should check the descriptions against the photographs.",
+  "checked_at": "2026-09-26",
   "licence_note": "CC0-1.0 and CC-BY only. A photograph without a credit page, or under any other licence, is refused at load. The model writes the Part 1 statements from the human description and never sees the image (WO 22 D22-21).",
-  "photos": []
+  "photos": [
+    {
+      "id": "laptop-window-desk",
+      "url": "https://cdn.stocksnap.io/img-thumbs/960w/0E0M5W9O3V.jpg",
+      "credit_page": "https://stocksnap.io/photo/working-typing-0E0M5W9O3V",
+      "licence": "CC0 1.0",
+      "description": "A young man is sitting at a long wooden table, typing on an open laptop. A glass of water and a black mug are beside him, and a vase of flowers and a small potted plant stand at the other end of the table. A large window is behind the table. No one else is in the room."
+    },
+    {
+      "id": "reading-armchair",
+      "url": "https://live.staticflickr.com/3860/15030645478_eec3ffe655_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/53662163@N06/15030645478",
+      "licence": "CC BY 2.0",
+      "description": "A man with grey hair is sitting in a leather armchair, reading a book. A small round table next to him holds a stack of books, and a reading lamp stands behind it. Two more armchairs are empty. Long curtains hang by the window behind him."
+    },
+    {
+      "id": "children-book-sale",
+      "url": "https://live.staticflickr.com/109/301263913_dbceb65d8b_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/90029322@N00/301263913",
+      "licence": "CC BY 2.0",
+      "description": "Four boys are standing side by side at a table, looking through rows of books and DVDs. One boy in a red jacket is pulling out a book. A cardboard box is on the table in front of them. Other people are standing in the background of a large hall."
+    },
+    {
+      "id": "craft-table-women",
+      "url": "https://live.staticflickr.com/4126/4999652494_a3353dd5be_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/42839495@N07/4999652494",
+      "licence": "CC BY 2.0",
+      "description": "Four women are sitting around a small white table, each working with their hands on a small craft. Cups and a blue bowl are on the table. Clothes hang on racks behind them. Nobody is standing."
+    },
+    {
+      "id": "chefs-holding-plates",
+      "url": "https://live.staticflickr.com/2593/4149857219_2c61b0a412_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/36281822@N08/4149857219",
+      "licence": "CC BY 2.0",
+      "description": "Two chefs in white jackets and dark caps are standing in a kitchen, each holding out a plate of food toward the camera. Steel pots and ladles hang from a rack above their heads. Both men are smiling."
+    },
+    {
+      "id": "chopping-vegetable-board",
+      "url": "https://live.staticflickr.com/8203/8248734396_4711378fe3_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/8123170@N06/8248734396",
+      "licence": "CC BY 2.0",
+      "description": "A close view of a person's hands cutting a pale green vegetable with a large knife on a white cutting board. The person is wearing a ring. Leafy vegetables lie at the edge of the board. The person's face is not shown."
+    },
+    {
+      "id": "waiter-empty-tables",
+      "url": "https://live.staticflickr.com/3104/2359141803_b5389ac153_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/71401718@N00/2359141803",
+      "licence": "CC BY 2.0",
+      "description": "A waiter in a white shirt is standing beside a shelf near the entrance of a small restaurant. The wooden tables and chairs in front of him are empty. A woman is sitting at a table farther back. A long corridor with signs leads away behind the tables."
+    },
+    {
+      "id": "seafood-platter",
+      "url": "https://live.staticflickr.com/2590/3976359977_8de045f7b3_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/9341577@N08/3976359977",
+      "licence": "CC BY 2.0",
+      "description": "A large round tray of seafood, with mussels, fried squid rings and lemon halves, is set on a raised stand on a white tablecloth. Wine glasses stand behind the tray, and a small bottle of red sauce is in front of it. A person is sitting at the table in the background."
+    },
+    {
+      "id": "surveyor-instrument",
+      "url": "https://live.staticflickr.com/7450/8756741875_23908a5db5_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/14214150@N02/8756741875",
+      "licence": "CC BY 2.0",
+      "description": "A worker in a yellow hard hat and a red shirt is looking through a surveying instrument on a stand. The instrument is directly in front of his face. Large round storage tanks and an industrial building are behind him."
+    },
+    {
+      "id": "steel-frame-workers",
+      "url": "https://live.staticflickr.com/52/132069821_8f1ddfe6d5_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/67513462@N00/132069821",
+      "licence": "CC BY 2.0",
+      "description": "Two workers in hard hats are working high up on the steel frame of an unfinished building. One is walking along a beam at the top. A blue lift platform reaches the frame on the left, and a hook hangs from a crane cable. The sky is clear."
+    },
+    {
+      "id": "rebar-column-crane",
+      "url": "https://live.staticflickr.com/42/122497422_506fd5e9e9_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/67513462@N00/122497422",
+      "licence": "CC BY 2.0",
+      "description": "Two construction workers wearing hard hats are standing on top of a tall frame of steel bars. One of them is reaching up toward a large hook hanging from a crane. A red metal form stands next to the frame. The sky behind them is clear and blue."
+    },
+    {
+      "id": "bicycle-handlebars-shop",
+      "url": "https://live.staticflickr.com/6029/5980809216_cbd8030561_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/45152500@N00/5980809216",
+      "licence": "CC BY 2.0",
+      "description": "A person in shorts is standing beside a black bicycle, holding the handlebars with one hand. The bicycle has a brown leather seat and brown handle grips. A stool with a round blue seat is behind it. Only the person's arms and legs can be seen."
+    },
+    {
+      "id": "roadside-bicycle-repair",
+      "url": "https://live.staticflickr.com/1282/841578698_94bbbd0c63_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/18288598@N00/841578698",
+      "licence": "CC BY 2.0",
+      "description": "A boy in a checked shirt is squatting on a dirt road, repairing a bicycle that is turned upside down. Several other bicycles stand around him. A man in a red and blue jacket is standing next to the bicycles. Trees line the road behind them."
+    },
+    {
+      "id": "bench-flower-garden",
+      "url": "https://live.staticflickr.com/5611/15469109900_d2e08bf714_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/12786044@N00/15469109900",
+      "licence": "CC BY 2.0",
+      "description": "A woman is sitting alone on a dark bench in a park, resting her head on one hand. A red bag and a water bottle are on the bench beside her. Behind her is a large bed of colourful flowers and a tall green hedge. The stone path in front of the bench is empty."
+    },
+    {
+      "id": "reading-bench-flowers",
+      "url": "https://live.staticflickr.com/5616/15468717167_457db0d6e7_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/12786044@N00/15468717167",
+      "licence": "CC BY 2.0",
+      "description": "A woman is sitting on a bench beside a stone path, reading a book. Flower beds full of pink, orange, yellow and white flowers surround the bench. Nobody else is on the path."
+    },
+    {
+      "id": "subway-platform-waiting",
+      "url": "https://live.staticflickr.com/3700/9543434906_6cd2d289c5_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/31018257@N00/9543434906",
+      "licence": "CC BY 2.0",
+      "description": "A black-and-white photo of an underground train platform. A woman with a bag on her shoulder is standing near the edge of the platform, looking along the tracks. A train is arriving in the distance with its lights on. A few other people are standing far away at the end of the platform."
+    },
+    {
+      "id": "shuttle-bus-path",
+      "url": "https://live.staticflickr.com/4063/4701229587_fa6b994ede_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/50693818@N08/4701229587",
+      "licence": "CC BY 2.0",
+      "description": "A white and green bus is parked at the edge of a road. A group of people is walking along a path next to it, some carrying backpacks. A bus-stop sign stands by the path. Trees and a wide canyon can be seen behind them."
+    },
+    {
+      "id": "boarding-bus-backpacks",
+      "url": "https://live.staticflickr.com/4153/5446223423_1062140465_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/50693818@N08/5446223423",
+      "licence": "CC BY 2.0",
+      "description": "A crowd of people carrying backpacks is standing close together beside the door of a green and white bus, waiting to get on. Several of them are wearing hats. Trees and a road can be seen behind the crowd."
+    },
+    {
+      "id": "lab-computer-woman",
+      "url": "https://live.staticflickr.com/3057/3009745973_4d901a4a09_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/35034363287@N01/3009745973",
+      "licence": "CC BY 2.0",
+      "description": "A woman in a white lab coat is sitting at a desk, using a computer. One hand is on the mouse, and she is looking at an image on the monitor. A keyboard and a sheet of paper with a pen are on the desk. A grey machine sits to the right of the monitor."
+    },
+    {
+      "id": "scientists-screen-microscope",
+      "url": "https://live.staticflickr.com/8468/8412949100_acc952e2c7_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/41284017@N08/8412949100",
+      "licence": "CC BY 2.0",
+      "description": "Two men are sitting at a desk looking at a large computer screen. The man at the back is pointing at the image on the screen, and the man in front has his hand on the keyboard. A white microscope is on the desk behind them."
+    },
+    {
+      "id": "woman-cabbage-field",
+      "url": "https://live.staticflickr.com/8473/8424377338_7900c7e256_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/14214150@N02/8424377338",
+      "licence": "CC BY 2.0",
+      "description": "A woman wrapped in a pink shawl is standing in the middle of a field of green cabbage plants. She is smiling and her hands are at her sides. Small houses and trees are behind the field. A man is carrying a bundle of green leaves in the background."
+    },
+    {
+      "id": "vegetable-market-stall",
+      "url": "https://live.staticflickr.com/5042/5297656524_d671cee7b3_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/57304240@N08/5297656524",
+      "licence": "CC BY 2.0",
+      "description": "A woman in a headscarf is sitting on the ground behind piles of vegetables, arranging them for sale. Bowls of red chillies and green beans are in front of her. A man in a red T-shirt is standing on the left, looking down at the vegetables. A weighing scale is behind the woman."
+    },
+    {
+      "id": "outdoor-market-shopper",
+      "url": "https://live.staticflickr.com/8176/8004881688_c1f46d846c_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/74105777@N00/8004881688",
+      "licence": "CC BY 2.0",
+      "description": "A woman holding a green shopping bag is standing at an outdoor vegetable stall under a white awning. Carrots, tomatoes and other vegetables are laid out in front of her. Other shoppers are standing along the stall, and a white van is parked behind it. The street is paved with stones."
+    },
+    {
+      "id": "bicycle-carrying-box",
+      "url": "https://live.staticflickr.com/3749/11327105055_514fde10e5_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/82448203@N04/11327105055",
+      "licence": "CC BY 2.0",
+      "description": "A man is riding a bicycle along a street with a tall cardboard box tied to the back of it. Motorcycles are parked in a row on the left. Two men are standing near the motorcycles, and a white car is parked on the right."
+    },
+    {
+      "id": "pedestrians-wide-street",
+      "url": "https://live.staticflickr.com/3593/3605780165_0a6c9e346b_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/29507259@N02/3605780165",
+      "licence": "CC0 1.0",
+      "description": "Two people are walking across a wide city street on a sunny day. Cars are parked along both sides of the street, and a few cars are driving in the distance. Tall buildings stand on the left, and a row of trees lines the right side."
+    },
+    {
+      "id": "classroom-teacher-object",
+      "url": "https://live.staticflickr.com/2583/4112145057_410df48843_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/24256351@N04/4112145057",
+      "licence": "CC BY 2.0",
+      "description": "A black-and-white photo of a classroom. A teacher wearing glasses is standing at the front, holding up a small object in one hand. Students are sitting at long wooden tables, looking toward her. Pieces of wood are on the table nearest the camera."
+    },
+    {
+      "id": "students-writing-notebooks",
+      "url": "https://live.staticflickr.com/2467/3566387380_f7b3f03ca0_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/38201960@N04/3566387380",
+      "licence": "CC BY 2.0",
+      "description": "Students in white shirts are sitting at desks in a classroom. Two young women in front are smiling, and one is holding a pen over an open notebook. Other students are sitting at desks behind them. A green board is on the back wall."
+    },
+    {
+      "id": "lawnmower-garden",
+      "url": "https://live.staticflickr.com/4903/45857797561_8e1070968f_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/166056147@N08/45857797561",
+      "licence": "CC BY 2.0",
+      "description": "A man in jeans is pushing a green lawnmower across a short, bright green lawn. Flowers in pots are in the front corners of the photo. Two potted plants stand against a brick wall behind the lawn. The man's head is not shown."
+    },
+    {
+      "id": "laundry-lines-seaside",
+      "url": "https://live.staticflickr.com/3402/4642943312_11e54ee296_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/41000732@N04/4642943312",
+      "licence": "CC BY 2.0",
+      "description": "A woman is standing among many washing lines, holding a piece of clothing. Shirts, towels and sheets are hanging from lines tied to tall wooden poles and are blowing in the wind. The ground is flat concrete, and the sea is behind her."
+    },
+    {
+      "id": "clothes-on-line",
+      "url": "https://live.staticflickr.com/8412/8698205081_11a2ff8eb1_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/9250445@N02/8698205081",
+      "licence": "CC BY 2.0",
+      "description": "Shirts, trousers and socks are hanging from a washing line with colourful plastic pegs. A red shirt is closest to the camera. The line runs across a garden with grass on the left. No people are in the photo."
+    },
+    {
+      "id": "cleaning-revolving-door",
+      "url": "https://live.staticflickr.com/8225/8451140407_27134252ee_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/33498942@N04/8451140407",
+      "licence": "CC BY 2.0",
+      "description": "A man in a white shirt is cleaning the glass of a revolving door with a cloth. He is leaning forward inside one section of the door. The building's entrance is made of glass and metal, and a small sign stands on the floor inside."
+    },
+    {
+      "id": "spinning-wheel-woman",
+      "url": "https://live.staticflickr.com/7122/7657091092_4bf78ee502_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/21160499@N04/7657091092",
+      "licence": "CC BY 2.0",
+      "description": "An elderly woman with grey hair is sitting on a woven mat on the floor, turning the handle of a wooden spinning wheel. A basket of white cotton is beside her, and a second wooden tool stands on the left. Stone steps rise behind her."
+    },
+    {
+      "id": "guitar-player-amplifier",
+      "url": "https://live.staticflickr.com/7576/15526789009_5658747fe2_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/129157731@N07/15526789009",
+      "licence": "CC BY 2.0",
+      "description": "A young man wearing glasses is sitting on a metal chair, playing an electric guitar. A small black amplifier is on the floor next to him, and a guitar case lies behind it. A paper sign and a poster are on the wall above him."
+    },
+    {
+      "id": "painting-wall-mural",
+      "url": "https://live.staticflickr.com/5445/9111842183_edcbd94ecd_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/46244586@N02/9111842183",
+      "licence": "CC0 1.0",
+      "description": "A woman is leaning close to a wall, painting a picture on it with a thin brush. The picture on the wall shows a bicycle standing by a doorway. Dried flowers are in the front left corner of the photo."
+    },
+    {
+      "id": "doctor-patient-bed",
+      "url": "https://live.staticflickr.com/7056/27220715681_c5979b30b2_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/46300592@N02/27220715681",
+      "licence": "CC BY 2.0",
+      "description": "A doctor in a white coat with a stethoscope around his neck is standing beside a hospital bed, talking and holding out one hand. A patient in a hospital gown is sitting up in the bed, smiling and listening. Medical equipment is mounted on the wall behind the bed."
+    },
+    {
+      "id": "shopping-cart-parking-lot",
+      "url": "https://live.staticflickr.com/1171/842759985_c65b1ec654_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/21241181@N00/842759985",
+      "licence": "CC BY 2.0",
+      "description": "A woman in white trousers is pushing an empty shopping cart across a car park. She is carrying a small red bag. Two men are walking toward a building in the background, and cars are parked on the right. The sky is clear."
+    },
+    {
+      "id": "cyclists-lined-up",
+      "url": "https://live.staticflickr.com/1370/5115177616_fa05aab8a7_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/47737490@N03/5115177616",
+      "licence": "CC BY 2.0",
+      "description": "A group of people wearing helmets are standing in a line, each holding a bicycle by the handlebars. They are all facing the same direction on an empty paved area. Houses and trees are behind them."
+    },
+    {
+      "id": "cycling-lesson-signals",
+      "url": "https://live.staticflickr.com/1363/5114576403_d9c2ccf0ce_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/47737490@N03/5114576403",
+      "licence": "CC BY 2.0",
+      "description": "Several people on bicycles are riding across an empty car park, each holding one arm out to the side. A man in jeans is standing on the left, watching them and pointing. Cars are parked at the far end, and houses stand behind them."
+    },
+    {
+      "id": "food-truck-queue",
+      "url": "https://live.staticflickr.com/316/20249777598_ff7568644f_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/31013861@N00/20249777598",
+      "licence": "CC BY 2.0",
+      "description": "A line of shoppers is standing in front of a food truck at an outdoor market. Two sellers are working behind the counter inside the truck. Several of the shoppers have wheeled shopping trolleys or bags beside them."
+    },
+    {
+      "id": "hikers-mountain-trail",
+      "url": "https://live.staticflickr.com/7418/12094382413_fa94029608_b.jpg",
+      "credit_page": "https://www.flickr.com/photos/50693818@N08/12094382413",
+      "licence": "CC BY 2.0",
+      "description": "A group of hikers with backpacks is walking in a line along a narrow rocky trail on the side of a canyon. Steep red and white cliffs rise across the valley. A few small trees grow beside the trail."
+    }
+  ]
 }
