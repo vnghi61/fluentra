@@ -532,11 +532,6 @@ func (s *Service) checkAndPrepareListening(
 	return preparedRaw, nil
 }
 
-// parseListeningCandidate is check 1: the reply parses and has a title, a script and at least four questions.
-func parseListeningCandidate(raw json.RawMessage) (listeningCand, error) {
-	return parseListeningCandidateWithMin(raw, 4)
-}
-
 func parseListeningCandidateWithMin(raw json.RawMessage, minQuestions int) (listeningCand, error) {
 	var cand listeningCand
 	if err := json.Unmarshal(raw, &cand); err != nil {

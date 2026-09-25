@@ -402,7 +402,7 @@ func (s *Service) generateSingleItem(
 		return nil, fmt.Errorf("ai generate call failed: %w", err)
 	}
 
-	preparedBody, err := s.prepareCandidateBody(ctx, req.Kind, candidateBody)
+	preparedBody, err := s.prepareCandidateBody(ctx, req, candidateBody)
 	if err != nil {
 		return nil, fmt.Errorf("prepare candidate body: %w", err)
 	}
@@ -498,11 +498,17 @@ func (s *Service) authorGeneratedItem(
 }
 
 func (s *Service) prepareCandidateBody(
-	ctx context.Context, kind string, body json.RawMessage,
+	ctx context.Context, req learningcontract.GenerateRequest, body json.RawMessage,
 ) (json.RawMessage, error) {
-	switch kind {
+	switch req.Kind {
 	case kindListeningComprehension:
-		cand, err := parseListeningCandidate(body)
+		// An exam part states its questions per recording (VSTEP Part 1 has
+		// one per announcement); the default floor of four is for practice.
+		minQuestions := 4
+		if req.ExamConstraints != nil && req.ExamConstraints.QuestionsPerGroup > 0 {
+			minQuestions = req.ExamConstraints.QuestionsPerGroup
+		}
+		cand, err := parseListeningCandidateWithMin(body, minQuestions)
 		if err != nil {
 			return nil, err
 		}

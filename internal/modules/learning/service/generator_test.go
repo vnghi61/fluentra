@@ -527,3 +527,39 @@ func TestGenerator_RefusesACountPastTheMaximum(t *testing.T) {
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, "GENERATOR_COUNT_TOO_LARGE", appErr.Code)
 }
+
+// TestGenerate_AOneQuestionRecordingForVSTEPPart1: VSTEP Listening Part 1 is
+// eight announcements of one question each. The candidate check demanded four
+// questions a recording and refused every Part 1 item; the part's own count
+// now sets the floor.
+func TestGenerate_AOneQuestionRecordingForVSTEPPart1(t *testing.T) {
+	svc := service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     &generatorTestAuthor{},
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           passingGraders(),
+		AI:                ai.NewMockProvider(nil),
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+	})
+
+	items, err := svc.Generate(context.Background(), learningcontract.GenerateRequest{
+		Kind:      "listening_comprehension",
+		CEFRLevel: "B1",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   "bank",
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			OptionCount: 4, QuestionsPerGroup: 1, AudioRequired: true,
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	var body struct {
+		Questions []json.RawMessage `json:"questions"`
+	}
+	require.NoError(t, json.Unmarshal(items[0].Body, &body))
+	assert.Len(t, body.Questions, 1, "one question per announcement, as the part states")
+}

@@ -356,6 +356,9 @@ func mockCriterion(name string, band float64, commentEn, commentVi string) map[s
 
 func (p *MockProvider) practiceGenerate(req Request) (Response, error) {
 	kind := stringVar(req.Vars, "Kind")
+	if format := stringVar(req.Vars, "ExamFormat"); format != "" && mockExamKinds[kind] {
+		return p.examGenerate(kind, format)
+	}
 	taskType := stringVar(req.Vars, "TaskType")
 	var payload []byte
 	var err error
@@ -535,16 +538,16 @@ func (p *MockProvider) practiceSolve(req Request) (Response, error) {
 	var err error
 
 	switch kind {
-	case "reading_comprehension", "listening_comprehension":
-		payload, err = json.Marshal(map[string]any{
-			"answers": map[string]string{
-				"q1": "A",
-				"q2": "A",
-				"q3": "A",
-				"q4": "A",
-				"q5": "A",
-			},
-		})
+	case "reading_comprehension", "listening_comprehension", "text_completion":
+		// Every question of a group up to an IELTS passage's fourteen: the
+		// mock keys every answer "A".
+		answers := make(map[string]string, 20)
+		for i := 1; i <= 20; i++ {
+			answers[fmt.Sprintf("q%d", i)] = "A"
+		}
+		payload, err = json.Marshal(map[string]any{"answers": answers})
+	case "photo_description", "question_response", "mcq_gap":
+		payload, err = json.Marshal(map[string]any{"selected_option_id": "A"})
 	case "grammar_tense_choice":
 		payload, err = json.Marshal(map[string]any{
 			"selected_option_id": "A",

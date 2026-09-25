@@ -67,7 +67,7 @@ linters:
       # questions, options and explanations in both languages. That is authored
       # content, the same kind of file as the seed above, and it takes the same
       # three exemptions for the same reasons.
-      - path: internal/platform/ai/provider_mock\.go
+      - path: internal/platform/ai/provider_mock(_exam)?\.go
         linters:
           - goconst
           - lll
