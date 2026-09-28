@@ -63,7 +63,7 @@ func withShuffledChoices(body json.RawMessage) json.RawMessage {
 // shuffleQuestion reorders one question's options in place and reports
 // whether it did.
 func shuffleQuestion(q map[string]any) bool {
-	if kind, _ := q["type"].(string); kind != "" && kind != "multiple_choice" {
+	if kind, _ := q["type"].(string); kind != "" && kind != questionTypeChoice {
 		return false
 	}
 	// TOEIC Part 1 writes its four statements under "statements", Part 2 its

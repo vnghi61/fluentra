@@ -107,7 +107,7 @@ func TestListeningScriptLengthIsEnforced(t *testing.T) {
 			Title:  "A campus tour",
 			Script: strings.Repeat("word ", words),
 			Questions: []candQuestion{{
-				ID: "q1", Type: "multiple_choice", Prompt: "Where does the tour start?",
+				ID: "q1", Type: questionTypeChoice, Prompt: "Where does the tour start?",
 				Options: []candOption{
 					{ID: "A", Text: "the library"}, {ID: "B", Text: "the gym"},
 					{ID: "C", Text: "the gate"}, {ID: "D", Text: "the canteen"},

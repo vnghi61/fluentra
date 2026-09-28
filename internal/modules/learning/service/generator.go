@@ -322,6 +322,9 @@ func lengthFormat(c *learningcontract.ExamPartConstraints) []string {
 // quarter of an IELTS passage, with thirteen questions on them. A tenth short
 // is let through; the model counts words loosely. Other kinds pass.
 func checkExamPassage(req learningcontract.GenerateRequest, body json.RawMessage) error {
+	if req.Kind == kindTextCompletion && req.ExamConstraints != nil {
+		return checkTextBlanks(body)
+	}
 	if req.Kind != kindReadingComprehension || req.ExamConstraints == nil || req.ExamConstraints.PassageMinWords <= 0 {
 		return nil
 	}
