@@ -104,8 +104,26 @@ func (s *Service) GenerateExamParts(ctx context.Context, versionCode string, par
 	if err != nil {
 		return 0, fmt.Errorf("list blueprints for %s: %w", versionCode, err)
 	}
-	level := blueprintLevel(blueprints)
+	if err := s.generateParts(ctx, versionCode, parts, blueprintLevel(blueprints), partNumbers); err != nil {
+		return 0, err
+	}
 
+	composed := 0
+	for _, blueprint := range blueprints {
+		count, composeErr := s.ComposeNextFixedTests(ctx, blueprint.ID)
+		if composeErr != nil {
+			return composed, composeErr
+		}
+		composed += count
+	}
+	return composed, nil
+}
+
+// generateParts asks for one test's worth (plus the margin) of each listed
+// part, or of every part when none are listed, within the per-run cap.
+func (s *Service) generateParts(
+	ctx context.Context, versionCode string, parts []*domain.ExamPart, level string, partNumbers []int,
+) error {
 	asked := 0
 	for _, part := range parts {
 		if len(partNumbers) > 0 && !slices.Contains(partNumbers, part.PartNumber) {
@@ -119,22 +137,13 @@ func (s *Service) GenerateExamParts(ctx context.Context, versionCode string, par
 				break
 			}
 		}
-		generated, genErr := s.generatePart(ctx, versionCode, part, level, groups)
-		if genErr != nil {
-			return 0, fmt.Errorf("generate %s part %d: %w", versionCode, part.PartNumber, genErr)
+		generated, err := s.generatePart(ctx, versionCode, part, level, groups)
+		if err != nil {
+			return fmt.Errorf("generate %s part %d: %w", versionCode, part.PartNumber, err)
 		}
 		asked += generated
 	}
-
-	composed := 0
-	for _, blueprint := range blueprints {
-		count, composeErr := s.ComposeNextFixedTests(ctx, blueprint.ID)
-		if composeErr != nil {
-			return composed, composeErr
-		}
-		composed += count
-	}
-	return composed, nil
+	return nil
 }
 
 // generatePart asks the bank author for one part's groups and returns how many

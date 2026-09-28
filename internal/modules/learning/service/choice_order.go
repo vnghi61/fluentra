@@ -22,7 +22,8 @@ import (
 // "the answer is A", "A and B", "đáp án C". The letter is matched in capitals
 // only, or every "is a" would count.
 var letterReference = regexp.MustCompile(
-	`(?:[Oo]ption|[Aa]nswer|[Cc]hoice|[Ss]tatement|[Rr]esponse|[Đđ]áp án|[Pp]hương án|[Nn]hận định|[Cc]âu|[Ii]s|[Ww]as|là)\s+[A-D]\b` +
+	`(?:[Oo]ption|[Aa]nswer|[Cc]hoice|[Ss]tatement|[Rr]esponse|` +
+		`[Đđ]áp án|[Pp]hương án|[Nn]hận định|[Cc]âu|[Ii]s|[Ww]as|là)\s+[A-D]\b` +
 		`|\([A-D]\)|\b[A-D]\s+(?:and|or|và|hoặc)\s+[A-D]\b`)
 
 // optionsField is where a question keeps its choices.

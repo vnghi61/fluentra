@@ -60,7 +60,8 @@ func TestTextBlanksMatchTheirOptions(t *testing.T) {
 		{"blank count", body("All staff must (1) ___ the meeting.", words, words), "1 blanks for 2 questions"},
 		{
 			"one sentence blank of four",
-			body("Staff must (1) ___ the talk. It is (2) ___ at noon. (3) ___ Lunch is (4) ___.", words, words, sentences, words), "",
+			body("Staff must (1) ___ the talk. It is (2) ___ at noon. (3) ___ Lunch is (4) ___.",
+				words, words, sentences, words), "",
 		},
 		{
 			"two sentence blanks of four",
