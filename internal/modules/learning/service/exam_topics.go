@@ -213,6 +213,98 @@ var workplaceTopics = []string{
 	"a bus route being cancelled",
 	"a lost passport before a flight",
 	"a power cut in an apartment building",
+	// Part 7 alone needs 270 texts; with the forty subjects above, a round
+	// wrote the same canteen survey and van trial three times over.
+	"an accounting firm changing its expense-claim rules",
+	"a warehouse installing a new stock-tracking system",
+	"a hotel chain launching a guest mobile app",
+	"a software company opening a support centre abroad",
+	"a city marathon changing its route",
+	"a dental clinic moving to a new address",
+	"a furniture store offering free assembly",
+	"a car rental agency adding electric cars",
+	"a public library lending laptops",
+	"an office building upgrading its lifts",
+	"a food delivery app adding new restaurants",
+	"a pharmacy extending its opening hours",
+	"an art gallery hiring weekend guides",
+	"a coffee chain introducing reusable cups",
+	"a manufacturer recalling a faulty kettle",
+	"a real estate agent listing a new office space",
+	"a university career fair for employers",
+	"a telecom company upgrading its network",
+	"a farm shop starting home delivery",
+	"a law firm offering free advice sessions",
+	"a publisher launching an online magazine",
+	"a sports centre adding yoga classes",
+	"a train operator changing its timetable",
+	"a hardware store running a DIY workshop",
+	"a catering company planning a wedding reception",
+	"a clothing brand opening a pop-up shop",
+	"a tech firm hosting a hackathon",
+	"a museum shop selling local crafts online",
+	"a city council repairing a main road",
+	"a company introducing flexible start times",
+	"a department store holding a clearance sale",
+	"an electronics shop offering trade-in discounts",
+	"a restaurant hiring seasonal staff",
+	"an insurance company changing its claims process",
+	"a water company planning maintenance work",
+	"a school recruiting part-time tutors",
+	"a gardening firm offering winter services",
+	"a hotel hosting a business awards dinner",
+	"a start-up seeking investors",
+	"an office recycling programme",
+	"a company holiday party",
+	"a new staff parking policy",
+	"an employee wellness programme",
+	"a shipping company delaying a container",
+	"a translation agency hiring freelancers",
+	"a zoo opening a new exhibit",
+	"a theatre selling season tickets",
+	"a design agency winning a new client",
+	"a cleaning service changing its prices",
+	"a printing shop offering same-day orders",
+	"a bicycle repair shop expanding",
+	"a farmers' cooperative selling to supermarkets",
+	"a technology conference call for speakers",
+	"a cooking school offering corporate team events",
+	"a newspaper changing its subscription plans",
+	"a customer survey about a delivery service",
+	"a company moving its payroll online",
+	"an airport opening a new lounge",
+	"a solar panel installer offering free quotes",
+	"a supermarket extending self-checkout",
+	"a construction firm finishing a housing project",
+	"a music school hosting a student concert",
+	"a garage offering winter car checks",
+	"an office cafeteria changing supplier",
+	"a courier company opening a parcel locker network",
+	"a photography studio offering business portraits",
+	"a campsite taking early bookings",
+	"a local radio station seeking sponsors",
+	"a stationery supplier discontinuing a product",
+	"an event venue installing new sound equipment",
+	"a volunteer programme at a food bank",
+	"a hotel renovating its conference rooms",
+	"a job applicant following up after an interview",
+	"a manager confirming a client meeting",
+	"a customer requesting a refund",
+	"an employee requesting time off",
+	"a supplier sending a revised invoice",
+	"a team rescheduling a project deadline",
+	"a landlord announcing building repairs",
+	"a company announcing a new branch manager",
+}
+
+// toeicForms are the kinds of document a TOEIC reading text may take (Parts 6
+// and 7): two texts on one subject read differently when one is a memo and the
+// other an online review.
+var toeicForms = []string{
+	"an email", "an internal memo", "a public notice", "an advertisement", "a news article",
+	"an online customer review", "a text-message chain between colleagues", "a letter",
+	"a web page", "a schedule or itinerary", "an invoice or order confirmation", "a form with notes",
+	"a job advertisement", "a product description", "a press release",
 }
 
 // toeicSource marks a TOEIC part in the format table's source note.
@@ -220,10 +312,16 @@ const toeicSource = "TOEIC"
 
 // examTopic draws the subject for one exam item: from the workplace list for a
 // TOEIC part, from the whole list otherwise.
-func examTopic(c *learningcontract.ExamPartConstraints) string {
-	topics := examTopics
+//
+// A TOEIC reading text also draws its form ("… written as a memo").
+func examTopic(c *learningcontract.ExamPartConstraints, kind string) string {
+	//nolint:gosec // topic draws, not secrets
 	if c != nil && strings.Contains(c.Source, toeicSource) {
-		topics = workplaceTopics
+		topic := workplaceTopics[rand.IntN(len(workplaceTopics))]
+		if kind == kindReadingComprehension || kind == kindTextCompletion {
+			topic += ", written as " + toeicForms[rand.IntN(len(toeicForms))]
+		}
+		return topic
 	}
-	return topics[rand.IntN(len(topics))] //nolint:gosec // a topic draw, not a secret
+	return examTopics[rand.IntN(len(examTopics))] //nolint:gosec // a topic draw, not a secret
 }

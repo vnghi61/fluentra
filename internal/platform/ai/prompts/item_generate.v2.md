@@ -37,7 +37,7 @@ This item is written for one part of a real exam. Its published format is below;
 {{- if .Topic}}
 
 ## Topic
-Write this item about: {{.Topic}}. Keep to this subject even if another one comes to mind first: the tests are built from many items, and they must not repeat a subject.
+Write this item about: {{.Topic}}. Keep to this subject even if another one comes to mind first: the tests are built from many items, and they must not repeat a subject. Invent fresh names for every company, product, place and person, and do not reuse names that appear in many tests (Riverside, Greenfield, Brightline, GreenMart, Maria Lopez, Laura Chen).
 {{- end}}
 
 {{- if .PhotoDescription}}

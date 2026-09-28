@@ -173,13 +173,13 @@ func TestTOEICDrawsWorkplaceTopics(t *testing.T) {
 	}
 	toeic := &learningcontract.ExamPartConstraints{Source: "ETS TOEIC L&R format"}
 	for range 200 {
-		if topic := examTopic(toeic); !workplace[topic] {
+		if topic := examTopic(toeic, kindListeningComprehension); !workplace[topic] {
 			t.Fatalf("a TOEIC part drew %q", topic)
 		}
 	}
 	ielts := &learningcontract.ExamPartConstraints{Source: "IELTS Academic test format; Reading Passage 1"}
 	for range 500 {
-		if !workplace[examTopic(ielts)] {
+		if !workplace[examTopic(ielts, kindReadingComprehension)] {
 			return
 		}
 	}
