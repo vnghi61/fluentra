@@ -35,11 +35,14 @@ func checkTextBlanks(body json.RawMessage) error {
 	for i, loc := range blanks {
 		standalone := blankStandsAlone(cand.Passage[:loc[0]], cand.Passage[loc[1]:])
 		sentences := optionsAreSentences(cand.Questions[i].Options)
+		// The text around the blank goes into the error: it reaches the log
+		// and the model's retry note, which then see what was refused.
+		around := blankContext(cand.Passage, loc[0], loc[1])
 		switch {
 		case standalone && !sentences:
-			return fmt.Errorf("check 3 failed: blank (%d) stands between sentences but offers words", i+1)
+			return fmt.Errorf("check 3 failed: blank (%d) stands between sentences but offers words: %q", i+1, around)
 		case !standalone && sentences:
-			return fmt.Errorf("check 3 failed: blank (%d) is inside a sentence but offers whole sentences", i+1)
+			return fmt.Errorf("check 3 failed: blank (%d) is inside a sentence but offers whole sentences: %q", i+1, around)
 		}
 	}
 	return nil
@@ -49,10 +52,13 @@ func checkTextBlanks(body json.RawMessage) error {
 // precedes it ends a sentence (or the text starts) and what follows starts a
 // new one (or the text ends).
 func blankStandsAlone(before, after string) bool {
+	// A line break, or a salutation ("Dear customers,"), ends what came
+	// before as surely as a full stop.
+	lineBreak := strings.HasSuffix(strings.TrimRight(before, " \t"), "\n")
 	before = strings.TrimSpace(before)
 	after = strings.TrimSpace(after)
-	endsSentence := before == "" || strings.HasSuffix(before, ".") || strings.HasSuffix(before, "!") ||
-		strings.HasSuffix(before, "?") || strings.HasSuffix(before, ":")
+	endsSentence := before == "" || lineBreak || strings.HasSuffix(before, ".") || strings.HasSuffix(before, "!") ||
+		strings.HasSuffix(before, "?") || strings.HasSuffix(before, ":") || endsSalutation(before)
 	after = strings.TrimLeft(after, ".")
 	after = strings.TrimSpace(after)
 	if after == "" {
@@ -67,6 +73,28 @@ func blankStandsAlone(before, after string) bool {
 	}
 	first := []rune(next[0])
 	return endsSentence && unicode.IsUpper(first[0]) && sentenceStarters[strings.ToLower(next[0])]
+}
+
+// endsSalutation reports whether text ends with a letter's
+// greeting: "Dear all," or "Hello team,".
+func endsSalutation(before string) bool {
+	if !strings.HasSuffix(before, ",") {
+		return false
+	}
+	start := strings.LastIndexAny(before[:len(before)-1], ".!?:\n")
+	last := strings.ToLower(strings.TrimSpace(before[start+1:]))
+	for _, greeting := range []string{"dear ", "hello", "hi ", "to all", "good morning", "greetings"} {
+		if strings.HasPrefix(last, greeting) {
+			return true
+		}
+	}
+	return false
+}
+
+// blankContext is the text around a blank, for an error message.
+func blankContext(passage string, start, end int) string {
+	from, to := max(0, start-60), min(len(passage), end+60)
+	return strings.ReplaceAll(passage[from:to], "\n", " ")
 }
 
 // sentenceStarters are ordinary words that open a sentence; after a blank they
