@@ -47,7 +47,8 @@ func checkTextBlanks(body json.RawMessage) error {
 		around := blankContext(cand.Passage, loc[0], loc[1])
 		switch {
 		case needsSentence && !sentences:
-			return fmt.Errorf("check 3 failed: blank (%d) stands between sentences but offers words: %q", i+1, around)
+			return fmt.Errorf("check 3 failed: blank (%d) stands between sentences but offers words (%s): %q",
+				i+1, optionTexts(cand.Questions[i].Options), around)
 		case !canTakeSentence && sentences:
 			return fmt.Errorf("check 3 failed: blank (%d) is inside a sentence but offers whole sentences: %q", i+1, around)
 		}
@@ -133,15 +134,29 @@ func init() {
 	}
 }
 
-// optionsAreSentences reports whether every option reads as a whole sentence.
+// optionsAreSentences reports whether every option reads as a whole sentence:
+// five words or more, or a short one that starts with a capital and ends with
+// a full stop ("See you there!").
 func optionsAreSentences(options []candOption) bool {
 	if len(options) == 0 {
 		return false
 	}
 	for _, o := range options {
-		if len(strings.Fields(o.Text)) < sentenceOptionWords {
+		text := strings.TrimSpace(o.Text)
+		words := len(strings.Fields(text))
+		short := words >= 2 && strings.ContainsAny(text[len(text)-1:], ".!?") && unicode.IsUpper([]rune(text)[0])
+		if words < sentenceOptionWords && !short {
 			return false
 		}
 	}
 	return true
+}
+
+// optionTexts lists a question's options for an error message.
+func optionTexts(options []candOption) string {
+	texts := make([]string, 0, len(options))
+	for _, o := range options {
+		texts = append(texts, o.Text)
+	}
+	return strings.Join(texts, " / ")
 }
