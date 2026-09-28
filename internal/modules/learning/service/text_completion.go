@@ -55,12 +55,32 @@ func blankStandsAlone(before, after string) bool {
 		strings.HasSuffix(before, "?") || strings.HasSuffix(before, ":")
 	after = strings.TrimLeft(after, ".")
 	after = strings.TrimSpace(after)
-	startsSentence := after == ""
-	for _, r := range after {
-		startsSentence = unicode.IsUpper(r)
-		break
+	if after == "" {
+		return endsSentence
 	}
-	return endsSentence && startsSentence
+	// A capital after the blank starts a new sentence only when it is an
+	// ordinary word; a name ("(1) ___ Riverside Bank will open…") is a word
+	// blank at the start of its own sentence.
+	next := strings.FieldsFunc(after, func(r rune) bool { return !unicode.IsLetter(r) && r != '\'' })
+	if len(next) == 0 {
+		return endsSentence
+	}
+	first := []rune(next[0])
+	return endsSentence && unicode.IsUpper(first[0]) && sentenceStarters[strings.ToLower(next[0])]
+}
+
+// sentenceStarters are ordinary words that open a sentence; after a blank they
+// show the blank stands on its own.
+var sentenceStarters = map[string]bool{}
+
+func init() {
+	for _, w := range strings.Fields(`the a an if please we our you your this these that those it its all any
+		in for as they he she i there however also anyone each every thank to on at by with from many some
+		most starting after before during when while because since although so but and or my me us them
+		what which who how why where new staff customers employees guests members visitors
+		unfortunately additionally finally meanwhile therefore`) {
+		sentenceStarters[w] = true
+	}
 }
 
 // optionsAreSentences reports whether every option reads as a whole sentence.
