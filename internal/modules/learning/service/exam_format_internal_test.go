@@ -131,6 +131,15 @@ func TestListeningScriptLengthIsEnforced(t *testing.T) {
 	if got := examFormat(req.ExamConstraints); !strings.Contains(got, "at least 600 words") {
 		t.Errorf("format lacks the script length:\n%s", got)
 	}
+
+	// A part with no length still refuses a one-sentence "script".
+	req.ExamConstraints.ScriptMinWords = 0
+	if _, err := s.prepareCandidateBody(context.Background(), req, body(10)); err == nil {
+		t.Error("a 10-word script was accepted")
+	}
+	if _, err := s.prepareCandidateBody(context.Background(), req, body(100)); err != nil {
+		t.Errorf("a 100-word script was refused: %v", err)
+	}
 }
 
 // Without a drawn subject the model wrote six IELTS reading passages on two

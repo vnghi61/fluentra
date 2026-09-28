@@ -250,6 +250,10 @@ func examFormat(c *learningcontract.ExamPartConstraints) string {
 	return strings.Join(lines, "\n")
 }
 
+// scriptFloorWords is the shortest listening script accepted when the part
+// states no length.
+const scriptFloorWords = 30
+
 // prepareListeningBody checks a listening candidate against its part and
 // renders its audio when a synthesiser is configured.
 func (s *Service) prepareListeningBody(
@@ -258,12 +262,18 @@ func (s *Service) prepareListeningBody(
 	// An exam part states its questions per recording (VSTEP Part 1 has
 	// one per announcement); the default floor of four is for practice.
 	minQuestions := 4
-	minWords := 0
+	// Without a part's own length, a floor: a VSTEP draft passed with a
+	// "script" that was one sentence describing a conversation, and four
+	// questions on it. Real scripts run to 100 words and more; the floor sits
+	// below the offline mock provider's 33-word announcement.
+	minWords := scriptFloorWords
 	if c := req.ExamConstraints; c != nil {
 		if c.QuestionsPerGroup > 0 {
 			minQuestions = c.QuestionsPerGroup
 		}
-		minWords = c.ScriptMinWords
+		if c.ScriptMinWords > 0 {
+			minWords = c.ScriptMinWords
+		}
 	}
 	cand, err := parseListeningCandidateWithMin(body, minQuestions)
 	if err != nil {
