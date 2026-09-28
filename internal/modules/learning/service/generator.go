@@ -209,6 +209,9 @@ func examFormat(c *learningcontract.ExamPartConstraints) string {
 		return ""
 	}
 	var lines []string
+	if c.Source != "" {
+		lines = append(lines, "Part: "+c.Source+".")
+	}
 	if len(c.AllowedTypes) > 0 {
 		lines = append(lines, "Allowed question types: "+strings.Join(c.AllowedTypes, ", ")+".")
 	}
@@ -242,6 +245,7 @@ func examFormat(c *learningcontract.ExamPartConstraints) string {
 	if c.Plays > 0 {
 		lines = append(lines, fmt.Sprintf("The recording is played %d time(s).", c.Plays))
 	}
+	lines = append(lines, speakingFormat(c)...)
 	if mix := formatTypeMix(c.TypeMix); mix != "" {
 		lines = append(lines, "Question-type mix: "+mix+".")
 	}
@@ -249,6 +253,25 @@ func examFormat(c *learningcontract.ExamPartConstraints) string {
 		lines = append(lines, chartInstruction)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// speakingFormat states a speaking part's timings, which set its shape: a part
+// with preparation time is a cue card, and a five-minute part is several
+// questions, not one.
+func speakingFormat(c *learningcontract.ExamPartConstraints) []string {
+	var lines []string
+	if c.PreparationSeconds > 0 {
+		lines = append(lines, fmt.Sprintf(
+			"The learner has %d seconds to prepare before speaking: give a topic and the points to cover.",
+			c.PreparationSeconds))
+	}
+	if c.SpeakingSeconds > 0 {
+		lines = append(lines, fmt.Sprintf(
+			"The learner speaks for %d seconds in all; set speaking_time_seconds to %d "+
+				"and give enough to talk about for that long.",
+			c.SpeakingSeconds, c.SpeakingSeconds))
+	}
+	return lines
 }
 
 // recordingGenres words the format table's genre codes for the prompt.
@@ -643,6 +666,10 @@ func (s *Service) prepareCandidateBody(
 		}
 		if cand.SpeakingTimeSeconds <= 0 {
 			cand.SpeakingTimeSeconds = defaultSpeakingSeconds
+		}
+		// An exam part's timing is the format's, whatever the model wrote.
+		if req.ExamConstraints != nil && req.ExamConstraints.SpeakingSeconds > 0 {
+			cand.SpeakingTimeSeconds = req.ExamConstraints.SpeakingSeconds
 		}
 		if cand.TaskType == "" {
 			cand.TaskType = subTypeRespond

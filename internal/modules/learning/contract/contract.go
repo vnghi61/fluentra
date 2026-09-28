@@ -394,6 +394,13 @@ type ExamPartConstraints struct {
 	// it the prompt cannot tell a monologue part from a dialogue part, and IELTS
 	// Listening Part 2 came back as interviews.
 	Recording *ExamRecording `json:"recording,omitempty"`
+	// Source names the part as the published format does ("IELTS Academic test
+	// format; Speaking Part 2, one minute to prepare"). SpeakingSeconds and
+	// PreparationSeconds are a speaking part's timings. Without them every
+	// IELTS speaking part came back as the same 45-second opinion question.
+	Source             string `json:"source,omitempty"`
+	SpeakingSeconds    int    `json:"speaking_seconds,omitempty"`
+	PreparationSeconds int    `json:"preparation_seconds,omitempty"`
 }
 
 // ExamRecording is a listening part's recording: its genre ("social_monologue",

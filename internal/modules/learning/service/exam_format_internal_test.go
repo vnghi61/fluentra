@@ -38,6 +38,14 @@ func TestExamFormatStatesTheRecordingsSpeakers(t *testing.T) {
 			want:   []string{"radio phone in", "exactly 3 speakers"},
 		},
 		{
+			name: "speaking part",
+			stored: `{"source": "IELTS Academic test format; Speaking Part 2, one minute to prepare",
+				"allowed_types": ["speaking_task"], "speaking_seconds": 120, "preparation_seconds": 60}`,
+			want: []string{"Part: IELTS Academic test format; Speaking Part 2", "60 seconds to prepare",
+				"set speaking_time_seconds to 120"},
+			wantNever: "typed",
+		},
+		{
 			name:      "no recording",
 			stored:    `{"option_count": 4}`,
 			want:      []string{"Options per question: exactly 4."},
