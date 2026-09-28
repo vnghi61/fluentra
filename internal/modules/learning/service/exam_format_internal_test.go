@@ -75,6 +75,28 @@ func TestExamFormatStatesTheRecordingsSpeakers(t *testing.T) {
 	}
 }
 
+// IELTS and VSTEP passages came back at about 190 words; the part's length is
+// stated and a passage well short of it is refused.
+func TestPassageLengthIsStatedAndEnforced(t *testing.T) {
+	t.Parallel()
+
+	c := learningcontract.ExamPartConstraints{QuestionsPerGroup: 13, PassageMinWords: 700}
+	if got := examFormat(&c); !strings.Contains(got, "at least 700 words") {
+		t.Errorf("format lacks the passage length:\n%s", got)
+	}
+
+	passage := func(words int) json.RawMessage {
+		body, _ := json.Marshal(readingComprehensionCand{Passage: strings.Repeat("word ", words)})
+		return body
+	}
+	if err := checkPassageLength(passage(190), 700); err == nil {
+		t.Error("a 190-word passage was accepted for a 700-word part")
+	}
+	if err := checkPassageLength(passage(640), 700); err != nil {
+		t.Errorf("a passage a tenth short should pass: %v", err)
+	}
+}
+
 // Without a drawn subject the model wrote six IELTS reading passages on two
 // topics. An exam item gets one; a Foundation item and a photograph item, whose
 // subject is already set, do not.

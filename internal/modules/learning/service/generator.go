@@ -231,12 +231,7 @@ func examFormat(c *learningcontract.ExamPartConstraints) string {
 	default:
 		lines = append(lines, `Questions are typed (no options); each answer is a short text set in "key".`)
 	}
-	if c.MaxWords > 0 {
-		lines = append(lines, fmt.Sprintf("No typed answer may exceed %d words.", c.MaxWords))
-	}
-	if c.MinWords > 0 {
-		lines = append(lines, fmt.Sprintf("The response must be at least %d words.", c.MinWords))
-	}
+	lines = append(lines, lengthFormat(c)...)
 	if c.Recording != nil {
 		if line := recordingFormat(c.Recording); line != "" {
 			lines = append(lines, line)
@@ -253,6 +248,45 @@ func examFormat(c *learningcontract.ExamPartConstraints) string {
 		lines = append(lines, chartInstruction)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// lengthFormat states a part's word limits: typed answers, a written response
+// and a reading passage.
+func lengthFormat(c *learningcontract.ExamPartConstraints) []string {
+	var lines []string
+	if c.MaxWords > 0 {
+		lines = append(lines, fmt.Sprintf("No typed answer may exceed %d words.", c.MaxWords))
+	}
+	if c.MinWords > 0 {
+		lines = append(lines, fmt.Sprintf("The response must be at least %d words.", c.MinWords))
+	}
+	if c.PassageMinWords > 0 {
+		lines = append(lines, fmt.Sprintf(
+			"The passage must be at least %d words long, in several paragraphs.", c.PassageMinWords))
+	}
+	return lines
+}
+
+// checkExamPassage refuses an exam passage well short of its part's length:
+// without one, IELTS and VSTEP passages came back at about 190 words, a
+// quarter of an IELTS passage, with thirteen questions on them. A tenth short
+// is let through; the model counts words loosely. Other kinds pass.
+func checkExamPassage(req learningcontract.GenerateRequest, body json.RawMessage) error {
+	if req.Kind != kindReadingComprehension || req.ExamConstraints == nil || req.ExamConstraints.PassageMinWords <= 0 {
+		return nil
+	}
+	return checkPassageLength(body, req.ExamConstraints.PassageMinWords)
+}
+
+func checkPassageLength(body json.RawMessage, minWords int) error {
+	var cand readingComprehensionCand
+	if err := json.Unmarshal(body, &cand); err != nil {
+		return fmt.Errorf("check 1 (parse) failed: %w", err)
+	}
+	if words := len(strings.Fields(cand.Passage)); words < minWords*9/10 {
+		return fmt.Errorf("check 3 failed: passage has %d words, the part needs at least %d", words, minWords)
+	}
+	return nil
 }
 
 // speakingFormat states a speaking part's timings, which set its shape: a part
@@ -676,6 +710,9 @@ func (s *Service) prepareCandidateBody(
 		}
 		return json.Marshal(cand)
 	default:
+		if err := checkExamPassage(req, body); err != nil {
+			return nil, err
+		}
 		return body, nil
 	}
 }

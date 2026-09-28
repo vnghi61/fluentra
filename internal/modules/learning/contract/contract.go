@@ -401,6 +401,9 @@ type ExamPartConstraints struct {
 	Source             string `json:"source,omitempty"`
 	SpeakingSeconds    int    `json:"speaking_seconds,omitempty"`
 	PreparationSeconds int    `json:"preparation_seconds,omitempty"`
+	// PassageMinWords is a reading part's passage length. Without it IELTS
+	// and VSTEP passages came back at about 190 words.
+	PassageMinWords int `json:"passage_min_words,omitempty"`
 }
 
 // ExamRecording is a listening part's recording: its genre ("social_monologue",
