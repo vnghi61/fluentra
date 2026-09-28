@@ -54,12 +54,25 @@ func (s *Service) Generate(
 		authoredItem, err := s.retryGenerateSingleItem(ctx, req, spineNodeStrings, tagRefs, authorID, blindSolve, i)
 		if err != nil {
 			return nil, fmt.Errorf("generate item %d of %d failed after %d attempts: %w",
-				i+1, req.Count, maxRetriesPerItem+1, err)
+				i+1, req.Count, retriesFor(req)+1, err)
 		}
 		results = append(results, *authoredItem)
 	}
 
 	return results, nil
+}
+
+// textCompletionRetries is the regenerations an exam Part 6 text gets. Its
+// blanks must each match their options (checkTextBlanks), which drafts often
+// miss, and one item out of attempts fails its whole round of an exam.
+const textCompletionRetries = 5
+
+// retriesFor is how many regenerations an item gets after its first attempt.
+func retriesFor(req learningcontract.GenerateRequest) int {
+	if req.Kind == kindTextCompletion && req.ExamConstraints != nil {
+		return textCompletionRetries
+	}
+	return maxRetriesPerItem
 }
 
 // maxGenerateCount is the most items one Generate call may produce; it matches
@@ -156,7 +169,7 @@ func (s *Service) retryGenerateSingleItem(
 ) (*learningcontract.GeneratedItem, error) {
 	var lastErr error
 	var retryNote string
-	for attempt := 0; attempt <= maxRetriesPerItem; attempt++ {
+	for attempt := 0; attempt <= retriesFor(req); attempt++ {
 		item, err := s.generateSingleItem(ctx, req, spineNodeStrings, tagRefs, authorID, blindSolve, itemIndex, retryNote)
 		if err == nil {
 			return item, nil

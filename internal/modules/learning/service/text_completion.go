@@ -33,46 +33,50 @@ func checkTextBlanks(body json.RawMessage) error {
 		return fmt.Errorf("check 3 failed: text has %d blanks for %d questions", len(blanks), len(cand.Questions))
 	}
 	for i, loc := range blanks {
-		standalone := blankStandsAlone(cand.Passage[:loc[0]], cand.Passage[loc[1]:])
+		canTakeSentence, needsSentence := blankPosition(cand.Passage[:loc[0]], cand.Passage[loc[1]:])
 		sentences := optionsAreSentences(cand.Questions[i].Options)
 		// The text around the blank goes into the error: it reaches the log
 		// and the model's retry note, which then see what was refused.
 		around := blankContext(cand.Passage, loc[0], loc[1])
 		switch {
-		case standalone && !sentences:
+		case needsSentence && !sentences:
 			return fmt.Errorf("check 3 failed: blank (%d) stands between sentences but offers words: %q", i+1, around)
-		case !standalone && sentences:
+		case !canTakeSentence && sentences:
 			return fmt.Errorf("check 3 failed: blank (%d) is inside a sentence but offers whole sentences: %q", i+1, around)
 		}
 	}
 	return nil
 }
 
-// blankStandsAlone reports whether a blank sits between two sentences: what
-// precedes it ends a sentence (or the text starts) and what follows starts a
-// new one (or the text ends).
-func blankStandsAlone(before, after string) bool {
+// blankPosition says whether a blank can take a whole sentence (a sentence
+// ended before it and what follows starts with a capital) and whether it
+// needs one (what follows is an ordinary sentence opener, or nothing). A
+// capital that may be a name ("(1) ___ Riverside Bank will open…") can take
+// either a sentence or a word.
+func blankPosition(before, after string) (canTakeSentence, needsSentence bool) {
+	if !afterSentenceEnd(before) {
+		return false, false
+	}
+	after = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(after), "."))
+	next := strings.FieldsFunc(after, func(r rune) bool { return !unicode.IsLetter(r) && r != '\'' })
+	if len(next) == 0 {
+		return true, true
+	}
+	if !unicode.IsUpper([]rune(next[0])[0]) {
+		return false, false
+	}
+	return true, sentenceStarters[strings.ToLower(next[0])]
+}
+
+// afterSentenceEnd reports whether the text before a blank ends a sentence: a
+// full stop and the like, a line break, a salutation, or the start of the text.
+func afterSentenceEnd(before string) bool {
 	// A line break, or a salutation ("Dear customers,"), ends what came
 	// before as surely as a full stop.
 	lineBreak := strings.HasSuffix(strings.TrimRight(before, " \t"), "\n")
 	before = strings.TrimSpace(before)
-	after = strings.TrimSpace(after)
-	endsSentence := before == "" || lineBreak || strings.HasSuffix(before, ".") || strings.HasSuffix(before, "!") ||
+	return before == "" || lineBreak || strings.HasSuffix(before, ".") || strings.HasSuffix(before, "!") ||
 		strings.HasSuffix(before, "?") || strings.HasSuffix(before, ":") || endsSalutation(before)
-	after = strings.TrimLeft(after, ".")
-	after = strings.TrimSpace(after)
-	if after == "" {
-		return endsSentence
-	}
-	// A capital after the blank starts a new sentence only when it is an
-	// ordinary word; a name ("(1) ___ Riverside Bank will open…") is a word
-	// blank at the start of its own sentence.
-	next := strings.FieldsFunc(after, func(r rune) bool { return !unicode.IsLetter(r) && r != '\'' })
-	if len(next) == 0 {
-		return endsSentence
-	}
-	first := []rune(next[0])
-	return endsSentence && unicode.IsUpper(first[0]) && sentenceStarters[strings.ToLower(next[0])]
 }
 
 // endsSalutation reports whether text ends with a letter's

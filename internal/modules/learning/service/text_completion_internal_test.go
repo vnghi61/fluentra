@@ -44,6 +44,10 @@ func TestTextBlanksMatchTheirOptions(t *testing.T) {
 		{"sentence inside a sentence", body("All staff must (1) ___ the meeting.", sentences), "inside a sentence"},
 		{"word before a name", body("Dear all, we have news. (1) ___ Riverside Bank will open a branch.", words), ""},
 		{"sentence after a salutation", body("Dear customers, (1) ___ The shop opens at nine.", sentences), ""},
+		{
+			"sentence before an unusual opener",
+			body("Parking is behind the building. (1) ___ Interested firms may book a tour.", sentences), "",
+		},
 		{"sentence after a line break", body("Staff notice\n(1) ___ The lift is closed today.", sentences), ""},
 		{"blank count", body("All staff must (1) ___ the meeting.", words, words), "1 blanks for 2 questions"},
 	}
