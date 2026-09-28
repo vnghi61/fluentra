@@ -1,6 +1,11 @@
 package service
 
-import "math/rand/v2"
+import (
+	"math/rand/v2"
+	"strings"
+
+	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
+)
 
 // examTopics are the subjects an exam item is written about, one drawn at
 // random per item. Without one the model returned the same two reading
@@ -163,7 +168,62 @@ var examTopics = []string{
 	"traffic congestion in growing cities",
 }
 
-// examTopic draws the subject for one exam item.
-func examTopic() string {
-	return examTopics[rand.IntN(len(examTopics))] //nolint:gosec // a topic draw, not a secret
+// workplaceTopics are the subjects a TOEIC item may take. TOEIC tests English
+// at work and in daily life; drawn from the whole list, Part 2 came back as
+// general-knowledge quizzes ("Why is the sea salty?", "How far do Arctic
+// terns migrate?").
+var workplaceTopics = []string{
+	"a company moving to a new office building",
+	"hiring and training new staff at a small firm",
+	"a product launch that was delayed",
+	"customer complaints at a hotel",
+	"planning a trade fair or conference",
+	"a supplier changing its delivery schedule",
+	"working from home and hybrid offices",
+	"a restaurant changing its menu",
+	"an airline updating its baggage rules",
+	"a bank opening a digital-only branch",
+	"repairs to a public swimming pool",
+	"a city introducing bike-sharing",
+	"a museum reopening after renovation",
+	"a health clinic changing its opening hours",
+	"a problem with an online order",
+	"a guided tour of a factory",
+	"a start-up choosing its first office",
+	"a customer loyalty programme at a bookshop",
+	"a hospital introducing online appointments",
+	"a delivery company testing electric vans",
+	"a staff survey about the canteen",
+	"a hotel training receptionists",
+	"a factory changing its shift patterns",
+	"a charity organising a fun run",
+	"an office introducing a four-day week",
+	"a car-sharing scheme for commuters",
+	"a company sponsoring a local football team",
+	"a printing firm switching to recycled paper",
+	"a cinema reopening with new seats",
+	"a travel agency planning a group tour",
+	"a gym changing its membership fees",
+	"a supermarket removing plastic bags",
+	"an internship at a newspaper",
+	"a conference moving online",
+	"a bakery expanding into a second shop",
+	"a language school opening evening classes",
+	"a first day at a new job",
+	"a bus route being cancelled",
+	"a lost passport before a flight",
+	"a power cut in an apartment building",
+}
+
+// toeicSource marks a TOEIC part in the format table's source note.
+const toeicSource = "TOEIC"
+
+// examTopic draws the subject for one exam item: from the workplace list for a
+// TOEIC part, from the whole list otherwise.
+func examTopic(c *learningcontract.ExamPartConstraints) string {
+	topics := examTopics
+	if c != nil && strings.Contains(c.Source, toeicSource) {
+		topics = workplaceTopics
+	}
+	return topics[rand.IntN(len(topics))] //nolint:gosec // a topic draw, not a secret
 }

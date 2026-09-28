@@ -162,6 +162,30 @@ func TestSolverIsToldWhatThePhotographShows(t *testing.T) {
 	}
 }
 
+// TOEIC Part 2 came back as general-knowledge quizzes; a TOEIC part draws
+// only workplace and everyday subjects.
+func TestTOEICDrawsWorkplaceTopics(t *testing.T) {
+	t.Parallel()
+
+	workplace := make(map[string]bool, len(workplaceTopics))
+	for _, topic := range workplaceTopics {
+		workplace[topic] = true
+	}
+	toeic := &learningcontract.ExamPartConstraints{Source: "ETS TOEIC L&R format"}
+	for range 200 {
+		if topic := examTopic(toeic); !workplace[topic] {
+			t.Fatalf("a TOEIC part drew %q", topic)
+		}
+	}
+	ielts := &learningcontract.ExamPartConstraints{Source: "IELTS Academic test format; Reading Passage 1"}
+	for range 500 {
+		if !workplace[examTopic(ielts)] {
+			return
+		}
+	}
+	t.Error("in 500 draws an IELTS part never drew beyond the workplace list")
+}
+
 // Without a drawn subject the model wrote six IELTS reading passages on two
 // topics. An exam item gets one; a Foundation item and a photograph item, whose
 // subject is already set, do not.
