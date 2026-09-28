@@ -630,7 +630,7 @@ needs AI provider keys or network access, and two decisions only a person can ma
 | E–H — Foundation | Done: 13 courses, Phase 2 content moved, per-node publish | **93 of 93** nodes have content (2026-09-26); 70 of them reviewed by Claude, see note | A person spot-checks the Claude-reviewed nodes |
 | I — format spec | Done: one schema, enforced by generator, verifier, composer and runner | — | **Sign-off** (below) |
 | J/K/L — tests, practice, hub | Done | — | — |
-| M — media | Done: Part 1 from a credited photograph; Task 1 chart drawn from the model's data (SVG data URI, see note); two voices | Photo fixture **empty** | A person fills `toeic-part1-photos.json` |
+| M — media | Done: Part 1 from a credited photograph; Task 1 chart drawn from the model's data (SVG data URI, see note); two voices | **40** photographs (CC0 / CC BY, from Openverse), described by Claude (see note) | A person checks the descriptions |
 | N — examgen | Done: generates through the verifier, `-export`, fixtures keep who approved | **No exam fixture** yet | `cmd/examgen` per exam (below) |
 | O — daily job | Done: backlog skip, per-run cap (`exam.daily_generation_cap`), hourly compose | — | Part 1 in the worker (see note) |
 
@@ -673,6 +673,50 @@ verifier can publish; with one model everything waits for a person.
   so a full run takes days, not an hour. The command resumes: rerun it until every word is looked up.
   Runbook step 1.3 (CMU IPA via Python) was skipped: no Python on the machine, and every word already
   has IPA.
+- **Part 1 photographs described by Claude (2026-09-26).** The owner asked Claude to find them: 40
+  CC0 / CC BY 2.0 photographs from `api.openverse.org`, each opened and described by Claude, with its
+  credit page and licence. D22-24 wants a person's description; a person should check them.
+- **Exam items reviewed by Claude, not the verifier (2026-09-26/28).** The verifier models ran out of
+  daily quota, and the owner asked Claude to verify instead, so exam generation ran with
+  `AI_AUTO_PUBLISH=false` and every draft was read before approval. The review found problems the
+  generator had to fix, not only items to reject:
+  - listening parts came back with the wrong number of voices (IELTS Part 2 as an interview, VSTEP
+    Part 2 as announcements): the prompt now states the recording's genre and speakers (18103ac);
+  - without a subject, six reading passages covered two topics (night trains, night markets) and most
+    VSTEP announcements were the same rescheduled workshop: each exam item now draws a topic
+    (78b3bcf);
+  - every speaking part, IELTS and VSTEP alike, was the same 45-second opinion question: the prompt now
+    names the part and its timings, and `speaking_time_seconds` comes from the format (1982b69);
+  - reading passages ran to about 190 words (the practice default), under 13 questions: the format
+    table now has `passage_min_words` (IELTS 700, VSTEP 400; migration 1700000947, to be confirmed at
+    sign-off), and a passage more than a tenth short is refused (aa99812);
+  - IELTS listening scripts ran to about 150 words under ten questions: its listening rows now have
+    `script_min_words` 600, a floor under the seven-minute recordings IELTS publishes (d8cce64);
+  - the key sat at B in seventeen of twenty-two drafts, and nothing reordered options: an exam item's
+    multiple-choice options are now shuffled after generation (630e9dd), and the review applied the
+    same shuffle to the drafts written before it;
+  - a draft passed with a one-sentence "script" describing a conversation: listening scripts have a
+    30-word floor where the part states no length (50d13ce);
+  - sixty topics were too few for a bank of a hundred items (tea and one farmers' market three times
+    each): there are now 150 (12a7ad1), and TOEIC parts draw from a forty-topic workplace list, since
+    from the full list Part 2 came back as general-knowledge quizzes (be30e42);
+  - VSTEP Speaking Part 3 came back as Part 2's choice between options: the prompt names each VSTEP
+    part's shape (f200c64);
+  - every TOEIC Part 1 item was refused, because the blind solver, a text model, saw only the image URL:
+    it is now given the photograph's description, which the stored item never carries; and no TOEIC-only
+    kind had a JSON template in the prompt, so some drafts came back with no options (00bae6e); Part 6
+    drafts put single words where whole sentences were missing, and the template now says where each
+    kind of blank goes (a42f62d).
+  Two items on the same subject in one section (two reading passages on bridges, say) were cut to one,
+  since a composed test could hold both; the same subject in different sections (a reading passage and
+  a listening talk) was accepted.
+  Items written before a fix were rejected when they broke it; duplicates were rejected; wrong keys,
+  second correct answers and variants not in the passage were corrected. Two items the verifier had
+  published before its quota ran out were archived (a wrong-format speaking task, a duplicate).
+- **TOEIC Part 7 is one question per passage.** The format table gives Part 7 `question_count` 54 and
+  `group_size` 1, so a test draws 54 single-question passages. The real Part 7 asks 2–5 questions per
+  single, double or triple passage. A part has one fixed group size in the schema, so matching the
+  real layout is a schema change, not a data fix; it is left for the specification sign-off.
 - **Licences.** wordfreq's data is CC BY-SA 4.0 (its code is Apache-2.0); the vocabulary fixture header
   says so. Word recordings accept CC0, CC BY and CC BY-SA; Part 1 photographs only CC0 and CC BY.
 
