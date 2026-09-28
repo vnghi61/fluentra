@@ -626,12 +626,12 @@ needs AI provider keys or network access, and two decisions only a person can ma
 |---|---|---|---|
 | A — verifier | Done: excluded model in the cache key, batches, sample, `ApproveVerifiedBatch` | — | — |
 | B — DB first | Done: words and phrases | — | — |
-| C/D — words | Done: `scripts/vocab-source-list.py`, `vocabgen` top-up, `-pronounce`, rank decks | **10,000** words (2026-09-26); IPA from the CMU pass, no audio yet | `-pronounce` (below; slow, see note) |
+| C/D — words | Done: `scripts/vocab-source-list.py`, `vocabgen` top-up, `-pronounce`, rank decks | **10,000** words (2026-09-26); IPA from the CMU pass; a recording for **5,249** (2026-09-28: A1 713, A2 1,169, B1 1,698, B2 1,669, C1 none) | Rerun `-pronounce` for the rest (slow, see note) |
 | E–H — Foundation | Done: 13 courses, Phase 2 content moved, per-node publish | **93 of 93** nodes have content (2026-09-26); 70 of them reviewed by Claude, see note | A person spot-checks the Claude-reviewed nodes |
 | I — format spec | Done: one schema, enforced by generator, verifier, composer and runner | — | **Sign-off** (below) |
 | J/K/L — tests, practice, hub | Done | — | — |
 | M — media | Done: Part 1 from a credited photograph; Task 1 chart drawn from the model's data (SVG data URI, see note); two voices | **40** photographs (CC0 / CC BY, from Openverse), described by Claude (see note) | A person checks the descriptions |
-| N — examgen | Done: generates through the verifier, `-export`, fixtures keep who approved | **No exam fixture** yet | `cmd/examgen` per exam (below) |
+| N — examgen | Done: generates through the verifier, `-export`, `-parts`, fixtures keep who approved | **5 fixed tests per exam** (2026-09-28): `ielts.json` 72 questions, `vstep.json` 139, `toeic.json` 920, every item read by Claude (see note) | A person spot-checks the Claude-reviewed items; format sign-off |
 | O — daily job | Done: backlog skip, per-run cap (`exam.daily_generation_cap`), hourly compose | — | Part 1 in the worker (see note) |
 
 ### Commands to run with AI keys and network
@@ -671,6 +671,7 @@ verifier can publish; with one model everything waits for a person.
   (`foundation%3A…`) to the service, which matched nothing and answered 200 with `approved: 0`.
 - **`-pronounce` is slow.** `api.dictionaryapi.dev` answered in about 20 s per request on 2026-09-26,
   so a full run takes days, not an hour. The command resumes: rerun it until every word is looked up.
+  By 2026-09-28 it had looked up 7,200 words, 5,249 of them with a recording; C1 is not reached yet.
   Runbook step 1.3 (CMU IPA via Python) was skipped: no Python on the machine, and every word already
   has IPA.
 - **Part 1 photographs described by Claude (2026-09-26).** The owner asked Claude to find them: 40
@@ -698,18 +699,34 @@ verifier can publish; with one model everything waits for a person.
   - a draft passed with a one-sentence "script" describing a conversation: listening scripts have a
     30-word floor where the part states no length (50d13ce);
   - sixty topics were too few for a bank of a hundred items (tea and one farmers' market three times
-    each): there are now 150 (12a7ad1), and TOEIC parts draw from a forty-topic workplace list, since
-    from the full list Part 2 came back as general-knowledge quizzes (be30e42);
+    each): there are now 150 (12a7ad1), and TOEIC parts draw from a workplace list, since from the
+    full list Part 2 came back as general-knowledge quizzes (be30e42);
   - VSTEP Speaking Part 3 came back as Part 2's choice between options: the prompt names each VSTEP
     part's shape (f200c64);
   - every TOEIC Part 1 item was refused, because the blind solver, a text model, saw only the image URL:
     it is now given the photograph's description, which the stored item never carries; and no TOEIC-only
     kind had a JSON template in the prompt, so some drafts came back with no options (00bae6e); Part 6
     drafts put single words where whole sentences were missing, and the template now says where each
-    kind of blank goes (a42f62d).
+    kind of blank goes (a42f62d);
+  - the template alone did not hold Part 6: `checkTextBlanks` now refuses a word blank that stands
+    between two sentences, a sentence blank inside one, a set split into four one-blank texts, and a
+    text without exactly one sentence blank (f8607a0 to b807d37), with five attempts per text;
+  - TOEIC drafts reused a few names and places (Riverside, Greenfield, a Daniel in nearly every talk)
+    and one document type: TOEIC draws from 120 workplace subjects and fifteen document types, and the
+    prompt lists the names to avoid (375124e, 75a2242); the Part 4 and Part 7 items already written
+    had their Daniels renamed in review;
+  - the choice shuffle relabelled an explanation that said "statement A" (75a2242).
+  `cmd/examgen -parts 6,7` tops up only the parts a review left short (75a2242), and an exam item
+  that fails every attempt is now skipped instead of failing its round (9e1e01b).
+  Approving in the review queue publishes the content; the question rows follow through the
+  `content.published` event, so the worker has to run before `cmd/examgen` can compose.
+  The 134 drafts left in the review queue with no question row come from interrupted runs; they
+  are in no test and can be rejected.
   Two items on the same subject in one section (two reading passages on bridges, say) were cut to one,
   since a composed test could hold both; the same subject in different sections (a reading passage and
-  a listening talk) was accepted.
+  a listening talk) was accepted. TOEIC draws far more items per test (54 Part 7 texts, 30 Part 5
+  sentences), so there the cut was a near-copy within a part — the same clinic changing the same hours
+  — not a shared subject.
   Items written before a fix were rejected when they broke it; duplicates were rejected; wrong keys,
   second correct answers and variants not in the passage were corrected. Two items the verifier had
   published before its quota ran out were archived (a wrong-format speaking task, a duplicate).
