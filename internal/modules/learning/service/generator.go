@@ -250,6 +250,41 @@ func examFormat(c *learningcontract.ExamPartConstraints) string {
 	return strings.Join(lines, "\n")
 }
 
+// prepareListeningBody checks a listening candidate against its part and
+// renders its audio when a synthesiser is configured.
+func (s *Service) prepareListeningBody(
+	ctx context.Context, req learningcontract.GenerateRequest, body json.RawMessage,
+) (json.RawMessage, error) {
+	// An exam part states its questions per recording (VSTEP Part 1 has
+	// one per announcement); the default floor of four is for practice.
+	minQuestions := 4
+	minWords := 0
+	if c := req.ExamConstraints; c != nil {
+		if c.QuestionsPerGroup > 0 {
+			minQuestions = c.QuestionsPerGroup
+		}
+		minWords = c.ScriptMinWords
+	}
+	cand, err := parseListeningCandidateWithMin(body, minQuestions)
+	if err != nil {
+		return nil, err
+	}
+	// IELTS scripts came back at about 150 words with ten questions on each;
+	// as with a passage, a tenth short is let through.
+	if words := len(strings.Fields(cand.Script)); words < minWords*9/10 {
+		return nil, fmt.Errorf("check 3 failed: script has %d words, the part needs at least %d", words, minWords)
+	}
+	if s.synthesiser != nil {
+		audioKey, err := s.synthesiser.Synthesise(ctx, cand.Script, cand.Voice)
+		if err != nil {
+			slog.WarnContext(ctx, "listening item prepared without audio; cmd/tts renders it", "error", err)
+		} else {
+			cand.AudioObjectKey = audioKey
+		}
+	}
+	return json.Marshal(cand)
+}
+
 // lengthFormat states a part's word limits: typed answers, a written response
 // and a reading passage.
 func lengthFormat(c *learningcontract.ExamPartConstraints) []string {
@@ -263,6 +298,11 @@ func lengthFormat(c *learningcontract.ExamPartConstraints) []string {
 	if c.PassageMinWords > 0 {
 		lines = append(lines, fmt.Sprintf(
 			"The passage must be at least %d words long, in several paragraphs.", c.PassageMinWords))
+	}
+	if c.ScriptMinWords > 0 {
+		lines = append(lines, fmt.Sprintf(
+			"The recording script must be at least %d words long: the recording lasts several minutes.",
+			c.ScriptMinWords))
 	}
 	return lines
 }
@@ -674,25 +714,7 @@ func (s *Service) prepareCandidateBody(
 ) (json.RawMessage, error) {
 	switch req.Kind {
 	case kindListeningComprehension:
-		// An exam part states its questions per recording (VSTEP Part 1 has
-		// one per announcement); the default floor of four is for practice.
-		minQuestions := 4
-		if req.ExamConstraints != nil && req.ExamConstraints.QuestionsPerGroup > 0 {
-			minQuestions = req.ExamConstraints.QuestionsPerGroup
-		}
-		cand, err := parseListeningCandidateWithMin(body, minQuestions)
-		if err != nil {
-			return nil, err
-		}
-		if s.synthesiser != nil {
-			audioKey, err := s.synthesiser.Synthesise(ctx, cand.Script, cand.Voice)
-			if err != nil {
-				slog.WarnContext(ctx, "listening item prepared without audio; cmd/tts renders it", "error", err)
-			} else {
-				cand.AudioObjectKey = audioKey
-			}
-		}
-		return json.Marshal(cand)
+		return s.prepareListeningBody(ctx, req, body)
 	case kindSpeakingTask:
 		var cand speakingTaskCand
 		if err := json.Unmarshal(body, &cand); err != nil {

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -94,6 +95,41 @@ func TestPassageLengthIsStatedAndEnforced(t *testing.T) {
 	}
 	if err := checkPassageLength(passage(640), 700); err != nil {
 		t.Errorf("a passage a tenth short should pass: %v", err)
+	}
+}
+
+// IELTS listening scripts came back at about 150 words with ten questions.
+func TestListeningScriptLengthIsEnforced(t *testing.T) {
+	t.Parallel()
+
+	body := func(words int) json.RawMessage {
+		raw, _ := json.Marshal(listeningCand{
+			Title:  "A campus tour",
+			Script: strings.Repeat("word ", words),
+			Questions: []candQuestion{{
+				ID: "q1", Type: "multiple_choice", Prompt: "Where does the tour start?",
+				Options: []candOption{
+					{ID: "A", Text: "the library"}, {ID: "B", Text: "the gym"},
+					{ID: "C", Text: "the gate"}, {ID: "D", Text: "the canteen"},
+				},
+				CorrectOptionID: "C",
+			}},
+		})
+		return raw
+	}
+	req := learningcontract.GenerateRequest{
+		Kind:            kindListeningComprehension,
+		ExamConstraints: &learningcontract.ExamPartConstraints{QuestionsPerGroup: 1, ScriptMinWords: 600},
+	}
+	s := &Service{}
+	if _, err := s.prepareCandidateBody(context.Background(), req, body(150)); err == nil {
+		t.Error("a 150-word script was accepted for a 600-word part")
+	}
+	if _, err := s.prepareCandidateBody(context.Background(), req, body(600)); err != nil {
+		t.Errorf("a 600-word script was refused: %v", err)
+	}
+	if got := examFormat(req.ExamConstraints); !strings.Contains(got, "at least 600 words") {
+		t.Errorf("format lacks the script length:\n%s", got)
 	}
 }
 
