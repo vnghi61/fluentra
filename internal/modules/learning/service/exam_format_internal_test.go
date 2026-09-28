@@ -142,6 +142,26 @@ func TestListeningScriptLengthIsEnforced(t *testing.T) {
 	}
 }
 
+// A Part 1 body holds only the image URL; the blind solver, a text model, is
+// told what the photograph shows, and nothing else is.
+func TestSolverIsToldWhatThePhotographShows(t *testing.T) {
+	t.Parallel()
+
+	body := json.RawMessage(`{"image_url": "https://example.org/p.jpg", "correct_option_id": "B"}`)
+	photo := &learningcontract.PhotoRef{Description: "A man is typing at a desk."}
+
+	var got map[string]any
+	if err := json.Unmarshal(withSolverPhotoDescription(body, photo), &got); err != nil {
+		t.Fatal(err)
+	}
+	if desc, _ := got["photo_description"].(string); !strings.Contains(desc, "A man is typing at a desk.") {
+		t.Errorf("solver body lacks the description: %v", got)
+	}
+	if string(withSolverPhotoDescription(body, nil)) != string(body) {
+		t.Error("an item without a photograph was changed")
+	}
+}
+
 // Without a drawn subject the model wrote six IELTS reading passages on two
 // topics. An exam item gets one; a Foundation item and a photograph item, whose
 // subject is already set, do not.

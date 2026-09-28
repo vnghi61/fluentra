@@ -578,7 +578,28 @@ func (s *Service) maybeBlindSolve(
 	if !shouldSolve || isTopic {
 		return nil, nil
 	}
-	return s.blindSolveItem(ctx, req.Kind, preparedBody)
+	return s.blindSolveItem(ctx, req.Kind, withSolverPhotoDescription(preparedBody, req.Photo))
+}
+
+// withSolverPhotoDescription gives the blind solver the photograph's
+// description. A Part 1 body holds only the image URL, which a text model
+// cannot see: it answered four statements about a picture it had no way of
+// looking at with no option at all, and every TOEIC Part 1 item was refused.
+// The description is for the solve only; the stored body never carries it.
+func withSolverPhotoDescription(body json.RawMessage, photo *learningcontract.PhotoRef) json.RawMessage {
+	if photo == nil || strings.TrimSpace(photo.Description) == "" {
+		return body
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		return body
+	}
+	decoded["photo_description"] = "What the photograph shows (you cannot see the image): " + photo.Description
+	out, err := json.Marshal(decoded)
+	if err != nil {
+		return body
+	}
+	return out
 }
 
 // maybeEvaluateCEFR judges an item's level, when the caller asked and a model is

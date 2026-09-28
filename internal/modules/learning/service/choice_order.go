@@ -66,11 +66,15 @@ func shuffleQuestion(q map[string]any) bool {
 	if kind, _ := q["type"].(string); kind != "" && kind != "multiple_choice" {
 		return false
 	}
-	field := optionsField
-	if _, ok := q[field].([]any); !ok {
-		field = "responses" // TOEIC Part 2 writes its three responses here
+	// TOEIC Part 1 writes its four statements under "statements", Part 2 its
+	// three responses under "responses".
+	var options []any
+	ok := false
+	for _, field := range []string{optionsField, "statements", "responses"} {
+		if options, ok = q[field].([]any); ok {
+			break
+		}
 	}
-	options, ok := q[field].([]any)
 	key, _ := q["correct_option_id"].(string)
 	if !ok || len(options) < 2 || key == "" || !reorderable(q, options) {
 		return false
