@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/fluentra/fluentra/internal/modules/exam/domain"
@@ -74,6 +75,13 @@ func (s *Service) reviewBacklogged(ctx context.Context, versionCode string) (boo
 // of a version, then composes the next numbered tests. It returns how many
 // fixed tests it composed.
 func (s *Service) GenerateDailyExam(ctx context.Context, versionCode string) (int, error) {
+	return s.GenerateExamParts(ctx, versionCode, nil)
+}
+
+// GenerateExamParts is GenerateDailyExam for the listed part numbers only (all
+// parts when none are listed): cmd/examgen tops up the parts a review left
+// short without drafting more of the parts that are full.
+func (s *Service) GenerateExamParts(ctx context.Context, versionCode string, partNumbers []int) (int, error) {
 	if s.repo == nil {
 		return 0, errors.New("repository not configured")
 	}
@@ -100,6 +108,9 @@ func (s *Service) GenerateDailyExam(ctx context.Context, versionCode string) (in
 
 	asked := 0
 	for _, part := range parts {
+		if len(partNumbers) > 0 && !slices.Contains(partNumbers, part.PartNumber) {
+			continue
+		}
 		groups := groupsPerTest(part) + DailyGenerationMargin
 		// The per-run cap bounds spend: parts after it wait for the next run.
 		if s.dailyCap > 0 {

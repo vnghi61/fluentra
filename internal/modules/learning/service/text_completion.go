@@ -32,9 +32,16 @@ func checkTextBlanks(body json.RawMessage) error {
 	if len(blanks) != len(cand.Questions) {
 		return fmt.Errorf("check 3 failed: text has %d blanks for %d questions", len(blanks), len(cand.Questions))
 	}
+	if m := secondText.FindString(cand.Passage); m != "" {
+		return fmt.Errorf("check 3 failed: a Part 6 set is one text, but this one has %q", m)
+	}
+	sentenceBlanks := 0
 	for i, loc := range blanks {
 		canTakeSentence, needsSentence := blankPosition(cand.Passage[:loc[0]], cand.Passage[loc[1]:])
 		sentences := optionsAreSentences(cand.Questions[i].Options)
+		if sentences {
+			sentenceBlanks++
+		}
 		// The text around the blank goes into the error: it reaches the log
 		// and the model's retry note, which then see what was refused.
 		around := blankContext(cand.Passage, loc[0], loc[1])
@@ -45,8 +52,19 @@ func checkTextBlanks(body json.RawMessage) error {
 			return fmt.Errorf("check 3 failed: blank (%d) is inside a sentence but offers whole sentences: %q", i+1, around)
 		}
 	}
+	if len(blanks) == textBlanks && sentenceBlanks != 1 {
+		return fmt.Errorf("check 3 failed: %d blanks take a whole sentence; a Part 6 text has exactly one, "+
+			"and its other three blanks are a word or phrase inside a sentence", sentenceBlanks)
+	}
 	return nil
 }
+
+// textBlanks is the number of blanks in a TOEIC Part 6 text.
+const textBlanks = 4
+
+// secondText finds the heading of a second text ("Text 2", "Review 2"):
+// drafts split the set into four one-blank texts, which Part 6 never does.
+var secondText = regexp.MustCompile(`\b(?:Text|Review|Letter|Message|Email|E-mail|Notice|Part)\s*2\b`)
 
 // blankPosition says whether a blank can take a whole sentence (a sentence
 // ended before it and what follows starts with a capital) and whether it

@@ -28,10 +28,18 @@ const extraRounds = 3
 // composes `tests` disjoint fixed tests or the rounds run out. It reuses the
 // daily job's generation (GenerateDailyExam), so the command and the job ask
 // for the same shapes.
+// genOptions are the flags that shape a generation run.
+type genOptions struct {
+	tests  int
+	parts  []int // part numbers to generate; empty is every part
+	dryRun bool
+}
+
 func generateTests(
-	ctx context.Context, cfg examCLIConfig, pool *pgxpool.Pool, examCode string, tests int, dryRun bool,
+	ctx context.Context, cfg examCLIConfig, pool *pgxpool.Pool, examCode string, opts genOptions,
 	photos exam.PhotoSource, out io.Writer,
 ) error {
+	tests, dryRun := opts.tests, opts.dryRun
 	have, err := fixedTestCount(ctx, pool, examCode)
 	if err != nil {
 		return err
@@ -53,7 +61,7 @@ func generateTests(
 	examModule := assembleExam(pool, cfg.AI.client(ctx, pool), cfg.AI.AutoPublish, authorID, photos)
 
 	for round := 1; have < tests && round <= tests-have+extraRounds; round++ {
-		composed, err := examModule.Service().GenerateDailyExam(ctx, examCode)
+		composed, err := examModule.Service().GenerateExamParts(ctx, examCode, opts.parts)
 		if err != nil {
 			return fmt.Errorf("round %d: %w", round, err)
 		}

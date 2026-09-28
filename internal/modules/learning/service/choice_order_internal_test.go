@@ -90,6 +90,10 @@ func TestShuffledChoicesLeaveOrderThatCarriesMeaning(t *testing.T) {
 			"options": [{"id": "A", "text": "tea"}, {"id": "B", "text": "coffee"},
 				{"id": "C", "text": "juice"}, {"id": "D", "text": "water"}], "correct_option_id": "B",
 			"explanation": {"explanation_vi": "Đáp án B đúng vì cô ấy gọi cà phê."}}]}`,
+		"explanation names a statement": `{"prompt": "Look at the photograph.",
+			"statements": [{"id": "A", "text": "He is riding."}, {"id": "B", "text": "He is walking."},
+				{"id": "C", "text": "He is sitting."}, {"id": "D", "text": "He is running."}], "correct_option_id": "B",
+			"explanation": {"explanation_en": "He walks along the trail, so statement B is true."}}`,
 	}
 	for name, body := range cases {
 		for range 20 {

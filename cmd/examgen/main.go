@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -56,6 +57,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	fixturesFlag := flags.String("fixtures", defaultFixtureDir,
 		"Directory an -export writes to, `cmd/seed -exams` reads, and the Part 1 photographs are read from")
 	dryRunFlag := flags.Bool("dry-run", false, "Print what would happen without writing")
+	partsFlag := flags.String("parts", "",
+		"Comma-separated part numbers to generate, e.g. 6,7 (default: every part)")
 	mockFlag := flags.Bool("mock", false,
 		"Generate with the offline mock provider, writing placeholder questions (a throwaway database only)")
 
@@ -96,7 +99,29 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		}
 		photos = fixture
 	}
-	return generateTests(ctx, cfg, pool, examCode, *testsFlag, *dryRunFlag, photos, out)
+	partNumbers, err := parsePartNumbers(*partsFlag)
+	if err != nil {
+		return err
+	}
+	return generateTests(ctx, cfg, pool, examCode, genOptions{
+		tests: *testsFlag, parts: partNumbers, dryRun: *dryRunFlag,
+	}, photos, out)
+}
+
+// parsePartNumbers reads -parts: "6,7" is parts 6 and 7, "" is every part.
+func parsePartNumbers(list string) ([]int, error) {
+	var parts []int
+	for _, field := range strings.Split(list, ",") {
+		if field = strings.TrimSpace(field); field == "" {
+			continue
+		}
+		n, err := strconv.Atoi(field)
+		if err != nil || n < 1 {
+			return nil, fmt.Errorf("-parts: %q is not a part number", field)
+		}
+		parts = append(parts, n)
+	}
+	return parts, nil
 }
 
 func exportExam(

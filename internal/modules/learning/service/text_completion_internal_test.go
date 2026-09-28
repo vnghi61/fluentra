@@ -50,6 +50,16 @@ func TestTextBlanksMatchTheirOptions(t *testing.T) {
 		},
 		{"sentence after a line break", body("Staff notice\n(1) ___ The lift is closed today.", sentences), ""},
 		{"blank count", body("All staff must (1) ___ the meeting.", words, words), "1 blanks for 2 questions"},
+		{
+			"one sentence blank of four",
+			body("Staff must (1) ___ the talk. It is (2) ___ at noon. (3) ___ Lunch is (4) ___.", words, words, sentences, words), "",
+		},
+		{
+			"two sentence blanks of four",
+			body("Staff must (1) ___ the talk. (2) ___ It is (3) ___ at noon. (4) ___", words, sentences, words, sentences),
+			"2 blanks take a whole sentence",
+		},
+		{"four texts", body("Text 1: Staff must (1) ___ the talk. Text 2: (2) ___", words, sentences), "is one text"},
 	}
 	for _, tc := range cases {
 		err := checkTextBlanks(tc.body)
