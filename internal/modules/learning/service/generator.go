@@ -615,6 +615,9 @@ func (s *Service) generateSingleItem(
 		return nil, fmt.Errorf("prepare candidate body: %w", err)
 	}
 	preparedBody = withGroupWordLimit(preparedBody, req.ExamConstraints)
+	if req.ExamConstraints != nil {
+		preparedBody = withShuffledChoices(preparedBody)
+	}
 	preparedBody = withPhoto(preparedBody, req.Photo)
 	if preparedBody, err = s.withChart(preparedBody, req.ExamConstraints); err != nil {
 		return nil, fmt.Errorf("prepare candidate body: %w", err)
