@@ -50,16 +50,34 @@ func (s *Service) Generate(
 	// Not preallocated from req.Count: the size would come from a request body.
 	var results []learningcontract.GeneratedItem
 
+	var lastErr error
 	for i := 0; i < req.Count; i++ {
 		authoredItem, err := s.retryGenerateSingleItem(ctx, req, spineNodeStrings, tagRefs, authorID, blindSolve, i)
 		if err != nil {
-			return nil, fmt.Errorf("generate item %d of %d failed after %d attempts: %w",
+			lastErr = fmt.Errorf("generate item %d of %d failed after %d attempts: %w",
 				i+1, req.Count, retriesFor(req)+1, err)
+			if !skipsFailedItems(req) {
+				return nil, lastErr
+			}
+			slog.WarnContext(ctx, "generator item skipped", "kind", req.Kind, "error", lastErr)
+			continue
 		}
 		results = append(results, *authoredItem)
 	}
+	if len(results) == 0 && lastErr != nil {
+		return nil, lastErr
+	}
 
 	return results, nil
+}
+
+// skipsFailedItems reports whether an item that fails every attempt is left
+// out instead of failing the whole call. An exam bank asks for a test's worth
+// plus a margin and records whatever it gets; failing the call threw away the
+// items already written, so a Part 6 round that missed on one text of five
+// kept none.
+func skipsFailedItems(req learningcontract.GenerateRequest) bool {
+	return req.ExamConstraints != nil
 }
 
 // textCompletionRetries is the regenerations an exam Part 6 text gets. Its
