@@ -64,8 +64,10 @@ describe("ExerciseTopic", () => {
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
 
+    // One press is enough: once the submit lands the step advances by itself,
+    // exactly once, even across further renders.
     const onContinue = vi.fn();
-    rerender(
+    const submitted = (
       <I18nextProvider i18n={i18n}>
         <ExerciseTopic
           title="Present Perfect"
@@ -74,8 +76,17 @@ describe("ExerciseTopic", () => {
           onSubmit={vi.fn()}
           onContinue={onContinue}
         />
-      </I18nextProvider>,
+      </I18nextProvider>
     );
+    rerender(submitted);
+    rerender(submitted);
+    expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not advance by itself when the topic was already submitted on arrival", () => {
+    const onContinue = vi.fn();
+    renderTopic({ isSubmitted: true, onContinue });
+    expect(onContinue).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     expect(onContinue).toHaveBeenCalledTimes(1);
   });

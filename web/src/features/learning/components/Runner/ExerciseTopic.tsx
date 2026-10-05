@@ -1,5 +1,5 @@
-import React from "react";
-import { ArrowRight, BookOpen, CheckCircle2 } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { ArrowRight, BookOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,20 @@ export const ExerciseTopic: React.FC<ExerciseTopicProps> = ({
   onContinue,
 }) => {
   const { t } = useTranslation();
+  // A topic is read, not graded: one press records it and moves on. The
+  // submit has to land first (the runner only advances a submitted step), so
+  // the press is remembered and the step advances once `isSubmitted` arrives.
+  // It used to take two presses of two buttons both labelled "Continue".
+  // `onContinue` is not memoised and increments the index, so the ref makes
+  // sure it fires exactly once even if this effect re-runs before unmount.
+  const [advanceOnSubmit, setAdvanceOnSubmit] = useState(false);
+  const advancedRef = useRef(false);
+  useEffect(() => {
+    if (advanceOnSubmit && isSubmitted && !advancedRef.current) {
+      advancedRef.current = true;
+      onContinue();
+    }
+  }, [advanceOnSubmit, isSubmitted, onContinue]);
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto py-4">
@@ -64,11 +78,14 @@ export const ExerciseTopic: React.FC<ExerciseTopicProps> = ({
             size="lg"
             disabled={isLoading}
             isLoading={isLoading}
-            onClick={onSubmit}
+            onClick={() => {
+              setAdvanceOnSubmit(true);
+              onSubmit();
+            }}
             className="w-full sm:w-auto min-w-[160px] min-h-[44px] font-bold gap-2"
           >
-            <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
             {t("runner.topic.continue", "Tiếp tục")}
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Button>
         )}
       </div>
