@@ -90,7 +90,7 @@ export function ExamHub(): React.JSX.Element {
   const notice = openAttempt ? (
     <div
       role="status"
-      className="space-y-2 rounded-xl border border-border bg-surface-muted p-4"
+      className="space-y-2 rounded-xl border border-border-subtle bg-surface-muted p-4"
     >
       <p className="text-sm text-text">{t("exam.hub.finishOpenSitting")}</p>
       <Link
@@ -134,6 +134,7 @@ export function ExamHub(): React.JSX.Element {
           open={sheetOpen}
           onOpenChange={setSheetOpen}
           title={t("exam.hub.practiceOptions", "Practice options")}
+          className="max-h-[88dvh]"
         >
           <div className="space-y-4 px-4 pb-6">
             {customOpen ? (
@@ -258,7 +259,7 @@ function VersionList({
         </p>
       </div>
 
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {items.map((version) => {
           const count = questionCount(version);
           return (
@@ -266,13 +267,13 @@ function VersionList({
               <button
                 type="button"
                 onClick={() => onSelect(version)}
-                className="flex w-full items-center gap-4 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-surface-muted"
+                className="flex w-full items-center gap-4 rounded-2xl border border-border-subtle bg-surface-card p-4 text-left transition-colors motion-safe:hover:-translate-y-px hover:border-primary/40 hover:bg-surface-muted"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary-accent">
                   <BookOpenCheck className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1 space-y-1">
-                  <span className="block truncate font-bold text-text">
+                  <span className="line-clamp-2 font-bold text-text">
                     {versionLabel(version)}
                   </span>
                   <span className="block text-xs text-text-muted">

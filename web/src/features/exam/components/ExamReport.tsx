@@ -34,6 +34,7 @@ import type {
 } from "../types";
 import {
   ExamItemReview,
+  reviewQuestions,
   reviewStates,
   type ReviewState,
 } from "./ExamItemReview";
@@ -76,6 +77,8 @@ export const ExamReport: React.FC<ExamReportProps> = ({
 }) => {
   const { t } = useTranslation();
   const [reportVersionId, setReportVersionId] = useState<string | null>(null);
+  const [reviewFilter, setReviewFilter] = useState<"all" | ReviewState>("all");
+  const [expandedNumber, setExpandedNumber] = useState<number | null>(null);
 
   const sectionLabels: Record<ExamSkill, string> = {
     listening: t("exam.sections.listening"),
@@ -89,6 +92,27 @@ export const ExamReport: React.FC<ExamReportProps> = ({
     paste: t("exam.report.signalPaste"),
   };
   const numbered = numberItems(report);
+  const reviewRows = numbered.flatMap((section) =>
+    section.flatMap((entry) =>
+      entry.states.map((state, offset) => ({
+        entry,
+        state,
+        offset,
+        number: entry.firstNumber + offset,
+      })),
+    ),
+  );
+  const openReview = (number: number) => {
+    setReviewFilter("all");
+    setExpandedNumber(number);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document
+          .getElementById(`review-row-${number}`)
+          ?.scrollIntoView?.({ behavior: "smooth", block: "center" }),
+      ),
+    );
+  };
 
   return (
     <div
@@ -126,7 +150,7 @@ export const ExamReport: React.FC<ExamReportProps> = ({
         </div>
       )}
 
-      <div className="space-y-6 rounded-3xl border border-border-subtle bg-surface-card p-6 text-center sm:p-8">
+      <div className="space-y-6 rounded-2xl border border-border-subtle bg-surface-card p-6 text-center sm:p-8">
         <h1 className="text-2xl font-extrabold text-text sm:text-3xl">
           {t("exam.report.heading")}
         </h1>
@@ -211,41 +235,82 @@ export const ExamReport: React.FC<ExamReportProps> = ({
         report={report}
         numbered={numbered}
         sectionLabels={sectionLabels}
+        onSelect={openReview}
       />
 
-      <PartAnalysis report={report} numbered={numbered} />
+      <PartAnalysis report={report} numbered={numbered} onSelect={openReview} />
 
       <section className="space-y-4 rounded-2xl border border-border-subtle bg-surface-card p-4 sm:p-6">
         <h2 className="text-lg font-bold text-text">
           {t("exam.report.itemReview")}
         </h2>
-        {report.per_section.map((section, sectionIndex) => (
-          <div key={section.position} className="space-y-3">
-            <h3 className="text-sm font-semibold text-text">
-              {sectionLabels[section.skill]}
-            </h3>
-            <ol className="space-y-3">
-              {(numbered[sectionIndex] ?? []).map((entry, index) => (
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label={t("exam.report.reviewFiltersLabel")}
+        >
+          {(["all", "wrong", "correct", "other"] as const).map((filter) => {
+            const count =
+              filter === "all"
+                ? reviewRows.length
+                : reviewRows.filter((row) => row.state === filter).length;
+            return (
+              <Button
+                key={filter}
+                type="button"
+                variant={reviewFilter === filter ? "primary" : "outline"}
+                aria-pressed={reviewFilter === filter}
+                className="min-h-[44px]"
+                onClick={() => {
+                  setReviewFilter(filter);
+                  setExpandedNumber(null);
+                }}
+              >
+                {t(`exam.report.filter.${filter}`)}{" "}
+                <span className="ml-1 tabular-nums">{count}</span>
+              </Button>
+            );
+          })}
+        </div>
+        {reviewRows.filter(
+          (row) => reviewFilter === "all" || row.state === reviewFilter,
+        ).length === 0 ? (
+          <p className="text-sm text-text-muted">
+            {t("exam.report.noFilteredQuestions")}
+          </p>
+        ) : (
+          <ol className="space-y-2">
+            {reviewRows
+              .filter(
+                (row) => reviewFilter === "all" || row.state === reviewFilter,
+              )
+              .map(({ entry, state, offset, number }) => (
                 <ItemRow
-                  key={entry.item.activity_id}
+                  key={`${entry.item.activity_id}-${number}`}
                   item={entry.item}
-                  index={index + 1}
-                  firstNumber={entry.firstNumber}
+                  number={number}
+                  questionIndex={
+                    reviewQuestions(entry.item).length > 0 ? offset : undefined
+                  }
+                  state={state}
+                  expanded={expandedNumber === number}
+                  onToggle={() =>
+                    setExpandedNumber(expandedNumber === number ? null : number)
+                  }
                   onReport={() =>
                     setReportVersionId(entry.item.content_version_id)
                   }
                 />
               ))}
-            </ol>
-          </div>
-        ))}
+          </ol>
+        )}
       </section>
 
       {report.integrity_signals.length > 0 && (
         <section className="space-y-3 rounded-2xl border border-border-subtle bg-surface-card p-6">
           <h2 className="flex items-center gap-2 text-sm font-bold text-text">
             <ShieldAlert
-              className="h-4 w-4 text-warning-accent"
+              className="h-4 w-4 text-text-muted"
               aria-hidden="true"
             />
             {t("exam.report.integrityTitle")}
@@ -288,7 +353,8 @@ const AnswerSheet: React.FC<{
   report: ScoreReport;
   numbered: NumberedItem[][];
   sectionLabels: Record<ExamSkill, string>;
-}> = ({ report, numbered, sectionLabels }) => {
+  onSelect: (number: number) => void;
+}> = ({ report, numbered, sectionLabels, onSelect }) => {
   const { t } = useTranslation();
   return (
     <section className="space-y-4 rounded-2xl border border-border-subtle bg-surface-card p-4 sm:p-6">
@@ -327,11 +393,12 @@ const AnswerSheet: React.FC<{
               entry.states.map((state, offset) => {
                 const number = entry.firstNumber + offset;
                 return (
-                  <a
+                  <button
                     key={number}
-                    href={`#review-q-${number}`}
+                    type="button"
+                    onClick={() => onSelect(number)}
                     className={cn(
-                      "flex h-11 min-w-11 items-center justify-center rounded-lg border px-2 font-mono text-sm font-semibold",
+                      "flex min-h-11 min-w-11 items-center justify-center rounded-lg border px-2 font-mono text-sm font-semibold",
                       state === "correct" &&
                         "border-success bg-success/20 text-success-accent",
                       state === "wrong" &&
@@ -341,7 +408,7 @@ const AnswerSheet: React.FC<{
                     )}
                   >
                     {number}
-                  </a>
+                  </button>
                 );
               }),
             )}
@@ -400,7 +467,8 @@ function analyseParts(
 const PartAnalysis: React.FC<{
   report: ScoreReport;
   numbered: NumberedItem[][];
-}> = ({ report, numbered }) => {
+  onSelect: (number: number) => void;
+}> = ({ report, numbered, onSelect }) => {
   const { t } = useTranslation();
   const rows = analyseParts(report, numbered);
   if (rows.length === 0) return null;
@@ -458,11 +526,12 @@ const PartAnalysis: React.FC<{
                   <td className="py-2 pl-3">
                     <div className="flex flex-wrap gap-1.5">
                       {row.numbers.map(({ number, state }) => (
-                        <a
+                        <button
                           key={number}
-                          href={`#review-q-${number}`}
+                          type="button"
+                          onClick={() => onSelect(number)}
                           className={cn(
-                            "flex h-11 min-w-11 items-center justify-center rounded-lg border px-2 font-mono text-xs font-semibold",
+                            "flex min-h-11 min-w-11 items-center justify-center rounded-lg border px-2 font-mono text-xs font-semibold",
                             state === "correct" &&
                               "border-success bg-success/20 text-success-accent",
                             state === "wrong" &&
@@ -472,7 +541,7 @@ const PartAnalysis: React.FC<{
                           )}
                         >
                           {number}
-                        </a>
+                        </button>
                       ))}
                     </div>
                   </td>
@@ -528,12 +597,38 @@ const SectionCard: React.FC<{ section: ExamSectionOutcome; label: string }> = ({
   );
 };
 
+const ReviewStateLabel: React.FC<{ state: ReviewState }> = ({ state }) => {
+  const { t } = useTranslation();
+  if (state === "correct")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-xs font-semibold text-success-accent">
+        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+        {t("exam.report.legendCorrect")}
+      </span>
+    );
+  if (state === "wrong")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-danger/15 px-2 py-0.5 text-xs font-semibold text-danger-accent">
+        <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
+        {t("exam.report.legendWrong")}
+      </span>
+    );
+  return (
+    <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-text-muted">
+      {t("exam.report.noAnswer")}
+    </span>
+  );
+};
+
 const ItemRow: React.FC<{
   item: ExamItemOutcome;
-  index: number;
-  firstNumber: number;
+  number: number;
+  questionIndex?: number | undefined;
+  state: ReviewState;
+  expanded: boolean;
+  onToggle: () => void;
   onReport: () => void;
-}> = ({ item, index, firstNumber, onReport }) => {
+}> = ({ item, number, questionIndex, state, expanded, onToggle, onReport }) => {
   const { t } = useTranslation();
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -555,83 +650,110 @@ const ItemRow: React.FC<{
     unanswered: t("exam.report.itemUnanswered"),
   };
 
-  const questions = item.item_results ?? [];
-  const correct = questions.filter((q) => q.correct).length;
   const hasFeedback =
     item.status === "graded" &&
     item.attempt_id !== undefined &&
     (item.kind === "writing_prompt" || item.kind === "speaking_task");
-  const fullMarks =
-    item.status === "graded" &&
-    item.max_score > 0 &&
-    item.score === item.max_score;
+  const contentQuestions = Array.isArray(item.content?.questions)
+    ? (item.content.questions as Array<Record<string, unknown>>)
+    : [];
+  const answers =
+    item.response?.answers && typeof item.response.answers === "object"
+      ? (item.response.answers as Record<string, unknown>)
+      : {};
+  const rawQuestionId =
+    questionIndex === undefined
+      ? undefined
+      : contentQuestions[questionIndex]?.id;
+  const questionId =
+    typeof rawQuestionId === "string" ? rawQuestionId : undefined;
+  const rawAnswer = questionId
+    ? answers[questionId]
+    : (item.response?.answer ??
+      item.response?.text_answer ??
+      item.response?.selected_option_id ??
+      Object.values(answers).find((value) => typeof value === "string"));
+  const snippet = typeof rawAnswer === "string" ? rawAnswer : "";
 
   return (
-    <li className="space-y-3 rounded-xl border border-border-subtle bg-surface-muted/30 p-4 text-xs">
+    <li
+      id={`review-row-${number}`}
+      className="rounded-2xl border border-border-subtle bg-surface-card p-3 text-sm"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {fullMarks ? (
-            <CheckCircle2
-              className="h-4 w-4 shrink-0 text-success-accent"
-              aria-hidden="true"
-            />
-          ) : (
-            <XCircle
-              className="h-4 w-4 shrink-0 text-text-muted"
-              aria-hidden="true"
-            />
-          )}
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="font-semibold text-text">
-            {t("exam.report.item", { num: index })} ·{" "}
-            {kindLabels[item.kind] ?? item.kind}
+            {t("exam.report.questionNumber", { num: number })}
           </span>
+          <ReviewStateLabel state={state} />
+          {snippet && (
+            <span className="max-w-full truncate text-xs text-text-muted">
+              {snippet}
+            </span>
+          )}
         </div>
-        <span className="text-text-muted">
-          {item.status === "graded"
-            ? t("exam.report.itemScore", {
-                score: item.score,
-                max: item.max_score,
-              })
-            : statusLabels[item.status]}
-        </span>
-      </div>
-      {questions.length > 0 && (
-        <p className="text-text-muted">
-          {t("exam.report.questionsCorrect", {
-            correct,
-            total: questions.length,
-          })}
-        </p>
-      )}
-
-      <ExamItemReview item={item} firstNumber={firstNumber} />
-
-      <div className="flex flex-wrap gap-2">
-        {hasFeedback && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setShowFeedback((v) => !v)}
-          >
-            {showFeedback
-              ? t("exam.report.hideFeedback")
-              : t("exam.report.showFeedback")}
-          </Button>
-        )}
-        <Button type="button" size="sm" variant="ghost" onClick={onReport}>
-          <Flag className="h-3.5 w-3.5" aria-hidden="true" />
-          {t("exam.report.reportItem")}
+        <Button
+          type="button"
+          variant="outline"
+          aria-expanded={expanded}
+          onClick={onToggle}
+          className="min-h-[44px]"
+        >
+          {expanded ? t("exam.report.hideReview") : t("exam.report.viewReview")}
         </Button>
       </div>
-      {showFeedback && item.attempt_id && item.kind === "writing_prompt" && (
-        <WritingFeedbackPanel
-          attemptId={item.attempt_id}
-          graderFeedback={item.feedback}
-        />
-      )}
-      {showFeedback && item.attempt_id && item.kind === "speaking_task" && (
-        <SpeakingFeedbackPanel attemptId={item.attempt_id} />
+      {expanded && (
+        <div className="mt-3 space-y-3 border-t border-border-subtle pt-3 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-semibold text-text">
+              {kindLabels[item.kind] ?? item.kind}
+            </span>
+            <span className="text-text-muted">
+              {item.status === "graded"
+                ? t("exam.report.itemScore", {
+                    score: item.score,
+                    max: item.max_score,
+                  })
+                : statusLabels[item.status]}
+            </span>
+          </div>
+          <ExamItemReview
+            item={item}
+            firstNumber={
+              questionIndex === undefined ? number : number - questionIndex
+            }
+            questionIndex={questionIndex}
+          />
+          <div className="flex flex-wrap gap-2">
+            {hasFeedback && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setShowFeedback((v) => !v)}
+              >
+                {showFeedback
+                  ? t("exam.report.hideFeedback")
+                  : t("exam.report.showFeedback")}
+              </Button>
+            )}
+            <Button type="button" size="sm" variant="ghost" onClick={onReport}>
+              <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+              {t("exam.report.reportItem")}
+            </Button>
+          </div>
+          {showFeedback &&
+            item.attempt_id &&
+            item.kind === "writing_prompt" && (
+              <WritingFeedbackPanel
+                attemptId={item.attempt_id}
+                graderFeedback={item.feedback}
+              />
+            )}
+          {showFeedback && item.attempt_id && item.kind === "speaking_task" && (
+            <SpeakingFeedbackPanel attemptId={item.attempt_id} />
+          )}
+        </div>
       )}
     </li>
   );

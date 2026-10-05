@@ -38,7 +38,7 @@ const exam: ExamTemplate = {
   total_minutes: 75,
 };
 
-const attempt: ExamAttempt = {
+export const attempt: ExamAttempt = {
   id: SITTING_ID,
   exam_id: EXAM_ID,
   exam_title: exam.title_en,
@@ -238,7 +238,6 @@ describe("exam screens", () => {
       screen.getByText(/two sittings hold different items/),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Not scored").length).toBeGreaterThan(0);
-    expect(screen.getByText("1 of 2 questions correct")).toBeInTheDocument();
     expect(screen.getByText("Tab hidden: 2")).toBeInTheDocument();
     expect(screen.queryByText(/Time taken/)).not.toBeInTheDocument();
   });
@@ -312,6 +311,10 @@ describe("exam screens", () => {
     await renderWithProviders(<ExamReport report={reviewed} />);
 
     expect(await screen.findByText("Answer sheet")).toBeInTheDocument();
+    expect(
+      screen.queryByText("When is the library closed?"),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "View" })[0]!);
     expect(screen.getByText("When is the library closed?")).toBeInTheDocument();
     expect(screen.getByText("B · Monday")).toBeInTheDocument();
     expect(screen.getAllByText("A · Friday").length).toBeGreaterThan(0);
@@ -319,11 +322,7 @@ describe("exam screens", () => {
       screen.getByText("The passage says it is closed on Friday."),
     ).toBeInTheDocument();
     // Question 1 is on the answer sheet and in its question type's row.
-    const links = screen.getAllByRole("link", { name: "1" });
-    expect(links).toHaveLength(2);
-    for (const link of links) {
-      expect(link).toHaveAttribute("href", "#review-q-1");
-    }
+    expect(screen.getAllByRole("button", { name: "1" })).toHaveLength(2);
     expect(screen.getByText("Results by question type")).toBeInTheDocument();
     expect(screen.getByText("#Reading comprehension")).toBeInTheDocument();
   });
@@ -535,7 +534,7 @@ describe("exam screens", () => {
     expect(
       await screen.findByText("1. Where is the flight going?"),
     ).toBeInTheDocument();
-    expect(screen.getByText("0 of 2 answered")).toBeInTheDocument();
+    expect(screen.getByText("0/2")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Go to question 2" }));
 

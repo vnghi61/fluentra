@@ -49,6 +49,13 @@ export function pickSupportedMimeType(): string {
   return "";
 }
 
+export function formatRecorderTime(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(safe / 60)
+    .toString()
+    .padStart(2, "0")}:${(safe % 60).toString().padStart(2, "0")}`;
+}
+
 export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   taskType,
   promptText,
@@ -72,7 +79,12 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   const [showNotice, setShowNotice] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [requestingPermission, setRequestingPermission] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(speakingTimeSeconds);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
+  const [recordedSeconds, setRecordedSeconds] = useState(0);
   const [prevPropKey, setPrevPropKey] = useState<string | undefined>(
     currentRecordingKey,
   );
@@ -108,12 +120,15 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startedAtRef = useRef<number | null>(null);
+  const recordedUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       const recorder = recorderRef.current;
       if (recorder && recorder.state !== "inactive") recorder.stop();
+      if (recordedUrlRef.current) URL.revokeObjectURL(recordedUrlRef.current);
     };
   }, []);
 
@@ -193,8 +208,14 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       return;
     }
 
+    setRequestingPermission(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setRequestingPermission(false);
+      if (recordedUrlRef.current) URL.revokeObjectURL(recordedUrlRef.current);
+      recordedUrlRef.current = null;
+      setRecordedUrl(null);
+      setRecordedBlob(null);
       const mimeType = pickSupportedMimeType();
       const recorder = new MediaRecorder(
         stream,
@@ -209,9 +230,27 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         const blob = new Blob(chunksRef.current, {
           type: recorder.mimeType || "audio/webm",
         });
+        setRecordedBlob(blob);
+        setRecordedSeconds(
+          Math.min(
+            speakingTimeSeconds,
+            Math.max(
+              0,
+              Math.floor(
+                (Date.now() - (startedAtRef.current ?? Date.now())) / 1000,
+              ),
+            ),
+          ),
+        );
+        const objectUrl = URL.createObjectURL(blob);
+        if (recordedUrlRef.current) URL.revokeObjectURL(recordedUrlRef.current);
+        recordedUrlRef.current = objectUrl;
+        setRecordedUrl(objectUrl);
         void upload(blob);
       };
       recorder.start(250);
+      startedAtRef.current = Date.now();
+      setPermissionDenied(false);
       setIsRecording(true);
       setSecondsLeft(speakingTimeSeconds);
       timerRef.current = setInterval(() => {
@@ -224,6 +263,8 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         });
       }, 1000);
     } catch {
+      setRequestingPermission(false);
+      setPermissionDenied(true);
       setError(
         t(
           "speaking.micPermissionDenied",
@@ -247,7 +288,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   return (
     <div
       className={cn(
-        "space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm",
+        "space-y-4 rounded-2xl border border-border-subtle bg-surface-card p-5 shadow-sm",
         className,
       )}
     >
@@ -281,9 +322,17 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
               </Badge>
             )}
           <Badge variant="outline">
-            {t("speaking.timeLimit", "{{seconds}}s", {
-              seconds: speakingTimeSeconds,
-            })}
+            {speakingTimeSeconds < 60
+              ? t("speaking.timeLimit", "{{seconds}} giây", {
+                  seconds: speakingTimeSeconds,
+                })
+              : speakingTimeSeconds % 60 === 0
+                ? t("speaking.timeLimitMinutes", "{{minutes}} phút", {
+                    minutes: speakingTimeSeconds / 60,
+                  })
+                : t("speaking.timeLimitClock", "{{time}}", {
+                    time: formatRecorderTime(speakingTimeSeconds),
+                  })}
           </Badge>
         </div>
       </div>
@@ -309,23 +358,60 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         </div>
       )}
 
-      <div className="flex flex-col items-center justify-center space-y-4 rounded-xl border border-border-subtle bg-surface-muted/40 p-6">
+      <div className="flex flex-col items-center justify-center space-y-4 rounded-xl bg-surface-muted/40 p-6">
         <div
           className={cn(
             "font-mono text-3xl font-bold tracking-tight sm:text-4xl",
-            isRecording ? "text-danger animate-pulse" : "text-text",
+            isRecording ? "text-danger" : "text-text",
           )}
           aria-live="polite"
         >
-          {`00:${secondsLeft.toString().padStart(2, "0")}`}
+          {isRecording
+            ? `${formatRecorderTime(speakingTimeSeconds - secondsLeft)} / ${formatRecorderTime(speakingTimeSeconds)}`
+            : recordedBlob
+              ? t("speaking.recordedDuration", "Đã ghi {{time}}", {
+                  time: formatRecorderTime(recordedSeconds),
+                })
+              : formatRecorderTime(speakingTimeSeconds)}
         </div>
+
+        {isRecording && (
+          <div className="flex items-center gap-2 text-sm font-medium text-danger">
+            <span
+              className="h-2.5 w-2.5 rounded-full bg-danger motion-safe:animate-pulse"
+              aria-hidden="true"
+            />
+            {t("speaking.recording", "Đang ghi")}
+          </div>
+        )}
+        {requestingPermission && (
+          <p role="status" className="text-sm text-text-muted">
+            {t("speaking.requestingPermission", "Đang xin quyền micro…")}
+          </p>
+        )}
+        {permissionDenied && (
+          <p className="text-sm text-text-muted">
+            {t(
+              "speaking.permissionGuidance",
+              "Hãy bật quyền micro trong cài đặt trình duyệt rồi chọn Ghi lại để thử lại.",
+            )}
+          </p>
+        )}
+        {recordedUrl && !isRecording && (
+          <audio
+            className="w-full"
+            controls
+            src={recordedUrl}
+            aria-label={t("speaking.playRecording", "Nghe lại")}
+          />
+        )}
 
         {isRecording ? (
           <Button
             type="button"
             variant="destructive"
             onClick={stopRecording}
-            className="rounded-full px-6 gap-2"
+            className="min-h-[44px] rounded-full px-6 gap-2"
           >
             <Square className="h-5 w-5" aria-hidden="true" />
             <span>{t("speaking.stop", "Stop Recording")}</span>
@@ -333,28 +419,27 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         ) : (
           <Button
             type="button"
-            variant={recordingKey ? "outline" : "destructive"}
+            variant={recordingKey ? "outline" : "primary"}
             onClick={() => void startRecording()}
-            disabled={!canRecord}
-            className="rounded-full px-6 gap-2"
+            disabled={!canRecord || requestingPermission}
+            className="min-h-[44px] rounded-full px-6 gap-2"
           >
             <Mic className="h-5 w-5" aria-hidden="true" />
             <span>
-              {recordingKey
-                ? mode === "practice"
-                  ? t("speaking.reRecord", "Record Again")
-                  : t("speaking.recorded", "Recorded")
-                : t("speaking.record", "Start Recording")}
+              {requestingPermission
+                ? t("speaking.requestingPermission", "Đang xin quyền micro…")
+                : recordingKey || (mode === "practice" && recordedBlob)
+                  ? mode === "practice"
+                    ? t("speaking.reRecord", "Ghi lại")
+                    : t("speaking.recorded", "Recorded")
+                  : t("speaking.record", "Start Recording")}
             </span>
           </Button>
         )}
 
         {isUploading && (
           <p className="flex items-center gap-2 text-xs font-medium text-primary">
-            <UploadCloud
-              className="h-4 w-4 animate-bounce"
-              aria-hidden="true"
-            />
+            <UploadCloud className="h-4 w-4" aria-hidden="true" />
             {t("speaking.uploading", "Uploading recording...")}
           </p>
         )}

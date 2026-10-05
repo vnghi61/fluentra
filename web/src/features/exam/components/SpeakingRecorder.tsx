@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import {
   AudioRecorder,
+  formatRecorderTime,
   type AudioRecorderProps,
 } from "@/features/speaking/components/AudioRecorder";
 import { Button } from "@/components/ui/button";
@@ -54,7 +55,7 @@ export const SpeakingRecorder: React.FC<SpeakingRecorderProps> = ({
           {t("exam.speaking.prepare", "Take a moment to prepare.")}
         </p>
         <p className="font-mono text-4xl font-extrabold text-primary-accent">
-          {Math.max(left, 0)}s
+          {formatRecorderTime(left)}
         </p>
         <Button onClick={() => setStarted(true)} className="mx-auto">
           {t("exam.speaking.startNow", "Start now")}

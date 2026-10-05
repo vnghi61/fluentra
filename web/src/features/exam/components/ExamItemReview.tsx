@@ -212,7 +212,8 @@ function optionLabel(options: ReviewOption[], id: string | undefined): string {
 const ComprehensionReview: React.FC<{
   item: ExamItemOutcome;
   firstNumber: number;
-}> = ({ item, firstNumber }) => {
+  questionIndex?: number | undefined;
+}> = ({ item, firstNumber, questionIndex }) => {
   const { t } = useTranslation();
   const questions = reviewQuestions(item);
   const answers = learnerAnswers(item);
@@ -235,108 +236,113 @@ const ComprehensionReview: React.FC<{
           {source}
         </Reveal>
       )}
-      {questions.map((question, index) => {
-        const number = firstNumber + index;
-        const chosen = answers[question.id] ?? "";
-        const verdict = results.find((result) => result.id === question.id);
-        const state = questionState(question, chosen, verdict);
-        const correctId = verdict?.correct_answer ?? question.correctAnswer;
-        const explanation =
-          question.explanation ?? verdict?.explanation ?? null;
-        return (
-          <div
-            key={question.id || index}
-            id={`review-q-${number}`}
-            className={cn(
-              "space-y-3 rounded-xl border p-4",
-              state === "correct" && "border-success/50 bg-success/5",
-              state === "wrong" && "border-danger/50 bg-danger/5",
-              state === "other" && "border-border-subtle",
-            )}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <p className="text-sm font-medium leading-relaxed text-text">
-                <span className="mr-2 font-mono text-primary-accent">
-                  {number}.
-                </span>
-                {question.prompt}
-              </p>
-              <StateBadge state={state} />
-            </div>
-            {question.options.length > 0 && (
-              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {question.options.map((option, optionIndex) => {
-                  const isCorrect = option.id === correctId;
-                  const isChosen = option.id === chosen;
-                  return (
-                    <li
-                      key={option.id || optionIndex}
-                      className={cn(
-                        "flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm",
-                        isCorrect &&
-                          "border-success bg-success/15 font-semibold text-text",
-                        isChosen &&
-                          !isCorrect &&
-                          "border-danger bg-danger/10 text-text",
-                        !isCorrect &&
-                          !isChosen &&
-                          "border-border-subtle text-text-muted",
-                      )}
-                    >
-                      <span>
-                        <span className="mr-2 font-mono text-xs">
-                          {String.fromCharCode(65 + optionIndex)}
-                        </span>
-                        {option.text}
-                      </span>
-                      {isCorrect && (
-                        <Check
-                          className="h-4 w-4 shrink-0 text-success-accent"
-                          aria-hidden="true"
-                        />
-                      )}
-                      {isChosen && !isCorrect && (
-                        <X
-                          className="h-4 w-4 shrink-0 text-danger-accent"
-                          aria-hidden="true"
-                        />
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            <dl className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
-              <div>
-                <dt className="inline text-text-muted">
-                  {t("exam.report.yourAnswer")}:{" "}
-                </dt>
-                <dd
-                  className={cn(
-                    "inline font-semibold",
-                    state === "wrong" ? "text-danger-accent" : "text-text",
-                  )}
-                >
-                  {chosen
-                    ? optionLabel(question.options, chosen)
-                    : t("exam.report.noAnswer")}
-                </dd>
+      {questions
+        .map((question, index) => ({ question, index }))
+        .filter(
+          ({ index }) => questionIndex === undefined || index === questionIndex,
+        )
+        .map(({ question, index }) => {
+          const number = firstNumber + index;
+          const chosen = answers[question.id] ?? "";
+          const verdict = results.find((result) => result.id === question.id);
+          const state = questionState(question, chosen, verdict);
+          const correctId = verdict?.correct_answer ?? question.correctAnswer;
+          const explanation =
+            question.explanation ?? verdict?.explanation ?? null;
+          return (
+            <div
+              key={question.id || index}
+              id={`review-q-${number}`}
+              className={cn(
+                "space-y-3 rounded-xl border p-4",
+                state === "correct" && "border-success/50 bg-success/5",
+                state === "wrong" && "border-danger/50 bg-danger/5",
+                state === "other" && "border-border-subtle",
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-medium leading-relaxed text-text">
+                  <span className="mr-2 font-mono text-primary-accent">
+                    {number}.
+                  </span>
+                  {question.prompt}
+                </p>
+                <StateBadge state={state} />
               </div>
-              {correctId && (
+              {question.options.length > 0 && (
+                <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {question.options.map((option, optionIndex) => {
+                    const isCorrect = option.id === correctId;
+                    const isChosen = option.id === chosen;
+                    return (
+                      <li
+                        key={option.id || optionIndex}
+                        className={cn(
+                          "flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm",
+                          isCorrect &&
+                            "border-success bg-success/15 font-semibold text-text",
+                          isChosen &&
+                            !isCorrect &&
+                            "border-danger bg-danger/10 text-text",
+                          !isCorrect &&
+                            !isChosen &&
+                            "border-border-subtle text-text-muted",
+                        )}
+                      >
+                        <span>
+                          <span className="mr-2 font-mono text-xs">
+                            {String.fromCharCode(65 + optionIndex)}
+                          </span>
+                          {option.text}
+                        </span>
+                        {isCorrect && (
+                          <Check
+                            className="h-4 w-4 shrink-0 text-success-accent"
+                            aria-hidden="true"
+                          />
+                        )}
+                        {isChosen && !isCorrect && (
+                          <X
+                            className="h-4 w-4 shrink-0 text-danger-accent"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <dl className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
                 <div>
                   <dt className="inline text-text-muted">
-                    {t("exam.report.correctAnswer")}:{" "}
+                    {t("exam.report.yourAnswer")}:{" "}
                   </dt>
-                  <dd className="inline font-semibold text-success-accent">
-                    {optionLabel(question.options, correctId)}
+                  <dd
+                    className={cn(
+                      "inline font-semibold",
+                      state === "wrong" ? "text-danger-accent" : "text-text",
+                    )}
+                  >
+                    {chosen
+                      ? optionLabel(question.options, chosen)
+                      : t("exam.report.noAnswer")}
                   </dd>
                 </div>
-              )}
-            </dl>
-            {explanation && <Explanation explanation={explanation} />}
-          </div>
-        );
-      })}
+                {correctId && (
+                  <div>
+                    <dt className="inline text-text-muted">
+                      {t("exam.report.correctAnswer")}:{" "}
+                    </dt>
+                    <dd className="inline font-semibold text-success-accent">
+                      {optionLabel(question.options, correctId)}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              {explanation && <Explanation explanation={explanation} />}
+            </div>
+          );
+        })}
     </div>
   );
 };
@@ -445,7 +451,8 @@ const SpeakingReview: React.FC<{ item: ExamItemOutcome }> = ({ item }) => {
 export const ExamItemReview: React.FC<{
   item: ExamItemOutcome;
   firstNumber: number;
-}> = ({ item, firstNumber }) => {
+  questionIndex?: number | undefined;
+}> = ({ item, firstNumber, questionIndex }) => {
   if (!item.content) return null;
   switch (item.kind) {
     case "listening_comprehension":
@@ -454,7 +461,13 @@ export const ExamItemReview: React.FC<{
     case "mcq_gap":
     case "photo_description":
     case "question_response":
-      return <ComprehensionReview item={item} firstNumber={firstNumber} />;
+      return (
+        <ComprehensionReview
+          item={item}
+          firstNumber={firstNumber}
+          questionIndex={questionIndex}
+        />
+      );
     case "grammar_sentence_transform":
     case "typed_completion":
       return <RewriteReview item={item} />;
