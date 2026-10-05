@@ -11,7 +11,7 @@ import { http, HttpResponse } from "msw";
 import { I18nextProvider } from "react-i18next";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import i18n, { initI18n } from "@/i18n";
+import i18n, { initI18n, loadLocale } from "@/i18n";
 import {
   FoundationNextCard,
   pathNodeState,
@@ -66,6 +66,7 @@ describe("pathNodeState", () => {
 describe("FoundationNextCard", () => {
   beforeEach(async () => {
     await initI18n("en");
+    await loadLocale("en");
     await i18n.changeLanguage("en");
   });
 
@@ -89,6 +90,7 @@ describe("FoundationNextCard", () => {
     await renderCard();
 
     expect(await screen.findByText("Present Continuous")).toBeInTheDocument();
+    expect(screen.getByText("Learning path")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Start this topic/i }),
     ).toHaveAttribute("href", "/foundation/topics/PRESENT_CONTINUOUS");
@@ -106,5 +108,30 @@ describe("FoundationNextCard", () => {
     // The request settles, and the card stays out of the dashboard.
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders revisit text and link when topic has previous attempts", async () => {
+    server.use(
+      http.get("/api/v1/me/foundation/next", () =>
+        HttpResponse.json({
+          id: "0199a1c2-3d4e-7f80-9abc-def01234567c",
+          namespace: "grammar",
+          code: "PRESENT_CONTINUOUS",
+          label: "Present Continuous",
+          cefr_level: "A1",
+          attempts: 2,
+          score: 0.6,
+          mastered: false,
+          next: true,
+        }),
+      ),
+    );
+
+    await renderCard();
+
+    expect(await screen.findByText("Present Continuous")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Revisit this topic/i }),
+    ).toHaveAttribute("href", "/foundation/topics/PRESENT_CONTINUOUS");
   });
 });

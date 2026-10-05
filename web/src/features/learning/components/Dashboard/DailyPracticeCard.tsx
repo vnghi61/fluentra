@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BookOpen,
   Calendar,
+  ChevronDown,
   Headphones,
   Layers,
   Mic,
@@ -13,7 +14,6 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -74,10 +74,8 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
   };
 
   return (
-    <Card
-      className={`relative overflow-hidden border-primary/20 bg-gradient-to-br from-surface-card via-surface-card to-primary/5 shadow-md ${className}`}
-    >
-      <CardHeader className="space-y-2">
+    <Card className={`relative overflow-hidden ${className}`}>
+      <CardHeader className="space-y-2 p-4 pb-3 md:p-5 md:pb-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 text-primary">
             <Calendar className="h-5 w-5" aria-hidden="true" />
@@ -86,33 +84,38 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
             </span>
           </div>
           {signedIn && (
-            <div
-              role="group"
-              aria-label={t("practice.daily.levelGroup", "Practice level")}
-              className="flex items-center gap-1 bg-surface-muted/60 p-0.5 rounded-lg border border-border/50 text-xs"
-            >
-              {PRACTICE_LEVELS.map((lvl) => (
-                <button
-                  key={lvl}
-                  type="button"
-                  onClick={() => void chooseLevel(lvl)}
-                  disabled={saving}
-                  className={`px-2.5 py-1 rounded-md font-semibold transition-all disabled:opacity-60 ${
-                    level === lvl
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-text-muted hover:text-text hover:bg-surface/50"
-                  }`}
-                  aria-pressed={level === lvl}
-                >
-                  {t("practice.daily.levelLabel", "Level {{lvl}}", { lvl })}
-                </button>
-              ))}
+            <div className="relative inline-flex items-center">
+              <select
+                aria-label={t("practice.daily.levelGroup", "Practice level")}
+                value={level ?? ""}
+                onChange={(e) => {
+                  const next = e.target.value as PracticeLevel;
+                  if (next) void chooseLevel(next);
+                }}
+                disabled={saving}
+                className="appearance-none cursor-pointer rounded-full border border-border-subtle bg-surface-muted pl-3 pr-7 py-1 text-base font-semibold text-text min-h-[44px] min-w-[44px] focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
+              >
+                {level === null && (
+                  <option value="" disabled>
+                    {t("practice.daily.selectLevelPlaceholder", "Level")}
+                  </option>
+                )}
+                {PRACTICE_LEVELS.map((lvl) => (
+                  <option key={lvl} value={lvl}>
+                    {lvl}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                className="pointer-events-none absolute right-2.5 h-4 w-4 text-text-muted"
+                aria-hidden="true"
+              />
             </div>
           )}
         </div>
 
-        <CardTitle className="text-xl font-bold tracking-tight">
-          {t("practice.daily.title", "Today's Practice Set")}
+        <CardTitle className="text-base md:text-lg font-bold tracking-tight text-text">
+          {t("practice.daily.cardTitle", "Today's exercises")}
         </CardTitle>
 
         <CardDescription className="text-sm text-text-muted">
@@ -121,6 +124,12 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
             "10 verified exercises freshly drawn for today, across all five skills: grammar, reading, listening, speaking and writing.",
           )}
         </CardDescription>
+
+        {level && (
+          <p className="text-sm text-text-muted" role="status">
+            {t(`practice.daily.levelHint${level}`)}
+          </p>
+        )}
 
         {signedIn && level === null && (
           <p className="text-sm font-medium text-text">
@@ -141,78 +150,58 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
         )}
 
         {/*
-          What the set is made of, so the badge row is not a claim the draw
-          stops honouring. A slot that has nothing in it yet contributes
-          nothing, which is why these say what was asked for rather than what
-          arrived — the runner shows the difference.
+          What the set is made of, rendered with low-saturation tints that work in dark mode.
+          Transforms reuses grammar tint (blue).
         */}
         {!compact && (
           <div className="flex items-center gap-2 pt-2 flex-wrap">
-            <Badge
-              variant="outline"
-              className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
-            >
+            <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs font-medium bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20">
               <Layers
-                className="h-3.5 w-3.5 text-secondary-accent"
+                className="h-3.5 w-3.5 text-blue-700 dark:text-blue-300"
                 aria-hidden="true"
               />
               <span>{t("practice.daily.slotGrammar", "3 Grammar")}</span>
-            </Badge>
-            <Badge
-              variant="outline"
-              className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
-            >
+            </span>
+            <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs font-medium bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20">
               <Zap
-                className="h-3.5 w-3.5 text-warning-accent"
+                className="h-3.5 w-3.5 text-blue-700 dark:text-blue-300"
                 aria-hidden="true"
               />
               <span>{t("practice.daily.slotTransforms", "2 Transforms")}</span>
-            </Badge>
-            <Badge
-              variant="outline"
-              className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
-            >
+            </span>
+            <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs font-medium bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20">
               <BookOpen
-                className="h-3.5 w-3.5 text-primary"
+                className="h-3.5 w-3.5 text-purple-700 dark:text-purple-300"
                 aria-hidden="true"
               />
               <span>{t("practice.daily.slotReading", "1 Passage")}</span>
-            </Badge>
-            <Badge
-              variant="outline"
-              className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
-            >
+            </span>
+            <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs font-medium bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20">
               <Headphones
-                className="h-3.5 w-3.5 text-primary"
+                className="h-3.5 w-3.5 text-green-700 dark:text-green-300"
                 aria-hidden="true"
               />
               <span>{t("practice.daily.slotListening", "1 Clip")}</span>
-            </Badge>
-            <Badge
-              variant="outline"
-              className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
-            >
+            </span>
+            <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs font-medium bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/20">
               <Mic
-                className="h-3.5 w-3.5 text-success-accent"
+                className="h-3.5 w-3.5 text-orange-700 dark:text-orange-300"
                 aria-hidden="true"
               />
               <span>{t("practice.daily.slotSpeaking", "2 Speaking")}</span>
-            </Badge>
-            <Badge
-              variant="outline"
-              className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
-            >
+            </span>
+            <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs font-medium bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/20">
               <PenTool
-                className="h-3.5 w-3.5 text-warning-accent"
+                className="h-3.5 w-3.5 text-pink-700 dark:text-pink-300"
                 aria-hidden="true"
               />
               <span>{t("practice.daily.slotWriting", "1 Writing")}</span>
-            </Badge>
+            </span>
           </div>
         )}
       </CardHeader>
 
-      <CardFooter className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      <CardFooter className="p-4 pt-0 md:p-5 md:pt-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         {!signedIn ? (
           <div className="w-full flex items-center justify-between gap-3 flex-wrap">
             <span className="text-xs text-text-muted">
@@ -229,23 +218,18 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
             </Link>
           </div>
         ) : level === null ? (
-          <Button
-            disabled
-            className="w-full sm:w-auto ml-auto gap-2 shadow-sm font-semibold"
-          >
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
-            {t("practice.daily.startBtn", "Start Today's Set")}
+          <Button disabled className="w-full sm:w-auto gap-2 font-semibold">
+            {t("practice.daily.continueBtn", "Continue practice")}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Button>
         ) : (
           <Link
             to="/practice/daily"
             search={{ level }}
-            className="w-full sm:w-auto ml-auto"
+            className="w-full sm:w-auto"
           >
             <Button className="w-full sm:w-auto gap-2 shadow-sm font-semibold">
-              <Sparkles className="h-4 w-4" aria-hidden="true" />
-              {t("practice.daily.startBtn", "Start Today's Set")}
+              {t("practice.daily.continueBtn", "Continue practice")}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Button>
           </Link>

@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { CalendarDays, CheckCircle2, Circle } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronRight, Circle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useWeeklyPlan, type WeeklyPlanItem } from "../../api/placement";
 
@@ -20,6 +22,8 @@ export const WeeklyPlanCard: React.FC<WeeklyPlanCardProps> = ({
   className,
 }) => {
   const { t, i18n } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const [mobileExpanded, setMobileExpanded] = useState(false);
   const { data: plan } = useWeeklyPlan();
   if (!plan) return null;
 
@@ -39,15 +43,58 @@ export const WeeklyPlanCard: React.FC<WeeklyPlanCardProps> = ({
     { day: "numeric", month: "long" },
   );
 
+  const visibleItems =
+    expanded || mobileExpanded ? plan.items : plan.items.slice(0, 5);
+
   return (
-    <Card className={cn("border-border bg-surface-card", className)}>
-      <CardHeader className="space-y-3">
+    <Card
+      className={cn(
+        "bg-surface-card border border-border-subtle rounded-2xl shadow-[0_2px_8px_rgba(15,23,42,0.04)]",
+        className,
+      )}
+    >
+      {/* Below md: Mobile collapsed full-width button row */}
+      <button
+        type="button"
+        aria-expanded={mobileExpanded}
+        onClick={() => setMobileExpanded((value) => !value)}
+        className="flex md:hidden w-full items-center justify-between gap-3 p-4 text-left font-medium min-h-[44px]"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <CalendarDays
+            className="h-5 w-5 text-primary shrink-0"
+            aria-hidden="true"
+          />
+          <span className="text-sm font-semibold text-text truncate">
+            {t("weeklyPlan.mobileRow", "This week's plan")}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0 text-xs font-medium text-text-muted">
+          <span>
+            {t("weeklyPlan.minutesShort", {
+              done: plan.progress.minutes,
+              goal: plan.minutes_goal,
+              defaultValue: `${plan.progress.minutes} / ${plan.minutes_goal} min`,
+            })}
+          </span>
+          <ChevronRight
+            className={cn(
+              "h-4 w-4 transition-transform duration-200 text-text-muted motion-reduce:transition-none",
+              mobileExpanded && "rotate-90",
+            )}
+            aria-hidden="true"
+          />
+        </div>
+      </button>
+
+      {/* From md up: Desktop compact header */}
+      <div className="hidden md:block p-4 pb-3 md:p-5 md:pb-3 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-primary" aria-hidden="true" />
-            <CardTitle className="text-lg font-bold text-text">
-              {t("weeklyPlan.title")}
-            </CardTitle>
+            <h3 className="text-base font-semibold text-text">
+              {t("weeklyPlan.title", "This week's plan")}
+            </h3>
           </div>
           <span className="text-sm text-text-muted">
             {t("weeklyPlan.weekOf", { date: weekOf })}
@@ -68,29 +115,28 @@ export const WeeklyPlanCard: React.FC<WeeklyPlanCardProps> = ({
               })}
             </span>
           </div>
-          <div
-            className="h-2 w-full overflow-hidden rounded-full bg-border-subtle"
-            role="progressbar"
+          <Progress
+            value={percent}
+            className="h-2"
             aria-label={t("weeklyPlan.progressLabel")}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={percent}
-          >
-            <div
-              className="h-full rounded-full bg-primary"
-              style={{ width: `${percent}%` }}
-            />
-          </div>
+          />
         </div>
-      </CardHeader>
-      <CardContent>
-        <ul className="divide-y divide-border-subtle">
-          {plan.items.map((item, index) => (
+      </div>
+
+      {/* Items list: appears only when expanded on mobile, always visible on md+ */}
+      <div
+        className={cn(
+          mobileExpanded ? "block" : "hidden md:block",
+          "p-4 pt-0 md:p-5 md:pt-0 border-t border-border-subtle md:border-t-0",
+        )}
+      >
+        <ul className="divide-y divide-border-subtle lg:divide-y-0 lg:grid lg:grid-cols-2 lg:gap-x-6 lg:gap-y-1">
+          {visibleItems.map((item, index) => (
             <li
               key={`${item.kind}-${item.lesson_id ?? index}`}
-              className="flex items-center justify-between gap-3 py-2"
+              className="flex min-h-[44px] items-center justify-between gap-2 py-1.5 lg:border-b lg:border-border-subtle/50"
             >
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 {item.done ? (
                   <CheckCircle2
                     className="h-5 w-5 shrink-0 text-success"
@@ -107,9 +153,14 @@ export const WeeklyPlanCard: React.FC<WeeklyPlanCardProps> = ({
                     <Link
                       to="/learn/lesson/$lessonId"
                       params={{ lessonId: item.lesson_id }}
-                      className="inline-flex min-h-[44px] items-center truncate text-sm font-medium text-text hover:text-primary"
+                      className="flex min-h-[44px] items-center text-sm font-medium text-text hover:text-primary-accent"
                     >
-                      {item.title ?? kindLabels[item.kind]}
+                      <span
+                        className="truncate"
+                        title={item.title ?? kindLabels[item.kind]}
+                      >
+                        {item.title ?? kindLabels[item.kind]}
+                      </span>
                     </Link>
                   ) : (
                     <span className="block text-sm font-medium text-text">
@@ -134,7 +185,21 @@ export const WeeklyPlanCard: React.FC<WeeklyPlanCardProps> = ({
             </li>
           ))}
         </ul>
-      </CardContent>
+        {plan.items.length > 5 && (
+          <div className="hidden md:block pt-2">
+            <Button
+              variant="ghost"
+              className="w-full text-xs font-medium text-text-muted hover:text-text"
+              aria-expanded={expanded}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              {expanded
+                ? t("weeklyPlan.showLess", "Show less")
+                : t("weeklyPlan.viewAll", "View all")}
+            </Button>
+          </div>
+        )}
+      </div>
     </Card>
   );
 };

@@ -38,14 +38,8 @@ const LEAGUE_COLORS: Record<
   },
 };
 
-const defaultLeagueStyle = {
-  bg: "bg-amber-700/10",
-  text: "text-amber-700 dark:text-amber-400",
-  border: "border-amber-700/30",
-};
-
 export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
-  currentLeague = "bronze",
+  currentLeague,
 }) => {
   const { t } = useTranslation();
   const { data, isLoading } = useLeaderboard();
@@ -57,9 +51,9 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
   // a non-participant with a 403.
   const optedIn = data?.opted_in ?? true;
 
-  const leagueStyle =
-    (currentLeague ? LEAGUE_COLORS[currentLeague.toLowerCase()] : null) ??
-    defaultLeagueStyle;
+  const leagueStyle = currentLeague
+    ? LEAGUE_COLORS[currentLeague.toLowerCase()]
+    : undefined;
 
   return (
     <Card className="border-border/60 bg-gradient-to-br from-surface-card to-surface/40 shadow-sm">
@@ -85,13 +79,15 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
             </div>
           </div>
 
-          <Badge
-            variant="outline"
-            className={`capitalize ${leagueStyle.bg} ${leagueStyle.text} ${leagueStyle.border}`}
-          >
-            <Crown className="mr-1 h-3 w-3" aria-hidden="true" />
-            {currentLeague}
-          </Badge>
+          {currentLeague && (
+            <Badge
+              variant="outline"
+              className={`capitalize ${leagueStyle ? `${leagueStyle.bg} ${leagueStyle.text} ${leagueStyle.border}` : ""}`}
+            >
+              <Crown className="mr-1 h-3 w-3" aria-hidden="true" />
+              {currentLeague}
+            </Badge>
+          )}
         </div>
       </CardHeader>
 
@@ -112,9 +108,11 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
               disabled={optInMutation.isPending}
             >
               <UserCheck className="h-4 w-4" aria-hidden="true" />
-              {t("gamification.joinLeague", "Join {{league}} League", {
-                league: currentLeague.toUpperCase(),
-              })}
+              {currentLeague
+                ? t("gamification.joinLeague", "Join {{league}} League", {
+                    league: currentLeague.toUpperCase(),
+                  })
+                : t("gamification.joinLeagueGeneric", "Join League")}
             </Button>
           </div>
         )}

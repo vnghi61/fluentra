@@ -1,17 +1,10 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, GraduationCap, Lock } from "lucide-react";
+import { ArrowRight, Lock, Map } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { useFoundationNext } from "../../api/foundation";
 
 /**
@@ -31,48 +24,63 @@ export function FoundationNextCard(): React.JSX.Element | null {
   const node = next.data;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="mb-1 flex items-center gap-2 text-text-muted">
-          <GraduationCap className="h-5 w-5" aria-hidden="true" />
-          <span className="text-xs font-semibold uppercase tracking-wider">
-            {t("foundation.next.label", "Foundation path")}
-          </span>
+    <Card className="bg-surface-card border border-border-subtle rounded-2xl shadow-[0_2px_8px_rgba(15,23,42,0.04)] p-4 md:p-5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2 min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+              {t("foundation.next.eyebrow", "Learning path")}
+            </span>
+          </div>
+          <div>
+            <h3 className="text-base md:text-lg font-bold text-text">
+              {t("foundation.next.title", "Next in your path")}
+            </h3>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <span className="font-medium text-text text-sm md:text-base">
+                {node.label || node.code}
+              </span>
+              {node.cefr_level && (
+                <Badge variant="outline">{node.cefr_level}</Badge>
+              )}
+              {node.attempts > 0 && (
+                <Badge variant="secondary">
+                  {t("foundation.next.attempts", {
+                    count: node.attempts,
+                    defaultValue: `${node.attempts} attempts`,
+                  })}
+                </Badge>
+              )}
+            </div>
+            <p className="mt-1.5 text-xs md:text-sm text-text-muted">
+              {t(
+                "foundation.next.desc",
+                "The first topic you have not mastered yet, in prerequisite order.",
+              )}
+            </p>
+          </div>
+          <div className="pt-1">
+            <Link
+              to="/foundation/topics/$code"
+              params={{ code: node.code }}
+              className="inline-flex items-center justify-center font-medium rounded-lg min-h-[44px] px-4 text-sm gap-2 bg-primary text-primary-fg hover:bg-primary-hover active:bg-primary-hover shadow-sm transition-[transform,background-color,box-shadow,color] duration-150 ease-out active:scale-[0.97] hover:-translate-y-px motion-reduce:transition-none motion-reduce:active:scale-100 motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 select-none cursor-pointer"
+            >
+              {node.attempts > 0
+                ? t("foundation.next.revisitBtn", "Revisit this topic")
+                : t("foundation.next.startBtn", "Start this topic")}
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
         </div>
-        <CardTitle className="text-base font-semibold">
-          {t("foundation.next.title", "Next in your path")}
-        </CardTitle>
-        <CardDescription className="space-y-2">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="text-text">{node.label || node.code}</span>
-            {node.cefr_level && (
-              <Badge variant="outline">{node.cefr_level}</Badge>
-            )}
-            {node.attempts > 0 && (
-              <Badge variant="secondary">
-                {t("foundation.next.attempts", {
-                  count: node.attempts,
-                  defaultValue: `${node.attempts} attempts`,
-                })}
-              </Badge>
-            )}
-          </span>
-          {t(
-            "foundation.next.desc",
-            "The first topic you have not mastered yet, in prerequisite order.",
-          )}
-        </CardDescription>
-      </CardHeader>
-      <CardFooter className="pt-0">
-        <Link to="/foundation/topics/$code" params={{ code: node.code }}>
-          <Button variant="secondary" className="gap-2">
-            {node.attempts > 0
-              ? t("foundation.next.revisitBtn", "Revisit this topic")
-              : t("foundation.next.startBtn", "Start this topic")}
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Button>
-        </Link>
-      </CardFooter>
+
+        {/* Desktop icon */}
+        <div
+          className="hidden md:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary-accent"
+          aria-hidden="true"
+        >
+          <Map className="h-5 w-5" />
+        </div>
+      </div>
     </Card>
   );
 }
