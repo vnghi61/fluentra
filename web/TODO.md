@@ -31,7 +31,10 @@
   registration caught by the repository-wide checks.
 - [x] Read typed latest submission/report from draft detail, poll async Gate 1,
   and distinguish loading failures from a draft with no submissions.
-- [ ] Finish full quality gates and visual acceptance after the final fixes.
+- [x] Final verification: `make check`, frontend format/typecheck/lint/build,
+  62 Vitest files / 535 tests, targeted PostgreSQL integration (Studio repository,
+  learning service, seed), and the EN/VI responsive Dashboard capture matrix pass.
+  This does not replace full real-account end-to-end acceptance.
 
 ## Product UI redesign — follow-on scope
 

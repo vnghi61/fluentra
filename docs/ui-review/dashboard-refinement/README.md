@@ -30,3 +30,13 @@ fixture, the direct next-lesson destination, full-width weekly card geometry and
 to the seventh weekly lesson after expansion. It does not exercise mutations
 against fixtures. No same-data pre-redesign baseline was captured, so a numerical
 20–30% page-shortening claim is not supported.
+
+## Final verification (2026-10-05)
+
+- `make check`: exit 0 (format, vet, lint, OpenAPI lint, architecture checks and Go unit tests).
+- Frontend format, typecheck, lint and build: exit 0; 62 Vitest files / 535 tests pass.
+- Initial download: 200.3 kB gzip against the user-approved 500 kB cap.
+- PostgreSQL integration: Studio repository, learning service and seed pass.
+- `playwright.ui-review.config.ts`: both EN/VI geometry matrix tests pass.
+- Three existing React Compiler compatibility warnings remain non-blocking.
+- Full real-account end-to-end journeys were not run in this verification pass.
