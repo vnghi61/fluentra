@@ -9,21 +9,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 import type { SkillMastery } from "../../api/learningApi";
+import { ProgressBar } from "./ProgressBar";
+import { SKILL_ORDER, SKILL_TONE } from "./skillTone";
 
 export interface SkillMasteryListProps {
   skills: SkillMastery[];
 }
-
-const ALL_SKILLS = [
-  "vocabulary",
-  "grammar",
-  "reading",
-  "listening",
-  "speaking",
-  "writing",
-] as const;
 
 export const SkillMasteryList: React.FC<SkillMasteryListProps> = ({
   skills,
@@ -41,56 +34,62 @@ export const SkillMasteryList: React.FC<SkillMasteryListProps> = ({
         </CardTitle>
         <CardDescription>
           {t(
-            "dashboard.skills.description",
-            "Continuous proficiency and confidence scores updated from your exercises.",
+            "progress.skills.desc",
+            "CEFR level and confidence, updated from your exercises.",
           )}
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-5">
-        {ALL_SKILLS.map((skillName) => {
-          const mastery = skillMap.get(skillName);
+      <CardContent className="space-y-1">
+        {SKILL_ORDER.map((skill) => {
+          const tone = SKILL_TONE[skill];
+          const Icon = tone.icon;
+          const mastery = skillMap.get(skill);
           const skillLabel = t(
-            `dashboard.skills.${skillName}`,
-            skillName.charAt(0).toUpperCase() + skillName.slice(1),
+            `dashboard.skills.${skill}`,
+            skill.charAt(0).toUpperCase() + skill.slice(1),
           );
-
-          if (!mastery) {
-            return (
-              <div key={skillName} className="space-y-1.5 opacity-60">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-text">{skillLabel}</span>
-                  <Badge variant="secondary" className="text-xs px-2 py-0">
-                    {t("progress.notStarted", "Not started yet")}
-                  </Badge>
-                </div>
-                <Progress value={0} aria-label={`${skillLabel} progress`} />
-              </div>
-            );
-          }
-
-          const confidencePercent = Math.round(mastery.confidence * 100);
+          const confidencePercent = mastery
+            ? Math.round(mastery.confidence * 100)
+            : 0;
 
           return (
-            <div key={skillName} className="space-y-1.5">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-text">{skillLabel}</span>
+            <div key={skill} className="flex items-center gap-3 py-2">
+              <div
+                className={cn(
+                  "h-9 w-9 rounded-xl flex items-center justify-center shrink-0",
+                  tone.chip,
+                )}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </div>
+
+              <div className="min-w-0 flex-1 flex items-center gap-2">
+                <span className="font-medium text-text text-sm truncate">
+                  {skillLabel}
+                </span>
+                {mastery && (
                   <Badge
-                    variant="primary"
-                    className="font-mono text-xs px-1.5 py-0"
+                    variant="secondary"
+                    className="font-mono text-xs px-1.5 py-0 shrink-0"
                   >
                     {mastery.level}
                   </Badge>
-                </div>
-                <span className="text-xs font-semibold text-text-muted">
-                  {confidencePercent}%
-                </span>
+                )}
               </div>
-              <Progress
+
+              <ProgressBar
                 value={confidencePercent}
-                aria-label={`${skillLabel} progress`}
+                label={t("progress.skills.progressLabel", {
+                  skill: skillLabel,
+                })}
+                barClassName={tone.bar}
+                className="w-24 sm:w-32 shrink-0"
               />
+
+              <span className="w-10 text-right text-sm font-semibold tabular-nums text-text-muted">
+                {confidencePercent}%
+              </span>
             </div>
           );
         })}

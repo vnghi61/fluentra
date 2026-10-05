@@ -5,24 +5,46 @@ import { TrendingUp } from "lucide-react";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import {
+  type CourseMeta,
   CourseProgressList,
   DashboardError,
-  DashboardSkeleton,
   OverallStats,
+  ProgressSkeleton,
   SkillMasteryList,
   useProgress,
 } from "@/features/learning";
+import { useCourses } from "@/features/lesson";
+import { courseTitle } from "@/features/lesson/model/courseText";
 
 export function ProgressPage(): React.JSX.Element {
   const { t } = useTranslation();
   const { data, isLoading, isError, error, refetch } = useProgress();
+  const { data: catalogueData } = useCourses();
+
+  const courseMeta = React.useMemo(() => {
+    const map = new Map<string, CourseMeta>();
+    const list = catalogueData?.courses ?? [];
+    for (const c of list) {
+      map.set(c.id, {
+        title: courseTitle(t, c),
+        slug: c.slug,
+      });
+    }
+    return map;
+  }, [catalogueData, t]);
 
   if (isLoading) {
-    return <DashboardSkeleton />;
+    return <ProgressSkeleton />;
   }
 
   if (isError || !data) {
-    return <DashboardError onRetry={() => void refetch()} error={error} />;
+    return (
+      <DashboardError
+        title={t("progress.error.title", "Unable to Load Progress")}
+        onRetry={() => void refetch()}
+        error={error}
+      />
+    );
   }
 
   // `courses` and `skills` are required in ProgressResponse and the backend ships
@@ -34,14 +56,20 @@ export function ProgressPage(): React.JSX.Element {
     (acc, c) => acc + c.completed_activities,
     0,
   );
+  const coursesInProgress = courses.filter(
+    (c) => c.status === "in_progress",
+  ).length;
+  const coursesCompleted = courses.filter(
+    (c) => c.status === "completed" || c.percentage >= 100,
+  ).length;
 
   const isEmpty = courses.length === 0 && skills.length === 0;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-200">
+    <div className="mx-auto w-full max-w-[1240px] space-y-4 md:space-y-5 animate-in fade-in duration-200 motion-reduce:animate-none">
       {/* Top Header */}
       <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-text tracking-tight">
+        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-text">
           {t("progress.title", "Learning Progress")}
         </h1>
         <p className="text-sm text-text-muted">
@@ -72,21 +100,27 @@ export function ProgressPage(): React.JSX.Element {
       )}
 
       {/*
-        Only the one number GET /me/progress actually returns.
+        Only the real figures GET /me/progress actually returns:
+        activities completed, courses in progress, and courses completed.
 
-        Total study time and words mastered were derived here from the activity
-        count — three minutes each and four words each — and rendered as measured
-        facts beside a real figure. ProgressResponse carries neither. srs records
-        real minutes in learn.review_daily_stats but does not expose them on this
-        endpoint yet; until it does, the honest count is one card, not three.
+        Total study time and words mastered were previously derived here from the
+        activity count — three minutes each and four words each — and rendered as
+        measured facts beside a real figure. ProgressResponse carries neither.
+        srs records real minutes in learn.review_daily_stats but does not expose
+        them on this endpoint yet; until it does, the honest count is three cards
+        grounded in real data, not fabricated measurements.
         See docs/development/phase-2/P10-learner-web.md §1.
       */}
-      <OverallStats totalActivitiesCompleted={totalActivities} />
+      <OverallStats
+        totalActivitiesCompleted={totalActivities}
+        coursesInProgress={coursesInProgress}
+        coursesCompleted={coursesCompleted}
+      />
 
       {/* Two Column Grid: CEFR Skills & Course Progress */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-4 lg:gap-5 lg:grid-cols-[minmax(0,1.27fr)_minmax(0,1fr)] items-start">
         <SkillMasteryList skills={skills} />
-        <CourseProgressList courses={courses} />
+        <CourseProgressList courses={courses} courseMeta={courseMeta} />
       </div>
     </div>
   );

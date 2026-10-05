@@ -938,17 +938,44 @@
   },
   "progress": {
     "activitiesDone": "Bài tập đã xong",
+    "courses": {
+      "activityCount": "{{done}}/{{total}} bài",
+      "completed": "Đã hoàn thành",
+      "continue": "Tiếp tục học",
+      "empty": "Bạn chưa bắt đầu khóa học nào.",
+      "explore": "Khám phá khóa học",
+      "fallbackTitle": "Khóa học {{n}}",
+      "filterAll": "Tất cả",
+      "filterCompleted": "Đã hoàn thành",
+      "filterEmpty": "Không có khóa học nào khớp bộ lọc.",
+      "filterInProgress": "Đang học",
+      "filterLabel": "Lọc khóa học",
+      "progressLabel": "Tiến độ {{course}}",
+      "title": "Khóa học của bạn"
+    },
     "coursesDesc": "Theo dõi tỉ lệ hoàn thành của các khoá đang học và đã xong.",
     "coursesTitle": "Khóa học đang học",
     "emptyDesc": "Bắt đầu học bài để theo dõi tiến độ, năng lực kỹ năng và độ hoàn thành khoá học.",
     "emptyTitle": "Chưa có tiến độ học tập",
+    "error": {
+      "title": "Không tải được tiến độ học tập"
+    },
     "hours": "giờ",
+    "kpi": {
+      "activitiesDone": "Bài tập đã xong",
+      "coursesCompleted": "Khóa học đã hoàn thành",
+      "coursesInProgress": "Khóa học đang học"
+    },
     "mins": "phút",
     "noCourses": "Chưa có dữ liệu khóa học.",
     "notStarted": "Chưa bắt đầu",
+    "skills": {
+      "desc": "Mức CEFR và độ tin cậy, cập nhật từ bài làm của bạn.",
+      "progressLabel": "Tiến độ {{skill}}"
+    },
     "skillsTitle": "Năng lực kỹ năng (CEFR)",
     "startLearning": "Bắt đầu học",
-    "tagline": "Theo dõi thời gian học, năng lực kỹ năng và tiến độ khóa học.",
+    "tagline": "Theo dõi năng lực kỹ năng và mức độ hoàn thành khóa học.",
     "title": "Tiến độ học tập",
     "totalTime": "Tổng thời gian học",
     "wordsMastered": "Từ vựng đã vững"

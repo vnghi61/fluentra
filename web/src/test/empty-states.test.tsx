@@ -210,6 +210,12 @@ describe("Empty States with real CTAs under vi locale (TASK-W2-EMPTY)", () => {
   });
 
   describe("ProgressPage", () => {
+    beforeEach(() => {
+      server.use(
+        http.get("/api/v1/courses", () => HttpResponse.json({ courses: [] })),
+      );
+    });
+
     it("renders empty state with explanation and CTA link to /learn under vi locale when courses and skills are empty", async () => {
       server.use(
         http.get("/api/v1/me/progress", () =>

@@ -136,6 +136,7 @@ and item count only when present in data/props, followed by post-test outcome)
 above collapsible test details, keeping the primary start action visible without
 scrolling on 375px screens. Functional tests cover mobile sheet entry and placement
 summary hierarchy; visual captures (screenshots) were not produced.
+The Progress page displays only API-backed KPI figures (completed activities, in-progress and completed courses), derives course titles and slugs from the catalogue query, and maintains course status filtering in local state.
 
 
 **Mobile-first is the default, not an adaptation.** Build every component at 375 px first and

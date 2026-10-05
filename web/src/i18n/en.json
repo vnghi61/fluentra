@@ -938,17 +938,44 @@
   },
   "progress": {
     "activitiesDone": "Activities Completed",
+    "courses": {
+      "activityCount": "{{done}}/{{total}} activities",
+      "completed": "Completed",
+      "continue": "Continue learning",
+      "empty": "You haven't started any courses yet.",
+      "explore": "Explore courses",
+      "fallbackTitle": "Course {{n}}",
+      "filterAll": "All",
+      "filterCompleted": "Completed",
+      "filterEmpty": "No courses match this filter.",
+      "filterInProgress": "In progress",
+      "filterLabel": "Filter courses",
+      "progressLabel": "{{course}} progress",
+      "title": "Your courses"
+    },
     "coursesDesc": "Track your completion percentage across active and finished courses.",
     "coursesTitle": "Enrolled Courses",
     "emptyDesc": "Start learning lessons to track your study progress, skill competencies, and course completion.",
     "emptyTitle": "No learning progress yet",
+    "error": {
+      "title": "Unable to load your progress"
+    },
     "hours": "hours",
+    "kpi": {
+      "activitiesDone": "Activities completed",
+      "coursesCompleted": "Courses completed",
+      "coursesInProgress": "Courses in progress"
+    },
     "mins": "mins",
     "noCourses": "No course progress recorded yet.",
     "notStarted": "Not started yet",
+    "skills": {
+      "desc": "CEFR level and confidence, updated from your exercises.",
+      "progressLabel": "{{skill}} progress"
+    },
     "skillsTitle": "Skill Mastery (CEFR)",
     "startLearning": "Start learning",
-    "tagline": "Track your study time, skill competencies, and course completion.",
+    "tagline": "Track your skill levels and course completion.",
     "title": "Learning Progress",
     "totalTime": "Total Study Time",
     "wordsMastered": "Words Mastered"

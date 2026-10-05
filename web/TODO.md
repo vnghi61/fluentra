@@ -44,6 +44,12 @@
 - [x] Lead PlacementIntro with a summary (duration, item count only if
   present in data/props, post-test outcome) above collapsible details,
   keeping primary start action visible without scrolling on 375px.
+- [x] Redesign learner Progress page with tighter header, API-backed KPIs (completed
+  activities, courses in progress, courses completed), CEFR mastery list with tinted
+  progress bars, catalogue-backed course list with client-side status filter,
+  ProgressSkeleton, and progress error state.
+- [ ] Study minutes, streak and weekly deltas on /progress wait for dedicated fields
+  on GET /me/progress.
 - [ ] Visual captures and the frontend quality gates are unverified in this
   non-interactive worker run.
 - [ ] Admin question bank shows a humanized kind as the card title because the
