@@ -2,34 +2,45 @@ package ai
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
 // Router handles task routing, caching, resilience, and fallback chains.
 type Router struct {
-	prompts   *Registry
-	providers *ProviderRegistry
-	cache     ResponseCache
-	cacheTTL  time.Duration
-	usage     UsageRecorder
-	budget    BudgetChecker
+	prompts          *Registry
+	providers        *ProviderRegistry
+	cache            ResponseCache
+	cacheTTL         time.Duration
+	usage            UsageRecorder
+	budget           BudgetChecker
+	balanceProviders bool
+	nextProvider     atomic.Uint64
+	attemptTimeout   time.Duration
 }
 
 // RouterOptions configures router behavior.
 type RouterOptions struct {
-	Prompts   *Registry
-	Providers *ProviderRegistry
-	Cache     ResponseCache
-	CacheTTL  time.Duration
-	Usage     UsageRecorder
-	Budget    BudgetChecker
+	Prompts          *Registry
+	Providers        *ProviderRegistry
+	Cache            ResponseCache
+	CacheTTL         time.Duration
+	Usage            UsageRecorder
+	Budget           BudgetChecker
+	BalanceProviders bool
+	AttemptTimeout   time.Duration
 }
 
 // NewRouter creates a new AI task router.
 func NewRouter(opts RouterOptions) *Router {
+	attemptTimeout := opts.AttemptTimeout
+	if attemptTimeout <= 0 {
+		attemptTimeout = 45 * time.Second
+	}
 	cache := opts.Cache
 	if cache == nil {
 		cache = NewMemoryCache()
@@ -47,12 +58,14 @@ func NewRouter(opts RouterOptions) *Router {
 		budget = NoopBudgetChecker{}
 	}
 	return &Router{
-		prompts:   opts.Prompts,
-		providers: opts.Providers,
-		cache:     cache,
-		cacheTTL:  cacheTTL,
-		usage:     usage,
-		budget:    budget,
+		prompts:          opts.Prompts,
+		providers:        opts.Providers,
+		cache:            cache,
+		cacheTTL:         cacheTTL,
+		usage:            usage,
+		budget:           budget,
+		balanceProviders: opts.BalanceProviders,
+		attemptTimeout:   attemptTimeout,
 	}
 }
 
@@ -96,6 +109,10 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 	if len(chain) == 0 {
 		return Response{}, ErrDisabled
 	}
+	if r.balanceProviders && len(chain) > 1 {
+		start := (r.nextProvider.Add(1) - 1) % uint64(len(chain))
+		chain = append(chain[start:], chain[:start]...)
+	}
 	primary := chain[0]
 
 	// 2. Try primary provider if budget allows
@@ -127,7 +144,14 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 		primaryExecErr = err
 	}
 
-	return r.executeFallback(ctx, req, cacheKey, primary, chain[1:], primaryExecErr, primaryVerdict, start)
+	if ctx.Err() != nil {
+		return Response{}, ctx.Err()
+	}
+	res, err := r.executeFallback(ctx, req, cacheKey, primary, chain[1:], primaryExecErr, primaryVerdict, start)
+	if ctx.Err() != nil {
+		return Response{}, ctx.Err()
+	}
+	return res, err
 }
 
 // cacheVars is what the cache key is computed over. An excluded model is part of
@@ -333,6 +357,9 @@ func (r *Router) executeWithRetry(
 	backoff := 100 * time.Millisecond
 
 	for attempt := 0; attempt < 3; attempt++ {
+		if ctx.Err() != nil {
+			return Response{}, ctx.Err()
+		}
 		if attempt > 0 {
 			select {
 			case <-ctx.Done():
@@ -342,7 +369,9 @@ func (r *Router) executeWithRetry(
 			}
 		}
 
-		res, err := p.Complete(ctx, req)
+		callCtx, cancel := context.WithTimeout(ctx, r.attemptTimeout)
+		res, err := p.Complete(callCtx, req)
+		cancel()
 		if err == nil {
 			return res, nil
 		}
@@ -351,6 +380,15 @@ func (r *Router) executeWithRetry(
 		// Do not retry context cancellation
 		if ctx.Err() != nil {
 			return Response{}, ctx.Err()
+		}
+		// A stalled provider should not occupy this worker three times before
+		// another configured provider gets a turn. Do not retry permanent 4xx.
+		if errors.Is(err, context.DeadlineExceeded) {
+			return Response{}, err
+		}
+		var status *ProviderStatusError
+		if errors.As(err, &status) && status.Status >= 400 && status.Status < 500 {
+			return Response{}, err
 		}
 	}
 	return Response{}, lastErr

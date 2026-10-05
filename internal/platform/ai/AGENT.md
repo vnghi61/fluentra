@@ -48,6 +48,18 @@ cost cannot be attributed after the fact.
 
 ### Configuration
 
+Runtime routers built by `ai.New` distribute uncached requests round-robin across
+configured slots, while preserving each provider's budget check and independent
+verifier model exclusions. Each provider attempt has a 45-second router deadline
+(or a shorter adapter timeout); a deadline or permanent 4xx moves directly to the
+next provider instead of retrying the stalled/refusing provider three times.
+Parent cancellation never starts another provider. `RouterOptions` permits test
+or composition overrides for balancing and attempt timeout.
+
+This distributes independent calls; it does not fan out duplicate paid requests
+or parallelize the individual items inside a vocabulary batch. River queue
+concurrency remains the deployment's `WORKER_QUEUES` setting (default `ai:4`).
+
 One adapter serves every OpenAI-compatible server, so the provider is two
 environment variables. `.env.example` carries worked examples for Ollama,
 OpenRouter and Groq. `AI_PROVIDER=mock` is the default so `make dev` works with

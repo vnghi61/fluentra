@@ -40,6 +40,16 @@ agent knows what is already handled and what is deliberately deferred.
 - [ ] Semantic cache with pgvector
 <!-- END GENERATED: todo -->
 
+## Completed resilience repair (2026-10-01)
+
+- [x] Balance independent uncached requests across configured providers while
+  retaining quota checks, cache policy and independent-model exclusions.
+- [x] Bound provider attempts and skip repeated timeouts/permanent 4xx before
+  fallback; prove cancellation and concurrent balancing with race-safe tests.
+
+Individual vocabulary-batch item concurrency and a provider circuit breaker
+remain separate work; this repair does not add speculative duplicate calls.
+
 ## Deferred (deliberately not doing yet)
 
 <!-- BEGIN GENERATED: todo-deferred -->
