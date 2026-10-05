@@ -183,6 +183,24 @@ CourseDraftList:
     total:
       type: integer
 
+CourseDraftDetail:
+  description: >-
+    One of the caller's drafts, with its latest submission when it has one. The
+    list endpoint returns CourseDraft; this detail shape is owner-scoped and
+    carries no submission history.
+  allOf:
+    - $ref: '#/CourseDraft'
+    - type: object
+      properties:
+        latest_submission:
+          oneOf:
+            - $ref: '#/CourseSubmission'
+            - type: 'null'
+          description: >-
+            The draft's most recent submission, or absent when it has never been
+            submitted. There is deliberately no separate unbounded history
+            endpoint.
+
 CourseSubmission:
   type: object
   required: [id, draft_id, version, status, submitted_by, submitted_at, created_at, updated_at]
@@ -207,7 +225,12 @@ CourseSubmission:
     feedback:
       type: [string, 'null']
     verification_report:
-      type: [object, 'null']
+      oneOf:
+        - $ref: '#/VerificationReport'
+        - type: 'null'
+      description: >-
+        Gate 1's report, or null until the verification worker has run it. The
+        request that creates a submission returns before Gate 1 executes.
     submitted_at:
       type: string
       format: date-time
@@ -220,6 +243,58 @@ CourseSubmission:
     updated_at:
       type: string
       format: date-time
+
+VerificationFailure:
+  type: object
+  description: One Gate 1 check that failed, and where.
+  required: [unit_index, lesson_index, activity_index, check, message]
+  properties:
+    unit_index:
+      type: integer
+      example: 0
+    lesson_index:
+      type: integer
+      example: 1
+    activity_index:
+      type: integer
+      example: 3
+    kind:
+      type: string
+      example: vocab_multiple_choice
+    check:
+      type: string
+      description: >-
+        The check that failed: structure, minimum_size, kind_allowed, safety,
+        item_verifier, blind_solve or material_ready.
+      example: material_ready
+    message:
+      type: string
+      example: Video is still processing; its 360p rendition is not ready
+
+VerificationReport:
+  type: object
+  description: >-
+    The full automated Gate 1 outcome for a submission: what it checked, how
+    many answers were independently blind-solved, and every failure found.
+  required: [passed, items_checked, blind_solved, blind_solve_rejects, failures]
+  properties:
+    passed:
+      type: boolean
+    items_checked:
+      type: integer
+    blind_solved:
+      type: integer
+      description: How many answers were independently solved by a model and compared to the key.
+    blind_solve_rejects:
+      type: integer
+      description: How many of the blind-solved answers disagreed with the key.
+    failures:
+      type: [array, 'null']
+      description: >-
+        Every check that failed. Null (or empty) on a passing report: a course
+        that passes every check has no failures to list.
+      items:
+        $ref: '#/VerificationFailure'
 
 ModerationQueueItem:
   type: object

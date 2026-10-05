@@ -1723,6 +1723,13 @@ type ClientInterface interface {
 	// Corresponds with POST /me/resources/{id}/practice (the `StartResourcePractice` operationId).
 	StartResourcePractice(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RevalidateMyResource Recheck whether an uploaded document is suitable for English practice.
+	//
+	// Reclassifies existing extracted text asynchronously without reuploading or deleting the original file. Owner only; unsuitable material cannot generate practice.
+	//
+	// Corresponds with POST /me/resources/{id}/revalidate (the `RevalidateMyResource` operationId).
+	RevalidateMyResource(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// StartLearningSessionWithBody Start a study session.
 	//
 	// Records the beginning of an active learner study session.
@@ -2140,7 +2147,7 @@ type ClientInterface interface {
 
 	// StudioGetCourseDraft Get course draft by ID.
 	//
-	// One of the caller's drafts, with its structure and its last verification report. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
+	// One of the caller's drafts, with its structure and its latest submission when it has one. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
 	//
 	// Corresponds with GET /studio/courses/{id} (the `StudioGetCourseDraft` operationId).
 	StudioGetCourseDraft(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5830,6 +5837,23 @@ func (c *Client) StartResourcePractice(ctx context.Context, id openapi_types.UUI
 	return c.Client.Do(req)
 }
 
+// RevalidateMyResource Recheck whether an uploaded document is suitable for English practice.
+//
+// Reclassifies existing extracted text asynchronously without reuploading or deleting the original file. Owner only; unsuitable material cannot generate practice.
+//
+// Corresponds with POST /me/resources/{id}/revalidate (the `RevalidateMyResource` operationId).
+func (c *Client) RevalidateMyResource(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevalidateMyResourceRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // StartLearningSessionWithBody Start a study session.
 //
 // Records the beginning of an active learner study session.
@@ -6757,7 +6781,7 @@ func (c *Client) StudioCreateCourseDraft(ctx context.Context, body StudioCreateC
 
 // StudioGetCourseDraft Get course draft by ID.
 //
-// One of the caller's drafts, with its structure and its last verification report. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
+// One of the caller's drafts, with its structure and its latest submission when it has one. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
 //
 // Corresponds with GET /studio/courses/{id} (the `StudioGetCourseDraft` operationId).
 func (c *Client) StudioGetCourseDraft(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -13520,6 +13544,40 @@ func NewStartResourcePracticeRequest(server string, id openapi_types.UUID) (*htt
 	return req, nil
 }
 
+// NewRevalidateMyResourceRequest constructs an http.Request for the RevalidateMyResource method
+func NewRevalidateMyResourceRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/resources/%s/revalidate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewStartLearningSessionRequest calls the generic StartLearningSession builder with application/json body
 func NewStartLearningSessionRequest(server string, body StartLearningSessionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -17701,6 +17759,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /me/resources/{id}/practice (the `StartResourcePractice` operationId).
 	StartResourcePracticeWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StartResourcePracticeResponse, error)
 
+	// RevalidateMyResourceWithResponse Recheck whether an uploaded document is suitable for English practice.
+	//
+	// Reclassifies existing extracted text asynchronously without reuploading or deleting the original file. Owner only; unsuitable material cannot generate practice.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/resources/{id}/revalidate (the `RevalidateMyResource` operationId).
+	RevalidateMyResourceWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*RevalidateMyResourceResponse, error)
+
 	// StartLearningSessionWithBodyWithResponse Start a study session.
 	//
 	// Records the beginning of an active learner study session.
@@ -18168,7 +18235,7 @@ type ClientWithResponsesInterface interface {
 
 	// StudioGetCourseDraftWithResponse Get course draft by ID.
 	//
-	// One of the caller's drafts, with its structure and its last verification report. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
+	// One of the caller's drafts, with its structure and its latest submission when it has one. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -28432,6 +28499,93 @@ func (r StartResourcePracticeResponse) ContentType() string {
 	return ""
 }
 
+// RevalidateMyResourceResponse202Headers the declared response headers of an HTTP 202 response for RevalidateMyResource
+type RevalidateMyResourceResponse202Headers struct {
+	XRequestId *string
+}
+
+type RevalidateMyResourceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *struct {
+		Status RevalidateMyResource202JSONResponseBodyStatus `json:"status"`
+	}
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers202 the parsed response headers for an HTTP 202 response
+	Headers202 *RevalidateMyResourceResponse202Headers
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r RevalidateMyResourceResponse) GetJSON202() *struct {
+	Status RevalidateMyResource202JSONResponseBodyStatus `json:"status"`
+} {
+	return r.JSON202
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r RevalidateMyResourceResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r RevalidateMyResourceResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RevalidateMyResourceResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RevalidateMyResourceResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r RevalidateMyResourceResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RevalidateMyResourceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RevalidateMyResourceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RevalidateMyResourceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RevalidateMyResourceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StartLearningSessionResponse201Headers the declared response headers of an HTTP 201 response for StartLearningSession
 type StartLearningSessionResponse201Headers struct {
 	XRequestId *string
@@ -31070,7 +31224,7 @@ type StudioGetCourseDraftResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *CourseDraft
+	JSON200 *CourseDraftDetail
 	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
 	ApplicationproblemJSON401 *Unauthorized
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
@@ -31080,7 +31234,7 @@ type StudioGetCourseDraftResponse struct {
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r StudioGetCourseDraftResponse) GetJSON200() *CourseDraft {
+func (r StudioGetCourseDraftResponse) GetJSON200() *CourseDraftDetail {
 	return r.JSON200
 }
 
@@ -35244,6 +35398,21 @@ func (c *ClientWithResponses) StartResourcePracticeWithResponse(ctx context.Cont
 	return ParseStartResourcePracticeResponse(rsp)
 }
 
+// RevalidateMyResourceWithResponse Recheck whether an uploaded document is suitable for English practice.
+//
+// Reclassifies existing extracted text asynchronously without reuploading or deleting the original file. Owner only; unsuitable material cannot generate practice.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/resources/{id}/revalidate (the `RevalidateMyResource` operationId).
+func (c *ClientWithResponses) RevalidateMyResourceWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*RevalidateMyResourceResponse, error) {
+	rsp, err := c.RevalidateMyResource(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevalidateMyResourceResponse(rsp)
+}
+
 // StartLearningSessionWithBodyWithResponse Start a study session.
 //
 // Records the beginning of an active learner study session.
@@ -36017,7 +36186,7 @@ func (c *ClientWithResponses) StudioCreateCourseDraftWithResponse(ctx context.Co
 
 // StudioGetCourseDraftWithResponse Get course draft by ID.
 //
-// One of the caller's drafts, with its structure and its last verification report. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
+// One of the caller's drafts, with its structure and its latest submission when it has one. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -45582,6 +45751,82 @@ func ParseStartResourcePracticeResponse(rsp *http.Response) (*StartResourcePract
 	return response, nil
 }
 
+// ParseRevalidateMyResourceResponse parses an HTTP response from a RevalidateMyResourceWithResponse call
+func ParseRevalidateMyResourceResponse(rsp *http.Response) (*RevalidateMyResourceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RevalidateMyResourceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest struct {
+			Status RevalidateMyResource202JSONResponseBodyStatus `json:"status"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 202:
+		var headers RevalidateMyResourceResponse202Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers202 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseStartLearningSessionResponse parses an HTTP response from a StartLearningSessionWithResponse call
 func ParseStartLearningSessionResponse(rsp *http.Response) (*StartLearningSessionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -47895,7 +48140,7 @@ func ParseStudioGetCourseDraftResponse(rsp *http.Response) (*StudioGetCourseDraf
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest CourseDraft
+		var dest CourseDraftDetail
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

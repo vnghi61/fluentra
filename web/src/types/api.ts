@@ -3132,7 +3132,7 @@ export interface paths {
         };
         /**
          * Get course draft by ID.
-         * @description One of the caller's drafts, with its structure and its last verification report. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
+         * @description One of the caller's drafts, with its structure and its latest submission when it has one. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
          */
         get: operations["studioGetCourseDraft"];
         /**
@@ -3650,6 +3650,26 @@ export interface paths {
          * @description Deletes the resource row and its associated object in storage. Unowned resources answer 404.
          */
         delete: operations["deleteMyResource"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/resources/{id}/revalidate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recheck whether an uploaded document is suitable for English practice.
+         * @description Reclassifies existing extracted text asynchronously without reuploading or deleting the original file. Owner only; unsuitable material cannot generate practice.
+         */
+        post: operations["revalidateMyResource"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -7156,6 +7176,11 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
+        /** @description One of the caller's drafts, with its latest submission when it has one. The list endpoint returns CourseDraft; this detail shape is owner-scoped and carries no submission history. */
+        CourseDraftDetail: components["schemas"]["CourseDraft"] & {
+            /** @description The draft's most recent submission, or absent when it has never been submitted. There is deliberately no separate unbounded history endpoint. */
+            latest_submission?: components["schemas"]["CourseSubmission"] | null;
+        };
         CreateCourseDraftRequest: {
             /** @example Business English for Tech Professionals */
             title: string;
@@ -7202,7 +7227,8 @@ export interface components {
             /** Format: uuid */
             reviewer_id?: string | null;
             feedback?: string | null;
-            verification_report?: Record<string, never> | null;
+            /** @description Gate 1's report, or null until the verification worker has run it. The request that creates a submission returns before Gate 1 executes. */
+            verification_report?: components["schemas"]["VerificationReport"] | null;
             /** Format: date-time */
             submitted_at: string;
             /** Format: date-time */
@@ -7211,6 +7237,35 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        /** @description The full automated Gate 1 outcome for a submission: what it checked, how many answers were independently blind-solved, and every failure found. */
+        VerificationReport: {
+            passed: boolean;
+            items_checked: number;
+            /** @description How many answers were independently solved by a model and compared to the key. */
+            blind_solved: number;
+            /** @description How many of the blind-solved answers disagreed with the key. */
+            blind_solve_rejects: number;
+            /** @description Every check that failed. Null (or empty) on a passing report: a course that passes every check has no failures to list. */
+            failures: components["schemas"]["VerificationFailure"][] | null;
+        };
+        /** @description One Gate 1 check that failed, and where. */
+        VerificationFailure: {
+            /** @example 0 */
+            unit_index: number;
+            /** @example 1 */
+            lesson_index: number;
+            /** @example 3 */
+            activity_index: number;
+            /** @example vocab_multiple_choice */
+            kind?: string;
+            /**
+             * @description The check that failed: structure, minimum_size, kind_allowed, safety, item_verifier, blind_solve or material_ready.
+             * @example material_ready
+             */
+            check: string;
+            /** @example Video is still processing; its 360p rendition is not ready */
+            message: string;
         };
         ModerationQueueItem: {
             submission: components["schemas"]["CourseSubmission"];
@@ -7566,6 +7621,11 @@ export interface components {
             status: "pending" | "uploaded" | "validated" | "rejected" | "failed";
             /** @example  */
             failure_reason: string;
+            /**
+             * @description Derived rendition state, identical on list and detail responses; separate from file validation.
+             * @enum {string}
+             */
+            processing_status?: "processing" | "ready" | "failed";
             /** @example Advanced Grammar Guide.pdf */
             original_filename: string;
             /** @example application/pdf */
@@ -7869,6 +7929,8 @@ export interface components {
         };
         /** @description Grounded spine taxonomy classification and CEFR estimate. */
         ResourceClassification: {
+            /** @description True only after the current content suitability check; null for older classifications that need revalidation. */
+            learning_suitable?: boolean | null;
             /** @example B1 */
             cefr_estimate?: string | null;
             /** @example grammar */
@@ -15602,7 +15664,7 @@ export interface operations {
                      *       "updated_at": "2026-09-20T09:00:00Z"
                      *     }
                      */
-                    "application/json": components["schemas"]["CourseDraft"];
+                    "application/json": components["schemas"]["CourseDraftDetail"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -16697,6 +16759,43 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    revalidateMyResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Content revalidation queued. */
+            202: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "processing"
+                     *     }
+                     */
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "processing";
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
             500: components["responses"]["InternalServerError"];
         };
     };
