@@ -11,8 +11,8 @@ import {
   type AnyRoute,
 } from "@tanstack/react-router";
 
-import i18n from "@/i18n";
-import { AppShell } from "@/components/layout/AppShell";
+import { AppShell, MotivationCard } from "@/components/layout/AppShell";
+import { RouteLoading } from "@/components/layout/RouteLoading";
 import { ServerWakingBanner } from "@/components/layout/ServerWakingBanner";
 import { useWakeStatus } from "@/hooks/useWakeStatus";
 import { usePreferencesSync } from "@/features/account/hooks/usePreferencesSync";
@@ -20,6 +20,7 @@ import {
   useAvatarUrl,
   useDisplayName,
 } from "@/features/account/hooks/useDisplayName";
+import { RouteErrorPage } from "@/routes/RouteErrorPage";
 
 /**
  * Lazy for the same reason AccountMenu is: both are built on Radix, so together
@@ -80,11 +81,8 @@ const runnerRoutes = [
 function isRunnerRoute(pathname: string): boolean {
   return runnerRoutes.some((prefix) => pathname.startsWith(prefix));
 }
-import { authApi } from "@/features/auth";
+import { authApi } from "@/features/auth/api/authApi";
 import { clearAllWritingDrafts } from "@/features/writing/utils/draftStorage";
-import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
-import { LoginPage } from "@/pages/LoginPage";
-import { RegisterPage } from "@/pages/RegisterPage";
 import { useAuthStore } from "@/stores/authStore";
 
 /**
@@ -94,18 +92,23 @@ import { useAuthStore } from "@/stores/authStore";
  * to be discovered — which this repository has already been bitten by once.
  */
 
-function RouteLoadingSpinner(): React.JSX.Element {
-  return (
-    <div
-      role="status"
-      aria-label={i18n.t("app.loading", "Loading")}
-      className="flex items-center justify-center p-8 min-h-[200px]"
-    >
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border-subtle border-t-primary" />
-      <span className="sr-only">{i18n.t("app.loading", "Loading")}</span>
-    </div>
-  );
-}
+const NotFoundPage = lazyRouteComponent(
+  () => import("@/routes/NotFoundPage"),
+  "NotFoundPage",
+);
+
+const ForgotPasswordPage = lazyRouteComponent(
+  () => import("@/pages/ForgotPasswordPage"),
+  "ForgotPasswordPage",
+);
+const LoginPage = lazyRouteComponent(
+  () => import("@/pages/LoginPage"),
+  "LoginPage",
+);
+const RegisterPage = lazyRouteComponent(
+  () => import("@/pages/RegisterPage"),
+  "RegisterPage",
+);
 
 const DashboardPage = lazyRouteComponent(
   () => import("@/routes/DashboardPage"),
@@ -249,6 +252,7 @@ function RootApp(): React.JSX.Element {
     <AppShell
       user={user}
       status={status}
+      sidebarFooter={signedIn ? <MotivationCard /> : undefined}
       adminNav={
         user?.role === "admin" || user?.role === "moderator" ? (
           <React.Suspense fallback={null}>
@@ -280,13 +284,20 @@ function RootApp(): React.JSX.Element {
         </React.Suspense>
       }
     >
-      <Outlet />
+      {/* Keyed by the top-level section so param changes (admin tabs, lesson to lesson) keep their state. */}
+      <div
+        key={pathname.split("/")[1] ?? ""}
+        className="motion-safe:animate-page-enter"
+      >
+        <Outlet />
+      </div>
     </AppShell>
   );
 }
 
 export const rootRoute = createRootRoute({
   component: RootApp,
+  notFoundComponent: NotFoundPage,
 });
 
 /**
@@ -683,7 +694,11 @@ export const routeTree = rootRoute.addChildren([
 
 export const router = createRouter({
   routeTree,
-  defaultPendingComponent: RouteLoadingSpinner,
+  defaultPendingComponent: RouteLoading,
+  defaultPendingMs: 150,
+  defaultPendingMinMs: 200,
+  defaultErrorComponent: RouteErrorPage,
+  defaultNotFoundComponent: NotFoundPage,
 });
 
 declare module "@tanstack/react-router" {

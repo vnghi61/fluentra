@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import {
   Controller,
   type ControllerProps,
@@ -149,7 +150,12 @@ export const FormMessage = React.forwardRef<
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField();
-  const body = error ? String(error?.message) : children;
+  const { t, i18n } = useTranslation();
+  const rawBody = error ? String(error?.message) : children;
+  const body =
+    typeof rawBody === "string" && i18n?.exists?.(rawBody)
+      ? t(rawBody)
+      : rawBody;
 
   if (!body) {
     return null;

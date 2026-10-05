@@ -69,6 +69,9 @@
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
   --color-surface-card: var(--surface-card);
+  --color-surface-raised: var(--surface-raised);
+  --color-xp: var(--xp);
+  --color-mission: var(--mission);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-success: #22c55e;
@@ -142,6 +145,11 @@
   --surface: #ffffff;
   --surface-muted: #f8fafc;
   --surface-card: #ffffff;
+  --surface-raised: #eef4ff;
+  --xp: #b45309;
+  --mission: #7c3aed;
+  --radius-card: 1rem;
+  --shadow-card: 0 2px 8px rgb(30 64 175 / 0.04);
   --border: #64748b;
   --border-subtle: #e2e8f0;
   --text: #0f172a;
@@ -158,6 +166,10 @@
   --surface: #020617;
   --surface-muted: #0f172a;
   --surface-card: #0b1120;
+  --surface-raised: #17243a;
+  --xp: #fbbf24;
+  --mission: #c4b5fd;
+  --shadow-card: 0 2px 8px rgb(0 0 0 / 0.12);
   --border: #94a3b8;
   --border-subtle: #1e293b;
   --text: #f8fafc;
@@ -176,6 +188,15 @@ body {
   @apply antialiased;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .theme-surface {
+    transition:
+      background-color 200ms ease,
+      border-color 200ms ease,
+      color 180ms ease;
+  }
+}
+
 /*
  * Native <select> on Windows Chromium inherits text color but renders light
  * popup menus unless options explicitly define background and text colors.
@@ -188,4 +209,69 @@ select option,
 select optgroup {
   background-color: var(--surface-card);
   color: var(--text);
+}
+
+@theme {
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+  --animate-page-enter: page-enter 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  --animate-float: float 4s ease-in-out infinite;
+  --animate-route-progress: route-progress 1.2s ease-in-out infinite;
+  --animate-confetti: confetti-fall 1.4s ease-out forwards;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes page-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes route-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(60vh) rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer,
+  .animate-page-enter,
+  .animate-float,
+  .animate-route-progress,
+  .animate-confetti {
+    animation: none !important;
+  }
 }

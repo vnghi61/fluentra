@@ -169,14 +169,14 @@ describe("Progress Component (P6.3)", () => {
 });
 
 describe("Skeleton Component (P6.3)", () => {
-  it("renders with animate-pulse and respects prefers-reduced-motion via motion-reduce:animate-none", () => {
+  it("renders with shimmer overlay and respects prefers-reduced-motion via motion-reduce:before:hidden", () => {
     render(<Skeleton data-testid="skeleton-item" className="h-6 w-32" />);
 
     const skeleton = screen.getByTestId("skeleton-item");
     expect(skeleton).toBeInTheDocument();
     expect(skeleton).toHaveAttribute("aria-hidden", "true");
-    expect(skeleton.className).toContain("animate-pulse");
     expect(skeleton.className).toContain("bg-surface-muted");
-    expect(skeleton.className).toContain("motion-reduce:animate-none");
+    expect(skeleton.className).toContain("before:animate-shimmer");
+    expect(skeleton.className).toContain("motion-reduce:before:hidden");
   });
 });

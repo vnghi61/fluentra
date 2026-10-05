@@ -2,7 +2,18 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { I18nextProvider } from "react-i18next";
+import i18n, { initI18n } from "@/i18n";
 import { server } from "./msw-server";
+import { AccountSettingsPage } from "@/pages/AccountSettingsPage";
 import { ProfileSettings } from "@/features/account/components/ProfileSettings";
 import { PreferencesSettings } from "@/features/account/components/PreferencesSettings";
 import { AvatarUploadModal } from "@/features/account/components/AvatarUploadModal";
@@ -638,6 +649,208 @@ describe("Account Management Settings (P5.2)", () => {
       useAuthStore.getState().setAuthSession(session("user-123", "token-3"));
 
       expect(clear).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("AccountSettingsPage routing and mobile navigation (TASK-W2-SETTINGS)", () => {
+    beforeEach(async () => {
+      await initI18n("en");
+      await i18n.changeLanguage("en");
+
+      server.use(
+        http.get("/api/v1/me", () => HttpResponse.json(mockProfile)),
+        http.get("/api/v1/me/preferences", () =>
+          HttpResponse.json(mockPreferences),
+        ),
+        http.get("/api/v1/me/sessions", () =>
+          HttpResponse.json({ sessions: [] }),
+        ),
+        http.get("/api/v1/me/trusted-devices", () =>
+          HttpResponse.json({ devices: [] }),
+        ),
+        http.get("/api/v1/me/oauth/google", () =>
+          HttpResponse.json({ connected: false, email: null }),
+        ),
+        http.get("/api/v1/me/learning-profile", () =>
+          HttpResponse.json({
+            declared_level: "B1",
+            target_exam: "none",
+            weekly_study_minutes_target: 90,
+            learning_goals: [],
+            interests: [],
+            occupations: [],
+            reminders_enabled: false,
+          }),
+        ),
+      );
+    });
+
+    async function renderSettings(initialEntry = "/settings") {
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const rootRoute = createRootRoute();
+      const settingsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: "/settings",
+        component: () => (
+          <I18nextProvider i18n={i18n}>
+            <QueryClientProvider client={client}>
+              <AccountSettingsPage />
+            </QueryClientProvider>
+          </I18nextProvider>
+        ),
+      });
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([settingsRoute]),
+        history: createMemoryHistory({ initialEntries: [initialEntry] }),
+      });
+      await router.load();
+      const rendered = render(<RouterProvider router={router} />);
+      return { ...rendered, router };
+    }
+
+    it("covers index -> subpage -> back navigation", async () => {
+      const user = userEvent.setup();
+      const { router } = await renderSettings("/settings");
+
+      // On /settings without a section: shows index list of all sections
+      expect(
+        await screen.findByRole("button", { name: /Profile & Avatar/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Learning Profile/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Learning Preferences/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Security & Devices/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Data & Privacy/i }),
+      ).toBeInTheDocument();
+
+      // Check all rows have >= 44px min-height
+      const navButtons = screen.getAllByRole("button", {
+        name: /Profile|Learning|Security|Data/i,
+      });
+      expect(navButtons.length).toBe(5);
+      for (const btn of navButtons) {
+        expect(btn).toHaveClass("min-h-[44px]");
+      }
+
+      // Back button is not visible on the index
+      expect(
+        screen.queryByRole("button", { name: /Back/i }),
+      ).not.toBeInTheDocument();
+
+      // The tab panel is hidden on mobile below md (has "hidden md:block")
+      const panel = screen.getByRole("region", {
+        name: /Profile & Avatar/i,
+      });
+      expect(panel).toHaveClass("hidden");
+      expect(panel).toHaveClass("md:block");
+
+      // Selecting one navigates to /settings?section=<key>
+      const securityBtn = screen.getByRole("button", {
+        name: /Security & Devices/i,
+      });
+      await user.click(securityBtn);
+
+      await waitFor(() => {
+        expect(router.state.location.search).toEqual({ section: "security" });
+      });
+
+      // Shows that section with a header back button that returns to /settings
+      const backBtn = await screen.findByRole("button", { name: /Back/i });
+      expect(backBtn).toBeInTheDocument();
+      expect(backBtn).toHaveClass("min-h-[44px]");
+
+      // Header shows the section title
+      expect(
+        screen.getByRole("heading", {
+          level: 2,
+          name: /Security & Devices/i,
+        }),
+      ).toBeInTheDocument();
+
+      // Security section content is displayed
+      expect(
+        await screen.findByText(/Password & Authentication/i),
+      ).toBeInTheDocument();
+
+      // Navigation is hidden below md (has "hidden md:grid")
+      const nav = screen.getByRole("navigation", {
+        name: /Account Settings/i,
+      });
+      expect(nav).toHaveClass("hidden");
+      expect(nav).toHaveClass("md:grid");
+
+      // Clicking back button returns to /settings
+      await user.click(backBtn);
+
+      await waitFor(() => {
+        expect(router.state.location.search).toEqual({});
+      });
+
+      // Back button is no longer rendered
+      expect(
+        screen.queryByRole("button", { name: /Back/i }),
+      ).not.toBeInTheDocument();
+
+      // Navigation is visible on index again
+      expect(nav).not.toHaveClass("hidden");
+    });
+
+    it("covers direct-URL deep link", async () => {
+      const { router } = await renderSettings("/settings?section=preferences");
+
+      expect(router.state.location.search).toEqual({ section: "preferences" });
+
+      // Preferences section is displayed
+      expect(await screen.findByText(/Daily Study Goal/i)).toBeInTheDocument();
+
+      // Side-tab is selected (aria-current="page")
+      const prefTab = screen.getByRole("button", {
+        name: /Learning Preferences/i,
+      });
+      expect(prefTab).toHaveAttribute("aria-current", "page");
+
+      // Subpage header back button is rendered
+      expect(screen.getByRole("button", { name: /Back/i })).toBeInTheDocument();
+    });
+
+    it("covers unknown section fallback", async () => {
+      await renderSettings("/settings?section=unknown_junk");
+
+      // Unknown section falls back: /settings still opens
+      expect(
+        await screen.findByRole("button", { name: /Profile & Avatar/i }),
+      ).toBeInTheDocument();
+
+      // On mobile: falls back to index (no back button, nav visible)
+      expect(
+        screen.queryByRole("button", { name: /Back/i }),
+      ).not.toBeInTheDocument();
+      const nav = screen.getByRole("navigation", {
+        name: /Account Settings/i,
+      });
+      expect(nav).not.toHaveClass("hidden");
+
+      // On desktop: falls back to first tab ("profile")
+      const profileTab = screen.getByRole("button", {
+        name: /Profile & Avatar/i,
+      });
+      expect(profileTab).toHaveAttribute("aria-current", "page");
+
+      // Tab panel has "hidden md:block" (index on mobile, first tab on desktop)
+      const panel = screen.getByRole("region", {
+        name: /Profile & Avatar/i,
+      });
+      expect(panel).toHaveClass("hidden");
+      expect(panel).toHaveClass("md:block");
+      expect(screen.getByDisplayValue("Nghi Nguyen")).toBeInTheDocument();
     });
   });
 });

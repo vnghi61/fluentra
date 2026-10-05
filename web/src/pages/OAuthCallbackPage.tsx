@@ -113,8 +113,10 @@ export function OAuthCallbackPage(): React.JSX.Element {
         {errorCode === "OAUTH_ACCOUNT_CONFLICT" && (
           <div className="rounded-lg border border-warning/30 bg-warning/10 p-3.5 text-left text-xs font-medium text-warning-accent space-y-2">
             <p>
-              To protect your account, email ownership must be confirmed before
-              connecting Google sign-in.
+              {t(
+                "page.oauthAccountConflictNotice",
+                "To protect your account, email ownership must be confirmed before connecting Google sign-in.",
+              )}
             </p>
             <Link
               to="/register"

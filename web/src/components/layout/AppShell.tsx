@@ -1,23 +1,36 @@
 import React from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BookOpen,
+  Flame,
   GraduationCap,
   LayoutDashboard,
   LineChart,
   LogIn,
+  MoreHorizontal,
   Settings,
   ShieldCheck,
   Sparkles,
   Target,
   UserPlus,
 } from "lucide-react";
+import { LazyMotion, m, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
+import { cn } from "@/lib/utils";
 import { BrandMark } from "./BrandMark";
 
 /** Lazy: see AccountMenu's own comment for why it is not in the entry chunk. */
 const AccountMenu = React.lazy(() => import("./AccountMenu"));
+
+/**
+ * Lazy: secondary destinations sheet for mobile navigation.
+ * Keeping it lazy ensures the full bottom-sheet and motion physics are not loaded
+ * into the entry chunk.
+ */
+const MoreSheet = React.lazy(() => import("./MoreSheet"));
+
+const loadFeatures = () => import("./motion-features").then((r) => r.default);
 
 export interface AppShellProps {
   children: React.ReactNode;
@@ -64,6 +77,19 @@ export interface AppShellProps {
    * behind it on a 390 px phone. The router decides; the shell only obeys.
    */
   bottomNav?: boolean;
+  /**
+   * Pinned slot at the foot of the desktop sidebar, typically used for
+   * motivation or learner streak reminders.
+   */
+  sidebarFooter?: React.ReactNode;
+  /**
+   * Search slot rendered in the desktop header, preceding controls and account.
+   */
+  search?: React.ReactNode;
+  /**
+   * Notifications slot rendered in the header between controls and account.
+   */
+  notifications?: React.ReactNode;
 }
 
 /**
@@ -126,9 +152,42 @@ const destinations = [
 // and a second copy of these strings is how the sidebar ends up with two
 // different ideas of what "active" looks like.
 export const navBase =
-  "flex items-center gap-3 h-11 px-3 rounded-lg min-h-[44px] transition-colors text-sm";
+  "flex items-center gap-2.5 h-10 px-3 rounded-xl min-h-[44px] transition-colors text-sm font-medium";
 export const navIdle = "text-text-muted hover:bg-surface-muted hover:text-text";
-export const navActive = "bg-primary/10 text-primary-accent font-semibold";
+export const navActive =
+  "bg-primary/10 text-primary-accent font-semibold rounded-xl";
+
+/**
+ * Motivational card slot rendered at the bottom of the desktop sidebar.
+ */
+export const MotivationCard: React.FC<{ className?: string }> = ({
+  className,
+}) => {
+  const { t } = useTranslation();
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-border-subtle bg-surface-card p-2.5 text-text",
+        className,
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary-accent">
+          <Flame className="h-3.5 w-3.5" aria-hidden="true" />
+        </div>
+        <span className="text-xs font-semibold text-text">
+          {t("nav.motivationTitle", "Keep the momentum!")}
+        </span>
+      </div>
+      <p className="mt-1.5 text-xs leading-relaxed text-text-muted">
+        {t(
+          "nav.motivationBody",
+          "Consistent daily practice builds fluency that lasts.",
+        )}
+      </p>
+    </div>
+  );
+};
 
 export const AppShell: React.FC<AppShellProps> = ({
   children,
@@ -142,14 +201,40 @@ export const AppShell: React.FC<AppShellProps> = ({
   displayName,
   avatarUrl,
   bottomNav = true,
+  sidebarFooter,
+  search,
+  notifications,
 }) => {
   const { t } = useTranslation();
   const signedIn = status === "authenticated";
+  const reduceMotion = Boolean(useReducedMotion());
+
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+
+  const [moreOpen, setMoreOpen] = React.useState(false);
+  const [hasOpenedMore, setHasOpenedMore] = React.useState(false);
+
+  const handleOpenMore = () => {
+    setHasOpenedMore(true);
+    setMoreOpen(true);
+  };
+
+  const isLearnActive = pathname === "/learn" || pathname.startsWith("/learn/");
+  const isPracticeActive =
+    pathname === "/practice" || pathname.startsWith("/practice/");
+  const isProgressActive =
+    pathname === "/progress" || pathname.startsWith("/progress/");
+  const isMoreActive =
+    pathname.startsWith("/exams") ||
+    pathname.startsWith("/studio") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/admin");
 
   // The account controls, in the top-right corner rather than the foot of the
   // sidebar, and behind an avatar once there is an account to show — which is
-  // what keeps Sign out out of primary navigation. The menu waited on the
-  // dropdown primitive; that now exists, so this is no longer a bare button.
+  // what keeps Sign out out of primary navigation.
   const account =
     signedIn && user ? (
       <React.Suspense
@@ -164,13 +249,6 @@ export const AppShell: React.FC<AppShellProps> = ({
       </React.Suspense>
     ) : (
       <div className="flex items-center gap-2">
-        {/*
-          min-w-[44px]: below `sm` the label is hidden and only the icon is
-          left, which collapsed this to 42 px wide — a floor on the height
-          alone does not make a 44x44 target. It went unmeasured until the
-          curriculum opened, because signed-out chrome had never appeared on a
-          framed screen before: the auth pages draw no header at all.
-        */}
         <Link
           to="/register"
           aria-label={t("nav.createAccount", "Create account")}
@@ -181,18 +259,6 @@ export const AppShell: React.FC<AppShellProps> = ({
             {t("nav.createAccount", "Create account")}
           </span>
         </Link>
-        {/*
-          The label hides below `sm`, the way Create account's already did, and
-          the aria-label is what keeps the control named when it does. Both
-          together are 320 px of header the signed-out cluster did not have:
-          brand, theme, language and two auth controls pushed the document to
-          357 px, and the narrow-320 suite caught it the moment this chrome
-          first appeared on a framed screen.
-
-          The aria-label is not optional garnish. Hiding the only text a control
-          carries is how a button ends up with no accessible name at all, which
-          is a mistake this file has made before.
-        */}
         <Link
           to="/login"
           aria-label={t("nav.signIn", "Sign in")}
@@ -205,19 +271,11 @@ export const AppShell: React.FC<AppShellProps> = ({
     );
 
   // Authentication stands on its own page: no navigation to gated routes, and
-  // nothing competing with the form. LoginForm and RegisterForm already link to
-  // each other, so no header is needed to get between them.
+  // nothing competing with the form.
   if (!chrome) {
     return (
       <div className="min-h-screen bg-surface-muted text-text flex flex-col">
         {banner}
-        {/*
-          Theme and language, and nothing else. Removing the shell from the auth
-          pages also removed the only way a Vietnamese learner could switch the
-          interface to Vietnamese before signing in. These two controls are not
-          navigation, so they can come back without bringing the sidebar with
-          them.
-        */}
         {controls ? (
           <div className="flex justify-end p-3">{controls}</div>
         ) : null}
@@ -229,21 +287,23 @@ export const AppShell: React.FC<AppShellProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-surface-muted text-text flex flex-col">
+    <div className="theme-surface min-h-screen bg-surface-muted text-text flex flex-col">
       {banner}
       <div className="flex-1 flex flex-col md:flex-row">
         {/* Desktop Sidebar Navigation */}
-        <aside className="hidden md:flex flex-col w-64 shrink-0 bg-surface-card border-r border-border-subtle p-4 gap-6 justify-between">
-          <div className="flex flex-col gap-6">
-            <Link to="/" className="flex items-center gap-2.5">
-              {/* Inline, so the mark takes --color-brand and needs no request. */}
-              <BrandMark className="h-7 w-7 shrink-0 text-brand" />
-              <span className="text-lg font-bold tracking-tight text-text">
+        <aside className="theme-surface hidden md:flex flex-col w-[232px] shrink-0 bg-surface-card border-r border-border-subtle p-3 justify-between">
+          <div className="flex flex-col gap-5">
+            <Link to="/" className="flex items-center gap-2 px-1 min-h-[44px]">
+              <BrandMark className="h-6 w-6 shrink-0 text-brand" />
+              <span className="text-base font-bold tracking-tight text-brand">
                 Fluentra
               </span>
             </Link>
 
-            <nav className="flex flex-col gap-1">
+            <nav
+              aria-label={t("nav.mainNavigation", "Main navigation")}
+              className="flex flex-col gap-1"
+            >
               {destinations.map(({ to, labelKey, fallback, Icon, exact }) => (
                 <Link
                   key={to}
@@ -261,70 +321,86 @@ export const AppShell: React.FC<AppShellProps> = ({
               ))}
 
               {signedIn && (
-                <Link
-                  to="/settings"
-                  className={`${navBase} ${navIdle}`}
-                  activeProps={{ className: `${navBase} ${navActive}` }}
-                >
-                  <Settings
-                    className="h-[18px] w-[18px] shrink-0"
-                    aria-hidden="true"
-                  />
-                  {t("nav.settings", "Settings")}
-                </Link>
-              )}
+                <>
+                  <hr className="my-2 border-t border-border-subtle" />
 
-              {signedIn &&
-                user?.role === "admin" &&
-                // The group when the router supplied one; the plain link when it
-                // did not, so the frame still reaches /admin on its own.
-                (adminNav ?? (
                   <Link
-                    to="/admin"
+                    to="/settings"
                     className={`${navBase} ${navIdle}`}
                     activeProps={{ className: `${navBase} ${navActive}` }}
                   >
-                    <ShieldCheck
+                    <Settings
                       className="h-[18px] w-[18px] shrink-0"
                       aria-hidden="true"
                     />
-                    {t("nav.admin", "Admin")}
+                    {t("nav.settings", "Settings")}
                   </Link>
-                ))}
+
+                  {(user?.role === "admin" || user?.role === "moderator") &&
+                    (adminNav ?? (
+                      <Link
+                        to="/admin"
+                        className={`${navBase} ${navIdle}`}
+                        activeProps={{ className: `${navBase} ${navActive}` }}
+                      >
+                        <ShieldCheck
+                          className="h-[18px] w-[18px] shrink-0"
+                          aria-hidden="true"
+                        />
+                        {t("nav.admin", "Admin")}
+                      </Link>
+                    ))}
+                </>
+              )}
             </nav>
           </div>
+
+          {(sidebarFooter || signedIn) && (
+            <div className="mt-auto pt-3">
+              {sidebarFooter ?? <MotivationCard />}
+            </div>
+          )}
         </aside>
 
         {/* Header + content column */}
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="sticky top-0 z-40 flex items-center justify-between gap-3 h-14 px-4 bg-surface-card border-b border-border-subtle">
+          <header className="theme-surface sticky top-0 z-40 flex items-center justify-between gap-3 h-14 md:h-16 px-4 md:px-6 bg-surface-card border-b border-border-subtle">
             {/* The brand belongs here only where the sidebar is not drawing it. */}
-            {/*
-            min-h-[44px]: the mark is 26px and the word sits beside it, so
-            without a floor this link was 94x26 — a tap target under the 44x44
-            minimum ADR-0024 sets, and the narrow-320 suite caught it at 320px
-            in both locales.
-          */}
             <Link
               to="/"
               className="flex items-center gap-2 min-h-[44px] md:hidden"
             >
-              <BrandMark className="h-[26px] w-[26px] shrink-0 text-brand" />
-              <span className="text-base font-bold tracking-tight text-text">
+              <BrandMark className="h-6 w-6 shrink-0 text-brand" />
+              <span className="text-base font-bold tracking-tight text-brand">
                 Fluentra
               </span>
             </Link>
-            <div className="hidden md:block" />
-            <div className="flex items-center gap-1">
-              {controls}
+
+            {/* Desktop search slot */}
+            {search ? (
+              <div className="hidden md:flex flex-1 items-center max-w-md">
+                {search}
+              </div>
+            ) : (
+              <div className="hidden md:block" />
+            )}
+
+            <div className="flex items-center gap-1 sm:gap-2">
+              <div className={signedIn ? "hidden md:flex" : "flex"}>
+                {controls}
+              </div>
+              {notifications}
               {account}
             </div>
           </header>
 
           <main
-            className={`flex-1 p-4 max-w-7xl mx-auto w-full ${
-              bottomNav ? "pb-20 md:pb-4" : "pb-4"
-            }`}
+            className={cn(
+              "flex-1 min-w-0 p-4 md:p-6 max-w-[1480px] mx-auto w-full",
+              bottomNav
+                ? "pb-[calc(4rem+env(safe-area-inset-bottom)+16px)] md:pb-6"
+                : "pb-4 md:pb-6",
+            )}
           >
             {children}
           </main>
@@ -332,30 +408,166 @@ export const AppShell: React.FC<AppShellProps> = ({
       </div>
 
       {/*
-        Mobile Bottom Navigation Bar — the four learner destinations and nothing
-        else. Settings, Admin and Sign out moved to the header, which is where
-        the IA puts them and which keeps the bar at four thumb-sized targets
-        instead of seven.
+        Mobile Bottom Navigation Bar — exactly 5 items:
+        4 links (Dashboard, Learn, Practice, Progress) and 1 More button.
       */}
       {bottomNav && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-card border-t border-border-subtle flex items-center justify-around z-50 px-2 pb-[env(safe-area-inset-bottom)]">
-          {destinations.map(({ to, labelKey, fallback, Icon, exact }) => (
+        <LazyMotion features={loadFeatures}>
+          <nav
+            aria-label={t("nav.mobileNavigation", "Mobile navigation")}
+            className="md:hidden fixed bottom-0 left-0 right-0 h-[calc(4rem+env(safe-area-inset-bottom))] bg-surface-card border-t border-border-subtle flex items-center justify-around z-50 px-2 pb-[env(safe-area-inset-bottom)]"
+          >
+            {/* 1. Dashboard */}
             <Link
-              key={to}
-              to={to}
-              activeOptions={{ exact }}
-              className="flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] text-text-muted text-[11px] font-medium"
-              activeProps={{
-                className:
-                  "flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] text-primary-accent text-[11px] font-semibold",
-              }}
+              to="/"
+              className={cn(
+                "relative flex flex-1 flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] h-full text-center text-[11px] transition-colors",
+                pathname === "/"
+                  ? "text-primary-accent font-semibold"
+                  : "text-text-muted hover:text-text font-medium",
+              )}
             >
-              <Icon className="h-5 w-5" aria-hidden="true" />
-              {t(labelKey, fallback)}
+              {pathname === "/" && (
+                <m.span
+                  {...(reduceMotion
+                    ? {}
+                    : { layoutId: "bottom-nav-indicator" })}
+                  className="absolute top-1 h-1 w-6 rounded-full bg-primary"
+                  aria-hidden="true"
+                  transition={{ type: "spring", damping: 30, stiffness: 350 }}
+                />
+              )}
+              <LayoutDashboard
+                className="h-5 w-5 shrink-0"
+                aria-hidden="true"
+              />
+              <span className="max-w-[64px] truncate">
+                {t("nav.dashboard", "Dashboard")}
+              </span>
             </Link>
-          ))}
-        </nav>
+
+            {/* 2. Learn */}
+            <Link
+              to="/learn"
+              className={cn(
+                "relative flex flex-1 flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] h-full text-center text-[11px] transition-colors",
+                isLearnActive
+                  ? "text-primary-accent font-semibold"
+                  : "text-text-muted hover:text-text font-medium",
+              )}
+            >
+              {isLearnActive && (
+                <m.span
+                  {...(reduceMotion
+                    ? {}
+                    : { layoutId: "bottom-nav-indicator" })}
+                  className="absolute top-1 h-1 w-6 rounded-full bg-primary"
+                  aria-hidden="true"
+                  transition={{ type: "spring", damping: 30, stiffness: 350 }}
+                />
+              )}
+              <BookOpen className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <span className="max-w-[64px] truncate">
+                {t("nav.learn", "Learn")}
+              </span>
+            </Link>
+
+            {/* 3. Practice */}
+            <Link
+              to="/practice"
+              className={cn(
+                "relative flex flex-1 flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] h-full text-center text-[11px] transition-colors",
+                isPracticeActive
+                  ? "text-primary-accent font-semibold"
+                  : "text-text-muted hover:text-text font-medium",
+              )}
+            >
+              {isPracticeActive && (
+                <m.span
+                  {...(reduceMotion
+                    ? {}
+                    : { layoutId: "bottom-nav-indicator" })}
+                  className="absolute top-1 h-1 w-6 rounded-full bg-primary"
+                  aria-hidden="true"
+                  transition={{ type: "spring", damping: 30, stiffness: 350 }}
+                />
+              )}
+              <Target className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <span className="max-w-[64px] truncate">
+                {t("nav.practice", "Practice")}
+              </span>
+            </Link>
+
+            {/* 4. Progress */}
+            <Link
+              to="/progress"
+              className={cn(
+                "relative flex flex-1 flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] h-full text-center text-[11px] transition-colors",
+                isProgressActive
+                  ? "text-primary-accent font-semibold"
+                  : "text-text-muted hover:text-text font-medium",
+              )}
+            >
+              {isProgressActive && (
+                <m.span
+                  {...(reduceMotion
+                    ? {}
+                    : { layoutId: "bottom-nav-indicator" })}
+                  className="absolute top-1 h-1 w-6 rounded-full bg-primary"
+                  aria-hidden="true"
+                  transition={{ type: "spring", damping: 30, stiffness: 350 }}
+                />
+              )}
+              <LineChart className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <span className="max-w-[64px] truncate">
+                {t("nav.progress", "Progress")}
+              </span>
+            </Link>
+
+            {/* 5. More */}
+            <button
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={moreOpen}
+              onClick={handleOpenMore}
+              className={cn(
+                "relative flex flex-1 flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] h-full text-center text-[11px] transition-colors cursor-pointer",
+                isMoreActive
+                  ? "text-primary-accent font-semibold"
+                  : "text-text-muted hover:text-text font-medium",
+              )}
+            >
+              {isMoreActive && (
+                <m.span
+                  {...(reduceMotion
+                    ? {}
+                    : { layoutId: "bottom-nav-indicator" })}
+                  className="absolute top-1 h-1 w-6 rounded-full bg-primary"
+                  aria-hidden="true"
+                  transition={{ type: "spring", damping: 30, stiffness: 350 }}
+                />
+              )}
+              <MoreHorizontal className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <span className="max-w-[64px] truncate">
+                {t("nav.more", "More")}
+              </span>
+            </button>
+          </nav>
+        </LazyMotion>
+      )}
+
+      {hasOpenedMore && (
+        <React.Suspense fallback={null}>
+          <MoreSheet
+            open={moreOpen}
+            onOpenChange={setMoreOpen}
+            signedIn={signedIn}
+            isAdmin={signedIn && user?.role === "admin"}
+          />
+        </React.Suspense>
       )}
     </div>
   );
 };
+
+AppShell.displayName = "AppShell";

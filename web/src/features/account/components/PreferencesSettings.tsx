@@ -198,9 +198,9 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                   </option>
                 ))}
               </select>
-              {errors.daily_goal_minutes && (
+              {errors.daily_goal_minutes?.message && (
                 <p className="text-xs text-danger-accent">
-                  {errors.daily_goal_minutes.message}
+                  {t(errors.daily_goal_minutes.message)}
                 </p>
               )}
             </div>
@@ -228,29 +228,35 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 {t("account.themePreference", "Theme Preference")}
               </Label>
               <div className="grid grid-cols-3 gap-3">
-                {(["system", "dark", "light"] as const).map((t) => (
+                {(["system", "dark", "light"] as const).map((mode) => (
                   <label
-                    key={t}
+                    key={mode}
                     className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium cursor-pointer transition-colors ${
-                      currentTheme === t
+                      currentTheme === mode
                         ? "border-primary bg-primary/10 text-primary-accent"
                         : "border-border-subtle bg-surface-card/40 text-text-muted hover:bg-surface-muted"
                     }`}
                   >
                     <input
                       type="radio"
-                      value={t}
+                      value={mode}
                       {...register("theme")}
                       className="hidden"
                     />
-                    {t === "dark" ? (
+                    {mode === "dark" ? (
                       <Moon className="h-4 w-4" />
-                    ) : t === "light" ? (
+                    ) : mode === "light" ? (
                       <Sun className="h-4 w-4" />
                     ) : (
                       <Globe className="h-4 w-4" />
                     )}
-                    <span className="capitalize">{t}</span>
+                    <span>
+                      {mode === "system"
+                        ? t("theme.system", "System")
+                        : mode === "dark"
+                          ? t("theme.dark", "Dark")
+                          : t("theme.light", "Light")}
+                    </span>
                   </label>
                 ))}
               </div>
@@ -393,9 +399,10 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 {t("account.aiGradingProcessing", "AI Grading & Processing")}
               </h3>
               <p className="text-xs text-text-muted leading-relaxed max-w-xl">
-                Opt out of AI-assisted grading and pronunciation feedback.
-                Deterministic exercises and progress tracking remain fully
-                functional.
+                {t(
+                  "account.aiGradingProcessingDesc",
+                  "Opt out of AI-assisted grading and pronunciation feedback. Deterministic exercises and progress tracking remain fully functional.",
+                )}
               </p>
             </div>
             <Controller

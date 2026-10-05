@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
+  ArrowLeft,
+  ChevronRight,
   FileText,
   GraduationCap,
-  Loader2,
   Lock,
   Settings as SettingsIcon,
   Sliders,
   User,
-  AlertCircle,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import {
   accountApi,
   type UserPreferences,
@@ -26,9 +30,32 @@ import { useAuthStore } from "@/stores/authStore";
 
 type TabKey = "profile" | "learning" | "preferences" | "security" | "privacy";
 
+const VALID_TABS: readonly TabKey[] = [
+  "profile",
+  "learning",
+  "preferences",
+  "security",
+  "privacy",
+];
+
+function isTabKey(key: unknown): key is TabKey {
+  return (
+    typeof key === "string" && (VALID_TABS as readonly string[]).includes(key)
+  );
+}
+
 export function AccountSettingsPage(): React.JSX.Element {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<TabKey>("profile");
+  const search: Record<string, unknown> = useSearch({ strict: false });
+  const rawSection =
+    typeof search["section"] === "string"
+      ? search["section"].trim()
+      : undefined;
+  const activeSection: TabKey | undefined = isTabKey(rawSection)
+    ? rawSection
+    : undefined;
+  const activeTab: TabKey = activeSection ?? "profile";
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,6 +63,19 @@ export function AccountSettingsPage(): React.JSX.Element {
 
   const navigate = useNavigate();
   const clearAuth = useAuthStore((s) => s.clearAuth);
+
+  const handleSelectTab = (key: TabKey) => {
+    void navigate({
+      to: "/settings",
+      search: { section: key },
+    });
+  };
+
+  const handleBack = () => {
+    void navigate({
+      to: "/settings",
+    });
+  };
 
   useEffect(() => {
     async function loadAccountData() {
@@ -76,11 +116,19 @@ export function AccountSettingsPage(): React.JSX.Element {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[400px] flex-col items-center justify-center space-y-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-accent" />
-        <p className="text-sm text-text-muted">
+      <div role="status" className="mx-auto max-w-5xl space-y-5">
+        <span className="sr-only">
           {t("page.loadingYourSettings", "Loading your settings...")}
-        </p>
+        </span>
+        <Skeleton className="h-8 w-48" />
+        <div className="grid gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
+          <div className="space-y-3">
+            {Array.from({ length: 5 }, (_, index) => (
+              <Skeleton key={index} className="h-12 w-full" />
+            ))}
+          </div>
+          <Skeleton className="h-64 w-full rounded-2xl" />
+        </div>
       </div>
     );
   }
@@ -88,26 +136,14 @@ export function AccountSettingsPage(): React.JSX.Element {
   if (error || !profile || !preferences) {
     return (
       <div className="mx-auto max-w-xl py-12">
-        <div className="rounded-xl border border-danger/30 bg-danger/10 p-6 text-center space-y-4">
-          <AlertCircle className="mx-auto h-8 w-8 text-danger-accent" />
-          <h2 className="text-base font-semibold text-danger-accent">
-            {t("page.unableToLoadSettings", "Unable to load settings")}
-          </h2>
-          <p className="text-xs text-danger-accent">
-            {error ||
-              t(
-                "page.anUnexpectedErrorOccurredWhile",
-                "An unexpected error occurred while loading account details.",
-              )}
-          </p>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="rounded-lg bg-danger px-4 py-2 text-xs font-medium text-white hover:bg-danger transition-colors"
-          >
-            {t("page.retry", "Retry")}
-          </button>
-        </div>
+        <ErrorState
+          title={t("page.unableToLoadSettings", "Unable to load settings")}
+          description={t(
+            "page.anUnexpectedErrorOccurredWhile",
+            "An unexpected error occurred while loading account details.",
+          )}
+          onRetry={() => window.location.reload()}
+        />
       </div>
     );
   }
@@ -140,78 +176,121 @@ export function AccountSettingsPage(): React.JSX.Element {
     },
   ];
 
+  const currentTab = tabs.find((tab) => tab.key === activeTab);
+
   return (
     // min-w-0 is what lets the tab row's own `overflow-x-auto` actually clip:
     // without it the container is sized by its content and the whole page
     // scrolls sideways instead (R6, measured at 320 px).
-    <div className="max-w-5xl mx-auto min-w-0 space-y-8 py-4">
-      {/* Header */}
-      <header className="space-y-1">
+    <div className="max-w-5xl mx-auto min-w-0 space-y-5">
+      {/* Mobile Subpage Header with Back button */}
+      {activeSection && (
+        <div className="flex md:hidden items-center gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleBack}
+            className="gap-1.5 px-2 text-text-muted hover:text-text min-h-[44px] min-w-[44px]"
+            aria-label={t("page.backToSettings", "Back to Settings")}
+          >
+            <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium">
+              {t("page.back", "Back")}
+            </span>
+          </Button>
+          <h2 className="text-lg font-semibold text-text truncate">
+            {currentTab?.label}
+          </h2>
+        </div>
+      )}
+
+      {/* Main Page Header */}
+      <header className={cn("space-y-1", activeSection && "hidden md:block")}>
         <h1 className="text-2xl font-bold text-text flex items-center gap-2.5">
-          <SettingsIcon className="h-7 w-7 text-primary-accent" />
+          <SettingsIcon
+            className="h-6 w-6 text-primary-accent"
+            aria-hidden="true"
+          />
           {t("page.accountSettings", "Account Settings")}
         </h1>
         <p className="text-sm text-text-muted">
-          Manage your personal profile, study preferences, security credentials,
-          and privacy options.
+          {t(
+            "page.settingsDescription",
+            "Your profile, learning preferences and account security.",
+          )}
         </p>
       </header>
 
-      {/* Tabs Navigation */}
-      <div className="flex w-full min-w-0 border-b border-border-subtle overflow-x-auto gap-2 pb-px scrollbar-none">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.key;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-medium border-b-2 transition-colors min-h-[44px] cursor-pointer ${
-                isActive
-                  ? "border-primary text-primary-accent bg-primary/5 rounded-t-lg"
-                  : "border-transparent text-text-muted hover:text-text hover:border-border-subtle"
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      <div className="grid items-start gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
+        {/* Grouped settings navigation: mobile index list, or desktop side-tab */}
+        <nav
+          aria-label={t("page.accountSettings", "Account Settings")}
+          className={cn(
+            "grid gap-1 rounded-2xl border border-border-subtle bg-surface-card p-2",
+            activeSection && "hidden md:grid",
+          )}
+        >
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => handleSelectTab(tab.key)}
+                aria-current={isActive ? "page" : undefined}
+                className={`flex min-w-0 items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors min-h-[44px] cursor-pointer ${
+                  isActive
+                    ? "text-primary-accent bg-primary/10"
+                    : "text-text-muted hover:text-text hover:bg-surface-muted"
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="flex-1">{tab.label}</span>
+                <ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+              </button>
+            );
+          })}
+        </nav>
 
-      {/* Tab Panels */}
-      <div className="pt-2">
-        {activeTab === "profile" && (
-          <ProfileSettings
-            initialProfile={profile}
-            onProfileUpdated={(updated) => setProfile(updated)}
-          />
-        )}
+        {/* Tab Panels: hidden on mobile index, visible on mobile subpage or desktop */}
+        <div
+          className={cn("min-w-0", !activeSection && "hidden md:block")}
+          role="region"
+          aria-label={currentTab?.label}
+        >
+          {activeTab === "profile" && (
+            <ProfileSettings
+              initialProfile={profile}
+              onProfileUpdated={(updated) => setProfile(updated)}
+            />
+          )}
 
-        {activeTab === "learning" && <LearningProfileSettings />}
+          {activeTab === "learning" && <LearningProfileSettings />}
 
-        {activeTab === "preferences" && (
-          <PreferencesSettings
-            initialPreferences={preferences}
-            onPreferencesUpdated={(updated) => setPreferences(updated)}
-          />
-        )}
+          {activeTab === "preferences" && (
+            <PreferencesSettings
+              initialPreferences={preferences}
+              onPreferencesUpdated={(updated) => setPreferences(updated)}
+            />
+          )}
 
-        {activeTab === "security" && (
-          <SecuritySettings
-            onLoggedOut={() => {
-              void handleLoggedOut();
-            }}
-          />
-        )}
+          {activeTab === "security" && (
+            <SecuritySettings
+              onLoggedOut={() => {
+                void handleLoggedOut();
+              }}
+            />
+          )}
 
-        {activeTab === "privacy" && (
-          <DataPrivacySettings
-            initialProfile={profile}
-            onProfileUpdated={(updated) => setProfile(updated)}
-          />
-        )}
+          {activeTab === "privacy" && (
+            <DataPrivacySettings
+              initialProfile={profile}
+              onProfileUpdated={(updated) => setProfile(updated)}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

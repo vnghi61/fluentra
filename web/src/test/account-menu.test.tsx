@@ -1,8 +1,32 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, beforeEach } from "vitest";
+import userEvent from "@testing-library/user-event";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
+import type { ReactElement } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import AccountMenu from "@/components/layout/AccountMenu";
-import i18n, { initI18n } from "@/i18n";
+import i18n, { initI18n, loadLocale } from "@/i18n";
+
+async function renderWithRouter(ui: ReactElement) {
+  const rootRoute = createRootRoute();
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => ui,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  await router.load();
+  return render(<RouterProvider router={router} />);
+}
 
 /**
  * The account menu's trigger is the only place a learner sees their own avatar
@@ -15,6 +39,7 @@ import i18n, { initI18n } from "@/i18n";
 describe("AccountMenu trigger", () => {
   beforeEach(async () => {
     await initI18n("en");
+    await loadLocale("en");
     await i18n.changeLanguage("en");
   });
 
@@ -53,5 +78,57 @@ describe("AccountMenu trigger", () => {
     expect(
       screen.getByRole("button", { name: /Account/i }),
     ).toBeInTheDocument();
+  });
+
+  it("opens menu and renders destinations and greeting for a user", async () => {
+    const user = userEvent.setup();
+    await renderWithRouter(<AccountMenu role="user" displayName="Nghi" />);
+
+    const trigger = screen.getByRole("button", { name: /Account/i });
+    await user.click(trigger);
+
+    expect(await screen.findByText(/Hello/i)).toBeInTheDocument();
+    expect(screen.getByText("Nghi")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /Settings/i })).toHaveAttribute(
+      "href",
+      "/settings",
+    );
+    expect(
+      screen.getByRole("menuitem", { name: /My Writing/i }),
+    ).toHaveAttribute("href", "/my-writing");
+    expect(
+      screen.getByRole("menuitem", { name: /My Speaking/i }),
+    ).toHaveAttribute("href", "/my-speaking");
+    expect(
+      screen.queryByRole("menuitem", { name: /Admin/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /Sign out/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("includes admin destination and badge for admin role and fires onLogout", async () => {
+    const user = userEvent.setup();
+    const handleLogout = vi.fn();
+    await renderWithRouter(
+      <AccountMenu
+        role="admin"
+        displayName="Admin User"
+        onLogout={handleLogout}
+      />,
+    );
+
+    const trigger = screen.getByRole("button", { name: /Account/i });
+    await user.click(trigger);
+
+    expect(await screen.findByText("admin")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /Admin/i })).toHaveAttribute(
+      "href",
+      "/admin",
+    );
+
+    const signOut = screen.getByRole("menuitem", { name: /Sign out/i });
+    await user.click(signOut);
+    expect(handleLogout).toHaveBeenCalledTimes(1);
   });
 });

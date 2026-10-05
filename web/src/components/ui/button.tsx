@@ -24,7 +24,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer rounded-lg";
+      "inline-flex items-center justify-center font-medium transition-[transform,background-color,box-shadow,color] duration-150 ease-out active:scale-[0.97] enabled:hover:-translate-y-px motion-reduce:transition-none motion-reduce:active:scale-100 motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer rounded-lg";
 
     const variantStyles = {
       primary:

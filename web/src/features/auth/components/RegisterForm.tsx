@@ -206,7 +206,7 @@ export function RegisterForm({
       </Form>
 
       <p className="text-center text-sm text-text-muted">
-        Already have an account?{" "}
+        {t("auth.alreadyHaveAccount", "Already have an account?")}{" "}
         <Link
           to="/login"
           className="font-medium text-primary-accent hover:text-primary-accent hover:underline"

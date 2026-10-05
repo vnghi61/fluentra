@@ -197,7 +197,7 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
       </Form>
 
       <p className="text-center text-sm text-text-muted">
-        Don&apos;t have an account?{" "}
+        {t("auth.dontHaveAccount", "Don't have an account?")}{" "}
         <Link
           to="/register"
           className="font-medium text-primary-accent hover:text-primary-accent hover:underline"
