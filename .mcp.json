@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "gopls": {
+      "command": "go",
+      "args": ["-C", "tools/agentlsp", "run", ".", "gopls"]
+    }
+  }
+}

@@ -104,6 +104,12 @@ is in that module's `AGENT.md`. If it is not, the `AGENT.md` is wrong — fix it
 **Hard limit: if you have read more than 6 files and still do not know what to do, stop and
 ask the human.** Do not keep scanning.
 
+**Code-intelligence tools save reads.** `.mcp.json` (Claude Code/Cursor) and `opencode.jsonc`
+(OpenCode) register the `gopls` MCP server via `tools/agentlsp` (needs only Go; see its README):
+`go_search` / `go_package_api` instead of reading files; `go_symbol_references` before
+changing a Go symbol; `go_diagnostics` after editing. Frontend (`web/`): no MCP server — use
+ripgrep, then `pnpm -C web typecheck`, `pnpm -C web lint`, `pnpm -C web test`.
+
 ---
 
 ## 5. Non-Negotiable Rules

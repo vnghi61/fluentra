@@ -43,3 +43,14 @@ vocabgen-cache.json
 /vocabgen
 /examgen
 /foundation
+
+# tools/agentlsp: go.work generated for gopls only (AI agent code intelligence)
+.gopls/
+
+# Local build, debug and reference-screen artifacts (not application source).
+/api.exe
+/bash.exe.stackdump
+/artifacts/
+/ui-screenshots-*/
+/ui-screenshots-*.zip
+/.claude/launch.json
