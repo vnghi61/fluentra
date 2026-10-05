@@ -13,6 +13,15 @@ generated text describes commits; release notes should describe change.
 
 ### Added
 
+- Compact learner Dashboard statistics and supporting cards, a desktop
+  weekly-plan/skills column, and expandable weekly lessons. Continue learning
+  opens the recommended lesson directly and displays real activity progress.
+
+- Owner-only uploaded-document content revalidation without reuploading. English
+  learning suitability is checked before resource practice can be generated.
+- Independent AI requests are balanced across configured providers, with bounded
+  waits and immediate fallback after timeouts or permanent provider refusals.
+
 - **Documents and videos in a community course (Phase 3 Work Order 20)**: a creator can now
   build a chapter that is something to read or watch, not only exercises. A new activity kind
   `lesson_material` carries a document or a video uploaded through the existing resource
@@ -65,6 +74,49 @@ generated text describes commits; release notes should describe change.
   generator stands down quietly rather than failing every twelve hours.
 
 ### Fixed
+
+- Repository-wide verification fixes: restore Studio's typed latest-submission
+  view without nonexistent history requests; fix translated validation messages,
+  duplicate locale sections and accessible dialog/pairing labels. The initial
+  frontend bundle budget is explicitly increased to 500 kB gzip for upcoming
+  features; the gate remains enforced.
+
+- **Creator Studio configuration.** A creator whose first Studio action is configuring a payout
+  account no longer hits the missing profile row: the profile is created on their behalf without
+  touching an existing biography, trust or suspension. A repeated save updates the one account
+  rather than appending another default, an omitted `is_default` follows the documented `true`,
+  `GET /studio/creator/profile` and `GET /studio/creator/payout-account` are implemented as
+  owner-scoped 404-safe routes, and a duplicate draft slug answers `409 DRAFT_SLUG_EXISTS`
+  instead of an internal error.
+
+- **Creator Studio submissions.** `POST /studio/courses/{id}/submit` now returns immediately as
+  the API contract says: Gate 1 runs in the existing worker, with version allocation, the insert
+  and the draft's move to `submitted` in one transaction, so a failed write leaves no partial
+  submission and concurrent submits cannot both create an active version. Gate 2 decisions are
+  stored with the submission; the worker surfaces verification failures and retries instead of
+  discarding them; the worker's material check receives the resource contract and lesson
+  materials are no longer sent to the exercise verifier. A draft's detail endpoint carries the
+  optional `latest_submission`, and the Gate 1 report shape is typed in OpenAPI.
+
+- Daily A2/B1/B2 sets no longer reuse the same learner/day activities under different
+  level labels; legacy sets are preserved as history.
+- Practice skill links now target published foundation courses instead of archived
+  courses. Completed resource previews no longer appear permanently processing;
+  ready resource exercises open directly rather than being generated again.
+
+- Local personal documents no longer wait indefinitely for an unconfigured
+  GitHub renderer: `make dev` includes automatic media processing, and
+  `make dev-media` enables it alongside a host-run API/worker. Rendered files
+  remain available until they have been uploaded, rather than being deleted early.
+
+- Mock-test browsing and custom composition now show a link back to an unfinished
+  sitting and explain why it must be submitted before starting another test.
+- Foundation lesson bindings can be repaired from existing published content with
+  `go run ./cmd/seed -foundation-courses-only`, without reseeding accounts or
+  fixtures, and cached empty details are invalidated. Empty lessons now show a
+  retry/back state instead of an unsupported “Activity 1 of 0”.
+- Answer feedback and explanations now appear only in the chosen interface language
+  instead of English and Vietnamese together.
 
 - **Progress read back stale after every graded answer.** Grading writes progress and
   schedules review cards on the server, but nothing invalidated the caches the course,

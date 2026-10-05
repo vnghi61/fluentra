@@ -1,0 +1,50 @@
+[
+  {
+    "name": "en-light-320",
+    "viewport": 320,
+    "scrollWidth": 320,
+    "mainHeight": 1736
+  },
+  {
+    "name": "en-light-390",
+    "viewport": 390,
+    "scrollWidth": 390,
+    "mainHeight": 1692
+  },
+  {
+    "name": "en-light-768",
+    "viewport": 768,
+    "scrollWidth": 768,
+    "mainHeight": 2064
+  },
+  {
+    "name": "en-light-1440",
+    "viewport": 1440,
+    "scrollWidth": 1440,
+    "mainHeight": 1385
+  },
+  {
+    "name": "en-dark-320",
+    "viewport": 320,
+    "scrollWidth": 320,
+    "mainHeight": 1736
+  },
+  {
+    "name": "en-dark-390",
+    "viewport": 390,
+    "scrollWidth": 390,
+    "mainHeight": 1692
+  },
+  {
+    "name": "en-dark-768",
+    "viewport": 768,
+    "scrollWidth": 768,
+    "mainHeight": 2064
+  },
+  {
+    "name": "en-dark-1440",
+    "viewport": 1440,
+    "scrollWidth": 1440,
+    "mainHeight": 1385
+  }
+]

@@ -1,7 +1,7 @@
 ---
 doc_type: agent_entrypoint
 scope: frontend
-last_verified: 2026-08-06
+last_verified: 2026-10-05
 ---
 
 # web/AGENT.md — Frontend Entry Point
@@ -72,6 +72,17 @@ duplicate is a stale copy waiting to be shown to a learner.
 
 ## 6. Error handling
 
+The mock-test hub keeps an open-sitting resume link visible while browsing exam
+versions, fixed tests and the custom composer. A start refused with
+`ATTEMPT_IN_PROGRESS` explains that the existing sitting must be submitted first.
+The lesson runner treats zero activities as an empty state with retry/back actions,
+not an unsupported activity or successful completion.
+Answer feedback and explanations appear only in the learner's chosen interface
+language via `lib/localized.ts` `pickLocalized`, falling back to the other
+language when empty. Server grader feedback is English-only and remains hidden
+in Vietnamese or when repeating the verdict, while authored learning content
+(prompts, options, passages, flashcard glosses, sample answers) is never translated.
+
 `Problem Details` → typed error → message. Every `code` has an entry in
 `src/lib/errors/catalogue.ts`; a missing entry falls back to `title` **and logs a warning**, so
 gaps are visible rather than silent.
@@ -88,6 +99,44 @@ gaps are visible rather than silent.
 | 5xx | Error boundary with retry, showing the `request_id` for support |
 
 ## 6b. Responsive & mobile — the baseline (ADR-0024)
+
+### Product UI redesign
+
+See `docs/ui-review/IMPLEMENTATION_PLAN.md` and `UX_AUDIT.md` for the current
+source-adapted design brief and verified limitations. Reuse the shell, the
+lazy-loaded `MoreSheet`/`BottomSheet`, `ErrorState`/`EmptyState` and the
+route-level 404/error/loading views. `BottomSheet` portals surround
+`AnimatePresence` (not the reverse). Authenticated mobile headers keep global
+theme/language controls in Settings; desktop keeps them in the header.
+Card radius/shadow, raised surface and XP/mission colors live in `index.css`.
+Every animation respects reduced motion; no fabricated learner metrics or
+unimplemented controls may be added for visual fidelity.
+
+Dashboard refinement uses a max-1240px container with dynamic time-of-day greeting.
+The user-approved initial-load bundle cap is 500 kB gzip (including static JS/CSS
+dependencies); `scripts/check-bundle.mjs` still enforces it. Studio submission
+status reads `latest_submission` from the owned draft detail, not a nonexistent
+history endpoint, and polls while submitted/verifying. Gate 1 reports use the
+generated `VerificationReport` shape with `failures` and `items_checked`.
+Row 1 pairs the lesson hero (2fr) with TodayProgressCard (1fr), Row 2 pairs DailyPractice
+with ReviewsDue, Row 3 pairs FoundationNext with SkillProgress, and Row 4 renders WeeklyPlan
+full width (multi-column on lg). On mobile, items order: greeting, continue, today progress,
+daily practice, reviews, foundation, weekly plan, CEFR skills. Data-driven omissions are
+strictly preserved: no per-day weekly strip (WeeklyPlan lacks per-day data) and no daily-set
+done/total or estimated minutes (LessonActivity lacks estimated_minutes and DailyPracticeSet
+lacks done flags). Compact statistics retain freeze use and league opt-in without duplicate
+panels. `playwright.ui-review.config.ts` captures the fixture-only Dashboard matrix against an
+already-running app, with server startup disabled. Auth pages use the same lazy route
+loading as learner pages; URLs and guards are unchanged.
+
+Exam practice options below md open in a `BottomSheet` from a 'Practice options'
+button, keeping the unfinished-sitting resume link visible on the page; desktop
+(md+) retains the inline layout. Placement intro leads with a summary (duration
+and item count only when present in data/props, followed by post-test outcome)
+above collapsible test details, keeping the primary start action visible without
+scrolling on 375px screens. Functional tests cover mobile sheet entry and placement
+summary hierarchy; visual captures (screenshots) were not produced.
+
 
 **Mobile-first is the default, not an adaptation.** Build every component at 375 px first and
 enhance upward. Most learners study on a phone; the layout they see should not be the one that
@@ -176,7 +225,7 @@ timeout rather than as a rate limit.
 ### Performance budget — stated for the device learners actually use
 
 Measured on a **mid-tier Android under 4G throttling**, not a developer laptop:
-LCP < 2.5 s · INP < 200 ms · CLS < 0.1 · initial JS < 200 KB gzip.
+LCP < 2.5 s · INP < 200 ms · CLS < 0.1 · initial download ≤ 500 kB gzip (user-approved cap).
 
 ### Mobile-specific patterns
 
@@ -201,7 +250,7 @@ correct/incorrect states carry an icon and text.
 
 | Metric | Budget |
 |---|---|
-| Initial JS | < 200 KB gzip |
+| Initial static JS + CSS | ≤ 500 kB gzip |
 | Route chunk | < 120 KB gzip |
 | LCP | < 2.0 s |
 | CLS | < 0.1 |
@@ -220,6 +269,13 @@ Tiptap (writing editor) and wavesurfer (audio) are lazy-loaded on the routes tha
 | New design-system component | Add under `components/ui/` with a story and an a11y test |
 
 ## 10. Testing
+
+Practice/resource recovery (2026-10-01): practice skill links use the published
+`*-foundations` courses, not archived `*-practice` slugs. Daily-level selection
+explains that composition stays constant but actual difficulty changes. Resource
+lists poll explicit `processing_status`; details offer content revalidation and
+open ready exercises instead of posting another generation request. Exercise
+generation is disabled unless the server reports `learning_suitable=true`.
 
 | Level | Rule |
 |---|---|
