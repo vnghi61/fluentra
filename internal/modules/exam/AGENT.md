@@ -10,7 +10,7 @@ tables: [exams, exam_sections, exam_attempts, score_reports, integrity_events, e
 depends_on: [questionbank, job, ai, writing, speaking, learning, lesson, listening]
 depended_on_by: [learning, analytics, admin]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-09-30
 ---
 
 # exam — AGENT.md
@@ -201,6 +201,12 @@ and fails `go-arch-lint` in CI.
 <!-- END GENERATED: tasks -->
 
 ## 11. Known limitations
+
+The current sitting-start guard permits only one open sitting per learner across
+all exam versions and mock tests (including unlimited practice). The web hub shows
+the open sitting with a resume link in the catalogue, fixed-test list and custom
+composer. `ATTEMPT_IN_PROGRESS` explains that the learner must continue and submit
+that sitting; it must not silently submit or discard their answers.
 
 <!-- BEGIN GENERATED: limitations -->
 - No proctoring; integrity signals are advisory.

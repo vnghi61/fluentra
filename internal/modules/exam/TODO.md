@@ -10,13 +10,16 @@ tables: [exams, exam_sections, exam_attempts, score_reports, integrity_events, e
 depends_on: [questionbank, job, ai, writing, speaking, learning, lesson, listening]
 depended_on_by: [learning, analytics, admin]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-09-30
 ---
 
 # exam — TODO
 
 Ordered backlog. Every item states what "done" means. Keep this current — it is how the next
 agent knows what is already handled and what is deliberately deferred.
+
+- [x] Surface the existing open sitting and its resume link throughout the mock-test
+  hub; localize the fixed, random and custom start conflict with a clear next step.
 
 <!-- BEGIN GENERATED: todo -->
 ## Backlog

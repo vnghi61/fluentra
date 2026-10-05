@@ -189,4 +189,32 @@ describe("MockTestComposer", () => {
       await screen.findByText(/part listening-1.*needed 35, available 0/),
     ).toBeInTheDocument();
   });
+
+  it("keeps the composed test and explains that the existing sitting must be submitted", async () => {
+    server.use(
+      http.post("/api/v1/mock-tests/:id/attempts", () =>
+        HttpResponse.json(
+          {
+            status: 409,
+            code: "ATTEMPT_IN_PROGRESS",
+            title: "Conflict",
+            detail: "raw backend detail",
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    await renderComposer();
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Compose the test/i }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Sit this test/i }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Continue and submit it before starting another test",
+    );
+    expect(screen.getByText(/Your test is ready/)).toBeInTheDocument();
+    expect(screen.queryByText("raw backend detail")).not.toBeInTheDocument();
+  });
 });

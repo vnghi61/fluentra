@@ -222,6 +222,10 @@ export function useUserExamAttempts(limit = 10, offset = 0, enabled = true) {
     queryKey: examKeys.attempts(limit, offset),
     queryFn: () => examApi.listAttempts(limit, offset),
     enabled,
+    // Starts/submissions happen on the sitting route. Returning to the hub must
+    // not reuse its five-minute-old list and hide the sitting blocking a start.
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
   });
 }
 

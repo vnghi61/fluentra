@@ -3,6 +3,7 @@ import { Check, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import { pickLocalized } from "@/lib/localized";
 import { cn } from "@/lib/utils";
 import type {
   AnswerExplanation,
@@ -130,24 +131,22 @@ export function reviewStates(item: ExamItemOutcome): ReviewState[] {
   return [item.score === item.max_score ? "correct" : "wrong"];
 }
 
-const Explanation: React.FC<{ explanation: AnswerExplanation }> = ({
+export const Explanation: React.FC<{ explanation: AnswerExplanation }> = ({
   explanation,
 }) => {
   const { t, i18n } = useTranslation();
-  const vi = i18n.language.startsWith("vi");
-  const lead = vi
-    ? explanation.text_vi || explanation.text
-    : explanation.text || explanation.text_vi;
-  const second = vi ? explanation.text : explanation.text_vi;
+  const text = pickLocalized(
+    explanation.text,
+    explanation.text_vi,
+    i18n.language,
+  );
+  if (!text) return null;
   return (
     <div className="space-y-1 rounded-lg border border-border-subtle bg-surface-muted/60 p-3">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
         {t("exam.report.explanationLabel")}
       </p>
-      <p className="text-sm leading-relaxed text-text">{lead}</p>
-      {second && second !== lead && (
-        <p className="text-xs leading-relaxed text-text-muted">{second}</p>
-      )}
+      <p className="text-sm leading-relaxed text-text">{text}</p>
     </div>
   );
 };

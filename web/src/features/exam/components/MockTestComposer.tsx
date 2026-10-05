@@ -16,6 +16,7 @@ import { ApiError } from "@/api/client";
 import { cn } from "@/lib/utils";
 import {
   examApi,
+  problemCode,
   useExamVersions,
   type ExamVersion,
   type MockTest,
@@ -136,7 +137,9 @@ export function MockTestComposer(): React.JSX.Element {
       });
     } catch (err) {
       setError(
-        problemDetail(err) ??
+        (problemCode(err) === "ATTEMPT_IN_PROGRESS"
+          ? t("exam.hub.finishOpenSitting")
+          : problemDetail(err)) ??
           t("mockTest.startFailed", "The sitting could not be started."),
       );
     } finally {

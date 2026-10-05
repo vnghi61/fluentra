@@ -4,6 +4,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  Link,
   RouterProvider,
 } from "@tanstack/react-router";
 import { fireEvent, render, screen, within } from "@testing-library/react";
@@ -14,6 +15,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import i18n, { initI18n } from "@/i18n";
 import { ExamHub } from "@/features/exam/components/ExamHub";
 import type { ExamVersion } from "@/features/exam/api/examApi";
+import type { ExamAttemptListResponse } from "@/features/exam/types";
 import { server } from "./msw-server";
 
 const VERSION_ID = "20000000-0000-0000-0000-000000000001";
@@ -61,7 +63,7 @@ const version: ExamVersion = {
 
 async function renderHub() {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    defaultOptions: { queries: { retry: false, staleTime: 5 * 60 * 1000 } },
   });
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
@@ -78,7 +80,11 @@ async function renderHub() {
   const sittingRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/exams/$attemptId",
-    component: () => <div>sitting</div>,
+    component: () => (
+      <div>
+        sitting<Link to="/">Back to hub</Link>
+      </div>
+    ),
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, sittingRoute]),
@@ -92,6 +98,14 @@ describe("exam hub", () => {
   beforeEach(async () => {
     await initI18n("en");
     server.use(
+      http.get("/api/v1/exam-attempts", () =>
+        HttpResponse.json({
+          items: [],
+          total: 0,
+          sittings_today: 0,
+          daily_limit: 3,
+        }),
+      ),
       http.get("/api/v1/exam-versions", () =>
         HttpResponse.json({ items: [version] }),
       ),
@@ -135,6 +149,73 @@ describe("exam hub", () => {
 
     expect(await screen.findByText("2 tests")).toBeInTheDocument();
     expect(screen.getByText("Best 78%")).toBeInTheDocument();
+  });
+
+  it("keeps a link to the unfinished sitting across fixed and custom tests", async () => {
+    const attempts: ExamAttemptListResponse = {
+      items: [
+        {
+          id: "44444444-4444-4444-4444-444444444444",
+          exam_id: VERSION_ID,
+          exam_title: version.title,
+          mode: "practice",
+          chosen_duration_minutes: 60,
+          unlimited: false,
+          started_at: "2026-09-30T14:03:32Z",
+          deadline_at: "2026-09-30T15:03:32Z",
+          remaining_seconds: 3600,
+          current_section: 1,
+          status: "in_progress",
+          server_time: "2026-09-30T14:03:32Z",
+          section_activities: [],
+        },
+      ],
+      total: 1,
+      sittings_today: 1,
+      daily_limit: 3,
+    };
+    server.use(
+      http.get("/api/v1/exam-attempts", () => HttpResponse.json(attempts)),
+    );
+    await renderHub();
+    const resume = await screen.findByRole("link", { name: /Continue/ });
+    expect(resume).toHaveAttribute(
+      "href",
+      "/exams/44444444-4444-4444-4444-444444444444",
+    );
+    fireEvent.click(await screen.findByText(version.title));
+    expect(screen.getByRole("link", { name: /Continue/ })).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Build a custom test/ }),
+    );
+    expect(screen.getByRole("link", { name: /Continue/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: /Continue/ }));
+    expect(await screen.findByText("sitting")).toBeInTheDocument();
+  });
+
+  it("explains an attempt-in-progress refusal instead of displaying the raw server detail", async () => {
+    server.use(
+      http.post(`/api/v1/mock-tests/${TEST_ID}/attempts`, () =>
+        HttpResponse.json(
+          {
+            status: 409,
+            code: "ATTEMPT_IN_PROGRESS",
+            title: "Conflict",
+            detail: "raw backend detail",
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    await renderHub();
+    fireEvent.click(await screen.findByText(version.title));
+    const card = (await screen.findByText("Đề 3")).closest("li") as HTMLElement;
+    fireEvent.click(within(card).getByRole("button", { name: "Options" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Start" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Continue and submit it before starting another test",
+    );
+    expect(screen.queryByText("raw backend detail")).not.toBeInTheDocument();
   });
 
   it("walks exam → Đề 3 → practice, Reading only, no limit", async () => {
@@ -209,5 +290,118 @@ describe("exam hub", () => {
 
     await screen.findByText("sitting");
     expect(composed).toEqual({ blueprint_id: BLUEPRINT_ID, mode: "random" });
+  });
+
+  it("refreshes the still-fresh attempt list after returning from a newly started sitting", async () => {
+    let open = false;
+    const attemptId = "44444444-4444-4444-4444-444444444444";
+    server.use(
+      http.get("/api/v1/exam-attempts", () =>
+        HttpResponse.json({
+          items: open
+            ? [
+                {
+                  id: attemptId,
+                  status: "in_progress",
+                  exam_title: version.title,
+                },
+              ]
+            : [],
+          total: open ? 1 : 0,
+          sittings_today: open ? 1 : 0,
+          daily_limit: 3,
+        }),
+      ),
+      http.post(`/api/v1/mock-tests/${TEST_ID}/attempts`, () => {
+        open = true;
+        return HttpResponse.json({ id: attemptId }, { status: 201 });
+      }),
+    );
+    await renderHub();
+    fireEvent.click(await screen.findByText(version.title));
+    const card = (await screen.findByText("Đề 3")).closest("li") as HTMLElement;
+    fireEvent.click(within(card).getByRole("button", { name: "Options" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Start" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Back to hub" }));
+    expect(
+      await screen.findByRole("link", { name: /Continue/ }),
+    ).toHaveAttribute("href", `/exams/${attemptId}`);
+  });
+
+  it("keeps the resume link visible outside the sheet on mobile", async () => {
+    const attempts: ExamAttemptListResponse = {
+      items: [
+        {
+          id: "44444444-4444-4444-4444-444444444444",
+          exam_id: VERSION_ID,
+          exam_title: version.title,
+          mode: "practice",
+          chosen_duration_minutes: 60,
+          unlimited: false,
+          started_at: "2026-09-30T14:03:32Z",
+          deadline_at: "2026-09-30T15:03:32Z",
+          remaining_seconds: 3600,
+          current_section: 1,
+          status: "in_progress",
+          server_time: "2026-09-30T14:03:32Z",
+          section_activities: [],
+        },
+      ],
+      total: 1,
+      sittings_today: 1,
+      daily_limit: 3,
+    };
+    server.use(
+      http.get("/api/v1/exam-attempts", () => HttpResponse.json(attempts)),
+    );
+    await renderHub();
+    const resume = await screen.findByRole("link", { name: /Continue/ });
+    expect(resume).toBeInTheDocument();
+    expect(resume).toHaveAttribute(
+      "href",
+      "/exams/44444444-4444-4444-4444-444444444444",
+    );
+
+    const practiceOptionsBtn = screen.getByRole("button", {
+      name: /Practice options/i,
+    });
+    expect(practiceOptionsBtn).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    fireEvent.click(practiceOptionsBtn);
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Continue/ })).toBeInTheDocument();
+  });
+
+  it("below md, opens practice options sheet and reaches an option", async () => {
+    await renderHub();
+
+    const trigger = await screen.findByRole("button", {
+      name: /Practice options/i,
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+
+    // Reaches custom test builder inside sheet
+    const customOption = within(dialog).getByRole("button", {
+      name: /Build a custom test/i,
+    });
+    fireEvent.click(customOption);
+    expect(
+      within(dialog).getByRole("button", { name: /Back to the tests/i }),
+    ).toBeInTheDocument();
+
+    // Back to test list and reaches version choice inside sheet
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: /Back to the tests/i }),
+    );
+    const versionOption = within(dialog).getByText(version.title);
+    fireEvent.click(versionOption);
+    expect(
+      await within(dialog).findByRole("button", { name: /Random test/i }),
+    ).toBeInTheDocument();
   });
 });

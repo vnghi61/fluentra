@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowLeft,
@@ -16,12 +16,15 @@ import {
 
 import { ApiError } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   examApi,
+  problemCode,
   useExamVersionTests,
   useExamVersions,
+  useUserExamAttempts,
   type ExamVersion,
   type FixedTestSummary,
 } from "../api/examApi";
@@ -77,30 +80,115 @@ export function ExamHub(): React.JSX.Element {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<ExamVersion | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  if (customOpen) {
-    return (
-      <div className="space-y-4">
-        <BackButton
-          label={t("exam.hub.backToTests", "Back to the tests")}
-          onClick={() => setCustomOpen(false)}
-        />
-        <MockTestComposer />
+  const attempts = useUserExamAttempts();
+  const openAttempt = attempts.data?.items.find(
+    (attempt) => attempt.status === "in_progress",
+  );
+
+  const notice = openAttempt ? (
+    <div
+      role="status"
+      className="space-y-2 rounded-xl border border-border bg-surface-muted p-4"
+    >
+      <p className="text-sm text-text">{t("exam.hub.finishOpenSitting")}</p>
+      <Link
+        to="/exams/$attemptId"
+        params={{ attemptId: openAttempt.id }}
+        className="inline-flex min-h-[44px] items-center gap-2 font-medium text-primary-accent underline"
+      >
+        <Play className="h-4 w-4" aria-hidden="true" />
+        {t("exam.hub.resume")} · {openAttempt.exam_title}
+      </Link>
+    </div>
+  ) : null;
+
+  return (
+    <div className="space-y-4">
+      {notice}
+
+      {/* Mobile view (< md): options in a BottomSheet from one 'Practice options' button */}
+      <div className="space-y-4 md:hidden">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-extrabold tracking-tight text-text">
+            {t("exam.hub.examsTitle", "Exams")}
+          </h1>
+          <p className="text-sm text-text-muted">
+            {t(
+              "exam.hub.examsSubtitle",
+              "Pick an exam, then a numbered test or a random one, and sit it full and timed or practise a section at a time.",
+            )}
+          </p>
+        </div>
+
+        <Button
+          onClick={() => setSheetOpen(true)}
+          className="min-h-[44px] w-full gap-2"
+        >
+          <Sparkles className="h-4 w-4" aria-hidden="true" />
+          {t("exam.hub.practiceOptions", "Practice options")}
+        </Button>
+
+        <BottomSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          title={t("exam.hub.practiceOptions", "Practice options")}
+        >
+          <div className="space-y-4 px-4 pb-6">
+            {customOpen ? (
+              <div className="space-y-4">
+                <BackButton
+                  label={t("exam.hub.backToTests", "Back to the tests")}
+                  onClick={() => setCustomOpen(false)}
+                />
+                <MockTestComposer />
+              </div>
+            ) : selected ? (
+              <VersionTests
+                version={selected}
+                onBack={() => setSelected(null)}
+                onCustom={() => setCustomOpen(true)}
+              />
+            ) : (
+              <div className="space-y-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setCustomOpen(true)}
+                  className="min-h-[44px] w-full gap-2"
+                >
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  {t("exam.hub.custom", "Build a custom test")}
+                </Button>
+                <VersionList onSelect={setSelected} />
+              </div>
+            )}
+          </div>
+        </BottomSheet>
       </div>
-    );
-  }
 
-  if (selected) {
-    return (
-      <VersionTests
-        version={selected}
-        onBack={() => setSelected(null)}
-        onCustom={() => setCustomOpen(true)}
-      />
-    );
-  }
-
-  return <VersionList onSelect={setSelected} />;
+      {/* Desktop view (>= md): unchanged layout */}
+      <div className="hidden space-y-4 md:block">
+        {customOpen ? (
+          <div className="space-y-4">
+            <BackButton
+              label={t("exam.hub.backToTests", "Back to the tests")}
+              onClick={() => setCustomOpen(false)}
+            />
+            <MockTestComposer />
+          </div>
+        ) : selected ? (
+          <VersionTests
+            version={selected}
+            onBack={() => setSelected(null)}
+            onCustom={() => setCustomOpen(true)}
+          />
+        ) : (
+          <VersionList onSelect={setSelected} />
+        )}
+      </div>
+    </div>
+  );
 }
 
 function BackButton({
@@ -259,7 +347,9 @@ function VersionTests({
       });
     } catch (err) {
       setError(
-        problemDetail(err) ??
+        (problemCode(err) === "ATTEMPT_IN_PROGRESS"
+          ? t("exam.hub.finishOpenSitting")
+          : problemDetail(err)) ??
           t("exam.hub.randomFailed", "A random test could not be started."),
       );
     } finally {
@@ -427,7 +517,9 @@ function SitSheet({
       });
     } catch (err) {
       setError(
-        problemDetail(err) ??
+        (problemCode(err) === "ATTEMPT_IN_PROGRESS"
+          ? t("exam.hub.finishOpenSitting")
+          : problemDetail(err)) ??
           t("exam.hub.startFailed", "The sitting could not be started."),
       );
     } finally {
