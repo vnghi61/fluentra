@@ -1,11 +1,14 @@
 import React, { useState } from "react";
+import type { TFunction } from "i18next";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   BookOpen,
   Calendar,
+  CalendarDays,
   ChevronDown,
   Headphones,
+  Info,
   Layers,
   Mic,
   PenTool,
@@ -29,17 +32,99 @@ import { usePreferencesStore } from "@/stores/preferencesStore";
 export interface DailyPracticeCardProps {
   className?: string;
   compact?: boolean;
+  variant?: "default" | "practice";
 }
 
 /** The levels the practice pool holds. */
 const PRACTICE_LEVELS = ["A2", "B1", "B2"] as const;
 type PracticeLevel = (typeof PRACTICE_LEVELS)[number];
 
+interface PracticeSlot {
+  count: number;
+  key: string;
+  defaultLabel: string;
+  renderLabel: (t: TFunction) => string;
+  icon: typeof Layers;
+  chipClass: string;
+  iconClass: string;
+}
+
+const PRACTICE_SLOTS: readonly PracticeSlot[] = [
+  {
+    count: 3,
+    key: "practice.daily.slotGrammar",
+    defaultLabel: "3 Grammar",
+    renderLabel: (t) => t("practice.daily.slotGrammar", "3 Grammar"),
+    icon: Layers,
+    chipClass:
+      "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20",
+    iconClass: "text-blue-700 dark:text-blue-300",
+  },
+  {
+    count: 2,
+    key: "practice.daily.slotTransforms",
+    defaultLabel: "2 Transforms",
+    renderLabel: (t) => t("practice.daily.slotTransforms", "2 Transforms"),
+    icon: Zap,
+    chipClass:
+      "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20",
+    iconClass: "text-indigo-700 dark:text-indigo-300",
+  },
+  {
+    count: 1,
+    key: "practice.daily.slotReading",
+    defaultLabel: "1 Passage",
+    renderLabel: (t) => t("practice.daily.slotReading", "1 Passage"),
+    icon: BookOpen,
+    chipClass:
+      "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20",
+    iconClass: "text-purple-700 dark:text-purple-300",
+  },
+  {
+    count: 1,
+    key: "practice.daily.slotListening",
+    defaultLabel: "1 Clip",
+    renderLabel: (t) => t("practice.daily.slotListening", "1 Clip"),
+    icon: Headphones,
+    chipClass:
+      "bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20",
+    iconClass: "text-green-700 dark:text-green-300",
+  },
+  {
+    count: 2,
+    key: "practice.daily.slotSpeaking",
+    defaultLabel: "2 Speaking",
+    renderLabel: (t) => t("practice.daily.slotSpeaking", "2 Speaking"),
+    icon: Mic,
+    chipClass:
+      "bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/20",
+    iconClass: "text-orange-700 dark:text-orange-300",
+  },
+  {
+    count: 1,
+    key: "practice.daily.slotWriting",
+    defaultLabel: "1 Writing",
+    renderLabel: (t) => t("practice.daily.slotWriting", "1 Writing"),
+    icon: PenTool,
+    chipClass:
+      "bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/20",
+    iconClass: "text-pink-700 dark:text-pink-300",
+  },
+] as const;
+
+const TOTAL_PRACTICE_EXERCISES = PRACTICE_SLOTS.reduce(
+  (acc, slot) => acc + slot.count,
+  0,
+);
+
 export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
   className = "",
   compact = false,
+  variant = "default",
 }) => {
   const { t } = useTranslation();
+  const isPractice = variant === "practice";
+  const EyebrowIcon = isPractice ? CalendarDays : Calendar;
   const signedIn = useAuthStore((state) => state.status === "authenticated");
   // The level lives in preferences, so the one chosen on a phone is the one on
   // a laptop. Null until the learner picks: that is when the card asks.
@@ -78,38 +163,58 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
       <CardHeader className="space-y-2 p-4 pb-3 md:p-5 md:pb-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 text-primary">
-            <Calendar className="h-5 w-5" aria-hidden="true" />
+            <EyebrowIcon className="h-5 w-5" aria-hidden="true" />
             <span className="text-xs font-semibold uppercase tracking-wider">
               {t("practice.daily.badge", "Daily Practice Set")}
             </span>
           </div>
           {signedIn && (
-            <div className="relative inline-flex items-center">
-              <select
-                aria-label={t("practice.daily.levelGroup", "Practice level")}
-                value={level ?? ""}
-                onChange={(e) => {
-                  const next = e.target.value as PracticeLevel;
-                  if (next) void chooseLevel(next);
-                }}
-                disabled={saving}
-                className="appearance-none cursor-pointer rounded-full border border-border-subtle bg-surface-muted pl-3 pr-7 py-1 text-base font-semibold text-text min-h-[44px] min-w-[44px] focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
-              >
-                {level === null && (
-                  <option value="" disabled>
-                    {t("practice.daily.selectLevelPlaceholder", "Level")}
-                  </option>
-                )}
-                {PRACTICE_LEVELS.map((lvl) => (
-                  <option key={lvl} value={lvl}>
-                    {lvl}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                className="pointer-events-none absolute right-2.5 h-4 w-4 text-text-muted"
-                aria-hidden="true"
-              />
+            <div className="flex items-center gap-1.5">
+              <div className="relative inline-flex items-center">
+                <select
+                  aria-label={t("practice.daily.levelGroup", "Practice level")}
+                  value={level ?? ""}
+                  onChange={(e) => {
+                    const next = e.target.value as PracticeLevel;
+                    if (next) void chooseLevel(next);
+                  }}
+                  disabled={saving}
+                  className="appearance-none cursor-pointer rounded-full border border-border-subtle bg-surface-muted pl-3 pr-7 py-1 text-base font-semibold text-text min-h-[44px] min-w-[44px] focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
+                >
+                  {level === null && (
+                    <option value="" disabled>
+                      {t("practice.daily.selectLevelPlaceholder", "Level")}
+                    </option>
+                  )}
+                  {PRACTICE_LEVELS.map((lvl) => (
+                    <option key={lvl} value={lvl}>
+                      {lvl}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-2.5 h-4 w-4 text-text-muted"
+                  aria-hidden="true"
+                />
+              </div>
+
+              {isPractice && level && (
+                <details className="relative inline-flex items-center">
+                  <summary
+                    aria-label={t(
+                      "practice.daily.levelInfo",
+                      "About this level",
+                    )}
+                    title={t("practice.daily.levelInfo", "About this level")}
+                    className="flex items-center justify-center min-h-[44px] min-w-[44px] rounded-full text-text-muted hover:text-text hover:bg-surface-muted cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary list-none [&::-webkit-details-marker]:hidden transition-colors motion-reduce:transition-none"
+                  >
+                    <Info className="h-4 w-4" aria-hidden="true" />
+                  </summary>
+                  <div className="absolute right-0 top-full mt-1.5 z-20 w-64 max-w-[calc(100vw-3rem)] rounded-lg border border-border-subtle bg-surface-card p-3 text-xs text-text shadow-lg">
+                    <p role="status">{t(`practice.daily.levelHint${level}`)}</p>
+                  </div>
+                </details>
+              )}
             </div>
           )}
         </div>
@@ -118,14 +223,22 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
           {t("practice.daily.cardTitle", "Today's exercises")}
         </CardTitle>
 
-        <CardDescription className="text-sm text-text-muted">
-          {t(
-            "practice.daily.desc",
-            "10 verified exercises freshly drawn for today, across all five skills: grammar, reading, listening, speaking and writing.",
-          )}
-        </CardDescription>
+        {isPractice ? (
+          <CardDescription className="text-sm text-text-muted">
+            {t("practice.daily.setCount", {
+              count: TOTAL_PRACTICE_EXERCISES,
+            })}
+          </CardDescription>
+        ) : (
+          <CardDescription className="text-sm text-text-muted">
+            {t(
+              "practice.daily.desc",
+              "10 verified exercises freshly drawn for today, across all five skills: grammar, reading, listening, speaking and writing.",
+            )}
+          </CardDescription>
+        )}
 
-        {level && (
+        {!isPractice && level && (
           <p className="text-sm text-text-muted" role="status">
             {t(`practice.daily.levelHint${level}`)}
           </p>
@@ -151,52 +264,25 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
 
         {/*
           What the set is made of, rendered with low-saturation tints that work in dark mode.
-          Transforms reuses grammar tint (blue).
+          Transforms uses indigo.
         */}
         {!compact && (
           <div className="flex items-center gap-2 pt-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs font-medium bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20">
-              <Layers
-                className="h-3.5 w-3.5 text-blue-700 dark:text-blue-300"
-                aria-hidden="true"
-              />
-              <span>{t("practice.daily.slotGrammar", "3 Grammar")}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs font-medium bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20">
-              <Zap
-                className="h-3.5 w-3.5 text-blue-700 dark:text-blue-300"
-                aria-hidden="true"
-              />
-              <span>{t("practice.daily.slotTransforms", "2 Transforms")}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs font-medium bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20">
-              <BookOpen
-                className="h-3.5 w-3.5 text-purple-700 dark:text-purple-300"
-                aria-hidden="true"
-              />
-              <span>{t("practice.daily.slotReading", "1 Passage")}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs font-medium bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20">
-              <Headphones
-                className="h-3.5 w-3.5 text-green-700 dark:text-green-300"
-                aria-hidden="true"
-              />
-              <span>{t("practice.daily.slotListening", "1 Clip")}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs font-medium bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/20">
-              <Mic
-                className="h-3.5 w-3.5 text-orange-700 dark:text-orange-300"
-                aria-hidden="true"
-              />
-              <span>{t("practice.daily.slotSpeaking", "2 Speaking")}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs font-medium bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/20">
-              <PenTool
-                className="h-3.5 w-3.5 text-pink-700 dark:text-pink-300"
-                aria-hidden="true"
-              />
-              <span>{t("practice.daily.slotWriting", "1 Writing")}</span>
-            </span>
+            {PRACTICE_SLOTS.map((slot) => {
+              const Icon = slot.icon;
+              return (
+                <span
+                  key={slot.key}
+                  className={`inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs font-medium ${slot.chipClass}`}
+                >
+                  <Icon
+                    className={`h-3.5 w-3.5 ${slot.iconClass}`}
+                    aria-hidden="true"
+                  />
+                  <span>{slot.renderLabel(t)}</span>
+                </span>
+              );
+            })}
           </div>
         )}
       </CardHeader>

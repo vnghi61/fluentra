@@ -131,7 +131,10 @@ describe("PracticePage hub", () => {
     await renderPractice();
 
     expect(await screen.findByText("12")).toBeInTheDocument();
-    const start = screen.getByRole("link", { name: /Start review/i });
+    expect(
+      screen.getByRole("heading", { name: "Practice types" }),
+    ).toBeInTheDocument();
+    const start = screen.getByRole("link", { name: /Review now/i });
     expect(start).toHaveAttribute("href", "/practice/review");
   });
 
@@ -145,14 +148,12 @@ describe("PracticePage hub", () => {
 
     await renderPractice();
 
-    expect(
-      await screen.findByText("Nothing due right now"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("No cards due today.")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Go to a lesson/i }),
     ).toHaveAttribute("href", "/learn");
     expect(
-      screen.queryByRole("link", { name: /Start review/i }),
+      screen.queryByRole("link", { name: /Review now/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -188,7 +189,7 @@ describe("PracticePage hub", () => {
     await renderPractice();
 
     expect(
-      await screen.findByRole("link", { name: /Start review/i }),
+      await screen.findByRole("link", { name: /Review now/i }),
     ).toBeInTheDocument();
     expect(screen.queryByText("The week ahead")).not.toBeInTheDocument();
   });

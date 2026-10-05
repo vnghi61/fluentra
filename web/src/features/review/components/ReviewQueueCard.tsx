@@ -1,32 +1,13 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
-import { CheckCircle2, Layers, PlayCircle } from "lucide-react";
+import { CheckCircle2, ChevronRight, Layers } from "lucide-react";
 import { useTranslation } from "react-i18next";
-
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 export interface ReviewQueueCardProps {
   dueCount: number;
 }
 
-/**
- * The door to the review session.
- *
- * /practice/review has existed since WP9 — the queue, the FSRS grading, the
- * 1-4 keyboard shortcuts, all of it — and nothing in the app linked to it. The
- * dashboard's "Start Review" button pointed at /practice, which was a
- * placeholder, so the only way in was to type the URL. The E2E suite did not
- * notice because its journeys navigate with page.goto rather than by clicking.
- *
- * This card is that link, and it is deliberately the first thing on the page.
- */
+/** A compact door to either the review queue or the next lesson. */
 export const ReviewQueueCard: React.FC<ReviewQueueCardProps> = ({
   dueCount,
 }) => {
@@ -34,70 +15,66 @@ export const ReviewQueueCard: React.FC<ReviewQueueCardProps> = ({
 
   if (dueCount === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2 text-text-muted mb-1">
-            <Layers className="h-5 w-5" aria-hidden="true" />
-            <span className="text-xs font-semibold uppercase tracking-wider">
-              {t("practice.review.label", "Spaced repetition")}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-6 w-6 text-success" aria-hidden="true" />
-            <CardTitle className="text-lg font-bold">
-              {t("practice.review.emptyTitle", "Nothing due right now")}
-            </CardTitle>
-          </div>
-          <CardDescription>
+      <Link
+        to="/learn"
+        className="group flex min-h-[44px] min-w-0 items-center gap-3 rounded-2xl border border-border-subtle bg-surface-card p-4 shadow-sm transition duration-150 hover:-translate-y-px hover:bg-surface-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none motion-reduce:hover:translate-y-0 md:p-5"
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success/10 text-success">
+          <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-base font-semibold text-text">
+            {t("practice.review.emptyTitle", "No cards due today.")}
+          </span>
+          <span className="hidden text-sm text-text-muted md:block md:line-clamp-2">
             {t(
-              "practice.review.emptyDesc",
-              "Your queue is clear. Finish a lesson and new cards are scheduled for you automatically.",
+              "practice.review.emptyCompact",
+              "Finish a lesson to add new cards to your queue.",
             )}
-          </CardDescription>
-        </CardHeader>
-        <CardFooter className="pt-0">
-          <Link to="/learn">
-            <Button variant="secondary">
-              {t("practice.review.emptyLearnBtn", "Go to a lesson")}
-            </Button>
-          </Link>
-        </CardFooter>
-      </Card>
+          </span>
+        </span>
+        <span className="hidden rounded-lg border border-border-subtle px-3 py-2 text-sm font-medium text-text md:inline">
+          {t("practice.review.emptyLearnBtn", "Go to a lesson")}
+        </span>
+        <ChevronRight
+          className="h-5 w-5 shrink-0 text-text-muted"
+          aria-hidden="true"
+        />
+      </Link>
     );
   }
 
   return (
-    <Card className="border-primary/30">
-      <CardHeader>
-        <div className="flex items-center gap-2 text-primary-accent mb-1">
-          <Layers className="h-5 w-5" aria-hidden="true" />
-          <span className="text-xs font-semibold uppercase tracking-wider">
-            {t("practice.review.label", "Spaced repetition")}
-          </span>
-        </div>
-        <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-extrabold text-text tracking-tight">
+    <Link
+      to="/practice/review"
+      className="group flex min-h-[44px] min-w-0 items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4 shadow-sm transition duration-150 hover:-translate-y-px hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none motion-reduce:hover:translate-y-0 md:p-5"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <Layers className="h-5 w-5" aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-baseline gap-1.5">
+          <span className="text-2xl font-extrabold tracking-tight text-text">
             {dueCount}
           </span>
-          <CardTitle className="text-lg font-bold">
-            {t("practice.review.dueTitle", "cards due today")}
-          </CardTitle>
-        </div>
-        <CardDescription>
+          <span className="truncate text-sm font-medium text-text-muted">
+            {t("practice.review.dueCount", "cards due")}
+          </span>
+        </span>
+        <span className="hidden text-sm text-text-muted md:block md:line-clamp-2">
           {t(
             "practice.review.dueDesc",
             "Grade each card by how well you recalled it. The schedule adapts to your answers.",
           )}
-        </CardDescription>
-      </CardHeader>
-      <CardFooter className="pt-0">
-        <Link to="/practice/review">
-          <Button className="gap-2">
-            <PlayCircle className="h-4 w-4" aria-hidden="true" />
-            {t("practice.review.startBtn", "Start review")}
-          </Button>
-        </Link>
-      </CardFooter>
-    </Card>
+        </span>
+      </span>
+      <span className="hidden rounded-lg border border-primary/30 px-3 py-2 text-sm font-medium text-primary md:inline">
+        {t("practice.review.reviewNow", "Review now →")}
+      </span>
+      <ChevronRight
+        className="h-5 w-5 shrink-0 text-primary"
+        aria-hidden="true"
+      />
+    </Link>
   );
 };
