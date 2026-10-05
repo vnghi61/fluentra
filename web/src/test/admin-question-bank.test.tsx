@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { I18nextProvider } from "react-i18next";
@@ -132,7 +132,7 @@ describe("AdminQuestionBank", () => {
     renderBank();
 
     const row = await screen.findByRole("button", {
-      name: /grammar_tense_choice/,
+      name: /Grammar tense choice/i,
     });
     await userEvent.click(row);
 
@@ -143,10 +143,11 @@ describe("AdminQuestionBank", () => {
 
   it("generates drafts with the node codes the form carries", async () => {
     renderBank();
-    await screen.findByRole("button", { name: /grammar_tense_choice/ });
+    await screen.findByRole("button", { name: /Grammar tense choice/i });
 
+    // Desktop toolbar and mobile header both render the button in jsdom.
     await userEvent.click(
-      screen.getByRole("button", { name: /Generate drafts/i }),
+      screen.getAllByRole("button", { name: /Generate drafts/i })[0]!,
     );
     await userEvent.type(
       screen.getByPlaceholderText(/PRESENT_PERFECT/),
@@ -166,7 +167,7 @@ describe("AdminQuestionBank", () => {
 
   it("shows the coverage number and marks the bottleneck part", async () => {
     renderBank();
-    await screen.findByRole("button", { name: /grammar_tense_choice/ });
+    await screen.findByRole("button", { name: /Grammar tense choice/i });
 
     await userEvent.click(screen.getByRole("button", { name: /Coverage/i }));
 
@@ -174,5 +175,158 @@ describe("AdminQuestionBank", () => {
     expect((await screen.findAllByText("2")).length).toBeGreaterThan(0);
     expect(screen.getByText(/Bottleneck/i)).toBeInTheDocument();
     expect(screen.getByText(/TOEIC_LR_2026/)).toBeInTheDocument();
+  });
+
+  it("renders mobile cards with summary/prompt first, status badge, action button, and secondary id", async () => {
+    renderBank();
+
+    const cardList = await screen.findByTestId("question-cards");
+    expect(cardList).toBeInTheDocument();
+
+    const card = within(cardList).getByTestId("question-card");
+    expect(card).toBeInTheDocument();
+
+    // Summary/prompt first (humanized question.kind)
+    expect(card).toHaveTextContent("Grammar tense choice");
+    // Text status badge (translated)
+    expect(card).toHaveTextContent("Published");
+    // Secondary small text with question ID
+    expect(card).toHaveTextContent(question.id);
+
+    // Action button
+    const actionBtn = within(card).getByRole("button", {
+      name: /Performance/i,
+    });
+    expect(actionBtn).toBeInTheDocument();
+
+    // Clicking action button opens stats modal
+    await userEvent.click(actionBtn);
+    expect(await screen.findByText("0.68")).toBeInTheDocument();
+  });
+
+  it("opens filters in BottomSheet and shows an applied filter chip", async () => {
+    renderBank();
+    await screen.findByRole("button", { name: /Grammar tense choice/i });
+
+    // Open filter sheet on mobile
+    await userEvent.click(screen.getByRole("button", { name: /^Filters/i }));
+
+    // Select a filter inside the sheet
+    const sheet = await screen.findByTestId("filter-sheet");
+    const statusSelect = within(sheet).getByLabelText(/^Status/i);
+    expect(
+      within(statusSelect).getByRole("option", { name: "Draft" }),
+    ).toBeInTheDocument();
+    await userEvent.selectOptions(statusSelect, "draft");
+
+    // Applied filter chip appears with translated status
+    const chipContainer = await screen.findByTestId("applied-filter-chips");
+    expect(chipContainer).toHaveTextContent(/Status.*Draft/i);
+
+    // Verify 44px touch target and translated aria-label on chip remove button
+    const removeStatusBtn = within(chipContainer).getByRole("button", {
+      name: /Remove status filter/i,
+    });
+    expect(removeStatusBtn).toHaveClass("min-h-[44px]", "min-w-[44px]");
+    expect(removeStatusBtn).toHaveAttribute(
+      "aria-label",
+      "Remove Status filter",
+    );
+  });
+
+  it("removes a chip and clear-filters resets the query params", async () => {
+    let lastQuery = "";
+    server.use(
+      http.get("/api/v1/admin/questions", ({ request }) => {
+        lastQuery = new URL(request.url).search;
+        return HttpResponse.json({
+          items: [question],
+          total: 1,
+          limit: 20,
+          offset: 0,
+        });
+      }),
+    );
+
+    renderBank();
+    await screen.findByRole("button", { name: /Grammar tense choice/i });
+
+    // Open filter sheet and apply kind and status filters
+    await userEvent.click(screen.getByRole("button", { name: /^Filters/i }));
+    const sheet = await screen.findByTestId("filter-sheet");
+    await userEvent.selectOptions(
+      within(sheet).getByLabelText(/^Kind/i),
+      "grammar_tense_choice",
+    );
+    await userEvent.selectOptions(
+      within(sheet).getByLabelText(/^Status/i),
+      "draft",
+    );
+
+    await waitFor(() => {
+      expect(lastQuery).toContain("kind=grammar_tense_choice");
+      expect(lastQuery).toContain("status=draft");
+    });
+
+    // Remove the kind filter chip
+    const removeKindBtn = screen.getByRole("button", {
+      name: /Remove kind filter/i,
+    });
+    expect(removeKindBtn).toHaveClass("min-h-[44px]", "min-w-[44px]");
+    expect(removeKindBtn).toHaveAttribute("aria-label", "Remove Kind filter");
+    await userEvent.click(removeKindBtn);
+
+    await waitFor(() => {
+      expect(lastQuery).not.toContain("kind=grammar_tense_choice");
+      expect(lastQuery).toContain("status=draft");
+    });
+
+    // Click "Clear filters" to reset all filters
+    const clearBtn = within(
+      screen.getByTestId("applied-filter-chips"),
+    ).getByRole("button", { name: /Clear filters/i });
+    await userEvent.click(clearBtn);
+
+    await waitFor(() => {
+      expect(lastQuery).not.toContain("status=draft");
+      expect(
+        screen.queryByTestId("applied-filter-chips"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows result count in role='status' saying 'loaded' when more pages exist and no total invented", async () => {
+    // 1. With 1 item and total = 1 (no more pages):
+    renderBank();
+    await screen.findByRole("button", { name: /Grammar tense choice/i });
+
+    const statusLine = screen.getByRole("status");
+    expect(statusLine).toHaveTextContent("1 result");
+    expect(statusLine).not.toHaveTextContent(/loaded/i);
+
+    // 2. When more pages exist:
+    server.use(
+      http.get("/api/v1/admin/questions", () =>
+        HttpResponse.json({
+          items: [question],
+          total: 10,
+          limit: 1,
+          offset: 0,
+        }),
+      ),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /^Filters/i }));
+    const sheet = await screen.findByTestId("filter-sheet");
+    await userEvent.selectOptions(
+      within(sheet).getByLabelText(/^Status/i),
+      "published",
+    );
+
+    await waitFor(() => {
+      const updatedStatus = screen.getByRole("status");
+      expect(updatedStatus).toHaveTextContent("1 loaded");
+      expect(updatedStatus).not.toHaveTextContent("10");
+    });
   });
 });

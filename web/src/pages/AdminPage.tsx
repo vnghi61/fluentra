@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { Shield } from "lucide-react";
+import { ChevronDown, Shield } from "lucide-react";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import {
   AdminUserList,
   AdminFeatureFlags,
@@ -26,6 +27,7 @@ export function AdminPage(): React.JSX.Element {
     strict: false,
   });
   const { sections, isLoading } = useVisibleAdminSections();
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // The address decides, not component state. /admin names no section, and a
   // section the permissions do not grant is not one to render, so both fall
@@ -33,6 +35,11 @@ export function AdminPage(): React.JSX.Element {
   const asked = params["section"];
   const visible: AdminSectionKey | undefined =
     sections.find((section) => section.key === asked)?.key ?? sections[0]?.key;
+  const currentSection =
+    sections.find((section) => section.key === visible) ?? sections[0];
+  const currentLabel = currentSection
+    ? t(currentSection.labelKey, currentSection.labelFallback)
+    : "";
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 py-4">
@@ -50,29 +57,75 @@ export function AdminPage(): React.JSX.Element {
         <p className="text-sm text-text-muted">{t("page.adminIntro")}</p>
       </header>
 
-      {/* The sections live in the sidebar now. It is drawn from `md` up, so this
-          row is what carries them on a phone — the same destinations, not a
-          second source of truth. */}
-      <div className="flex border-b border-border-subtle gap-2 pb-px overflow-x-auto md:hidden">
-        {sections.map(({ key, path, labelKey, labelFallback, Icon }) => {
-          const isActive = visible === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => void navigate({ to: path })}
-              className={`flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-medium border-b-2 transition-colors min-h-[44px] cursor-pointer ${
-                isActive
-                  ? "border-primary text-primary-accent bg-primary/5 rounded-t-lg"
-                  : "border-transparent text-text-muted hover:text-text hover:border-border-subtle"
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {t(labelKey, labelFallback)}
-            </button>
-          );
-        })}
-      </div>
+      {/* Mobile section picker for viewports below md */}
+      {!isLoading && sections.length > 0 && (
+        <div className="md:hidden">
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            aria-expanded={pickerOpen}
+            aria-haspopup="dialog"
+            className="flex items-center justify-between w-full px-4 py-3 min-h-[44px] rounded-xl border border-border bg-surface-card text-sm font-medium text-text hover:bg-surface-muted transition-colors cursor-pointer"
+          >
+            <span className="flex items-center gap-2 truncate">
+              {currentSection && (
+                <currentSection.Icon
+                  className="h-4 w-4 shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+              )}
+              <span>
+                {t("page.adminSectionPicker", "Section: {{section}}", {
+                  section: currentLabel,
+                })}
+              </span>
+            </span>
+            <ChevronDown
+              className="h-4 w-4 shrink-0 text-text-muted"
+              aria-hidden="true"
+            />
+          </button>
+
+          <BottomSheet
+            open={pickerOpen}
+            onOpenChange={setPickerOpen}
+            title={t("page.adminSectionsTitle", "Admin Sections")}
+          >
+            <div className="flex flex-col gap-1 pb-4">
+              {sections.map(({ key, path, labelKey, labelFallback, Icon }) => {
+                const isActive = visible === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setPickerOpen(false);
+                      void navigate({ to: path });
+                    }}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`flex items-center gap-3 w-full px-4 py-3 min-h-[44px] text-left text-sm rounded-xl transition-colors cursor-pointer ${
+                      isActive
+                        ? "bg-primary/10 text-primary-accent font-semibold"
+                        : "text-text hover:bg-surface-muted font-medium"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                    <span className="flex-1 truncate">
+                      {t(labelKey, labelFallback)}
+                    </span>
+                    {isActive && (
+                      <span
+                        className="h-2 w-2 rounded-full bg-primary shrink-0"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </BottomSheet>
+        </div>
+      )}
 
       {/* Tab Panels */}
       <div>

@@ -134,8 +134,11 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
               <div className="rounded-lg border border-primary/30 bg-primary/10 px-3.5 py-2.5 text-xs text-primary-accent flex items-center gap-2">
                 <Shield className="h-4 w-4 shrink-0 text-primary-accent" />
                 <span>
-                  This account profile read was logged to the security audit
-                  trail (<code>admin.user_viewed</code>).
+                  {t(
+                    "admin.userViewedAuditNotice",
+                    "This account profile read was logged to the security audit trail",
+                  )}{" "}
+                  (<code>admin.user_viewed</code>).
                 </span>
               </div>
 

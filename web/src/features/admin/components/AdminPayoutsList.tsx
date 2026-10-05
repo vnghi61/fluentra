@@ -15,15 +15,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardDescription,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  adminApi,
-  type PayoutResponse,
-} from "../api/adminApi";
+import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { adminApi, type PayoutResponse } from "../api/adminApi";
 
 export function AdminPayoutsList(): React.JSX.Element {
   const { t } = useTranslation();
@@ -77,7 +70,10 @@ export function AdminPayoutsList(): React.JSX.Element {
       setActionError(
         err instanceof Error
           ? err.message
-          : t("adminPayouts.errFulfillFailed", "Failed to record payout fulfillment"),
+          : t(
+              "adminPayouts.errFulfillFailed",
+              "Failed to record payout fulfillment",
+            ),
       );
     } finally {
       setActionLoading(false);
@@ -125,7 +121,10 @@ export function AdminPayoutsList(): React.JSX.Element {
             )}
           </p>
         </div>
-        <Badge variant="primary" className="text-xs px-2.5 py-1 self-start sm:self-auto">
+        <Badge
+          variant="primary"
+          className="text-xs px-2.5 py-1 self-start sm:self-auto"
+        >
           {t("adminPayouts.count", {
             count: total,
             defaultValue: `${total} payouts total`,
@@ -247,7 +246,10 @@ export function AdminPayoutsList(): React.JSX.Element {
                   id="fulfill-payout-title"
                   className="text-lg font-bold text-text"
                 >
-                  {t("adminPayouts.fulfillModalTitle", "Fulfill Creator Payout")}
+                  {t(
+                    "adminPayouts.fulfillModalTitle",
+                    "Fulfill Creator Payout",
+                  )}
                 </h2>
               </div>
               <button
@@ -284,7 +286,12 @@ export function AdminPayoutsList(): React.JSX.Element {
               </div>
             )}
 
-            <form onSubmit={(e) => { void handleFulfill(e); }} className="space-y-4">
+            <form
+              onSubmit={(e) => {
+                void handleFulfill(e);
+              }}
+              className="space-y-4"
+            >
               <div>
                 <label
                   htmlFor="bank-ref-input"
@@ -296,7 +303,10 @@ export function AdminPayoutsList(): React.JSX.Element {
                   id="bank-ref-input"
                   value={bankReference}
                   onChange={(e) => setBankReference(e.target.value)}
-                  placeholder="e.g. VCB-TRF-20260920-001"
+                  placeholder={t(
+                    "adminPayouts.bankRefPlaceholder",
+                    "e.g. VCB-TRF-20260920-001",
+                  )}
                   required
                   className="font-mono text-sm"
                 />
@@ -319,7 +329,10 @@ export function AdminPayoutsList(): React.JSX.Element {
                   id="payout-note-input"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="e.g. Sent via corporate Vietcombank account"
+                  placeholder={t(
+                    "adminPayouts.notePlaceholder",
+                    "e.g. Sent via corporate Vietcombank account",
+                  )}
                 />
               </div>
 

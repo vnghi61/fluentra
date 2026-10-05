@@ -408,7 +408,12 @@ export const AdminContentDetailModal: React.FC<
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-card border border-border rounded-xl shadow-2xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="content-detail-title"
+        className="relative w-full max-w-4xl bg-card border border-border rounded-xl shadow-2xl overflow-hidden my-8 flex flex-col max-h-[90vh]"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/40">
           <div className="flex items-center gap-3">
@@ -417,7 +422,10 @@ export const AdminContentDetailModal: React.FC<
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-foreground">
+                <h2
+                  id="content-detail-title"
+                  className="text-lg font-semibold text-foreground"
+                >
                   {detail?.slug || t("admin.contentDetail")}
                 </h2>
                 {detail && (

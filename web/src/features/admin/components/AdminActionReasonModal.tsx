@@ -140,7 +140,8 @@ export const AdminActionReasonModal: React.FC<AdminActionReasonModalProps> = ({
             />
             {errors.reason && (
               <p className="text-xs text-danger-accent">
-                {errors.reason.message}
+                {/* The schema carries translation keys, not sentences. */}
+                {t(errors.reason.message ?? "")}
               </p>
             )}
           </div>

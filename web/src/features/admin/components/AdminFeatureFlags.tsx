@@ -266,8 +266,10 @@ export const AdminFeatureFlags: React.FC = () => {
             {t("admin.featureFlagsRollouts")}
           </h3>
           <p className="text-xs text-text-muted">
-            Control dynamic system feature switches, percentage rollouts, and
-            owner assignments.
+            {t(
+              "admin.featureFlagsSubtitle",
+              "Control dynamic system feature switches, percentage rollouts, and owner assignments.",
+            )}
           </p>
         </div>
 

@@ -4,8 +4,8 @@ export const adminActionReasonSchema = z.object({
   reason: z
     .string()
     .trim()
-    .min(10, "Reason must be at least 10 characters long")
-    .max(500, "Reason cannot exceed 500 characters"),
+    .min(10, "validation.reasonMinLength")
+    .max(500, "validation.reasonMaxLength"),
 });
 
 export type AdminActionReasonFormValues = z.infer<
@@ -16,24 +16,18 @@ export const createFeatureFlagSchema = z.object({
   key: z
     .string()
     .trim()
-    .min(2, "Flag key must be at least 2 characters")
-    .regex(
-      /^[a-z0-9_]+$/,
-      "Flag key must be lowercase alphanumeric with underscores",
-    ),
-  description: z
-    .string()
-    .trim()
-    .min(5, "Description must be at least 5 characters"),
+    .min(2, "validation.flagKeyMinLength")
+    .regex(/^[a-z0-9_]+$/, "validation.flagKeyFormat"),
+  description: z.string().trim().min(5, "validation.descriptionMinLength"),
   enabled: z.boolean().default(false),
   rollout_percent: z
     .number()
-    .min(0, "Rollout cannot be negative")
-    .max(100, "Rollout cannot exceed 100%"),
-  owner: z.string().trim().min(2, "Owner is required (e.g. @team or email)"),
+    .min(0, "validation.rolloutMin")
+    .max(100, "validation.rolloutMax"),
+  owner: z.string().trim().min(2, "validation.flagOwnerRequired"),
   expires_on: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Expiry must be in YYYY-MM-DD format"),
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "validation.expiryFormat"),
 });
 
 export type CreateFeatureFlagFormValues = z.infer<

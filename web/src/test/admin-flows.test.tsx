@@ -12,7 +12,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { server } from "./msw-server";
-import i18n, { initI18n } from "@/i18n";
+import i18n, { initI18n, loadLocale } from "@/i18n";
 import { AdminUserList } from "@/features/admin/components/AdminUserList";
 import { AdminFeatureFlags } from "@/features/admin/components/AdminFeatureFlags";
 import { AdminPage } from "@/pages/AdminPage";
@@ -99,6 +99,7 @@ async function renderAdminPage(
 describe("Admin Shell & Operations", () => {
   beforeEach(async () => {
     await initI18n("en");
+    await loadLocale("en");
     await i18n.changeLanguage("en");
 
     // Default mock handlers for admin endpoints
@@ -220,12 +221,16 @@ describe("Admin Shell & Operations", () => {
     expect(
       await screen.findByRole("button", { name: /Learner Management/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Feature Flags/i }),
-    ).toBeInTheDocument();
-
-    // Switch to Feature Flags tab
-    await user.click(screen.getByRole("button", { name: /Feature Flags/i }));
+    // Below md the sections live behind the section picker; the desktop
+    // sidebar is drawn by the shell, which this page test does not mount.
+    await user.click(
+      screen.getByRole("button", { name: /Section:\s*Learner Management/i }),
+    );
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Feature Flags",
+      }),
+    );
     await waitFor(() => {
       expect(screen.getByText("Feature Flags & Rollouts")).toBeInTheDocument();
     });
@@ -815,5 +820,173 @@ describe("Admin AI usage", () => {
     expect(
       screen.queryByRole("button", { name: /AI Usage/i }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("Mobile admin section picker", () => {
+  it("renders a Section button that opens a BottomSheet with all permitted sections", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({
+          roles: ["admin"],
+          permissions: ["user.list", "system.flags", "questionbank.read"],
+        }),
+      ),
+    );
+
+    await renderAdminPage("/admin");
+
+    // Section picker button exists and has min height >= 44px
+    const pickerBtn = await screen.findByRole("button", {
+      name: /Section:\s*Learner Management/i,
+    });
+    expect(pickerBtn).toBeInTheDocument();
+    expect(pickerBtn).toHaveClass("min-h-[44px]");
+
+    // Open BottomSheet
+    await user.click(pickerBtn);
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText("Admin Sections")).toBeInTheDocument();
+
+    const dialogScope = within(dialog);
+
+    // Permitted sections appear with icon and label
+    const userItem = dialogScope.getByRole("button", {
+      name: "Learner Management",
+    });
+    const flagsItem = dialogScope.getByRole("button", {
+      name: "Feature Flags",
+    });
+    const questionsItem = dialogScope.getByRole("button", {
+      name: "Question Bank",
+    });
+
+    expect(userItem).toBeInTheDocument();
+    expect(flagsItem).toBeInTheDocument();
+    expect(questionsItem).toBeInTheDocument();
+
+    // Current section is marked with aria-current
+    expect(userItem).toHaveAttribute("aria-current", "page");
+    expect(flagsItem).not.toHaveAttribute("aria-current");
+    expect(questionsItem).not.toHaveAttribute("aria-current");
+
+    // Unpermitted sections do not appear
+    expect(
+      dialogScope.queryByRole("button", { name: "AI Usage" }),
+    ).not.toBeInTheDocument();
+    expect(
+      dialogScope.queryByRole("button", { name: "Review Queue" }),
+    ).not.toBeInTheDocument();
+    expect(
+      dialogScope.queryByRole("button", { name: "Creator Payouts" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("navigates on section selection and updates current section", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({
+          roles: ["admin"],
+          permissions: ["user.list", "system.flags"],
+        }),
+      ),
+      http.get("/api/v1/admin/users", () =>
+        HttpResponse.json({ items: [sampleUser1] }),
+      ),
+      http.get("/api/v1/admin/flags", () =>
+        HttpResponse.json({ items: [sampleFlag] }),
+      ),
+    );
+
+    await renderAdminPage("/admin");
+
+    const pickerBtn = await screen.findByRole("button", {
+      name: /Section:\s*Learner Management/i,
+    });
+    await user.click(pickerBtn);
+
+    const dialog = screen.getByRole("dialog");
+    const flagsItem = within(dialog).getByRole("button", {
+      name: "Feature Flags",
+    });
+
+    // Choosing a section navigates to its path
+    await user.click(flagsItem);
+
+    // BottomSheet closes
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // Button label reflects new current section
+    expect(
+      await screen.findByRole("button", {
+        name: /Section:\s*Feature Flags/i,
+      }),
+    ).toBeInTheDocument();
+
+    // The destination section panel is loaded
+    expect(await screen.findByText("streaks_v2")).toBeInTheDocument();
+
+    // Reopening the picker marks the new section with aria-current
+    await user.click(
+      screen.getByRole("button", { name: /Section:\s*Feature Flags/i }),
+    );
+    const reopenedDialog = screen.getByRole("dialog");
+    const reopenedScope = within(reopenedDialog);
+    expect(
+      reopenedScope.getByRole("button", { name: "Feature Flags" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      reopenedScope.getByRole("button", { name: "Learner Management" }),
+    ).not.toHaveAttribute("aria-current");
+  });
+
+  it("renders localized picker in Vietnamese", async () => {
+    await loadLocale("vi");
+    await i18n.changeLanguage("vi");
+
+    const user = userEvent.setup();
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({
+          roles: ["admin"],
+          permissions: ["user.list", "system.flags"],
+        }),
+      ),
+      http.get("/api/v1/admin/users", () =>
+        HttpResponse.json({ items: [sampleUser1] }),
+      ),
+      http.get("/api/v1/admin/flags", () =>
+        HttpResponse.json({ items: [sampleFlag] }),
+      ),
+    );
+
+    await renderAdminPage("/admin");
+
+    const pickerBtn = await screen.findByRole("button", {
+      name: /Mục:\s*Quản lý người học/i,
+    });
+    expect(pickerBtn).toBeInTheDocument();
+
+    await user.click(pickerBtn);
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Các mục quản trị")).toBeInTheDocument();
+
+    const userItem = within(dialog).getByRole("button", {
+      name: "Quản lý người học",
+    });
+    expect(userItem).toHaveAttribute("aria-current", "page");
+
+    const flagsItem = within(dialog).getByRole("button", {
+      name: "Feature flag",
+    });
+    expect(flagsItem).toBeInTheDocument();
+    expect(flagsItem).not.toHaveAttribute("aria-current");
   });
 });

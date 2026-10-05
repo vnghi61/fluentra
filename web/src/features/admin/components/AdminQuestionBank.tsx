@@ -4,13 +4,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   BarChart3,
+  Filter,
   Loader2,
   RefreshCw,
   Search,
   Sparkles,
+  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -53,6 +56,26 @@ function statusTone(status: string): "success" | "warning" | "secondary" {
   return "secondary";
 }
 
+type TranslateFn = ReturnType<typeof useTranslation>["t"];
+
+function humanizeKind(kind: string, t: TranslateFn): string {
+  if (!kind) return "";
+  const key = `adminQuestions.kinds.${kind}`;
+  const fallback = kind
+    .replace(/_/g, " ")
+    .replace(/^\w/, (c) => c.toUpperCase());
+  return t(key, fallback);
+}
+
+function humanizeStatus(status: string, t: TranslateFn): string {
+  if (!status) return "";
+  const key = `adminQuestions.statuses.${status}`;
+  const fallback = status
+    .replace(/_/g, " ")
+    .replace(/^\w/, (c) => c.toUpperCase());
+  return t(key, fallback);
+}
+
 function QuestionsTab(): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
@@ -60,6 +83,7 @@ function QuestionsTab(): React.JSX.Element {
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<Question | null>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ["admin", "questions", filter, offset],
@@ -88,16 +112,45 @@ function QuestionsTab(): React.JSX.Element {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
+  const hasMore =
+    (total > 0 && offset + items.length < total) ||
+    (total === 0 && items.length >= PAGE_SIZE);
 
   const setFilterValue = (key: keyof QuestionFilter, value: string) => {
     setFilter((prev) => ({ ...prev, [key]: value || undefined }));
     setOffset(0);
   };
 
+  const removeFilter = (key: keyof QuestionFilter) => {
+    setFilter((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setOffset(0);
+  };
+
+  const clearAllFilters = () => {
+    setFilter({});
+    setOffset(0);
+  };
+
+  const hasActiveFilters = Boolean(
+    filter.kind || filter.status || filter.cefr_level || filter.node_code,
+  );
+
+  const activeFilterCount = [
+    filter.kind,
+    filter.status,
+    filter.cefr_level,
+    filter.node_code,
+  ].filter(Boolean).length;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Desktop Filter Row (md+) */}
+        <div className="hidden md:flex flex-wrap items-center gap-2">
           <select
             value={filter.kind ?? ""}
             onChange={(e) => setFilterValue("kind", e.target.value)}
@@ -108,7 +161,7 @@ function QuestionsTab(): React.JSX.Element {
               <option key={value} value={value}>
                 {value === ""
                   ? t("adminQuestions.allKinds", "All kinds")
-                  : value}
+                  : humanizeKind(value, t)}
               </option>
             ))}
           </select>
@@ -122,7 +175,7 @@ function QuestionsTab(): React.JSX.Element {
               <option key={value} value={value}>
                 {value === ""
                   ? t("adminQuestions.allStatuses", "All statuses")
-                  : value}
+                  : humanizeStatus(value, t)}
               </option>
             ))}
           </select>
@@ -176,6 +229,285 @@ function QuestionsTab(): React.JSX.Element {
           </Button>
         </div>
 
+        {/* Mobile Filter Controls (below md) */}
+        <div className="flex md:hidden items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setFilterSheetOpen(true)}
+              className="h-11 min-h-[44px] gap-2"
+              aria-label={t("adminQuestions.filtersBtn", "Filters")}
+            >
+              <Filter className="h-4 w-4" aria-hidden="true" />
+              <span>{t("adminQuestions.filtersBtn", "Filters")}</span>
+              {activeFilterCount > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-1 px-1.5 py-0.5 text-xs"
+                >
+                  {activeFilterCount}
+                </Badge>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              disabled={isFetching}
+              className="h-11 w-11 shrink-0 p-0"
+              title={t("admin.refresh", "Refresh")}
+            >
+              <RefreshCw
+                className={cn("h-4 w-4", isFetching && "animate-spin")}
+                aria-hidden="true"
+              />
+            </Button>
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => setGenerateOpen((open) => !open)}
+            className="h-11 min-h-[44px] gap-2"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            <span>{t("adminQuestions.generateBtn", "Generate drafts")}</span>
+          </Button>
+        </div>
+
+        {/* Applied Filter Chips & Status Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {hasActiveFilters ? (
+            <div
+              className="flex flex-wrap items-center gap-1.5"
+              data-testid="applied-filter-chips"
+            >
+              {filter.kind && (
+                <Badge
+                  variant="secondary"
+                  className="flex items-center gap-1 py-0.5 pl-2 pr-1 text-xs"
+                >
+                  <span>
+                    {t("adminQuestions.kindFilter", "Kind")}:{" "}
+                    {humanizeKind(filter.kind, t)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeFilter("kind")}
+                    aria-label={t("adminQuestions.removeFilter", {
+                      filter: t("adminQuestions.kindFilter", "Kind"),
+                      defaultValue: "Remove {{filter}} filter",
+                    })}
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full hover:bg-muted focus:outline-none"
+                  >
+                    <X className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                </Badge>
+              )}
+              {filter.status && (
+                <Badge
+                  variant="secondary"
+                  className="flex items-center gap-1 py-0.5 pl-2 pr-1 text-xs"
+                >
+                  <span>
+                    {t("adminQuestions.statusFilter", "Status")}:{" "}
+                    {humanizeStatus(filter.status, t)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeFilter("status")}
+                    aria-label={t("adminQuestions.removeFilter", {
+                      filter: t("adminQuestions.statusFilter", "Status"),
+                      defaultValue: "Remove {{filter}} filter",
+                    })}
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full hover:bg-muted focus:outline-none"
+                  >
+                    <X className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                </Badge>
+              )}
+              {filter.cefr_level && (
+                <Badge
+                  variant="secondary"
+                  className="flex items-center gap-1 py-0.5 pl-2 pr-1 text-xs"
+                >
+                  <span>
+                    {t("adminQuestions.levelFilter", "Level")}:{" "}
+                    {filter.cefr_level}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeFilter("cefr_level")}
+                    aria-label={t("adminQuestions.removeFilter", {
+                      filter: t("adminQuestions.levelFilter", "Level"),
+                      defaultValue: "Remove {{filter}} filter",
+                    })}
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full hover:bg-muted focus:outline-none"
+                  >
+                    <X className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                </Badge>
+              )}
+              {filter.node_code && (
+                <Badge
+                  variant="secondary"
+                  className="flex items-center gap-1 py-0.5 pl-2 pr-1 text-xs"
+                >
+                  <span>
+                    {t("adminQuestions.nodeLabel", "Node")}: {filter.node_code}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeFilter("node_code")}
+                    aria-label={t("adminQuestions.removeFilter", {
+                      filter: t("adminQuestions.nodeLabel", "Node"),
+                      defaultValue: "Remove {{filter}} filter",
+                    })}
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full hover:bg-muted focus:outline-none"
+                  >
+                    <X className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="px-2 text-xs text-text-muted hover:text-text"
+              >
+                {t("adminQuestions.clearFilters", "Clear filters")}
+              </Button>
+            </div>
+          ) : (
+            <div />
+          )}
+
+          {!isLoading && (
+            <p role="status" className="text-xs text-text-muted">
+              {hasMore
+                ? t("adminQuestions.loadedCount", {
+                    count: items.length,
+                    defaultValue: `${items.length} loaded`,
+                  })
+                : t("adminQuestions.resultsCount", {
+                    count: items.length,
+                    defaultValue:
+                      items.length === 1
+                        ? "1 result"
+                        : `${items.length} results`,
+                  })}
+            </p>
+          )}
+        </div>
+
+        {/* Mobile BottomSheet for filters */}
+        <BottomSheet
+          open={filterSheetOpen}
+          onOpenChange={setFilterSheetOpen}
+          title={t("adminQuestions.filtersTitle", "Filter Questions")}
+        >
+          <div data-testid="filter-sheet" className="space-y-4 p-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-text">
+                {t("adminQuestions.kindFilter", "Kind")}
+              </label>
+              <select
+                value={filter.kind ?? ""}
+                onChange={(e) => setFilterValue("kind", e.target.value)}
+                aria-label={t("adminQuestions.kindFilter", "Kind")}
+                className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                {KINDS.map((value) => (
+                  <option key={value} value={value}>
+                    {value === ""
+                      ? t("adminQuestions.allKinds", "All kinds")
+                      : humanizeKind(value, t)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-text">
+                {t("adminQuestions.statusFilter", "Status")}
+              </label>
+              <select
+                value={filter.status ?? ""}
+                onChange={(e) => setFilterValue("status", e.target.value)}
+                aria-label={t("adminQuestions.statusFilter", "Status")}
+                className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                {STATUSES.map((value) => (
+                  <option key={value} value={value}>
+                    {value === ""
+                      ? t("adminQuestions.allStatuses", "All statuses")
+                      : humanizeStatus(value, t)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-text">
+                {t("adminQuestions.levelFilter", "Level")}
+              </label>
+              <select
+                value={filter.cefr_level ?? ""}
+                onChange={(e) => setFilterValue("cefr_level", e.target.value)}
+                aria-label={t("adminQuestions.levelFilter", "Level")}
+                className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                {LEVELS.map((value) => (
+                  <option key={value} value={value}>
+                    {value === ""
+                      ? t("adminQuestions.allLevels", "All levels")
+                      : value}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-text">
+                {t("adminQuestions.nodeLabel", "Spine node code")}
+              </label>
+              <div className="flex h-11 items-center gap-2 rounded-lg border border-input bg-background px-3">
+                <Search
+                  className="h-4 w-4 text-text-muted"
+                  aria-hidden="true"
+                />
+                <input
+                  type="text"
+                  value={filter.node_code ?? ""}
+                  onChange={(e) => setFilterValue("node_code", e.target.value)}
+                  placeholder={t(
+                    "adminQuestions.nodePlaceholder",
+                    "Spine node code",
+                  )}
+                  aria-label={t("adminQuestions.nodeLabel", "Spine node code")}
+                  className="w-full bg-transparent text-base focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  onClick={clearAllFilters}
+                  className="min-h-[44px] flex-1"
+                >
+                  {t("adminQuestions.clearFilters", "Clear filters")}
+                </Button>
+              )}
+              <Button
+                onClick={() => setFilterSheetOpen(false)}
+                className="min-h-[44px] flex-1"
+              >
+                {t("common.close", "Close")}
+              </Button>
+            </div>
+          </div>
+        </BottomSheet>
+
         {generateOpen && (
           <GenerateForm
             isPending={generate.isPending}
@@ -215,39 +547,93 @@ function QuestionsTab(): React.JSX.Element {
           {t("adminQuestions.empty", "No questions match these filters.")}
         </div>
       ) : (
-        <ul className="space-y-2">
-          {items.map((question) => (
-            <li key={question.id}>
-              <button
-                type="button"
-                onClick={() => setSelected(question)}
-                className="flex w-full min-h-[44px] flex-col gap-2 rounded-xl border border-border-subtle bg-card p-4 text-left transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-row sm:items-center sm:justify-between"
+        <>
+          {/* Mobile Card List (below md) */}
+          <div className="space-y-3 md:hidden" data-testid="question-cards">
+            {items.map((question) => (
+              <div
+                key={question.id}
+                data-testid="question-card"
+                className="space-y-3 rounded-xl border border-border-subtle bg-card p-4"
               >
-                <span className="min-w-0 space-y-1">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">{question.kind}</Badge>
-                    <Badge variant={statusTone(question.status)}>
-                      {question.status}
-                    </Badge>
-                    <Badge variant="outline">{question.cefr_level}</Badge>
-                    <span className="text-xs text-text-muted">
-                      {question.skill}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words font-semibold leading-snug text-text">
+                      {humanizeKind(question.kind, t)}
+                    </p>
+                    <p className="truncate font-mono text-xs text-text-muted">
+                      {question.id}
+                    </p>
+                  </div>
+                  <Badge variant={statusTone(question.status)}>
+                    {humanizeStatus(question.status, t)}
+                  </Badge>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+                  <Badge variant="outline">{question.cefr_level}</Badge>
+                  <span>{question.skill}</span>
+                  <span className="ml-auto">
+                    {new Date(question.created_at).toLocaleDateString(
+                      i18n.language.startsWith("vi") ? "vi-VN" : "en-US",
+                      { year: "numeric", month: "short", day: "numeric" },
+                    )}
+                  </span>
+                </div>
+
+                <div className="flex justify-end border-t border-border-subtle/50 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelected(question)}
+                    className="min-h-[44px] w-full gap-1.5 sm:w-auto"
+                  >
+                    <BarChart3 className="h-4 w-4" aria-hidden="true" />
+                    {t("adminQuestions.viewStats", "Performance")}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table/List (md+) */}
+          <ul className="hidden space-y-2 md:block">
+            {items.map((question) => (
+              <li key={question.id}>
+                <button
+                  type="button"
+                  onClick={() => setSelected(question)}
+                  className="flex min-h-[44px] w-full flex-col gap-2 rounded-xl border border-border-subtle bg-card p-4 text-left transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <span className="min-w-0 space-y-1">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary">
+                        {humanizeKind(question.kind, t)}
+                      </Badge>
+                      <Badge variant={statusTone(question.status)}>
+                        {humanizeStatus(question.status, t)}
+                      </Badge>
+                      <Badge variant="outline">{question.cefr_level}</Badge>
+                      <span className="text-xs text-text-muted">
+                        {question.skill}
+                      </span>
+                    </span>
+                    <span className="block truncate font-mono text-[11px] text-text-muted">
+                      {question.fingerprint.slice(0, 24)}…
                     </span>
                   </span>
-                  <span className="block truncate font-mono text-[11px] text-text-muted">
-                    {question.fingerprint.slice(0, 24)}…
+                  <span className="text-xs text-text-muted">
+                    {new Date(question.created_at).toLocaleDateString(
+                      i18n.language.startsWith("vi") ? "vi-VN" : "en-US",
+                      { year: "numeric", month: "short", day: "numeric" },
+                    )}
                   </span>
-                </span>
-                <span className="text-xs text-text-muted">
-                  {new Date(question.created_at).toLocaleDateString(
-                    i18n.language.startsWith("vi") ? "vi-VN" : "en-US",
-                    { year: "numeric", month: "short", day: "numeric" },
-                  )}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       {total > PAGE_SIZE && (
@@ -424,7 +810,7 @@ function GenerateForm({
           >
             {KINDS.filter(Boolean).map((value) => (
               <option key={value} value={value}>
-                {value}
+                {humanizeKind(value, t)}
               </option>
             ))}
           </select>
@@ -466,7 +852,7 @@ function GenerateForm({
             type="text"
             value={examPartId}
             onChange={(e) => setExamPartId(e.target.value)}
-            placeholder="uuid"
+            placeholder={t("adminQuestions.examPartPlaceholder", "uuid")}
             className="h-11 w-full rounded-lg border border-input bg-background px-3 font-mono text-base focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </label>
@@ -479,7 +865,10 @@ function GenerateForm({
           type="text"
           value={nodes}
           onChange={(e) => setNodes(e.target.value)}
-          placeholder="PRESENT_PERFECT, PAST_SIMPLE"
+          placeholder={t(
+            "adminQuestions.nodesPlaceholder",
+            "PRESENT_PERFECT, PAST_SIMPLE",
+          )}
           className="h-11 w-full rounded-lg border border-input bg-background px-3 font-mono text-base focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </label>

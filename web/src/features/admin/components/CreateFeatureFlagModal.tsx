@@ -133,11 +133,16 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
             <Input
               id="flag-key"
               {...register("key")}
-              placeholder="e.g. streaks_v2, ai_grading_v2"
+              placeholder={t(
+                "admin.flagKeyPlaceholder",
+                "e.g. streaks_v2, ai_grading_v2",
+              )}
               aria-invalid={!!errors.key}
             />
             {errors.key && (
-              <p className="text-xs text-danger-accent">{errors.key.message}</p>
+              <p className="text-xs text-danger-accent">
+                {t(errors.key.message ?? "")}
+              </p>
             )}
           </div>
 
@@ -149,12 +154,15 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
             <Input
               id="flag-desc"
               {...register("description")}
-              placeholder="What does this feature flag control?"
+              placeholder={t(
+                "admin.flagDescPlaceholder",
+                "What does this feature flag control?",
+              )}
               aria-invalid={!!errors.description}
             />
             {errors.description && (
               <p className="text-xs text-danger-accent">
-                {errors.description.message}
+                {t(errors.description.message ?? "")}
               </p>
             )}
           </div>
@@ -173,7 +181,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
               />
               {errors.owner && (
                 <p className="text-xs text-danger-accent">
-                  {errors.owner.message}
+                  {t(errors.owner.message ?? "")}
                 </p>
               )}
             </div>
@@ -190,7 +198,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
               />
               {errors.expires_on && (
                 <p className="text-xs text-danger-accent">
-                  {errors.expires_on.message}
+                  {t(errors.expires_on.message ?? "")}
                 </p>
               )}
             </div>
@@ -198,7 +206,9 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
 
           {/* Rollout % */}
           <div className="space-y-1.5">
-            <Label htmlFor="flag-rollout">Rollout Percentage (0 - 100%)</Label>
+            <Label htmlFor="flag-rollout">
+              {t("admin.rolloutPercentage", "Rollout Percentage (0 - 100%)")}
+            </Label>
             <Input
               id="flag-rollout"
               type="number"
@@ -209,7 +219,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
             />
             {errors.rollout_percent && (
               <p className="text-xs text-danger-accent">
-                {errors.rollout_percent.message}
+                {t(errors.rollout_percent.message ?? "")}
               </p>
             )}
           </div>

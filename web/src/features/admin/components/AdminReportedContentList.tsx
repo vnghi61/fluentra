@@ -32,6 +32,9 @@ export const AdminReportedContentList: React.FC = () => {
   const total = data?.total ?? 0;
   const currentPage = Math.floor(offset / limit) + 1;
   const totalPages = Math.max(1, Math.ceil(total / limit));
+  const hasMore =
+    (total > 0 && offset + items.length < total) ||
+    (total === 0 && items.length >= limit);
 
   const handleItemUpdated = () => {
     void queryClient.invalidateQueries({
@@ -85,6 +88,24 @@ export const AdminReportedContentList: React.FC = () => {
         </Button>
       </div>
 
+      {/* Loaded Result Count Status */}
+      {!isLoading && items.length > 0 && (
+        <div className="flex items-center justify-between text-xs text-text-muted">
+          <p role="status">
+            {hasMore
+              ? t("adminReports.loadedCount", {
+                  count: items.length,
+                  defaultValue: `${items.length} loaded`,
+                })
+              : t("adminReports.resultsCount", {
+                  count: items.length,
+                  defaultValue:
+                    items.length === 1 ? "1 result" : `${items.length} results`,
+                })}
+          </p>
+        </div>
+      )}
+
       {/* Error state */}
       {error && (
         <div
@@ -114,103 +135,74 @@ export const AdminReportedContentList: React.FC = () => {
           </p>
         </div>
       ) : (
-        /* Table of reported items */
-        <div className="border border-border rounded-2xl bg-surface-card overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-border bg-surface-muted/60 text-xs uppercase font-semibold text-text-muted tracking-wider">
-                <tr>
-                  <th scope="col" className="px-5 py-3.5">
-                    {t("adminReports.colItem", "Content Item")}
-                  </th>
-                  <th scope="col" className="px-5 py-3.5">
-                    {t("adminReports.colKind", "Kind")}
-                  </th>
-                  <th scope="col" className="px-5 py-3.5">
-                    {t("adminReports.colLevel", "Level")}
-                  </th>
-                  <th scope="col" className="px-5 py-3.5">
-                    {t("adminReports.colStatus", "Status")}
-                  </th>
-                  <th scope="col" className="px-5 py-3.5 text-center">
-                    {t("adminReports.colReporters", "Reporters")}
-                  </th>
-                  <th scope="col" className="px-5 py-3.5">
-                    {t("adminReports.colLastReported", "Last Reported")}
-                  </th>
-                  <th scope="col" className="px-5 py-3.5 text-right">
-                    {t("adminReports.colActions", "Actions")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {items.map((row) => (
-                  <tr
-                    key={row.content_version_id}
-                    className="hover:bg-surface-muted/30 transition-colors"
+        <>
+          {/* Mobile Card List (below md) */}
+          <div className="space-y-3 md:hidden" data-testid="reported-cards">
+            {items.map((row) => (
+              <div
+                key={row.content_version_id}
+                data-testid="reported-card"
+                className="space-y-3 rounded-2xl border border-border bg-surface-card p-4 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words font-semibold leading-snug text-text">
+                      {row.slug}
+                    </p>
+                    <p className="truncate font-mono text-xs text-text-muted">
+                      {row.content_version_id}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${
+                      row.item_status === "archived"
+                        ? "bg-danger/10 border-danger/30 text-danger-accent"
+                        : row.item_status === "published"
+                          ? "bg-success/10 border-success/30 text-success-accent"
+                          : "bg-surface-muted border-border text-text-muted"
+                    }`}
                   >
-                    <td className="px-5 py-3.5 font-medium text-text">
-                      <div className="font-mono text-xs text-primary-accent">
-                        {row.slug}
-                      </div>
-                      <div className="text-[11px] text-text-muted font-mono truncate max-w-[200px]">
-                        {row.content_version_id}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-muted border border-border text-text">
-                        {row.kind}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-primary/10 text-primary-accent border border-primary/20">
-                        {row.cefr_level}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
-                          row.item_status === "archived"
-                            ? "bg-danger/10 border-danger/30 text-danger-accent"
-                            : row.item_status === "published"
-                              ? "bg-success/10 border-success/30 text-success-accent"
-                              : "bg-surface-muted border-border text-text-muted"
-                        }`}
-                      >
-                        {row.item_status}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-center">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-warning/15 text-warning-accent border border-warning/30">
-                        {t("adminReports.reportsCount", {
-                          count: row.report_count,
-                        })}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-xs text-text-muted whitespace-nowrap">
-                      {formatDate(row.last_reported_at)}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedItemId(row.item_id)}
-                        className="gap-1.5 font-medium min-h-[44px]"
-                      >
-                        <span>
-                          {t("adminReports.reviewBtn", "Review item")}
-                        </span>
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    {t(
+                      `adminReports.itemStatus.${row.item_status}`,
+                      row.item_status,
+                    )}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-muted border border-border text-text">
+                    {row.kind}
+                  </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-primary/10 text-primary-accent border border-primary/20">
+                    {row.cefr_level}
+                  </span>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-warning/15 text-warning-accent border border-warning/30">
+                    {t("adminReports.reportsCount", {
+                      count: row.report_count,
+                    })}
+                  </span>
+                  <span className="ml-auto text-xs text-text-muted whitespace-nowrap">
+                    {formatDate(row.last_reported_at)}
+                  </span>
+                </div>
+
+                <div className="flex justify-end border-t border-border/50 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedItemId(row.item_id)}
+                    className="gap-1.5 font-medium min-h-[44px] w-full sm:w-auto"
+                  >
+                    <span>{t("adminReports.reviewBtn", "Review item")}</span>
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Pagination */}
+          {/* Mobile Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-5 py-3.5 border-t border-border bg-surface-muted/30">
+            <div className="md:hidden flex items-center justify-between p-4 border border-border rounded-2xl bg-surface-card">
               <span className="text-xs text-text-muted">
                 {t("admin.pageOf", "Page {{current}} of {{total}}", {
                   current: currentPage,
@@ -239,7 +231,139 @@ export const AdminReportedContentList: React.FC = () => {
               </div>
             </div>
           )}
-        </div>
+
+          {/* Table of reported items (md+) */}
+          <div className="hidden md:block border border-border rounded-2xl bg-surface-card overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-border bg-surface-muted/60 text-xs uppercase font-semibold text-text-muted tracking-wider">
+                  <tr>
+                    <th scope="col" className="px-5 py-3.5">
+                      {t("adminReports.colItem", "Content Item")}
+                    </th>
+                    <th scope="col" className="px-5 py-3.5">
+                      {t("adminReports.colKind", "Kind")}
+                    </th>
+                    <th scope="col" className="px-5 py-3.5">
+                      {t("adminReports.colLevel", "Level")}
+                    </th>
+                    <th scope="col" className="px-5 py-3.5">
+                      {t("adminReports.colStatus", "Status")}
+                    </th>
+                    <th scope="col" className="px-5 py-3.5 text-center">
+                      {t("adminReports.colReporters", "Reporters")}
+                    </th>
+                    <th scope="col" className="px-5 py-3.5">
+                      {t("adminReports.colLastReported", "Last Reported")}
+                    </th>
+                    <th scope="col" className="px-5 py-3.5 text-right">
+                      {t("adminReports.colActions", "Actions")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {items.map((row) => (
+                    <tr
+                      key={row.content_version_id}
+                      className="hover:bg-surface-muted/30 transition-colors"
+                    >
+                      <td className="px-5 py-3.5 font-medium text-text">
+                        <div className="font-mono text-xs text-primary-accent">
+                          {row.slug}
+                        </div>
+                        <div className="text-[11px] text-text-muted font-mono truncate max-w-[200px]">
+                          {row.content_version_id}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-muted border border-border text-text">
+                          {row.kind}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-primary/10 text-primary-accent border border-primary/20">
+                          {row.cefr_level}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
+                            row.item_status === "archived"
+                              ? "bg-danger/10 border-danger/30 text-danger-accent"
+                              : row.item_status === "published"
+                                ? "bg-success/10 border-success/30 text-success-accent"
+                                : "bg-surface-muted border-border text-text-muted"
+                          }`}
+                        >
+                          {t(
+                            `adminReports.itemStatus.${row.item_status}`,
+                            row.item_status,
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-center">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-warning/15 text-warning-accent border border-warning/30">
+                          {t("adminReports.reportsCount", {
+                            count: row.report_count,
+                          })}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-xs text-text-muted whitespace-nowrap">
+                        {formatDate(row.last_reported_at)}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <Button
+                          variant="outline"
+                          onClick={() => setSelectedItemId(row.item_id)}
+                          className="gap-1.5 font-medium min-h-[44px]"
+                        >
+                          <span>
+                            {t("adminReports.reviewBtn", "Review item")}
+                          </span>
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-5 py-3.5 border-t border-border bg-surface-muted/30">
+                <span className="text-xs text-text-muted">
+                  {t("admin.pageOf", "Page {{current}} of {{total}}", {
+                    current: currentPage,
+                    total: totalPages,
+                  })}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={offset === 0 || isFetching}
+                    onClick={() =>
+                      setOffset((prev) => Math.max(0, prev - limit))
+                    }
+                    className="h-11 w-11 min-h-[44px] min-w-[44px] p-0"
+                    aria-label={t("common.previous", "Previous")}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={offset + limit >= total || isFetching}
+                    onClick={() => setOffset((prev) => prev + limit)}
+                    className="h-11 w-11 min-h-[44px] min-w-[44px] p-0"
+                    aria-label={t("common.next", "Next")}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {/* Admin Content Detail Modal for reviewing & archiving */}

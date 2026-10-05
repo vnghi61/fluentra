@@ -376,33 +376,66 @@ export function AdminStudioModeration(): React.JSX.Element {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-text-muted pt-1">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Curriculum Structure & Bounds</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Size Requirements (≥3 lessons, ≥20 exercises)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Activity Types Allowed (12 kinds)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
                   <span>
-                    Material Readiness (resource owned, renditions ready)
+                    {t(
+                      "adminModeration.checkCurriculumStructure",
+                      "Curriculum Structure & Bounds",
+                    )}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Item Grader & Redaction Verification</span>
+                  <span>
+                    {t(
+                      "adminModeration.checkSizeRequirements",
+                      "Size Requirements (≥3 lessons, ≥20 exercises)",
+                    )}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Language, Profanity & Contact Scan</span>
+                  <span>
+                    {t(
+                      "adminModeration.checkActivityTypes",
+                      "Activity Types Allowed (12 kinds)",
+                    )}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Near-Duplicate Content Check</span>
+                  <span>
+                    {t(
+                      "adminModeration.checkMaterialReadiness",
+                      "Material Readiness (resource owned, renditions ready)",
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
+                  <span>
+                    {t(
+                      "adminModeration.checkItemGrader",
+                      "Item Grader & Redaction Verification",
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
+                  <span>
+                    {t(
+                      "adminModeration.checkLanguageScan",
+                      "Language, Profanity & Contact Scan",
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
+                  <span>
+                    {t(
+                      "adminModeration.checkDuplicateContent",
+                      "Near-Duplicate Content Check",
+                    )}
+                  </span>
                 </div>
               </div>
             </div>
@@ -423,7 +456,10 @@ export function AdminStudioModeration(): React.JSX.Element {
                 rows={4}
                 value={decisionNotes}
                 onChange={(e) => setDecisionNotes(e.target.value)}
-                placeholder="Provide constructive feedback detailing required corrections or reasons..."
+                placeholder={t(
+                  "adminModeration.feedbackPlaceholder",
+                  "Provide constructive feedback detailing required corrections or reasons...",
+                )}
                 className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-base sm:text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>

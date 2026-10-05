@@ -371,7 +371,10 @@ function BatchReview(): React.JSX.Element {
                                   unknown
                                 >
                               )["reason"],
-                              t("adminReview.doubted", "The verifier doubted it."),
+                              t(
+                                "adminReview.doubted",
+                                "The verifier doubted it.",
+                              ),
                             )}
                           </span>
                         )}
