@@ -747,6 +747,8 @@
   "nav": {
     "account": "Account",
     "admin": "Admin",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
     "createAccount": "Create account",
     "dashboard": "Dashboard",
     "greeting": "Hello",

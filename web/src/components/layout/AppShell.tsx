@@ -8,6 +8,8 @@ import {
   LineChart,
   LogIn,
   MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -18,6 +20,7 @@ import { LazyMotion, m, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
+import { NavTooltip, SidebarCollapsedContext } from "@/components/ui/nav-tooltip";
 import { BrandMark } from "./BrandMark";
 
 /** Lazy: see AccountMenu's own comment for why it is not in the entry chunk. */
@@ -216,6 +219,30 @@ export const AppShell: React.FC<AppShellProps> = ({
   const [moreOpen, setMoreOpen] = React.useState(false);
   const [hasOpenedMore, setHasOpenedMore] = React.useState(false);
 
+  const [collapsed, setCollapsed] = React.useState<boolean>(() => {
+    try {
+      return localStorage.getItem("fluentra.sidebarCollapsed") === "true";
+    } catch {
+      // Private mode denies localStorage; fall back to default expanded.
+      return false;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("fluentra.sidebarCollapsed", String(next));
+      } catch {
+        // Private mode denies localStorage; not being able to remember is not a reason to refuse it.
+      }
+      return next;
+    });
+  };
+
+  const settingsLabel = t("nav.settings", "Settings");
+  const adminLabel = t("nav.admin", "Admin");
+
   const handleOpenMore = () => {
     setHasOpenedMore(true);
     setMoreOpen(true);
@@ -291,75 +318,179 @@ export const AppShell: React.FC<AppShellProps> = ({
       {banner}
       <div className="flex-1 flex flex-col md:flex-row">
         {/* Desktop Sidebar Navigation */}
-        <aside className="theme-surface hidden md:flex flex-col w-[232px] shrink-0 bg-surface-card border-r border-border-subtle p-3 justify-between">
-          <div className="flex flex-col gap-5">
-            <Link to="/" className="flex items-center gap-2 px-1 min-h-[44px]">
-              <BrandMark className="h-6 w-6 shrink-0 text-brand" />
-              <span className="text-base font-bold tracking-tight text-brand">
-                Fluentra
-              </span>
-            </Link>
-
-            <nav
-              aria-label={t("nav.mainNavigation", "Main navigation")}
-              className="flex flex-col gap-1"
-            >
-              {destinations.map(({ to, labelKey, fallback, Icon, exact }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  activeOptions={{ exact }}
-                  className={`${navBase} ${navIdle}`}
-                  activeProps={{ className: `${navBase} ${navActive}` }}
-                >
-                  <Icon
-                    className="h-[18px] w-[18px] shrink-0"
-                    aria-hidden="true"
-                  />
-                  {t(labelKey, fallback)}
-                </Link>
-              ))}
-
-              {signedIn && (
-                <>
-                  <hr className="my-2 border-t border-border-subtle" />
-
+        <aside
+          data-collapsed={collapsed ? "true" : "false"}
+          className={cn(
+            "group theme-surface hidden md:flex flex-col shrink-0 bg-surface-card border-r border-border-subtle p-3 justify-between md:sticky md:top-0 md:h-screen md:self-start overflow-y-auto transition-[width] duration-200 ease-in-out motion-reduce:transition-none",
+            collapsed ? "w-[72px]" : "w-[232px]",
+          )}
+        >
+          <SidebarCollapsedContext.Provider value={collapsed}>
+            <div className="flex flex-col gap-5">
+              <div
+                className={cn(
+                  "flex items-center justify-between gap-2",
+                  collapsed && "flex-col items-center justify-center",
+                )}
+              >
+                <NavTooltip label="Fluentra">
                   <Link
-                    to="/settings"
-                    className={`${navBase} ${navIdle}`}
-                    activeProps={{ className: `${navBase} ${navActive}` }}
+                    to="/"
+                    className={cn(
+                      "flex items-center gap-2 px-1 min-h-[44px]",
+                      collapsed && "justify-center px-0",
+                    )}
                   >
-                    <Settings
-                      className="h-[18px] w-[18px] shrink-0"
-                      aria-hidden="true"
-                    />
-                    {t("nav.settings", "Settings")}
+                    <BrandMark className="h-6 w-6 shrink-0 text-brand" />
+                    <span
+                      className={
+                        collapsed
+                          ? "sr-only"
+                          : "text-base font-bold tracking-tight text-brand"
+                      }
+                    >
+                      Fluentra
+                    </span>
                   </Link>
+                </NavTooltip>
+                <NavTooltip
+                  label={
+                    collapsed
+                      ? t("nav.expandSidebar", "Expand sidebar")
+                      : t("nav.collapseSidebar", "Collapse sidebar")
+                  }
+                >
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    aria-label={
+                      collapsed
+                        ? t("nav.expandSidebar", "Expand sidebar")
+                        : t("nav.collapseSidebar", "Collapse sidebar")
+                    }
+                    aria-expanded={!collapsed}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-text-muted hover:bg-surface-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors cursor-pointer"
+                  >
+                    {collapsed ? (
+                      <PanelLeftOpen
+                        className="h-5 w-5 shrink-0"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <PanelLeftClose
+                        className="h-5 w-5 shrink-0"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                </NavTooltip>
+              </div>
 
-                  {(user?.role === "admin" || user?.role === "moderator") &&
-                    (adminNav ?? (
+              <nav
+                aria-label={t("nav.mainNavigation", "Main navigation")}
+                className="flex flex-col gap-1"
+              >
+                {destinations.map(({ to, labelKey, fallback, Icon, exact }) => {
+                  const label = t(labelKey, fallback);
+                  return (
+                    <NavTooltip key={to} label={label}>
                       <Link
-                        to="/admin"
-                        className={`${navBase} ${navIdle}`}
-                        activeProps={{ className: `${navBase} ${navActive}` }}
+                        to={to}
+                        activeOptions={{ exact }}
+                        className={cn(
+                          navBase,
+                          navIdle,
+                          collapsed && "justify-center px-0",
+                        )}
+                        activeProps={{
+                          className: cn(
+                            navBase,
+                            navActive,
+                            collapsed && "justify-center px-0",
+                          ),
+                        }}
                       >
-                        <ShieldCheck
+                        <Icon
                           className="h-[18px] w-[18px] shrink-0"
                           aria-hidden="true"
                         />
-                        {t("nav.admin", "Admin")}
+                        <span className={collapsed ? "sr-only" : undefined}>
+                          {label}
+                        </span>
                       </Link>
-                    ))}
-                </>
-              )}
-            </nav>
-          </div>
+                    </NavTooltip>
+                  );
+                })}
 
-          {(sidebarFooter || signedIn) && (
-            <div className="mt-auto pt-3">
-              {sidebarFooter ?? <MotivationCard />}
+                {signedIn && (
+                  <>
+                    <hr className="my-2 border-t border-border-subtle" />
+
+                    <NavTooltip label={settingsLabel}>
+                      <Link
+                        to="/settings"
+                        className={cn(
+                          navBase,
+                          navIdle,
+                          collapsed && "justify-center px-0",
+                        )}
+                        activeProps={{
+                          className: cn(
+                            navBase,
+                            navActive,
+                            collapsed && "justify-center px-0",
+                          ),
+                        }}
+                      >
+                        <Settings
+                          className="h-[18px] w-[18px] shrink-0"
+                          aria-hidden="true"
+                        />
+                        <span className={collapsed ? "sr-only" : undefined}>
+                          {settingsLabel}
+                        </span>
+                      </Link>
+                    </NavTooltip>
+
+                    {(user?.role === "admin" || user?.role === "moderator") &&
+                      (adminNav ?? (
+                        <NavTooltip label={adminLabel}>
+                          <Link
+                            to="/admin"
+                            className={cn(
+                              navBase,
+                              navIdle,
+                              collapsed && "justify-center px-0",
+                            )}
+                            activeProps={{
+                              className: cn(
+                                navBase,
+                                navActive,
+                                collapsed && "justify-center px-0",
+                              ),
+                            }}
+                          >
+                            <ShieldCheck
+                              className="h-[18px] w-[18px] shrink-0"
+                              aria-hidden="true"
+                            />
+                            <span className={collapsed ? "sr-only" : undefined}>
+                              {adminLabel}
+                            </span>
+                          </Link>
+                        </NavTooltip>
+                      ))}
+                  </>
+                )}
+              </nav>
             </div>
-          )}
+
+            {!collapsed && (sidebarFooter || signedIn) && (
+              <div className="mt-auto pt-3">
+                {sidebarFooter ?? <MotivationCard />}
+              </div>
+            )}
+          </SidebarCollapsedContext.Provider>
         </aside>
 
         {/* Header + content column */}

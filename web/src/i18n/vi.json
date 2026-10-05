@@ -747,6 +747,8 @@
   "nav": {
     "account": "Tài khoản",
     "admin": "Quản trị",
+    "collapseSidebar": "Thu gọn thanh bên",
+    "expandSidebar": "Mở rộng thanh bên",
     "createAccount": "Tạo tài khoản",
     "dashboard": "Tổng quan",
     "greeting": "Xin chào",

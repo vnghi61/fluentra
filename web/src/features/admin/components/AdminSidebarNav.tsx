@@ -4,6 +4,7 @@ import { ChevronDown, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { navActive, navBase, navIdle } from "@/components/layout/AppShell";
+import { NavTooltip } from "@/components/ui/nav-tooltip";
 
 import { useVisibleAdminSections } from "../model/sections";
 
@@ -33,42 +34,53 @@ export function AdminSidebarNav(): React.JSX.Element | null {
 
   return (
     <div className="space-y-1">
-      <Link
-        to="/admin"
-        className={`${navBase} ${inAdmin ? navActive : navIdle} justify-between`}
-      >
-        <span className="flex items-center gap-3">
-          <ShieldCheck
-            className="h-[18px] w-[18px] shrink-0"
+      <NavTooltip label={t("nav.admin", "Admin")}>
+        <Link
+          to="/admin"
+          className={`${navBase} ${inAdmin ? navActive : navIdle} justify-between group-data-[collapsed=true]:justify-center group-data-[collapsed=true]:px-0`}
+        >
+          <span className="flex items-center gap-3 group-data-[collapsed=true]:gap-0">
+            <ShieldCheck
+              className="h-[18px] w-[18px] shrink-0"
+              aria-hidden="true"
+            />
+            <span className="group-data-[collapsed=true]:sr-only">
+              {t("nav.admin", "Admin")}
+            </span>
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 transition-transform group-data-[collapsed=true]:hidden ${inAdmin ? "" : "-rotate-90"}`}
             aria-hidden="true"
           />
-          {t("nav.admin", "Admin")}
-        </span>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 transition-transform ${inAdmin ? "" : "-rotate-90"}`}
-          aria-hidden="true"
-        />
-      </Link>
+        </Link>
+      </NavTooltip>
 
       {/* Expanded whenever the reader is anywhere under /admin, and collapsed
           otherwise. There is no toggle to get out of step with the address bar:
           where you are is what decides. */}
       {inAdmin && (
-        <ul className="space-y-1 border-l border-border-subtle pl-3 ml-4">
-          {sections.map(({ key, path, labelKey, labelFallback, Icon }) => (
-            <li key={key}>
-              <Link
-                to={path}
-                className={`${navBase} ${navIdle} text-[13px]`}
-                activeProps={{
-                  className: `${navBase} ${navActive} text-[13px]`,
-                }}
-              >
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {t(labelKey, labelFallback)}
-              </Link>
-            </li>
-          ))}
+        <ul className="space-y-1 border-l border-border-subtle pl-3 ml-4 group-data-[collapsed=true]:border-l-0 group-data-[collapsed=true]:pl-0 group-data-[collapsed=true]:ml-0">
+          {sections.map(({ key, path, labelKey, labelFallback, Icon }) => {
+            const label = t(labelKey, labelFallback);
+            return (
+              <li key={key}>
+                <NavTooltip label={label}>
+                  <Link
+                    to={path}
+                    className={`${navBase} ${navIdle} text-[13px] group-data-[collapsed=true]:justify-center group-data-[collapsed=true]:px-0`}
+                    activeProps={{
+                      className: `${navBase} ${navActive} text-[13px] group-data-[collapsed=true]:justify-center group-data-[collapsed=true]:px-0`,
+                    }}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span className="group-data-[collapsed=true]:sr-only">
+                      {label}
+                    </span>
+                  </Link>
+                </NavTooltip>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
