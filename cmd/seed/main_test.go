@@ -32,6 +32,17 @@ func TestRun_RefusesProduction(t *testing.T) {
 	}
 }
 
+func TestRun_CoursesOnlyRefusesProduction(t *testing.T) {
+	foundationCoursesOnly = true
+	t.Cleanup(func() { foundationCoursesOnly = false })
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("DB_DSN", "postgres://nobody@127.0.0.1:1/nothing?sslmode=disable")
+	err := run(context.Background(), io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "production") {
+		t.Fatalf("curriculum-only repair must refuse production before connecting: %v", err)
+	}
+}
+
 // TestDemoAccounts_MatchTheGuide keeps the dataset and its documentation from
 // drifting. The addresses below are the ones
 // docs/development/getting-started.md §4 tells a new contributor to sign in

@@ -10,7 +10,7 @@ tables: [courses, course_units, lessons, activities, lesson_prerequisites]
 depends_on: [content, cache, storage]
 depended_on_by: [learning, admin, search]
 spec_version: 1.0.0
-last_verified: 2026-08-25
+last_verified: 2026-09-30
 ---
 
 # lesson — AGENT.md
@@ -190,6 +190,14 @@ _No deviations from the global standard._
 <!-- END GENERATED: conventions -->
 
 ### Cache strategy
+
+Foundation lessons created before their published content can be repaired with
+`go run ./cmd/seed -foundation-courses-only`. This reuses the existing admin and
+published content, without reseeding accounts or replaying fixtures. Set the same
+`APP_ENV`, `DB_DSN` and `REDIS_URL` as the API: the seed wires lesson caches so
+`SyncActivities` invalidates cached empty details. It preserves activity references
+through the existing in-place sync. An empty lesson is shown as an empty state in
+the web runner, never as “Activity 1 of 0” or a completed lesson.
 
 | Key | TTL | Invalidated by |
 |---|---|---|

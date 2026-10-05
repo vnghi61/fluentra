@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/google/uuid"
@@ -17,11 +18,67 @@ import (
 	"github.com/pressly/goose/v3"
 
 	"github.com/fluentra/fluentra/db/migrations"
+	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 )
 
 const seedDatabase = "fluentra_seed_test"
 
 var seedPool *pgxpool.Pool
+
+func TestFoundationCoursesOnlyRepairsBindingsWithoutReseedingAccounts(t *testing.T) {
+	ctx := context.Background()
+	adminID := runSeed(ctx, t)
+	if err := ensureAdmin(ctx, seedPool, adminID); err != nil {
+		t.Fatal(err)
+	}
+	// Reproduce the old ordering: course structure existed before its content.
+	if err := seedFoundationCourses(ctx, seedPool, adminID, lessonservice.LessonCaches{}, "local", io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	if err := seedFoundationFixtures(ctx, seedPool, adminID,
+		filepath.Join("..", "..", defaultFoundationFixtureDir), io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	var lessonID uuid.UUID
+	if err := seedPool.QueryRow(ctx, `SELECT l.id FROM learn.lessons l
+		JOIN learn.course_units u ON u.id = l.unit_id
+		JOIN learn.courses c ON c.id = u.course_id
+		WHERE c.slug = 'english-tenses' AND l.title = 'Present Continuous'`).Scan(&lessonID); err != nil {
+		t.Fatal(err)
+	}
+	const snapshotQuery = `SELECT
+		(SELECT count(*) FROM core.users),
+		(SELECT count(*) FROM core.credentials),
+		(SELECT count(*) FROM content.content_versions)`
+	var before, after [3]int
+	if err := seedPool.QueryRow(ctx, snapshotQuery).Scan(&before[0], &before[1], &before[2]); err != nil {
+		t.Fatal(err)
+	}
+	foundationCoursesOnly = true
+	t.Cleanup(func() { foundationCoursesOnly = false })
+	t.Setenv("APP_ENV", "local")
+	t.Setenv("DB_DSN", seedPool.Config().ConnString())
+	t.Setenv("REDIS_URL", "")
+	for range 2 {
+		if err := run(ctx, io.Discard); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := seedPool.QueryRow(ctx, snapshotQuery).Scan(&after[0], &after[1], &after[2]); err != nil {
+		t.Fatal(err)
+	}
+	if before != after {
+		t.Fatalf("repair changed accounts, credentials or content versions: %v -> %v", before, after)
+	}
+	var count, distinctPositions int
+	if err := seedPool.QueryRow(ctx, `SELECT count(*), count(DISTINCT position)
+		FROM learn.activities WHERE lesson_id = $1 AND retired_at IS NULL`, lessonID).Scan(&count, &distinctPositions); err != nil {
+		t.Fatal(err)
+	}
+	if count == 0 || count != distinctPositions {
+		t.Fatalf("repair must attach content without duplicate activities: count=%d positions=%d", count, distinctPositions)
+	}
+}
 
 func TestMain(m *testing.M) {
 	base := os.Getenv("TEST_DATABASE_URL")

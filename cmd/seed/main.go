@@ -46,6 +46,9 @@ type seedConfig struct {
 	Database struct {
 		DSN string `koanf:"dsn"`
 	} `koanf:"db"`
+	Redis struct {
+		URL string `koanf:"url"`
+	} `koanf:"redis"`
 }
 
 type demoAccount struct {
@@ -78,6 +81,10 @@ var includeFoundationFixtures = true
 // database with no exam content is a valid state the loader reports, not fails.
 var includeExamFixtures = true
 
+// foundationCoursesOnly repairs lesson bindings without refreshing demo accounts
+// or replaying content fixtures over already published content.
+var foundationCoursesOnly bool
+
 func main() {
 	audio := flag.Bool("audio", false,
 		"backfill recorded pronunciation onto flashcards that have none, then exit")
@@ -85,6 +92,9 @@ func main() {
 		"load the frozen Foundation fixtures from db/fixtures/foundation (no model call)")
 	exams := flag.Bool("exams", true,
 		"load the frozen exam fixtures from db/fixtures/exams (no model call)")
+
+	flag.BoolVar(&foundationCoursesOnly, "foundation-courses-only", false,
+		"sync Foundation lessons from existing published content, without changing accounts or fixtures")
 	flag.Parse()
 	includeFoundationFixtures = *foundation
 	includeExamFixtures = *exams
@@ -159,7 +169,7 @@ func run(ctx context.Context, out io.Writer) error {
 	// dropped, `cfg.App.Environment` stays empty, and the production guard can
 	// never fire. TestRun_RefusesProduction is what caught that.
 	if err := config.Load(ctx, config.Options{
-		Defaults: map[string]any{"app.env": "local"},
+		Defaults: map[string]any{"app.env": "local", "redis.url": ""},
 		Required: []config.RequiredKey{{
 			Name:       "db.dsn",
 			DocSection: "docs/deployment/configuration.md#database",
@@ -186,6 +196,9 @@ func run(ctx context.Context, out io.Writer) error {
 	// the getting-started guide hands out is refused the very catalogue this
 	// seed then authors. user.New grants it as part of creating the account.
 	roles := rbac.New(rbac.Deps{Pool: pool})
+	if foundationCoursesOnly {
+		return seedConfiguredFoundationCourses(ctx, pool, uuid.Nil, cfg, out)
+	}
 	module := user.New(user.Deps{Pool: pool, Roles: roles})
 	hasher := authdomain.NewHasher(authdomain.DefaultHashParams())
 
@@ -224,7 +237,7 @@ func run(ctx context.Context, out io.Writer) error {
 	// database thirteen courses of empty lessons. This also archives the five
 	// Phase 2 courses seedAuthoredContent authored, so the catalogue shows
 	// thirteen.
-	if err := seedFoundationCourses(ctx, pool, adminID, out); err != nil {
+	if err := seedConfiguredFoundationCourses(ctx, pool, adminID, cfg, out); err != nil {
 		return fmt.Errorf("seed Foundation courses: %w", err)
 	}
 

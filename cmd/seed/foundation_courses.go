@@ -3,16 +3,21 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/fluentra/fluentra/internal/modules/content"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
+	"github.com/fluentra/fluentra/internal/modules/rbac"
+	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
@@ -138,11 +143,45 @@ type foundationCourseNode struct {
 	position   int
 }
 
+// seedConfiguredFoundationCourses wires the same cache namespace as the API.
+// A repair reuses an existing owner rather than reseeding the demo accounts.
+func seedConfiguredFoundationCourses(
+	ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, cfg seedConfig, out io.Writer,
+) error {
+	if adminID == uuid.Nil {
+		var err error
+		adminID, err = rbac.New(rbac.Deps{Pool: pool}).RoleMembers().FirstHolderOf(ctx, "admin")
+		if err != nil {
+			return fmt.Errorf("find curriculum owner: %w", err)
+		}
+		if adminID == uuid.Nil {
+			return errors.New("no existing admin to own the Foundation courses")
+		}
+	}
+	var caches lessonservice.LessonCaches
+	if cfg.Redis.URL != "" {
+		opts, err := redis.ParseURL(cfg.Redis.URL)
+		if err != nil {
+			return errors.New("invalid REDIS_URL for curriculum cache invalidation")
+		}
+		client := redis.NewClient(opts)
+		defer func() { _ = client.Close() }()
+		caches = lessonservice.LessonCaches{
+			Detail:    cache.NewRedisCache[*lessonservice.LessonDetailDTO](client),
+			Tree:      cache.NewRedisCache[*lessonservice.CourseTreeData](client),
+			Catalogue: cache.NewRedisCache[*lessonservice.CatalogueData](client),
+			Gen:       cache.NewRedisCache[int64](client),
+		}
+	}
+	return seedFoundationCourses(ctx, pool, adminID, caches, cfg.App.Environment, out)
+}
+
 // seedFoundationCourses builds the thirteen Foundation courses from
 // content.foundation_course_nodes, one lesson per node, in prerequisite order,
 // through lesson's Author — never by writing learn.* myself (WO 22 Stage H).
 func seedFoundationCourses(
-	ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, out io.Writer,
+	ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID,
+	caches lessonservice.LessonCaches, env string, out io.Writer,
 ) error {
 	nodes, err := foundationCourseNodes(ctx, pool)
 	if err != nil {
@@ -156,6 +195,8 @@ func seedFoundationCourses(
 	contentMod := content.NewAuthoring(content.Deps{Pool: pool, Clock: clock.Real{}})
 	lessonMod := lesson.New(lesson.Deps{
 		Pool:    pool,
+		Caches:  caches,
+		Env:     env,
 		Clock:   clock.Real{},
 		Guard:   offlineGuard{},
 		Content: contentMod.Reader(),

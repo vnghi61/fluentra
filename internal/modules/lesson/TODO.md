@@ -10,7 +10,7 @@ tables: [courses, course_units, lessons, activities, lesson_prerequisites]
 depends_on: [content, cache, storage]
 depended_on_by: [learning, admin, search]
 spec_version: 1.0.0
-last_verified: 2026-08-25
+last_verified: 2026-09-30
 ---
 
 # lesson — TODO
@@ -30,6 +30,10 @@ agent knows what is already handled and what is deliberately deferred.
 <!-- END GENERATED: todo -->
 
 ## Progress
+
+- [x] Repair stale Foundation lesson bindings from existing published content with
+  `-foundation-courses-only`, without changing accounts or fixtures; invalidate
+  detail caches and render genuinely empty lessons without phantom activities.
 
 The list above is generated from `tools/docgen/data/learning.json`, so its checkboxes cannot be
 ticked by hand — `make docs` rewrites the block and `make docs-check` fails until it matches.
