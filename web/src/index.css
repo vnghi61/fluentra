@@ -225,14 +225,24 @@ select optgroup {
   }
 }
 
+/* While any modal is open the page behind it does not scroll, so no second
+   scrollbar sits beside the overlay. One rule for every dialog in the app. */
+html:has([aria-modal="true"]) {
+  overflow: hidden;
+}
+
 @keyframes page-enter {
   0% {
     opacity: 0;
     transform: translateY(8px);
   }
+  /* `none`, not translateY(0): the animation fills `both`, so its last frame
+     stays on the route wrapper, and any transform there turns it into the
+     containing block for position: fixed. Every modal then covered only the
+     content column, with the page scrollbar showing beside it. */
   100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
