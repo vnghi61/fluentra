@@ -226,7 +226,14 @@ func (r *mediaRun) renderOne(ctx context.Context, item sqlc.ResourceRendition) {
 	}
 
 	r.processed++
-	result, err := processRendition(ctx, r.store, item, res, r.opts)
+	// Keep the render workspace alive until extraction and upload have finished.
+	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("rendition-%s-%s-*", item.ResourceID, item.Kind))
+	if err != nil {
+		r.fail(ctx, item, fmt.Sprintf("create temp dir: %v", err))
+		return
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+	result, err := processRendition(ctx, r.store, item, res, r.opts, tmpDir)
 	if err != nil {
 		slog.WarnContext(ctx, "rendition failed", "resource_id", item.ResourceID, "kind", item.Kind, "error", err)
 		r.fail(ctx, item, err.Error())
@@ -357,14 +364,8 @@ func processRendition(
 	item sqlc.ResourceRendition,
 	res sqlc.ResourceResource,
 	opts mediaOptions,
+	tmpDir string,
 ) (*rendition.RenderResult, error) {
-	// Create temp directory for downloading and processing
-	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("rendition-%s-%s-*", item.ResourceID, item.Kind))
-	if err != nil {
-		return nil, fmt.Errorf("create temp dir: %w", err)
-	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
 	// Download original from fluentra-uploads
 	rc, err := store.Get(ctx, storage.BucketUploads, *res.ObjectKey)
 	if err != nil {

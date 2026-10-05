@@ -31,6 +31,11 @@ agent knows what is already handled and what is deliberately deferred.
 - [ ] Speech benchmark corpus and a provider comparison document
 <!-- END GENERATED: todo -->
 
+## Completed local processing repair (2026-09-30)
+
+- [x] Automatically process pending/new local resources in a dedicated, non-root Compose renderer with LibreOffice, Poppler and ffmpeg; `make dev-media` supports host-run API/worker setups.
+- [x] Keep render output files until extraction and upload finish instead of deleting them when `processRendition` returns; cover output lifetime with a regression test.
+
 ## Deferred (deliberately not doing yet)
 
 <!-- BEGIN GENERATED: todo-deferred -->

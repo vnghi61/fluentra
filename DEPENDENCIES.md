@@ -336,6 +336,7 @@ code is churn.
 | Object storage | MinIO | latest | SeaweedFS, Garage, S3 | S3 API compatibility means production can move to real S3 with no code change |
 | Reverse proxy | Nginx | 1.27 | Caddy, Traefik | Boring, documented, battle-tested. Caddy's automatic TLS is tempting — noted as an option |
 | Container runtime | Docker + Compose v2 | — | Podman, K8s | Simplicity; K8s is a Phase-5 decision, not a v1 one |
+| Local resource conversion | LibreOffice Writer/Impress, Poppler, ffmpeg | Debian bookworm packages | Host-installed tools, GitHub Actions dispatch | Existing `cmd/media` tools, packaged in a dedicated non-root dev container; no Windows installation or GitHub token required |
 | Metrics | Prometheus | 3.x | VictoriaMetrics, Mimir | Standard; VictoriaMetrics if cardinality/retention becomes painful |
 | Logs | Loki | 3.x | Elasticsearch, OpenSearch | Index-free = cheap; joins to traces by `trace_id` |
 | Traces | Tempo | 2.x | Jaeger, Zipkin | Object-storage backed (uses our MinIO); native Grafana integration |

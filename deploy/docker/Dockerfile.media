@@ -1,0 +1,21 @@
+FROM golang:1.26.6-bookworm AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY cmd/media ./cmd/media
+COPY internal ./internal
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -o /out/media ./cmd/media
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates ffmpeg poppler-utils libreoffice-writer libreoffice-impress \
+    fonts-dejavu-core fonts-liberation \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --uid 10001 --create-home renderer
+COPY --from=build /out/media /usr/local/bin/media
+COPY deploy/docker/media-loop.sh /usr/local/bin/media-loop.sh
+USER 10001:10001
+ENV HOME=/tmp
+WORKDIR /tmp
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/media-loop.sh"]

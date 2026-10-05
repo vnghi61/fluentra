@@ -15,6 +15,11 @@ COMPOSE_PROD := -f $(COMPOSE_BASE) -f deploy/compose/compose.prod.yaml -f deploy
 # and the E2E job both use it, so the stack has one description rather than a
 # second one written out by hand in a workflow file.
 COMPOSE_INFRA := -f $(COMPOSE_BASE) -f deploy/compose/compose.dev.yaml
+# A machine that also runs Hilo sets SHARED_INFRA=1 (in its environment or in an
+# untracked local.mk): the infra targets then use Hilo's Redis/MinIO plus a
+# Fluentra-only Postgres 17 (see deploy/compose/compose.shared.yaml). CI never sets it.
+-include local.mk
+COMPOSE_SHARED := -f deploy/compose/compose.shared.yaml
 
 ## ----------------------------------------------------------------- help
 
@@ -51,15 +56,32 @@ dev-infra: ## Start postgres, redis, minio and mailpit, with ports published
 	# host. Mailpit is here because an API with nowhere to deliver writes the OTP
 	# challenge and never produces a code, which fails as a timeout somewhere
 	# unrelated.
+ifeq ($(strip $(SHARED_INFRA)),1)
+	# Redis and MinIO (with the fluentra-* buckets) belong to Hilo's stack.
+	docker compose $(COMPOSE_SHARED) up -d --wait postgres mailpit
+	@echo "postgres 127.0.0.1:5434   redis 127.0.0.1:6379 (Hilo, db 1)   minio 127.0.0.1:9010 (Hilo)   mail 127.0.0.1:8025"
+else
 	docker compose $(COMPOSE_INFRA) up -d --wait postgres redis minio mailpit
 	# Buckets are provisioned by a one-shot rather than folded into `up`, so a
 	# failure to create them fails here instead of scrolling past in a detached
 	# container's log.
 	docker compose $(COMPOSE_INFRA) run --rm createbuckets
 	@echo "postgres 127.0.0.1:5432   redis 127.0.0.1:6379   minio 127.0.0.1:9000   mail 127.0.0.1:8025"
+endif
 
 dev-infra-down: ## Stop the data services only, leaving other projects alone
+ifeq ($(strip $(SHARED_INFRA)),1)
+	docker compose $(COMPOSE_SHARED) stop postgres mailpit media-renderer
+else
 	docker compose $(COMPOSE_INFRA) stop postgres redis minio mailpit
+endif
+
+dev-media: ## Start automatic local document/media processing (also for host-run API/worker)
+ifeq ($(strip $(SHARED_INFRA)),1)
+	docker compose $(COMPOSE_SHARED) up -d --build --no-deps media-renderer
+else
+	docker compose $(COMPOSE_INFRA) up -d --build --no-deps media-renderer
+endif
 
 dev-down: ## Stop the local stack (volumes preserved)
 	docker compose $(COMPOSE_DEV) down

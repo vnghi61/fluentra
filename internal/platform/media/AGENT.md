@@ -170,6 +170,21 @@ and fails `go-arch-lint` in CI.
 
 ## 11. Known limitations
 
+### Local resource renderer
+
+`make dev` includes `media-renderer`; with API/worker running on the host, start
+infrastructure using `make dev-infra`, then run `make dev-media`. This non-root,
+resource-limited container runs the existing `cmd/media -all -limit 10` batch every
+15 seconds with LibreOffice, Poppler and ffmpeg installed. It processes existing
+pending renditions as well as new uploads, using the Compose Postgres and MinIO.
+It needs no GitHub Actions token and does not send documents to GitHub.
+The normal worker still handles classification/transcription after rendering.
+After changing renderer Go code, run `make dev-media` again to rebuild it.
+
+`cmd/media.renderOne` owns the temporary workspace: it is removed only after
+extracted text has been recorded and the rendered file uploaded. `processRendition`
+must not delete its caller's workspace before returning its output path.
+
 <!-- BEGIN GENERATED: limitations -->
 - ffmpeg runs in-process in the worker container; a single very large file can occupy a worker slot for minutes.
 - Pronunciation assessment quality varies by accent and is weakest for non-native reference speakers — documented for the product team.
