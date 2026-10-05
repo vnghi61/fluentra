@@ -227,12 +227,12 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
           {feedback.overall_band >= 6.5 ? (
             <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-emerald-500 text-sm font-medium">
               <Award className="h-5 w-5 shrink-0" />
-              <span>Competent User</span>
+              <span>{t("writing.competentUser", "Competent User")}</span>
             </div>
           ) : (
             <div className="flex items-center gap-2 rounded-xl bg-primary/10 border border-primary/30 px-3 py-2 text-primary-accent text-sm font-medium">
               <HelpCircle className="h-5 w-5 shrink-0" />
-              <span>Developing Skills</span>
+              <span>{t("writing.developingSkills", "Developing Skills")}</span>
             </div>
           )}
         </div>
@@ -335,7 +335,10 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
                   variant="ghost"
                   className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 text-xs text-text-muted hover:text-text"
                   onClick={() => setSelectedAnnotationIdx(null)}
-                  aria-label="Close annotation details"
+                  aria-label={t(
+                    "writing.closeAnnotationDetails",
+                    "Close annotation details",
+                  )}
                 >
                   ✕
                 </Button>

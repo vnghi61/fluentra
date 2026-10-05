@@ -13,9 +13,11 @@ import {
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Card,
   CardDescription,
@@ -166,24 +168,22 @@ export function MySpeakingPage(): React.JSX.Element {
 
       {/* Empty state */}
       {!isLoading && !isError && items.length === 0 && (
-        <Card className="text-center p-8 border-border bg-surface-card">
-          <CardHeader className="space-y-2">
-            <div className="flex justify-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <Mic className="h-6 w-6" />
-              </div>
-            </div>
-            <CardTitle className="text-lg font-semibold text-text">
-              {t("speaking.noSubmissions", "No speaking submissions yet")}
-            </CardTitle>
-            <CardDescription className="max-w-md mx-auto text-sm">
-              {t(
-                "speaking.noSubmissionsDesc",
-                "Complete speaking activities in your lessons to evaluate your speaking pace, transcript fidelity, and receive AI coaching.",
-              )}
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <EmptyState
+          icon={Mic}
+          title={t("speaking.noSubmissions", "No speaking submissions yet")}
+          description={t(
+            "speaking.noSubmissionsDesc",
+            "Complete speaking activities in your lessons to evaluate your speaking pace, transcript fidelity, and receive AI coaching.",
+          )}
+          action={
+            <Link
+              to="/practice"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-fg shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              {t("speaking.startPractice", "Explore practice")}
+            </Link>
+          }
+        />
       )}
 
       {/* Submissions list */}

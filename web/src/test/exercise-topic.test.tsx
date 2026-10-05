@@ -53,7 +53,9 @@ describe("ExerciseTopic", () => {
     );
 
     expect(
-      screen.getByText("The present perfect links a past action to the present."),
+      screen.getByText(
+        "The present perfect links a past action to the present.",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText("She has lived here for three years."),

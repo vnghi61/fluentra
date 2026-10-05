@@ -54,6 +54,7 @@ import {
 } from "@/features/writing";
 import { type SpeakingFeedback, speakingApi } from "@/features/speaking";
 import { readExampleSentences } from "@/lib/examples";
+import { pickLocalized } from "@/lib/localized";
 import type { components } from "@/types/api";
 
 /**
@@ -205,7 +206,7 @@ interface Verdict {
 }
 
 export function LessonPage(): React.JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const params: Record<string, string | undefined> = useParams({
@@ -810,6 +811,40 @@ export function LessonPage(): React.JSX.Element {
     );
   }
 
+  if (activities.length === 0) {
+    return (
+      <div className="py-12 max-w-lg mx-auto">
+        <Card className="text-center p-6">
+          <CardHeader>
+            <CardTitle>{t("runner.emptyTitle")}</CardTitle>
+            <CardDescription role="status">
+              {t("runner.emptyDesc")}
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="justify-center gap-3">
+            <Button variant="outline" onClick={() => void refetch()}>
+              {t("action.retry", "Try again")}
+            </Button>
+            <Button
+              onClick={() => {
+                if (isResourcePractice && resourceId) {
+                  void navigate({
+                    to: "/my-resources/$resourceId",
+                    params: { resourceId },
+                  });
+                } else {
+                  void navigate({ to: isDaily ? "/practice" : "/learn" });
+                }
+              }}
+            >
+              {t("runner.backToCourseBtn", "Back to Syllabus")}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
   if (isCompleted) {
     return (
       <>
@@ -998,6 +1033,22 @@ export function LessonPage(): React.JSX.Element {
     typeof lastSubmittedPayload?.selected_option_id === "string"
       ? lastSubmittedPayload.selected_option_id
       : undefined;
+
+  const writingFeedbackText = writingFeedback
+    ? pickLocalized(
+        writingFeedback.feedback_en,
+        writingFeedback.feedback_vi,
+        i18n.language,
+      ) || submissionResult?.feedback
+    : submissionResult?.feedback;
+
+  const speakingFeedbackText = speakingFeedback
+    ? pickLocalized(
+        speakingFeedback.feedback_en,
+        speakingFeedback.feedback_vi,
+        i18n.language,
+      ) || submissionResult?.feedback
+    : submissionResult?.feedback;
 
   return (
     <div className="min-h-full bg-surface flex flex-col justify-between">
@@ -1375,7 +1426,7 @@ export function LessonPage(): React.JSX.Element {
             rubric={writingConfig.rubric}
             minWords={writingConfig.min_words}
             sampleAnswer={writingConfig.sample_answer}
-            feedback={submissionResult?.feedback}
+            feedback={writingFeedbackText}
             score={
               typeof submissionResult?.score === "number"
                 ? submissionResult.score
@@ -1413,7 +1464,7 @@ export function LessonPage(): React.JSX.Element {
             referenceText={speakingConfig.reference_text}
             taskType={speakingConfig.task_type}
             speakingTimeSeconds={speakingConfig.speaking_time_seconds}
-            feedback={submissionResult?.feedback}
+            feedback={speakingFeedbackText}
             score={
               typeof submissionResult?.score === "number"
                 ? submissionResult.score

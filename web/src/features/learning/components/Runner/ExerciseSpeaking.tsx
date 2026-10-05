@@ -9,6 +9,7 @@ import {
   type SpeakingFeedback,
   SpeakingFeedbackView,
 } from "@/features/speaking";
+import { pickLocalized } from "@/lib/localized";
 
 import { GuestNotice } from "../GuestNotice";
 import {
@@ -261,10 +262,11 @@ export const ExerciseSpeaking: React.FC<ExerciseSpeakingProps> = ({
                 {t("runner.explanationLabel", "Explanation")}
               </div>
               <p className="text-sm text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
-                {Boolean(i18n?.language?.startsWith("vi")) &&
-                explanation.text_vi
-                  ? explanation.text_vi
-                  : explanation.text}
+                {pickLocalized(
+                  explanation.text,
+                  explanation.text_vi,
+                  i18n.language,
+                )}
               </p>
             </div>
           )}

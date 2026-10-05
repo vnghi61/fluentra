@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AlertCircle, Loader2, PenTool, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -10,6 +10,7 @@ import {
   WritingFeedbackView,
 } from "@/features/writing";
 import { writingApi } from "@/features/writing/api/writingApi";
+import { pickLocalized } from "@/lib/localized";
 import { cn } from "@/lib/utils";
 
 import { GuestNotice } from "../GuestNotice";
@@ -126,13 +127,53 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
     }
   }, [text, isSubmitted, userId, activityId]);
 
+  const [isPendingSubmit, setIsPendingSubmit] = useState(false);
+  const hasSubmittedRef = useRef(false);
+  const submitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (submitTimerRef.current !== null) {
+        clearTimeout(submitTimerRef.current);
+      }
+    };
+  }, []);
+
+  // A change in the parent's submit state settles the pending guard. The state
+  // half is adjusted during render; the ref and timer half stays in the effect.
+  const submitFlags = `${isLoading}|${isMarking}|${isSubmitted}`;
+  const [prevSubmitFlags, setPrevSubmitFlags] = useState(submitFlags);
+  if (prevSubmitFlags !== submitFlags) {
+    setPrevSubmitFlags(submitFlags);
+    setIsPendingSubmit(false);
+  }
+
+  useEffect(() => {
+    if (submitTimerRef.current !== null) {
+      clearTimeout(submitTimerRef.current);
+    }
+    hasSubmittedRef.current = false;
+  }, [isLoading, isMarking, isSubmitted]);
+
   const words = countWords(text);
   const meetsMinWords = minWords <= 0 || words >= minWords;
-  const canSubmit = text.trim().length > 0 && !isMarking;
+  const canSubmit =
+    text.trim().length > 0 &&
+    meetsMinWords &&
+    !isMarking &&
+    !isLoading &&
+    !isPendingSubmit;
 
   const handleSubmit = () => {
-    if (canSubmit && !isLoading && !isMarking) {
+    if (hasSubmittedRef.current) return;
+    if (canSubmit) {
+      hasSubmittedRef.current = true;
+      setIsPendingSubmit(true);
       onSubmit(text.trim());
+      submitTimerRef.current = setTimeout(() => {
+        hasSubmittedRef.current = false;
+        setIsPendingSubmit(false);
+      }, 0);
     }
   };
 
@@ -161,23 +202,26 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
         <GuestNotice />
       ) : (
         <div className="space-y-2">
-          <label htmlFor="writing-response" className="sr-only">
-            {prompt}
+          <label
+            htmlFor="writing-response"
+            className="block text-sm font-semibold text-text"
+          >
+            {t("runner.writingLabel", "Your writing")}
           </label>
           <textarea
             id="writing-response"
             value={text}
-            disabled={isSubmitted || isLoading || isMarking}
+            disabled={isSubmitted || isLoading || isMarking || isPendingSubmit}
             onChange={(e) => setText(e.target.value)}
             placeholder={t(
               "runner.writingPlaceholder",
               "Write your response here...",
             )}
-            rows={6}
+            rows={8}
             className={cn(
               "w-full rounded-xl border border-border bg-surface-card p-4 text-base text-text leading-relaxed",
               "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm resize-y",
-              "min-h-[140px]",
+              "min-h-[220px] md:min-h-[320px]",
               isSubmitted && isCorrect && "border-success/50 bg-success/5",
               isSubmitted &&
                 isCorrect === false &&
@@ -197,7 +241,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
                 >
                   {t(
                     "runner.wordCountWithMin",
-                    `${words} / ${minWords} words minimum`,
+                    `${words} words · minimum ${minWords} words`,
                     {
                       count: words,
                       min: minWords,
@@ -214,7 +258,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
               <span className="text-warning text-xs">
                 {t(
                   "runner.wordsRemaining",
-                  `${Math.max(0, minWords - words)} more needed`,
+                  `Write ${Math.max(0, minWords - words)} more words to check`,
                   {
                     remaining: Math.max(0, minWords - words),
                   },
@@ -339,10 +383,11 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
                 {t("runner.explanationLabel", "Giải thích")}
               </div>
               <p className="text-sm text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
-                {Boolean(i18n?.language?.startsWith("vi")) &&
-                explanation.text_vi
-                  ? explanation.text_vi
-                  : explanation.text}
+                {pickLocalized(
+                  explanation.text,
+                  explanation.text_vi,
+                  i18n.language,
+                )}
               </p>
             </div>
           )}
@@ -365,7 +410,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
         <ExerciseActions
           isSubmitted={isSubmitted || isGuest}
           canSubmit={canSubmit}
-          isLoading={isLoading || isMarking}
+          isLoading={isLoading || isMarking || isPendingSubmit}
           onSubmit={handleSubmit}
           onContinue={onContinue}
         />

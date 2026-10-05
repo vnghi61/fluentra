@@ -6,13 +6,19 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { I18nextProvider } from "react-i18next";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import i18n, { initI18n } from "@/i18n";
+import i18n, { initI18n, loadLocale } from "@/i18n";
 import { MyWritingPage } from "@/routes/MyWritingPage";
 import { ExerciseWriting } from "@/features/learning/components/Runner/ExerciseWriting";
 import {
@@ -127,6 +133,8 @@ function signIn() {
 describe("Writing Screens & Drafts (§3.5)", () => {
   beforeEach(async () => {
     await initI18n();
+    await loadLocale("en");
+    await i18n.changeLanguage("en");
     useAuthStore.getState().clearAuth();
     localStorage.clear();
   });
@@ -269,6 +277,247 @@ describe("Writing Screens & Drafts (§3.5)", () => {
         screen.getByText(/Marking continues in the background/i),
       ).toBeInTheDocument();
       expect(screen.getByText(/View My Writing/i)).toBeInTheDocument();
+    });
+
+    it("renders visible label linked to textarea with prompt above it", () => {
+      render(
+        <I18nextProvider i18n={i18n}>
+          <ExerciseWriting
+            prompt="Discuss pros and cons of remote work."
+            minWords={40}
+            isSubmitted={false}
+            onSubmit={() => {}}
+            onContinue={() => {}}
+          />
+        </I18nextProvider>,
+      );
+
+      expect(
+        screen.getByRole("heading", {
+          name: /Discuss pros and cons of remote work/i,
+        }),
+      ).toBeInTheDocument();
+      const label = screen.getByText("Your writing");
+      expect(label).toBeVisible();
+      expect(label).toHaveAttribute("for", "writing-response");
+      const textarea = screen.getByRole("textbox", { name: "Your writing" });
+      expect(textarea).toHaveAttribute("id", "writing-response");
+      expect(textarea).toHaveClass(
+        "min-h-[220px]",
+        "md:min-h-[320px]",
+        "text-base",
+      );
+    });
+
+    it("displays counter with min from props (e.g. 150 and 40) and plain counter for minWords=0", () => {
+      const { rerender } = render(
+        <I18nextProvider i18n={i18n}>
+          <ExerciseWriting
+            prompt="Essay task"
+            minWords={150}
+            isSubmitted={false}
+            onSubmit={() => {}}
+            onContinue={() => {}}
+          />
+        </I18nextProvider>,
+      );
+
+      expect(
+        screen.getByText("0 words · minimum 150 words"),
+      ).toBeInTheDocument();
+
+      rerender(
+        <I18nextProvider i18n={i18n}>
+          <ExerciseWriting
+            prompt="Short response"
+            minWords={40}
+            isSubmitted={false}
+            onSubmit={() => {}}
+            onContinue={() => {}}
+          />
+        </I18nextProvider>,
+      );
+
+      expect(
+        screen.getByText("0 words · minimum 40 words"),
+      ).toBeInTheDocument();
+
+      rerender(
+        <I18nextProvider i18n={i18n}>
+          <ExerciseWriting
+            prompt="Freeform task"
+            minWords={0}
+            isSubmitted={false}
+            onSubmit={() => {}}
+            onContinue={() => {}}
+          />
+        </I18nextProvider>,
+      );
+
+      expect(screen.getByText("0 words")).toBeInTheDocument();
+      expect(screen.queryByText(/minimum/i)).not.toBeInTheDocument();
+    });
+
+    it("shows helper count and disables submit button when below minimum words", async () => {
+      const user = userEvent.setup();
+      render(
+        <I18nextProvider i18n={i18n}>
+          <ExerciseWriting
+            prompt="Write an essay"
+            minWords={40}
+            isSubmitted={false}
+            onSubmit={() => {}}
+            onContinue={() => {}}
+          />
+        </I18nextProvider>,
+      );
+
+      const checkBtn = screen.getByRole("button", { name: /check/i });
+      expect(checkBtn).toBeDisabled();
+      expect(
+        screen.getByText("Write 40 more words to check"),
+      ).toBeInTheDocument();
+
+      const textarea = screen.getByRole("textbox");
+      await user.type(textarea, "This is only five words.");
+
+      expect(
+        screen.getByText("5 words · minimum 40 words"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Write 35 more words to check"),
+      ).toBeInTheDocument();
+      expect(checkBtn).toBeDisabled();
+    });
+
+    it("enables submit when minimum words is reached", async () => {
+      const user = userEvent.setup();
+      render(
+        <I18nextProvider i18n={i18n}>
+          <ExerciseWriting
+            prompt="Write a short response"
+            minWords={5}
+            isSubmitted={false}
+            onSubmit={() => {}}
+            onContinue={() => {}}
+          />
+        </I18nextProvider>,
+      );
+
+      const checkBtn = screen.getByRole("button", { name: /check/i });
+      expect(checkBtn).toBeDisabled();
+
+      const textarea = screen.getByRole("textbox");
+      await user.type(textarea, "One two three four five.");
+
+      expect(screen.getByText("5 words · minimum 5 words")).toBeInTheDocument();
+      expect(
+        screen.queryByText(/more words to check/i),
+      ).not.toBeInTheDocument();
+      expect(checkBtn).toBeEnabled();
+    });
+
+    it("blocks synchronous double click on submit button and calls onSubmit only once", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+
+      render(
+        <I18nextProvider i18n={i18n}>
+          <ExerciseWriting
+            prompt="Write a quick thought"
+            minWords={3}
+            isSubmitted={false}
+            onSubmit={onSubmit}
+            onContinue={() => {}}
+          />
+        </I18nextProvider>,
+      );
+
+      const textarea = screen.getByRole("textbox");
+      await user.type(textarea, "One two three.");
+
+      const checkBtn = screen.getByRole("button", { name: /check/i });
+      expect(checkBtn).toBeEnabled();
+
+      // Two synchronous clicks call onSubmit only once
+      fireEvent.click(checkBtn);
+      fireEvent.click(checkBtn);
+
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(onSubmit).toHaveBeenCalledWith("One two three.");
+    });
+
+    it("releases pending submit when isLoading never toggles (fake timers)", () => {
+      vi.useFakeTimers();
+      const onSubmit = vi.fn();
+
+      render(
+        <I18nextProvider i18n={i18n}>
+          <ExerciseWriting
+            prompt="Write a quick thought"
+            minWords={3}
+            isSubmitted={false}
+            onSubmit={onSubmit}
+            onContinue={() => {}}
+          />
+        </I18nextProvider>,
+      );
+
+      const textarea = screen.getByRole("textbox");
+      fireEvent.change(textarea, { target: { value: "One two three." } });
+
+      const checkBtn = screen.getByRole("button", { name: /check/i });
+      expect(checkBtn).toBeEnabled();
+
+      // Submit once
+      fireEvent.click(checkBtn);
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(onSubmit).toHaveBeenCalledWith("One two three.");
+      expect(checkBtn).toBeDisabled();
+
+      // Next tick releases pending state
+      act(() => {
+        vi.advanceTimersByTime(0);
+      });
+      expect(checkBtn).toBeEnabled();
+
+      // Second click calls onSubmit again
+      fireEvent.click(checkBtn);
+      expect(onSubmit).toHaveBeenCalledTimes(2);
+
+      vi.useRealTimers();
+    });
+
+    it("supports Vietnamese locale for label, counter, and helper", async () => {
+      await loadLocale("vi");
+      await i18n.changeLanguage("vi");
+
+      const user = userEvent.setup();
+      render(
+        <I18nextProvider i18n={i18n}>
+          <ExerciseWriting
+            prompt="Đề bài viết tiếng Anh"
+            minWords={40}
+            isSubmitted={false}
+            onSubmit={() => {}}
+            onContinue={() => {}}
+          />
+        </I18nextProvider>,
+      );
+
+      expect(screen.getByText("Bài viết của bạn")).toBeVisible();
+      expect(screen.getByText("0 từ · tối thiểu 40 từ")).toBeInTheDocument();
+      expect(
+        screen.getByText("Viết thêm 40 từ để kiểm tra"),
+      ).toBeInTheDocument();
+
+      const textarea = screen.getByRole("textbox");
+      await user.type(textarea, "Một hai ba bốn năm.");
+
+      expect(screen.getByText("5 từ · tối thiểu 40 từ")).toBeInTheDocument();
+      expect(
+        screen.getByText("Viết thêm 35 từ để kiểm tra"),
+      ).toBeInTheDocument();
     });
   });
 

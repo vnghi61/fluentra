@@ -13,9 +13,11 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Card,
   CardDescription,
@@ -179,24 +181,22 @@ export function MyWritingPage(): React.JSX.Element {
 
       {/* Empty state */}
       {!isLoading && !isError && items.length === 0 && (
-        <Card className="text-center p-8 border-border bg-surface-card">
-          <CardHeader className="space-y-2">
-            <div className="flex justify-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <FileText className="h-6 w-6" />
-              </div>
-            </div>
-            <CardTitle className="text-lg font-semibold text-text">
-              {t("writing.noSubmissions", "No writing submissions yet")}
-            </CardTitle>
-            <CardDescription className="max-w-md mx-auto text-sm">
-              {t(
-                "writing.noSubmissionsDesc",
-                "Complete writing exercises in your lessons to receive IELTS band scores and personalized AI feedback.",
-              )}
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <EmptyState
+          icon={FileText}
+          title={t("writing.noSubmissions", "No writing submissions yet")}
+          description={t(
+            "writing.noSubmissionsDesc",
+            "Complete writing exercises in your lessons to receive IELTS band scores and personalized AI feedback.",
+          )}
+          action={
+            <Link
+              to="/learn"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-fg shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              {t("writing.startLesson", "Explore lessons")}
+            </Link>
+          }
+        />
       )}
 
       {/* Submissions list */}

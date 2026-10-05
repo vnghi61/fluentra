@@ -1,12 +1,24 @@
 import React from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, BookOpen, Layers, CheckSquare, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  Layers,
+  CheckSquare,
+  Sparkles,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useAuthStore } from "@/stores/authStore";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   useFoundationTopic,
   useLearnerFoundationPath,
@@ -35,15 +47,11 @@ export function FoundationTopicPage(): React.JSX.Element {
     error: topicErr,
   } = useFoundationTopic(code);
 
-  const {
-    data: learnerPath,
-    isLoading: learnerPathLoading,
-  } = useLearnerFoundationPath(code, signedIn);
+  const { data: learnerPath, isLoading: learnerPathLoading } =
+    useLearnerFoundationPath(code, signedIn);
 
-  const {
-    data: publicPath,
-    isLoading: publicPathLoading,
-  } = usePublicFoundationPath(code, !signedIn);
+  const { data: publicPath, isLoading: publicPathLoading } =
+    usePublicFoundationPath(code, !signedIn);
 
   const pathItems: FoundationPathNode[] = React.useMemo(() => {
     if (signedIn && learnerPath?.items) {
@@ -87,9 +95,15 @@ export function FoundationTopicPage(): React.JSX.Element {
         <p className="text-sm text-text-muted">
           {topicErr instanceof Error
             ? topicErr.message
-            : t("foundation.topicNotFoundDesc", "Could not load the requested foundation topic.")}
+            : t(
+                "foundation.topicNotFoundDesc",
+                "Could not load the requested foundation topic.",
+              )}
         </p>
-        <Button variant="outline" onClick={() => void navigate({ to: "/learn" })}>
+        <Button
+          variant="outline"
+          onClick={() => void navigate({ to: "/learn" })}
+        >
           <ArrowLeft className="h-4 w-4 mr-2" />
           {t("foundation.backToLearn", "Back to Learn")}
         </Button>
@@ -151,26 +165,31 @@ export function FoundationTopicPage(): React.JSX.Element {
           )}
         </CardHeader>
 
-
         <CardContent className="space-y-6">
           {/* Practice Material Counts */}
           <div className="grid grid-cols-3 gap-3 p-4 rounded-xl bg-surface-subtle border border-border-subtle text-center">
             <div>
-              <div className="text-2xl font-bold text-text">{topic.exercise_count}</div>
+              <div className="text-2xl font-bold text-text">
+                {topic.exercise_count}
+              </div>
               <div className="text-xs text-text-muted flex items-center justify-center gap-1 mt-1">
                 <CheckSquare className="h-3.5 w-3.5" />
                 {t("foundation.exercises", "Exercises")}
               </div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-text">{topic.quiz_count}</div>
+              <div className="text-2xl font-bold text-text">
+                {topic.quiz_count}
+              </div>
               <div className="text-xs text-text-muted flex items-center justify-center gap-1 mt-1">
                 <Sparkles className="h-3.5 w-3.5" />
                 {t("foundation.quizzes", "Quizzes")}
               </div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-text">{topic.review_count}</div>
+              <div className="text-2xl font-bold text-text">
+                {topic.review_count}
+              </div>
               <div className="text-xs text-text-muted flex items-center justify-center gap-1 mt-1">
                 <BookOpen className="h-3.5 w-3.5" />
                 {t("foundation.reviews", "Reviews")}
@@ -193,7 +212,9 @@ export function FoundationTopicPage(): React.JSX.Element {
       </Card>
 
       {/* Learning Path View */}
-      <section aria-label={t("foundation.pathSection", "Foundation Learning Path")}>
+      <section
+        aria-label={t("foundation.pathSection", "Foundation Learning Path")}
+      >
         <FoundationPathView
           items={pathItems}
           targetCode={code}

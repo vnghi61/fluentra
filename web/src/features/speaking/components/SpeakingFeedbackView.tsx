@@ -245,9 +245,17 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
               role="status"
               className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-text"
             >
-              <p className="font-semibold">{t("speaking.mockAsrTitle")}</p>
+              <p className="font-semibold">
+                {t(
+                  "speaking.mockAsrTitle",
+                  "This was not a real transcription",
+                )}
+              </p>
               <p className="mt-1 text-text-muted">
-                {t("speaking.mockAsrBody")}
+                {t(
+                  "speaking.mockAsrBody",
+                  "No speech-to-text service is configured, so the server returned a fixed sample sentence instead of what you said. The alignment and score below are not an assessment of your speaking. Set SPEECH_ASR_BASE_URL to enable real transcription.",
+                )}
               </p>
             </div>
           )}

@@ -116,7 +116,9 @@ export function FoundationTopicBody({
                 key={index}
                 className="rounded-lg border border-border-subtle p-3 text-sm"
               >
-                <p className="text-danger-accent line-through">{mistake.wrong}</p>
+                <p className="text-danger-accent line-through">
+                  {mistake.wrong}
+                </p>
                 <p className="text-text">{mistake.right}</p>
                 {mistake.why && (
                   <p className="mt-1 text-xs text-text-muted">{mistake.why}</p>

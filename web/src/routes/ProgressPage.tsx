@@ -1,6 +1,9 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
+import { TrendingUp } from "lucide-react";
 
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   CourseProgressList,
   DashboardError,
@@ -32,6 +35,8 @@ export function ProgressPage(): React.JSX.Element {
     0,
   );
 
+  const isEmpty = courses.length === 0 && skills.length === 0;
+
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
       {/* Top Header */}
@@ -46,6 +51,25 @@ export function ProgressPage(): React.JSX.Element {
           )}
         </p>
       </header>
+
+      {isEmpty && (
+        <EmptyState
+          icon={TrendingUp}
+          title={t("progress.emptyTitle", "No learning progress yet")}
+          description={t(
+            "progress.emptyDesc",
+            "Start learning lessons to track your study progress, skill competencies, and course completion.",
+          )}
+          action={
+            <Link
+              to="/learn"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-fg shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              {t("progress.startLearning", "Start learning")}
+            </Link>
+          }
+        />
+      )}
 
       {/*
         Only the one number GET /me/progress actually returns.

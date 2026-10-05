@@ -11,7 +11,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 
-import i18n, { initI18n } from "@/i18n";
+import i18n, { initI18n, loadLocale } from "@/i18n";
 import { ProgressPage } from "@/routes/ProgressPage";
 import type { ProgressResponse } from "@/features/learning";
 import { server } from "./msw-server";
@@ -43,6 +43,7 @@ async function renderProgress() {
 describe("ProgressPage (P10.5)", () => {
   beforeEach(async () => {
     await initI18n("en");
+    await loadLocale("en");
     await i18n.changeLanguage("en");
   });
 

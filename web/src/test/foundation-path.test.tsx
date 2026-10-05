@@ -10,7 +10,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 
-import i18n, { initI18n } from "@/i18n";
+import i18n, { initI18n, loadLocale } from "@/i18n";
 import { FoundationPathView } from "@/features/learning/components/Foundation/FoundationPathView";
 import type { FoundationPathNode } from "@/features/learning/api/foundation";
 
@@ -19,9 +19,7 @@ async function renderWithRouter(ui: React.ReactElement) {
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
-    component: () => (
-      <I18nextProvider i18n={i18n}>{ui}</I18nextProvider>
-    ),
+    component: () => <I18nextProvider i18n={i18n}>{ui}</I18nextProvider>,
   });
 
   const router = createRouter({
@@ -35,6 +33,7 @@ async function renderWithRouter(ui: React.ReactElement) {
 describe("FoundationPathView", () => {
   beforeEach(async () => {
     await initI18n("en");
+    await loadLocale("en");
     await i18n.changeLanguage("en");
   });
 
@@ -119,11 +118,7 @@ describe("FoundationPathView", () => {
     );
 
     expect(
-      await screen.findByText(
-        "No prerequisite path recorded for this topic.",
-      ),
+      await screen.findByText("No prerequisite path recorded for this topic."),
     ).toBeInTheDocument();
   });
 });
-
-

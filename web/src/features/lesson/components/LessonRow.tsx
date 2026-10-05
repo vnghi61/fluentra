@@ -68,20 +68,33 @@ export const LessonRow: React.FC<LessonRowProps> = ({
             <span className="font-semibold text-text truncate text-base">
               {title}
             </span>
-            {isNext && (
-              <Badge
-                variant="primary"
-                className="text-[10px] uppercase font-bold py-0"
-              >
-                {t("learn.nextBadge", "Next Up")}
-              </Badge>
-            )}
-            {isCompleted && (
+            {isCompleted ? (
               <Badge
                 variant="success"
                 className="text-[10px] uppercase font-bold py-0"
               >
-                {t("learn.completedBadge", "Completed")}
+                {t("learn.statusCompleted", "Completed")}
+              </Badge>
+            ) : locked ? (
+              <Badge
+                variant="secondary"
+                className="text-[10px] uppercase font-bold py-0"
+              >
+                {t("learn.statusLocked", "Locked")}
+              </Badge>
+            ) : isNext ? (
+              <Badge
+                variant="primary"
+                className="text-[10px] uppercase font-bold py-0"
+              >
+                {t("learn.statusNext", "Next")}
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="text-[10px] uppercase font-bold py-0 text-text-muted"
+              >
+                {t("learn.statusNotStarted", "Not started")}
               </Badge>
             )}
           </div>

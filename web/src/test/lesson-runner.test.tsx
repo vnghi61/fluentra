@@ -167,6 +167,30 @@ describe("LessonPage Runner (P10.3)", () => {
     );
   });
 
+  it("does not render a phantom activity or completion for an empty lesson", async () => {
+    let starts = 0;
+    server.use(
+      http.get(`/api/v1/lessons/${mockLesson.id}`, () =>
+        HttpResponse.json({ ...mockLesson, activities: [] }),
+      ),
+      http.post("/api/v1/activities/:id/attempts", () => {
+        starts++;
+        return HttpResponse.json({}, { status: 500 });
+      }),
+    );
+    await renderLessonRunner();
+    expect(await screen.findByText("No activities yet")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Try again/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Back to Syllabus/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Activity 1 of 0")).not.toBeInTheDocument();
+    expect(screen.queryByText("Lesson Completed!")).not.toBeInTheDocument();
+    expect(starts).toBe(0);
+  });
+
   it("completes full 3-step lesson using keyboard and mouse", async () => {
     const user = userEventDefault.setup();
     await renderLessonRunner();

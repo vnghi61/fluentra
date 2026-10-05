@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PronounceButton } from "@/components/ui/pronounce-button";
+import { pickLocalized, prefersVietnamese } from "@/lib/localized";
 import { cn } from "@/lib/utils";
 
 import { type AnswerExplanation } from "./ExerciseShell";
@@ -36,9 +37,22 @@ export const ExerciseGapFill: React.FC<ExerciseGapFillProps> = ({
   onSubmit,
   onContinue,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [answer, setAnswer] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const verdict = isCorrect
+    ? t("runner.correct", "Correct! Well done.")
+    : t("runner.incorrect", "Not quite.");
+
+  const showFeedback =
+    Boolean(feedback?.trim()) &&
+    !prefersVietnamese(i18n.language) &&
+    feedback!.trim().toLowerCase() !== verdict.trim().toLowerCase();
+
+  const explanationText = explanation
+    ? pickLocalized(explanation.text, explanation.text_vi, i18n.language)
+    : "";
 
   // What the speaker says.
   //
@@ -140,46 +154,31 @@ export const ExerciseGapFill: React.FC<ExerciseGapFillProps> = ({
         >
           <div className="flex items-center gap-2 font-bold text-base">
             {isCorrect ? (
-              <>
-                <Check className="h-5 w-5" aria-hidden="true" />
-                <span>{t("runner.correct", "Correct! Well done.")}</span>
-              </>
+              <Check className="h-5 w-5" aria-hidden="true" />
             ) : (
-              <>
-                <X className="h-5 w-5" aria-hidden="true" />
-                <span>{t("runner.incorrect", "Not quite.")}</span>
-              </>
+              <X className="h-5 w-5" aria-hidden="true" />
             )}
+            <span>{verdict}</span>
           </div>
           {!isCorrect && expectedAnswer && (
             <p className="mt-1 text-sm text-text font-medium">
-              Correct answer:{" "}
+              {t("runner.correctAnswerLabel", "Correct answer")}:{" "}
               <span className="font-bold underline">{expectedAnswer}</span>
             </p>
           )}
-          {feedback && (
+          {showFeedback && (
             <p className="mt-1 text-sm text-text font-normal">{feedback}</p>
           )}
-          {explanation && (
-            <div className="mt-3 pt-3 border-t border-border/40 space-y-2 text-sm">
-              <div className="flex items-start gap-2">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary shrink-0 mt-0.5">
-                  EN
-                </span>
-                <p className="text-text/90 font-medium leading-relaxed">
-                  {explanation.text}
-                </p>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-accent/20 text-accent shrink-0 mt-0.5">
-                  VI
-                </span>
-                <p className="text-text-muted leading-relaxed">
-                  {explanation.text_vi}
-                </p>
-              </div>
+          {explanationText ? (
+            <div className="mt-3 pt-3 border-t border-border/40 space-y-1 text-sm">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                {t("runner.explanationLabel", "Explanation")}
+              </span>
+              <p className="text-text/90 font-medium leading-relaxed">
+                {explanationText}
+              </p>
             </div>
-          )}
+          ) : null}
         </div>
       )}
 

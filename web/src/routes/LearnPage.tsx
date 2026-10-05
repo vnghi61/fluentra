@@ -208,7 +208,11 @@ export function LearnPage(): React.JSX.Element {
       />
 
       {/* Syllabus Unit & Lesson List */}
-      <UnitList units={activeCourse.units} onStartLesson={startLesson} />
+      <UnitList
+        key={activeCourse.id}
+        units={activeCourse.units}
+        onStartLesson={startLesson}
+      />
 
       {/* Course Checkout / Claim Modal */}
       {activeCourse && (

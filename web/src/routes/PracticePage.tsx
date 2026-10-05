@@ -268,7 +268,7 @@ export function PracticePage(): React.JSX.Element {
           </CardDescription>
         </CardHeader>
         <CardFooter className="pt-0">
-          <Link to="/learn" search={{ course: "reading-practice" }}>
+          <Link to="/learn" search={{ course: "reading-foundations" }}>
             <Button variant="secondary" className="gap-2">
               <BookOpen className="h-4 w-4" aria-hidden="true" />
               {t("practice.reading.openBtn", "Start reading")}
@@ -310,7 +310,7 @@ export function PracticePage(): React.JSX.Element {
           </CardDescription>
         </CardHeader>
         <CardFooter className="pt-0">
-          <Link to="/learn" search={{ course: "listening-practice" }}>
+          <Link to="/learn" search={{ course: "listening-foundations" }}>
             <Button variant="secondary" className="gap-2">
               <Headphones className="h-4 w-4" aria-hidden="true" />
               {t("practice.listening.openBtn", "Start listening")}
@@ -338,7 +338,7 @@ export function PracticePage(): React.JSX.Element {
           </CardDescription>
         </CardHeader>
         <CardFooter className="pt-0">
-          <Link to="/learn" search={{ course: "writing-practice" }}>
+          <Link to="/learn" search={{ course: "writing-foundations" }}>
             <Button variant="secondary" className="gap-2">
               <PenTool className="h-4 w-4" aria-hidden="true" />
               {t("practice.writing.openBtn", "Start writing")}
@@ -375,7 +375,7 @@ export function PracticePage(): React.JSX.Element {
           </CardDescription>
         </CardHeader>
         <CardFooter className="pt-0">
-          <Link to="/learn" search={{ course: "speaking-practice" }}>
+          <Link to="/learn" search={{ course: "speaking-foundations" }}>
             <Button variant="secondary" className="gap-2">
               <Mic className="h-4 w-4" aria-hidden="true" />
               {t("practice.speaking.openBtn", "Start speaking")}
