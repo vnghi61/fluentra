@@ -127,11 +127,11 @@ type Repository interface {
 		ctx context.Context, explanation repository.AnswerExplanationDTO,
 	) (*repository.AnswerExplanationDTO, error)
 	GetDailySet(
-		ctx context.Context, userID uuid.UUID, localDate time.Time,
+		ctx context.Context, userID uuid.UUID, localDate time.Time, level string,
 	) (*domain.DailySet, error)
 	// CreateDailySet returns nil when another request stored the day's set first.
 	CreateDailySet(
-		ctx context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
+		ctx context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID, level string,
 	) (*domain.DailySet, error)
 	RecordItemExposure(
 		ctx context.Context, userID uuid.UUID, activityID uuid.UUID,

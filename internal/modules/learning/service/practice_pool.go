@@ -1188,7 +1188,7 @@ func (s *Service) GetDailySet(
 	}
 	s.ensurePoolEnrollment(ctx, userID, layout.courseID)
 
-	existing, err := s.repo.GetDailySet(ctx, userID, localDate)
+	existing, err := s.repo.GetDailySet(ctx, userID, localDate, level)
 	if err != nil {
 		return nil, fmt.Errorf("check existing daily set: %w", err)
 	}
@@ -1204,7 +1204,7 @@ func (s *Service) GetDailySet(
 		return nil, apperr.New(apperr.NotFound, "PRACTICE_POOL_EMPTY", "Practice pool contains no activities.")
 	}
 
-	stored, err := s.saveDailySet(ctx, userID, localDate, chosen)
+	stored, err := s.saveDailySet(ctx, userID, localDate, chosen, level)
 	if err != nil {
 		return nil, err
 	}
@@ -1549,10 +1549,10 @@ func (s *Service) drawFromSlot(
 // marked its own randomly drawn items as seen — items the learner was never shown
 // — and answered with a set different from the one stored.
 func (s *Service) saveDailySet(
-	ctx context.Context, userID uuid.UUID, localDate time.Time, chosen []uuid.UUID,
+	ctx context.Context, userID uuid.UUID, localDate time.Time, chosen []uuid.UUID, level string,
 ) (*domain.DailySet, error) {
 	write := func(ctx context.Context, repo Repository) (*domain.DailySet, error) {
-		created, err := repo.CreateDailySet(ctx, userID, localDate, chosen)
+		created, err := repo.CreateDailySet(ctx, userID, localDate, chosen, level)
 		if err != nil || created == nil {
 			return created, err
 		}
@@ -1582,7 +1582,7 @@ func (s *Service) saveDailySet(
 		return stored, nil
 	}
 
-	winner, err := s.repo.GetDailySet(ctx, userID, localDate)
+	winner, err := s.repo.GetDailySet(ctx, userID, localDate, level)
 	if err != nil {
 		return nil, fmt.Errorf("read the day's set after a concurrent save: %w", err)
 	}

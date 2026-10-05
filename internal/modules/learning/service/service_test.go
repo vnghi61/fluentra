@@ -637,12 +637,14 @@ func (f *fakeLearningRepo) WithTx(_ pgx.Tx) service.Repository {
 	return f
 }
 
-func (f *fakeLearningRepo) GetDailySet(_ context.Context, _ uuid.UUID, _ time.Time) (*domain.DailySet, error) {
+func (f *fakeLearningRepo) GetDailySet(
+	_ context.Context, _ uuid.UUID, _ time.Time, _ string,
+) (*domain.DailySet, error) {
 	return nil, nil
 }
 
 func (f *fakeLearningRepo) CreateDailySet(
-	_ context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
+	_ context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID, _ string,
 ) (*domain.DailySet, error) {
 	return &domain.DailySet{
 		ID:          uuid.New(),

@@ -32,6 +32,16 @@ last_verified: 2026-08-25
 
 ## 1. Overview
 
+### Local practice repair (2026-10-01)
+
+- Daily sets are keyed by learner, local date **and CEFR level**. Migration
+  `1700000950_daily_sets_by_level.sql` retains legacy unlabelled rows as history,
+  but draws fresh A2/B1/B2 sets instead of relabelling the same activities.
+- Resource practice checks the current `resource_classify.v2` suitability result
+  before requesting, generating, or reading even an existing ready set. Old
+  classifications require the owner's content revalidation; unrelated documents
+  cannot become practice simply because their file format passed validation.
+
 <!-- BEGIN GENERATED: overview -->
 The learner's journey and the **exercise engine**. Owns enrolment, progress, attempts, session tracking, placement and the adaptive path — and defines the `ExerciseGrader` interface that every skill module implements.
 <!-- END GENERATED: overview -->

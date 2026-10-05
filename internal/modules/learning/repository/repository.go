@@ -928,11 +928,12 @@ func (r *Repository) UpsertAnswerExplanation(
 
 // GetDailySet reads a user's practice set for a specific local date.
 func (r *Repository) GetDailySet(
-	ctx context.Context, userID uuid.UUID, localDate time.Time,
+	ctx context.Context, userID uuid.UUID, localDate time.Time, level string,
 ) (*domain.DailySet, error) {
 	row, err := r.queries.GetDailySet(ctx, sqlc.GetDailySetParams{
 		UserID:    userID,
 		LocalDate: pgtype.Date{Time: localDate, Valid: true},
+		CefrLevel: level,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -952,12 +953,13 @@ func (r *Repository) GetDailySet(
 // CreateDailySet stores a newly built daily set. It returns nil, and no error,
 // when another request stored the learner's set for that date first.
 func (r *Repository) CreateDailySet(
-	ctx context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
+	ctx context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID, level string,
 ) (*domain.DailySet, error) {
 	row, err := r.queries.CreateDailySet(ctx, sqlc.CreateDailySetParams{
 		UserID:      userID,
 		LocalDate:   pgtype.Date{Time: localDate, Valid: true},
 		ActivityIds: activityIDs,
+		CefrLevel:   level,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

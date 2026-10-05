@@ -87,8 +87,8 @@ func newFakePoolRepo() *fakePoolRepo {
 	}
 }
 
-func dailySetKey(userID uuid.UUID, localDate time.Time) string {
-	return userID.String() + "/" + localDate.Format("2006-01-02")
+func dailySetKey(userID uuid.UUID, localDate time.Time, level string) string {
+	return userID.String() + "/" + localDate.Format("2006-01-02") + "/" + level
 }
 
 func exposureKey(userID, activityID uuid.UUID) string {
@@ -99,19 +99,21 @@ func (r *fakePoolRepo) WithTx(_ pgx.Tx) service.Repository {
 	return r
 }
 
-func (r *fakePoolRepo) GetDailySet(_ context.Context, userID uuid.UUID, localDate time.Time) (*domain.DailySet, error) {
+func (r *fakePoolRepo) GetDailySet(
+	_ context.Context, userID uuid.UUID, localDate time.Time, level string,
+) (*domain.DailySet, error) {
 	r.poolMu.Lock()
 	defer r.poolMu.Unlock()
-	return r.sets[dailySetKey(userID, localDate)], nil
+	return r.sets[dailySetKey(userID, localDate, level)], nil
 }
 
 // CreateDailySet mirrors ON CONFLICT DO NOTHING: nil when a set already exists.
 func (r *fakePoolRepo) CreateDailySet(
-	_ context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
+	_ context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID, level string,
 ) (*domain.DailySet, error) {
 	r.poolMu.Lock()
 	defer r.poolMu.Unlock()
-	key := dailySetKey(userID, localDate)
+	key := dailySetKey(userID, localDate, level)
 	if r.raceWinner != nil {
 		r.sets[key] = &domain.DailySet{ID: uuid.New(), UserID: userID, LocalDate: localDate, ActivityIDs: r.raceWinner}
 		r.raceWinner = nil
@@ -603,7 +605,9 @@ func (f poolFixture) seed(t *testing.T, level string, counts map[string]int) map
 					`{"prompt": "%s %s %d", "script": "s%d", "audio_object_key": "tts/%s-%d.wav"}`,
 					level, slot.title, i, i, level, i))
 			}
-			f.content.versions[versionID] = &contentcontract.Version{ID: versionID, Kind: slot.kind, Body: body}
+			f.content.versions[versionID] = &contentcontract.Version{
+				ID: versionID, Kind: slot.kind, Body: body, CEFRLevel: level,
+			}
 			seeded[slot.title] = append(seeded[slot.title],
 				f.lessons.seed(t, level, slot.title, slot.kind, versionID, body))
 		}
@@ -667,6 +671,60 @@ func testClock() *clock.Fake {
 // --------------------------------------------------------------------------
 // The daily set
 // --------------------------------------------------------------------------
+
+func TestGetDailySet_SameUserAndDayKeepsEachLevelsActualActivities(t *testing.T) {
+	t.Parallel()
+	f := newPoolFixture(t, testClock(), uuid.New(), nil, nil)
+	levels := []string{"A2", "B1", "B2"}
+	for _, level := range levels {
+		f.seed(t, level, stockedSlots(6))
+	}
+	userID := uuid.New()
+	stored := map[string]*domain.DailySetDTO{}
+	served := map[uuid.UUID]string{}
+	for _, level := range levels {
+		set, err := f.svc.GetDailySet(context.Background(), userID, level)
+		if err != nil {
+			t.Fatalf("GetDailySet(%s): %v", level, err)
+		}
+		if set.Level != level || len(set.Activities) != dailySetSize {
+			t.Fatalf("%s set: level=%s, activities=%d", level, set.Level, len(set.Activities))
+		}
+		for _, activity := range set.Activities {
+			version := f.content.versions[activity.ContentVersionID]
+			if version == nil || version.CEFRLevel != level {
+				t.Fatalf("%s returned activity %s from content %+v", level, activity.ID, version)
+			}
+			if previous, ok := served[activity.ID]; ok {
+				t.Errorf("%s activity %s was already served at %s", level, activity.ID, previous)
+			}
+			served[activity.ID] = level
+		}
+		stored[level] = set
+	}
+	// Switching back must return each original set, not the most recently drawn level.
+	for i := len(levels) - 1; i >= 0; i-- {
+		level := levels[i]
+		got, err := f.svc.GetDailySet(context.Background(), userID, level)
+		if err != nil {
+			t.Fatalf("repeat GetDailySet(%s): %v", level, err)
+		}
+		want := stored[level]
+		if got.ID != want.ID || len(got.Activities) != len(want.Activities) {
+			t.Fatalf("%s repeat did not preserve its stored set", level)
+		}
+		assertSameDailyActivities(t, got.Activities, want.Activities)
+	}
+}
+
+func assertSameDailyActivities(t *testing.T, got, want []domain.DailySetActivityDTO) {
+	t.Helper()
+	for j := range want {
+		if got[j].ID != want[j].ID {
+			t.Errorf("repeat changed activity %d: got %s, want %s", j, got[j].ID, want[j].ID)
+		}
+	}
+}
 
 func TestGetDailySet_SecondSetSharesNothingWithFirstWhileUnseenRemain(t *testing.T) {
 	t.Parallel()

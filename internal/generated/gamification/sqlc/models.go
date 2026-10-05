@@ -603,6 +603,7 @@ type LearnDailySet struct {
 	LocalDate   pgtype.Date
 	ActivityIds []uuid.UUID
 	CreatedAt   time.Time
+	CefrLevel   string
 }
 
 type LearnEnrollment struct {

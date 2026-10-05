@@ -15,10 +15,10 @@ import (
 
 const createDailySet = `-- name: CreateDailySet :one
 INSERT INTO learn.daily_sets (
-    user_id, local_date, activity_ids
+    user_id, local_date, activity_ids, cefr_level
 ) VALUES (
-    $1, $2, $3
-) ON CONFLICT (user_id, local_date) DO NOTHING
+    $1, $2, $3, $4
+) ON CONFLICT (user_id, local_date, cefr_level) DO NOTHING
 RETURNING id, user_id, local_date, activity_ids, created_at
 `
 
@@ -26,14 +26,28 @@ type CreateDailySetParams struct {
 	UserID      uuid.UUID
 	LocalDate   pgtype.Date
 	ActivityIds []uuid.UUID
+	CefrLevel   string
+}
+
+type CreateDailySetRow struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	LocalDate   pgtype.Date
+	ActivityIds []uuid.UUID
+	CreatedAt   time.Time
 }
 
 // DO NOTHING, not DO UPDATE. A request that loses the race for a learner's first
 // open of the day gets no row back, and so knows not to record exposures for the
 // items it drew: they were never shown.
-func (q *Queries) CreateDailySet(ctx context.Context, arg CreateDailySetParams) (LearnDailySet, error) {
-	row := q.db.QueryRow(ctx, createDailySet, arg.UserID, arg.LocalDate, arg.ActivityIds)
-	var i LearnDailySet
+func (q *Queries) CreateDailySet(ctx context.Context, arg CreateDailySetParams) (CreateDailySetRow, error) {
+	row := q.db.QueryRow(ctx, createDailySet,
+		arg.UserID,
+		arg.LocalDate,
+		arg.ActivityIds,
+		arg.CefrLevel,
+	)
+	var i CreateDailySetRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -48,12 +62,21 @@ const getDailySet = `-- name: GetDailySet :one
 
 SELECT id, user_id, local_date, activity_ids, created_at
 FROM learn.daily_sets
-WHERE user_id = $1 AND local_date = $2
+WHERE user_id = $1 AND local_date = $2 AND cefr_level = $3
 `
 
 type GetDailySetParams struct {
 	UserID    uuid.UUID
 	LocalDate pgtype.Date
+	CefrLevel string
+}
+
+type GetDailySetRow struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	LocalDate   pgtype.Date
+	ActivityIds []uuid.UUID
+	CreatedAt   time.Time
 }
 
 // Daily practice sets and item exposures: work order 11 §3.11.
@@ -62,9 +85,9 @@ type GetDailySetParams struct {
 // lessons and activities belong to `lesson` and are reached through its contract
 // (rule L2): the service resolves which activities make up a slot and passes their
 // ids to these queries.
-func (q *Queries) GetDailySet(ctx context.Context, arg GetDailySetParams) (LearnDailySet, error) {
-	row := q.db.QueryRow(ctx, getDailySet, arg.UserID, arg.LocalDate)
-	var i LearnDailySet
+func (q *Queries) GetDailySet(ctx context.Context, arg GetDailySetParams) (GetDailySetRow, error) {
+	row := q.db.QueryRow(ctx, getDailySet, arg.UserID, arg.LocalDate, arg.CefrLevel)
+	var i GetDailySetRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,

@@ -44,6 +44,11 @@ agent knows what is already handled and what is deliberately deferred.
 
 ## Progress
 
+- [x] Scope daily-set persistence and concurrent-save recovery by CEFR level;
+  preserve old sets without serving them under a different level.
+- [x] Require current English-learning suitability before any resource-practice
+  request, background generation, or existing-set read.
+
 The list above is generated from `tools/docgen/data/learning.json`, so its checkboxes cannot be
 ticked by hand — `make docs` rewrites the block and `make docs-check` fails until it matches.
 Completed work is recorded here instead.
