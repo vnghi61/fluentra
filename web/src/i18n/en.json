@@ -712,6 +712,9 @@
   "learn": {
     "completedBadge": "Completed",
     "courseBadge": "Course Syllabus",
+    "durationHours": "{{count}}h",
+    "durationHoursMinutes": "{{hours}}h {{mins}}m",
+    "durationMinutes": "{{count}} min",
     "emptyDesc": "Curriculum content is currently being prepared and published. Please check back shortly.",
     "emptyTitle": "No Courses Available Yet",
     "emptyUnit": "No lessons in this unit yet.",
@@ -742,7 +745,19 @@
     "unitProgress": "{{completed}}/{{total}} completed",
     "buyCourseBtn": "Buy Course • ₫{{price}}",
     "claimCourseBtn": "Enroll for Free",
-    "courseOwned": "Enrolled"
+    "courseOwned": "Enrolled",
+    "clearSearch": "Clear search",
+    "filterAll": "All lessons",
+    "filterCompleted": "Completed lessons",
+    "filterEmpty": "No lessons match the selected filter.",
+    "filterLabel": "Filter by status",
+    "filterLocked": "Locked lessons",
+    "filterNext": "Next lesson",
+    "filterNotStarted": "Not started lessons",
+    "noLessonsDesc": "Lessons for this course are currently being authored. Please check back soon.",
+    "noLessonsTitle": "No lessons",
+    "noSearchResultsQuery": "No lessons match \"{{query}}\".",
+    "showAllLessons": "Show all lessons"
   },
   "nav": {
     "account": "Account",

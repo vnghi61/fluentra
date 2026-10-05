@@ -259,7 +259,7 @@ describe("LearnPage (P10.2)", () => {
       await screen.findByText("IELTS Foundation 5.0 - 6.5"),
     ).toBeInTheDocument();
     expect(screen.getByText("B1 → B2")).toBeInTheDocument();
-    expect(screen.getByText("40h")).toBeInTheDocument();
+    expect(screen.getByText("35 min")).toBeInTheDocument();
 
     // Unit 1
     expect(screen.getByText("Everyday Campus Life")).toBeInTheDocument();
@@ -269,7 +269,7 @@ describe("LearnPage (P10.2)", () => {
       screen.getByText("Academic Word List - Topic 1"),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Start Lesson/i }),
+      screen.getByRole("link", { name: /Start Lesson/i }),
     ).toBeInTheDocument();
 
     // Lesson 2 (Locked with reason)
@@ -305,7 +305,7 @@ describe("LearnPage (P10.2)", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/Giáo trình khóa học/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Bắt đầu bài học/i }),
+      screen.getByRole("link", { name: /Bắt đầu bài học/i }),
     ).toBeInTheDocument();
   });
 
@@ -342,9 +342,9 @@ describe("LearnPage (P10.2)", () => {
     await renderLearn();
 
     expect(await screen.findByText("Completed")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Review/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Review/i })).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /Start Lesson/i }),
+      screen.queryByRole("link", { name: /Start Lesson/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -463,7 +463,7 @@ describe("LearnPage (P10.2)", () => {
     expect(statuses[1]).toHaveTextContent("No lessons found");
     expect(screen.getByText("No lessons found")).toBeInTheDocument();
     expect(
-      screen.getByText("Try searching with different keywords."),
+      screen.getByText('No lessons match "nonexistentquery123".'),
     ).toBeInTheDocument();
   });
 
@@ -534,5 +534,137 @@ describe("LearnPage (P10.2)", () => {
     );
     expect(screen.getByText("Not started")).toBeInTheDocument();
     u4();
+  });
+
+  it("filters lessons by status and auto-expands matching units", async () => {
+    const user = userEvent.setup();
+    await renderWithRouter(<UnitList units={mockMultiUnitCourse} />);
+
+    const select = screen.getByRole("combobox", {
+      name: /filter by status/i,
+    });
+
+    // Select "Completed" -> shows completed lessons, auto-expands Unit 1
+    await user.selectOptions(select, "completed");
+    const unit1Btn = screen.getByRole("button", {
+      name: /Unit 1 · Everyday Campus Life/i,
+    });
+    expect(unit1Btn).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByText("Academic Word List - Topic 1"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Campus Orientation")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Literature Review Synthesis"),
+    ).not.toBeInTheDocument();
+
+    // Select "Locked" -> auto-expands Unit 3 and shows "Statistical Findings Analysis"
+    await user.selectOptions(select, "locked");
+    const unit3Btn = screen.getByRole("button", {
+      name: /Unit 3 · Advanced Data Analysis/i,
+    });
+    expect(unit3Btn).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByText("Statistical Findings Analysis"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Academic Word List - Topic 1"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows empty filter state and resets when 'Show all lessons' is clicked", async () => {
+    const user = userEvent.setup();
+    await renderWithRouter(<UnitList units={mockMultiUnitCourse} />);
+
+    const searchInput = screen.getByRole("searchbox", {
+      name: /search lessons/i,
+    });
+    // Search for a lesson that is unstarted
+    await user.type(searchInput, "Literature");
+    const select = screen.getByRole("combobox", {
+      name: /filter by status/i,
+    });
+    // Choose "completed" so nothing matches both search and filter
+    await user.selectOptions(select, "completed");
+
+    expect(
+      screen.getByText("No lessons match the selected filter."),
+    ).toBeInTheDocument();
+    const resetBtn = screen.getByRole("button", {
+      name: /Show all lessons/i,
+    });
+    await user.click(resetBtn);
+
+    // Filter is reset to "all"
+    expect(select).toHaveValue("all");
+    expect(
+      screen.getByText("Literature Review Synthesis"),
+    ).toBeInTheDocument();
+  });
+
+  it("clears search query and restores unit list when 'Clear search' is clicked", async () => {
+    const user = userEvent.setup();
+    await renderWithRouter(<UnitList units={mockMultiUnitCourse} />);
+
+    const searchInput = screen.getByRole("searchbox", {
+      name: /search lessons/i,
+    });
+    await user.type(searchInput, "nonexistentquery123");
+
+    expect(screen.getByText("No lessons found")).toBeInTheDocument();
+    const clearBtn = screen.getByRole("button", { name: /Clear search/i });
+    await user.click(clearBtn);
+
+    expect(searchInput).toHaveValue("");
+    expect(screen.queryByText("No lessons found")).not.toBeInTheDocument();
+    expect(screen.getByText("Research Methodologies")).toBeInTheDocument();
+  });
+
+  it("calculates and displays completed count and progress percentage correctly", async () => {
+    server.use(
+      http.get("/api/v1/courses", () => HttpResponse.json(mockCourseList)),
+      http.get("/api/v1/courses/ielts-foundation", () =>
+        HttpResponse.json({
+          ...mockCourseDetail,
+          units: [
+            {
+              ...mockCourseDetail.units[0]!,
+              lessons: [
+                {
+                  ...mockCourseDetail.units[0]!.lessons[0]!,
+                  completed: true,
+                },
+                {
+                  ...mockCourseDetail.units[0]!.lessons[1]!,
+                  completed: false,
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+
+    await renderLearn();
+
+    // 1 of 2 completed -> 50%
+    expect(
+      await screen.findByText("1 of 2 lessons completed"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("50%")).toBeInTheDocument();
+    const progress = screen.getByRole("progressbar");
+    expect(progress).toHaveAttribute("aria-valuenow", "50");
+  });
+
+  it("renders exactly one primary next-lesson CTA", async () => {
+    await renderWithRouter(<UnitList units={mockMultiUnitCourse} />);
+
+    // Unit 2 is current; lesson-2-1 is effective next lesson
+    // Its CTA is styled primary
+    const links = screen.getAllByRole("link", { name: /Start Lesson/i });
+    expect(links).toHaveLength(2); // lesson-2-1 (next) and lesson-2-2 (non-next)
+    expect(links[0]).toHaveClass("bg-primary");
+    expect(links[1]).not.toHaveClass("bg-primary");
+    expect(links[1]).toHaveClass("border-border");
   });
 });

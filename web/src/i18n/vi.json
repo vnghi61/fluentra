@@ -712,6 +712,9 @@
   "learn": {
     "completedBadge": "Đã xong",
     "courseBadge": "Giáo trình khóa học",
+    "durationHours": "{{count}} giờ",
+    "durationHoursMinutes": "{{hours}} giờ {{mins}} phút",
+    "durationMinutes": "{{count}} phút",
     "emptyDesc": "Nội dung giáo trình đang được xuất bản. Vui lòng kiểm tra lại sau.",
     "emptyTitle": "Chưa có khóa học nào",
     "emptyUnit": "Chưa có bài học nào trong chương này.",
@@ -742,7 +745,19 @@
     "unitProgress": "{{completed}}/{{total}} hoàn thành",
     "buyCourseBtn": "Mua khóa học • ₫{{price}}",
     "claimCourseBtn": "Đăng ký miễn phí",
-    "courseOwned": "Đã sở hữu"
+    "courseOwned": "Đã sở hữu",
+    "clearSearch": "Xóa tìm kiếm",
+    "filterAll": "Tất cả bài học",
+    "filterCompleted": "Bài học đã hoàn thành",
+    "filterEmpty": "Không có bài học nào phù hợp với bộ lọc đã chọn.",
+    "filterLabel": "Lọc theo trạng thái",
+    "filterLocked": "Bài học đã khóa",
+    "filterNext": "Bài học tiếp theo",
+    "filterNotStarted": "Bài học chưa bắt đầu",
+    "noLessonsDesc": "Nội dung bài học cho khóa học này đang được biên soạn. Vui lòng quay lại sau.",
+    "noLessonsTitle": "Không có bài học",
+    "noSearchResultsQuery": "Không có bài học phù hợp với từ khóa \"{{query}}\".",
+    "showAllLessons": "Xem tất cả bài học"
   },
   "nav": {
     "account": "Tài khoản",

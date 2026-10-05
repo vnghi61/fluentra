@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   CheckCircle2,
+  ChevronRight,
   Clock,
   Lock,
   PlayCircle,
@@ -17,14 +18,14 @@ import type { LessonSummary } from "../api/lessonApi";
 
 export interface LessonRowProps {
   lesson: LessonSummary;
-  isCompleted?: boolean;
-  isNext?: boolean;
+  isCompleted?: boolean | undefined;
+  isNext?: boolean | undefined;
   /**
    * Called instead of following the link on a plain left click, so the page
    * that knows the course id can enrol before the runner opens an attempt.
    * Absent, the row stays an ordinary link.
    */
-  onStartLesson?: (lessonId: string) => void;
+  onStartLesson?: ((lessonId: string) => void) | undefined;
 }
 
 export const LessonRow: React.FC<LessonRowProps> = ({
@@ -36,17 +37,33 @@ export const LessonRow: React.FC<LessonRowProps> = ({
   const { t } = useTranslation();
   const { locked, lock_reason, title, skill_focus, estimated_minutes } = lesson;
 
+  const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!onStartLesson) return;
+    if (event.defaultPrevented) return;
+    if (
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      event.button !== 0
+    ) {
+      return;
+    }
+    event.preventDefault();
+    onStartLesson(lesson.id);
+  };
+
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-all gap-4",
+        "relative flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:px-4 sm:py-3 transition-colors gap-3",
         locked
-          ? "border-border-subtle bg-surface-muted/40 opacity-75"
+          ? "bg-surface-muted/30 opacity-75"
           : isNext
-            ? "border-primary/50 bg-primary/5 shadow-sm ring-1 ring-primary/30"
+            ? "bg-primary/[0.04] hover:bg-primary/[0.08]"
             : isCompleted
-              ? "border-success/30 bg-surface-card"
-              : "border-border-subtle bg-surface-card hover:border-border",
+              ? "hover:bg-surface-muted/40"
+              : "hover:bg-surface-muted/50",
       )}
     >
       {/* Lesson Info */}
@@ -64,8 +81,8 @@ export const LessonRow: React.FC<LessonRowProps> = ({
         </div>
 
         <div className="space-y-1 min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-text truncate text-base">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
+            <span className="font-semibold text-text truncate text-sm sm:text-base">
               {title}
             </span>
             {isCompleted ? (
@@ -111,7 +128,7 @@ export const LessonRow: React.FC<LessonRowProps> = ({
           </div>
 
           {locked && lock_reason && (
-            <p className="text-xs text-danger-accent mt-1 flex items-center gap-1 font-medium">
+            <p className="text-xs text-danger-accent mt-0.5 flex items-center gap-1 font-medium">
               <span aria-hidden="true">🔒</span>
               <span>{lock_reason}</span>
             </p>
@@ -119,7 +136,7 @@ export const LessonRow: React.FC<LessonRowProps> = ({
         </div>
       </div>
 
-      {/* Action Button */}
+      {/* Action CTA */}
       <div className="flex items-center gap-2 self-end sm:self-center shrink-0 w-full sm:w-auto">
         {locked ? (
           <Button
@@ -131,39 +148,39 @@ export const LessonRow: React.FC<LessonRowProps> = ({
             <Lock className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
             {t("learn.lockedBtn", "Locked")}
           </Button>
-        ) : (
+        ) : isNext ? (
           <Link
             to={`/learn/lesson/${lesson.id}`}
-            className="w-full sm:w-auto"
-            onClick={(event) => {
-              // The href stays real, and modified clicks keep doing what the
-              // browser does with any link: open a tab, save, copy. Only the
-              // plain left click is intercepted, because only that one is a
-              // learner saying "start this lesson now".
-              if (!onStartLesson) return;
-              if (event.defaultPrevented) return;
-              if (
-                event.metaKey ||
-                event.ctrlKey ||
-                event.shiftKey ||
-                event.altKey
-              )
-                return;
-              event.preventDefault();
-              onStartLesson(lesson.id);
-            }}
+            onClick={handleClick}
+            className="w-full sm:w-auto inline-flex items-center justify-center font-semibold rounded-lg min-h-[44px] px-4 text-xs bg-primary text-primary-fg hover:bg-primary-hover active:bg-primary-hover shadow-sm gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <Button
-              variant={
-                isNext ? "primary" : isCompleted ? "secondary" : "outline"
-              }
-              className="w-full sm:w-auto min-h-[44px] gap-1.5 text-sm font-semibold"
-            >
+            <span>
               {isCompleted
                 ? t("learn.reviewBtn", "Review")
                 : t("learn.startBtn", "Start Lesson")}
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Button>
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+          </Link>
+        ) : (
+          <Link
+            to={`/learn/lesson/${lesson.id}`}
+            onClick={handleClick}
+            className="inline-flex items-center justify-center font-medium rounded-lg min-h-[44px] px-3 text-xs border border-border bg-transparent text-text hover:bg-surface-muted gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary after:absolute after:inset-0 md:after:hidden w-full sm:w-auto md:w-auto"
+            aria-label={`${isCompleted ? t("learn.reviewBtn", "Review") : t("learn.startBtn", "Start Lesson")}: ${title}`}
+          >
+            <span className="hidden md:inline">
+              {isCompleted
+                ? t("learn.reviewBtn", "Review")
+                : t("learn.startBtn", "Start Lesson")}
+            </span>
+            <ArrowRight
+              className="h-4 w-4 shrink-0 hidden md:inline-block"
+              aria-hidden="true"
+            />
+            <ChevronRight
+              className="h-5 w-5 shrink-0 text-text-muted md:hidden ml-auto sm:ml-0"
+              aria-hidden="true"
+            />
           </Link>
         )}
       </div>
