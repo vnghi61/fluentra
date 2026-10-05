@@ -7,7 +7,10 @@ export type UpsertCreatorProfileRequest =
 export type PayoutAccount = components["schemas"]["PayoutAccount"];
 export type CreatePayoutAccountRequest =
   components["schemas"]["CreatePayoutAccountRequest"];
-export type CourseDraft = Omit<components["schemas"]["CourseDraft"], "structure"> & {
+export type CourseDraft = Omit<
+  components["schemas"]["CourseDraft"],
+  "structure"
+> & {
   structure?: Record<string, unknown> | undefined;
 };
 export type CreateCourseDraftRequest = Omit<
@@ -23,6 +26,12 @@ export type UpdateCourseDraftRequest = Omit<
   structure?: Record<string, unknown> | undefined;
 };
 export type CourseDraftList = components["schemas"]["CourseDraftList"];
+export type CourseDraftDetail = Omit<
+  components["schemas"]["CourseDraftDetail"],
+  "structure"
+> & {
+  structure?: Record<string, unknown> | undefined;
+};
 export type CourseSubmission = components["schemas"]["CourseSubmission"];
 export type CreatorEarningsSummary =
   components["schemas"]["CreatorEarningsSummary"];
@@ -100,8 +109,8 @@ export const studioApi = {
   },
 
   /** Get a specific course draft by ID */
-  async getDraft(id: string): Promise<CourseDraft> {
-    return apiFetch<CourseDraft>(`/api/v1/studio/courses/${id}`);
+  async getDraft(id: string): Promise<CourseDraftDetail> {
+    return apiFetch<CourseDraftDetail>(`/api/v1/studio/courses/${id}`);
   },
 
   /** Update a course draft outline & details */
@@ -122,11 +131,10 @@ export const studioApi = {
     });
   },
 
-  /** Get submission history for a draft */
+  /** The API exposes only the latest submission on the owned draft detail. */
   async getDraftSubmissions(id: string): Promise<CourseSubmission[]> {
-    return apiFetch<CourseSubmission[]>(
-      `/api/v1/studio/courses/${id}/submissions`,
-    );
+    const detail = await studioApi.getDraft(id);
+    return detail.latest_submission ? [detail.latest_submission] : [];
   },
 
   /** Get creator earnings dashboard statistics and recent ledger */

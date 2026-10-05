@@ -4,9 +4,11 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/fluentra/fluentra/internal/generated/studio/sqlc"
 	"github.com/fluentra/fluentra/internal/modules/studio/domain"
@@ -41,7 +43,7 @@ type Repository interface {
 	UpdateCourseDraft(ctx context.Context, draft *domain.CourseDraft) (*domain.CourseDraft, error)
 	UpdateCourseDraftStatus(ctx context.Context, id uuid.UUID, status string) (*domain.CourseDraft, error)
 
-	CreateSubmission(ctx context.Context, sub *domain.Submission) (*domain.Submission, error)
+	SubmitDraft(ctx context.Context, ownerID uuid.UUID, sub *domain.Submission) (*domain.Submission, error)
 	GetSubmissionByID(ctx context.Context, id uuid.UUID) (*domain.Submission, error)
 	GetLatestSubmissionByDraftID(ctx context.Context, draftID uuid.UUID) (*domain.Submission, error)
 	ListSubmissionsByStatus(ctx context.Context, status string, limit, offset int) ([]*domain.Submission, int64, error)
@@ -108,7 +110,8 @@ type Repository interface {
 }
 
 type pgRepository struct {
-	q *sqlc.Queries
+	db dbx.Querier
+	q  *sqlc.Queries
 }
 
 // NewRepository creates a new studio repository.
@@ -118,7 +121,8 @@ func NewRepository(db dbx.Querier) Repository {
 		q = sqlc.New(db)
 	}
 	return &pgRepository{
-		q: q,
+		db: db,
+		q:  q,
 	}
 }
 
@@ -178,18 +182,17 @@ func (r *pgRepository) GetPayoutAccount(ctx context.Context, creatorID uuid.UUID
 		}
 		return nil, err
 	}
-	return &domain.PayoutAccount{
-		ID:                row.ID,
-		CreatorID:         row.CreatorID,
-		BankCode:          row.BankCode,
-		AccountNumber:     row.AccountNumber,
-		AccountHolderName: row.AccountHolderName,
-		IsDefault:         row.IsDefault,
-		CreatedAt:         row.CreatedAt,
-		UpdatedAt:         row.UpdatedAt,
-	}, nil
+	return toDomainPayoutAccount(row), nil
 }
 
+// UpsertPayoutAccount writes the creator's payout account as one row.
+//
+// Payout configuration is often a creator's very first Studio action, so the
+// profile row the foreign key needs is created here (EnsureCreatorProfile)
+// without touching an existing profile. The profile row is locked for the whole
+// transaction, so two concurrent saves for one creator serialize: the second
+// sees the first's account and updates it rather than appending a second
+// default.
 func (
 	r *pgRepository) UpsertPayoutAccount(ctx context.Context,
 	creatorID uuid.UUID,
@@ -199,16 +202,58 @@ func (
 	isDefault bool) (*domain.PayoutAccount,
 	error,
 ) {
-	row, err := r.q.UpsertPayoutAccount(ctx, sqlc.UpsertPayoutAccountParams{
-		CreatorID:         creatorID,
-		BankCode:          bankCode,
-		AccountNumber:     accountNumber,
-		AccountHolderName: accountHolderName,
-		IsDefault:         isDefault,
+	beginner, ok := r.db.(dbx.Beginner)
+	if !ok {
+		return nil, errors.New("studio repository cannot open transactions")
+	}
+
+	var account *domain.PayoutAccount
+	err := dbx.InTx(ctx, beginner, func(txCtx context.Context, tx pgx.Tx) error {
+		qtx := sqlc.New(tx)
+
+		if _, err := qtx.EnsureCreatorProfile(txCtx, creatorID); err != nil {
+			return fmt.Errorf("ensure creator profile for payout: %w", err)
+		}
+
+		existing, err := qtx.GetPayoutAccountForUpdate(txCtx, creatorID)
+		switch {
+		case err == nil:
+			row, err := qtx.UpdatePayoutAccount(txCtx, sqlc.UpdatePayoutAccountParams{
+				ID:                existing.ID,
+				BankCode:          bankCode,
+				AccountNumber:     accountNumber,
+				AccountHolderName: accountHolderName,
+				IsDefault:         isDefault,
+			})
+			if err != nil {
+				return err
+			}
+			account = toDomainPayoutAccount(row)
+			return nil
+		case errors.Is(err, pgx.ErrNoRows):
+			row, err := qtx.InsertPayoutAccount(txCtx, sqlc.InsertPayoutAccountParams{
+				CreatorID:         creatorID,
+				BankCode:          bankCode,
+				AccountNumber:     accountNumber,
+				AccountHolderName: accountHolderName,
+				IsDefault:         isDefault,
+			})
+			if err != nil {
+				return err
+			}
+			account = toDomainPayoutAccount(row)
+			return nil
+		default:
+			return err
+		}
 	})
 	if err != nil {
 		return nil, err
 	}
+	return account, nil
+}
+
+func toDomainPayoutAccount(row sqlc.StudioPayoutAccount) *domain.PayoutAccount {
 	return &domain.PayoutAccount{
 		ID:                row.ID,
 		CreatorID:         row.CreatorID,
@@ -218,7 +263,7 @@ func (
 		IsDefault:         row.IsDefault,
 		CreatedAt:         row.CreatedAt,
 		UpdatedAt:         row.UpdatedAt,
-	}, nil
+	}
 }
 
 func (r *pgRepository) CreateCourseDraft(ctx context.Context, draft *domain.CourseDraft) (*domain.CourseDraft, error) {
@@ -233,6 +278,9 @@ func (r *pgRepository) CreateCourseDraft(ctx context.Context, draft *domain.Cour
 		Structure:       draft.Structure,
 	})
 	if err != nil {
+		if isDraftSlugConflict(err) {
+			return nil, domain.ErrDraftSlugConflict
+		}
 		return nil, err
 	}
 	return toDomainDraft(row), nil
@@ -312,9 +360,26 @@ func (r *pgRepository) UpdateCourseDraft(ctx context.Context, draft *domain.Cour
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrDraftNotFound
 		}
+		if isDraftSlugConflict(err) {
+			return nil, domain.ErrDraftSlugConflict
+		}
 		return nil, err
 	}
 	return toDomainDraft(row), nil
+}
+
+// isDraftSlugConflict reports whether err is the unique violation Postgres
+// raises for uq_course_drafts_owner_slug: this creator already has a draft with
+// that slug. Any other database failure stays a genuine server error, and the
+// raw database detail is never returned to a caller.
+const draftSlugConstraint = "uq_course_drafts_owner_slug"
+
+func isDraftSlugConflict(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
+		return false
+	}
+	return pgErr.ConstraintName == draftSlugConstraint
 }
 
 func (
@@ -336,17 +401,71 @@ func (
 	return toDomainDraft(row), nil
 }
 
-func (r *pgRepository) CreateSubmission(ctx context.Context, sub *domain.Submission) (*domain.Submission, error) {
-	row, err := r.q.CreateSubmission(ctx, sqlc.CreateSubmissionParams{
-		DraftID:     sub.DraftID,
-		Version:     pageInt32(int32(sub.Version), 1_000_000), //nolint:gosec // a version counter
-		Status:      sub.Status,
-		SubmittedBy: sub.SubmittedBy,
+// SubmitDraft inserts a submission and moves its draft to submitted in one
+// transaction, allocating the next version under the draft's row lock.
+//
+// Ownership and state are re-checked inside the transaction rather than trusted
+// from the caller's earlier read: two concurrent submits both see "draft"
+// before either writes, and only the lock (and the status check under it) keeps
+// the second from inserting a conflicting active submission. A failure rolls
+// the whole thing back, so a submission never exists without its draft move.
+func (r *pgRepository) SubmitDraft(
+	ctx context.Context, ownerID uuid.UUID, sub *domain.Submission,
+) (*domain.Submission, error) {
+	beginner, ok := r.db.(dbx.Beginner)
+	if !ok {
+		return nil, errors.New("studio repository cannot open transactions")
+	}
+
+	var created *domain.Submission
+	err := dbx.InTx(ctx, beginner, func(txCtx context.Context, tx pgx.Tx) error {
+		qtx := sqlc.New(tx)
+
+		draft, err := qtx.GetCourseDraftForUpdate(txCtx, sub.DraftID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.ErrDraftNotFound
+			}
+			return err
+		}
+		if draft.OwnerID != ownerID {
+			return domain.ErrDraftNotFound
+		}
+		if draft.Status != domain.DraftStatusDraft && draft.Status != domain.DraftStatusChangesRequested {
+			return domain.ErrCannotSubmit
+		}
+
+		version, err := qtx.GetNextSubmissionVersion(txCtx, sub.DraftID)
+		if err != nil {
+			return err
+		}
+
+		row, err := qtx.CreateSubmission(txCtx, sqlc.CreateSubmissionParams{
+			DraftID:       sub.DraftID,
+			Version:       pageInt32(version, 1_000_000),
+			Status:        sub.Status,
+			SubmittedBy:   sub.SubmittedBy,
+			Gate2Required: sub.Gate2Required,
+			Gate2Reason:   sub.Gate2Reason,
+		})
+		if err != nil {
+			return err
+		}
+
+		if _, err := qtx.UpdateCourseDraftStatus(txCtx, sqlc.UpdateCourseDraftStatusParams{
+			ID:     sub.DraftID,
+			Status: domain.DraftStatusSubmitted,
+		}); err != nil {
+			return err
+		}
+
+		created = toDomainSubmission(row)
+		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return toDomainSubmission(row), nil
+	return created, nil
 }
 
 func (r *pgRepository) GetSubmissionByID(ctx context.Context, id uuid.UUID) (*domain.Submission, error) {

@@ -31,6 +31,10 @@ type mockRepo struct {
 	purchases      map[uuid.UUID]*domain.Purchase
 	ledger         []*domain.CreatorLedgerEntry
 	takedowns      []*domain.Takedown
+	// submitErr stands in for a lookup or write failure inside the submission
+	// transaction, and latestErr for a failed latest-submission read.
+	submitErr error
+	latestErr error
 }
 
 func newMockRepo() *mockRepo {
@@ -66,7 +70,13 @@ func (m *mockRepo) UpsertCreatorProfile(
 }
 
 func (m *mockRepo) GetPayoutAccount(_ context.Context, creatorID uuid.UUID) (*domain.PayoutAccount, error) {
-	return m.payoutAccounts[creatorID], nil
+	// The read is the default account, as the query and GET endpoint are: an
+	// account explicitly saved as non-default is not the payout destination.
+	account := m.payoutAccounts[creatorID]
+	if account == nil || !account.IsDefault {
+		return nil, nil
+	}
+	return account, nil
 }
 
 func (
@@ -78,14 +88,22 @@ func (
 	isDefault bool) (*domain.PayoutAccount,
 	error,
 ) {
+	// One account per creator: a repeated save updates the row it already has
+	// rather than appending a second one.
+	id := uuid.New()
+	createdAt := time.Now()
+	if existing, ok := m.payoutAccounts[creatorID]; ok {
+		id = existing.ID
+		createdAt = existing.CreatedAt
+	}
 	acc := &domain.PayoutAccount{
-		ID:                uuid.New(),
+		ID:                id,
 		CreatorID:         creatorID,
 		BankCode:          bankCode,
 		AccountNumber:     accountNumber,
 		AccountHolderName: accountHolderName,
 		IsDefault:         isDefault,
-		CreatedAt:         time.Now(),
+		CreatedAt:         createdAt,
 		UpdatedAt:         time.Now(),
 	}
 	m.payoutAccounts[creatorID] = acc
@@ -137,10 +155,38 @@ func (
 	return nil, domain.ErrDraftNotFound
 }
 
-func (m *mockRepo) CreateSubmission(_ context.Context, sub *domain.Submission) (*domain.Submission, error) {
+// SubmitDraft mirrors the repository's transactional submission: it re-checks
+// the draft under the caller's owner, allocates the next version and moves the
+// draft to submitted as one step.
+func (m *mockRepo) SubmitDraft(
+	_ context.Context, ownerID uuid.UUID, sub *domain.Submission,
+) (*domain.Submission, error) {
+	if m.submitErr != nil {
+		return nil, m.submitErr
+	}
+	draft, ok := m.drafts[sub.DraftID]
+	if !ok {
+		return nil, domain.ErrDraftNotFound
+	}
+	if draft.OwnerID != ownerID {
+		return nil, domain.ErrDraftNotFound
+	}
+	if draft.Status != domain.DraftStatusDraft && draft.Status != domain.DraftStatusChangesRequested {
+		return nil, domain.ErrCannotSubmit
+	}
+	version := 1
+	for _, s := range m.submissions {
+		if s.DraftID == sub.DraftID && s.Version >= version {
+			version = s.Version + 1
+		}
+	}
 	sub.ID = uuid.New()
+	sub.Version = version
+	sub.Status = domain.SubmissionStatusSubmitted
+	sub.SubmittedAt = time.Now()
 	sub.CreatedAt = time.Now()
 	sub.UpdatedAt = time.Now()
+	draft.Status = domain.DraftStatusSubmitted
 	m.submissions[sub.ID] = sub
 	return sub, nil
 }
@@ -153,6 +199,9 @@ func (m *mockRepo) GetSubmissionByID(_ context.Context, id uuid.UUID) (*domain.S
 }
 
 func (m *mockRepo) GetLatestSubmissionByDraftID(_ context.Context, draftID uuid.UUID) (*domain.Submission, error) {
+	if m.latestErr != nil {
+		return nil, m.latestErr
+	}
 	var latest *domain.Submission
 	for _, s := range m.submissions {
 		if s.DraftID == draftID {
@@ -454,9 +503,13 @@ func (m *mockRepo) GetCreatorTotalPaidOut(_ context.Context, creatorID uuid.UUID
 
 type mockVerifier struct {
 	verifyFunc func(_ context.Context, req learningcontract.VerifyItemRequest) error
+	// calls is how many times VerifyItem ran, which is how a test proves the
+	// submit request did not touch a model.
+	calls int
 }
 
 func (v *mockVerifier) VerifyItem(ctx context.Context, req learningcontract.VerifyItemRequest) error {
+	v.calls++
 	if v.verifyFunc != nil {
 		return v.verifyFunc(ctx, req)
 	}
@@ -586,16 +639,51 @@ func TestDraftCreationAndGate1Verification(t *testing.T) {
 		t.Fatalf("expected status draft, got %s", draft.Status)
 	}
 
-	// 2. Submit Draft - Gate 1 passes
+	// 2. Submit records the submission and returns; it must not run a
+	// verifier or call a model inside the request.
 	sub, err := svc.SubmitDraft(ctx, creatorID, draft.ID)
 	if err != nil {
 		t.Fatalf("submit draft error: %v", err)
 	}
-	if sub.Status != domain.SubmissionStatusInReview {
-		t.Fatalf("expected submission status in_review, got %s", sub.Status)
+	if sub.Status != domain.SubmissionStatusSubmitted {
+		t.Fatalf("expected submission status submitted, got %s", sub.Status)
+	}
+	if verifier.calls != 0 {
+		t.Fatalf("submit must not call ItemVerifier, calls = %d", verifier.calls)
+	}
+	if repo.drafts[draft.ID].Status != domain.DraftStatusSubmitted {
+		t.Fatalf("draft status = %s, want submitted", repo.drafts[draft.ID].Status)
 	}
 
-	// 3. Test verification failure when verifier returns error
+	// 3. Gate 1 run explicitly passes and moves the submission to review.
+	verified, err := svc.RunGate1Verification(ctx, sub.ID)
+	if err != nil {
+		t.Fatalf("run Gate 1: %v", err)
+	}
+	if verified.Status != domain.SubmissionStatusInReview {
+		t.Fatalf("expected submission status in_review, got %s", verified.Status)
+	}
+	if verifier.calls == 0 {
+		t.Fatal("Gate 1 should have called ItemVerifier")
+	}
+
+	// A second submit while the first is live is a conflict, not a second
+	// active submission.
+	if _, err := svc.SubmitDraft(ctx, creatorID, draft.ID); !errors.Is(err, domain.ErrCannotSubmit) {
+		t.Fatalf("expected ErrCannotSubmit on repeated submit, got %v", err)
+	}
+
+}
+
+func TestGate1VerificationRejectsInvalidAnswerKey(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockRepo()
+	verifier := &mockVerifier{}
+	svc := service.NewService(repo, verifier, nil, nil)
+	creatorID := uuid.New()
+	structRaw := createTestCourseStructure(1, 3, 7)
+
+	// Verification failure when verifier returns error.
 	verifier.verifyFunc = func(_ context.Context, _ learningcontract.VerifyItemRequest) error {
 		return errors.New("invalid answer key")
 	}
@@ -616,8 +704,16 @@ func TestDraftCreationAndGate1Verification(t *testing.T) {
 	if err != nil {
 		t.Fatalf("submit draft error: %v", err)
 	}
-	if subFail.Status != domain.SubmissionStatusChangesRequested {
-		t.Fatalf("expected changes_requested on verification failure, got %s", subFail.Status)
+	if subFail.Status != domain.SubmissionStatusSubmitted {
+		t.Fatalf("expected submitted before Gate 1, got %s", subFail.Status)
+	}
+
+	verifiedFail, err := svc.RunGate1Verification(ctx, subFail.ID)
+	if err != nil {
+		t.Fatalf("run Gate 1: %v", err)
+	}
+	if verifiedFail.Status != domain.SubmissionStatusChangesRequested {
+		t.Fatalf("expected changes_requested on verification failure, got %s", verifiedFail.Status)
 	}
 }
 
@@ -639,6 +735,11 @@ func TestGate2Moderation_BR_STUDIO_06_SelfReviewForbidden(t *testing.T) {
 		Structure:   structRaw,
 	})
 	sub, _ := svc.SubmitDraft(ctx, creatorID, draft.ID)
+	// Gate 1 runs out of band now; the moderation decision needs the
+	// submission to have passed it.
+	if _, err := svc.RunGate1Verification(ctx, sub.ID); err != nil {
+		t.Fatalf("run Gate 1: %v", err)
+	}
 
 	// Attempt approve with reviewer == creator
 	_, errApprove := svc.ApproveSubmission(ctx, creatorID, sub.ID)
@@ -858,11 +959,16 @@ type mockMaterialPublisher struct {
 	err      error
 	copied   []string
 	objects  *resourcecontract.PublishedObjects
+	// owners records the owner each MaterialForOwner call was scoped to, so a
+	// test can prove Gate 1 resolves creator-controlled ids through the draft
+	// owner rather than through whoever asked.
+	owners []uuid.UUID
 }
 
 func (m *mockMaterialPublisher) MaterialForOwner(
-	_ context.Context, _, _ uuid.UUID,
+	_ context.Context, ownerID, _ uuid.UUID,
 ) (*resourcecontract.Material, error) {
+	m.owners = append(m.owners, ownerID)
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -931,9 +1037,9 @@ func TestGate1_MaterialReady(t *testing.T) {
 	svc.SetMaterialPublisher(&mockMaterialPublisher{material: &resourcecontract.Material{
 		ID:           resourceID,
 		Status:       resourcecontract.MaterialValidated,
-		DetectedMIME: "video/mp4",
+		DetectedMIME: testVideoMIME,
 		Renditions: []resourcecontract.Rendition{
-			{Kind: "video_360p", Status: resourcecontract.RenditionReady},
+			{Kind: testVideoRendition, Status: resourcecontract.RenditionReady},
 		},
 	}})
 
@@ -949,9 +1055,13 @@ func TestGate1_MaterialReady(t *testing.T) {
 	if err != nil {
 		t.Fatalf("submit draft: %v", err)
 	}
-	if sub.Status != domain.SubmissionStatusInReview {
+	verified, err := svc.RunGate1Verification(ctx, sub.ID)
+	if err != nil {
+		t.Fatalf("run Gate 1: %v", err)
+	}
+	if verified.Status != domain.SubmissionStatusInReview {
 		t.Fatalf("a ready material should pass Gate 1, got %s: %s",
-			sub.Status, string(sub.VerificationReport))
+			verified.Status, string(verified.VerificationReport))
 	}
 }
 
@@ -983,9 +1093,13 @@ func TestGate1_DocumentMaterialReady(t *testing.T) {
 	if err != nil {
 		t.Fatalf("submit draft: %v", err)
 	}
-	if sub.Status != domain.SubmissionStatusInReview {
+	verified, err := svc.RunGate1Verification(ctx, sub.ID)
+	if err != nil {
+		t.Fatalf("run Gate 1: %v", err)
+	}
+	if verified.Status != domain.SubmissionStatusInReview {
 		t.Fatalf("a ready document should pass Gate 1, got %s: %s",
-			sub.Status, string(sub.VerificationReport))
+			verified.Status, string(verified.VerificationReport))
 	}
 }
 
@@ -1014,8 +1128,12 @@ func TestGate1_DocumentPreviewNotReadyFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("submit draft: %v", err)
 	}
-	if sub.Status != domain.SubmissionStatusChangesRequested {
-		t.Fatalf("a document still processing should fail Gate 1, got %s", sub.Status)
+	verified, err := svc.RunGate1Verification(ctx, sub.ID)
+	if err != nil {
+		t.Fatalf("run Gate 1: %v", err)
+	}
+	if verified.Status != domain.SubmissionStatusChangesRequested {
+		t.Fatalf("a document still processing should fail Gate 1, got %s", verified.Status)
 	}
 }
 
@@ -1039,17 +1157,21 @@ func TestGate1_MaterialNotOwnedFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("submit draft: %v", err)
 	}
-	if sub.Status != domain.SubmissionStatusChangesRequested {
-		t.Fatalf("a foreign material resource should fail Gate 1, got %s", sub.Status)
+	verified, err := svc.RunGate1Verification(ctx, sub.ID)
+	if err != nil {
+		t.Fatalf("run Gate 1: %v", err)
+	}
+	if verified.Status != domain.SubmissionStatusChangesRequested {
+		t.Fatalf("a foreign material resource should fail Gate 1, got %s", verified.Status)
 	}
 	found := false
-	for _, f := range decodeFailures(t, sub.VerificationReport) {
+	for _, f := range decodeFailures(t, verified.VerificationReport) {
 		if f.Check == "material_ready" {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatalf("expected a material_ready failure, report: %s", string(sub.VerificationReport))
+		t.Fatalf("expected a material_ready failure, report: %s", string(verified.VerificationReport))
 	}
 }
 
@@ -1061,9 +1183,9 @@ func TestGate1_MaterialStillProcessingFails(t *testing.T) {
 	svc.SetMaterialPublisher(&mockMaterialPublisher{material: &resourcecontract.Material{
 		ID:           resourceID,
 		Status:       resourcecontract.MaterialValidated,
-		DetectedMIME: "video/mp4",
+		DetectedMIME: testVideoMIME,
 		Renditions: []resourcecontract.Rendition{
-			{Kind: "video_360p", Status: testPayoutPending},
+			{Kind: testVideoRendition, Status: testPayoutPending},
 		},
 	}})
 
@@ -1076,8 +1198,12 @@ func TestGate1_MaterialStillProcessingFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("submit draft: %v", err)
 	}
-	if sub.Status != domain.SubmissionStatusChangesRequested {
-		t.Fatalf("a video still processing should fail Gate 1, got %s", sub.Status)
+	verified, err := svc.RunGate1Verification(ctx, sub.ID)
+	if err != nil {
+		t.Fatalf("run Gate 1: %v", err)
+	}
+	if verified.Status != domain.SubmissionStatusChangesRequested {
+		t.Fatalf("a video still processing should fail Gate 1, got %s", verified.Status)
 	}
 }
 
@@ -1106,14 +1232,18 @@ func TestGate1_MaterialOfUnsupportedTypeFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("submit draft: %v", err)
 	}
+	verified, err := svc.RunGate1Verification(ctx, sub.ID)
+	if err != nil {
+		t.Fatalf("run Gate 1: %v", err)
+	}
 	found := false
-	for _, f := range decodeFailures(t, sub.VerificationReport) {
+	for _, f := range decodeFailures(t, verified.VerificationReport) {
 		if f.Check == "material_ready" && strings.Contains(f.Message, "must be a PDF") {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatalf("expected an unsupported-type failure, report: %s", string(sub.VerificationReport))
+		t.Fatalf("expected an unsupported-type failure, report: %s", string(verified.VerificationReport))
 	}
 }
 

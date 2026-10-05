@@ -4,10 +4,7 @@ import { ArrowUpRight, CheckCircle2, DollarSign, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  useCreatorEarnings,
-  useRequestPayout,
-} from "../hooks/useStudio";
+import { useCreatorEarnings, useRequestPayout } from "../hooks/useStudio";
 
 interface RequestPayoutModalProps {
   isOpen: boolean;
@@ -143,7 +140,12 @@ export function RequestPayoutModal({
           </div>
         )}
 
-        <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            void handleSubmit(e);
+          }}
+          className="space-y-4"
+        >
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label

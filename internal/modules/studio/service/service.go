@@ -296,6 +296,25 @@ func (s *Service) GetDraft(ctx context.Context, ownerID, draftID uuid.UUID) (*do
 	return draft, nil
 }
 
+// GetDraftDetail fetches an owned draft together with its latest submission.
+//
+// The latest submission is optional: a draft nobody has submitted yet has
+// none, and the detail response simply omits the field. Ownership is the same
+// check as GetDraft — another creator's draft id is a 404, not a 403.
+func (s *Service) GetDraftDetail(
+	ctx context.Context, ownerID, draftID uuid.UUID,
+) (*domain.CourseDraft, *domain.Submission, error) {
+	draft, err := s.GetDraft(ctx, ownerID, draftID)
+	if err != nil {
+		return nil, nil, err
+	}
+	latest, err := s.repo.GetLatestSubmissionByDraftID(ctx, draftID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return draft, latest, nil
+}
+
 // ListDrafts returns paginated drafts owned by the given creator.
 func (
 	s *Service) ListDrafts(ctx context.Context,
@@ -316,7 +335,16 @@ func (
 
 // ---------------------------------------------------------------- Submissions & Gate 1
 
-// SubmitDraft submits a course draft for Gate 1 and Gate 2 verification.
+// SubmitDraft records a submission and returns it; it does not run Gate 1.
+//
+// The documented contract is that submitting returns immediately (POST
+// /studio/courses/{id}/submit), because Gate 1 checks every answer key and a
+// creator with forty activities should not watch the request time out. The
+// verification worker picks the submission up and runs Gate 1 out of band.
+//
+// Version allocation, the insert and the draft's move to `submitted` happen in
+// one repository transaction, so a failed write leaves no partial submission
+// and two concurrent submits cannot both allocate the same version.
 func (s *Service) SubmitDraft(ctx context.Context, ownerID, draftID uuid.UUID) (*domain.Submission, error) {
 	draft, err := s.repo.GetCourseDraftByID(ctx, draftID)
 	if err != nil {
@@ -341,32 +369,15 @@ func (s *Service) SubmitDraft(ctx context.Context, ownerID, draftID uuid.UUID) (
 	}
 	gate2Required, gate2Reason := needsHumanReview(profile, draft)
 
-	version := 1
-	latest, err := s.repo.GetLatestSubmissionByDraftID(ctx, draftID)
-	if err == nil && latest != nil {
-		version = latest.Version + 1
-	}
-
 	sub := &domain.Submission{
 		DraftID:       draftID,
-		Version:       version,
 		Status:        domain.SubmissionStatusSubmitted,
 		SubmittedBy:   ownerID,
 		Gate2Required: gate2Required,
 		Gate2Reason:   gate2Reason,
 	}
 
-	created, err := s.repo.CreateSubmission(ctx, sub)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := s.repo.UpdateCourseDraftStatus(ctx, draftID, domain.DraftStatusSubmitted); err != nil {
-		return nil, err
-	}
-
-	// Trigger Gate 1 verification immediately
-	return s.RunGate1Verification(ctx, created.ID)
+	return s.repo.SubmitDraft(ctx, ownerID, sub)
 }
 
 // RunGate1Verification executes automated Gate 1 checks against the submitted draft.
@@ -814,6 +825,13 @@ func collectDraftItems(structure *domain.CourseStructure, courseCEFR string) []d
 				cefr = courseCEFR
 			}
 			for aIdx, act := range lesson.Activities {
+				// A lesson_material is something to read or watch, not a graded
+				// exercise: it has no answer key to verify and is checked by
+				// verifyMaterials. Sending it to ItemVerifier asked a model to
+				// grade a document.
+				if act.Kind == domain.KindLessonMaterial {
+					continue
+				}
 				items = append(items, draftItem{
 					UnitIndex:     uIdx,
 					LessonIndex:   lIdx,

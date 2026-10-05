@@ -29,7 +29,12 @@ export function SubmissionStatusModal({
   onClose,
 }: SubmissionStatusModalProps): React.JSX.Element | null {
   const { t } = useTranslation();
-  const { data: submissions, isLoading } = useDraftSubmissions(draftId);
+  const {
+    data: submissions,
+    isLoading,
+    isError,
+    refetch,
+  } = useDraftSubmissions(isOpen ? draftId : undefined);
 
   if (!isOpen) return null;
 
@@ -53,7 +58,10 @@ export function SubmissionStatusModal({
         );
       case "verifying":
         return (
-          <Badge variant="warning" className="gap-1.5 py-1 px-2.5 animate-pulse">
+          <Badge
+            variant="warning"
+            className="gap-1.5 py-1 px-2.5 animate-pulse"
+          >
             <Bot className="h-3.5 w-3.5" />
             {t("studio.status.verifying", "Running Gate 1 Checks...")}
           </Badge>
@@ -81,19 +89,7 @@ export function SubmissionStatusModal({
     }
   };
 
-  const gate1Report = latestSubmission?.verification_report as
-    | {
-        passed?: boolean;
-        checks?: Array<{
-          name: string;
-          passed: boolean;
-          details?: string;
-          items_failed?: string[];
-        }>;
-        summary?: string;
-      }
-    | null
-    | undefined;
+  const gate1Report = latestSubmission?.verification_report;
 
   return (
     <div
@@ -121,7 +117,7 @@ export function SubmissionStatusModal({
             type="button"
             onClick={onClose}
             aria-label={t("app.close", "Close")}
-            className="rounded-lg p-1.5 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg p-1.5 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -130,6 +126,18 @@ export function SubmissionStatusModal({
         {isLoading ? (
           <div className="py-12 text-center text-sm text-text-muted">
             {t("app.loading", "Loading submission status...")}
+          </div>
+        ) : isError ? (
+          <div role="alert" className="space-y-3 text-sm text-danger-accent">
+            <p>
+              {t(
+                "studio.submission.loadError",
+                "Could not load submission status.",
+              )}
+            </p>
+            <Button variant="outline" onClick={() => void refetch()}>
+              {t("common.retry", "Retry")}
+            </Button>
           </div>
         ) : !latestSubmission ? (
           <div className="py-8 text-center text-sm text-text-muted">
@@ -213,37 +221,28 @@ export function SubmissionStatusModal({
                 )}
               </div>
 
-              {gate1Report?.summary && (
+              {gate1Report && (
                 <p className="text-xs text-text-muted">
-                  {gate1Report.summary}
+                  {t("studio.submission.itemsChecked", {
+                    count: gate1Report.items_checked,
+                    defaultValue: `${gate1Report.items_checked} activities checked`,
+                  })}
                 </p>
               )}
 
-              {gate1Report?.checks && gate1Report.checks.length > 0 && (
+              {gate1Report?.failures && gate1Report.failures.length > 0 && (
                 <ul className="space-y-2 pt-2 border-t border-border-subtle">
-                  {gate1Report.checks.map((check, idx) => (
+                  {gate1Report.failures.map((check, idx) => (
                     <li
                       key={idx}
                       className="flex items-start gap-2.5 text-xs rounded-md bg-surface-card p-2 border border-border-subtle"
                     >
-                      {check.passed ? (
-                        <CheckCircle2 className="h-4 w-4 shrink-0 text-success mt-0.5" />
-                      ) : (
-                        <XCircle className="h-4 w-4 shrink-0 text-danger mt-0.5" />
-                      )}
+                      <XCircle className="h-4 w-4 shrink-0 text-danger mt-0.5" />
                       <div className="flex-1 space-y-0.5">
                         <div className="font-semibold text-text">
-                          {check.name}
+                          {check.check}
                         </div>
-                        {check.details && (
-                          <div className="text-text-muted">{check.details}</div>
-                        )}
-                        {check.items_failed && check.items_failed.length > 0 && (
-                          <div className="text-danger font-medium text-[11px] pt-1">
-                            {t("studio.submission.flaggedItems", "Flagged")}:{" "}
-                            {check.items_failed.join(", ")}
-                          </div>
-                        )}
+                        <div className="text-text-muted">{check.message}</div>
                       </div>
                     </li>
                   ))}

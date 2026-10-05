@@ -10,7 +10,7 @@ tables: [creator_profiles, payout_accounts, course_drafts, submissions, listings
 depends_on: [content, lesson, learning, payment, job, resource]
 depended_on_by: [admin, lesson, learning]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-10-05
 ---
 
 # studio — AGENT.md
@@ -130,6 +130,25 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/me/studio/payouts` | `self` | Request a payout of the creator balance |
 <!-- END GENERATED: endpoints -->
 
+### Submission sequencing and configuration findings (2026-10-03)
+
+- **`POST /studio/courses/{id}/submit` is asynchronous.** It records the submission and returns
+  the persisted record with status `submitted`; Gate 1 runs in the `studio.verify_submission`
+  worker, which polls every ten seconds and moves the submission to `in_review` or back to
+  `changes_requested`. Tests and callers must invoke `Service.RunGate1Verification` explicitly
+  rather than expect the outcome on the submit response.
+- **The draft detail endpoint is where the latest review state is read.** There is no
+  submissions-history endpoint: `GET /studio/courses/{id}` returns `latest_submission` (absent
+  when the draft has never been submitted) and 404s for another creator. Any client that
+  requests `/studio/courses/{id}/submissions` is calling a route that does not exist.
+- **Payout configuration does not need a prior profile action.** A first payout save creates
+  the `creator_profiles` row it foreign-keys to, without overwriting biography, `payout_eligible`,
+  trust or suspension on a profile that already exists. One account row per creator is updated
+  in place by repeated saves.
+- **Gate 2 decisions are computed at submit time and persisted** (`gate2_required`,
+  `gate2_reason`) inside the same transaction as the submission and the draft transition
+  (`repository.SubmitDraft`).
+
 ## 7. Folder map
 
 <!-- BEGIN GENERATED: folders -->
@@ -208,7 +227,10 @@ _No deviations from the global standard._
 |---|---|---|
 | `DRAFT_NOT_FOUND` | 404 | Course draft not found |
 | `SUBMISSION_NOT_FOUND` | 404 | Submission not found |
-| `CANNOT_REVIEW_OWN_SUBMISSION` | 403 | Reviewer submitted this course |
+| `CREATOR_PROFILE_NOT_FOUND` | 404 | Caller has not opened the studio yet |
+| `PAYOUT_ACCOUNT_NOT_FOUND` | 404 | No default payout account is configured |
+| `DRAFT_SLUG_EXISTS` | 409 | The creator already has a draft with that slug |
+| `SELF_REVIEW_FORBIDDEN` | 403 | Reviewer submitted this course |
 
 ### Security considerations
 

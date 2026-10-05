@@ -254,6 +254,39 @@ func (q *Queries) CreateTakedown(ctx context.Context, arg CreateTakedownParams) 
 	return i, err
 }
 
+const ensureCreatorProfile = `-- name: EnsureCreatorProfile :one
+INSERT INTO studio.creator_profiles (user_id, payout_eligible, updated_at)
+VALUES ($1, false, now())
+ON CONFLICT (user_id) DO UPDATE
+SET updated_at = creator_profiles.updated_at
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason
+`
+
+// EnsureCreatorProfile creates the creator profile a first payout save needs,
+// without touching anything a profile that already exists carries. A creator
+// configuring a bank account is a creator, and the payout_accounts foreign key
+// says so; making them open the studio first is a second step nobody asked for.
+// DO UPDATE (rather than DO NOTHING) also locks the row, which serializes two
+// concurrent saves for the same creator.
+func (q *Queries) EnsureCreatorProfile(ctx context.Context, userID uuid.UUID) (StudioCreatorProfile, error) {
+	row := q.db.QueryRow(ctx, ensureCreatorProfile, userID)
+	var i StudioCreatorProfile
+	err := row.Scan(
+		&i.UserID,
+		&i.Bio,
+		&i.Headline,
+		&i.PayoutEligible,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.TrustedAt,
+		&i.ApprovedCourseCount,
+		&i.UpheldReportCount,
+		&i.SuspendedAt,
+		&i.SuspendedReason,
+	)
+	return i, err
+}
+
 const getActivePurchase = `-- name: GetActivePurchase :one
 SELECT id, user_id, course_id, order_id, price_paid_vnd, granted_at, revoked_at, revoke_reason, created_at, updated_at
 FROM studio.purchases
@@ -323,6 +356,36 @@ type GetCourseDraftByOwnerAndSlugParams struct {
 
 func (q *Queries) GetCourseDraftByOwnerAndSlug(ctx context.Context, arg GetCourseDraftByOwnerAndSlugParams) (StudioCourseDraft, error) {
 	row := q.db.QueryRow(ctx, getCourseDraftByOwnerAndSlug, arg.OwnerID, arg.Slug)
+	var i StudioCourseDraft
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Title,
+		&i.Slug,
+		&i.Description,
+		&i.CefrLevel,
+		&i.TopicTaxonomyID,
+		&i.PriceVnd,
+		&i.Status,
+		&i.Structure,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCourseDraftForUpdate = `-- name: GetCourseDraftForUpdate :one
+SELECT id, owner_id, title, slug, description, cefr_level, topic_taxonomy_id, price_vnd, status, structure, created_at, updated_at
+FROM studio.course_drafts
+WHERE id = $1
+FOR UPDATE
+`
+
+// GetCourseDraftForUpdate locks a draft row so version allocation, insertion
+// and the draft status move happen against one snapshot: two concurrent
+// submissions cannot both read "draft" and both insert a new active version.
+func (q *Queries) GetCourseDraftForUpdate(ctx context.Context, id uuid.UUID) (StudioCourseDraft, error) {
+	row := q.db.QueryRow(ctx, getCourseDraftForUpdate, id)
 	var i StudioCourseDraft
 	err := row.Scan(
 		&i.ID,
@@ -457,6 +520,21 @@ func (q *Queries) GetListingByCourseID(ctx context.Context, courseID uuid.UUID) 
 	return i, err
 }
 
+const getNextSubmissionVersion = `-- name: GetNextSubmissionVersion :one
+SELECT (COALESCE(MAX(version), 0) + 1)::integer AS next_version
+FROM studio.submissions
+WHERE draft_id = $1
+`
+
+// GetNextSubmissionVersion is the next version for a draft, allocated inside
+// the submission transaction rather than read separately by the caller.
+func (q *Queries) GetNextSubmissionVersion(ctx context.Context, draftID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, getNextSubmissionVersion, draftID)
+	var next_version int32
+	err := row.Scan(&next_version)
+	return next_version, err
+}
+
 const getOpenTakedownByCourseID = `-- name: GetOpenTakedownByCourseID :one
 SELECT id, course_id, actor_id, reason, reinstated_at, reinstated_by, created_at
 FROM studio.takedowns
@@ -490,6 +568,34 @@ LIMIT 1
 
 func (q *Queries) GetPayoutAccountByCreatorID(ctx context.Context, creatorID uuid.UUID) (StudioPayoutAccount, error) {
 	row := q.db.QueryRow(ctx, getPayoutAccountByCreatorID, creatorID)
+	var i StudioPayoutAccount
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.BankCode,
+		&i.AccountNumber,
+		&i.AccountHolderName,
+		&i.IsDefault,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPayoutAccountForUpdate = `-- name: GetPayoutAccountForUpdate :one
+SELECT id, creator_id, bank_code, account_number, account_holder_name, is_default, created_at, updated_at
+FROM studio.payout_accounts
+WHERE creator_id = $1
+ORDER BY is_default DESC, updated_at DESC
+LIMIT 1
+FOR UPDATE
+`
+
+// GetPayoutAccountForUpdate reads the creator's current payout account and
+// locks it, so a repeated save updates that row instead of appending a second
+// default. The default account wins when more than one row somehow exists.
+func (q *Queries) GetPayoutAccountForUpdate(ctx context.Context, creatorID uuid.UUID) (StudioPayoutAccount, error) {
+	row := q.db.QueryRow(ctx, getPayoutAccountForUpdate, creatorID)
 	var i StudioPayoutAccount
 	err := row.Scan(
 		&i.ID,
@@ -582,6 +688,42 @@ func (q *Queries) GetSubmissionByID(ctx context.Context, id uuid.UUID) (StudioSu
 		&i.UpdatedAt,
 		&i.Gate2Required,
 		&i.Gate2Reason,
+	)
+	return i, err
+}
+
+const insertPayoutAccount = `-- name: InsertPayoutAccount :one
+INSERT INTO studio.payout_accounts (creator_id, bank_code, account_number, account_holder_name, is_default, updated_at)
+VALUES ($1, $2, $3, $4, $5, now())
+RETURNING id, creator_id, bank_code, account_number, account_holder_name, is_default, created_at, updated_at
+`
+
+type InsertPayoutAccountParams struct {
+	CreatorID         uuid.UUID
+	BankCode          string
+	AccountNumber     string
+	AccountHolderName string
+	IsDefault         bool
+}
+
+func (q *Queries) InsertPayoutAccount(ctx context.Context, arg InsertPayoutAccountParams) (StudioPayoutAccount, error) {
+	row := q.db.QueryRow(ctx, insertPayoutAccount,
+		arg.CreatorID,
+		arg.BankCode,
+		arg.AccountNumber,
+		arg.AccountHolderName,
+		arg.IsDefault,
+	)
+	var i StudioPayoutAccount
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.BankCode,
+		&i.AccountNumber,
+		&i.AccountHolderName,
+		&i.IsDefault,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -1288,6 +1430,47 @@ func (q *Queries) UpdateListingStatus(ctx context.Context, arg UpdateListingStat
 	return i, err
 }
 
+const updatePayoutAccount = `-- name: UpdatePayoutAccount :one
+UPDATE studio.payout_accounts
+SET bank_code = $2,
+    account_number = $3,
+    account_holder_name = $4,
+    is_default = $5,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, creator_id, bank_code, account_number, account_holder_name, is_default, created_at, updated_at
+`
+
+type UpdatePayoutAccountParams struct {
+	ID                uuid.UUID
+	BankCode          string
+	AccountNumber     string
+	AccountHolderName string
+	IsDefault         bool
+}
+
+func (q *Queries) UpdatePayoutAccount(ctx context.Context, arg UpdatePayoutAccountParams) (StudioPayoutAccount, error) {
+	row := q.db.QueryRow(ctx, updatePayoutAccount,
+		arg.ID,
+		arg.BankCode,
+		arg.AccountNumber,
+		arg.AccountHolderName,
+		arg.IsDefault,
+	)
+	var i StudioPayoutAccount
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.BankCode,
+		&i.AccountNumber,
+		&i.AccountHolderName,
+		&i.IsDefault,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateSubmissionReview = `-- name: UpdateSubmissionReview :one
 UPDATE studio.submissions
 SET status = $2,
@@ -1453,42 +1636,6 @@ func (q *Queries) UpsertListing(ctx context.Context, arg UpsertListingParams) (S
 		&i.RevenueShareBps,
 		&i.Status,
 		&i.PublishedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const upsertPayoutAccount = `-- name: UpsertPayoutAccount :one
-INSERT INTO studio.payout_accounts (creator_id, bank_code, account_number, account_holder_name, is_default, updated_at)
-VALUES ($1, $2, $3, $4, $5, now())
-RETURNING id, creator_id, bank_code, account_number, account_holder_name, is_default, created_at, updated_at
-`
-
-type UpsertPayoutAccountParams struct {
-	CreatorID         uuid.UUID
-	BankCode          string
-	AccountNumber     string
-	AccountHolderName string
-	IsDefault         bool
-}
-
-func (q *Queries) UpsertPayoutAccount(ctx context.Context, arg UpsertPayoutAccountParams) (StudioPayoutAccount, error) {
-	row := q.db.QueryRow(ctx, upsertPayoutAccount,
-		arg.CreatorID,
-		arg.BankCode,
-		arg.AccountNumber,
-		arg.AccountHolderName,
-		arg.IsDefault,
-	)
-	var i StudioPayoutAccount
-	err := row.Scan(
-		&i.ID,
-		&i.CreatorID,
-		&i.BankCode,
-		&i.AccountNumber,
-		&i.AccountHolderName,
-		&i.IsDefault,
-		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err

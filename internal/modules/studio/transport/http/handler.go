@@ -58,6 +58,9 @@ type StudioService interface {
 		req service.UpdateDraftRequest,
 	) (*domain.CourseDraft, error)
 	GetDraft(ctx context.Context, ownerID, draftID uuid.UUID) (*domain.CourseDraft, error)
+	GetDraftDetail(
+		ctx context.Context, ownerID, draftID uuid.UUID,
+	) (*domain.CourseDraft, *domain.Submission, error)
 	ListDrafts(ctx context.Context, ownerID uuid.UUID, limit, offset int) ([]*domain.CourseDraft, int64, error)
 	SubmitDraft(ctx context.Context, ownerID, draftID uuid.UUID) (*domain.Submission, error)
 
@@ -94,7 +97,9 @@ func NewHandler(svc StudioService, guard Guard) *Handler {
 
 // Routes mounts creator-facing studio endpoints under the authenticated router.
 func (h *Handler) Routes(router chi.Router) {
+	router.Get("/studio/creator/profile", h.getCreatorProfile)
 	router.Post("/studio/creator/profile", h.upsertCreatorProfile)
+	router.Get("/studio/creator/payout-account", h.getPayoutAccount)
 	router.Post("/studio/creator/payout-account", h.upsertPayoutAccount)
 
 	router.Get("/studio/courses", h.listCourseDrafts)
@@ -156,11 +161,14 @@ type PayoutAccountResponse struct {
 }
 
 // CreatePayoutAccountRequest contains payload for configuring payout bank account.
+//
+// IsDefault is a pointer so an omitted field can follow the documented default
+// of `true` while an explicit `false` stays distinguishable.
 type CreatePayoutAccountRequest struct {
 	BankCode          string `json:"bank_code"`
 	AccountNumber     string `json:"account_number"`
 	AccountHolderName string `json:"account_holder_name"`
-	IsDefault         bool   `json:"is_default"`
+	IsDefault         *bool  `json:"is_default"`
 }
 
 // CourseDraftResponse represents course draft details returned by API.
@@ -177,6 +185,10 @@ type CourseDraftResponse struct {
 	Structure       json.RawMessage `json:"structure"`
 	CreatedAt       time.Time       `json:"created_at"`
 	UpdatedAt       time.Time       `json:"updated_at"`
+	// LatestSubmission is the draft's latest submission, present only on the
+	// owner-scoped detail endpoint. A draft that was never submitted omits it.
+	// The list endpoint leaves it nil.
+	LatestSubmission *CourseSubmissionResponse `json:"latest_submission,omitempty"`
 }
 
 // CourseDraftListResponse represents paginated course drafts.
@@ -214,6 +226,66 @@ type ReviewSubmissionRequest struct {
 }
 
 // ---------------------------------------------------------------- Creator Handlers
+
+func (h *Handler) getCreatorProfile(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required"))
+		return
+	}
+
+	profile, err := h.svc.GetCreatorProfile(ctx, actor.UserID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	// A repository that finds no row answers nil rather than an error; render
+	// the documented 404 instead of dereferencing it.
+	if profile == nil {
+		httpx.WriteProblem(w, r, domain.ErrProfileNotFound)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, CreatorProfileResponse{
+		UserID:         profile.UserID,
+		Bio:            profile.Bio,
+		Headline:       profile.Headline,
+		PayoutEligible: profile.PayoutEligible,
+		CreatedAt:      profile.CreatedAt,
+		UpdatedAt:      profile.UpdatedAt,
+	})
+}
+
+func (h *Handler) getPayoutAccount(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required"))
+		return
+	}
+
+	account, err := h.svc.GetPayoutAccount(ctx, actor.UserID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	if account == nil {
+		httpx.WriteProblem(w, r, domain.ErrPayoutAccountNotFound)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, PayoutAccountResponse{
+		ID:                account.ID,
+		CreatorID:         account.CreatorID,
+		BankCode:          account.BankCode,
+		AccountNumber:     account.AccountNumber,
+		AccountHolderName: account.AccountHolderName,
+		IsDefault:         account.IsDefault,
+		CreatedAt:         account.CreatedAt,
+		UpdatedAt:         account.UpdatedAt,
+	})
+}
 
 func (h *Handler) upsertCreatorProfile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -259,8 +331,15 @@ func (h *Handler) upsertPayoutAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Omitted is_default follows the documented default of true; an explicit
+	// false is honored.
+	isDefault := true
+	if req.IsDefault != nil {
+		isDefault = *req.IsDefault
+	}
+
 	account, err := h.svc.UpsertPayoutAccount(
-		ctx, actor.UserID, req.BankCode, req.AccountNumber, req.AccountHolderName, req.IsDefault,
+		ctx, actor.UserID, req.BankCode, req.AccountNumber, req.AccountHolderName, isDefault,
 	)
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
@@ -355,13 +434,18 @@ func (h *Handler) getCourseDraft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	draft, err := h.svc.GetDraft(ctx, actor.UserID, draftID)
+	draft, latest, err := h.svc.GetDraftDetail(ctx, actor.UserID, draftID)
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
 	}
 
-	httpx.WriteJSON(w, r, http.StatusOK, toCourseDraftResponse(draft))
+	resp := toCourseDraftResponse(draft)
+	if latest != nil {
+		submission := toSubmissionResponse(latest)
+		resp.LatestSubmission = &submission
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, resp)
 }
 
 func (h *Handler) updateCourseDraft(w http.ResponseWriter, r *http.Request) {

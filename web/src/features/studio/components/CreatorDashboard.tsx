@@ -45,7 +45,7 @@ export function CreatorDashboard(): React.JSX.Element {
   const { data: profile } = useCreatorProfile();
   const { data: earnings } = useCreatorEarnings();
   const { data: draftsData, isLoading: draftsLoading } = useCreatorDrafts();
-  const submitMutation = useSubmitDraft("");
+  const submitMutation = useSubmitDraft();
 
   const [payoutModalOpen, setPayoutModalOpen] = useState(false);
   const [requestPayoutOpen, setRequestPayoutOpen] = useState(false);
@@ -65,7 +65,7 @@ export function CreatorDashboard(): React.JSX.Element {
   const handleSubmitDraft = async (draftId: string) => {
     setSubmittingDraftId(draftId);
     try {
-      await submitMutation.mutateAsync();
+      await submitMutation.mutateAsync(draftId);
     } catch {
       // Handled by query mutation error
     } finally {
@@ -349,7 +349,10 @@ export function CreatorDashboard(): React.JSX.Element {
                           {draft.cefr_level}
                         </Badge>
                         {draft.price_vnd > 0 ? (
-                          <Badge variant="secondary" className="font-mono text-xs font-semibold">
+                          <Badge
+                            variant="secondary"
+                            className="font-mono text-xs font-semibold"
+                          >
                             ₫{draft.price_vnd.toLocaleString("vi-VN")}
                           </Badge>
                         ) : (
@@ -417,7 +420,9 @@ export function CreatorDashboard(): React.JSX.Element {
                         variant="primary"
                         size="sm"
                         disabled={submittingDraftId === draft.id}
-                        onClick={() => { void handleSubmitDraft(draft.id); }}
+                        onClick={() => {
+                          void handleSubmitDraft(draft.id);
+                        }}
                         className="gap-1.5 text-xs"
                       >
                         <Send className="h-3.5 w-3.5" />
@@ -437,7 +442,10 @@ export function CreatorDashboard(): React.JSX.Element {
         <div className="flex items-center gap-2">
           <History className="h-5 w-5 text-primary-accent" />
           <h2 className="text-lg font-bold text-text">
-            {t("studio.earnings.recentTransactions", "Recent Earnings & Ledger")}
+            {t(
+              "studio.earnings.recentTransactions",
+              "Recent Earnings & Ledger",
+            )}
           </h2>
         </div>
 
@@ -446,21 +454,13 @@ export function CreatorDashboard(): React.JSX.Element {
             <table className="w-full text-left text-xs">
               <thead className="bg-surface-base border-b border-border-subtle text-text-muted uppercase tracking-wider">
                 <tr>
-                  <th className="p-3">
-                    {t("studio.ledger.date", "Date")}
-                  </th>
-                  <th className="p-3">
-                    {t("studio.ledger.type", "Type")}
-                  </th>
+                  <th className="p-3">{t("studio.ledger.date", "Date")}</th>
+                  <th className="p-3">{t("studio.ledger.type", "Type")}</th>
                   <th className="p-3">
                     {t("studio.ledger.amount", "Net Amount")}
                   </th>
-                  <th className="p-3">
-                    {t("studio.ledger.gross", "Gross")}
-                  </th>
-                  <th className="p-3">
-                    {t("studio.ledger.notes", "Notes")}
-                  </th>
+                  <th className="p-3">{t("studio.ledger.gross", "Gross")}</th>
+                  <th className="p-3">{t("studio.ledger.notes", "Notes")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">

@@ -59,6 +59,20 @@ Ordered backlog for the Creator Studio module.
 
 - [ ] Step 8: Web frontend for Creator Studio, Moderation Queue, and Checkout UI
 
+## Studio Configuration and Submission Hardening (2026-10-03)
+
+- [x] Payout-first initialization: a first payout save creates the profile row it foreign-keys to, preserving existing biography, trust and suspension fields
+- [x] One payout account per creator: repeated default saves update the row in place; concurrent saves serialize on the profile row lock
+- [x] `is_default` omitted follows the documented `true`; explicit `false` is stored and distinguishable
+- [x] `GET /studio/creator/profile` and `GET /studio/creator/payout-account` implemented, authenticated, owner-scoped, 404 Problem Details for missing records
+- [x] Duplicate owner/slug on draft create or rename maps to `409 DRAFT_SLUG_EXISTS`; unrelated database failures stay server errors with no database detail exposed
+- [x] Submission version allocation, insert and draft transition are one serializable transaction; repeated submits answer `CANNOT_SUBMIT_DRAFT`
+- [x] Submit returns the persisted record without running `ItemVerifier`; `gate2_required`/`gate2_reason` are persisted
+- [x] Worker completes Gate 1, keeps failed submissions pending for retry, and reports each failure instead of discarding it
+- [x] Worker supplies the resource `MaterialPublisher` through the late-resource holder; `lesson_material` activities are no longer sent to `ItemVerifier`
+- [x] Draft detail carries optional `latest_submission`; the Gate 1 report shape is typed in OpenAPI
+- [ ] Regenerate SQL and API artifacts (`make gen-sql`, `make gen-api`, `make gen-web`) and diff generated output before release; generator execution was not available in the session that made these changes
+
 ## Work Order 20 Landed (Documents and videos in a community course)
 
 - [x] Activity kind `lesson_material` (document / video) accepted by Gate 1 (BR-STUDIO-10, twelve kinds)
@@ -69,3 +83,8 @@ Ordered backlog for the Creator Studio module.
 - [ ] The Gate 2 review screen does not yet render a material with the runner component; reviewers open it from the draft (WO 20 §5, first cut)
 - [ ] Free-preview lessons for non-buyers (D20-4)
 - [ ] Video progress tracking, resume position, subtitles
+# Repository-wide verification follow-up (2026-10-05)
+
+- [x] Resolve Go lint findings without weakening assertions; split Gate 1 success/failure scenarios.
+- [x] Give repository integration fixtures non-null draft structures.
+- [x] Register CourseDraftDetail and typed Gate 1 reports in the root OpenAPI schema map.

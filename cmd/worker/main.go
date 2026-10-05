@@ -720,14 +720,15 @@ func startModules(
 	aiClient := newWorkerAIClient(ctx, cfg, pool)
 
 	// The resource module is assembled below, after learning; learning reads a
-	// learner's upload through this holder. Reading before assembly is an error,
-	// never an empty answer.
+	// learner's upload through this holder, and studio's Gate 1 material check
+	// copies through the same one. Reading before assembly is an error, never
+	// an empty answer.
 	resourceHolder := &lateResource{}
 	if err := startGrading(ctx, gradingDeps{
 		pool: pool, bus: bus, cron: cron, workers: workers, instruments: instruments, cfg: cfg,
 		storage: storageStore, ai: aiClient, lesson: lessonModule, content: contentModule,
 		reading: readingModule, grammar: grammarModule, listening: listeningModule, rbac: rbacModule,
-		resource: resourceHolder,
+		resource: resourceHolder, resourcePublisher: resourceHolder,
 	}); err != nil {
 		return err
 	}
@@ -1065,28 +1066,32 @@ func startPracticeGenerator(
 }
 
 type gradingDeps struct {
-	pool        *pgxpool.Pool
-	bus         *eventbus.InProcessBus
-	cron        *job.CronScheduler
-	workers     *river.Workers
-	instruments telemetry.Instruments
-	cfg         workerConfig
-	storage     storage.Store
-	ai          ai.Client
-	lesson      *lesson.Module
-	content     *content.Module
-	reading     *reading.Module
-	grammar     *grammar.Module
-	listening   *listening.Module
-	rbac        *rbac.Module
-	resource    resourcecontract.ResourceReader
+	pool              *pgxpool.Pool
+	bus               *eventbus.InProcessBus
+	cron              *job.CronScheduler
+	workers           *river.Workers
+	instruments       telemetry.Instruments
+	cfg               workerConfig
+	storage           storage.Store
+	ai                ai.Client
+	lesson            *lesson.Module
+	content           *content.Module
+	reading           *reading.Module
+	grammar           *grammar.Module
+	listening         *listening.Module
+	rbac              *rbac.Module
+	resource          resourcecontract.ResourceReader
+	resourcePublisher resourcecontract.MaterialPublisher
 }
 
-// lateResource carries the resource module to learning, which is assembled
-// first. Reading before assembly is an error, never an empty answer.
+// lateResource carries the resource module to learning and to studio, both of
+// which are assembled first. Reading before assembly is an error, never an
+// empty answer.
 type lateResource struct{ module *resource.Module }
 
 var _ resourcecontract.ResourceReader = (*lateResource)(nil)
+
+var _ resourcecontract.MaterialPublisher = (*lateResource)(nil)
 
 func (r *lateResource) GetResource(
 	ctx context.Context, id, userID uuid.UUID,
@@ -1095,6 +1100,29 @@ func (r *lateResource) GetResource(
 		return nil, errors.New("resource module is not assembled, so the resource cannot be read")
 	}
 	return r.module.Reader().GetResource(ctx, id, userID)
+}
+
+// MaterialForOwner forwards to the resource read-and-copy surface once the
+// module is assembled. Before that the error is explicit, so Gate 1 fails
+// closed instead of treating a missing dependency as a validated material.
+func (r *lateResource) MaterialForOwner(
+	ctx context.Context, ownerID, resourceID uuid.UUID,
+) (*resourcecontract.Material, error) {
+	if r.module == nil {
+		return nil, errors.New("resource module is not assembled, so the material cannot be read")
+	}
+	return r.module.MaterialPublisher().MaterialForOwner(ctx, ownerID, resourceID)
+}
+
+// CopyForPublication forwards to the resource read-and-copy surface once the
+// module is assembled.
+func (r *lateResource) CopyForPublication(
+	ctx context.Context, resourceID uuid.UUID, destPrefix string,
+) (*resourcecontract.PublishedObjects, error) {
+	if r.module == nil {
+		return nil, errors.New("resource module is not assembled, so the material cannot be copied")
+	}
+	return r.module.MaterialPublisher().CopyForPublication(ctx, resourceID, destPrefix)
 }
 
 // startGrading builds learning with every grader the worker needs, and the skill
@@ -1172,15 +1200,16 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 	}
 
 	studioModule, err := studio.NewModule(studio.Dependencies{
-		Pool:            d.pool,
-		ItemVerifier:    learningModule.ItemVerifier(),
-		LessonAuthor:    d.lesson.Author(),
-		ContentAuthor:   d.content.Author(),
-		OrderCreator:    paymentModule.OrderCreator(),
-		ProgressReader:  learningModule.ProgressReader(),
-		MinPriceVND:     d.cfg.Studio.MinPriceVND,
-		MaxPriceVND:     d.cfg.Studio.MaxPriceVND,
-		RevenueShareBPS: d.cfg.Studio.RevenueShareBps,
+		Pool:              d.pool,
+		ItemVerifier:      learningModule.ItemVerifier(),
+		LessonAuthor:      d.lesson.Author(),
+		ContentAuthor:     d.content.Author(),
+		OrderCreator:      paymentModule.OrderCreator(),
+		ProgressReader:    learningModule.ProgressReader(),
+		MaterialPublisher: d.resourcePublisher,
+		MinPriceVND:       d.cfg.Studio.MinPriceVND,
+		MaxPriceVND:       d.cfg.Studio.MaxPriceVND,
+		RevenueShareBPS:   d.cfg.Studio.RevenueShareBps,
 	})
 	if err != nil {
 		return fmt.Errorf("assemble studio module: %w", err)

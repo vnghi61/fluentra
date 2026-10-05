@@ -72,7 +72,7 @@ export function CourseEditor({
     useCourseDraft(draftId);
   const createMutation = useCreateDraft();
   const updateMutation = useUpdateDraft(draftId ?? "");
-  const submitMutation = useSubmitDraft(draftId ?? "");
+  const submitMutation = useSubmitDraft(draftId);
 
   // Metadata form
   const [title, setTitle] = useState("");
@@ -403,7 +403,7 @@ export function CourseEditor({
       // First save current changes
       await handleSaveDraft();
       // Then submit for verification
-      await submitMutation.mutateAsync();
+      await submitMutation.mutateAsync(draftId);
       setStatusMessage({
         type: "success",
         text: t(
@@ -583,7 +583,10 @@ export function CourseEditor({
               id="course-title-input"
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
-              placeholder="e.g. Master Daily English Conversation"
+              placeholder={t(
+                "studio.editor.titlePlaceholder",
+                "e.g. Master Daily English Conversation",
+              )}
               required
             />
           </div>
@@ -599,7 +602,10 @@ export function CourseEditor({
               id="course-slug-input"
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
-              placeholder="e.g. master-daily-english"
+              placeholder={t(
+                "studio.editor.slugPlaceholder",
+                "e.g. master-daily-english",
+              )}
               required
             />
           </div>
@@ -617,7 +623,10 @@ export function CourseEditor({
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="A concise syllabus overview describing what learners will achieve..."
+            placeholder={t(
+              "studio.editor.descPlaceholder",
+              "A concise syllabus overview describing what learners will achieve...",
+            )}
             className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-base sm:text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
@@ -795,7 +804,10 @@ export function CourseEditor({
                             return c;
                           });
                         }}
-                        placeholder="Unit title..."
+                        placeholder={t(
+                          "studio.editor.unitTitlePlaceholder",
+                          "Unit title...",
+                        )}
                         className="text-sm font-semibold"
                       />
                     </div>
@@ -864,7 +876,10 @@ export function CourseEditor({
                                       return c;
                                     });
                                   }}
-                                  placeholder="Lesson title..."
+                                  placeholder={t(
+                                    "studio.editor.lessonTitlePlaceholder",
+                                    "Lesson title...",
+                                  )}
                                   className="text-xs font-medium"
                                 />
 

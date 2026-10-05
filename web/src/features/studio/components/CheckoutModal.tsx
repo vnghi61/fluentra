@@ -101,7 +101,10 @@ export function CheckoutModal({
         <div className="flex items-center justify-between border-b border-border-subtle pb-4">
           <div className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-primary-accent" />
-            <h2 id="checkout-modal-title" className="text-lg font-bold text-text">
+            <h2
+              id="checkout-modal-title"
+              className="text-lg font-bold text-text"
+            >
               {isFree
                 ? t("studio.checkout.claimTitle", "Enroll in Course")
                 : t("studio.checkout.payTitle", "Course Purchase (VietQR)")}
@@ -195,7 +198,9 @@ export function CheckoutModal({
                   variant="primary"
                   size="lg"
                   disabled={loading}
-                  onClick={() => { void handleClaimFree(); }}
+                  onClick={() => {
+                    void handleClaimFree();
+                  }}
                   className="w-full font-bold"
                 >
                   {loading
@@ -240,7 +245,10 @@ export function CheckoutModal({
               <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
                 <div>
                   <span className="text-text-muted block text-[11px]">
-                    {t("studio.checkout.refLabel", "Transfer Content / Description")}
+                    {t(
+                      "studio.checkout.refLabel",
+                      "Transfer Content / Description",
+                    )}
                   </span>
                   <span className="font-mono text-base font-extrabold text-primary-accent">
                     {order.reference}

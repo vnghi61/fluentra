@@ -8,10 +8,7 @@ import {
   SearchableSelect,
   type SearchableSelectOption,
 } from "@/components/ui/searchable-select";
-import {
-  usePayoutAccount,
-  useUpsertPayoutAccount,
-} from "../hooks/useStudio";
+import { usePayoutAccount, useUpsertPayoutAccount } from "../hooks/useStudio";
 
 interface PayoutAccountModalProps {
   isOpen: boolean;
@@ -71,7 +68,10 @@ export function PayoutAccountModal({
 
   // Seed existing account data during render rather than from an effect
   const [seededAccountId, setSeededAccountId] = useState<string | null>(null);
-  if (existingAccount && (existingAccount.account_number ?? "") !== seededAccountId) {
+  if (
+    existingAccount &&
+    (existingAccount.account_number ?? "") !== seededAccountId
+  ) {
     setSeededAccountId(existingAccount.account_number ?? "");
     if (existingAccount.bank_code) setBankCode(existingAccount.bank_code);
     if (existingAccount.account_number)
@@ -138,10 +138,7 @@ export function PayoutAccountModal({
         <div className="flex items-center justify-between border-b border-border-subtle pb-4">
           <div className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary-accent" />
-            <h2
-              id="payout-modal-title"
-              className="text-lg font-bold text-text"
-            >
+            <h2 id="payout-modal-title" className="text-lg font-bold text-text">
               {t("studio.payout.accountTitle", "Payout Bank Account")}
             </h2>
           </div>
@@ -181,7 +178,12 @@ export function PayoutAccountModal({
           </div>
         )}
 
-        <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            void handleSubmit(e);
+          }}
+          className="space-y-4"
+        >
           <div>
             <label
               htmlFor="bank-code-select"
@@ -216,7 +218,10 @@ export function PayoutAccountModal({
               type="text"
               value={accountNumber}
               onChange={(e) => setAccountNumber(e.target.value)}
-              placeholder="e.g. 1017588888"
+              placeholder={t(
+                "studio.payout.accountNumberPlaceholder",
+                "e.g. 1017588888",
+              )}
               required
               className="w-full"
             />
@@ -234,7 +239,10 @@ export function PayoutAccountModal({
               type="text"
               value={accountHolder}
               onChange={(e) => setAccountHolder(e.target.value.toUpperCase())}
-              placeholder="e.g. NGUYEN VAN A"
+              placeholder={t(
+                "studio.payout.accountHolderPlaceholder",
+                "e.g. NGUYEN VAN A",
+              )}
               required
               className="w-full uppercase font-medium"
             />
