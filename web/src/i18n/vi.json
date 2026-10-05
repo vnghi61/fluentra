@@ -129,7 +129,32 @@
     "uploadCustomAvatar": "Tải lên ảnh đại diện tùy chỉnh. PNG, JPG hoặc WebP tối đa 5 MB.",
     "uploadingDirectly": "Đang tải lên...",
     "verified": "Đã xác minh",
-    "yourName": "Tên của bạn"
+    "yourName": "Tên của bạn",
+    "lastSeenOn": "Hoạt động {{date}}",
+    "expiresOn": "Hết hạn {{date}}",
+    "untrustDeviceBody": "Bỏ tin cậy {{device}} sẽ thu hồi ngay phiên đăng nhập lâu dài của thiết bị đó.",
+    "thisDeviceLower": "thiết bị này",
+    "untrustCurrentWarning": "Đây là thiết bị bạn đang dùng. Bỏ tin cậy sẽ đăng xuất trình duyệt này ngay lập tức.",
+    "untrustOtherWarning": "Thiết bị này sẽ bị đăng xuất. Thiết bị bạn đang dùng không bị ảnh hưởng.",
+    "showFewerSessions": "Thu gọn",
+    "confirmUnlinkGoogle": "Bạn có chắc muốn ngắt kết nối tài khoản Google?",
+    "cannotUnlinkLastMethod": "Không thể ngắt Google: đây là phương thức đăng nhập duy nhất của bạn. Hãy đặt mật khẩu trước.",
+    "connectedSince": "Đã kết nối từ {{date}}",
+    "dailyGoal": "Mục tiêu mỗi ngày",
+    "themeSystemShort": "Hệ thống",
+    "aiGradingOnDesc": "Đang bật: AI chấm câu trả lời mở và nhận xét phát âm. Tắt để chỉ dùng bài tập chấm tự động.",
+    "aiGradingOffDesc": "Đang tắt: không dùng AI chấm điểm và nhận xét phát âm. Bài tập chấm tự động và theo dõi tiến độ vẫn hoạt động.",
+    "exportState": {
+      "pending": "Đang chờ",
+      "processing": "Đang xử lý",
+      "ready": "Sẵn sàng",
+      "completed": "Hoàn tất",
+      "failed": "Thất bại",
+      "expired": "Đã hết hạn"
+    },
+    "showMoreSessions": "Xem thêm {{count}} phiên",
+    "passwordUpdatedRevoked": "Đã đổi mật khẩu. {{count}} phiên đăng nhập khác đã bị đăng xuất.",
+    "goalMinutesShort": "{{count}} phút"
   },
   "action": {
     "ping": "Gọi thử API",
@@ -828,7 +853,8 @@
     "unableToLoadSettings": "Không tải được cài đặt",
     "verifyYourEmailNow": "Xác minh email ngay",
     "vocabulary": "Từ vựng & hàng chờ",
-    "yourAccountHoldsNoAdministrativePermissions": "Tài khoản của bạn không có quyền quản trị."
+    "yourAccountHoldsNoAdministrativePermissions": "Tài khoản của bạn không có quyền quản trị.",
+    "accountSettingsShort": "Cài đặt"
   },
   "practice": {
     "daily": {
@@ -1978,7 +2004,9 @@
     "save": "Lưu",
     "saving": "Đang lưu…",
     "saved": "Đã lưu.",
-    "saveFailed": "Không lưu được thay đổi. Hãy thử lại."
+    "saveFailed": "Không lưu được thay đổi. Hãy thử lại.",
+    "minutesCustom": "Tùy chỉnh",
+    "minutesPerWeek": "phút / tuần"
   },
   "skills": {
     "vocabulary": "Từ vựng",

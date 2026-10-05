@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Compass, Loader2, Target } from "lucide-react";
+import { Compass, Target } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   usePlacementOverview,
   type PlacementOverview,
@@ -45,11 +45,11 @@ const MEASURED = [
 ] as const;
 
 const linkClass =
-  "inline-flex min-h-[44px] items-center justify-center rounded-lg bg-primary px-6 text-base font-medium text-primary-fg hover:bg-primary-hover";
+  "inline-flex min-h-[44px] items-center justify-center whitespace-nowrap rounded-xl bg-primary px-5 text-sm font-medium text-primary-fg hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 
 const choiceClass = (selected: boolean) =>
   cn(
-    "min-h-[44px] rounded-xl border px-3 py-2 text-base font-medium transition-colors",
+    "min-h-[44px] min-w-0 whitespace-nowrap rounded-[10px] border px-2 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
     selected
       ? "border-primary bg-primary/10 text-text"
       : "border-border-subtle bg-surface-base text-text hover:border-border",
@@ -68,12 +68,12 @@ const PlacementSummary: React.FC<{
   const canRetake = retakeAt === null || retakeAt.getTime() <= now;
 
   return (
-    <Card className="border-border bg-surface-card">
+    <Card className="rounded-2xl">
       <CardHeader className="space-y-1">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Compass className="h-5 w-5 text-primary" aria-hidden="true" />
-            <CardTitle className="text-lg font-bold text-text">
+            <CardTitle className="text-base font-semibold text-text">
               {t("placement.settings.title")}
             </CardTitle>
           </div>
@@ -91,16 +91,16 @@ const PlacementSummary: React.FC<{
       </CardHeader>
       <CardContent className="space-y-3">
         {result ? (
-          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <dl className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {MEASURED.map((skill) => (
               <div
                 key={skill}
-                className="rounded-lg border border-border-subtle px-3 py-2"
+                className="rounded-[10px] border border-border-subtle px-2.5 py-1.5"
               >
                 <dt className="text-xs text-text-muted">
                   {t(`skills.${skill}`)}
                 </dt>
-                <dd className="text-base font-bold text-text">
+                <dd className="text-sm font-bold text-text">
                   {result.per_skill[skill]?.band ??
                     t("placement.result.notMeasured")}
                 </dd>
@@ -162,6 +162,9 @@ const LearningProfileForm: React.FC<{ initial: LearningProfile | null }> = ({
   const [minutes, setMinutes] = useState<number>(
     initial?.weekly_minutes_goal ?? 90,
   );
+  const [custom, setCustom] = useState<boolean>(
+    !MINUTE_PRESETS.some((preset) => preset === minutes),
+  );
   const [status, setStatus] = useState<"idle" | "saved" | "failed">("idle");
 
   const save = async (event: React.FormEvent) => {
@@ -187,12 +190,12 @@ const LearningProfileForm: React.FC<{ initial: LearningProfile | null }> = ({
   };
 
   return (
-    <Card className="border-border bg-surface-card">
+    <Card className="rounded-2xl">
       <form onSubmit={(event) => void save(event)}>
         <CardHeader className="space-y-1">
           <div className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" aria-hidden="true" />
-            <CardTitle className="text-lg font-bold text-text">
+            <CardTitle className="text-base font-semibold text-text">
               {t("profile.title")}
             </CardTitle>
           </div>
@@ -250,40 +253,62 @@ const LearningProfileForm: React.FC<{ initial: LearningProfile | null }> = ({
             </div>
           </div>
           <div className="space-y-2">
-            <Label
-              htmlFor="weekly-minutes"
-              className="text-sm font-semibold text-text"
-            >
+            <p className="text-sm font-semibold text-text">
               {t("profile.minutesLabel")}
-            </Label>
-            <div className="flex flex-wrap items-center gap-2">
-              <Input
-                id="weekly-minutes"
-                type="number"
-                inputMode="numeric"
-                min={MIN_WEEKLY_MINUTES}
-                max={MAX_WEEKLY_MINUTES}
-                value={minutes}
-                onChange={(event) =>
-                  setMinutes(
-                    Number.parseInt(event.target.value, 10) ||
-                      MIN_WEEKLY_MINUTES,
-                  )
-                }
-                className="min-h-[44px] w-32 text-base"
-              />
+            </p>
+            {/* One source of truth: a preset, or "Custom" which reveals the
+                number box. Showing both at once let "90" and "90 min" disagree. */}
+            <div
+              className="grid grid-cols-3 gap-2 sm:grid-cols-5"
+              role="group"
+              aria-label={t("profile.minutesLabel")}
+            >
               {MINUTE_PRESETS.map((preset) => (
                 <button
                   key={preset}
                   type="button"
-                  aria-pressed={minutes === preset}
-                  onClick={() => setMinutes(preset)}
-                  className={choiceClass(minutes === preset)}
+                  aria-pressed={!custom && minutes === preset}
+                  onClick={() => {
+                    setCustom(false);
+                    setMinutes(preset);
+                  }}
+                  className={choiceClass(!custom && minutes === preset)}
                 >
                   {t("profile.minutesPreset", { minutes: preset })}
                 </button>
               ))}
+              <button
+                type="button"
+                aria-pressed={custom}
+                onClick={() => setCustom(true)}
+                className={choiceClass(custom)}
+              >
+                {t("profile.minutesCustom", "Custom")}
+              </button>
             </div>
+            {custom && (
+              <div className="flex items-center gap-2">
+                <Input
+                  id="weekly-minutes"
+                  type="number"
+                  inputMode="numeric"
+                  min={MIN_WEEKLY_MINUTES}
+                  max={MAX_WEEKLY_MINUTES}
+                  value={minutes}
+                  onChange={(event) =>
+                    setMinutes(
+                      Number.parseInt(event.target.value, 10) ||
+                        MIN_WEEKLY_MINUTES,
+                    )
+                  }
+                  aria-label={t("profile.minutesLabel")}
+                  className="min-h-[44px] w-32 text-base"
+                />
+                <span className="text-sm text-text-muted">
+                  {t("profile.minutesPerWeek", "min / week")}
+                </span>
+              </div>
+            )}
           </div>
           {status !== "idle" && (
             <p
@@ -303,7 +328,7 @@ const LearningProfileForm: React.FC<{ initial: LearningProfile | null }> = ({
           <Button
             type="submit"
             disabled={saveProfile.isPending}
-            className="min-h-[44px] text-base"
+            className="min-h-[44px] w-full rounded-xl sm:w-auto"
           >
             {saveProfile.isPending ? t("profile.saving") : t("profile.save")}
           </Button>
@@ -320,17 +345,15 @@ export const LearningProfileSettings: React.FC = () => {
 
   if (profile.isLoading || overview.isLoading) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center">
-        <Loader2
-          className="h-6 w-6 animate-spin text-primary"
-          aria-hidden="true"
-        />
+      <div className="space-y-4" data-testid="learning-profile-skeleton">
+        <Skeleton className="h-32 w-full rounded-2xl" />
+        <Skeleton className="h-80 w-full rounded-2xl" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <PlacementSummary
         overview={overview.data}
         declaredLevel={profile.data?.declared_level ?? null}

@@ -249,6 +249,41 @@ describe("Account Management Settings (P5.2)", () => {
   });
 
   describe("PreferencesSettings", () => {
+    it("uses switches for quiet hours and AI grading, with AI shown as on when not opted out", async () => {
+      let replacedPreferences: unknown = null;
+      server.use(
+        http.put("/api/v1/me/preferences", async ({ request }) => {
+          replacedPreferences = await request.json();
+          return HttpResponse.json({
+            ...mockPreferences,
+            ...(replacedPreferences as object),
+          });
+        }),
+      );
+
+      const user = userEvent.setup();
+      render(<PreferencesSettings initialPreferences={mockPreferences} />);
+
+      const ai = screen.getByRole("switch", { name: /AI Grading/i });
+      expect(ai).toHaveAttribute("aria-checked", "true");
+      expect(
+        screen.getByRole("switch", { name: /Quiet Hours/i }),
+      ).toHaveAttribute("aria-checked", "true");
+
+      await user.click(ai);
+      expect(ai).toHaveAttribute("aria-checked", "false");
+      expect(screen.getByText(/^Off:/)).toBeInTheDocument();
+
+      await user.click(
+        screen.getByRole("button", { name: /Save Preferences/i }),
+      );
+      await waitFor(() =>
+        expect(replacedPreferences).toMatchObject({
+          ai_processing_opt_out: true,
+        }),
+      );
+    });
+
     it("updates study goal, notification channels and quiet hours", async () => {
       let replacedPreferences: unknown = null;
 
@@ -267,10 +302,7 @@ describe("Account Management Settings (P5.2)", () => {
 
       // A select now, not a number box: the field offers the goals the server
       // accepts rather than trusting a learner not to type 1130.
-      await user.selectOptions(
-        screen.getByLabelText(/Daily Study Goal/i),
-        "45",
-      );
+      await user.selectOptions(screen.getByLabelText(/Daily goal/i), "45");
 
       const saveBtn = screen.getByRole("button", { name: /Save Preferences/i });
       await user.click(saveBtn);
@@ -406,6 +438,49 @@ describe("Account Management Settings (P5.2)", () => {
         screen.queryByRole("button", { name: /Revoke/i }),
       ).not.toBeInTheDocument();
       expect(screen.getByText(/Current Device/i)).toBeInTheDocument();
+    });
+
+    it("puts the current session first and shows five until asked for more", async () => {
+      const others = Array.from({ length: 8 }, (_, i) => ({
+        id: `session-${i}`,
+        current: false,
+        device_label: `Chrome on Windows ${i}`,
+        created_at: "2026-08-15T12:00:00Z",
+        last_seen_at: `2026-08-${String(10 + i).padStart(2, "0")}T09:00:00Z`,
+      }));
+      server.use(
+        http.get("/api/v1/auth/sessions", () =>
+          HttpResponse.json({
+            sessions: [
+              ...others,
+              {
+                id: "session-curr",
+                current: true,
+                device_label: "This Browser",
+                created_at: "2026-08-15T12:00:00Z",
+                last_seen_at: "2026-08-01T09:00:00Z",
+              },
+            ],
+          }),
+        ),
+      );
+
+      const user = userEvent.setup();
+      render(<SessionsList />);
+
+      await screen.findByText("This Browser");
+      const rows = screen.getAllByRole("listitem");
+      expect(rows).toHaveLength(5);
+      expect(rows[0]).toHaveTextContent("This Browser");
+      // Most recently active next.
+      expect(rows[1]).toHaveTextContent("Chrome on Windows 7");
+
+      await user.click(
+        screen.getByRole("button", { name: "Show 4 more sessions" }),
+      );
+      expect(screen.getAllByRole("listitem")).toHaveLength(9);
+      await user.click(screen.getByRole("button", { name: "Show fewer" }));
+      expect(screen.getAllByRole("listitem")).toHaveLength(5);
     });
 
     it("refuses unlinking Google when LAST_SIGN_IN_METHOD is returned", async () => {
@@ -809,7 +884,7 @@ describe("Account Management Settings (P5.2)", () => {
       expect(router.state.location.search).toEqual({ section: "preferences" });
 
       // Preferences section is displayed
-      expect(await screen.findByText(/Daily Study Goal/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Daily goal/i)).toBeInTheDocument();
 
       // Side-tab is selected (aria-current="page")
       const prefTab = screen.getByRole("button", {

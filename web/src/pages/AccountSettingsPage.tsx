@@ -182,7 +182,7 @@ export function AccountSettingsPage(): React.JSX.Element {
     // min-w-0 is what lets the tab row's own `overflow-x-auto` actually clip:
     // without it the container is sized by its content and the whole page
     // scrolls sideways instead (R6, measured at 320 px).
-    <div className="max-w-5xl mx-auto min-w-0 space-y-5">
+    <div className="mx-auto min-w-0 max-w-[1180px] space-y-5">
       {/* Mobile Subpage Header with Back button */}
       {activeSection && (
         <div className="flex md:hidden items-center gap-3">
@@ -196,10 +196,13 @@ export function AccountSettingsPage(): React.JSX.Element {
           >
             <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden="true" />
             <span className="text-sm font-medium">
-              {t("page.back", "Back")}
+              {t("page.accountSettingsShort", "Settings")}
             </span>
           </Button>
-          <h2 className="text-lg font-semibold text-text truncate">
+          <span className="text-text-muted" aria-hidden="true">
+            |
+          </span>
+          <h2 className="truncate text-lg font-semibold text-text">
             {currentTab?.label}
           </h2>
         </div>
@@ -222,12 +225,12 @@ export function AccountSettingsPage(): React.JSX.Element {
         </p>
       </header>
 
-      <div className="grid items-start gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="grid items-start gap-5 md:grid-cols-[232px_minmax(0,1fr)] lg:gap-6">
         {/* Grouped settings navigation: mobile index list, or desktop side-tab */}
         <nav
           aria-label={t("page.accountSettings", "Account Settings")}
           className={cn(
-            "grid gap-1 rounded-2xl border border-border-subtle bg-surface-card p-2",
+            "grid gap-1 rounded-2xl border border-border-subtle bg-surface-card p-2 shadow-[var(--shadow-card)] md:sticky md:top-4",
             activeSection && "hidden md:grid",
           )}
         >
@@ -240,15 +243,24 @@ export function AccountSettingsPage(): React.JSX.Element {
                 type="button"
                 onClick={() => handleSelectTab(tab.key)}
                 aria-current={isActive ? "page" : undefined}
-                className={`flex min-w-0 items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors min-h-[44px] cursor-pointer ${
+                className={cn(
+                  "flex min-h-[44px] min-w-[44px] cursor-pointer max-md:min-h-[56px] items-center gap-3 rounded-xl px-3 text-left text-[15px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:min-h-[44px] md:text-sm",
+                  // The mobile hub is a menu: nothing in it is "current" yet,
+                  // so the highlight applies only beside an open panel.
                   isActive
-                    ? "text-primary-accent bg-primary/10"
-                    : "text-text-muted hover:text-text hover:bg-surface-muted"
-                }`}
+                    ? "text-text hover:bg-surface-muted md:bg-primary/10 md:text-primary-accent md:hover:bg-primary/10"
+                    : "text-text hover:bg-surface-muted md:text-text-muted md:hover:text-text",
+                )}
               >
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="flex-1">{tab.label}</span>
-                <ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <Icon
+                  className="h-5 w-5 shrink-0 md:h-4 md:w-4"
+                  aria-hidden="true"
+                />
+                <span className="min-w-0 flex-1 truncate">{tab.label}</span>
+                <ChevronRight
+                  className="h-4 w-4 shrink-0 text-text-muted md:hidden"
+                  aria-hidden="true"
+                />
               </button>
             );
           })}

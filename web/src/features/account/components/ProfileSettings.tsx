@@ -18,6 +18,7 @@ import { AvatarUploadModal } from "./AvatarUploadModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { settingsAlert, settingsCard } from "./settingsStyles";
 import {
   SearchableSelect,
   type SearchableSelectOption,
@@ -170,11 +171,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   };
 
   return (
-    <div className="space-y-8">
-      {/* Avatar Section */}
-      <div className="flex flex-col sm:flex-row items-center gap-6 rounded-xl border border-border-subtle bg-surface-card/60 p-6">
-        <div className="relative group">
-          <div className="h-24 w-24 overflow-hidden rounded-full border-2 border-primary/40 bg-surface-muted flex items-center justify-center text-2xl font-bold text-primary-accent">
+    <section className={`${settingsCard} space-y-5`}>
+      {/* Avatar: part of the profile card, not a hero of its own */}
+      <div className="flex items-center gap-4 border-b border-border-subtle pb-5">
+        <div className="group relative shrink-0">
+          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-primary/30 bg-primary/10 text-2xl font-bold text-primary-accent sm:h-[88px] sm:w-[88px]">
             {profile.profile.avatar_url ? (
               <img
                 src={profile.profile.avatar_url}
@@ -190,15 +191,15 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           <button
             type="button"
             onClick={() => setIsAvatarModalOpen(true)}
-            className="absolute inset-0 flex items-center justify-center rounded-full bg-overlay/60 opacity-0 group-hover:opacity-100 transition-opacity text-white"
-            title={t("account.changeAvatar", "Change avatar")}
+            className="absolute inset-0 flex items-center justify-center rounded-full bg-overlay/60 text-white opacity-0 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary group-hover:opacity-100 motion-reduce:transition-none"
+            aria-label={t("account.changeAvatar", "Change avatar")}
           >
-            <Camera className="h-6 w-6" />
+            <Camera className="h-6 w-6" aria-hidden />
           </button>
         </div>
 
-        <div className="space-y-2 text-center sm:text-left">
-          <h3 className="text-base font-semibold text-text">
+        <div className="min-w-0 space-y-1">
+          <h3 className="truncate text-base font-semibold text-text">
             {profile.profile.display_name}
           </h3>
           <p className="text-xs text-text-muted">
@@ -212,27 +213,20 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             variant="outline"
             size="sm"
             onClick={() => setIsAvatarModalOpen(true)}
-            className="mt-2"
+            className="mt-1.5 min-h-[44px] whitespace-nowrap rounded-xl px-4 sm:min-h-10"
           >
-            <Camera className="mr-2 h-4 w-4" />
+            <Camera className="mr-2 h-4 w-4" aria-hidden />
             {t("account.changePhoto", "Change Photo")}
           </Button>
         </div>
       </div>
 
       {statusMessage && (
-        <div
-          role="status"
-          className={`flex items-start gap-2.5 rounded-lg p-3.5 text-xs ${
-            statusMessage.type === "success"
-              ? "border border-success/30 bg-success/10 text-success-accent"
-              : "border border-danger/30 bg-danger/10 text-danger-accent"
-          }`}
-        >
+        <div role="status" className={settingsAlert(statusMessage.type)}>
           {statusMessage.type === "success" ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-success-accent mt-0.5" />
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           ) : (
-            <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           )}
           <span>{statusMessage.text}</span>
         </div>
@@ -243,24 +237,26 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         onSubmit={(e) => {
           void handleSubmit(onSubmit)(e);
         }}
-        className="space-y-6"
+        className="space-y-5"
       >
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* Email (Read-only) */}
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="email" className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-text-muted" />
               {t("account.emailAddress", "Email Address")}
             </Label>
-            <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-card/40 px-3.5 py-2.5 text-sm text-text-muted">
-              <span>{profile.email}</span>
+            <div className="flex min-h-[44px] items-center justify-between gap-2 rounded-[10px] border border-border-subtle bg-surface-muted/40 px-3 py-2 text-sm text-text">
+              <span className="min-w-0 truncate" aria-readonly="true">
+                {profile.email}
+              </span>
               {profile.email_verified_at ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success-accent border border-success/20">
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success-accent border border-success/20">
                   <CheckCircle2 className="h-3 w-3" />
                   {t("account.verified", "Verified")}
                 </span>
               ) : (
-                <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning-accent border border-warning/20">
+                <span className="shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning-accent border border-warning/20">
                   {t("account.unverified", "Unverified")}
                 </span>
               )}
@@ -373,8 +369,12 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           </div>
         </div>
 
-        <div className="flex justify-end pt-4">
-          <Button type="submit" disabled={isSaving || !isDirty}>
+        <div className="flex justify-end">
+          <Button
+            type="submit"
+            disabled={isSaving || !isDirty}
+            className="min-h-[44px] w-full rounded-xl sm:w-auto"
+          >
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -392,6 +392,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         onClose={() => setIsAvatarModalOpen(false)}
         onSuccess={handleAvatarUploaded}
       />
-    </div>
+    </section>
   );
 };

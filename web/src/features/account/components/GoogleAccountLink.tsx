@@ -10,9 +10,16 @@ import {
 import { accountApi, type GoogleLinkStatus } from "../api/accountApi";
 import { ApiError } from "@/api/client";
 import { Button } from "@/components/ui/button";
+import {
+  formatDate,
+  settingsAlert,
+  settingsCard,
+  settingsCardDesc,
+  settingsCardTitle,
+} from "./settingsStyles";
 
 export const GoogleAccountLink: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // Read from the server rather than taken as a prop. The prop was never
   // passed, so `linkedEmail` was always null: the component only ever rendered
   // "Not connected", the Unlink button was unreachable, and the
@@ -84,7 +91,14 @@ export const GoogleAccountLink: React.FC = () => {
     // button is disabled when `can_unlink` is false, and this guard means a
     // programmatic call cannot slip past the disabled attribute either.
     if (!canUnlink) return;
-    if (!confirm("Are you sure you want to disconnect your Google account?")) {
+    if (
+      !confirm(
+        t(
+          "account.confirmUnlinkGoogle",
+          "Are you sure you want to disconnect your Google account?",
+        ),
+      )
+    ) {
       return;
     }
 
@@ -107,7 +121,10 @@ export const GoogleAccountLink: React.FC = () => {
         err.problem.code === "LAST_SIGN_IN_METHOD"
       ) {
         setError(
-          "Cannot unlink Google account: it is your only sign-in method. Set a password first before unlinking.",
+          t(
+            "account.cannotUnlinkLastMethod",
+            "Cannot unlink Google account: it is your only sign-in method. Set a password first before unlinking.",
+          ),
         );
       } else {
         setError(
@@ -125,14 +142,14 @@ export const GoogleAccountLink: React.FC = () => {
   };
 
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-4">
+    <section className={`${settingsCard} space-y-3`}>
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h3 className="text-base font-semibold text-text flex items-center gap-2">
-            <Link2 className="h-5 w-5 text-primary-accent" />
+          <h3 className={settingsCardTitle}>
+            <Link2 className="h-5 w-5 text-primary-accent" aria-hidden />
             {t("account.connectedAccounts", "Connected Accounts")}
           </h3>
-          <p className="text-xs text-text-muted">
+          <p className={settingsCardDesc}>
             {t(
               "account.linkYourGoogleAccountForQuickOneTapSignIn",
               "Link your Google account for quick, one-tap sign in.",
@@ -142,23 +159,23 @@ export const GoogleAccountLink: React.FC = () => {
       </div>
 
       {error && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
+        <div role="alert" className={settingsAlert("error")}>
           <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
       {success && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-success/30 bg-success/10 p-3.5 text-xs text-success-accent">
+        <div role="status" className={settingsAlert("success")}>
           <CheckCircle2 className="h-4 w-4 shrink-0 text-success-accent mt-0.5" />
           <span>{success}</span>
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-subtle bg-surface-card/40 p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-muted text-text">
-            <svg className="h-5 w-5" viewBox="0 0 24 24">
+      <div className="flex items-center gap-3 rounded-xl border border-border-subtle px-3 py-3 sm:px-4">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-muted text-text">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 fill="currentColor"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -177,12 +194,15 @@ export const GoogleAccountLink: React.FC = () => {
               />
             </svg>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-text">Google</p>
-            <p className="text-xs text-text-muted">
+            <p className="truncate text-xs text-text-muted">
               {linked
                 ? status?.linked_at
-                  ? `Connected since ${new Date(status.linked_at).toLocaleDateString()}`
+                  ? t("account.connectedSince", {
+                      date: formatDate(status.linked_at, i18n.language),
+                      defaultValue: `Connected since ${formatDate(status.linked_at, i18n.language)}`,
+                    })
                   : t("account.connected", "Connected")
                 : t("account.notConnected", "Not connected")}
             </p>
@@ -194,6 +214,7 @@ export const GoogleAccountLink: React.FC = () => {
             type="button"
             variant="destructive"
             size="sm"
+            className="min-h-[44px] shrink-0 whitespace-nowrap rounded-xl px-4 sm:min-h-10"
             onClick={() => {
               void handleUnlink();
             }}
@@ -221,6 +242,7 @@ export const GoogleAccountLink: React.FC = () => {
             type="button"
             variant="outline"
             size="sm"
+            className="min-h-[44px] shrink-0 whitespace-nowrap rounded-xl px-4 sm:min-h-10"
             onClick={() => {
               void handleStartLink();
             }}
@@ -234,6 +256,6 @@ export const GoogleAccountLink: React.FC = () => {
           </Button>
         )}
       </div>
-    </div>
+    </section>
   );
 };

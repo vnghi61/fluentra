@@ -19,6 +19,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  settingsAlert,
+  settingsCard,
+  settingsCardDesc,
+  settingsCardTitle,
+} from "./settingsStyles";
 
 interface DataPrivacySettingsProps {
   initialProfile: UserProfile;
@@ -152,36 +158,29 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
     deletionState?.status === "processing";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {statusMessage && (
-        <div
-          role="status"
-          className={`flex items-start gap-2.5 rounded-lg p-3.5 text-xs ${
-            statusMessage.type === "success"
-              ? "border border-success/30 bg-success/10 text-success-accent"
-              : "border border-danger/30 bg-danger/10 text-danger-accent"
-          }`}
-        >
+        <div role="status" className={settingsAlert(statusMessage.type)}>
           {statusMessage.type === "success" ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-success-accent mt-0.5" />
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           ) : (
-            <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           )}
           <span>{statusMessage.text}</span>
         </div>
       )}
 
       {/* Data Export (GDPR) */}
-      <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-4">
+      <section className={`${settingsCard} space-y-3`}>
         <div className="space-y-1">
-          <h3 className="text-base font-semibold text-text flex items-center gap-2">
-            <FileArchive className="h-5 w-5 text-primary-accent" />
+          <h3 className={settingsCardTitle}>
+            <FileArchive className="h-5 w-5 text-primary-accent" aria-hidden />
             {t(
               "account.exportPersonalData",
               "Export Your Personal Data (GDPR Article 20)",
             )}
           </h3>
-          <p className="text-xs text-text-muted leading-relaxed max-w-2xl">
+          <p className={`${settingsCardDesc} max-w-2xl`}>
             {t(
               "account.exportPersonalDataDesc",
               "You have the right to receive a copy of all personal data, study history, and vocabulary progress in a machine-readable ZIP format.",
@@ -189,7 +188,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border border-border-subtle bg-surface-card/40 p-4">
+        <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-border-subtle p-3 sm:flex-row sm:items-center sm:p-4">
           <div className="space-y-1">
             <p className="text-sm font-medium text-text">
               {t(
@@ -199,7 +198,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
             </p>
             <p className="text-xs text-text-muted">
               {exportState
-                ? `${t("account.exportStatus", "Export status")}: ${exportState.status}`
+                ? `${t("account.exportStatus", "Export status")}: ${t(`account.exportState.${exportState.status}`, exportState.status)}`
                 : t(
                     "account.includesAccountDetailsPreferencesStudy",
                     "Includes account details, preferences, study logs, and exercise records",
@@ -215,6 +214,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
               void handleRequestExport();
             }}
             disabled={isExporting}
+            className="min-h-[44px] shrink-0 whitespace-nowrap rounded-xl px-4 sm:min-h-10"
           >
             {isExporting ? (
               <>
@@ -229,19 +229,19 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
             )}
           </Button>
         </div>
-      </div>
+      </section>
 
       {/* Account Deletion (GDPR Article 17) */}
-      <div className="rounded-xl border border-danger/30 bg-surface-card/60 p-6 space-y-6">
+      <section className={`${settingsCard} space-y-3`}>
         <div className="space-y-1">
-          <h3 className="text-base font-semibold text-danger-accent flex items-center gap-2">
-            <Trash2 className="h-5 w-5" />
+          <h3 className="flex items-center gap-2 text-base font-semibold text-danger-accent">
+            <Trash2 className="h-5 w-5" aria-hidden />
             {t(
               "account.deleteAccountTitle",
               "Delete Account (GDPR Article 17)",
             )}
           </h3>
-          <p className="text-xs text-text-muted leading-relaxed max-w-2xl">
+          <p className={`${settingsCardDesc} max-w-2xl`}>
             {t(
               "account.deleteAccountDesc",
               "Permanently erase your account, login credentials, learning stats, and personal data.",
@@ -250,7 +250,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
         </div>
 
         {isPendingDeletion ? (
-          <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 space-y-4">
+          <div className="space-y-3 rounded-xl border border-warning/30 bg-warning/10 p-3 sm:p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 shrink-0 text-warning-accent mt-0.5" />
               <div className="space-y-1">
@@ -304,7 +304,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border border-danger/30 bg-danger/20 p-4">
+          <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-danger/25 p-3 sm:flex-row sm:items-center sm:p-4">
             <div className="space-y-1">
               <p className="text-sm font-medium text-text">
                 {t(
@@ -325,12 +325,13 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
               variant="destructive"
               size="sm"
               onClick={() => setIsConfirmModalOpen(true)}
+              className="min-h-[44px] shrink-0 whitespace-nowrap rounded-xl px-4 sm:min-h-10"
             >
               {t("account.deleteMyAccount", "Delete My Account")}
             </Button>
           </div>
         )}
-      </div>
+      </section>
 
       {/* Deletion Confirmation Modal */}
       {isConfirmModalOpen && (
@@ -339,7 +340,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/80 backdrop-blur-sm p-4"
         >
-          <div className="w-full max-w-md rounded-2xl border border-danger/50 bg-surface-card p-6 shadow-2xl space-y-6">
+          <div className="w-full max-w-md space-y-5 rounded-2xl border border-border-subtle bg-surface-card p-5 shadow-2xl sm:p-6">
             <div className="flex items-center gap-3 text-danger-accent">
               <AlertTriangle className="h-6 w-6" />
               <h4 className="text-lg font-semibold text-text">

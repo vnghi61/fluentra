@@ -129,7 +129,32 @@
     "uploadCustomAvatar": "Upload a custom avatar. PNG, JPG or WebP up to 5 MB.",
     "uploadingDirectly": "Uploading directly...",
     "verified": "Verified",
-    "yourName": "Your name"
+    "yourName": "Your name",
+    "lastSeenOn": "Last seen {{date}}",
+    "expiresOn": "Expires {{date}}",
+    "untrustDeviceBody": "Untrusting {{device}} immediately revokes its persistent session.",
+    "thisDeviceLower": "this device",
+    "untrustCurrentWarning": "This is the device you are using right now. Untrusting it will sign you out of this browser immediately.",
+    "untrustOtherWarning": "This device will stop being signed in. The device you are using now is unaffected.",
+    "showFewerSessions": "Show fewer",
+    "confirmUnlinkGoogle": "Are you sure you want to disconnect your Google account?",
+    "cannotUnlinkLastMethod": "Cannot unlink Google account: it is your only sign-in method. Set a password first before unlinking.",
+    "connectedSince": "Connected since {{date}}",
+    "dailyGoal": "Daily goal",
+    "themeSystemShort": "System",
+    "aiGradingOnDesc": "On: AI grades open answers and gives pronunciation feedback. Turn it off to keep only deterministic exercises.",
+    "aiGradingOffDesc": "Off: AI-assisted grading and pronunciation feedback are not used. Deterministic exercises and progress tracking still work.",
+    "exportState": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "ready": "Ready",
+      "completed": "Completed",
+      "failed": "Failed",
+      "expired": "Expired"
+    },
+    "showMoreSessions": "Show {{count}} more sessions",
+    "passwordUpdatedRevoked": "Password updated successfully. {{count}} other active session(s) were signed out.",
+    "goalMinutesShort": "{{count}} min"
   },
   "action": {
     "ping": "Ping the API",
@@ -828,7 +853,8 @@
     "unableToLoadSettings": "Unable to load settings",
     "verifyYourEmailNow": "Verify your email now",
     "vocabulary": "Vocabulary & Queue",
-    "yourAccountHoldsNoAdministrativePermissions": "Your account holds no administrative permissions."
+    "yourAccountHoldsNoAdministrativePermissions": "Your account holds no administrative permissions.",
+    "accountSettingsShort": "Settings"
   },
   "practice": {
     "daily": {
@@ -1978,7 +2004,9 @@
     "save": "Save",
     "saving": "Saving…",
     "saved": "Saved.",
-    "saveFailed": "Your changes could not be saved. Try again."
+    "saveFailed": "Your changes could not be saved. Try again.",
+    "minutesCustom": "Custom",
+    "minutesPerWeek": "min / week"
   },
   "skills": {
     "vocabulary": "Vocabulary",

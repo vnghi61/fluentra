@@ -26,6 +26,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  settingsAlert,
+  settingsCard,
+  settingsCardTitle,
+} from "./settingsStyles";
 import { DAILY_GOAL_MINUTES } from "@/lib/locales";
 
 interface PreferencesSettingsProps {
@@ -73,6 +79,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
 
   const quietHoursEnabled = useWatch({ control, name: "quiet_hours_enabled" });
   const currentTheme = useWatch({ control, name: "theme" });
+  const aiOptOut = useWatch({ control, name: "ai_processing_opt_out" });
 
   const onSubmit = async (values: PreferencesFormValues) => {
     setIsSaving(true);
@@ -141,20 +148,13 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {statusMessage && (
-        <div
-          role="status"
-          className={`flex items-start gap-2.5 rounded-lg p-3.5 text-xs ${
-            statusMessage.type === "success"
-              ? "border border-success/30 bg-success/10 text-success-accent"
-              : "border border-danger/30 bg-danger/10 text-danger-accent"
-          }`}
-        >
+        <div role="status" className={settingsAlert(statusMessage.type)}>
           {statusMessage.type === "success" ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-success-accent mt-0.5" />
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           ) : (
-            <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           )}
           <span>{statusMessage.text}</span>
         </div>
@@ -164,11 +164,11 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
         onSubmit={(e) => {
           void handleSubmit(onSubmit)(e);
         }}
-        className="space-y-8"
+        className="space-y-4"
       >
         {/* Learning Goal & Locale */}
-        <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-6">
-          <h3 className="text-base font-semibold text-text flex items-center gap-2">
+        <section className={`${settingsCard} space-y-5`}>
+          <h3 className={settingsCardTitle}>
             <Clock className="h-5 w-5 text-primary-accent" />
             {t("account.learningInterface", "Learning & Interface")}
           </h3>
@@ -177,10 +177,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             {/* Daily Goal */}
             <div className="space-y-2">
               <Label htmlFor="daily_goal_minutes">
-                {t(
-                  "account.dailyStudyGoalMinutes",
-                  "Daily Study Goal (minutes)",
-                )}
+                {t("account.dailyGoal", "Daily goal")}
               </Label>
               {/* A list, not a number box. The box accepted 7 and 113, whose
                   value over 10 and 120 is nil, and 1130 by a slipped keystroke,
@@ -190,11 +187,14 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 id="daily_goal_minutes"
                 {...register("daily_goal_minutes", { valueAsNumber: true })}
                 aria-invalid={!!errors.daily_goal_minutes}
-                className="flex h-11 min-h-[44px] w-full rounded-lg border border-border-subtle bg-surface-card px-3 text-base text-text focus:outline-none focus:ring-2 focus:ring-primary"
+                className="flex h-11 min-h-[44px] w-full rounded-[10px] border border-border-subtle bg-surface-card px-3 text-base text-text focus:outline-none focus:ring-2 focus:ring-primary md:text-sm"
               >
                 {DAILY_GOAL_MINUTES.map((minutes) => (
                   <option key={minutes} value={minutes}>
-                    {t("account.goalMinutes", { count: minutes })}
+                    {t("account.goalMinutesShort", {
+                      count: minutes,
+                      defaultValue: `${minutes} min`,
+                    })}
                   </option>
                 ))}
               </select>
@@ -214,7 +214,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
               <select
                 id="locale"
                 {...register("locale")}
-                className="w-full h-11 min-h-[44px] rounded-lg border border-border-subtle bg-surface-card px-3 py-2 text-base md:text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary"
+                className="h-11 min-h-[44px] w-full rounded-[10px] border border-border-subtle bg-surface-card px-3 py-2 text-base text-text focus:outline-none focus:ring-2 focus:ring-primary md:text-sm"
               >
                 <option value="vi">Tiếng Việt (Vietnamese)</option>
                 <option value="en">{t("account.english", "English")}</option>
@@ -227,21 +227,25 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 <Sun className="h-4 w-4 text-text-muted" />
                 {t("account.themePreference", "Theme Preference")}
               </Label>
-              <div className="grid grid-cols-3 gap-3">
+              <div
+                role="radiogroup"
+                aria-label={t("account.themePreference", "Theme Preference")}
+                className="grid grid-cols-3 gap-2"
+              >
                 {(["system", "dark", "light"] as const).map((mode) => (
                   <label
                     key={mode}
-                    className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium cursor-pointer transition-colors ${
+                    className={`flex min-h-[44px] min-w-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-[10px] border px-2 text-sm font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary ${
                       currentTheme === mode
                         ? "border-primary bg-primary/10 text-primary-accent"
-                        : "border-border-subtle bg-surface-card/40 text-text-muted hover:bg-surface-muted"
+                        : "border-border-subtle bg-surface-card text-text-muted hover:bg-surface-muted"
                     }`}
                   >
                     <input
                       type="radio"
                       value={mode}
                       {...register("theme")}
-                      className="hidden"
+                      className="sr-only"
                     />
                     {mode === "dark" ? (
                       <Moon className="h-4 w-4" />
@@ -252,7 +256,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                     )}
                     <span>
                       {mode === "system"
-                        ? t("theme.system", "System")
+                        ? t("account.themeSystemShort", "System")
                         : mode === "dark"
                           ? t("theme.dark", "Dark")
                           : t("theme.light", "Light")}
@@ -262,11 +266,11 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Notifications & Quiet Hours */}
-        <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-6">
-          <h3 className="text-base font-semibold text-text flex items-center gap-2">
+        <section className={`${settingsCard} space-y-5`}>
+          <h3 className={settingsCardTitle}>
             <Bell className="h-5 w-5 text-primary-accent" />
             {t(
               "account.notificationsQuietHours",
@@ -278,7 +282,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             <Label>
               {t("account.notificationChannels", "Notification Channels")}
             </Label>
-            <div className="flex flex-wrap gap-4">
+            <div className="grid gap-1 sm:grid-cols-2">
               <Controller
                 control={control}
                 name="notification_channels"
@@ -309,7 +313,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                     ].map((channel) => (
                       <label
                         key={channel.id}
-                        className="flex items-center gap-2.5 cursor-pointer text-sm text-text-muted"
+                        className="flex min-h-[44px] cursor-pointer items-center gap-2.5 text-sm text-text"
                       >
                         <Checkbox
                           checked={field.value.includes(
@@ -334,9 +338,9 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             </div>
           </div>
 
-          <div className="border-t border-border-subtle pt-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
+          <div className="space-y-3 border-t border-border-subtle pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
                 <Label
                   htmlFor="quiet_hours_enabled"
                   className="text-sm font-medium"
@@ -354,7 +358,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 control={control}
                 name="quiet_hours_enabled"
                 render={({ field }) => (
-                  <Checkbox
+                  <Switch
                     id="quiet_hours_enabled"
                     checked={field.value}
                     onCheckedChange={field.onChange}
@@ -364,7 +368,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             </div>
 
             {quietHoursEnabled && (
-              <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="quiet_hours_start" className="text-xs">
                     {t("account.startTime", "Start Time")}
@@ -388,40 +392,50 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
               </div>
             )}
           </div>
-        </div>
+        </section>
 
-        {/* AI Processing Opt-Out */}
-        <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1">
-              <h3 className="text-base font-semibold text-text flex items-center gap-2">
-                <Bot className="h-5 w-5 text-primary-accent" />
-                {t("account.aiGradingProcessing", "AI Grading & Processing")}
+        {/* AI grading: the stored field is an opt-out, the switch shows "on" */}
+        <section className={settingsCard}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <h3 className={settingsCardTitle}>
+                <Bot className="h-5 w-5 text-primary-accent" aria-hidden />
+                <label htmlFor="ai_processing_enabled">
+                  {t("account.aiGradingProcessing", "AI Grading & Processing")}
+                </label>
               </h3>
-              <p className="text-xs text-text-muted leading-relaxed max-w-xl">
-                {t(
-                  "account.aiGradingProcessingDesc",
-                  "Opt out of AI-assisted grading and pronunciation feedback. Deterministic exercises and progress tracking remain fully functional.",
-                )}
+              <p className="max-w-xl text-sm leading-relaxed text-text-muted">
+                {aiOptOut
+                  ? t(
+                      "account.aiGradingOffDesc",
+                      "Off: AI-assisted grading and pronunciation feedback are not used. Deterministic exercises and progress tracking still work.",
+                    )
+                  : t(
+                      "account.aiGradingOnDesc",
+                      "On: AI grades open answers and gives pronunciation feedback. Turn it off to keep only deterministic exercises.",
+                    )}
               </p>
             </div>
             <Controller
               control={control}
               name="ai_processing_opt_out"
               render={({ field }) => (
-                <Checkbox
-                  id="ai_processing_opt_out"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  className="mt-1"
+                <Switch
+                  id="ai_processing_enabled"
+                  checked={!field.value}
+                  onCheckedChange={(on) => field.onChange(!on)}
                 />
               )}
             />
           </div>
-        </div>
+        </section>
 
-        <div className="flex justify-end pt-4">
-          <Button type="submit" disabled={isSaving || !isDirty}>
+        <div className="flex justify-end">
+          <Button
+            type="submit"
+            disabled={isSaving || !isDirty}
+            className="min-h-[44px] w-full rounded-xl sm:w-auto"
+          >
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

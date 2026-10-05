@@ -117,13 +117,13 @@ describe("Vietnamese Chrome (TASK-I18N-A)", () => {
       </I18nextProvider>,
     );
 
-    expect(screen.getByText("Theo hệ thống")).toBeInTheDocument();
+    expect(screen.getByText("Hệ thống")).toBeInTheDocument();
     expect(screen.getByText("Tối")).toBeInTheDocument();
     expect(screen.getByText("Sáng")).toBeInTheDocument();
     expect(screen.queryByText("System")).not.toBeInTheDocument();
 
     expect(
-      screen.getByText(/Tắt tính năng chấm điểm và phản hồi phát âm bằng AI/i),
+      screen.getByText(/Đang bật: AI chấm câu trả lời mở/i),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/Opt out of AI-assisted grading/i),

@@ -10,13 +10,22 @@ import {
 } from "lucide-react";
 import { accountApi, type TrustedDevice } from "../api/accountApi";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  formatDate,
+  isMobileLabel,
+  settingsAlert,
+  settingsCard,
+  settingsCardDesc,
+  settingsCardTitle,
+} from "./settingsStyles";
 
 interface DevicesListProps {
   onLoggedOut?: (() => void) | undefined;
 }
 
 export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [devices, setDevices] = useState<TrustedDevice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [untrustingId, setUntrustingId] = useState<string | null>(null);
@@ -81,77 +90,71 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
   };
 
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-4">
+    <section className={`${settingsCard} space-y-3`}>
       <div className="space-y-1">
-        <h3 className="text-base font-semibold text-text flex items-center gap-2">
-          <Laptop className="h-5 w-5 text-primary-accent" />
+        <h3 className={settingsCardTitle}>
+          <Laptop className="h-5 w-5 text-primary-accent" aria-hidden />
           {t("account.trustedDevices", "Trusted Devices")}
         </h3>
-        <p className="text-xs text-text-muted">
-          Devices you selected &quot;Stay signed in&quot; on. They remain signed
-          in for up to 90 days.
+        <p className={settingsCardDesc}>
+          {t(
+            "account.trustedDevicesDesc",
+            'Devices where you chose "Stay signed in". They stay signed in for up to 90 days.',
+          )}
         </p>
       </div>
 
       {error && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
-          <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
+        <div role="alert" className={settingsAlert("error")}>
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <span>{error}</span>
         </div>
       )}
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-primary-accent" />
-        </div>
+        <Skeleton className="h-14 w-full rounded-xl" />
       ) : devices.length === 0 ? (
-        <p className="text-xs text-text-muted py-4 text-center">
+        <p className="text-sm text-text-muted">
           {t("account.noTrustedDevicesFound", "No trusted devices found.")}
         </p>
       ) : (
-        <div className="space-y-3">
+        <ul className="divide-y divide-border-subtle rounded-xl border border-border-subtle">
           {devices.map((device) => {
-            const isMobile =
-              device.label?.toLowerCase().includes("mobile") ||
-              device.label?.toLowerCase().includes("android") ||
-              device.label?.toLowerCase().includes("iphone");
-
+            const Icon = isMobileLabel(device.label) ? Smartphone : Laptop;
             return (
-              <div
+              <li
                 key={device.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-subtle bg-surface-card/40 p-4"
+                className="flex items-center gap-3 px-3 py-3 sm:px-4"
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-muted text-text-muted">
-                    {isMobile ? (
-                      <Smartphone className="h-5 w-5" />
-                    ) : (
-                      <Laptop className="h-5 w-5" />
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-text-muted"
+                  aria-hidden="true"
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <p className="truncate text-sm font-medium text-text">
+                      {device.label ||
+                        t("account.unknownDevice", "Unknown Device")}
+                    </p>
+                    {device.current && (
+                      <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary-accent">
+                        {t("account.thisDevice", "This device")}
+                      </span>
                     )}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-text">
-                        {device.label ||
-                          t("account.unknownDevice", "Unknown Device")}
-                      </p>
-                      {device.current && (
-                        <span className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-accent">
-                          {t("account.thisDevice", "This device")}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted mt-0.5">
-                      <span>
-                        Last seen:{" "}
-                        {new Date(device.last_seen_at).toLocaleDateString()}
-                      </span>
-                      <span>
-                        Expires:{" "}
-                        {new Date(device.idle_expires_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
+                  <p className="truncate text-xs text-text-muted">
+                    {t("account.lastSeenOn", {
+                      date: formatDate(device.last_seen_at, i18n.language),
+                      defaultValue: `Last seen ${formatDate(device.last_seen_at, i18n.language)}`,
+                    })}
+                    {" · "}
+                    {t("account.expiresOn", {
+                      date: formatDate(device.idle_expires_at, i18n.language),
+                      defaultValue: `Expires ${formatDate(device.idle_expires_at, i18n.language)}`,
+                    })}
+                  </p>
                 </div>
 
                 <Button
@@ -162,19 +165,18 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
                   // Icon-only: the `sm` size gives 44 px of height but only
                   // 40 px of width, so the square hit area R1 asks for has to
                   // be stated explicitly.
-                  className="min-w-11 text-text-muted hover:text-danger-accent hover:bg-danger/10"
+                  className="min-w-11 shrink-0 text-text-muted hover:bg-danger/10 hover:text-danger-accent"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden />
                   <span className="sr-only">
                     {t("account.untrustDevice", "Untrust device")}
                   </span>
                 </Button>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
-
       {/* Untrust Confirmation Modal */}
       {confirmDevice && (
         <div
@@ -193,24 +195,29 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
               </h4>
             </div>
 
-            <p className="text-sm text-text-muted leading-relaxed">
-              Untrusting{" "}
-              <strong className="text-white">
-                {confirmDevice.label || "this device"}
-              </strong>{" "}
-              will immediately revoke its persistent session.
+            <p className="text-sm leading-relaxed text-text-muted">
+              {t("account.untrustDeviceBody", {
+                device:
+                  confirmDevice.label ||
+                  t("account.thisDeviceLower", "this device"),
+                defaultValue: `Untrusting ${confirmDevice.label || "this device"} immediately revokes its persistent session.`,
+              })}
             </p>
 
             <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning-accent">
               {confirmDevice.current ? (
                 <strong>
-                  This is the device you are using right now. Untrusting it will
-                  sign you out of this browser immediately.
+                  {t(
+                    "account.untrustCurrentWarning",
+                    "This is the device you are using right now. Untrusting it will sign you out of this browser immediately.",
+                  )}
                 </strong>
               ) : (
                 <span>
-                  This device will stop being signed in. The device you are
-                  using now is unaffected.
+                  {t(
+                    "account.untrustOtherWarning",
+                    "This device will stop being signed in. The device you are using now is unaffected.",
+                  )}
                 </span>
               )}
             </div>
@@ -245,6 +252,6 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };
