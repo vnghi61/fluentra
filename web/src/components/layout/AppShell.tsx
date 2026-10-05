@@ -20,7 +20,10 @@ import { LazyMotion, m, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
-import { NavTooltip, SidebarCollapsedContext } from "@/components/ui/nav-tooltip";
+import {
+  NavTooltip,
+  SidebarCollapsedContext,
+} from "@/components/ui/nav-tooltip";
 import { BrandMark } from "./BrandMark";
 
 /** Lazy: see AccountMenu's own comment for why it is not in the entry chunk. */

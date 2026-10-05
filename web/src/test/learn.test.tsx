@@ -597,9 +597,7 @@ describe("LearnPage (P10.2)", () => {
 
     // Filter is reset to "all"
     expect(select).toHaveValue("all");
-    expect(
-      screen.getByText("Literature Review Synthesis"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Literature Review Synthesis")).toBeInTheDocument();
   });
 
   it("clears search query and restores unit list when 'Clear search' is clicked", async () => {

@@ -170,8 +170,7 @@ export function LearnPage(): React.JSX.Element {
 
   // Calculate completed lessons across units
   const completedLessons = activeCourse.units.reduce(
-    (acc, unit) =>
-      acc + (unit.lessons?.filter((l) => l.completed).length ?? 0),
+    (acc, unit) => acc + (unit.lessons?.filter((l) => l.completed).length ?? 0),
     0,
   );
 

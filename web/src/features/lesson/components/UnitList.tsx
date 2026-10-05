@@ -20,11 +20,7 @@ export interface UnitListProps {
 }
 
 export type StatusFilter =
-  | "all"
-  | "next"
-  | "not_started"
-  | "completed"
-  | "locked";
+  "all" | "next" | "not_started" | "completed" | "locked";
 
 export function normalizeForSearch(text: string): string {
   return text
@@ -91,8 +87,7 @@ export const UnitList: React.FC<UnitListProps> = ({
     () =>
       units.some((u) =>
         u.lessons?.some(
-          (l) =>
-            !l.locked && !l.completed && l.id !== effectiveNextLessonId,
+          (l) => !l.locked && !l.completed && l.id !== effectiveNextLessonId,
         ),
       ),
     [units, effectiveNextLessonId],
@@ -304,7 +299,9 @@ export const UnitList: React.FC<UnitListProps> = ({
       </div>
 
       {/* Empty States */}
-      {isFiltering && totalMatches === 0 && (queryMatchesCount > 0 || !isSearching) ? (
+      {isFiltering &&
+      totalMatches === 0 &&
+      (queryMatchesCount > 0 || !isSearching) ? (
         <div className="text-center py-12 rounded-xl border border-dashed border-border-subtle bg-surface-card/40 space-y-3">
           <p className="text-sm text-text-muted">
             {t("learn.filterEmpty", "No lessons match the selected filter.")}

@@ -110,7 +110,9 @@ describe("AppShell collapsible desktop sidebar", () => {
     expect(aside).toHaveClass("w-[72px]");
     expect(localStorage.getItem("fluentra.sidebarCollapsed")).toBe("true");
 
-    expect(within(aside as HTMLElement).getByText("Fluentra")).toHaveClass("sr-only");
+    expect(within(aside as HTMLElement).getByText("Fluentra")).toHaveClass(
+      "sr-only",
+    );
     expect(screen.queryByText(/Keep the momentum!/i)).not.toBeInTheDocument();
 
     // Click toggle again to expand
@@ -125,7 +127,9 @@ describe("AppShell collapsible desktop sidebar", () => {
     expect(aside).toHaveClass("w-[232px]");
     expect(localStorage.getItem("fluentra.sidebarCollapsed")).toBe("false");
 
-    expect(within(aside as HTMLElement).getByText("Fluentra")).not.toHaveClass("sr-only");
+    expect(within(aside as HTMLElement).getByText("Fluentra")).not.toHaveClass(
+      "sr-only",
+    );
     expect(screen.getByText(/Keep the momentum!/i)).toBeInTheDocument();
   });
 
