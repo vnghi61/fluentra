@@ -481,6 +481,24 @@ func (r *Repository) ListRenditionsByResourceID(
 	return items, nil
 }
 
+// ListRenditionsByResourceIDs batches list-page processing states without N+1 reads.
+func (r *Repository) ListRenditionsByResourceIDs(ctx context.Context, ids []uuid.UUID) ([]contract.Rendition, error) {
+	rows, err := r.queries.ListRenditionsByResourceIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]contract.Rendition, len(rows))
+	for i, row := range rows {
+		items[i] = renditionToContract(row)
+	}
+	return items, nil
+}
+
+// DeleteClassificationTx clears only the previous classification, preserving uploads.
+func (r *Repository) DeleteClassificationTx(ctx context.Context, tx pgx.Tx, resourceID uuid.UUID) error {
+	return r.queries.WithTx(tx).DeleteClassificationByResourceID(ctx, resourceID)
+}
+
 // ListRenditionKeysByUserID returns all rendition object keys for a user's resources.
 func (r *Repository) ListRenditionKeysByUserID(
 	ctx context.Context, userID uuid.UUID,

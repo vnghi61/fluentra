@@ -44,6 +44,7 @@ const validatedResource = {
       "Unit 1: Present Perfect Tense. She has lived here for three years.",
   },
   classification: {
+    learning_suitable: true,
     cefr_estimate: "B1",
     skill: "grammar",
     nodes: [{ code: "PRESENT_PERFECT", label: "Present Perfect" }],
@@ -91,7 +92,15 @@ function resourcesPage(initialEntry = "/my-resources") {
     ),
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([listRoute, detailRoute]),
+    routeTree: rootRoute.addChildren([
+      listRoute,
+      detailRoute,
+      createRoute({
+        getParentRoute: () => rootRoute,
+        path: "/practice/resource/$resourceId",
+        component: () => <p>Resource practice opened</p>,
+      }),
+    ]),
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
   });
   return { client, router };
@@ -155,6 +164,28 @@ describe("MyResourcesPage", () => {
       /50 MB or smaller/,
     );
   });
+
+  it("uses the server processing state on the list even without signed previews", async () => {
+    server.use(
+      http.get("/api/v1/me/resources", () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...validatedResource,
+              processing_status: "ready",
+              renditions: [],
+            },
+          ],
+          total: 1,
+          page: 1,
+          page_size: 100,
+        }),
+      ),
+    );
+    await renderPage();
+    expect(await screen.findByText("Ready")).toBeInTheDocument();
+    expect(screen.queryByText("Processing")).not.toBeInTheDocument();
+  });
 });
 
 describe("ResourceDetailPage", () => {
@@ -170,6 +201,10 @@ describe("ResourceDetailPage", () => {
     await i18n.changeLanguage("en");
 
     server.use(
+      http.get(
+        "/api/v1/me/resources/:id/practice",
+        () => new HttpResponse(null, { status: 404 }),
+      ),
       http.get("/api/v1/me/resources/:id", () =>
         HttpResponse.json(validatedResource),
       ),
@@ -188,6 +223,65 @@ describe("ResourceDetailPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       /preparing this file/i,
     );
+  });
+
+  it("opens ready exercises without posting another generation request", async () => {
+    let generations = 0;
+    server.use(
+      http.get("/api/v1/me/resources/:id", () =>
+        HttpResponse.json({ ...validatedResource, processing_status: "ready" }),
+      ),
+      http.get("/api/v1/me/resources/:id/practice", () =>
+        HttpResponse.json({
+          resource_id: validatedResource.id,
+          status: "ready",
+          generated_on: "2026-09-30",
+          activities: [],
+        }),
+      ),
+      http.post("/api/v1/me/resources/:id/practice", () => {
+        generations++;
+        return HttpResponse.json({});
+      }),
+    );
+    await renderPage(`/my-resources/${validatedResource.id}`);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Practise exercises" }),
+    );
+    expect(
+      await screen.findByText("Resource practice opened"),
+    ).toBeInTheDocument();
+    expect(generations).toBe(0);
+  });
+
+  it("blocks unsuitable content and offers an owner content recheck", async () => {
+    let rechecks = 0;
+    server.use(
+      http.get("/api/v1/me/resources/:id", () =>
+        HttpResponse.json({
+          ...validatedResource,
+          processing_status: "ready",
+          classification:
+            rechecks > 0 ? undefined : { learning_suitable: false, nodes: [] },
+        }),
+      ),
+      http.post("/api/v1/me/resources/:id/revalidate", () => {
+        rechecks++;
+        return HttpResponse.json({ status: "processing" }, { status: 202 });
+      }),
+    );
+    await renderPage(`/my-resources/${validatedResource.id}`);
+    expect(
+      await screen.findByText(/not suitable for English practice/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create practice" }),
+    ).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Check document again" }),
+    );
+    expect(await screen.findByText(/Content check queued/)).toBeInTheDocument();
+    expect(rechecks).toBe(1);
   });
 });
 

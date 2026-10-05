@@ -90,6 +90,9 @@ func (s *Service) RequestResourcePractice(
 		return nil, apperr.New(apperr.Internal, "RESOURCE_PRACTICE_UNAVAILABLE",
 			"Practice from a resource is not configured on this deployment.")
 	}
+	if err := s.resourcePracticeReadiness(resource); err != nil {
+		return nil, err
+	}
 
 	existing, err := s.resourcePractice.GetResourcePracticeSet(ctx, resourceID, userID)
 	if err != nil {
@@ -109,10 +112,6 @@ func (s *Service) RequestResourcePractice(
 		}
 	}
 
-	if err := s.resourcePracticeReadiness(resource); err != nil {
-		return nil, err
-	}
-
 	set, err := s.resourcePractice.UpsertResourcePracticeSet(ctx, resourceID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("queue resource practice: %w", err)
@@ -124,7 +123,11 @@ func (s *Service) RequestResourcePractice(
 func (s *Service) GetResourcePractice(
 	ctx context.Context, userID, resourceID uuid.UUID,
 ) (*domain.ResourcePracticeSetDTO, error) {
-	if _, err := s.ownedResource(ctx, userID, resourceID); err != nil {
+	resource, err := s.ownedResource(ctx, userID, resourceID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.resourcePracticeReadiness(resource); err != nil {
 		return nil, err
 	}
 	if s.resourcePractice == nil {
@@ -299,9 +302,12 @@ func (s *Service) resourcePracticeReadiness(resource *resourcecontract.Resource)
 		return apperr.New(apperr.Validation, "RESOURCE_PRACTICE_NO_TEXT",
 			"There is no text to build practice from yet. Wait until the file has been read.")
 	}
-	if resource.Classification == nil || len(resource.Classification.NodeCodes) == 0 {
+	if suitable := resource.Classification.LearningSuitable(); suitable == nil {
 		return apperr.New(apperr.Validation, "RESOURCE_PRACTICE_UNCLASSIFIED",
-			"This file has not been classified yet. Try again once it has.")
+			"Check this document's learning suitability before creating practice.")
+	} else if !*suitable {
+		return apperr.New(apperr.Validation, "RESOURCE_NOT_LEARNING_MATERIAL",
+			"This document is not suitable for English practice. Choose English learning material instead.")
 	}
 	return nil
 }

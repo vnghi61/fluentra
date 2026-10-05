@@ -125,9 +125,10 @@ func classifiedResource() *resourcecontract.Resource {
 			CharCount: 50,
 		},
 		Classification: &resourcecontract.Classification{
-			CEFREstimate: &level,
-			Skill:        &skill,
-			NodeCodes:    []string{testWeakNodeCode},
+			PromptVersion: "resource_classify.v2",
+			CEFREstimate:  &level,
+			Skill:         &skill,
+			NodeCodes:     []string{testWeakNodeCode},
 		},
 	}
 }
@@ -212,8 +213,48 @@ func TestRequestResourcePractice_RefusesAnUnclassifiedFile(t *testing.T) {
 	svc := resourcePracticeService(t, resource, &stubPracticeStore{})
 
 	_, err := svc.RequestResourcePractice(context.Background(), resource.UserID, resource.ID)
-	if !apperr.Is(err, apperr.Validation) || !strings.Contains(err.Error(), "not been classified") {
+	var appErr *apperr.Error
+	if !errors.As(err, &appErr) || appErr.Kind != apperr.Validation || appErr.Code != "RESOURCE_PRACTICE_UNCLASSIFIED" {
 		t.Fatalf("error = %v, want a validation error about classification", err)
+	}
+}
+
+func TestRequestResourcePractice_RejectsUnsuitableAndOldMetadataEvenWithExistingSets(t *testing.T) {
+	for _, metadata := range []struct {
+		name   string
+		change func(*resourcecontract.Classification)
+		code   string
+	}{
+		{"unsuitable", func(c *resourcecontract.Classification) {
+			c.CEFREstimate, c.Skill, c.NodeCodes = nil, nil, nil
+		}, "RESOURCE_NOT_LEARNING_MATERIAL"},
+		{"old prompt", func(c *resourcecontract.Classification) {
+			c.PromptVersion = "resource_classify.v1"
+		}, "RESOURCE_PRACTICE_UNCLASSIFIED"},
+	} {
+		for _, status := range []string{"absent", domain.ResourcePracticeReady, domain.ResourcePracticeGenerating} {
+			t.Run(metadata.name+"/"+status, func(t *testing.T) {
+				resource := classifiedResource()
+				metadata.change(resource.Classification)
+				store := &stubPracticeStore{}
+				if status != "absent" {
+					store.set = &domain.ResourcePracticeSet{
+						ResourceID: resource.ID, UserID: resource.UserID, Status: status,
+						GeneratedOn: time.Date(2026, 9, 22, 6, 0, 0, 0, time.UTC),
+					}
+				}
+				svc := resourcePracticeService(t, resource, store)
+
+				set, err := svc.RequestResourcePractice(context.Background(), resource.UserID, resource.ID)
+				var appErr *apperr.Error
+				if !errors.As(err, &appErr) || appErr.Kind != apperr.Validation || appErr.Code != metadata.code {
+					t.Fatalf("error = %v, want validation code %s", err, metadata.code)
+				}
+				if set != nil || store.upserts != 0 {
+					t.Fatalf("rejected metadata returned or queued practice: set=%+v, upserts=%d", set, store.upserts)
+				}
+			})
+		}
 	}
 }
 

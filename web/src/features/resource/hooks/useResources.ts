@@ -18,15 +18,25 @@ export function useResources(enabled = true) {
     queryKey: resourceKeys.list(),
     queryFn: () => resourceApi.listResources(1, 100),
     enabled,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchInterval: (query) =>
+      query.state.data?.items.some(
+        (resource) =>
+          resource.status === "pending" ||
+          resource.status === "uploaded" ||
+          renditionsPending(resource),
+      )
+        ? 5000
+        : false,
   });
 }
 
 /**
  * One resource, polled while the pipeline is still working on it.
  *
- * A file is validated synchronously but its renditions, extraction and
- * classification run in GitHub Actions, so minutes of "processing" are normal
- * and a screen that stopped asking would show a preview that never arrives.
+ * Validation, rendition/extraction and classification run asynchronously in
+ * separate jobs. Keep asking while the server reports pending work.
  * Polling stops at the first settled answer.
  */
 export function useResource(id: string) {
@@ -34,6 +44,7 @@ export function useResource(id: string) {
     queryKey: resourceKeys.detail(id),
     queryFn: () => resourceApi.getResource(id),
     enabled: id !== "",
+    refetchOnMount: "always",
     refetchInterval: (query) => {
       const resource = query.state.data;
       if (!resource) return false;
@@ -41,7 +52,25 @@ export function useResource(id: string) {
         return 3000;
       }
       if (renditionsPending(resource)) return 5000;
+      if (
+        (resource.extraction?.char_count ?? 0) > 0 &&
+        !resource.classification
+      )
+        return 5000;
       return false;
+    },
+  });
+}
+
+/** Recheck existing content without reuploading the original file. */
+export function useRevalidateResource() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => resourceApi.revalidateResource(id),
+    onSuccess: (_result, id) => {
+      void queryClient.invalidateQueries({ queryKey: resourceKeys.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: resourceKeys.list() });
+      queryClient.removeQueries({ queryKey: resourceKeys.practice(id) });
     },
   });
 }
@@ -96,6 +125,8 @@ export function useResourcePractice(resourceId: string, enabled = true) {
     queryKey: resourceKeys.practice(resourceId),
     queryFn: () => resourceApi.getResourcePractice(resourceId),
     enabled: enabled && resourceId !== "",
+    retry: false,
+    refetchOnMount: "always",
     refetchInterval: (query) => {
       const set = query.state.data;
       if (!set) return false;

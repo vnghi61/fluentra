@@ -63,6 +63,16 @@ type Classification struct {
 	CreatedAt     time.Time            `json:"created_at"`
 }
 
+// LearningSuitable is unknown for old classifications, and fails closed for
+// generation. Empty grounded classifications record an unsuitable document.
+func (c *Classification) LearningSuitable() *bool {
+	if c == nil || c.PromptVersion != "resource_classify.v2" {
+		return nil
+	}
+	suitable := c.CEFREstimate != nil && c.Skill != nil && len(c.NodeCodes) > 0
+	return &suitable
+}
+
 // Rendition represents a processed thumbnail, display image, preview, or web media.
 type Rendition struct {
 	ID            uuid.UUID  `json:"id"`

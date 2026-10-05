@@ -102,6 +102,12 @@ export const resourceApi = {
     return apiFetch<void>(`/api/v1/me/resources/${id}`, { method: "DELETE" });
   },
 
+  revalidateResource(id: string): Promise<void> {
+    return apiFetch<void>(`/api/v1/me/resources/${id}/revalidate`, {
+      method: "POST",
+    });
+  },
+
   /**
    * Ask for practice from this file. Answers 202 with the set, which may still
    * be generating; the runner polls until it is ready.
@@ -132,15 +138,15 @@ export function resourceFamily(mime: string): string {
 /**
  * Whether a validated file is still having its derived forms built.
  *
- * The API only attaches renditions that are ready, so an empty list on a
- * validated file is either "the pipeline has not finished" or "this kind needs
- * none". Every family except a URL gets at least one, which is what makes the
- * inference safe.
+ * Prefer the explicit state shared by list and detail endpoints. Fall back to
+ * the older detail response shape while the server is being upgraded.
  */
 export function renditionsPending(resource: Resource): boolean {
   if (resource.status !== "validated" || resource.kind !== "file") {
     return false;
   }
+  if (resource.processing_status)
+    return resource.processing_status === "processing";
   return (resource.renditions?.length ?? 0) === 0;
 }
 

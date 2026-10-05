@@ -6,6 +6,13 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/fluentra/fluentra/internal/modules/resource/contract"
+	"github.com/fluentra/fluentra/internal/modules/resource/domain"
+)
+
+const (
+	processingStateProcessing = "processing"
+	processingStateReady      = "ready"
+	processingStateFailed     = "failed"
 )
 
 type createUploadIntentRequest struct {
@@ -36,6 +43,7 @@ type resourceResponse struct {
 	Kind             string                          `json:"kind"`
 	Title            string                          `json:"title"`
 	Status           string                          `json:"status"`
+	ProcessingStatus string                          `json:"processing_status"`
 	FailureReason    string                          `json:"failure_reason"`
 	OriginalFilename string                          `json:"original_filename"`
 	DeclaredMIME     string                          `json:"declared_mime"`
@@ -60,9 +68,10 @@ type resourceExtractionResponse struct {
 }
 
 type resourceClassificationResponse struct {
-	CEFREstimate *string                      `json:"cefr_estimate,omitempty"`
-	Skill        *string                      `json:"skill,omitempty"`
-	Nodes        []classificationNodeResponse `json:"nodes,omitempty"`
+	LearningSuitable *bool                        `json:"learning_suitable"`
+	CEFREstimate     *string                      `json:"cefr_estimate,omitempty"`
+	Skill            *string                      `json:"skill,omitempty"`
+	Nodes            []classificationNodeResponse `json:"nodes,omitempty"`
 }
 
 type classificationNodeResponse struct {
@@ -93,7 +102,7 @@ func toResourceResponse(r contract.Resource) resourceResponse {
 	if len(r.Renditions) > 0 {
 		renditions = make([]resourceRenditionResponse, 0, len(r.Renditions))
 		for _, rend := range r.Renditions {
-			if rend.Status == "ready" {
+			if rend.Status == domain.RenditionStatusReady {
 				renditions = append(renditions, resourceRenditionResponse{
 					Kind:       rend.Kind,
 					MIMEType:   rend.MIMEType,
@@ -133,9 +142,10 @@ func toResourceResponse(r contract.Resource) resourceResponse {
 			})
 		}
 		classification = &resourceClassificationResponse{
-			CEFREstimate: r.Classification.CEFREstimate,
-			Skill:        r.Classification.Skill,
-			Nodes:        nodes,
+			LearningSuitable: r.Classification.LearningSuitable(),
+			CEFREstimate:     r.Classification.CEFREstimate,
+			Skill:            r.Classification.Skill,
+			Nodes:            nodes,
 		}
 	}
 
@@ -144,6 +154,7 @@ func toResourceResponse(r contract.Resource) resourceResponse {
 		Kind:             r.Kind,
 		Title:            r.Title,
 		Status:           r.Status,
+		ProcessingStatus: processingStatus(r),
 		FailureReason:    r.FailureReason,
 		OriginalFilename: r.OriginalFilename,
 		DeclaredMIME:     r.DeclaredMIME,
@@ -159,6 +170,32 @@ func toResourceResponse(r contract.Resource) resourceResponse {
 		UpdatedAt:        r.UpdatedAt,
 		ValidatedAt:      r.ValidatedAt,
 	}
+}
+
+func processingStatus(r contract.Resource) string {
+	if r.Status == domain.StatusFailed || r.Status == domain.StatusRejected {
+		return processingStateFailed
+	}
+	if r.Status != domain.StatusValidated {
+		return processingStateProcessing
+	}
+	if r.Kind != domain.KindFile {
+		return processingStateReady
+	}
+	if len(r.Renditions) == 0 {
+		return processingStateProcessing
+	}
+	ready := false
+	for _, rendition := range r.Renditions {
+		if rendition.Status == domain.RenditionStatusPending {
+			return processingStateProcessing
+		}
+		ready = ready || rendition.Status == domain.RenditionStatusReady
+	}
+	if ready {
+		return processingStateReady
+	}
+	return processingStateFailed
 }
 
 func toResourceListResponse(l *contract.ResourceList) resourceListResponse {

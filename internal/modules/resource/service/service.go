@@ -67,6 +67,7 @@ type Repository interface {
 	UpdateRenditionFailed(ctx context.Context, id uuid.UUID, reason string) (*contract.Rendition, error)
 	ListReadyRenditionsByResourceID(ctx context.Context, resourceID uuid.UUID) ([]contract.Rendition, error)
 	ListRenditionsByResourceID(ctx context.Context, resourceID uuid.UUID) ([]contract.Rendition, error)
+	ListRenditionsByResourceIDs(ctx context.Context, ids []uuid.UUID) ([]contract.Rendition, error)
 	ListRenditionKeysByUserID(ctx context.Context, userID uuid.UUID) ([]string, error)
 	ListValidatedFileResourcesForRenditions(ctx context.Context, limit int32) ([]contract.Resource, error)
 	UpsertExtraction(
@@ -83,6 +84,7 @@ type Repository interface {
 		nodeCodes []string, promptVersion, model string, aiRequestID *uuid.UUID,
 	) (*contract.Classification, error)
 	GetClassificationByResourceID(ctx context.Context, resourceID uuid.UUID) (*contract.Classification, error)
+	DeleteClassificationTx(ctx context.Context, tx pgx.Tx, resourceID uuid.UUID) error
 
 	// The two writes that share a transaction with a job enqueue.
 	ConfirmFileResourceTx(ctx context.Context, tx pgx.Tx, id, userID uuid.UUID) (*contract.Resource, error)
@@ -348,6 +350,21 @@ func (s *Service) ListResources(
 	if err != nil {
 		return nil, fmt.Errorf("list resources: %w", err)
 	}
+	ids := make([]uuid.UUID, len(items))
+	for i := range items {
+		ids[i] = items[i].ID
+	}
+	renditions, err := s.repo.ListRenditionsByResourceIDs(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("list resource rendition states: %w", err)
+	}
+	byResource := make(map[uuid.UUID][]contract.Rendition)
+	for _, rendition := range renditions {
+		byResource[rendition.ResourceID] = append(byResource[rendition.ResourceID], rendition)
+	}
+	for i := range items {
+		items[i].Renditions = byResource[items[i].ID]
+	}
 
 	return &contract.ResourceList{
 		Items:    items,
@@ -387,13 +404,13 @@ func (s *Service) GetResource(ctx context.Context, id, userID uuid.UUID) (*contr
 
 // attachRenditions adds the ready renditions, each with a presigned URL.
 func (s *Service) attachRenditions(ctx context.Context, res *contract.Resource) {
-	renditions, err := s.repo.ListReadyRenditionsByResourceID(ctx, res.ID)
+	renditions, err := s.repo.ListRenditionsByResourceID(ctx, res.ID)
 	if err != nil || len(renditions) == 0 {
 		return
 	}
 	expiry := time.Now().Add(domain.PresignGetExpiry)
 	for i := range renditions {
-		if renditions[i].ObjectKey == nil || *renditions[i].ObjectKey == "" {
+		if renditions[i].Status != "ready" || renditions[i].ObjectKey == nil || *renditions[i].ObjectKey == "" {
 			continue
 		}
 		getURL, err := s.storage.PresignGet(ctx, storage.BucketDerived, *renditions[i].ObjectKey, domain.PresignGetExpiry)
@@ -735,7 +752,7 @@ const (
 	maxExtractionChars = 400_000
 	classifierChars    = 8_000
 	maxTranscribeBytes = 25 * 1024 * 1024 // the transcription API's upload cap
-	classifyPromptVer  = "resource_classify.v1"
+	classifyPromptVer  = "resource_classify.v2"
 )
 
 // truncateRunes keeps the first n characters, never splitting one.
@@ -821,7 +838,10 @@ func (s *Service) audioSource(ctx context.Context, res *contract.Resource) (stri
 func (s *Service) ClassifyResource(ctx context.Context, resourceID uuid.UUID) error {
 	// Idempotency: skip if classification already exists
 	existing, err := s.repo.GetClassificationByResourceID(ctx, resourceID)
-	if err == nil && existing != nil {
+	if err != nil {
+		return fmt.Errorf("get existing classification: %w", err)
+	}
+	if existing != nil && existing.PromptVersion == classifyPromptVer {
 		return nil
 	}
 
@@ -831,7 +851,7 @@ func (s *Service) ClassifyResource(ctx context.Context, resourceID uuid.UUID) er
 		// resource done and it would never be classified. No row is (nil, nil).
 		return fmt.Errorf("get extraction for %s: %w", resourceID, err)
 	}
-	if ext == nil || ext.CharCount == 0 || strings.TrimSpace(ext.Text) == "" || s.aiClient == nil {
+	if !readableExtraction(ext) || s.aiClient == nil {
 		return nil
 	}
 
@@ -842,9 +862,10 @@ func (s *Service) ClassifyResource(ctx context.Context, resourceID uuid.UUID) er
 	allowed, allowedList := s.allowedSpineCodes(ctx)
 
 	var parsed struct {
-		CEFREstimate string   `json:"cefr_estimate"`
-		Skill        string   `json:"skill"`
-		NodeCodes    []string `json:"node_codes"`
+		LearningSuitable *bool    `json:"learning_suitable"`
+		CEFREstimate     string   `json:"cefr_estimate"`
+		Skill            string   `json:"skill"`
+		NodeCodes        []string `json:"node_codes"`
 	}
 	aiResp, err := ai.CompleteJSONWithResponse(ctx, s.aiClient, ai.Request{
 		Task: ai.TaskResourceClassify,
@@ -856,6 +877,14 @@ func (s *Service) ClassifyResource(ctx context.Context, resourceID uuid.UUID) er
 	if err != nil {
 		return fmt.Errorf("generate classification: %w", err)
 	}
+	if parsed.LearningSuitable == nil {
+		return errors.New("classification omitted learning suitability")
+	}
+	if !*parsed.LearningSuitable {
+		parsed.CEFREstimate = ""
+		parsed.Skill = ""
+		parsed.NodeCodes = nil
+	}
 
 	// Drop any code not in the spine (BR: classification stores only codes that exist).
 	grounded := make([]string, 0, len(parsed.NodeCodes))
@@ -865,15 +894,7 @@ func (s *Service) ClassifyResource(ctx context.Context, resourceID uuid.UUID) er
 		}
 	}
 
-	var cefr *string
-	switch level := strings.ToUpper(strings.TrimSpace(parsed.CEFREstimate)); level {
-	case "A1", "A2", "B1", "B2", "C1", "C2":
-		cefr = &level
-	}
-	var skill *string
-	if sk := strings.ToLower(strings.TrimSpace(parsed.Skill)); sk != "" {
-		skill = &sk
-	}
+	cefr, skill := classificationLabels(parsed.CEFREstimate, parsed.Skill)
 	model := aiResp.Model
 	if model == "" {
 		model = "ai"
@@ -886,6 +907,23 @@ func (s *Service) ClassifyResource(ctx context.Context, resourceID uuid.UUID) er
 		return fmt.Errorf("save classification: %w", err)
 	}
 	return nil
+}
+
+func classificationLabels(levelEstimate, skillEstimate string) (*string, *string) {
+	var cefr, skill *string
+	switch level := strings.ToUpper(strings.TrimSpace(levelEstimate)); level {
+	case "A1", "A2", "B1", "B2", "C1", "C2":
+		cefr = &level
+	}
+	switch sk := strings.ToLower(strings.TrimSpace(skillEstimate)); sk {
+	case "reading", "listening", "writing", "speaking", "grammar", "vocabulary":
+		skill = &sk
+	}
+	return cefr, skill
+}
+
+func readableExtraction(ext *contract.Extraction) bool {
+	return ext != nil && ext.CharCount > 0 && strings.TrimSpace(ext.Text) != ""
 }
 
 // allowedSpineCodes lists the codes of the namespaces the classifier may use.

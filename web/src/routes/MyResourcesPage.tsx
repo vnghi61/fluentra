@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ResourceList,
@@ -46,17 +47,18 @@ export function MyResourcesPage(): React.JSX.Element {
         </p>
       </header>
 
-      <ResourceUpload
-        onUploaded={(id) =>
-          void navigate({
-            to: "/my-resources/$resourceId",
-            params: { resourceId: id },
-          })
-        }
-      />
-
       {!isLoading && !isError && resources.length > 0 && (
-        <ResourceQuota resources={resources} />
+        <>
+          <ResourceUpload
+            onUploaded={(id) =>
+              void navigate({
+                to: "/my-resources/$resourceId",
+                params: { resourceId: id },
+              })
+            }
+          />
+          <ResourceQuota resources={resources} />
+        </>
       )}
 
       {isLoading && (
@@ -101,24 +103,27 @@ export function MyResourcesPage(): React.JSX.Element {
       )}
 
       {!isLoading && !isError && resources.length === 0 && (
-        <Card className="border-border bg-surface-card p-8 text-center">
-          <CardHeader className="space-y-2">
-            <div className="flex justify-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <FileText className="h-6 w-6" aria-hidden="true" />
-              </div>
+        <EmptyState
+          icon={FileText}
+          title={t("resources.emptyTitle", "No files yet")}
+          description={t(
+            "resources.emptyDesc",
+            "Upload a PDF, a lesson recording or a video from your course and it will appear here.",
+          )}
+          action={
+            <div className="w-full max-w-xl text-left">
+              <ResourceUpload
+                onUploaded={(id) =>
+                  void navigate({
+                    to: "/my-resources/$resourceId",
+                    params: { resourceId: id },
+                  })
+                }
+              />
             </div>
-            <CardTitle className="text-lg font-semibold text-text">
-              {t("resources.emptyTitle", "No files yet")}
-            </CardTitle>
-            <CardDescription className="mx-auto max-w-md text-sm">
-              {t(
-                "resources.emptyDesc",
-                "Upload a PDF, a lesson recording or a video from your course and it will appear here.",
-              )}
-            </CardDescription>
-          </CardHeader>
-        </Card>
+          }
+          className="p-4 sm:p-8"
+        />
       )}
 
       {!isLoading && !isError && resources.length > 0 && (

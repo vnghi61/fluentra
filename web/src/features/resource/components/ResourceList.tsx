@@ -122,9 +122,13 @@ export function ResourceList({
           resource.status === "pending" ||
           resource.status === "uploaded" ||
           renditionsPending(resource);
-        const label = processing
-          ? t("resources.statusProcessing", "Processing")
-          : t(statusLabelKey(resource.status), resource.status);
+        const label =
+          resource.status === "validated" &&
+          resource.processing_status === "failed"
+            ? t("resources.renderFailed", "Preview unavailable")
+            : processing
+              ? t("resources.statusProcessing", "Processing")
+              : t(statusLabelKey(resource.status), resource.status);
         const date = new Date(resource.created_at).toLocaleDateString(
           i18n.language.startsWith("vi") ? "vi-VN" : "en-US",
           { year: "numeric", month: "short", day: "numeric" },

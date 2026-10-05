@@ -8,6 +8,7 @@ import {
   ExternalLink,
   FileText,
   Loader2,
+  RefreshCw,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -31,6 +32,8 @@ import {
 import {
   useDeleteResource,
   useStartResourcePractice,
+  useResourcePractice,
+  useRevalidateResource,
 } from "../hooks/useResources";
 
 function findRendition(
@@ -136,6 +139,7 @@ export function ResourceDetail({
   const navigate = useNavigate();
   const remove = useDeleteResource();
   const startPractice = useStartResourcePractice();
+  const revalidate = useRevalidateResource();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const family =
@@ -159,10 +163,22 @@ export function ResourceDetail({
   // what the server checks; the button says so instead of failing a request.
   const canGeneratePractice =
     resource.status === "validated" &&
+    resource.classification?.learning_suitable === true &&
     (resource.extraction?.char_count ?? 0) > 0 &&
     (resource.classification?.nodes?.length ?? 0) > 0;
+  const practice = useResourcePractice(resource.id, canGeneratePractice);
+  const practiceStatus = canGeneratePractice
+    ? practice.data?.status
+    : undefined;
 
   const handleStartPractice = () => {
+    if (practiceStatus === "ready" || practiceStatus === "generating") {
+      void navigate({
+        to: "/practice/resource/$resourceId",
+        params: { resourceId: resource.id },
+      });
+      return;
+    }
     startPractice.mutate(resource.id, {
       onSuccess: () =>
         void navigate({
@@ -245,9 +261,12 @@ export function ResourceDetail({
               </dt>
               <dd>
                 <Badge variant={statusTone(resource.status)}>
-                  {processing
-                    ? t("resources.statusProcessing", "Processing")
-                    : t(statusLabelKey(resource.status), resource.status)}
+                  {resource.status === "validated" &&
+                  resource.processing_status === "failed"
+                    ? t("resources.renderFailed", "Preview unavailable")
+                    : processing
+                      ? t("resources.statusProcessing", "Processing")
+                      : t(statusLabelKey(resource.status), resource.status)}
                 </Badge>
               </dd>
             </div>
@@ -375,14 +394,67 @@ export function ResourceDetail({
               className="gap-2 sm:shrink-0"
             >
               <Sparkles className="h-4 w-4" aria-hidden="true" />
-              {t("resources.practiceBtn", "Create practice")}
+              {practiceStatus === "ready"
+                ? t("resources.practiceReadyBtn", "Practice now")
+                : practiceStatus === "generating"
+                  ? t(
+                      "resources.practiceGeneratingBtn",
+                      "View generation progress",
+                    )
+                  : t("resources.practiceBtn", "Create practice")}
             </Button>
           </div>
           {!canGeneratePractice && (
             <p className="text-xs text-text-muted">
+              {classification?.learning_suitable === false
+                ? t(
+                    "resources.unsuitable",
+                    "This file is not suitable for English practice. It is kept privately, but no exercises will be created from it.",
+                  )
+                : classification && classification.learning_suitable == null
+                  ? t(
+                      "resources.revalidationRequired",
+                      "Check this document again to confirm it is suitable for English practice.",
+                    )
+                  : t(
+                      "resources.practiceNotReady",
+                      "Once the file has been read and classified, practice can be built from it.",
+                    )}
+            </p>
+          )}
+          {practiceStatus === "ready" && (
+            <p role="status" className="text-sm text-success-accent">
               {t(
-                "resources.practiceNotReady",
-                "Once the file has been read and classified, practice can be built from it.",
+                "resources.practiceReady",
+                "Exercises are ready. You can practise without generating them again.",
+              )}
+            </p>
+          )}
+          {resource.status === "validated" &&
+            (resource.extraction?.char_count ?? 0) > 0 && (
+              <Button
+                variant="outline"
+                isLoading={revalidate.isPending}
+                onClick={() => revalidate.mutate(resource.id)}
+                className="gap-2"
+              >
+                <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                {t("resources.revalidateBtn", "Check document again")}
+              </Button>
+            )}
+          {revalidate.isSuccess && !classification && (
+            <p role="status" className="text-sm text-text-muted">
+              {t(
+                "resources.revalidationQueued",
+                "Content check queued. This page will update automatically.",
+              )}
+            </p>
+          )}
+          {revalidate.isError && (
+            <p role="alert" className="text-sm text-danger-accent">
+              {t(
+                "resources.revalidationError",
+                "Could not queue the content check. Try again.",
               )}
             </p>
           )}

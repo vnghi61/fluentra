@@ -32,6 +32,19 @@ last_verified: 2026-09-21
 
 ## 1. Overview
 
+### Content suitability and processing states (2026-10-01)
+
+- List/detail responses include the same derived `processing_status`, computed
+  from **all** rendition states. The list batches its rendition read, avoiding
+  per-file queries; missing signed preview URLs do not mean rendering is pending.
+- File `status=validated` means byte/MIME validation, not learning relevance.
+  `resource_classify.v2` checks English-learning relevance before CEFR tagging.
+  Empty CEFR/skill/node metadata records an unsuitable result; old prompt versions
+  expose `learning_suitable=null` and cannot authorize practice generation.
+- Owner-only `POST /me/resources/{id}/revalidate` clears the old classification
+  and queues a fresh, uncached content check in one transaction. It uses existing
+  extracted text and preserves the original file. Foreign resources return 404.
+
 <!-- BEGIN GENERATED: overview -->
 Intake for material a learner brings: an uploaded file or a submitted URL becomes an owned, validated resource with a status its owner can watch. Stops at validated; renditions, extraction and generation are later steps.
 <!-- END GENERATED: overview -->
@@ -185,6 +198,13 @@ _No recipes recorded yet. Add one the first time you do something twice._
 <!-- END GENERATED: tasks -->
 
 ## 11. Known limitations
+
+Validated means intake succeeded, not that previews/text are ready. File renditions
+remain pending until `cmd/media` runs. Local Compose starts `media-renderer` with
+`make dev`; host-run API/worker setups need `make dev-infra` then `make dev-media`.
+It polls pending renditions every 15 seconds, including previously uploaded files;
+the normal worker consumes the resulting classification/transcription jobs.
+See `internal/platform/media/AGENT.md` for runtime tools and workspace lifetime.
 
 <!-- BEGIN GENERATED: limitations -->
 _None recorded. Add one the moment you take a shortcut._

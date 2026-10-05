@@ -30,6 +30,17 @@ agent knows what is already handled and what is deliberately deferred.
 - [ ] A DOC/PPT material has no PDF rendition (WO 18 renders only thumbnail and preview), so its card opens the original download; a `pdf` rendition is a future step
 <!-- END GENERATED: todo -->
 
+## Completed local processing repair (2026-09-30)
+
+- [x] Document and wire automatic local rendition rendering, so validated DOCX/PDF uploads do not wait indefinitely for an unconfigured GitHub Actions dispatcher. Existing pending uploads are picked up without resubmission.
+
+## Completed intake UX repair (2026-10-01)
+
+- [x] Return explicit, matching rendition processing states on resource lists and
+  details, with one batched rendition read for the list.
+- [x] Check English-learning suitability before tagging uploaded content, and
+  offer owner-only asynchronous revalidation without reuploading.
+
 ## Deferred (deliberately not doing yet)
 
 <!-- BEGIN GENERATED: todo-deferred -->

@@ -26,6 +26,7 @@ type ResourceService interface {
 	) (*contract.ResourceList, error)
 	GetResource(ctx context.Context, id, userID uuid.UUID) (*contract.Resource, error)
 	DeleteResource(ctx context.Context, id, userID uuid.UUID) error
+	RevalidateResource(ctx context.Context, userID, resourceID uuid.UUID) error
 }
 
 // Handler handles HTTP requests for resource intake and management.
@@ -45,6 +46,25 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/me/resources", h.list)
 	r.Get("/me/resources/{id}", h.get)
 	r.Delete("/me/resources/{id}", h.delete)
+	r.Post("/me/resources/{id}/revalidate", h.revalidate)
+}
+
+func (h *Handler) revalidate(w http.ResponseWriter, r *http.Request) {
+	actor, ok := httpx.ActorFrom(r.Context())
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.BadRequest, "INVALID_RESOURCE_ID", "Invalid resource ID format"))
+		return
+	}
+	if err := h.service.RevalidateResource(r.Context(), actor.UserID, id); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, r, http.StatusAccepted, map[string]string{"status": processingStateProcessing})
 }
 
 func (h *Handler) uploadIntent(w http.ResponseWriter, r *http.Request) {
