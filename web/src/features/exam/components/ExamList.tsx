@@ -100,6 +100,7 @@ export const ExamList: React.FC<ExamListProps> = ({
   const [practiceExam, setPracticeExam] = useState<ExamTemplate | null>(null);
   const [minutes, setMinutes] = useState(PRACTICE_DEFAULT_MINUTES);
   const [unlimited, setUnlimited] = useState(false);
+  const [customDuration, setCustomDuration] = useState(false);
   const [chosenSections, setChosenSections] = useState<number[]>([]);
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
@@ -124,6 +125,7 @@ export const ExamList: React.FC<ExamListProps> = ({
   const openPractice = (exam: ExamTemplate) => {
     setMinutes(PRACTICE_DEFAULT_MINUTES);
     setUnlimited(false);
+    setCustomDuration(false);
     setChosenSections(sectionsOf(exam).map((section) => section.position));
     setPracticeExam(exam);
   };
@@ -444,55 +446,70 @@ export const ExamList: React.FC<ExamListProps> = ({
               )}
             </fieldset>
 
-            <div className="space-y-3 rounded-xl border border-border-subtle bg-surface-muted/50 p-4">
-              <label
-                htmlFor="practice-minutes"
-                className="flex items-center justify-between text-sm font-semibold text-text"
-              >
-                <span>{t("exam.hub.practiceDuration")}</span>
-                <span className="font-mono text-primary-accent">
-                  {unlimited
-                    ? t("exam.hub.practiceUnlimited")
-                    : t("exam.hub.minutes", { count: minutes })}
-                </span>
-              </label>
-              <input
-                id="practice-minutes"
-                type="range"
-                min={10}
-                max={180}
-                step={5}
-                value={minutes}
-                disabled={unlimited}
-                onChange={(e) => setMinutes(Number(e.target.value))}
-                className={cn(
-                  "h-11 w-full cursor-pointer accent-primary",
-                  unlimited && "cursor-not-allowed opacity-40",
-                )}
-              />
-              <button
-                type="button"
-                role="checkbox"
-                aria-checked={unlimited}
-                onClick={() => setUnlimited((v) => !v)}
-                className="flex min-h-[44px] w-full items-center gap-3 rounded-lg border border-border-subtle bg-surface-card px-3 text-left"
-              >
-                <span
-                  className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded border",
-                    unlimited
-                      ? "border-primary bg-primary text-primary-fg"
-                      : "border-border bg-surface-card",
-                  )}
-                  aria-hidden="true"
+            <fieldset className="space-y-3 rounded-2xl border border-border-subtle bg-surface-muted/50 p-4">
+              <legend className="text-sm font-semibold text-text">
+                {t("exam.hub.duration")}
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {[30, 60, 90, 120].map((value) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    variant={
+                      !unlimited && !customDuration && minutes === value
+                        ? "primary"
+                        : "outline"
+                    }
+                    aria-pressed={
+                      !unlimited && !customDuration && minutes === value
+                    }
+                    onClick={() => {
+                      setMinutes(value);
+                      setUnlimited(false);
+                      setCustomDuration(false);
+                    }}
+                  >
+                    {value} {t("exam.hub.minutesUnit")}
+                  </Button>
+                ))}
+                <Button
+                  type="button"
+                  variant={unlimited ? "primary" : "outline"}
+                  aria-pressed={unlimited}
+                  onClick={() => {
+                    setUnlimited(true);
+                    setCustomDuration(false);
+                  }}
                 >
-                  {unlimited && <Check className="h-3.5 w-3.5" />}
-                </span>
-                <span className="text-sm text-text">
-                  {t("exam.hub.practiceUnlimited")}
-                </span>
-              </button>
-            </div>
+                  {t("exam.hub.noLimit")}
+                </Button>
+                <Button
+                  type="button"
+                  variant={customDuration ? "primary" : "outline"}
+                  aria-pressed={customDuration}
+                  onClick={() => {
+                    setUnlimited(false);
+                    setCustomDuration(true);
+                  }}
+                >
+                  {t("exam.hub.customDuration")}
+                </Button>
+              </div>
+              {customDuration && (
+                <label className="flex items-center gap-3 text-sm text-text">
+                  {t("exam.hub.durationMinutes")}
+                  <input
+                    aria-label={t("exam.hub.durationMinutes")}
+                    type="number"
+                    min={10}
+                    max={180}
+                    value={minutes}
+                    onChange={(e) => setMinutes(Number(e.target.value))}
+                    className="h-11 w-24 rounded-lg border border-input bg-background px-3"
+                  />
+                </label>
+              )}
+            </fieldset>
             <div className="flex justify-end gap-3">
               <Button
                 type="button"

@@ -99,7 +99,7 @@ export function ExamHub(): React.JSX.Element {
         className="inline-flex min-h-[44px] items-center gap-2 font-medium text-primary-accent underline"
       >
         <Play className="h-4 w-4" aria-hidden="true" />
-        {t("exam.hub.resume")} · {openAttempt.exam_title}
+        {t("exam.hub.resume")}
       </Link>
     </div>
   ) : null;
@@ -327,6 +327,7 @@ function VersionTests({
   const tests = useExamVersionTests(version.id);
   const [randomBusy, setRandomBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
 
   const blueprint = version.blueprints?.[0];
 
@@ -370,6 +371,12 @@ function VersionTests({
         <h1 className="text-2xl font-extrabold tracking-tight text-text">
           {versionLabel(version)}
         </h1>
+        <p className="text-sm text-text-muted">
+          {t("exam.hub.format", {
+            count: questionCount(version),
+            minutes: version.total_minutes,
+          })}
+        </p>
         <p className="text-sm text-text-muted">
           {t(
             "exam.hub.testsSubtitle",
@@ -421,7 +428,15 @@ function VersionTests({
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {items.map((test) => (
-            <TestCard key={test.id} test={test} version={version} />
+            <TestCard
+              key={test.id}
+              test={test}
+              version={version}
+              expanded={expandedTestId === test.id}
+              onExpand={() =>
+                setExpandedTestId(expandedTestId === test.id ? null : test.id)
+              }
+            />
           ))}
         </ul>
       )}
@@ -432,22 +447,25 @@ function VersionTests({
 function TestCard({
   test,
   version,
+  expanded,
+  onExpand,
 }: {
   test: FixedTestSummary;
   version: ExamVersion;
+  expanded: boolean;
+  onExpand: () => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
-  const [sheetOpen, setSheetOpen] = useState(false);
   const attempt = test.latest_attempt;
 
   return (
-    <li className="rounded-2xl border border-border bg-card p-4">
+    <li className="rounded-2xl border border-border-subtle bg-card p-4">
       <div className="flex items-center gap-4">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-text-muted">
           <FileText className="h-5 w-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-bold text-text">{test.title}</p>
+          <p className="line-clamp-2 font-bold text-text">{test.title}</p>
           <p className="text-xs text-text-muted">
             {t("exam.hub.testFormat", {
               count: test.question_count,
@@ -469,13 +487,14 @@ function TestCard({
         <Button
           size="sm"
           variant={attempt ? "outline" : "primary"}
-          onClick={() => setSheetOpen((open) => !open)}
-          className="shrink-0"
+          onClick={onExpand}
+          aria-expanded={expanded}
+          className="min-h-[44px] shrink-0"
         >
-          {t("exam.hub.options", "Options")}
+          {t("exam.hub.chooseMode")}
         </Button>
       </div>
-      {sheetOpen && <SitSheet version={version} test={test} />}
+      {expanded && <SitSheet version={version} test={test} />}
     </li>
   );
 }
@@ -495,6 +514,7 @@ function SitSheet({
   const [chosenSections, setChosenSections] = useState<number[]>([]);
   const [unlimited, setUnlimited] = useState(false);
   const [duration, setDuration] = useState(60);
+  const [customDuration, setCustomDuration] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -544,7 +564,7 @@ function SitSheet({
             className={cn(
               "flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium",
               mode === key
-                ? "border-primary bg-primary/10 text-primary-accent"
+                ? "border-primary bg-primary/5 text-primary-accent"
                 : "border-border bg-card text-text-muted hover:text-text",
             )}
           >
@@ -553,6 +573,10 @@ function SitSheet({
           </button>
         ))}
       </div>
+      <p className="text-xs text-text-muted">{t("exam.hub.modeExamHint")}</p>
+      <p className="text-xs text-text-muted">
+        {t("exam.hub.modePracticeHint")}
+      </p>
 
       {mode === "practice" && (
         <div className="space-y-3">
@@ -592,26 +616,70 @@ function SitSheet({
             </div>
           </fieldset>
 
-          <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-sm text-text">
-            <input
-              type="checkbox"
-              checked={unlimited}
-              onChange={(e) => setUnlimited(e.target.checked)}
-              className="accent-primary"
-            />
-            {t("exam.hub.noLimit", "No time limit")}
-          </label>
-
-          {!unlimited && (
+          <fieldset className="space-y-2">
+            <legend className="text-xs font-medium text-text-muted">
+              {t("exam.hub.duration")}
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              {[30, 60, 90, 120].map((minutes) => (
+                <Button
+                  key={minutes}
+                  type="button"
+                  variant="outline"
+                  className={
+                    !unlimited && !customDuration && duration === minutes
+                      ? "border-primary bg-primary/5"
+                      : ""
+                  }
+                  aria-pressed={
+                    !unlimited && !customDuration && duration === minutes
+                  }
+                  onClick={() => {
+                    setDuration(minutes);
+                    setUnlimited(false);
+                    setCustomDuration(false);
+                  }}
+                >
+                  {minutes} {t("exam.hub.minutesUnit")}
+                </Button>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                className={unlimited ? "border-primary bg-primary/5" : ""}
+                aria-pressed={unlimited}
+                onClick={() => {
+                  setUnlimited(true);
+                  setCustomDuration(false);
+                }}
+              >
+                {t("exam.hub.noLimit")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className={customDuration ? "border-primary bg-primary/5" : ""}
+                aria-pressed={customDuration}
+                onClick={() => {
+                  setUnlimited(false);
+                  setCustomDuration(true);
+                }}
+              >
+                {t("exam.hub.customDuration")}
+              </Button>
+            </div>
+          </fieldset>
+          {customDuration && (
             <label className="flex items-center gap-3 text-sm text-text">
-              {t("exam.hub.durationMinutes", "Minutes")}
+              {t("exam.hub.durationMinutes")}
               <input
+                aria-label={t("exam.hub.durationMinutes")}
                 type="number"
                 min={10}
                 max={180}
                 value={duration}
                 onChange={(e) => setDuration(Number(e.target.value))}
-                className="h-11 w-24 rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-11 w-24 rounded-lg border border-input bg-background px-3 text-base"
               />
             </label>
           )}

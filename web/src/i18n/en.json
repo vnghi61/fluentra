@@ -1664,7 +1664,8 @@
       "customDuration": "Custom",
       "modeExamHint": "Timed, all sections; answers stay hidden while you sit.",
       "modePracticeHint": "Choose sections and a duration.",
-      "backToTests": "Back to the tests"
+      "backToTests": "Back to the tests",
+      "minutesUnit": "min"
     },
     "runner": {
       "answered": "{{answered}} of {{total}} answered",

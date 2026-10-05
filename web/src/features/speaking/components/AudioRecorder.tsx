@@ -122,9 +122,12 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAtRef = useRef<number | null>(null);
   const recordedUrlRef = useRef<string | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       if (timerRef.current) clearInterval(timerRef.current);
       const recorder = recorderRef.current;
       if (recorder && recorder.state !== "inactive") recorder.stop();
@@ -211,6 +214,10 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
     setRequestingPermission(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!mountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       setRequestingPermission(false);
       if (recordedUrlRef.current) URL.revokeObjectURL(recordedUrlRef.current);
       recordedUrlRef.current = null;
@@ -230,22 +237,25 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         const blob = new Blob(chunksRef.current, {
           type: recorder.mimeType || "audio/webm",
         });
-        setRecordedBlob(blob);
-        setRecordedSeconds(
-          Math.min(
-            speakingTimeSeconds,
-            Math.max(
-              0,
-              Math.floor(
-                (Date.now() - (startedAtRef.current ?? Date.now())) / 1000,
+        if (mountedRef.current) {
+          setRecordedBlob(blob);
+          setRecordedSeconds(
+            Math.min(
+              speakingTimeSeconds,
+              Math.max(
+                0,
+                Math.floor(
+                  (Date.now() - (startedAtRef.current ?? Date.now())) / 1000,
+                ),
               ),
             ),
-          ),
-        );
-        const objectUrl = URL.createObjectURL(blob);
-        if (recordedUrlRef.current) URL.revokeObjectURL(recordedUrlRef.current);
-        recordedUrlRef.current = objectUrl;
-        setRecordedUrl(objectUrl);
+          );
+          const objectUrl = URL.createObjectURL(blob);
+          if (recordedUrlRef.current)
+            URL.revokeObjectURL(recordedUrlRef.current);
+          recordedUrlRef.current = objectUrl;
+          setRecordedUrl(objectUrl);
+        }
         void upload(blob);
       };
       recorder.start(250);

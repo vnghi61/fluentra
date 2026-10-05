@@ -10,6 +10,7 @@ export function QuestionNavigator({
   sections,
   sectionLabels,
   currentSection,
+  activeQuestionNumber,
   isExamMode,
   onJump,
 }: {
@@ -17,6 +18,7 @@ export function QuestionNavigator({
   sections: SectionActivities[];
   sectionLabels: Record<ExamSkill, string>;
   currentSection: number;
+  activeQuestionNumber: number | null;
   isExamMode: boolean;
   onJump: (slot: QuestionSlot) => void;
 }): React.JSX.Element {
@@ -71,9 +73,9 @@ export function QuestionNavigator({
         if (!sectionSlots.length) return null;
         const locked =
           isExamMode && section.section_position !== currentSection;
-        const currentNumber = slots.find(
-          (slot) => slot.section === currentSection,
-        )?.number;
+        const currentNumber =
+          activeQuestionNumber ??
+          slots.find((slot) => slot.section === currentSection)?.number;
         return (
           <section key={section.section_position} className="space-y-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">

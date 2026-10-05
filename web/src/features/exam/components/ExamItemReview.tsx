@@ -142,7 +142,7 @@ export const Explanation: React.FC<{ explanation: AnswerExplanation }> = ({
   );
   if (!text) return null;
   return (
-    <div className="space-y-1 rounded-lg border border-border-subtle bg-surface-muted/60 p-3">
+    <div className="space-y-1 rounded-lg bg-surface-muted/60 p-3">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
         {t("exam.report.explanationLabel")}
       </p>
@@ -169,7 +169,7 @@ const Reveal: React.FC<{ label: string; children: React.ReactNode }> = ({
         {open ? t("exam.report.hideText") : label}
       </Button>
       {open && (
-        <div className="whitespace-pre-line rounded-lg border border-border-subtle bg-surface-muted/60 p-3 text-sm leading-relaxed text-text">
+        <div className="whitespace-pre-line rounded-lg bg-surface-muted/60 p-3 text-sm leading-relaxed text-text">
           {children}
         </div>
       )}
@@ -197,7 +197,7 @@ const StateBadge: React.FC<{ state: ReviewState }> = ({ state }) => {
   }
   return (
     <span className="inline-flex shrink-0 items-center rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-text-muted">
-      {t("exam.report.noAnswer")}
+      {t("exam.report.filter.other")}
     </span>
   );
 };
@@ -254,10 +254,9 @@ const ComprehensionReview: React.FC<{
               key={question.id || index}
               id={`review-q-${number}`}
               className={cn(
-                "space-y-3 rounded-xl border p-4",
-                state === "correct" && "border-success/50 bg-success/5",
-                state === "wrong" && "border-danger/50 bg-danger/5",
-                state === "other" && "border-border-subtle",
+                "space-y-3 rounded-xl bg-surface-muted/30 p-4",
+                state === "correct" && "bg-success/5",
+                state === "wrong" && "bg-danger/5",
               )}
             >
               <div className="flex items-start justify-between gap-3">
@@ -404,7 +403,7 @@ const WritingReview: React.FC<{ item: ExamItemOutcome }> = ({ item }) => {
           className="w-full max-w-md rounded-lg border border-border-subtle bg-white"
         />
       )}
-      <div className="space-y-1 rounded-lg border border-border-subtle p-3">
+      <div className="space-y-1 rounded-lg bg-surface-muted/60 p-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
           {t("exam.report.yourText")} ·{" "}
           {t("exam.report.wordCount", { count: words })}

@@ -116,6 +116,9 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
   const [timeUp, setTimeUp] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const [activeQuestionNumber, setActiveQuestionNumber] = useState<
+    number | null
+  >(null);
 
   const answersRef = useRef<DraftAnswers>(attempt.draft_answers ?? {});
   const dirtyRef = useRef(new Set<string>());
@@ -142,12 +145,19 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
 
   const setSection = useCallback(
     (section: number, secondsLeft: number | undefined) => {
+      if (section !== sectionRef.current) {
+        setActiveQuestionNumber(
+          questionSlots(sections, answersRef.current).find(
+            (slot) => slot.section === section,
+          )?.number ?? null,
+        );
+      }
       sectionRef.current = section;
       sectionRemainingRef.current = secondsLeft;
       setSectionClock(secondsLeft);
       setCurrentSection(section);
     },
-    [],
+    [sections],
   );
 
   const finish = useCallback(() => {
@@ -321,6 +331,11 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
 
   const goToSection = (target: number) => {
     void save();
+    setActiveQuestionNumber(
+      questionSlots(sections, answersRef.current).find(
+        (slot) => slot.section === target,
+      )?.number ?? null,
+    );
     setSection(target, undefined);
   };
 
@@ -395,6 +410,7 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
       if (isExamMode) return;
       goToSection(slot.section);
     }
+    setActiveQuestionNumber(slot.number);
     scrollToSlot(slot);
   };
 
@@ -511,7 +527,7 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
       )}
 
       <div className="mx-auto grid w-full max-w-6xl flex-1 gap-6 p-4 sm:p-6 md:p-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
-        <div className="space-y-3 lg:order-2">
+        <div className="space-y-3 lg:hidden">
           <Button
             type="button"
             variant="outline"
@@ -525,21 +541,6 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
               ? t("exam.parts.hideQuestionList")
               : t("exam.parts.questionList")}
           </Button>
-          <div className="hidden lg:block">
-            <aside
-              id="sitting-question-list"
-              className="rounded-2xl border border-border-subtle bg-surface-card p-4 lg:sticky lg:top-24"
-            >
-              <QuestionNavigator
-                slots={slots}
-                sections={sections}
-                sectionLabels={sectionLabels}
-                currentSection={currentSection}
-                isExamMode={isExamMode}
-                onJump={jumpTo}
-              />
-            </aside>
-          </div>
           <BottomSheet
             open={listOpen}
             onOpenChange={setListOpen}
@@ -551,6 +552,7 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
                 sections={sections}
                 sectionLabels={sectionLabels}
                 currentSection={currentSection}
+                activeQuestionNumber={activeQuestionNumber}
                 isExamMode={isExamMode}
                 onJump={(slot) => {
                   jumpTo(slot);
@@ -560,6 +562,21 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
             </div>
           </BottomSheet>
         </div>
+
+        <aside
+          id="sitting-question-list"
+          className="hidden self-start rounded-2xl border border-border-subtle bg-surface-card p-4 lg:sticky lg:top-24 lg:order-2 lg:block"
+        >
+          <QuestionNavigator
+            slots={slots}
+            sections={sections}
+            sectionLabels={sectionLabels}
+            currentSection={currentSection}
+            activeQuestionNumber={activeQuestionNumber}
+            isExamMode={isExamMode}
+            onJump={jumpTo}
+          />
+        </aside>
 
         <main className="min-w-0 space-y-6 lg:order-1">
           {section && (
@@ -993,7 +1010,7 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
           )}
         </div>
         {(config.prompt || config.sentence) && (
-          <p className="rounded-xl border border-border-subtle bg-surface-muted p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
+          <p className="rounded-xl bg-surface-muted/60 p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
             {config.prompt || config.sentence}
           </p>
         )}
@@ -1027,7 +1044,7 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
             {t("exam.writing.words", { count: words, min: minWords })}
           </Badge>
         </div>
-        <p className="rounded-xl border border-border-subtle bg-surface-muted p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
+        <p className="rounded-xl bg-surface-muted/60 p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
           {config.prompt}
         </p>
         {config.image_url && (
@@ -1058,7 +1075,7 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
     return (
       <div className={cardClass} id={anchor}>
         {heading(t("exam.writing.rewrite"))}
-        <p className="rounded-xl border border-border-subtle bg-surface-muted p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
+        <p className="rounded-xl bg-surface-muted/60 p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
           {config.prompt}
         </p>
         <label

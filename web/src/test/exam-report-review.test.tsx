@@ -71,7 +71,7 @@ const report: ScoreReport = {
   disclaimer: "",
 };
 
-async function renderReport() {
+async function renderReport(fixture: ScoreReport = report) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -82,7 +82,7 @@ async function renderReport() {
     component: () => (
       <QueryClientProvider client={queryClient}>
         <I18nextProvider i18n={i18n}>
-          <ExamReport report={report} />
+          <ExamReport report={fixture} />
         </I18nextProvider>
       </QueryClientProvider>
     ),
@@ -133,5 +133,30 @@ describe("exam report question review", () => {
       "true",
     );
     expect(screen.getByText("What is closed?")).toBeInTheDocument();
+  });
+
+  it("labels other whole-item outcomes as skipped", async () => {
+    const withWriting: ScoreReport = {
+      ...report,
+      per_section: report.per_section.map((section) => ({
+        ...section,
+        items: [
+          ...section.items,
+          {
+            activity_id: "writing-activity",
+            content_version_id: "writing-version",
+            kind: "writing_prompt",
+            status: "graded",
+            score: 1,
+            max_score: 2,
+            response: { text_answer: "My response" },
+          },
+        ],
+      })),
+    };
+    await renderReport(withWriting);
+    fireEvent.click(screen.getByRole("button", { name: /Skipped/ }));
+    const row = screen.getByText("Question 3").parentElement;
+    expect(row).toHaveTextContent("Skipped");
   });
 });

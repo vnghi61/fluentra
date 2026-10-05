@@ -1,4 +1,9 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  screen,
+  waitForElementToBeRemoved,
+  within,
+} from "@testing-library/react";
 import { render } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -113,13 +118,15 @@ describe("exam sitting shell", () => {
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Go to question 1" }),
     );
-    await screen.findByRole("button", { name: "Questions" });
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitForElementToBeRemoved(() => screen.queryByRole("dialog"));
   });
 
   it("filters answered and unanswered questions", async () => {
     await renderWithProviders(
-      <ExamSittingRunner attempt={attempt} onSubmitted={() => {}} />,
+      <ExamSittingRunner
+        attempt={{ ...attempt, mode: "practice" }}
+        onSubmitted={() => {}}
+      />,
     );
     fireEvent.click(screen.getByRole("button", { name: "ATokyo" }));
     const nav = screen.getByRole("complementary");
@@ -130,6 +137,12 @@ describe("exam sitting shell", () => {
     expect(
       within(nav).getByRole("button", { name: "Go to question 2" }),
     ).toBeInTheDocument();
+    fireEvent.click(
+      within(nav).getByRole("button", { name: "Go to question 2" }),
+    );
+    expect(
+      within(nav).getByRole("button", { name: "Go to question 2" }),
+    ).toHaveAttribute("aria-current", "true");
   });
 
   it("shows the remaining-question count in submit confirmation", async () => {

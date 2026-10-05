@@ -210,7 +210,7 @@ describe("exam hub", () => {
     await renderHub();
     fireEvent.click(await screen.findByText(version.title));
     const card = (await screen.findByText("Đề 3")).closest("li") as HTMLElement;
-    fireEvent.click(within(card).getByRole("button", { name: "Options" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Choose mode" }));
     fireEvent.click(within(card).getByRole("button", { name: "Start" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Continue and submit it before starting another test",
@@ -243,12 +243,14 @@ describe("exam hub", () => {
       await screen.findByText("TOEIC Listening & Reading (2026)"),
     );
     const card = (await screen.findByText("Đề 3")).closest("li") as HTMLElement;
-    fireEvent.click(within(card).getByRole("button", { name: "Options" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Choose mode" }));
 
     // Level 3: practice, Reading only, no limit.
     fireEvent.click(within(card).getByRole("button", { name: /Practice/ }));
     fireEvent.click(within(card).getByLabelText("Reading"));
-    fireEvent.click(within(card).getByLabelText("No time limit"));
+    fireEvent.click(
+      within(card).getByRole("button", { name: "No time limit" }),
+    );
     fireEvent.click(within(card).getByRole("button", { name: "Start" }));
 
     await screen.findByText("sitting");
@@ -292,6 +294,78 @@ describe("exam hub", () => {
     expect(composed).toEqual({ blueprint_id: BLUEPRINT_ID, mode: "random" });
   });
 
+  it("only expands one test mode picker at a time", async () => {
+    await renderHub();
+    fireEvent.click(await screen.findByText(version.title));
+    const first = (await screen.findByText("Đề 1")).closest(
+      "li",
+    ) as HTMLElement;
+    const second = (await screen.findByText("Đề 2")).closest(
+      "li",
+    ) as HTMLElement;
+    fireEvent.click(within(first).getByRole("button", { name: "Choose mode" }));
+    expect(
+      within(first).getByRole("button", { name: "Start" }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(second).getByRole("button", { name: "Choose mode" }),
+    );
+    expect(
+      within(first).queryByRole("button", { name: "Start" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(second).getByRole("button", { name: "Start" }),
+    ).toBeInTheDocument();
+  });
+
+  it("switches between custom duration and no limit without retaining the input", async () => {
+    await renderHub();
+    fireEvent.click(await screen.findByText(version.title));
+    const card = (await screen.findByText("Đề 3")).closest("li") as HTMLElement;
+    fireEvent.click(within(card).getByRole("button", { name: "Choose mode" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Practice" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Custom" }));
+    expect(
+      within(card).getByRole("spinbutton", { name: "Duration (minutes)" }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(card).getByRole("button", { name: "No time limit" }),
+    );
+    expect(within(card).queryByRole("spinbutton")).not.toBeInTheDocument();
+  });
+
+  it("starts timed practice using the selected duration preset", async () => {
+    let started: unknown = null;
+    server.use(
+      http.post(
+        `/api/v1/mock-tests/${TEST_ID}/attempts`,
+        async ({ request }) => {
+          started = await request.json();
+          return HttpResponse.json(
+            {
+              id: "44444444-4444-4444-4444-444444444444",
+              status: "in_progress",
+            },
+            { status: 201 },
+          );
+        },
+      ),
+    );
+    await renderHub();
+    fireEvent.click(await screen.findByText(version.title));
+    const card = (await screen.findByText("Đề 3")).closest("li") as HTMLElement;
+    fireEvent.click(within(card).getByRole("button", { name: "Choose mode" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Practice" }));
+    fireEvent.click(within(card).getByRole("button", { name: "90 min" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Start" }));
+    await screen.findByText("sitting");
+    expect(started).toEqual({
+      mode: "practice",
+      unlimited: false,
+      chosen_duration_minutes: 90,
+    });
+  });
+
   it("refreshes the still-fresh attempt list after returning from a newly started sitting", async () => {
     let open = false;
     const attemptId = "44444444-4444-4444-4444-444444444444";
@@ -320,7 +394,7 @@ describe("exam hub", () => {
     await renderHub();
     fireEvent.click(await screen.findByText(version.title));
     const card = (await screen.findByText("Đề 3")).closest("li") as HTMLElement;
-    fireEvent.click(within(card).getByRole("button", { name: "Options" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Choose mode" }));
     fireEvent.click(within(card).getByRole("button", { name: "Start" }));
     fireEvent.click(await screen.findByRole("link", { name: "Back to hub" }));
     expect(

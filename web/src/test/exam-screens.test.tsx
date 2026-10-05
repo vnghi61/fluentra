@@ -366,9 +366,9 @@ describe("exam screens", () => {
     await renderWithProviders(<ExamList userPracticeLevel="B1" />);
 
     fireEvent.click(await screen.findByText("Practice mode"));
-    fireEvent.click(screen.getByRole("checkbox", { name: "No time limit" }));
+    fireEvent.click(screen.getByRole("button", { name: "No time limit" }));
 
-    expect(screen.getByLabelText(/^Time limit/)).toBeDisabled();
+    expect(screen.queryByRole("slider")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Start" }));
 
     await waitFor(() =>
@@ -541,6 +541,11 @@ describe("exam screens", () => {
     expect(
       await screen.findByText("The library is closed on Friday."),
     ).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole("complementary")
+        .querySelector('[aria-label="Go to question 2"]'),
+    ).toHaveAttribute("aria-current", "true");
   });
 
   it("saves only the open section's answers and moves on through the server", async () => {

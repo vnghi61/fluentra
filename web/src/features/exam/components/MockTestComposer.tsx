@@ -186,7 +186,7 @@ export function MockTestComposer(): React.JSX.Element {
         </p>
       </div>
 
-      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+      <div className="space-y-3 rounded-2xl border border-border-subtle bg-card p-4">
         <label className="block space-y-1 text-sm">
           <span className="font-medium text-text">
             {t("mockTest.version", "Exam version")}
@@ -335,7 +335,7 @@ export function MockTestComposer(): React.JSX.Element {
       </div>
 
       {composed && (
-        <div className="space-y-3 rounded-xl border border-success/30 bg-success/5 p-4">
+        <div className="space-y-3 rounded-2xl border border-border-subtle bg-success/5 p-4">
           <p className="flex items-center gap-2 text-sm font-medium text-success-accent">
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
             {t("mockTest.composed", "Your test is ready.")}

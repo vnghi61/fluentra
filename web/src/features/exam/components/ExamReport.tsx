@@ -615,7 +615,7 @@ const ReviewStateLabel: React.FC<{ state: ReviewState }> = ({ state }) => {
     );
   return (
     <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-text-muted">
-      {t("exam.report.noAnswer")}
+      {t("exam.report.filter.other")}
     </span>
   );
 };
