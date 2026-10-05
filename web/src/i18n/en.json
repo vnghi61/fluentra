@@ -2093,7 +2093,9 @@
       "errSaveFailed": "Failed to save payout account.",
       "errBelowThreshold": "Minimum payout amount is ₫{{threshold}}.",
       "errExceedsBalance": "Requested amount exceeds available balance.",
-      "errRequestFailed": "Failed to request payout."
+      "errRequestFailed": "Failed to request payout.",
+      "accountShort": "Bank",
+      "missingNoticeShort": "Add a bank account to receive your earnings."
     },
     "earnings": {
       "availableBalance": "Available Balance",
@@ -2105,7 +2107,8 @@
       "pendingPayout": "Pending Payout",
       "inProcessing": "Processing by finance",
       "noPending": "No pending requests",
-      "recentTransactions": "Recent Earnings & Ledger"
+      "recentTransactions": "Recent Earnings & Ledger",
+      "loadError": "Couldn't load earnings."
     },
     "courses": {
       "title": "Authored Courses & Drafts",
@@ -2117,7 +2120,8 @@
       "lessonsCount": "{{count}} lessons",
       "freeBadge": "Free",
       "viewStatus": "Review Status",
-      "submit": "Submit"
+      "submit": "Submit",
+      "loadError": "Couldn't load your courses."
     },
     "status": {
       "published": "Published",
@@ -2186,7 +2190,9 @@
       "amount": "Net Amount",
       "gross": "Gross",
       "notes": "Notes",
-      "empty": "No transactions recorded yet. Earnings will appear here as learners enroll in your courses."
+      "empty": "No transactions recorded yet. Earnings will appear here as learners enroll in your courses.",
+      "emptyTitle": "No transactions yet",
+      "emptyDesc": "Earnings will appear here once learners enrol in your courses."
     },
     "checkout": {
       "claimTitle": "Enroll in Course",

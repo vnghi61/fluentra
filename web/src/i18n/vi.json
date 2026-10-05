@@ -2093,7 +2093,9 @@
       "errSaveFailed": "Không thể lưu tài khoản ngân hàng.",
       "errBelowThreshold": "Số tiền rút tối thiểu là ₫{{threshold}}.",
       "errExceedsBalance": "Số tiền yêu cầu vượt quá số dư khả dụng.",
-      "errRequestFailed": "Không thể gửi yêu cầu rút tiền."
+      "errRequestFailed": "Không thể gửi yêu cầu rút tiền.",
+      "accountShort": "Ngân hàng",
+      "missingNoticeShort": "Thêm tài khoản ngân hàng để nhận doanh thu."
     },
     "earnings": {
       "availableBalance": "Số dư khả dụng",
@@ -2105,7 +2107,8 @@
       "pendingPayout": "Đang chờ thanh toán",
       "inProcessing": "Đang được tài chính xử lý",
       "noPending": "Không có yêu cầu đang chờ",
-      "recentTransactions": "Thu nhập & Lịch sử biến động số dư"
+      "recentTransactions": "Thu nhập & Lịch sử biến động số dư",
+      "loadError": "Không tải được dữ liệu doanh thu."
     },
     "courses": {
       "title": "Khóa học & Bản thảo đã soạn",
@@ -2117,7 +2120,8 @@
       "lessonsCount": "{{count}} bài học",
       "freeBadge": "Miễn phí",
       "viewStatus": "Xem trạng thái",
-      "submit": "Nộp duyệt"
+      "submit": "Nộp duyệt",
+      "loadError": "Không tải được danh sách khóa học."
     },
     "status": {
       "published": "Đã xuất bản",
@@ -2186,7 +2190,9 @@
       "amount": "Thực nhận",
       "gross": "Tổng tiền",
       "notes": "Nội dung",
-      "empty": "Chưa có biến động số dư nào. Doanh thu sẽ xuất hiện tại đây khi học viên đăng ký khóa học của bạn."
+      "empty": "Chưa có biến động số dư nào. Doanh thu sẽ xuất hiện tại đây khi học viên đăng ký khóa học của bạn.",
+      "emptyTitle": "Chưa có giao dịch nào",
+      "emptyDesc": "Doanh thu sẽ xuất hiện khi học viên đăng ký khóa học của bạn."
     },
     "checkout": {
       "claimTitle": "Đăng ký khóa học",
