@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { adminApi, type PayoutResponse } from "../api/adminApi";
+import { formatVnd } from "@/lib/currency";
 
 export function AdminPayoutsList(): React.JSX.Element {
   const { t } = useTranslation();
@@ -190,7 +191,7 @@ export function AdminPayoutsList(): React.JSX.Element {
                     {payout.creator_id}
                   </td>
                   <td className="p-3.5 font-bold text-text">
-                    ₫{payout.amount_vnd.toLocaleString("vi-VN")}
+                    {formatVnd(payout.amount_vnd)}
                   </td>
                   <td className="p-3.5">{getStatusBadge(payout.status)}</td>
                   <td className="p-3.5 font-mono text-[11px] text-text-muted">
@@ -269,7 +270,7 @@ export function AdminPayoutsList(): React.JSX.Element {
                   {t("adminPayouts.colAmount", "Amount")}:
                 </span>
                 <span className="text-base font-extrabold text-primary-accent">
-                  ₫{activePayout.amount_vnd.toLocaleString("vi-VN")}
+                  {formatVnd(activePayout.amount_vnd)}
                 </span>
               </div>
               <div className="flex items-center justify-between text-text-muted pt-1 border-t border-border-subtle">

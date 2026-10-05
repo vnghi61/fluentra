@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { useAuthStore } from "@/stores/authStore";
 import { adminApi, type ModerationQueueItem } from "../api/adminApi";
+import { formatVnd } from "@/lib/currency";
 
 export function AdminStudioModeration(): React.JSX.Element {
   const { t } = useTranslation();
@@ -204,7 +205,7 @@ export function AdminStudioModeration(): React.JSX.Element {
                     <td className="p-3.5">
                       {draft.price_vnd > 0 ? (
                         <span className="font-semibold text-text">
-                          ₫{draft.price_vnd.toLocaleString("vi-VN")}
+                          {formatVnd(draft.price_vnd)}
                         </span>
                       ) : (
                         <Badge variant="outline" className="text-xs">
@@ -331,7 +332,7 @@ export function AdminStudioModeration(): React.JSX.Element {
                       variant="secondary"
                       className="font-mono text-xs font-semibold"
                     >
-                      ₫{activeItem.draft.price_vnd.toLocaleString("vi-VN")}
+                      {formatVnd(activeItem.draft.price_vnd)}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-xs">

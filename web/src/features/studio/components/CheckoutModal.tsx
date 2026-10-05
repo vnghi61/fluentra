@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { studioApi } from "../api/studioApi";
 import { useBillingOrder } from "../hooks/useStudio";
+import { formatVnd } from "@/lib/currency";
 
 interface CheckoutModalProps {
   courseId: string;
@@ -133,7 +134,7 @@ export function CheckoutModal({
             <span className="text-base font-extrabold text-primary-accent">
               {isFree
                 ? t("studio.courses.freeBadge", "Free")
-                : `₫${priceVnd.toLocaleString("vi-VN")}`}
+                : formatVnd(priceVnd)}
             </span>
           </div>
         </div>
@@ -278,7 +279,7 @@ export function CheckoutModal({
                     {t("studio.checkout.amountLabel", "Exact Amount")}
                   </span>
                   <span className="font-mono text-sm font-bold text-text">
-                    ₫{order.amount_vnd.toLocaleString("vi-VN")}
+                    {formatVnd(order.amount_vnd)}
                   </span>
                 </div>
                 <Button

@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatVnd } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import {
   useCreatorDrafts,
@@ -37,9 +38,6 @@ import { PayoutAccountModal } from "./PayoutAccountModal";
 import { RequestPayoutModal } from "./RequestPayoutModal";
 import { SubmissionStatusModal } from "./SubmissionStatusModal";
 import type { CourseDraft } from "../api/studioApi";
-
-const formatVnd = (value: number): string =>
-  `₫${value.toLocaleString("vi-VN")}`;
 
 // Icon tints for the four finance figures; the cards themselves stay neutral.
 const FINANCE_TONE = {
@@ -124,7 +122,7 @@ function SectionError({
         variant="outline"
         size="sm"
         onClick={onRetry}
-        className="min-h-[44px] self-start whitespace-nowrap rounded-xl sm:min-h-0 sm:self-auto"
+        className="min-h-[44px] self-start whitespace-nowrap rounded-xl sm:min-h-10 sm:self-auto"
       >
         {t("action.retry", "Retry")}
       </Button>
@@ -335,7 +333,7 @@ export function CreatorDashboard(): React.JSX.Element {
                 size="sm"
                 disabled={!canRequestPayout}
                 onClick={() => setRequestPayoutOpen(true)}
-                className="-ml-2 min-h-[44px] gap-1.5 whitespace-nowrap px-2 font-semibold text-primary-accent sm:min-h-0"
+                className="-ml-2 min-h-[44px] gap-1.5 whitespace-nowrap px-2 font-semibold text-primary-accent sm:min-h-10"
               >
                 {t("studio.earnings.requestPayout", "Request Payout")}
                 <ArrowRight className="h-4 w-4" aria-hidden />
@@ -409,7 +407,7 @@ export function CreatorDashboard(): React.JSX.Element {
             variant="outline"
             size="sm"
             onClick={() => setPayoutModalOpen(true)}
-            className="min-h-[44px] self-start whitespace-nowrap rounded-xl sm:min-h-0 sm:self-auto"
+            className="min-h-[44px] self-start whitespace-nowrap rounded-xl sm:min-h-10 sm:self-auto"
           >
             {t("studio.payout.configureNow", "Configure Bank Account")}
           </Button>
@@ -565,7 +563,7 @@ export function CreatorDashboard(): React.JSX.Element {
                       onClick={() =>
                         void navigate({ to: `/studio/courses/${draft.id}` })
                       }
-                      className="min-h-[44px] flex-1 gap-1.5 whitespace-nowrap rounded-xl text-xs sm:min-h-0"
+                      className="min-h-[44px] flex-1 gap-1.5 whitespace-nowrap rounded-xl text-xs sm:min-h-10"
                     >
                       <Edit3 className="h-3.5 w-3.5" aria-hidden />
                       {t("app.edit", "Edit")}
@@ -576,7 +574,7 @@ export function CreatorDashboard(): React.JSX.Element {
                         variant="secondary"
                         size="sm"
                         onClick={() => setSelectedDraftForStatus(draft)}
-                        className="min-h-[44px] flex-1 gap-1.5 whitespace-nowrap rounded-xl text-xs sm:min-h-0"
+                        className="min-h-[44px] flex-1 gap-1.5 whitespace-nowrap rounded-xl text-xs sm:min-h-10"
                       >
                         <FileCheck className="h-3.5 w-3.5" aria-hidden />
                         {t("studio.courses.viewStatus", "Review Status")}
@@ -589,7 +587,7 @@ export function CreatorDashboard(): React.JSX.Element {
                         onClick={() => {
                           void handleSubmitDraft(draft.id);
                         }}
-                        className="min-h-[44px] flex-1 gap-1.5 whitespace-nowrap rounded-xl text-xs sm:min-h-0"
+                        className="min-h-[44px] flex-1 gap-1.5 whitespace-nowrap rounded-xl text-xs sm:min-h-10"
                       >
                         <Send className="h-3.5 w-3.5" aria-hidden />
                         {t("studio.courses.submit", "Submit")}

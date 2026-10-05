@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import type { CourseDetail } from "../api/lessonApi";
 import { courseDescription, courseTitle } from "../model/courseText";
+import { formatVnd } from "@/lib/currency";
 
 export interface CourseHeaderProps {
   course: CourseDetail;
@@ -175,7 +176,7 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
             <div className="flex items-center gap-2">
               {isPaid ? (
                 <span className="text-base font-extrabold text-primary-accent font-mono">
-                  ₫{effectivePrice.toLocaleString("vi-VN")}
+                  {formatVnd(effectivePrice)}
                 </span>
               ) : (
                 <Badge variant="outline" className="text-xs">
@@ -202,7 +203,7 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
                     <ShoppingBag className="h-3.5 w-3.5" />
                     {t("learn.buyCourseBtn", {
                       price: effectivePrice.toLocaleString("vi-VN"),
-                      defaultValue: `Buy Course • ₫${effectivePrice.toLocaleString("vi-VN")}`,
+                      defaultValue: `Buy Course • ${formatVnd(effectivePrice)}`,
                     })}
                   </>
                 ) : (

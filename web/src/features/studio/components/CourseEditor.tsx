@@ -556,7 +556,7 @@ export function CourseEditor({
             >
               {isFree
                 ? t("studio.editor.ruleFree", "Free Community Course")
-                : t("studio.editor.rulePriceBounds", "₫49,000 - ₫5,000,000")}
+                : t("studio.editor.rulePriceBounds", "49.000 ₫ – 5.000.000 ₫")}
             </span>
           </div>
         </div>
@@ -708,7 +708,7 @@ export function CourseEditor({
                 <span className="text-[11px] text-text-muted mt-1 block">
                   {t(
                     "studio.editor.priceHelp",
-                    "70% creator payout share (₫{{share}}) upon purchase.",
+                    "70% creator payout share ({{share}} ₫) upon purchase.",
                     {
                       share: Math.floor(priceVnd * 0.7).toLocaleString("vi-VN"),
                     },

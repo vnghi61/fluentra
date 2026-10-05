@@ -79,9 +79,9 @@ describe("CreatorDashboard", () => {
 
     expect(
       await screen.findByTestId("studio-available-balance"),
-    ).toHaveTextContent("₫1.250.000");
+    ).toHaveTextContent("1.250.000 ₫");
     expect(screen.getByTestId("studio-lifetime-earnings")).toHaveTextContent(
-      "₫3.000.000",
+      "3.000.000 ₫",
     );
     expect(screen.getByTestId("studio-total-paid-out")).toBeInTheDocument();
     expect(screen.getByTestId("studio-pending-payout")).toBeInTheDocument();

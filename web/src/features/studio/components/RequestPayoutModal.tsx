@@ -5,6 +5,7 @@ import { ArrowUpRight, CheckCircle2, DollarSign, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCreatorEarnings, useRequestPayout } from "../hooks/useStudio";
+import { formatVnd } from "@/lib/currency";
 
 interface RequestPayoutModalProps {
   isOpen: boolean;
@@ -40,7 +41,7 @@ export function RequestPayoutModal({
       setError(
         t("studio.payout.errBelowThreshold", {
           threshold: threshold.toLocaleString("vi-VN"),
-          defaultValue: `Minimum payout amount is ₫${threshold.toLocaleString("vi-VN")}`,
+          defaultValue: `Minimum payout amount is ${formatVnd(threshold)}`,
         }),
       );
       return;
@@ -107,12 +108,12 @@ export function RequestPayoutModal({
               {t("studio.earnings.availableBalance", "Available Balance")}
             </span>
             <span className="text-base font-bold text-primary-accent">
-              ₫{availableBalance.toLocaleString("vi-VN")}
+              {formatVnd(availableBalance)}
             </span>
           </div>
           <div className="flex items-center justify-between text-xs text-text-muted pt-1 border-t border-border-subtle">
             <span>{t("studio.payout.minimumThreshold", "Minimum Payout")}</span>
-            <span>₫{threshold.toLocaleString("vi-VN")}</span>
+            <span>{formatVnd(threshold)}</span>
           </div>
           {earnings?.payout_account_configured && (
             <div className="flex items-center justify-between text-xs text-text-muted pt-1">
