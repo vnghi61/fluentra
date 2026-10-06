@@ -86,7 +86,7 @@ export function ModalFooter({
 
 /**
  * Portaled dialog with a bounded panel: fixed header and footer, scrolling body.
- * Plain CSS only; keep motion/react out so it is safe in the entry chunk.
+ * Plain CSS only; no animation library, so it is safe in the entry chunk.
  */
 export function Modal({
   open,

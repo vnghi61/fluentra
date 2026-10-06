@@ -19,6 +19,7 @@ import type { CourseDetail, CourseList } from "@/features/lesson";
 import type { CourseUnit } from "@/features/lesson/api/lessonApi";
 import { UnitList } from "@/features/lesson/components/UnitList";
 import { LessonRow } from "@/features/lesson/components/LessonRow";
+import { useAuthStore } from "@/stores/authStore";
 import { server } from "./msw-server";
 
 const userEvent = userEventDefault;
@@ -664,6 +665,96 @@ describe("LearnPage (P10.2)", () => {
     expect(links[0]).toHaveClass("bg-primary");
     expect(links[1]).not.toHaveClass("bg-primary");
     expect(links[1]).toHaveClass("md:border-border");
+  });
+
+  it("enrols before navigating from the compact row link on /learn", async () => {
+    const calls: string[] = [];
+    const course = mockCourseDetail.units[0];
+    if (!course) throw new Error("fixture has no unit");
+    const detail: CourseDetail = {
+      ...mockCourseDetail,
+      units: [
+        {
+          ...course,
+          lessons: [
+            ...course.lessons,
+            {
+              id: "lesson-open",
+              unit_id: course.id,
+              position: 3,
+              title: "Open Non-Next Lesson",
+              skill_focus: "reading",
+              estimated_minutes: 12,
+              status: "published" as const,
+              locked: false,
+              completed: false,
+              lock_reason: null,
+            },
+          ],
+        },
+      ],
+    };
+    server.use(
+      http.get("/api/v1/courses", () => HttpResponse.json(mockCourseList)),
+      http.get("/api/v1/courses/ielts-foundation", () =>
+        HttpResponse.json(detail),
+      ),
+      http.post(`/api/v1/courses/${detail.id}/enroll`, () => {
+        calls.push("enroll");
+        return HttpResponse.json({}, { status: 201 });
+      }),
+    );
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const rootRoute = createRootRoute();
+    const learnRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/learn",
+      component: () => (
+        <I18nextProvider i18n={i18n}>
+          <QueryClientProvider client={client}>
+            <LearnPage />
+          </QueryClientProvider>
+        </I18nextProvider>
+      ),
+    });
+    const lessonRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/learn/lesson/$lessonId",
+      component: () => {
+        calls.push("navigate");
+        return <div>Lesson runner</div>;
+      },
+    });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([learnRoute, lessonRoute]),
+      history: createMemoryHistory({ initialEntries: ["/learn"] }),
+    });
+    await router.load();
+
+    const previous = useAuthStore.getState().status;
+    useAuthStore.setState({ status: "authenticated" });
+    try {
+      render(<RouterProvider router={router} />);
+
+      const link = await screen.findByRole("link", {
+        name: /Start Lesson: Open Non-Next Lesson/,
+      });
+      expect(link.className).not.toMatch(/(^|\s)w-full(\s|$)/);
+      expect(link.className).not.toMatch(/(^|\s)border(\s|$)/);
+      expect(link.className).toContain("h-11");
+      expect(link.querySelector("svg.lucide-chevron-right")).not.toBeNull();
+
+      await userEvent.setup().click(link);
+
+      expect(await screen.findByText("Lesson runner")).toBeInTheDocument();
+      expect(calls).toEqual(["enroll", "navigate"]);
+      expect(router.state.location.pathname).toBe("/learn/lesson/lesson-open");
+    } finally {
+      useAuthStore.setState({ status: previous });
+    }
   });
 
   it("renders a non-next row link as a compact icon target that still intercepts clicks", async () => {
