@@ -1,9 +1,15 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Building2, CheckCircle2, ShieldCheck, X } from "lucide-react";
+import { Building2, CheckCircle2, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  MODAL_FORM_CLASS,
+  Modal,
+  ModalBody,
+  ModalFooter,
+} from "@/components/ui/modal";
 import {
   SearchableSelect,
   type SearchableSelectOption,
@@ -128,62 +134,46 @@ export function PayoutAccountModal({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="payout-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+    <Modal
+      open
+      onClose={onClose}
+      closeDisabled={upsertMutation.isPending}
+      icon={<Building2 className="h-5 w-5 text-primary-accent" />}
+      title={t("studio.payout.accountTitle", "Payout Bank Account")}
     >
-      <div className="relative w-full max-w-lg rounded-xl border border-border-subtle bg-surface-card p-6 shadow-2xl space-y-5">
-        <div className="flex items-center justify-between border-b border-border-subtle pb-4">
-          <div className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-primary-accent" />
-            <h2 id="payout-modal-title" className="text-lg font-bold text-text">
-              {t("studio.payout.accountTitle", "Payout Bank Account")}
-            </h2>
+      <form
+        onSubmit={(e) => {
+          void handleSubmit(e);
+        }}
+        className={MODAL_FORM_CLASS}
+      >
+        <ModalBody>
+          <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-text-muted">
+            <ShieldCheck className="h-5 w-5 shrink-0 text-primary-accent" />
+            <p>
+              {t(
+                "studio.payout.securityNotice",
+                "Your bank details are encrypted and securely stored for earnings payout. Account numbers are never logged or publicly exposed (BR-STUDIO-09).",
+              )}
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t("app.close", "Close")}
-            className="rounded-lg p-1.5 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
 
-        <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-text-muted">
-          <ShieldCheck className="h-5 w-5 shrink-0 text-primary-accent" />
-          <p>
-            {t(
-              "studio.payout.securityNotice",
-              "Your bank details are encrypted and securely stored for earnings payout. Account numbers are never logged or publicly exposed (BR-STUDIO-09).",
-            )}
-          </p>
-        </div>
+          {error && (
+            <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger font-medium">
+              {error}
+            </div>
+          )}
 
-        {error && (
-          <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger font-medium">
-            {error}
-          </div>
-        )}
+          {success && (
+            <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success font-medium">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              {t(
+                "studio.payout.saveSuccess",
+                "Payout account saved successfully!",
+              )}
+            </div>
+          )}
 
-        {success && (
-          <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success font-medium">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-            {t(
-              "studio.payout.saveSuccess",
-              "Payout account saved successfully!",
-            )}
-          </div>
-        )}
-
-        <form
-          onSubmit={(e) => {
-            void handleSubmit(e);
-          }}
-          className="space-y-4"
-        >
           <div>
             <label
               htmlFor="bank-code-select"
@@ -253,28 +243,27 @@ export function PayoutAccountModal({
               )}
             </span>
           </div>
-
-          <div className="flex justify-end gap-3 pt-3 border-t border-border-subtle">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={upsertMutation.isPending}
-            >
-              {t("app.cancel", "Cancel")}
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={upsertMutation.isPending}
-            >
-              {upsertMutation.isPending
-                ? t("app.saving", "Saving...")
-                : t("studio.payout.saveButton", "Save Account")}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={upsertMutation.isPending}
+          >
+            {t("app.cancel", "Cancel")}
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={upsertMutation.isPending}
+          >
+            {upsertMutation.isPending
+              ? t("app.saving", "Saving...")
+              : t("studio.payout.saveButton", "Save Account")}
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
   );
 }

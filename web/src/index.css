@@ -225,9 +225,10 @@ select optgroup {
   }
 }
 
-/* While any modal is open the page behind it does not scroll, so no second
-   scrollbar sits beside the overlay. One rule for every dialog in the app. */
-html:has([aria-modal="true"]) {
+/* While a legacy inline modal is open the page behind it does not scroll, so no
+   second scrollbar sits beside the overlay. Dialogs built on the shared Modal
+   primitive mark themselves data-scroll-lock="managed" and lock scroll themselves. */
+html:has([aria-modal="true"]:not([data-scroll-lock="managed"])) {
   overflow: hidden;
 }
 

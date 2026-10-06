@@ -53,10 +53,15 @@ export const LessonRow: React.FC<LessonRowProps> = ({
     onStartLesson(lesson.id);
   };
 
+  const isRegular = !locked && !isNext;
+
   return (
     <div
       className={cn(
-        "relative flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:px-4 sm:py-3 transition-colors gap-3",
+        "relative flex justify-between p-3.5 sm:px-4 sm:py-3 transition-colors gap-3",
+        isRegular
+          ? "flex-row items-center"
+          : "flex-col sm:flex-row sm:items-center",
         locked
           ? "bg-surface-muted/30 opacity-75"
           : isNext
@@ -137,7 +142,14 @@ export const LessonRow: React.FC<LessonRowProps> = ({
       </div>
 
       {/* Action CTA */}
-      <div className="flex items-center gap-2 self-end sm:self-center shrink-0 w-full sm:w-auto">
+      <div
+        className={cn(
+          "flex items-center gap-2 shrink-0",
+          isRegular
+            ? "self-center"
+            : "self-end sm:self-center w-full sm:w-auto",
+        )}
+      >
         {locked ? (
           <Button
             variant="secondary"
@@ -165,7 +177,7 @@ export const LessonRow: React.FC<LessonRowProps> = ({
           <Link
             to={`/learn/lesson/${lesson.id}`}
             onClick={handleClick}
-            className="inline-flex items-center justify-center font-medium rounded-lg min-h-[44px] px-3 text-xs border border-border bg-transparent text-text hover:bg-surface-muted gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary after:absolute after:inset-0 md:after:hidden w-full sm:w-auto md:w-auto"
+            className="inline-flex items-center justify-center font-medium rounded-lg h-11 w-11 min-h-[44px] min-w-[44px] text-xs text-text hover:bg-surface-muted gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary after:absolute after:inset-0 md:after:hidden md:h-auto md:w-auto md:px-3 md:border md:border-border md:bg-transparent"
             aria-label={`${isCompleted ? t("learn.reviewBtn", "Review") : t("learn.startBtn", "Start Lesson")}: ${title}`}
           >
             <span className="hidden md:inline">
@@ -178,7 +190,7 @@ export const LessonRow: React.FC<LessonRowProps> = ({
               aria-hidden="true"
             />
             <ChevronRight
-              className="h-5 w-5 shrink-0 text-text-muted md:hidden ml-auto sm:ml-0"
+              className="h-5 w-5 shrink-0 text-text-muted md:hidden"
               aria-hidden="true"
             />
           </Link>

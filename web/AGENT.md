@@ -1,7 +1,7 @@
 ---
 doc_type: agent_entrypoint
 scope: frontend
-last_verified: 2026-10-05
+last_verified: 2026-10-06
 ---
 
 # web/AGENT.md — Frontend Entry Point
@@ -137,6 +137,16 @@ above collapsible test details, keeping the primary start action visible without
 scrolling on 375px screens. Functional tests cover mobile sheet entry and placement
 summary hierarchy; visual captures (screenshots) were not produced.
 The Progress page displays only API-backed KPI figures (completed activities, in-progress and completed courses), derives course titles and slugs from the catalogue query, and maintains course status filtering in local state.
+
+Dialogs: use the shared `components/ui/modal.tsx` (`Modal`, `ModalBody`,
+`ModalFooter`). It portals to `document.body`, bounds the panel with `dvh`, scrolls
+only its body, locks `documentElement` overflow (restored on close), traps focus,
+closes on Escape (not while a combobox listbox is open) and has a 44px close
+button. Studio payout and Checkout modals use it. The global
+`html:has([aria-modal])` scroll lock is narrowed to legacy inline dialogs; the
+primitive marks itself `data-scroll-lock="managed"`. Learn and exam pages use the
+shell width (max ~1440px) with `max-w-3xl`/`max-w-xl` caps on long text, and mobile
+lesson rows are compact row links with a trailing 44px chevron.
 
 
 **Mobile-first is the default, not an adaptation.** Build every component at 375 px first and

@@ -1,5 +1,13 @@
 # Frontend backlog
 
+- [ ] Migrate the remaining inline `aria-modal` dialogs to `components/ui/modal.tsx`
+  (learning Runner ExitDialog/ReportDialog/SaveProgressPrompt, account
+  ChangePasswordModal/AvatarUploadModal/DevicesList/DataPrivacySettings, studio
+  SubmissionStatusModal, resource ResourceDetail, MyWritingPage, MySpeakingPage,
+  speaking AudioRecorder, PlacementRunner, exam practice dialog; admin modals are
+  deferred to the admin workflow), then drop the `html:has([aria-modal])` rule in
+  `index.css`.
+
 - [x] Keep the open-sitting resume link visible across the mock-test hub and explain
   fixed/random/custom start conflicts in Vietnamese and English.
 - [x] Show a proper empty state for lessons and practice sets without activities;

@@ -663,6 +663,37 @@ describe("LearnPage (P10.2)", () => {
     expect(links).toHaveLength(2); // lesson-2-1 (next) and lesson-2-2 (non-next)
     expect(links[0]).toHaveClass("bg-primary");
     expect(links[1]).not.toHaveClass("bg-primary");
-    expect(links[1]).toHaveClass("border-border");
+    expect(links[1]).toHaveClass("md:border-border");
+  });
+
+  it("renders a non-next row link as a compact icon target that still intercepts clicks", async () => {
+    const started: string[] = [];
+    await renderWithRouter(
+      <LessonRow
+        lesson={{
+          id: "lesson-compact",
+          unit_id: "unit-1",
+          position: 2,
+          title: "Compact Lesson",
+          skill_focus: "vocabulary",
+          estimated_minutes: 10,
+          status: "published" as const,
+          locked: false,
+          completed: false,
+          lock_reason: null,
+        }}
+        onStartLesson={(id) => started.push(id)}
+      />,
+    );
+
+    const link = screen.getByRole("link", {
+      name: /Start Lesson: Compact Lesson/,
+    });
+    expect(link.className).not.toMatch(/(^|\s)w-full(\s|$)/);
+    expect(link.className).not.toMatch(/(^|\s)border(\s|$)/);
+    expect(link.querySelector("svg.lucide-chevron-right")).not.toBeNull();
+
+    await userEvent.setup().click(link);
+    expect(started).toEqual(["lesson-compact"]);
   });
 });

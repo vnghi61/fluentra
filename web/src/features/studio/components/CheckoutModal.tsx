@@ -9,10 +9,10 @@ import {
   GraduationCap,
   Loader2,
   QrCode,
-  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Modal, ModalBody } from "@/components/ui/modal";
 import { studioApi } from "../api/studioApi";
 import { useBillingOrder } from "../hooks/useStudio";
 import { formatVnd } from "@/lib/currency";
@@ -91,36 +91,18 @@ export function CheckoutModal({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="checkout-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+    <Modal
+      open
+      onClose={onClose}
+      closeDisabled={claimLoading}
+      icon={<GraduationCap className="h-5 w-5 text-primary-accent" />}
+      title={
+        isFree
+          ? t("studio.checkout.claimTitle", "Enroll in Course")
+          : t("studio.checkout.payTitle", "Course Purchase (VietQR)")
+      }
     >
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-border-subtle bg-surface-card p-6 shadow-2xl space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border-subtle pb-4">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-primary-accent" />
-            <h2
-              id="checkout-modal-title"
-              className="text-lg font-bold text-text"
-            >
-              {isFree
-                ? t("studio.checkout.claimTitle", "Enroll in Course")
-                : t("studio.checkout.payTitle", "Course Purchase (VietQR)")}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t("app.close", "Close")}
-            className="rounded-lg p-1.5 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
+      <ModalBody className="space-y-6">
         {/* Course Summary */}
         <div className="rounded-lg border border-border-subtle bg-surface-base p-4 space-y-1">
           <span className="text-xs text-text-muted">
@@ -353,7 +335,7 @@ export function CheckoutModal({
             </div>
           </div>
         ) : null}
-      </div>
-    </div>
+      </ModalBody>
+    </Modal>
   );
 }

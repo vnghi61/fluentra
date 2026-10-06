@@ -116,7 +116,10 @@ export const ExamReport: React.FC<ExamReportProps> = ({
 
   return (
     <div
-      className={cn("mx-auto max-w-4xl space-y-8 p-4 sm:p-6 md:p-8", className)}
+      className={cn(
+        "mx-auto w-full min-w-0 max-w-[1440px] space-y-8",
+        className,
+      )}
     >
       {report.status === "pending" && (
         <div
@@ -776,7 +779,9 @@ const WritingFeedbackPanel: React.FC<{
       <div className="space-y-1 rounded-lg bg-surface-card p-3 text-text">
         <p className="font-semibold">{t("exam.report.noAiFeedback")}</p>
         {graderFeedback && (
-          <p className="leading-relaxed text-text-muted">{graderFeedback}</p>
+          <p className="max-w-3xl leading-relaxed text-text-muted">
+            {graderFeedback}
+          </p>
         )}
       </div>
     );
@@ -790,7 +795,7 @@ const WritingFeedbackPanel: React.FC<{
       <p className="font-semibold">
         {t("exam.report.writingBand", { band: data.overall_band })}
       </p>
-      <p className="leading-relaxed">
+      <p className="max-w-3xl leading-relaxed">
         {i18n.language.startsWith("vi") ? data.feedback_vi : data.feedback_en}
       </p>
     </div>
@@ -841,7 +846,7 @@ const SpeakingFeedbackPanel: React.FC<{ attemptId: string }> = ({
           })}
         </p>
       )}
-      <p className="leading-relaxed">
+      <p className="max-w-3xl leading-relaxed">
         {i18n.language.startsWith("vi") ? data.feedback_vi : data.feedback_en}
       </p>
       {deleted ? (

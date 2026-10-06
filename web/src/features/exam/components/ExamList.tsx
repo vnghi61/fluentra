@@ -195,7 +195,7 @@ export const ExamList: React.FC<ExamListProps> = ({
   return (
     <div
       className={cn(
-        "mx-auto max-w-5xl space-y-10 p-4 sm:p-6 md:p-8",
+        "mx-auto w-full min-w-0 max-w-[1440px] space-y-10",
         className,
       )}
     >

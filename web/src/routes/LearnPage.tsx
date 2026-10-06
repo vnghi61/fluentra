@@ -175,7 +175,7 @@ export function LearnPage(): React.JSX.Element {
   );
 
   return (
-    <div className="max-w-[1200px] mx-auto w-full min-w-0 space-y-8 animate-in fade-in duration-200">
+    <div className="max-w-[1440px] mx-auto w-full min-w-0 space-y-8 animate-in fade-in duration-200">
       {!signedIn && <GuestNotice />}
 
       {/* Course Header & Info */}
