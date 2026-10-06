@@ -163,6 +163,10 @@
   },
   "admin": {
     "actions": "Actions",
+    "actionsFor": "Actions for {{name}}",
+    "copyId": "Copy ID",
+    "filterByStatus": "Filter by status",
+    "loadingLearners": "Loading learners",
     "active": "Active",
     "addExample": "Add example",
     "administrativeControls": "Administrative Controls",
@@ -402,6 +406,10 @@
   },
   "adminQuestions": {
     "action": "Action",
+    "actionsFor": "Actions for {{kind}}",
+    "created": "Created",
+    "retry": "Retry",
+    "skill": "Skill",
     "allKinds": "All kinds",
     "allLevels": "All levels",
     "allStatuses": "All statuses",
@@ -787,6 +795,8 @@
   "nav": {
     "account": "Account",
     "admin": "Admin",
+    "adminMenuToggle": "Toggle admin sections",
+    "appearanceAndLanguage": "Appearance & language",
     "collapseSidebar": "Collapse sidebar",
     "expandSidebar": "Expand sidebar",
     "createAccount": "Create account",

@@ -1,15 +1,9 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  createColumnHelper,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import {
   Eye,
-  Loader2,
   Lock,
+  MoreHorizontal,
   Search,
   Trash2,
   Unlock,
@@ -20,18 +14,26 @@ import { adminApi, type AdminUserSummary } from "../api/adminApi";
 import { PERMISSIONS, usePermissions } from "../model/permissions";
 import { AdminActionReasonModal } from "./AdminActionReasonModal";
 import { AdminUserDetailModal } from "./AdminUserDetailModal";
+import { CopyableId } from "./CopyableId";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { components } from "@/types/api";
 
 type UserStatus = components["schemas"]["UserStatus"];
 
 /** How many accounts a page holds. The row number is derived from it. */
 const PAGE_SIZE = 15;
-
-const columnHelper = createColumnHelper<AdminUserSummary>();
 
 /**
  * What the per-row select can do, beyond opening the account.
@@ -73,6 +75,9 @@ function actionsForStatus(status: AdminUserSummary["status"]): RowAction[] {
       return ["inspect"];
   }
 }
+
+const selectClass =
+  "h-11 min-h-[44px] rounded-lg border border-border-subtle bg-surface-card px-3 text-base text-text focus:outline-none focus:ring-2 focus:ring-primary";
 
 export const AdminUserList: React.FC = () => {
   const { t } = useTranslation();
@@ -162,6 +167,7 @@ export const AdminUserList: React.FC = () => {
 
   useEffect(() => {
     // Reset pagination when filters change
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCursorHistory([]);
     void fetchUsers(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -186,212 +192,150 @@ export const AdminUserList: React.FC = () => {
     void fetchUsers(prevCursor);
   };
 
-  const columns = useMemo(
-    () => [
-      columnHelper.display({
-        id: "select",
-        header: () => null,
-        cell: (info) => {
-          const user = info.row.original;
-          // Only accounts a batch can actually act on are selectable. A ticked
-          // row that every bulk action would skip is a row that makes the count
-          // in the toolbar a lie.
-          const selectable = actionsForStatus(user.status).some(
-            (a) => a === "suspend" || a === "soft_delete",
-          );
-          if (!selectable) return null;
-          return (
-            <Checkbox
-              checked={selected.has(user.id)}
-              aria-label={t("admin.selectRow")}
-              onCheckedChange={(checked) =>
-                setSelected((prev) => {
-                  const next = new Set(prev);
-                  if (checked) next.add(user.id);
-                  else next.delete(user.id);
-                  return next;
-                })
-              }
-            />
-          );
-        },
-      }),
-      columnHelper.display({
-        id: "rowNumber",
-        header: t("common.rowNumber"),
-        // Counted across pages, not within one. This list is cursor-paginated,
-        // so there is no offset to add — the number of pages already stepped
-        // through is what says where the page starts, and a per-page 1..15
-        // would give two different learners the same number.
-        cell: (info) => (
-          <span className="tabular-nums text-text-muted">
-            {cursorHistory.length * PAGE_SIZE + info.row.index + 1}
-          </span>
-        ),
-      }),
-      columnHelper.accessor("display_name", {
-        header: t("admin.learner"),
-        cell: (info) => {
-          const user = info.row.original;
-          return (
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 overflow-hidden rounded-full border border-primary/30 bg-surface-muted flex items-center justify-center text-xs font-bold text-primary-accent shrink-0">
-                {user.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt={user.display_name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span>{user.display_name.charAt(0).toUpperCase()}</span>
-                )}
-              </div>
-              <div className="truncate">
-                <p className="text-sm font-medium text-text truncate">
-                  {user.display_name}
-                </p>
-                <p className="text-xs text-text-muted font-mono truncate">
-                  {user.id.slice(0, 8)}...
-                </p>
-              </div>
-            </div>
-          );
-        },
-      }),
-      columnHelper.accessor("email", {
-        header: t("admin.email"),
-        cell: (info) => (
-          <span className="text-xs font-mono text-text-muted">
-            {info.getValue()}
-          </span>
-        ),
-      }),
-      columnHelper.accessor("status", {
-        header: t("admin.status"),
-        cell: (info) => {
-          const status = info.getValue();
-          return (
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium uppercase border ${
-                status === "active"
-                  ? "bg-success/10 text-success-accent border-success/20"
-                  : status === "suspended"
-                    ? "bg-danger/10 text-danger-accent border-danger/20"
-                    : "bg-warning/10 text-warning-accent border-warning/20"
-              }`}
-            >
-              {t(`admin.userStatus.${status}`, status)}
-            </span>
-          );
-        },
-      }),
-      columnHelper.accessor("created_at", {
-        header: t("admin.joined"),
-        cell: (info) => (
-          <span className="text-xs text-text-muted">
-            {new Date(info.getValue()).toLocaleDateString()}
-          </span>
-        ),
-      }),
-      columnHelper.display({
-        id: "actions",
-        header: t("common.actions"),
-        cell: (info) => {
-          const user = info.row.original;
-          const allowed = actionsForStatus(user.status).filter((action) => {
-            if (action === "suspend") return can(PERMISSIONS.userSuspend);
-            if (action === "reinstate") return can(PERMISSIONS.userReinstate);
-            if (action === "soft_delete") return can(PERMISSIONS.userDelete);
-            return true;
-          });
+  const actionLabel = (action: RowAction): string =>
+    action === "inspect"
+      ? t("admin.inspectAccount")
+      : action === "suspend"
+        ? t("admin.lockLogin")
+        : action === "reinstate"
+          ? t("admin.unlockLogin")
+          : t("admin.softDeleteAccount");
 
-          // Icons, one button each. Every button carries a title and an
-          // aria-label: an icon with neither is unreadable to a screen reader
-          // and a guess to everyone else, and these three are not guessable —
-          // "lock" and "delete" look alike at 16 px and do very different things.
-          return (
-            <div className="flex items-center justify-end gap-1">
-              {allowed.map((action) => {
-                const Icon =
-                  action === "inspect"
-                    ? Eye
-                    : action === "suspend"
-                      ? Lock
-                      : action === "reinstate"
-                        ? Unlock
-                        : Trash2;
-                const label =
-                  action === "inspect"
-                    ? t("admin.inspectAccount")
-                    : action === "suspend"
-                      ? t("admin.lockLogin")
-                      : action === "reinstate"
-                        ? t("admin.unlockLogin")
-                        : t("admin.softDeleteAccount");
-                const destructive = action === "soft_delete";
-                return (
-                  <Button
-                    key={action}
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    title={label}
-                    aria-label={label}
-                    onClick={() => {
-                      if (action === "inspect") {
-                        setSelectedUserId(user.id);
-                        return;
-                      }
-                      setPendingAction({ action, user });
-                    }}
-                    className={
-                      destructive
-                        ? "h-11 w-11 min-h-[44px] min-w-[44px] p-0 text-danger-accent hover:bg-danger/10"
-                        : "h-11 w-11 min-h-[44px] min-w-[44px] p-0 text-text-muted hover:text-primary-accent hover:bg-primary/10"
-                    }
-                  >
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                );
-              })}
-            </div>
-          );
-        },
-      }),
-    ],
-    [t, can, cursorHistory.length, selected],
+  const renderSelect = (user: AdminUserSummary) => {
+    // Only accounts a batch can actually act on are selectable. A ticked
+    // row that every bulk action would skip is a row that makes the count
+    // in the toolbar a lie.
+    const selectable = actionsForStatus(user.status).some(
+      (a) => a === "suspend" || a === "soft_delete",
+    );
+    if (!selectable) return null;
+    return (
+      <Checkbox
+        checked={selected.has(user.id)}
+        aria-label={t("admin.selectRow")}
+        onCheckedChange={(checked) =>
+          setSelected((prev) => {
+            const next = new Set(prev);
+            if (checked) next.add(user.id);
+            else next.delete(user.id);
+            return next;
+          })
+        }
+      />
+    );
+  };
+
+  const renderAvatar = (user: AdminUserSummary) => (
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-surface-muted text-xs font-bold text-primary-accent">
+      {user.avatar_url ? (
+        <img
+          src={user.avatar_url}
+          alt=""
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <span aria-hidden="true">
+          {user.display_name.charAt(0).toUpperCase()}
+        </span>
+      )}
+    </div>
   );
 
-  const table = useReactTable({
-    data: users,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
+  const renderStatus = (status: AdminUserSummary["status"]) => (
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
+        status === "active"
+          ? "border-success/20 bg-success/10 text-success-accent"
+          : status === "suspended"
+            ? "border-danger/20 bg-danger/10 text-danger-accent"
+            : "border-warning/20 bg-warning/10 text-warning-accent"
+      }`}
+    >
+      {t(`admin.userStatus.${status}`, status)}
+    </span>
+  );
+
+  // One menu per row. The items keep the accessible names the icon buttons
+  // had, and none of them calls the API: every write lands on the reason
+  // modal first.
+  const renderActions = (user: AdminUserSummary) => {
+    const allowed = actionsForStatus(user.status).filter((action) => {
+      if (action === "suspend") return can(PERMISSIONS.userSuspend);
+      if (action === "reinstate") return can(PERMISSIONS.userReinstate);
+      if (action === "soft_delete") return can(PERMISSIONS.userDelete);
+      return true;
+    });
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label={t("admin.actionsFor", { name: user.display_name })}
+          className="flex h-11 w-11 min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {allowed.map((action) => {
+            const Icon =
+              action === "inspect"
+                ? Eye
+                : action === "suspend"
+                  ? Lock
+                  : action === "reinstate"
+                    ? Unlock
+                    : Trash2;
+            return (
+              <DropdownMenuItem
+                key={action}
+                destructive={action === "soft_delete"}
+                onSelect={() => {
+                  if (action === "inspect") {
+                    setSelectedUserId(user.id);
+                    return;
+                  }
+                  setPendingAction({ action, user });
+                }}
+              >
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {actionLabel(action)}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
+  const rowOffset = cursorHistory.length * PAGE_SIZE;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Search & Filter Header */}
-      <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-4 space-y-4">
+      <div className="rounded-2xl border border-border-subtle bg-surface-card p-3 md:p-4">
         <form
           onSubmit={handleSearchSubmit}
-          className="flex flex-col sm:flex-row gap-3"
+          className="flex flex-col gap-3 sm:flex-row"
         >
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-3 h-4 w-4 text-text-muted" />
+            <Search
+              className="pointer-events-none absolute left-3.5 top-3.5 h-4 w-4 text-text-muted"
+              aria-hidden="true"
+            />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t("admin.searchByNameOrEmail")}
+              aria-label={t("admin.searchByNameOrEmail")}
               className="pl-10"
             />
           </div>
 
           <select
             value={selectedStatus}
+            aria-label={t("admin.filterByStatus")}
             onChange={(e) =>
               setSelectedStatus(e.target.value as UserStatus | "")
             }
-            className="h-11 min-h-[44px] rounded-lg border border-border-subtle bg-surface-card px-3 text-base md:text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary"
+            className={selectClass}
           >
             <option value="">{t("admin.allStatuses")}</option>
             <option value="active">{t("admin.active")}</option>
@@ -403,14 +347,14 @@ export const AdminUserList: React.FC = () => {
           </select>
 
           <Button type="submit" size="md">
-            <Search className="mr-1.5 h-4 w-4" />
+            <Search className="mr-1.5 h-4 w-4" aria-hidden="true" />
             {t("admin.search")}
           </Button>
         </form>
       </div>
 
       {selected.size > 0 && (
-        <div className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-sm font-medium text-text">
             {t("admin.bulkAction", { count: selected.size })}
           </span>
@@ -423,7 +367,7 @@ export const AdminUserList: React.FC = () => {
                 e.target.value = "";
                 if (chosen !== "") setBulkAction(chosen);
               }}
-              className="h-11 min-h-[44px] rounded-lg border border-border-subtle bg-surface-card px-3 text-base md:text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              className={selectClass}
             >
               <option value="">{t("admin.rowAction")}</option>
               {can(PERMISSIONS.userSuspend) && (
@@ -467,73 +411,135 @@ export const AdminUserList: React.FC = () => {
         </div>
       )}
 
-      {error && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
-          <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {/* Table Container */}
-      <div className="rounded-xl border border-border-subtle bg-surface-card/60 overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-border-subtle bg-surface-card">
         {isLoading ? (
-          <div className="flex min-h-[300px] items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary-accent" />
+          <div
+            role="status"
+            aria-busy="true"
+            aria-label={t("admin.loadingLearners")}
+            data-testid="learner-skeleton"
+            className="divide-y divide-border-subtle"
+          >
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={i} className="flex h-14 items-center gap-3 px-4">
+                <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-1/3" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+                <Skeleton className="hidden h-5 w-16 rounded-full md:block" />
+              </div>
+            ))}
           </div>
+        ) : error ? (
+          <ErrorState
+            className="py-10"
+            title={t("admin.failedToLoadLearnersList")}
+            description={error}
+            onRetry={() => void fetchUsers(currentCursor)}
+          />
         ) : users.length === 0 ? (
-          <div className="flex min-h-[250px] flex-col items-center justify-center p-8 text-center space-y-2">
-            <Users className="h-8 w-8 text-text-muted" />
-            <p className="text-sm font-medium text-text-muted">
-              {t("admin.noLearnersFound")}
-            </p>
-            <p className="text-xs text-text-muted">
-              {t("admin.tryAdjustingYourSearchQueryOrFilters")}
-            </p>
-          </div>
+          <EmptyState
+            className="py-10"
+            icon={Users}
+            title={t("admin.noLearnersFound")}
+            description={t("admin.tryAdjustingYourSearchQueryOrFilters")}
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr
-                    key={headerGroup.id}
-                    className="border-b border-border-subtle bg-surface-muted"
-                  >
-                    {headerGroup.headers.map((header) => (
-                      <th
-                        key={header.id}
-                        className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-text-muted"
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                      </th>
-                    ))}
+          <>
+            {/* Desktop: a compact table. jsdom has no viewport, so both
+                layouts are rendered and CSS picks one. */}
+            <div data-testid="learner-table" className="hidden md:block">
+              <table className="w-full table-fixed border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-border-subtle bg-surface-muted">
+                    <th className="w-12 px-4 py-3">
+                      <span className="sr-only">{t("admin.selectRow")}</span>
+                    </th>
+                    <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
+                      {t("admin.learner")}
+                    </th>
+                    <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
+                      {t("admin.email")}
+                    </th>
+                    <th className="w-36 px-3 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
+                      {t("admin.status")}
+                    </th>
+                    <th className="w-32 px-3 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
+                      {t("admin.joined")}
+                    </th>
+                    <th className="w-16 px-3 py-3">
+                      <span className="sr-only">{t("common.actions")}</span>
+                    </th>
                   </tr>
-                ))}
-              </thead>
-              <tbody className="divide-y divide-border-subtle">
-                {table.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="hover:bg-surface-muted/40 transition-colors"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-3 text-sm">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
+                </thead>
+                <tbody className="divide-y divide-border-subtle">
+                  {users.map((user, index) => (
+                    <tr
+                      key={user.id}
+                      data-row-number={rowOffset + index + 1}
+                      className="h-14 transition-colors hover:bg-surface-muted/40"
+                    >
+                      <td className="px-4">{renderSelect(user)}</td>
+                      <td className="px-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          {renderAvatar(user)}
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-text">
+                              {user.display_name}
+                            </p>
+                            <CopyableId id={user.id} />
+                          </div>
+                        </div>
                       </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <td className="px-3">
+                        <span
+                          title={user.email}
+                          className="block truncate text-sm text-text-muted"
+                        >
+                          {user.email}
+                        </span>
+                      </td>
+                      <td className="px-3">{renderStatus(user.status)}</td>
+                      <td className="px-3 text-xs text-text-muted">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-3 text-right">{renderActions(user)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile: one card per learner, no horizontal scrolling. */}
+            <ul
+              data-testid="learner-cards"
+              className="divide-y divide-border-subtle md:hidden"
+            >
+              {users.map((user) => (
+                <li key={user.id} className="flex items-start gap-3 p-3">
+                  <div className="pt-1.5">{renderSelect(user)}</div>
+                  {renderAvatar(user)}
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="truncate text-sm font-semibold text-text">
+                      {user.display_name}
+                    </p>
+                    <p className="truncate text-sm text-text-muted">
+                      {user.email}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      {renderStatus(user.status)}
+                      <span className="text-xs text-text-muted">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <CopyableId id={user.id} />
+                  </div>
+                  <div className="shrink-0">{renderActions(user)}</div>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
 
         {/* No `onPageSelect`: /admin/users is cursor-paged, so page 6 cannot be
@@ -544,10 +550,8 @@ export const AdminUserList: React.FC = () => {
           page={cursorHistory.length + 1}
           pageCount={Math.max(1, Math.ceil(total / PAGE_SIZE))}
           total={total}
-          rangeFrom={
-            users.length > 0 ? cursorHistory.length * PAGE_SIZE + 1 : 0
-          }
-          rangeTo={cursorHistory.length * PAGE_SIZE + users.length}
+          rangeFrom={users.length > 0 ? rowOffset + 1 : 0}
+          rangeTo={rowOffset + users.length}
           isBusy={isLoading}
           canPrevious={cursorHistory.length > 0}
           canNext={Boolean(nextCursor)}
@@ -608,8 +612,8 @@ export const AdminUserList: React.FC = () => {
       )}
 
       {/* Row action confirmation. Suspension and soft deletion both require a
-          justification the server records, so this is where the row select
-          lands rather than firing the request straight off the change event. */}
+          justification the server records, so this is where the row menu
+          lands rather than firing the request straight off the selection. */}
       {pendingAction !== null && (
         <AdminActionReasonModal
           isOpen

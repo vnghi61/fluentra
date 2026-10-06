@@ -163,6 +163,10 @@
   },
   "admin": {
     "actions": "Thao tác",
+    "actionsFor": "Thao tác cho {{name}}",
+    "copyId": "Sao chép ID",
+    "filterByStatus": "Lọc theo trạng thái",
+    "loadingLearners": "Đang tải danh sách học viên",
     "active": "Đang hoạt động",
     "addExample": "Thêm câu ví dụ",
     "administrativeControls": "Bảng điều khiển quản trị",
@@ -402,6 +406,10 @@
   },
   "adminQuestions": {
     "action": "Hành động",
+    "actionsFor": "Thao tác cho {{kind}}",
+    "created": "Ngày tạo",
+    "retry": "Thử lại",
+    "skill": "Kỹ năng",
     "allKinds": "Tất cả loại",
     "allLevels": "Tất cả trình độ",
     "allStatuses": "Tất cả trạng thái",
@@ -787,6 +795,8 @@
   "nav": {
     "account": "Tài khoản",
     "admin": "Quản trị",
+    "adminMenuToggle": "Bật/tắt các mục quản trị",
+    "appearanceAndLanguage": "Giao diện & ngôn ngữ",
     "collapseSidebar": "Thu gọn thanh bên",
     "expandSidebar": "Mở rộng thanh bên",
     "createAccount": "Tạo tài khoản",

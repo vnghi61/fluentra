@@ -78,8 +78,14 @@ describe("AppShell collapsible desktop sidebar", () => {
       "md:top-0",
       "md:h-screen",
       "md:self-start",
-      "overflow-y-auto",
     );
+    expect(aside).not.toHaveClass("overflow-y-auto");
+    const scrollers = (aside as HTMLElement).querySelectorAll(
+      ".overflow-y-auto",
+    );
+    expect(scrollers).toHaveLength(1);
+    expect(scrollers[0]?.tagName).toBe("NAV");
+    expect(scrollers[0]).toHaveClass("min-h-0", "flex-1");
 
     const brandText = within(aside as HTMLElement).getByText("Fluentra");
     expect(brandText).not.toHaveClass("sr-only");
@@ -238,6 +244,53 @@ describe("AppShell collapsible desktop sidebar", () => {
       "group-data-[collapsed=true]:pl-0",
       "group-data-[collapsed=true]:ml-0",
     );
+  });
+
+  it("toggles the admin submenu with an aria-expanded disclosure button", async () => {
+    const user = userEvent.setup();
+    await renderAt("/", () => (
+      <AppShell
+        status="authenticated"
+        user={{ role: "admin" }}
+        adminNav={<AdminSidebarNav />}
+      >
+        <div>content</div>
+      </AppShell>
+    ));
+
+    const disclosure = screen.getByRole("button", {
+      name: /Toggle admin sections/i,
+    });
+    // Not under /admin, so closed by default.
+    expect(disclosure).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: /Users/i })).toBeNull();
+    const submenuId = disclosure.getAttribute("aria-controls");
+    expect(submenuId).toBeTruthy();
+
+    await user.click(disclosure);
+    expect(disclosure).toHaveAttribute("aria-expanded", "true");
+    expect(document.getElementById(submenuId as string)).toBeVisible();
+    expect(screen.getByRole("link", { name: /Users/i })).toBeInTheDocument();
+
+    await user.click(disclosure);
+    expect(disclosure).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: /Users/i })).toBeNull();
+  });
+
+  it("opens the admin submenu by default under /admin", async () => {
+    await renderAt("/admin", () => (
+      <AppShell
+        status="authenticated"
+        user={{ role: "admin" }}
+        adminNav={<AdminSidebarNav />}
+      >
+        <div>content</div>
+      </AppShell>
+    ));
+    expect(
+      screen.getByRole("button", { name: /Toggle admin sections/i }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: /Users/i })).toBeInTheDocument();
   });
 
   it("shows tooltip on hover and removes it on unhover when collapsed", async () => {

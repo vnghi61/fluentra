@@ -65,6 +65,8 @@ export interface AppShellProps {
   banner?: React.ReactNode;
   /** The learner's own name, for the account menu's greeting. */
   displayName?: string | undefined;
+  /** The account's email, shown under the name in the account menu. */
+  email?: string | undefined;
   /** The learner's uploaded avatar, when the profile has loaded one. */
   avatarUrl?: string | undefined;
   /**
@@ -205,6 +207,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   banner,
   adminNav,
   displayName,
+  email,
   avatarUrl,
   bottomNav = true,
   sidebarFooter,
@@ -273,6 +276,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         <AccountMenu
           role={user.role}
           displayName={displayName}
+          email={email}
           avatarUrl={avatarUrl}
           onLogout={onLogout}
         />
@@ -324,15 +328,15 @@ export const AppShell: React.FC<AppShellProps> = ({
         <aside
           data-collapsed={collapsed ? "true" : "false"}
           className={cn(
-            "group theme-surface hidden md:flex flex-col shrink-0 bg-surface-card border-r border-border-subtle p-3 justify-between md:sticky md:top-0 md:h-screen md:self-start overflow-y-auto transition-[width] duration-200 ease-in-out motion-reduce:transition-none",
+            "group theme-surface hidden md:flex flex-col shrink-0 bg-surface-card border-r border-border-subtle p-3 md:sticky md:top-0 md:h-screen md:self-start transition-[width] duration-200 ease-in-out motion-reduce:transition-none",
             collapsed ? "w-[72px]" : "w-[232px]",
           )}
         >
           <SidebarCollapsedContext.Provider value={collapsed}>
-            <div className="flex flex-col gap-5">
+            <>
               <div
                 className={cn(
-                  "flex items-center justify-between gap-2",
+                  "flex shrink-0 items-center justify-between gap-2 pb-3",
                   collapsed && "flex-col items-center justify-center",
                 )}
               >
@@ -391,7 +395,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
               <nav
                 aria-label={t("nav.mainNavigation", "Main navigation")}
-                className="flex flex-col gap-1"
+                className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
               >
                 {destinations.map(({ to, labelKey, fallback, Icon, exact }) => {
                   const label = t(labelKey, fallback);
@@ -486,13 +490,13 @@ export const AppShell: React.FC<AppShellProps> = ({
                   </>
                 )}
               </nav>
-            </div>
 
-            {!collapsed && (sidebarFooter || signedIn) && (
-              <div className="mt-auto pt-3">
-                {sidebarFooter ?? <MotivationCard />}
-              </div>
-            )}
+              {!collapsed && (sidebarFooter || signedIn) && (
+                <div className="shrink-0 pt-3">
+                  {sidebarFooter ?? <MotivationCard />}
+                </div>
+              )}
+            </>
           </SidebarCollapsedContext.Provider>
         </aside>
 
@@ -696,7 +700,10 @@ export const AppShell: React.FC<AppShellProps> = ({
             open={moreOpen}
             onOpenChange={setMoreOpen}
             signedIn={signedIn}
-            isAdmin={signedIn && user?.role === "admin"}
+            isAdmin={
+              signedIn && (user?.role === "admin" || user?.role === "moderator")
+            }
+            controls={controls}
           />
         </React.Suspense>
       )}

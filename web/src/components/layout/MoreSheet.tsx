@@ -16,6 +16,8 @@ export interface MoreSheetProps {
   onOpenChange: (open: boolean) => void;
   signedIn: boolean;
   isAdmin: boolean;
+  /** Theme and language switchers; hidden from the header on mobile. */
+  controls?: React.ReactNode;
 }
 
 /**
@@ -30,6 +32,7 @@ export default function MoreSheet({
   onOpenChange,
   signedIn,
   isAdmin,
+  controls,
 }: MoreSheetProps): React.JSX.Element {
   const { t } = useTranslation();
 
@@ -148,6 +151,21 @@ export default function MoreSheet({
             />
           </Link>
         )}
+
+        {signedIn && controls ? (
+          <section
+            aria-labelledby="more-appearance-heading"
+            className="mt-2 border-t border-border-subtle px-3 pt-4"
+          >
+            <h3
+              id="more-appearance-heading"
+              className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted"
+            >
+              {t("nav.appearanceAndLanguage", "Appearance & language")}
+            </h3>
+            <div className="flex flex-wrap items-center gap-2">{controls}</div>
+          </section>
+        ) : null}
       </div>
     </BottomSheet>
   );

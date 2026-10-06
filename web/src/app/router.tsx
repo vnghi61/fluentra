@@ -17,6 +17,7 @@ import { ServerWakingBanner } from "@/components/layout/ServerWakingBanner";
 import { useWakeStatus } from "@/hooks/useWakeStatus";
 import { usePreferencesSync } from "@/features/account/hooks/usePreferencesSync";
 import {
+  useAccountEmail,
   useAvatarUrl,
   useDisplayName,
 } from "@/features/account/hooks/useDisplayName";
@@ -241,6 +242,7 @@ function RootApp(): React.JSX.Element {
   const signedIn = status === "authenticated";
   const displayName = useDisplayName(signedIn);
   const avatarUrl = useAvatarUrl(signedIn);
+  const email = useAccountEmail(signedIn);
 
   const handleLogout = async () => {
     clearAllWritingDrafts();
@@ -265,6 +267,7 @@ function RootApp(): React.JSX.Element {
       bottomNav={!isRunnerRoute(pathname)}
       displayName={displayName}
       avatarUrl={avatarUrl}
+      email={email}
       banner={
         <ServerWakingBanner
           waking={wake === "waking"}

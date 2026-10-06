@@ -27,6 +27,10 @@ export function AdminSidebarNav(): React.JSX.Element | null {
   });
 
   const inAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
+  const submenuId = React.useId();
+  // null until the user toggles: until then, where the reader is decides.
+  const [override, setOverride] = React.useState<boolean | null>(null);
+  const open = override ?? inAdmin;
 
   // An administrator whose permissions grant no section is shown no group at
   // all, rather than a heading over an empty list.
@@ -34,12 +38,12 @@ export function AdminSidebarNav(): React.JSX.Element | null {
 
   return (
     <div className="space-y-1">
-      <NavTooltip label={t("nav.admin", "Admin")}>
-        <Link
-          to="/admin"
-          className={`${navBase} ${inAdmin ? navActive : navIdle} justify-between group-data-[collapsed=true]:justify-center group-data-[collapsed=true]:px-0`}
-        >
-          <span className="flex items-center gap-3 group-data-[collapsed=true]:gap-0">
+      <div className="flex items-center gap-1 group-data-[collapsed=true]:flex-col">
+        <NavTooltip label={t("nav.admin", "Admin")}>
+          <Link
+            to="/admin"
+            className={`${navBase} ${inAdmin ? navActive : navIdle} min-w-0 flex-1 group-data-[collapsed=true]:w-full group-data-[collapsed=true]:flex-none group-data-[collapsed=true]:justify-center group-data-[collapsed=true]:px-0`}
+          >
             <ShieldCheck
               className="h-[18px] w-[18px] shrink-0"
               aria-hidden="true"
@@ -47,42 +51,50 @@ export function AdminSidebarNav(): React.JSX.Element | null {
             <span className="group-data-[collapsed=true]:sr-only">
               {t("nav.admin", "Admin")}
             </span>
-          </span>
+          </Link>
+        </NavTooltip>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={submenuId}
+          aria-label={t("nav.adminMenuToggle", "Toggle admin sections")}
+          onClick={() => setOverride(!open)}
+          className="flex h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-xl text-text-muted transition-colors hover:bg-surface-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
           <ChevronDown
-            className={`h-4 w-4 shrink-0 transition-transform group-data-[collapsed=true]:hidden ${inAdmin ? "" : "-rotate-90"}`}
+            className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${open ? "" : "-rotate-90"}`}
             aria-hidden="true"
           />
-        </Link>
-      </NavTooltip>
+        </button>
+      </div>
 
-      {/* Expanded whenever the reader is anywhere under /admin, and collapsed
-          otherwise. There is no toggle to get out of step with the address bar:
-          where you are is what decides. */}
-      {inAdmin && (
-        <ul className="space-y-1 border-l border-border-subtle pl-3 ml-4 group-data-[collapsed=true]:border-l-0 group-data-[collapsed=true]:pl-0 group-data-[collapsed=true]:ml-0">
-          {sections.map(({ key, path, labelKey, labelFallback, Icon }) => {
-            const label = t(labelKey, labelFallback);
-            return (
-              <li key={key}>
-                <NavTooltip label={label}>
-                  <Link
-                    to={path}
-                    className={`${navBase} ${navIdle} text-[13px] group-data-[collapsed=true]:justify-center group-data-[collapsed=true]:px-0`}
-                    activeProps={{
-                      className: `${navBase} ${navActive} text-[13px] group-data-[collapsed=true]:justify-center group-data-[collapsed=true]:px-0`,
-                    }}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                    <span className="group-data-[collapsed=true]:sr-only">
-                      {label}
-                    </span>
-                  </Link>
-                </NavTooltip>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <ul
+        id={submenuId}
+        hidden={!open}
+        className="space-y-1 border-l border-border-subtle pl-3 ml-4 group-data-[collapsed=true]:border-l-0 group-data-[collapsed=true]:pl-0 group-data-[collapsed=true]:ml-0"
+      >
+        {sections.map(({ key, path, labelKey, labelFallback, Icon }) => {
+          const label = t(labelKey, labelFallback);
+          return (
+            <li key={key}>
+              <NavTooltip label={label}>
+                <Link
+                  to={path}
+                  className={`${navBase} ${navIdle} text-[13px] group-data-[collapsed=true]:justify-center group-data-[collapsed=true]:px-0`}
+                  activeProps={{
+                    className: `${navBase} ${navActive} text-[13px] group-data-[collapsed=true]:justify-center group-data-[collapsed=true]:px-0`,
+                  }}
+                >
+                  <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="group-data-[collapsed=true]:sr-only">
+                    {label}
+                  </span>
+                </Link>
+              </NavTooltip>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

@@ -42,19 +42,16 @@ export function AdminPage(): React.JSX.Element {
     : "";
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 py-4">
-      {/* Header */}
-      <header className="space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary-accent border border-primary/20 uppercase tracking-wider">
-            <Shield className="h-3 w-3" />
-            {t("page.administration")}
-          </span>
-        </div>
-        <h1 className="text-2xl font-bold text-text">
-          {t("page.platformAdministration")}
+    <div className="max-w-6xl mx-auto space-y-4 py-2 md:space-y-5">
+      {/* Header: the section is the page; "Administration" is only context. */}
+      <header className="space-y-0.5">
+        <p className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-primary-accent">
+          <Shield className="h-3 w-3" aria-hidden="true" />
+          {t("page.administration")}
+        </p>
+        <h1 className="text-xl font-bold text-text md:text-2xl">
+          {currentLabel || t("page.platformAdministration")}
         </h1>
-        <p className="text-sm text-text-muted">{t("page.adminIntro")}</p>
       </header>
 
       {/* Mobile section picker for viewports below md */}

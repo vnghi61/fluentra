@@ -96,6 +96,17 @@ async function renderAdminPage(
   return render(<RouterProvider router={router} />);
 }
 
+/** Opens the actions menu of one learner's row in the desktop table. */
+async function openRowMenu(
+  user: ReturnType<typeof userEvent.setup>,
+  name = "Learner One",
+) {
+  const table = await screen.findByTestId("learner-table");
+  await user.click(
+    within(table).getByRole("button", { name: `Actions for ${name}` }),
+  );
+}
+
 describe("Admin Shell & Operations", () => {
   beforeEach(async () => {
     await initI18n("en");
@@ -241,10 +252,10 @@ describe("Admin Shell & Operations", () => {
     render(<AdminUserList />);
 
     // Initial page shows learner 1
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-      expect(screen.getByText("learner1@example.com")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
+    expect(screen.getAllByText("learner1@example.com").length).toBeGreaterThan(
+      0,
+    );
 
     const nextBtn = screen.getByRole("button", { name: /Next/i });
     const prevBtn = screen.getByRole("button", { name: /Previous/i });
@@ -255,10 +266,10 @@ describe("Admin Shell & Operations", () => {
     // Click Next -> loads page 2 with learner 2
     await user.click(nextBtn);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner Two")).toBeInTheDocument();
-      expect(screen.getByText("learner2@example.com")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner Two");
+    expect(screen.getAllByText("learner2@example.com").length).toBeGreaterThan(
+      0,
+    );
 
     // Next is now disabled because next_cursor is absent
     expect(nextBtn).toBeDisabled();
@@ -266,21 +277,93 @@ describe("Admin Shell & Operations", () => {
 
     // Click Previous -> loads back learner 1
     await user.click(prevBtn);
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
+  });
+
+  it("renders the learner in both the table and the mobile cards, name before id", async () => {
+    render(<AdminUserList />);
+    await screen.findAllByText("Learner One");
+
+    const table = screen.getByTestId("learner-table");
+    const cards = screen.getByTestId("learner-cards");
+    expect(table).toHaveClass("hidden", "md:block");
+    expect(cards).toHaveClass("md:hidden");
+    expect(within(table).getByText("Learner One")).toBeInTheDocument();
+    expect(within(cards).getByText("Learner One")).toBeInTheDocument();
+    expect(within(cards).getByText("learner1@example.com")).toBeInTheDocument();
+    expect(table.querySelector("tbody tr")).toHaveClass("h-14");
+
+    const card = within(cards).getAllByRole("listitem")[0]!;
+    const text = card.textContent ?? "";
+    expect(text.indexOf("Learner One")).toBeGreaterThanOrEqual(0);
+    expect(text.indexOf("Learner One")).toBeLessThan(text.indexOf("11111111…"));
+  });
+
+  it("offers no soft delete on the active row menu without user.delete, and keeps suspend", async () => {
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({
+          roles: ["admin"],
+          permissions: ["admin.dashboard", "user.list", "user.suspend"],
+        }),
+      ),
+    );
+    render(<AdminUserList />);
+    await openRowMenu(userEvent.setup());
+    expect(
+      screen.getByRole("menuitem", { name: /Lock login/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Soft-delete/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a skeleton, not a page spinner, while loading", async () => {
+    render(<AdminUserList />);
+    const skeleton = screen.getByTestId("learner-skeleton");
+    expect(skeleton).toHaveAttribute("aria-busy", "true");
+    expect(skeleton.querySelector(".animate-spin")).toBeNull();
+    await screen.findAllByText("Learner One");
+    expect(screen.queryByTestId("learner-skeleton")).toBeNull();
+  });
+
+  it("retries the learners request from the error state", async () => {
+    let calls = 0;
+    server.use(
+      http.get("/api/v1/admin/users", () => {
+        calls += 1;
+        if (calls === 1) {
+          return HttpResponse.json(
+            { code: "INTERNAL", message: "boom", status: 500 },
+            { status: 500 },
+          );
+        }
+        return HttpResponse.json({
+          items: [sampleUser1],
+          total: 1,
+          next_cursor: undefined,
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+
+    const alert = await screen.findByRole("alert");
+    await user.click(within(alert).getByRole("button", { name: /Try again/i }));
+
+    await screen.findAllByText("Learner One");
+    expect(calls).toBe(2);
   });
 
   it("inspects learner details with audit notice", async () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
+    await openRowMenu(user);
     await user.click(
-      screen.getAllByRole("button", { name: /Inspect account/i })[0]!,
+      screen.getByRole("menuitem", { name: /Inspect account/i }),
     );
 
     await waitFor(() => {
@@ -307,13 +390,10 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
-    await user.click(
-      screen.getAllByRole("button", { name: /Lock login/i })[0]!,
-    );
+    await openRowMenu(user);
+    await user.click(screen.getByRole("menuitem", { name: /Lock login/i }));
 
     // The reason is not optional decoration: the server refuses under ten
     // characters, so the row action has to collect one before it can fire.
@@ -349,12 +429,11 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
+    await openRowMenu(user);
     await user.click(
-      screen.getAllByRole("button", { name: /Soft-delete account/i })[0]!,
+      screen.getByRole("menuitem", { name: /Soft-delete account/i }),
     );
 
     // The administrator is told the two things that are easy to get wrong: the
@@ -416,15 +495,17 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
     // Re-queried each time: ticking a box re-renders the rows, so a node
     // captured before the first click is detached by the second.
-    expect(screen.getAllByLabelText(/Select this account/i)).toHaveLength(2);
+    const picks = () =>
+      within(screen.getByTestId("learner-table")).getAllByLabelText(
+        /Select this account/i,
+      );
+    expect(picks()).toHaveLength(2);
     for (let i = 0; i < 2; i++) {
-      await user.click(screen.getAllByLabelText(/Select this account/i)[i]!);
+      await user.click(picks()[i]!);
     }
 
     await user.selectOptions(
@@ -480,15 +561,17 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
     // Re-queried each time: ticking a box re-renders the rows, so a node
     // captured before the first click is detached by the second.
-    expect(screen.getAllByLabelText(/Select this account/i)).toHaveLength(2);
+    const picks = () =>
+      within(screen.getByTestId("learner-table")).getAllByLabelText(
+        /Select this account/i,
+      );
+    expect(picks()).toHaveLength(2);
     for (let i = 0; i < 2; i++) {
-      await user.click(screen.getAllByLabelText(/Select this account/i)[i]!);
+      await user.click(picks()[i]!);
     }
     await user.selectOptions(
       screen.getByLabelText(/Action for 2 selected/i),
@@ -531,19 +614,18 @@ describe("Admin Shell & Operations", () => {
 
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
     // Hiding it is half the control; the endpoint requires the permission too.
     // But a control that answers 403 is the fault this screen was written to
     // avoid, and soft deletion is the one where a 403 arrives after the
     // administrator has already typed a justification.
+    await openRowMenu(userEvent.setup());
     expect(
-      screen.queryByRole("button", { name: /Soft-delete account/i }),
+      screen.queryByRole("menuitem", { name: /Soft-delete account/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getAllByRole("button", { name: /Lock login/i }).length,
+      screen.getAllByRole("menuitem", { name: /Lock login/i }).length,
     ).toBeGreaterThan(0);
   });
 
@@ -558,17 +640,17 @@ describe("Admin Shell & Operations", () => {
 
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner Two")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner Two");
+
+    await openRowMenu(userEvent.setup(), "Learner Two");
 
     // Exact names, not substrings: "Unlock login (reinstate)" contains "Lock
     // login", so a loose matcher here would pass for the wrong reason.
     expect(
-      screen.getByRole("button", { name: "Unlock login (reinstate)" }),
+      screen.getByRole("menuitem", { name: "Unlock login (reinstate)" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Lock login (suspend)" }),
+      screen.queryByRole("menuitem", { name: "Lock login (suspend)" }),
     ).not.toBeInTheDocument();
   });
 
@@ -576,12 +658,11 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
+    await openRowMenu(user);
     await user.click(
-      screen.getAllByRole("button", { name: /Inspect account/i })[0]!,
+      screen.getByRole("menuitem", { name: /Inspect account/i }),
     );
 
     await waitFor(() => {
@@ -638,12 +719,11 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
+    await openRowMenu(user);
     await user.click(
-      screen.getAllByRole("button", { name: /Inspect account/i })[0]!,
+      screen.getByRole("menuitem", { name: /Inspect account/i }),
     );
 
     await waitFor(() => {

@@ -82,6 +82,33 @@ describe("Phase 1 shell and status pages", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders the passed controls in the More sheet when signed in", async () => {
+    const user = userEvent.setup();
+    await renderAt("/", () => (
+      <AppShell
+        status="authenticated"
+        user={{ role: "user" }}
+        controls={<button type="button">Theme toggle</button>}
+      >
+        <div>content</div>
+      </AppShell>
+    ));
+
+    const nav = await screen.findByRole("navigation", {
+      name: /Mobile navigation/i,
+    });
+    expect(within(nav).getAllByRole("link")).toHaveLength(4);
+    await user.click(within(nav).getByRole("button", { name: /More/i }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(/Appearance & language/i),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Theme toggle" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders all main navigation destinations in desktop sidebar when signed in as admin", async () => {
     await renderAt("/", () => (
       <AppShell status="authenticated" user={{ role: "admin" }}>

@@ -87,8 +87,11 @@ describe("AccountMenu trigger", () => {
     const trigger = screen.getByRole("button", { name: /Account/i });
     await user.click(trigger);
 
-    expect(await screen.findByText(/Hello/i)).toBeInTheDocument();
-    expect(screen.getByText("Nghi")).toBeInTheDocument();
+    expect(await screen.findByText("Nghi")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /Studio/i })).toHaveAttribute(
+      "href",
+      "/studio",
+    );
     expect(screen.getByRole("menuitem", { name: /Settings/i })).toHaveAttribute(
       "href",
       "/settings",
@@ -130,5 +133,27 @@ describe("AccountMenu trigger", () => {
     const signOut = screen.getByRole("menuitem", { name: /Sign out/i });
     await user.click(signOut);
     expect(handleLogout).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the email under the name with a title", async () => {
+    const user = userEvent.setup();
+    await renderWithRouter(
+      <AccountMenu role="user" displayName="Nghi" email="nghi@example.com" />,
+    );
+    await user.click(screen.getByRole("button", { name: /Account/i }));
+
+    const email = await screen.findByText("nghi@example.com");
+    expect(email).toHaveAttribute("title", "nghi@example.com");
+    expect(email).toHaveClass("truncate");
+  });
+
+  it("shows Admin for a moderator", async () => {
+    const user = userEvent.setup();
+    await renderWithRouter(<AccountMenu role="moderator" displayName="Mod" />);
+    await user.click(screen.getByRole("button", { name: /Account/i }));
+
+    expect(
+      await screen.findByRole("menuitem", { name: /Admin/i }),
+    ).toHaveAttribute("href", "/admin");
   });
 });

@@ -8,6 +8,10 @@
   deferred to the admin workflow), then drop the `html:has([aria-modal])` rule in
   `index.css`.
 
+- [x] Group 2: responsive admin shell, Learners and Question bank (anchored
+  sidebar, account menu with email, More-sheet controls slot, learner and
+  question tables/cards with row menus, `CopyableId`, section-local states).
+
 - [x] Keep the open-sitting resume link visible across the mock-test hub and explain
   fixed/random/custom start conflicts in Vietnamese and English.
 - [x] Show a proper empty state for lessons and practice sets without activities;

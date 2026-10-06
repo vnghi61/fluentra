@@ -72,6 +72,19 @@ function renderBank() {
   );
 }
 
+/** Opens the desktop row menu and picks Performance. */
+async function openStatsFromRowMenu() {
+  const table = await screen.findByTestId("question-table");
+  await userEvent.click(
+    within(table).getByRole("button", {
+      name: /Actions for Grammar tense choice/i,
+    }),
+  );
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: /Performance/i }),
+  );
+}
+
 describe("AdminQuestionBank", () => {
   let generated: Record<string, unknown>[] = [];
 
@@ -131,19 +144,113 @@ describe("AdminQuestionBank", () => {
   it("lists bank items and shows an item's empirical statistics", async () => {
     renderBank();
 
-    const row = await screen.findByRole("button", {
-      name: /Grammar tense choice/i,
-    });
-    await userEvent.click(row);
+    await openStatsFromRowMenu();
 
     expect(await screen.findByText("0.68")).toBeInTheDocument();
     expect(screen.getByText("0.45")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
   });
 
+  it("opens stats in a Modal dialog and closes it on Escape", async () => {
+    renderBank();
+    await openStatsFromRowMenu();
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Item performance")).toBeInTheDocument();
+    expect(await within(dialog).findByText("0.68")).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
+
+  it("renders the kind in both the table and the cards, with a truncated id on the card", async () => {
+    renderBank();
+    await screen.findByTestId("question-table");
+
+    const table = screen.getByTestId("question-table");
+    const cards = screen.getByTestId("question-cards");
+    expect(table).toHaveClass("hidden", "md:block");
+    expect(within(table).getByText("Grammar tense choice")).toBeInTheDocument();
+    expect(within(cards).getByText("Grammar tense choice")).toBeInTheDocument();
+    expect(table.querySelector("tbody tr")).toHaveClass("h-14");
+    expect(cards).toHaveTextContent("0199a1c2…");
+    expect(cards).not.toHaveTextContent(question.id);
+  });
+
+  it("offers Retry after a 500 and refetches", async () => {
+    let calls = 0;
+    server.use(
+      http.get("/api/v1/admin/questions", () => {
+        calls += 1;
+        if (calls === 1) {
+          return HttpResponse.json(
+            { code: "INTERNAL", message: "boom", status: 500 },
+            { status: 500 },
+          );
+        }
+        return HttpResponse.json({
+          items: [question],
+          total: 1,
+          limit: 20,
+          offset: 0,
+        });
+      }),
+    );
+    renderBank();
+
+    const alert = await screen.findByRole("alert");
+    await userEvent.click(
+      within(alert).getByRole("button", { name: /Try again/i }),
+    );
+
+    await screen.findByTestId("question-table");
+    expect(calls).toBe(2);
+  });
+
+  it("shows the empty state with active filters and Clear filters resets them", async () => {
+    server.use(
+      http.get("/api/v1/admin/questions", ({ request }) => {
+        const hasStatus = new URL(request.url).searchParams.has("status");
+        return HttpResponse.json({
+          items: hasStatus ? [] : [question],
+          total: hasStatus ? 0 : 1,
+          limit: 20,
+          offset: 0,
+        });
+      }),
+    );
+    renderBank();
+    await screen.findByTestId("question-table");
+
+    await userEvent.click(screen.getByRole("button", { name: /^Filters/i }));
+    const sheet = await screen.findByTestId("filter-sheet");
+    await userEvent.selectOptions(
+      within(sheet).getByLabelText(/^Status/i),
+      "draft",
+    );
+
+    expect(
+      await screen.findByText("No questions match these filters."),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("question-table")).not.toBeInTheDocument();
+
+    // The empty state's own action, not the chip bar's.
+    const emptyAction = screen
+      .getAllByRole("button", { name: /Clear filters/i })
+      .at(-1)!;
+    await userEvent.click(emptyAction);
+
+    await screen.findByTestId("question-table");
+    expect(
+      screen.queryByTestId("applied-filter-chips"),
+    ).not.toBeInTheDocument();
+  });
+
   it("generates drafts with the node codes the form carries", async () => {
     renderBank();
-    await screen.findByRole("button", { name: /Grammar tense choice/i });
+    await screen.findByTestId("question-table");
 
     // Desktop toolbar and mobile header both render the button in jsdom.
     await userEvent.click(
@@ -167,13 +274,15 @@ describe("AdminQuestionBank", () => {
 
   it("shows the coverage number and marks the bottleneck part", async () => {
     renderBank();
-    await screen.findByRole("button", { name: /Grammar tense choice/i });
+    await screen.findByTestId("question-table");
 
     await userEvent.click(screen.getByRole("button", { name: /Coverage/i }));
 
     // The headline number appears beside the "2" test counts in the table.
     expect((await screen.findAllByText("2")).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Bottleneck/i)).toBeInTheDocument();
+    // Rendered in both the mobile cards and the md+ table.
+    expect(screen.getAllByText(/Bottleneck/i).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("coverage-cards")).toBeInTheDocument();
     expect(screen.getByText(/TOEIC_LR_2026/)).toBeInTheDocument();
   });
 
@@ -190,8 +299,9 @@ describe("AdminQuestionBank", () => {
     expect(card).toHaveTextContent("Grammar tense choice");
     // Text status badge (translated)
     expect(card).toHaveTextContent("Published");
-    // Secondary small text with question ID
-    expect(card).toHaveTextContent(question.id);
+    // Secondary small text: the id, truncated, never the full UUID
+    expect(card).toHaveTextContent("0199a1c2…");
+    expect(card).not.toHaveTextContent(question.id);
 
     // Action button
     const actionBtn = within(card).getByRole("button", {
@@ -206,7 +316,7 @@ describe("AdminQuestionBank", () => {
 
   it("opens filters in BottomSheet and shows an applied filter chip", async () => {
     renderBank();
-    await screen.findByRole("button", { name: /Grammar tense choice/i });
+    await screen.findByTestId("question-table");
 
     // Open filter sheet on mobile
     await userEvent.click(screen.getByRole("button", { name: /^Filters/i }));
@@ -249,7 +359,7 @@ describe("AdminQuestionBank", () => {
     );
 
     renderBank();
-    await screen.findByRole("button", { name: /Grammar tense choice/i });
+    await screen.findByTestId("question-table");
 
     // Open filter sheet and apply kind and status filters
     await userEvent.click(screen.getByRole("button", { name: /^Filters/i }));
@@ -298,7 +408,7 @@ describe("AdminQuestionBank", () => {
   it("shows result count in role='status' saying 'loaded' when more pages exist and no total invented", async () => {
     // 1. With 1 item and total = 1 (no more pages):
     renderBank();
-    await screen.findByRole("button", { name: /Grammar tense choice/i });
+    await screen.findByTestId("question-table");
 
     const statusLine = screen.getByRole("status");
     expect(statusLine).toHaveTextContent("1 result");

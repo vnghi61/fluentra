@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertCircle,
   BarChart3,
   Filter,
-  Loader2,
+  Inbox,
+  MoreHorizontal,
   RefreshCw,
   Search,
   Sparkles,
@@ -15,9 +15,23 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Modal, ModalBody, ModalFooter } from "@/components/ui/modal";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { adminApi, type Question, type QuestionFilter } from "../api/adminApi";
+import { CopyableId } from "./CopyableId";
+
+const panelClass =
+  "overflow-hidden rounded-2xl border border-border-subtle bg-surface-card";
 
 /**
  * The exam question bank and its coverage report (WO 21 Stage D).
@@ -108,6 +122,12 @@ function QuestionsTab(): React.JSX.Element {
     },
   });
 
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(
+      i18n.language.startsWith("vi") ? "vi-VN" : "en-US",
+      { year: "numeric", month: "short", day: "numeric" },
+    );
+
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -148,14 +168,14 @@ function QuestionsTab(): React.JSX.Element {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border-subtle bg-surface-card p-4">
         {/* Desktop Filter Row (md+) */}
         <div className="hidden md:flex flex-wrap items-center gap-2">
           <select
             value={filter.kind ?? ""}
             onChange={(e) => setFilterValue("kind", e.target.value)}
             aria-label={t("adminQuestions.kindFilter", "Kind")}
-            className="h-11 rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-11 rounded-lg border border-border bg-surface px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
           >
             {KINDS.map((value) => (
               <option key={value} value={value}>
@@ -169,7 +189,7 @@ function QuestionsTab(): React.JSX.Element {
             value={filter.status ?? ""}
             onChange={(e) => setFilterValue("status", e.target.value)}
             aria-label={t("adminQuestions.statusFilter", "Status")}
-            className="h-11 rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-11 rounded-lg border border-border bg-surface px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
           >
             {STATUSES.map((value) => (
               <option key={value} value={value}>
@@ -183,7 +203,7 @@ function QuestionsTab(): React.JSX.Element {
             value={filter.cefr_level ?? ""}
             onChange={(e) => setFilterValue("cefr_level", e.target.value)}
             aria-label={t("adminQuestions.levelFilter", "Level")}
-            className="h-11 rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-11 rounded-lg border border-border bg-surface px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
           >
             {LEVELS.map((value) => (
               <option key={value} value={value}>
@@ -193,7 +213,7 @@ function QuestionsTab(): React.JSX.Element {
               </option>
             ))}
           </select>
-          <label className="flex h-11 min-w-[10rem] items-center gap-2 rounded-lg border border-input bg-background px-3">
+          <label className="flex h-11 min-w-[10rem] items-center gap-2 rounded-lg border border-border bg-surface px-3">
             <Search className="h-4 w-4 text-text-muted" aria-hidden="true" />
             <input
               type="text"
@@ -296,7 +316,7 @@ function QuestionsTab(): React.JSX.Element {
                       filter: t("adminQuestions.kindFilter", "Kind"),
                       defaultValue: "Remove {{filter}} filter",
                     })}
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full hover:bg-muted focus:outline-none"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full hover:bg-surface-muted focus:outline-none"
                   >
                     <X className="h-3 w-3" aria-hidden="true" />
                   </button>
@@ -318,7 +338,7 @@ function QuestionsTab(): React.JSX.Element {
                       filter: t("adminQuestions.statusFilter", "Status"),
                       defaultValue: "Remove {{filter}} filter",
                     })}
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full hover:bg-muted focus:outline-none"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full hover:bg-surface-muted focus:outline-none"
                   >
                     <X className="h-3 w-3" aria-hidden="true" />
                   </button>
@@ -340,7 +360,7 @@ function QuestionsTab(): React.JSX.Element {
                       filter: t("adminQuestions.levelFilter", "Level"),
                       defaultValue: "Remove {{filter}} filter",
                     })}
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full hover:bg-muted focus:outline-none"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full hover:bg-surface-muted focus:outline-none"
                   >
                     <X className="h-3 w-3" aria-hidden="true" />
                   </button>
@@ -361,7 +381,7 @@ function QuestionsTab(): React.JSX.Element {
                       filter: t("adminQuestions.nodeLabel", "Node"),
                       defaultValue: "Remove {{filter}} filter",
                     })}
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full hover:bg-muted focus:outline-none"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full hover:bg-surface-muted focus:outline-none"
                   >
                     <X className="h-3 w-3" aria-hidden="true" />
                   </button>
@@ -413,7 +433,7 @@ function QuestionsTab(): React.JSX.Element {
                 value={filter.kind ?? ""}
                 onChange={(e) => setFilterValue("kind", e.target.value)}
                 aria-label={t("adminQuestions.kindFilter", "Kind")}
-                className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 {KINDS.map((value) => (
                   <option key={value} value={value}>
@@ -433,7 +453,7 @@ function QuestionsTab(): React.JSX.Element {
                 value={filter.status ?? ""}
                 onChange={(e) => setFilterValue("status", e.target.value)}
                 aria-label={t("adminQuestions.statusFilter", "Status")}
-                className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 {STATUSES.map((value) => (
                   <option key={value} value={value}>
@@ -453,7 +473,7 @@ function QuestionsTab(): React.JSX.Element {
                 value={filter.cefr_level ?? ""}
                 onChange={(e) => setFilterValue("cefr_level", e.target.value)}
                 aria-label={t("adminQuestions.levelFilter", "Level")}
-                className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 {LEVELS.map((value) => (
                   <option key={value} value={value}>
@@ -469,7 +489,7 @@ function QuestionsTab(): React.JSX.Element {
               <label className="text-sm font-medium text-text">
                 {t("adminQuestions.nodeLabel", "Spine node code")}
               </label>
-              <div className="flex h-11 items-center gap-2 rounded-lg border border-input bg-background px-3">
+              <div className="flex h-11 items-center gap-2 rounded-lg border border-border bg-surface px-3">
                 <Search
                   className="h-4 w-4 text-text-muted"
                   aria-hidden="true"
@@ -518,33 +538,58 @@ function QuestionsTab(): React.JSX.Element {
         )}
       </div>
 
-      {isError && (
-        <div
-          role="alert"
-          className="flex items-center gap-3 rounded-lg border border-danger/20 bg-danger/10 p-4 text-danger-accent"
-        >
-          <AlertCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
-          <p className="text-sm">
-            {error instanceof Error
-              ? error.message
-              : t(
-                  "adminQuestions.errorDesc",
-                  "The question bank could not be loaded.",
-                )}
-          </p>
-        </div>
-      )}
-
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2
-            className="h-6 w-6 animate-spin text-primary"
-            aria-hidden="true"
+      {isError ? (
+        <div className={panelClass}>
+          <ErrorState
+            className="py-10"
+            description={
+              error instanceof Error
+                ? error.message
+                : t(
+                    "adminQuestions.errorDesc",
+                    "The question bank could not be loaded.",
+                  )
+            }
+            onRetry={() => void refetch()}
           />
         </div>
+      ) : isLoading ? (
+        <div
+          aria-busy="true"
+          data-testid="question-skeleton"
+          className={cn(panelClass, "divide-y divide-border-subtle")}
+        >
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="flex h-14 items-center gap-3 px-4">
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-1/3" />
+                <Skeleton className="h-3 w-1/4" />
+              </div>
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+          ))}
+        </div>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card py-12 text-center text-sm text-muted-foreground">
-          {t("adminQuestions.empty", "No questions match these filters.")}
+        <div className={panelClass}>
+          <EmptyState
+            className="py-10"
+            icon={Inbox}
+            title={t(
+              "adminQuestions.empty",
+              "No questions match these filters.",
+            )}
+            action={
+              hasActiveFilters ? (
+                <Button
+                  variant="outline"
+                  onClick={clearAllFilters}
+                  className="min-h-[44px]"
+                >
+                  {t("adminQuestions.clearFilters", "Clear filters")}
+                </Button>
+              ) : undefined
+            }
+          />
         </div>
       ) : (
         <>
@@ -554,16 +599,14 @@ function QuestionsTab(): React.JSX.Element {
               <div
                 key={question.id}
                 data-testid="question-card"
-                className="space-y-3 rounded-xl border border-border-subtle bg-card p-4"
+                className="space-y-3 rounded-2xl border border-border-subtle bg-surface-card p-4"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 space-y-1">
                     <p className="break-words font-semibold leading-snug text-text">
                       {humanizeKind(question.kind, t)}
                     </p>
-                    <p className="truncate font-mono text-xs text-text-muted">
-                      {question.id}
-                    </p>
+                    <CopyableId id={question.id} />
                   </div>
                   <Badge variant={statusTone(question.status)}>
                     {humanizeStatus(question.status, t)}
@@ -574,10 +617,7 @@ function QuestionsTab(): React.JSX.Element {
                   <Badge variant="outline">{question.cefr_level}</Badge>
                   <span>{question.skill}</span>
                   <span className="ml-auto">
-                    {new Date(question.created_at).toLocaleDateString(
-                      i18n.language.startsWith("vi") ? "vi-VN" : "en-US",
-                      { year: "numeric", month: "short", day: "numeric" },
-                    )}
+                    {formatDate(question.created_at)}
                   </span>
                 </div>
 
@@ -598,41 +638,93 @@ function QuestionsTab(): React.JSX.Element {
           </div>
 
           {/* Desktop Table/List (md+) */}
-          <ul className="hidden space-y-2 md:block">
-            {items.map((question) => (
-              <li key={question.id}>
-                <button
-                  type="button"
-                  onClick={() => setSelected(question)}
-                  className="flex min-h-[44px] w-full flex-col gap-2 rounded-xl border border-border-subtle bg-card p-4 text-left transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <span className="min-w-0 space-y-1">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <Badge variant="secondary">
+          <div
+            data-testid="question-table"
+            className={cn(panelClass, "hidden md:block")}
+          >
+            <table className="w-full table-fixed border-collapse text-left">
+              <thead>
+                <tr className="border-b border-border-subtle bg-surface-muted text-xs font-semibold uppercase tracking-wider text-text-muted">
+                  <th className="px-4 py-3">
+                    {t("adminQuestions.kind", "Kind")}
+                  </th>
+                  <th className="w-32 px-3 py-3">
+                    {t("adminQuestions.statusFilter", "Status")}
+                  </th>
+                  <th className="w-24 px-3 py-3">
+                    {t("adminQuestions.levelFilter", "Level")}
+                  </th>
+                  <th className="w-32 px-3 py-3">
+                    {t("adminQuestions.skill", "Skill")}
+                  </th>
+                  <th className="w-36 px-3 py-3">
+                    {t("adminQuestions.created", "Created")}
+                  </th>
+                  <th className="w-16 px-3 py-3">
+                    <span className="sr-only">
+                      {t("admin.actions", "Actions")}
+                    </span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {items.map((question) => (
+                  <tr
+                    key={question.id}
+                    className="h-14 transition-colors hover:bg-surface-muted/40"
+                  >
+                    <td className="px-4">
+                      <p className="truncate text-sm font-medium text-text">
                         {humanizeKind(question.kind, t)}
-                      </Badge>
+                      </p>
+                      <CopyableId id={question.id} />
+                    </td>
+                    <td className="px-3">
                       <Badge variant={statusTone(question.status)}>
                         {humanizeStatus(question.status, t)}
                       </Badge>
+                    </td>
+                    <td className="px-3">
                       <Badge variant="outline">{question.cefr_level}</Badge>
-                      <span className="text-xs text-text-muted">
-                        {question.skill}
-                      </span>
-                    </span>
-                    <span className="block truncate font-mono text-[11px] text-text-muted">
-                      {question.fingerprint.slice(0, 24)}…
-                    </span>
-                  </span>
-                  <span className="text-xs text-text-muted">
-                    {new Date(question.created_at).toLocaleDateString(
-                      i18n.language.startsWith("vi") ? "vi-VN" : "en-US",
-                      { year: "numeric", month: "short", day: "numeric" },
-                    )}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+                    </td>
+                    <td className="truncate px-3 text-sm text-text-muted">
+                      {question.skill}
+                    </td>
+                    <td className="px-3 text-xs text-text-muted">
+                      {formatDate(question.created_at)}
+                    </td>
+                    <td className="px-3 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          aria-label={t("adminQuestions.actionsFor", {
+                            kind: humanizeKind(question.kind, t),
+                            defaultValue: "Actions for {{kind}}",
+                          })}
+                          className="flex h-11 w-11 min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        >
+                          <MoreHorizontal
+                            className="h-5 w-5"
+                            aria-hidden="true"
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onSelect={() => setSelected(question)}
+                          >
+                            <BarChart3
+                              className="h-4 w-4 shrink-0"
+                              aria-hidden="true"
+                            />
+                            {t("adminQuestions.viewStats", "Performance")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
 
@@ -649,6 +741,7 @@ function QuestionsTab(): React.JSX.Element {
             <Button
               variant="outline"
               disabled={offset === 0}
+              className="min-h-[44px]"
               onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
             >
               {t("common.previous", "Previous")}
@@ -656,6 +749,7 @@ function QuestionsTab(): React.JSX.Element {
             <Button
               variant="outline"
               disabled={currentPage >= totalPages}
+              className="min-h-[44px]"
               onClick={() => setOffset(offset + PAGE_SIZE)}
             >
               {t("common.next", "Next")}
@@ -664,68 +758,76 @@ function QuestionsTab(): React.JSX.Element {
         </div>
       )}
 
-      {selected && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="question-stats-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/75 p-4 backdrop-blur-sm"
-        >
-          <div className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-surface-card p-6 shadow-2xl">
-            <h2
-              id="question-stats-title"
-              className="flex items-center gap-2 text-lg font-bold text-text"
-            >
-              <BarChart3
-                className="h-5 w-5 text-primary-accent"
-                aria-hidden="true"
-              />
-              {t("adminQuestions.statsTitle", "Item performance")}
-            </h2>
-            {stats.isLoading ? (
-              <Loader2
-                className="mx-auto h-6 w-6 animate-spin text-primary"
-                aria-hidden="true"
-              />
-            ) : stats.isError ? (
-              <p className="text-sm text-danger-accent">
+      <Modal
+        open={selected !== null}
+        onClose={() => setSelected(null)}
+        size="md"
+        title={t("adminQuestions.statsTitle", "Item performance")}
+        icon={
+          <BarChart3
+            className="h-5 w-5 text-primary-accent"
+            aria-hidden="true"
+          />
+        }
+      >
+        <ModalBody>
+          {stats.isLoading ? (
+            <div aria-busy="true" className="grid grid-cols-2 gap-3">
+              {Array.from({ length: 4 }, (_, i) => (
+                <Skeleton key={i} className="h-16 rounded-lg" />
+              ))}
+            </div>
+          ) : stats.isError ? (
+            <div className="space-y-3">
+              <p role="alert" className="text-sm text-danger-accent">
                 {t(
                   "adminQuestions.statsError",
                   "Statistics could not be loaded.",
                 )}
               </p>
-            ) : (
-              <dl className="grid grid-cols-2 gap-3 text-sm">
-                <Stat
-                  label={t("adminQuestions.attempts", "Attempts")}
-                  value={String(stats.data?.attempts ?? 0)}
-                />
-                <Stat
-                  label={t("adminQuestions.pValue", "P-value")}
-                  value={stats.data?.p_value?.toFixed(2) ?? "—"}
-                />
-                <Stat
-                  label={t("adminQuestions.discrimination", "Discrimination")}
-                  value={stats.data?.discrimination?.toFixed(2) ?? "—"}
-                />
-                <Stat
-                  label={t("adminQuestions.avgTime", "Avg time")}
-                  value={
-                    stats.data?.avg_time_ms
-                      ? `${(stats.data.avg_time_ms / 1000).toFixed(1)} s`
-                      : "—"
-                  }
-                />
-              </dl>
-            )}
-            <div className="flex justify-end">
-              <Button variant="outline" onClick={() => setSelected(null)}>
-                {t("common.close", "Close")}
+              <Button
+                variant="outline"
+                onClick={() => void stats.refetch()}
+                className="min-h-[44px]"
+              >
+                {t("adminQuestions.retry", "Retry")}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          ) : (
+            <dl className="grid grid-cols-2 gap-3 text-sm">
+              <Stat
+                label={t("adminQuestions.attempts", "Attempts")}
+                value={String(stats.data?.attempts ?? 0)}
+              />
+              <Stat
+                label={t("adminQuestions.pValue", "P-value")}
+                value={stats.data?.p_value?.toFixed(2) ?? "—"}
+              />
+              <Stat
+                label={t("adminQuestions.discrimination", "Discrimination")}
+                value={stats.data?.discrimination?.toFixed(2) ?? "—"}
+              />
+              <Stat
+                label={t("adminQuestions.avgTime", "Avg time")}
+                value={
+                  stats.data?.avg_time_ms
+                    ? `${(stats.data.avg_time_ms / 1000).toFixed(1)} s`
+                    : "—"
+                }
+              />
+            </dl>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant="outline"
+            onClick={() => setSelected(null)}
+            className="min-h-[44px]"
+          >
+            {t("common.close", "Close")}
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }
@@ -806,7 +908,7 @@ function GenerateForm({
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value)}
-            className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
           >
             {KINDS.filter(Boolean).map((value) => (
               <option key={value} value={value}>
@@ -822,7 +924,7 @@ function GenerateForm({
           <select
             value={level}
             onChange={(e) => setLevel(e.target.value)}
-            className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
           >
             {LEVELS.filter(Boolean).map((value) => (
               <option key={value} value={value}>
@@ -841,7 +943,7 @@ function GenerateForm({
             max={100}
             value={count}
             onChange={(e) => setCount(Number(e.target.value))}
-            className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </label>
         <label className="space-y-1 text-sm">
@@ -853,7 +955,7 @@ function GenerateForm({
             value={examPartId}
             onChange={(e) => setExamPartId(e.target.value)}
             placeholder={t("adminQuestions.examPartPlaceholder", "uuid")}
-            className="h-11 w-full rounded-lg border border-input bg-background px-3 font-mono text-base focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-11 w-full rounded-lg border border-border bg-surface px-3 font-mono text-base focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </label>
       </div>
@@ -869,7 +971,7 @@ function GenerateForm({
             "adminQuestions.nodesPlaceholder",
             "PRESENT_PERFECT, PAST_SIMPLE",
           )}
-          className="h-11 w-full rounded-lg border border-input bg-background px-3 font-mono text-base focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-11 w-full rounded-lg border border-border bg-surface px-3 font-mono text-base focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </label>
       {validation && <p className="text-sm text-danger-accent">{validation}</p>}
@@ -921,15 +1023,15 @@ function CoverageTab(): React.JSX.Element {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4">
-        <label className="space-y-1 text-sm">
+      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border-subtle bg-surface-card p-4">
+        <label className="block w-full space-y-1 text-sm sm:w-auto">
           <span className="font-medium text-text">
             {t("adminQuestions.version", "Exam version")}
           </span>
           <select
             value={effectiveVersion}
             onChange={(e) => setVersionId(e.target.value)}
-            className="h-11 min-w-[16rem] rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+            className="block h-11 min-h-[44px] w-full min-w-[44px] rounded-lg border border-border bg-surface px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring sm:min-w-[16rem]"
           >
             {(versions.data?.items ?? []).map((version) => (
               <option key={version.id} value={version.id}>
@@ -951,95 +1053,170 @@ function CoverageTab(): React.JSX.Element {
       </div>
 
       {coverage.isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2
-            className="h-6 w-6 animate-spin text-primary"
-            aria-hidden="true"
-          />
+        <div aria-busy="true" className={cn(panelClass, "space-y-3 p-4")}>
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
         </div>
       ) : coverage.isError ? (
-        <p className="text-sm text-danger-accent">
-          {t("adminQuestions.coverageError", "Coverage could not be loaded.")}
-        </p>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-border bg-muted/50 text-xs uppercase text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 font-medium">
-                  {t("adminQuestions.part", "Part")}
-                </th>
-                <th className="px-4 py-3 font-medium">
-                  {t("adminQuestions.kind", "Kind")}
-                </th>
-                <th className="px-4 py-3 font-medium">
-                  {t("adminQuestions.needed", "Needed")}
-                </th>
-                <th className="px-4 py-3 font-medium">
-                  {t("adminQuestions.available", "Available")}
-                </th>
-                <th className="px-4 py-3 font-medium">
-                  {t("adminQuestions.testsPossible", "Tests")}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {(coverage.data?.parts ?? []).map((part) => {
-                const isBottleneck =
-                  coverage.data?.bottleneck_part_id === part.part_id;
-                return (
-                  <tr
-                    key={part.part_id}
-                    className={cn(isBottleneck && "bg-warning/5")}
-                  >
-                    <td className="px-4 py-3">
-                      <span className="font-medium text-text">
-                        {part.section} {part.part_number}
-                      </span>
-                      {isBottleneck && (
-                        <Badge variant="warning" className="ml-2">
-                          {t("adminQuestions.bottleneck", "Bottleneck")}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-text-muted">
-                      {part.kind}
-                    </td>
-                    <td className="px-4 py-3 text-text">
-                      {part.groups_needed_per_test}
-                    </td>
-                    <td className="px-4 py-3 text-text">
-                      {part.published_groups_available}
-                    </td>
-                    <td className="w-40 px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Progress
-                          value={Math.min(
-                            100,
-                            Math.round(
-                              (part.tests_possible /
-                                Math.max(1, part.groups_needed_per_test)) *
-                                100,
-                            ),
-                          )}
-                          max={100}
-                          variant={isBottleneck ? "warning" : "primary"}
-                          aria-label={t(
-                            "adminQuestions.testsPossible",
-                            "Tests",
-                          )}
-                        />
-                        <span className="font-mono text-xs text-text">
-                          {part.tests_possible}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className={panelClass}>
+          <ErrorState
+            className="py-8"
+            description={t(
+              "adminQuestions.coverageError",
+              "Coverage could not be loaded.",
+            )}
+            onRetry={() => void coverage.refetch()}
+          />
         </div>
+      ) : (
+        <>
+          {/* Mobile: one card per part */}
+          <ul data-testid="coverage-cards" className="space-y-3 md:hidden">
+            {(coverage.data?.parts ?? []).map((part) => {
+              const isBottleneck =
+                coverage.data?.bottleneck_part_id === part.part_id;
+              return (
+                <li
+                  key={part.part_id}
+                  className={cn(
+                    "space-y-2 rounded-2xl border border-border-subtle bg-surface-card p-4",
+                    isBottleneck && "border-warning/40 bg-warning/5",
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-text">
+                      {part.section} {part.part_number}
+                    </p>
+                    {isBottleneck && (
+                      <Badge variant="warning">
+                        {t("adminQuestions.bottleneck", "Bottleneck")}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="font-mono text-xs text-text-muted">
+                    {part.kind}
+                  </p>
+                  <dl className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <dt className="text-xs text-text-muted">
+                        {t("adminQuestions.needed", "Needed")}
+                      </dt>
+                      <dd className="text-text">
+                        {part.groups_needed_per_test}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-text-muted">
+                        {t("adminQuestions.available", "Available")}
+                      </dt>
+                      <dd className="text-text">
+                        {part.published_groups_available}
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="flex items-center gap-2">
+                    <Progress
+                      value={Math.min(
+                        100,
+                        Math.round(
+                          (part.tests_possible /
+                            Math.max(1, part.groups_needed_per_test)) *
+                            100,
+                        ),
+                      )}
+                      max={100}
+                      variant={isBottleneck ? "warning" : "primary"}
+                      aria-label={t("adminQuestions.testsPossible", "Tests")}
+                    />
+                    <span className="font-mono text-xs text-text">
+                      {part.tests_possible}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="hidden overflow-x-auto rounded-2xl border border-border-subtle bg-surface-card md:block">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-border-subtle bg-surface-muted text-xs uppercase text-text-muted">
+                <tr>
+                  <th className="px-4 py-3 font-medium">
+                    {t("adminQuestions.part", "Part")}
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    {t("adminQuestions.kind", "Kind")}
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    {t("adminQuestions.needed", "Needed")}
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    {t("adminQuestions.available", "Available")}
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    {t("adminQuestions.testsPossible", "Tests")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {(coverage.data?.parts ?? []).map((part) => {
+                  const isBottleneck =
+                    coverage.data?.bottleneck_part_id === part.part_id;
+                  return (
+                    <tr
+                      key={part.part_id}
+                      className={cn(isBottleneck && "bg-warning/5")}
+                    >
+                      <td className="px-4 py-3">
+                        <span className="font-medium text-text">
+                          {part.section} {part.part_number}
+                        </span>
+                        {isBottleneck && (
+                          <Badge variant="warning" className="ml-2">
+                            {t("adminQuestions.bottleneck", "Bottleneck")}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-text-muted">
+                        {part.kind}
+                      </td>
+                      <td className="px-4 py-3 text-text">
+                        {part.groups_needed_per_test}
+                      </td>
+                      <td className="px-4 py-3 text-text">
+                        {part.published_groups_available}
+                      </td>
+                      <td className="w-40 px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Progress
+                            value={Math.min(
+                              100,
+                              Math.round(
+                                (part.tests_possible /
+                                  Math.max(1, part.groups_needed_per_test)) *
+                                  100,
+                              ),
+                            )}
+                            max={100}
+                            variant={isBottleneck ? "warning" : "primary"}
+                            aria-label={t(
+                              "adminQuestions.testsPossible",
+                              "Tests",
+                            )}
+                          />
+                          <span className="font-mono text-xs text-text">
+                            {part.tests_possible}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
