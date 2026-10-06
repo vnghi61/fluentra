@@ -11,6 +11,8 @@
 - [x] Group 2: responsive admin shell, Learners and Question bank (anchored
   sidebar, account menu with email, More-sheet controls slot, learner and
   question tables/cards with row menus, `CopyableId`, section-local states).
+  Desktop tables scroll horizontally below their minimum width (820px/760px)
+  at md beside the expanded sidebar.
 
 - [x] Keep the open-sitting resume link visible across the mock-test hub and explain
   fixed/random/custom start conflicts in Vietnamese and English.
