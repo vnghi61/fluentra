@@ -29,6 +29,7 @@ export interface AccountMenuProps {
   /** The learner's uploaded avatar, when there is one. */
   avatarUrl?: string | undefined;
   onLogout?: (() => void) | undefined;
+  canAccessStudio?: boolean | undefined;
 }
 
 /**
@@ -47,6 +48,7 @@ export default function AccountMenu({
   email,
   avatarUrl,
   onLogout,
+  canAccessStudio = false,
 }: AccountMenuProps): React.JSX.Element {
   const { t } = useTranslation();
 
@@ -124,6 +126,12 @@ export default function AccountMenu({
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
+          <Link to="/settings" search={{ section: "profile" }}>
+            <UserRound className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {t("nav.profile", "Profile")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
           <Link to="/my-writing">
             <PenTool className="h-4 w-4 shrink-0" aria-hidden="true" />
             {t("nav.myWriting", "My Writing")}
@@ -135,12 +143,14 @@ export default function AccountMenu({
             {t("nav.mySpeaking", "My Speaking")}
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/studio">
-            <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
-            {t("nav.studio", "Studio")}
-          </Link>
-        </DropdownMenuItem>
+        {canAccessStudio && (
+          <DropdownMenuItem asChild>
+            <Link to="/studio">
+              <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {t("nav.studio", "Studio")}
+            </Link>
+          </DropdownMenuItem>
+        )}
         {(role === "admin" || role === "moderator") && (
           <DropdownMenuItem asChild>
             <Link to="/admin">

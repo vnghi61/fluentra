@@ -88,13 +88,16 @@ describe("AccountMenu trigger", () => {
     await user.click(trigger);
 
     expect(await screen.findByText("Nghi")).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: /Studio/i })).toHaveAttribute(
-      "href",
-      "/studio",
-    );
+    expect(
+      screen.queryByRole("menuitem", { name: /Studio/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: /Settings/i })).toHaveAttribute(
       "href",
       "/settings",
+    );
+    expect(screen.getByRole("menuitem", { name: /Profile/i })).toHaveAttribute(
+      "href",
+      "/settings?section=profile",
     );
     expect(
       screen.getByRole("menuitem", { name: /My Writing/i }),
@@ -108,6 +111,24 @@ describe("AccountMenu trigger", () => {
     expect(
       screen.getByRole("menuitem", { name: /Sign out/i }),
     ).toBeInTheDocument();
+  });
+
+  it("shows Studio only when explicitly allowed", async () => {
+    const user = userEvent.setup();
+    await renderWithRouter(<AccountMenu role="user" canAccessStudio />);
+    await user.click(screen.getByRole("button", { name: /Account/i }));
+    expect(
+      await screen.findByRole("menuitem", { name: /Studio/i }),
+    ).toHaveAttribute("href", "/studio");
+  });
+
+  it("hides Studio when explicitly disallowed", async () => {
+    const user = userEvent.setup();
+    await renderWithRouter(<AccountMenu role="user" canAccessStudio={false} />);
+    await user.click(screen.getByRole("button", { name: /Account/i }));
+    expect(
+      screen.queryByRole("menuitem", { name: /Studio/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("includes admin destination and badge for admin role and fires onLogout", async () => {

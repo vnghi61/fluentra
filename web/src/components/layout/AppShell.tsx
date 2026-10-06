@@ -279,6 +279,8 @@ export const AppShell: React.FC<AppShellProps> = ({
           email={email}
           avatarUrl={avatarUrl}
           onLogout={onLogout}
+          // Studio endpoints are x-permission: self; its route guard checks authentication only.
+          canAccessStudio={signedIn}
         />
       </React.Suspense>
     ) : (
