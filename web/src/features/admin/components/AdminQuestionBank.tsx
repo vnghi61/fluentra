@@ -640,9 +640,11 @@ function QuestionsTab(): React.JSX.Element {
           {/* Desktop Table/List (md+) */}
           <div
             data-testid="question-table"
-            className={cn(panelClass, "hidden md:block")}
+            className={cn(panelClass, "hidden overflow-x-auto md:block")}
           >
-            <table className="w-full table-fixed border-collapse text-left">
+            {/* min-w keeps the kind column readable and every column
+                reachable beside the expanded sidebar; it scrolls instead. */}
+            <table className="w-full min-w-[760px] table-fixed border-collapse text-left">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-muted text-xs font-semibold uppercase tracking-wider text-text-muted">
                   <th className="px-4 py-3">

@@ -449,11 +449,16 @@ export const AdminUserList: React.FC = () => {
           <>
             {/* Desktop: a compact table. jsdom has no viewport, so both
                 layouts are rendered and CSS picks one. */}
-            <div data-testid="learner-table" className="hidden md:block">
-              <table className="w-full table-fixed border-collapse text-left">
+            <div
+              data-testid="learner-table"
+              className="hidden overflow-x-auto md:block"
+            >
+              {/* min-w keeps names readable at 768px beside the expanded
+                  sidebar; below it the table scrolls instead of squeezing. */}
+              <table className="w-full min-w-[820px] table-fixed border-collapse text-left">
                 <thead>
                   <tr className="border-b border-border-subtle bg-surface-muted">
-                    <th className="w-12 px-4 py-3">
+                    <th className="w-14 px-1.5 py-3">
                       <span className="sr-only">{t("admin.selectRow")}</span>
                     </th>
                     <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
@@ -480,7 +485,7 @@ export const AdminUserList: React.FC = () => {
                       data-row-number={rowOffset + index + 1}
                       className="h-14 transition-colors hover:bg-surface-muted/40"
                     >
-                      <td className="px-4">{renderSelect(user)}</td>
+                      <td className="px-1.5">{renderSelect(user)}</td>
                       <td className="px-3">
                         <div className="flex min-w-0 items-center gap-3">
                           {renderAvatar(user)}

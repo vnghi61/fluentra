@@ -238,6 +238,15 @@ describe("AppShell collapsible desktop sidebar", () => {
     expect(usersLink).toBeInTheDocument();
     expect(usersLink).not.toHaveAttribute("title");
 
+    // The visible labels are demoted to sr-only when collapsed, not removed.
+    for (const link of [adminLink, usersLink]) {
+      const label = Array.from(link.querySelectorAll("span")).find((s) =>
+        s.className.includes("group-data-[collapsed=true]:sr-only"),
+      );
+      expect(label).toBeDefined();
+      expect(label).toHaveTextContent(link === adminLink ? "Admin" : /Users/);
+    }
+
     const submenu = usersLink.closest("ul");
     expect(submenu).toHaveClass(
       "group-data-[collapsed=true]:border-l-0",

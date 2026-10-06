@@ -106,8 +106,13 @@ See `docs/ui-review/IMPLEMENTATION_PLAN.md` and `UX_AUDIT.md` for the current
 source-adapted design brief and verified limitations. Reuse the shell, the
 lazy-loaded `MoreSheet`/`BottomSheet`, `ErrorState`/`EmptyState` and the
 route-level 404/error/loading views. `BottomSheet` portals surround
-`AnimatePresence` (not the reverse). Authenticated mobile headers keep global
-theme/language controls in Settings; desktop keeps them in the header.
+`AnimatePresence` (not the reverse). Authenticated mobile headers do not show
+global theme/language controls; `AppShell` passes them to `MoreSheet` through
+its optional `controls` prop, rendered in an "Appearance & language" section
+when signed in. Desktop keeps them in the header. `components/` cannot import
+features, so `AppShell` gets `email` and `controls` as props from `router.tsx`.
+Admin tables pair a `hidden md:block` table with a `md:hidden` card list, and
+show ids through `features/admin/components/CopyableId` (truncated, 44px copy).
 Card radius/shadow, raised surface and XP/mission colors live in `index.css`.
 Every animation respects reduced motion; no fabricated learner metrics or
 unimplemented controls may be added for visual fidelity.
