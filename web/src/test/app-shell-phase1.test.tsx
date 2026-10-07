@@ -11,6 +11,7 @@ import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { AppShell } from "@/components/layout/AppShell";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import i18n, { initI18n, loadLocale } from "@/i18n";
 import { NotFoundPage } from "@/routes/NotFoundPage";
 import { classifyError } from "@/routes/RouteErrorPage";
@@ -27,7 +28,11 @@ async function renderAt(path: string, Component: () => ReactElement) {
     history: createMemoryHistory({ initialEntries: [path] }),
   });
   await router.load();
-  return render(<RouterProvider router={router} />);
+  return render(
+    <TooltipProvider delayDuration={0}>
+      <RouterProvider router={router} />
+    </TooltipProvider>,
+  );
 }
 
 describe("Phase 1 shell and status pages", () => {

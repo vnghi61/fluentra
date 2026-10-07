@@ -10,6 +10,7 @@ import {
 import { ApiError } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import * as Dialog from "@radix-ui/react-dialog";
 
 interface AdminActionReasonModalProps {
   isOpen: boolean;
@@ -86,88 +87,102 @@ export const AdminActionReasonModal: React.FC<AdminActionReasonModalProps> = ({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="admin-reason-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/80 backdrop-blur-sm p-4"
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open && !isSubmitting) handleClose();
+      }}
     >
-      <div className="w-full max-w-md rounded-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl space-y-6">
-        <div className="flex items-center justify-between border-b border-border-subtle pb-4">
-          <h2
-            id="admin-reason-modal-title"
-            className="text-lg font-semibold text-text flex items-center gap-2"
-          >
-            <FileText className="h-5 w-5 text-primary-accent" />
-            {title}
-          </h2>
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={isSubmitting}
-            className="rounded-lg p-1 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <p className="text-xs text-text-muted leading-relaxed">{description}</p>
-
-        {error && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
-            <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form
-          onSubmit={(e) => {
-            void handleSubmit(handleFormSubmit)(e);
-          }}
-          className="space-y-4"
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-overlay/80 backdrop-blur-sm" />
+        <Dialog.Content
+          aria-describedby="admin-reason-description"
+          className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl md:inset-auto md:left-1/2 md:top-1/2 md:w-[min(100%-2rem,28rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl"
         >
-          <div className="space-y-2">
-            <Label htmlFor="action-reason" className="text-xs text-text-muted">
-              Audit Reason (Minimum 10 characters required)
-            </Label>
-            <textarea
-              id="action-reason"
-              rows={3}
-              {...register("reason")}
-              placeholder={t("admin.stateTheJustificationForThis")}
-              className="w-full rounded-lg border border-border-subtle bg-surface-muted p-3 text-base md:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
-              aria-invalid={!!errors.reason}
-            />
-            {errors.reason && (
-              <p className="text-xs text-danger-accent">
-                {/* The schema carries translation keys, not sentences. */}
-                {t(errors.reason.message ?? "")}
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center justify-end gap-3 border-t border-border-subtle pt-4">
-            <Button
+          <div className="flex items-center justify-between border-b border-border-subtle pb-4">
+            <Dialog.Title
+              className="text-lg font-semibold text-text flex items-center gap-2"
+            >
+              <FileText className="h-5 w-5 text-primary-accent" />
+              {title}
+            </Dialog.Title>
+            <button
               type="button"
-              variant="ghost"
               onClick={handleClose}
               disabled={isSubmitting}
+              aria-label={t("common.close", "Close")}
+              className="rounded-lg p-1 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
             >
-              {t("admin.cancel")}
-            </Button>
-            <Button type="submit" variant={variant} disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("admin.executing")}
-                </>
-              ) : (
-                actionButtonLabel
-              )}
-            </Button>
+              <X aria-hidden="true" className="h-5 w-5" />
+            </button>
           </div>
-        </form>
-      </div>
-    </div>
+
+          <Dialog.Description
+            id="admin-reason-description"
+            className="text-xs text-text-muted leading-relaxed"
+          >
+            {description}
+          </Dialog.Description>
+
+          {error && (
+            <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
+              <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form
+            onSubmit={(e) => {
+              void handleSubmit(handleFormSubmit)(e);
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label
+                htmlFor="action-reason"
+                className="text-xs text-text-muted"
+              >
+                Audit Reason (Minimum 10 characters required)
+              </Label>
+              <textarea
+                id="action-reason"
+                rows={3}
+                {...register("reason")}
+                placeholder={t("admin.stateTheJustificationForThis")}
+                className="w-full rounded-lg border border-border-subtle bg-surface-muted p-3 text-base md:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-invalid={!!errors.reason}
+              />
+              {errors.reason && (
+                <p className="text-xs text-danger-accent">
+                  {/* The schema carries translation keys, not sentences. */}
+                  {t(errors.reason.message ?? "")}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-border-subtle pt-4">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleClose}
+                disabled={isSubmitting}
+              >
+                {t("admin.cancel")}
+              </Button>
+              <Button type="submit" variant={variant} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("admin.executing")}
+                  </>
+                ) : (
+                  actionButtonLabel
+                )}
+              </Button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 };

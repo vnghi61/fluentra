@@ -100,7 +100,9 @@ describe("AdminReportedContentList", () => {
     expect(card).toHaveTextContent("Published");
 
     // Secondary ID
-    expect(card).toHaveTextContent(sampleReportedItem.content_version_id);
+    expect(
+      within(card).getAllByTitle(sampleReportedItem.content_version_id),
+    ).toHaveLength(2);
 
     // Report count
     expect(card).toHaveTextContent("3 reports");
@@ -189,8 +191,8 @@ describe("AdminReportedContentList", () => {
       within(table).getByText(sampleReportedItem.slug),
     ).toBeInTheDocument();
     expect(
-      within(table).getByText(sampleReportedItem.content_version_id),
-    ).toBeInTheDocument();
+      within(table).getAllByTitle(sampleReportedItem.content_version_id),
+    ).toHaveLength(2);
     expect(within(table).getByText("Published")).toBeInTheDocument();
     expect(
       within(table).getByRole("button", { name: /Review item/i }),

@@ -2,7 +2,7 @@ import * as React from "react";
 import { Check, Languages, Monitor, Moon, Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { SheetDialog } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -109,7 +109,7 @@ export const ThemeLanguageControls: React.FC<ThemeLanguageControlsProps> = ({
         </button>
 
         {/* Mobile Theme Bottom Sheet */}
-        <BottomSheet
+        <SheetDialog
           open={themeSheetOpen}
           onOpenChange={setThemeSheetOpen}
           title={t("theme.label", "Theme")}
@@ -157,10 +157,10 @@ export const ThemeLanguageControls: React.FC<ThemeLanguageControlsProps> = ({
               );
             })}
           </div>
-        </BottomSheet>
+        </SheetDialog>
 
         {/* Mobile Language Bottom Sheet */}
-        <BottomSheet
+        <SheetDialog
           open={langSheetOpen}
           onOpenChange={setLangSheetOpen}
           title={t("language.label", "Language")}
@@ -208,7 +208,7 @@ export const ThemeLanguageControls: React.FC<ThemeLanguageControlsProps> = ({
               );
             })}
           </div>
-        </BottomSheet>
+        </SheetDialog>
       </div>
     );
   }

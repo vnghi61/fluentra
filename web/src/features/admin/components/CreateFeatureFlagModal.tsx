@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import * as Dialog from "@radix-ui/react-dialog";
 
 interface CreateFeatureFlagModalProps {
   isOpen: boolean;
@@ -87,189 +88,192 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="create-flag-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/80 backdrop-blur-sm p-4"
+    <Dialog.Root
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isSubmitting) onClose();
+      }}
     >
-      <div className="w-full max-w-lg rounded-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl space-y-6">
-        <div className="flex items-center justify-between border-b border-border-subtle pb-4">
-          <h2
-            id="create-flag-modal-title"
-            className="text-lg font-semibold text-text flex items-center gap-2"
-          >
-            <Flag className="h-5 w-5 text-primary-accent" />
-            {t("admin.createFeatureFlag", "Create Feature Flag")}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="rounded-lg p-1 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {error && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
-            <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form
-          onSubmit={(e) => {
-            void handleSubmit(onSubmit)(e);
-          }}
-          className="space-y-4"
-        >
-          {/* Key */}
-          <div className="space-y-1.5">
-            <Label htmlFor="flag-key">
-              {t("admin.flagIdentifierKey", "Flag Identifier Key")}
-            </Label>
-            <Input
-              id="flag-key"
-              {...register("key")}
-              placeholder={t(
-                "admin.flagKeyPlaceholder",
-                "e.g. streaks_v2, ai_grading_v2",
-              )}
-              aria-invalid={!!errors.key}
-            />
-            {errors.key && (
-              <p className="text-xs text-danger-accent">
-                {t(errors.key.message ?? "")}
-              </p>
-            )}
-          </div>
-
-          {/* Description */}
-          <div className="space-y-1.5">
-            <Label htmlFor="flag-desc">
-              {t("admin.description", "Description")}
-            </Label>
-            <Input
-              id="flag-desc"
-              {...register("description")}
-              placeholder={t(
-                "admin.flagDescPlaceholder",
-                "What does this feature flag control?",
-              )}
-              aria-invalid={!!errors.description}
-            />
-            {errors.description && (
-              <p className="text-xs text-danger-accent">
-                {t(errors.description.message ?? "")}
-              </p>
-            )}
-          </div>
-
-          {/* Owner & Expiry */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="flag-owner">
-                {t("admin.ownerTeam", "Owner / Team")}
-              </Label>
-              <Input
-                id="flag-owner"
-                {...register("owner")}
-                placeholder="@team"
-                aria-invalid={!!errors.owner}
-              />
-              {errors.owner && (
-                <p className="text-xs text-danger-accent">
-                  {t(errors.owner.message ?? "")}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="flag-expiry">
-                {t("admin.expiresOnFuture", "Expires On (Future)")}
-              </Label>
-              <Input
-                id="flag-expiry"
-                type="date"
-                {...register("expires_on")}
-                aria-invalid={!!errors.expires_on}
-              />
-              {errors.expires_on && (
-                <p className="text-xs text-danger-accent">
-                  {t(errors.expires_on.message ?? "")}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Rollout % */}
-          <div className="space-y-1.5">
-            <Label htmlFor="flag-rollout">
-              {t("admin.rolloutPercentage", "Rollout Percentage (0 - 100%)")}
-            </Label>
-            <Input
-              id="flag-rollout"
-              type="number"
-              min={0}
-              max={100}
-              {...register("rollout_percent", { valueAsNumber: true })}
-              aria-invalid={!!errors.rollout_percent}
-            />
-            {errors.rollout_percent && (
-              <p className="text-xs text-danger-accent">
-                {t(errors.rollout_percent.message ?? "")}
-              </p>
-            )}
-          </div>
-
-          {/* Enabled Checkbox */}
-          <div className="flex items-center gap-2.5 pt-1">
-            <Controller
-              control={control}
-              name="enabled"
-              render={({ field }) => (
-                <Checkbox
-                  id="flag-enabled"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              )}
-            />
-            <Label
-              htmlFor="flag-enabled"
-              className="text-sm font-medium cursor-pointer"
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-overlay/80 backdrop-blur-sm" />
+        <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl md:inset-auto md:left-1/2 md:top-1/2 md:w-[min(calc(100%-2rem),32rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl">
+          <div className="flex items-center justify-between border-b border-border-subtle pb-4">
+            <Dialog.Title
+              className="text-lg font-semibold text-text flex items-center gap-2"
             >
-              {t(
-                "admin.enableImmediatelyOnCreation",
-                "Enable immediately on creation",
-              )}
-            </Label>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 border-t border-border-subtle pt-4 mt-6">
-            <Button
+              <Flag className="h-5 w-5 text-primary-accent" />
+              {t("admin.createFeatureFlag", "Create Feature Flag")}
+            </Dialog.Title>
+            <button
               type="button"
-              variant="ghost"
               onClick={onClose}
               disabled={isSubmitting}
+              aria-label={t("common.close", "Close")}
+              className="rounded-lg p-1 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
             >
-              {t("admin.cancel", "Cancel")}
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("admin.creating", "Creating...")}
-                </>
-              ) : (
-                t("admin.saveFeatureFlag", "Save Feature Flag")
-              )}
-            </Button>
+              <X aria-hidden="true" className="h-5 w-5" />
+            </button>
           </div>
-        </form>
-      </div>
-    </div>
+
+          {error && (
+            <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
+              <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form
+            onSubmit={(e) => {
+              void handleSubmit(onSubmit)(e);
+            }}
+            className="space-y-4"
+          >
+            {/* Key */}
+            <div className="space-y-1.5">
+              <Label htmlFor="flag-key">
+                {t("admin.flagIdentifierKey", "Flag Identifier Key")}
+              </Label>
+              <Input
+                id="flag-key"
+                {...register("key")}
+                placeholder={t(
+                  "admin.flagKeyPlaceholder",
+                  "e.g. streaks_v2, ai_grading_v2",
+                )}
+                aria-invalid={!!errors.key}
+              />
+              {errors.key && (
+                <p className="text-xs text-danger-accent">
+                  {t(errors.key.message ?? "")}
+                </p>
+              )}
+            </div>
+
+            {/* Description */}
+            <div className="space-y-1.5">
+              <Label htmlFor="flag-desc">
+                {t("admin.description", "Description")}
+              </Label>
+              <Input
+                id="flag-desc"
+                {...register("description")}
+                placeholder={t(
+                  "admin.flagDescPlaceholder",
+                  "What does this feature flag control?",
+                )}
+                aria-invalid={!!errors.description}
+              />
+              {errors.description && (
+                <p className="text-xs text-danger-accent">
+                  {t(errors.description.message ?? "")}
+                </p>
+              )}
+            </div>
+
+            {/* Owner & Expiry */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="flag-owner">
+                  {t("admin.ownerTeam", "Owner / Team")}
+                </Label>
+                <Input
+                  id="flag-owner"
+                  {...register("owner")}
+                  placeholder="@team"
+                  aria-invalid={!!errors.owner}
+                />
+                {errors.owner && (
+                  <p className="text-xs text-danger-accent">
+                    {t(errors.owner.message ?? "")}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="flag-expiry">
+                  {t("admin.expiresOnFuture", "Expires On (Future)")}
+                </Label>
+                <Input
+                  id="flag-expiry"
+                  type="date"
+                  {...register("expires_on")}
+                  aria-invalid={!!errors.expires_on}
+                />
+                {errors.expires_on && (
+                  <p className="text-xs text-danger-accent">
+                    {t(errors.expires_on.message ?? "")}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Rollout % */}
+            <div className="space-y-1.5">
+              <Label htmlFor="flag-rollout">
+                {t("admin.rolloutPercentage", "Rollout Percentage (0 - 100%)")}
+              </Label>
+              <Input
+                id="flag-rollout"
+                type="number"
+                min={0}
+                max={100}
+                {...register("rollout_percent", { valueAsNumber: true })}
+                aria-invalid={!!errors.rollout_percent}
+              />
+              {errors.rollout_percent && (
+                <p className="text-xs text-danger-accent">
+                  {t(errors.rollout_percent.message ?? "")}
+                </p>
+              )}
+            </div>
+
+            {/* Enabled Checkbox */}
+            <div className="flex items-center gap-2.5 pt-1">
+              <Controller
+                control={control}
+                name="enabled"
+                render={({ field }) => (
+                  <Checkbox
+                    id="flag-enabled"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
+              />
+              <Label
+                htmlFor="flag-enabled"
+                className="text-sm font-medium cursor-pointer"
+              >
+                {t(
+                  "admin.enableImmediatelyOnCreation",
+                  "Enable immediately on creation",
+                )}
+              </Label>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-border-subtle pt-4 mt-6">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
+                {t("admin.cancel", "Cancel")}
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("admin.creating", "Creating...")}
+                  </>
+                ) : (
+                  t("admin.saveFeatureFlag", "Save Feature Flag")
+                )}
+              </Button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 };

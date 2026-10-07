@@ -5,15 +5,14 @@ import { Building2, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  MODAL_FORM_CLASS,
-  Modal,
-  ModalBody,
-  ModalFooter,
-} from "@/components/ui/modal";
-import {
-  SearchableSelect,
-  type SearchableSelectOption,
-} from "@/components/ui/searchable-select";
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { usePayoutAccount, useUpsertPayoutAccount } from "../hooks/useStudio";
 
 interface PayoutAccountModalProps {
@@ -56,8 +55,8 @@ export function PayoutAccountModal({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const bankOptions = useMemo<SearchableSelectOption[]>(() => {
-    const list: SearchableSelectOption[] = COMMON_BANKS.map((bank) => ({
+  const bankOptions = useMemo<ComboboxOption[]>(() => {
+    const list: ComboboxOption[] = COMMON_BANKS.map((bank) => ({
       value: bank.code,
       label: `${bank.code} - ${bank.name}`,
       searchTerms: `${bank.code} ${bank.name}`,
@@ -134,136 +133,143 @@ export function PayoutAccountModal({
   };
 
   return (
-    <Modal
+    <Dialog
       open
-      onClose={onClose}
-      closeDisabled={upsertMutation.isPending}
-      icon={<Building2 className="h-5 w-5 text-primary-accent" />}
-      title={t("studio.payout.accountTitle", "Payout Bank Account")}
+      onOpenChange={(open) => {
+        if (!open && !upsertMutation.isPending) onClose();
+      }}
     >
-      <form
-        onSubmit={(e) => {
-          void handleSubmit(e);
-        }}
-        className={MODAL_FORM_CLASS}
-      >
-        <ModalBody>
-          <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-text-muted">
-            <ShieldCheck className="h-5 w-5 shrink-0 text-primary-accent" />
-            <p>
-              {t(
-                "studio.payout.securityNotice",
-                "Your bank details are encrypted and securely stored for earnings payout. Account numbers are never logged or publicly exposed (BR-STUDIO-09).",
-              )}
-            </p>
-          </div>
-
-          {error && (
-            <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger font-medium">
-              {error}
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+            <Building2 className="h-5 w-5 text-primary-accent" />
+            {t("studio.payout.accountTitle", "Payout Bank Account")}
+          </DialogTitle>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            void handleSubmit(e);
+          }}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <DialogBody>
+            <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-text-muted">
+              <ShieldCheck className="h-5 w-5 shrink-0 text-primary-accent" />
+              <p>
+                {t(
+                  "studio.payout.securityNotice",
+                  "Your bank details are encrypted and securely stored for earnings payout. Account numbers are never logged or publicly exposed (BR-STUDIO-09).",
+                )}
+              </p>
             </div>
-          )}
 
-          {success && (
-            <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success font-medium">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              {t(
-                "studio.payout.saveSuccess",
-                "Payout account saved successfully!",
-              )}
+            {error && (
+              <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger font-medium">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success font-medium">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                {t(
+                  "studio.payout.saveSuccess",
+                  "Payout account saved successfully!",
+                )}
+              </div>
+            )}
+
+            <div>
+              <label
+                htmlFor="bank-code-select"
+                className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5"
+              >
+                {t("studio.payout.bankLabel", "Bank")}
+              </label>
+              <input type="hidden" name="bank_code" value={bankCode} />
+              <Combobox
+                id="bank-code-select"
+                value={bankCode}
+                options={bankOptions}
+                onChange={(next) => setBankCode(next)}
+                placeholder={t("studio.payout.selectBank", "Select a bank...")}
+                searchPlaceholder={t(
+                  "studio.payout.searchBank",
+                  "Search bank by name or code...",
+                )}
+                emptyText={t("studio.payout.noBankFound", "No bank found")}
+              />
             </div>
-          )}
 
-          <div>
-            <label
-              htmlFor="bank-code-select"
-              className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5"
-            >
-              {t("studio.payout.bankLabel", "Bank")}
-            </label>
-            <input type="hidden" name="bank_code" value={bankCode} />
-            <SearchableSelect
-              id="bank-code-select"
-              value={bankCode}
-              options={bankOptions}
-              onChange={(next) => setBankCode(next)}
-              placeholder={t("studio.payout.selectBank", "Select a bank...")}
-              searchPlaceholder={t(
-                "studio.payout.searchBank",
-                "Search bank by name or code...",
-              )}
-              emptyText={t("studio.payout.noBankFound", "No bank found")}
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="account-number-input"
+                className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5"
+              >
+                {t("studio.payout.accountNumberLabel", "Account Number")}
+              </label>
+              <Input
+                id="account-number-input"
+                type="text"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                placeholder={t(
+                  "studio.payout.accountNumberPlaceholder",
+                  "e.g. 1017588888",
+                )}
+                required
+                className="w-full"
+              />
+            </div>
 
-          <div>
-            <label
-              htmlFor="account-number-input"
-              className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5"
+            <div>
+              <label
+                htmlFor="account-holder-input"
+                className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5"
+              >
+                {t("studio.payout.accountHolderLabel", "Account Holder Name")}
+              </label>
+              <Input
+                id="account-holder-input"
+                type="text"
+                value={accountHolder}
+                onChange={(e) => setAccountHolder(e.target.value.toUpperCase())}
+                placeholder={t(
+                  "studio.payout.accountHolderPlaceholder",
+                  "e.g. NGUYEN VAN A",
+                )}
+                required
+                className="w-full uppercase font-medium"
+              />
+              <span className="text-[11px] text-text-muted mt-1 block">
+                {t(
+                  "studio.payout.accountHolderHelp",
+                  "Unaccented uppercase letters matching your bank account.",
+                )}
+              </span>
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={upsertMutation.isPending}
             >
-              {t("studio.payout.accountNumberLabel", "Account Number")}
-            </label>
-            <Input
-              id="account-number-input"
-              type="text"
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value)}
-              placeholder={t(
-                "studio.payout.accountNumberPlaceholder",
-                "e.g. 1017588888",
-              )}
-              required
-              className="w-full"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="account-holder-input"
-              className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5"
+              {t("app.cancel", "Cancel")}
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={upsertMutation.isPending}
             >
-              {t("studio.payout.accountHolderLabel", "Account Holder Name")}
-            </label>
-            <Input
-              id="account-holder-input"
-              type="text"
-              value={accountHolder}
-              onChange={(e) => setAccountHolder(e.target.value.toUpperCase())}
-              placeholder={t(
-                "studio.payout.accountHolderPlaceholder",
-                "e.g. NGUYEN VAN A",
-              )}
-              required
-              className="w-full uppercase font-medium"
-            />
-            <span className="text-[11px] text-text-muted mt-1 block">
-              {t(
-                "studio.payout.accountHolderHelp",
-                "Unaccented uppercase letters matching your bank account.",
-              )}
-            </span>
-          </div>
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={upsertMutation.isPending}
-          >
-            {t("app.cancel", "Cancel")}
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={upsertMutation.isPending}
-          >
-            {upsertMutation.isPending
-              ? t("app.saving", "Saving...")
-              : t("studio.payout.saveButton", "Save Account")}
-          </Button>
-        </ModalFooter>
-      </form>
-    </Modal>
+              {upsertMutation.isPending
+                ? t("app.saving", "Saving...")
+                : t("studio.payout.saveButton", "Save Account")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

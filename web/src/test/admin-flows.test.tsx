@@ -224,13 +224,14 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     await renderAdminPage();
 
-    expect(screen.getByText("Platform Administration")).toBeInTheDocument();
-
     // Awaited: the tabs are built from /me/permissions, so nothing
     // administrative renders until that read lands. Rendering the tabs first
     // and hiding them afterwards would flash actions the caller may not have.
     expect(
       await screen.findByRole("button", { name: /Learner Management/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Learner Management" }),
     ).toBeInTheDocument();
     // Below md the sections live behind the section picker; the desktop
     // sidebar is drawn by the shell, which this page test does not mount.
@@ -297,6 +298,38 @@ describe("Admin Shell & Operations", () => {
     const text = card.textContent ?? "";
     expect(text.indexOf("Learner One")).toBeGreaterThanOrEqual(0);
     expect(text.indexOf("Learner One")).toBeLessThan(text.indexOf("11111111…"));
+  });
+
+  it("opens mobile learner actions and applies the status filter sheet", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get("/api/v1/admin/users", ({ request }) => {
+        const status = new URL(request.url).searchParams.get("status");
+        return HttpResponse.json({
+          items: status === "suspended" ? [sampleUser2] : [sampleUser1],
+          next_cursor: undefined,
+        });
+      }),
+    );
+    render(<AdminUserList />);
+    await screen.findAllByText("Learner One");
+    const cards = screen.getByTestId("learner-cards");
+    await user.click(
+      within(cards).getByRole("button", { name: /Actions for Learner One/i }),
+    );
+    expect(
+      screen.getByRole("menuitem", { name: /Lock login/i }),
+    ).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: /Filter by status/i }),
+      "suspended",
+    );
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    await screen.findAllByText("Learner Two");
+    expect(screen.queryByText("Learner One")).not.toBeInTheDocument();
   });
 
   it("offers no soft delete on the active row menu without user.delete, and keeps suspend", async () => {
@@ -754,10 +787,10 @@ describe("Admin Shell & Operations", () => {
     render(<AdminFeatureFlags />);
 
     await waitFor(() => {
-      expect(screen.getByText("streaks_v2")).toBeInTheDocument();
+      expect(screen.getAllByText("streaks_v2").length).toBeGreaterThan(0);
       expect(
-        screen.getByText("Second-generation streak calculation"),
-      ).toBeInTheDocument();
+        screen.getAllByText("Second-generation streak calculation").length,
+      ).toBeGreaterThan(0);
       expect(screen.getByText("25%")).toBeInTheDocument();
     });
 
@@ -773,7 +806,7 @@ describe("Admin Shell & Operations", () => {
     await user.click(screen.getByRole("button", { name: "Save Feature Flag" }));
 
     await waitFor(() => {
-      expect(screen.getByText("audio_v2")).toBeInTheDocument();
+      expect(screen.getAllByText("audio_v2").length).toBeGreaterThan(0);
     });
   });
 });
@@ -881,8 +914,12 @@ describe("Admin AI usage", () => {
 
     await renderAdmin();
 
-    expect(await screen.findByText(/openai_compatible/)).toBeInTheDocument();
-    expect(screen.getByText(/fallback_llm/)).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText(/openai_compatible/)).length,
+    ).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/fallback_llm/)).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("hides the section from an admin without admin.dashboard", async () => {
@@ -895,7 +932,7 @@ describe("Admin AI usage", () => {
     await renderAdmin();
 
     expect(
-      await screen.findByRole("button", { name: /Learner Management/i }),
+      await screen.findByRole("button", { name: /Section:/i }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /AI Usage/i }),
@@ -1010,7 +1047,9 @@ describe("Mobile admin section picker", () => {
     ).toBeInTheDocument();
 
     // The destination section panel is loaded
-    expect(await screen.findByText("streaks_v2")).toBeInTheDocument();
+    expect((await screen.findAllByText("streaks_v2")).length).toBeGreaterThan(
+      0,
+    );
 
     // Reopening the picker marks the new section with aria-current
     await user.click(

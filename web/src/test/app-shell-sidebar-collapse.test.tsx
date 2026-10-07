@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   createMemoryHistory,
@@ -12,8 +12,16 @@ import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "@/components/layout/AppShell";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AdminSidebarNav } from "@/features/admin/components/AdminSidebarNav";
 import i18n, { initI18n, loadLocale } from "@/i18n";
+
+// §3 allows the expanded sidebar anywhere in 232-248px.
+function expectExpandedWidth(aside: HTMLElement): void {
+  const width = /(?:^|\s)w-\[(\d+)px\]/.exec(aside.className)?.[1];
+  expect(Number(width)).toBeGreaterThanOrEqual(232);
+  expect(Number(width)).toBeLessThanOrEqual(248);
+}
 
 vi.mock("@/features/admin/model/sections", () => ({
   useVisibleAdminSections: () => ({
@@ -44,7 +52,13 @@ async function renderAt(path: string, Component: () => ReactElement) {
     history: createMemoryHistory({ initialEntries: [path] }),
   });
   await router.load();
-  return render(<RouterProvider router={router} />);
+  return render(
+    // jsdom has no layout, so Radix's pointer grace area towards the content
+    // never ends and the tooltip would stay open after unhover.
+    <TooltipProvider delayDuration={0} disableHoverableContent>
+      <RouterProvider router={router} />
+    </TooltipProvider>,
+  );
 }
 
 describe("AppShell collapsible desktop sidebar", () => {
@@ -70,9 +84,11 @@ describe("AppShell collapsible desktop sidebar", () => {
     const aside = toggle.closest("aside");
     expect(aside).not.toBeNull();
     expect(aside).toHaveAttribute("data-collapsed", "false");
+    expectExpandedWidth(aside as HTMLElement);
+    expect((aside as HTMLElement).className).toMatch(
+      /(?:^|\s)duration-(?:200|\[200ms\])(?:\s|$)/,
+    );
     expect(aside).toHaveClass(
-      "w-[232px]",
-      "duration-200",
       "motion-reduce:transition-none",
       "md:sticky",
       "md:top-0",
@@ -130,7 +146,7 @@ describe("AppShell collapsible desktop sidebar", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(toggle).toHaveAttribute("aria-label", "Collapse sidebar");
     expect(aside).toHaveAttribute("data-collapsed", "false");
-    expect(aside).toHaveClass("w-[232px]");
+    expectExpandedWidth(aside as HTMLElement);
     expect(localStorage.getItem("fluentra.sidebarCollapsed")).toBe("false");
 
     expect(within(aside as HTMLElement).getByText("Fluentra")).not.toHaveClass(
@@ -328,7 +344,9 @@ describe("AppShell collapsible desktop sidebar", () => {
     expect(tooltip).toHaveTextContent("Dashboard");
 
     await user.unhover(dashboardLink);
-    expect(screen.queryByRole("tooltip", { hidden: true })).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByRole("tooltip", { hidden: true })).toBeNull(),
+    );
 
     // Verify brand link tooltip on hover
     const aside = toggle.closest("aside");
@@ -468,7 +486,9 @@ describe("AppShell collapsible desktop sidebar", () => {
     expect(usersTooltip).toHaveTextContent("Users");
 
     await user.unhover(usersLink);
-    expect(screen.queryByRole("tooltip", { hidden: true })).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByRole("tooltip", { hidden: true })).toBeNull(),
+    );
 
     const adminLink = within(aside as HTMLElement).getByRole("link", {
       name: /^Admin$/i,

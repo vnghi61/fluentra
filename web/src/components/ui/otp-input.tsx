@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export interface OtpInputProps {
@@ -104,7 +105,7 @@ export const OtpInput = React.forwardRef<HTMLDivElement, OtpInputProps>(
         )}
       >
         {digits.map((digit, index) => (
-          <input
+          <Input
             key={index}
             ref={(el) => {
               inputRefs.current[index] = el;

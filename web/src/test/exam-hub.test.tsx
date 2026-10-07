@@ -443,8 +443,10 @@ describe("exam hub", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     fireEvent.click(practiceOptionsBtn);
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Continue/ })).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).not.toContainElement(resume);
+    expect(resume).toBeInTheDocument();
   });
 
   it("below md, opens practice options sheet and reaches an option", async () => {

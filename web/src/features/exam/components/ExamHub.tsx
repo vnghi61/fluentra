@@ -16,7 +16,7 @@ import {
 
 import { ApiError } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { SheetDialog } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -130,7 +130,7 @@ export function ExamHub(): React.JSX.Element {
           {t("exam.hub.practiceOptions", "Practice options")}
         </Button>
 
-        <BottomSheet
+        <SheetDialog
           open={sheetOpen}
           onOpenChange={setSheetOpen}
           title={t("exam.hub.practiceOptions", "Practice options")}
@@ -165,7 +165,7 @@ export function ExamHub(): React.JSX.Element {
               </div>
             )}
           </div>
-        </BottomSheet>
+        </SheetDialog>
       </div>
 
       {/* Desktop view (>= md): unchanged layout */}

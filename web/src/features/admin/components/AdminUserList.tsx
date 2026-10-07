@@ -9,6 +9,7 @@ import {
   Unlock,
   Users,
   AlertCircle,
+  Filter,
 } from "lucide-react";
 import { adminApi, type AdminUserSummary } from "../api/adminApi";
 import { PERMISSIONS, usePermissions } from "../model/permissions";
@@ -28,7 +29,9 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "./StatusBadge";
 import type { components } from "@/types/api";
+import * as Dialog from "@radix-ui/react-dialog";
 
 type UserStatus = components["schemas"]["UserStatus"];
 
@@ -92,6 +95,7 @@ export const AdminUserList: React.FC = () => {
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<UserStatus | "">("");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // Cursor Pagination state
   const [currentCursor, setCurrentCursor] = useState<string | undefined>(
@@ -242,17 +246,17 @@ export const AdminUserList: React.FC = () => {
   );
 
   const renderStatus = (status: AdminUserSummary["status"]) => (
-    <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
+    <StatusBadge
+      tone={
         status === "active"
-          ? "border-success/20 bg-success/10 text-success-accent"
+          ? "success"
           : status === "suspended"
-            ? "border-danger/20 bg-danger/10 text-danger-accent"
-            : "border-warning/20 bg-warning/10 text-warning-accent"
-      }`}
+            ? "danger"
+            : "warning"
+      }
     >
       {t(`admin.userStatus.${status}`, status)}
-    </span>
+    </StatusBadge>
   );
 
   // One menu per row. The items keep the accessible names the icon buttons
@@ -335,7 +339,7 @@ export const AdminUserList: React.FC = () => {
             onChange={(e) =>
               setSelectedStatus(e.target.value as UserStatus | "")
             }
-            className={selectClass}
+            className={`${selectClass} hidden md:block`}
           >
             <option value="">{t("admin.allStatuses")}</option>
             <option value="active">{t("admin.active")}</option>
@@ -346,12 +350,73 @@ export const AdminUserList: React.FC = () => {
             <option value="deleted">{t("admin.deleted")}</option>
           </select>
 
+          <Button
+            type="button"
+            variant="outline"
+            className="md:hidden"
+            onClick={() => setMobileFiltersOpen(true)}
+          >
+            <Filter className="h-4 w-4" aria-hidden="true" />
+            {t("admin.filters", "Filters")}
+          </Button>
+
           <Button type="submit" size="md">
             <Search className="mr-1.5 h-4 w-4" aria-hidden="true" />
             {t("admin.search")}
           </Button>
         </form>
       </div>
+
+      <Dialog.Root open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-overlay/60 md:hidden" />
+          <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 space-y-4 rounded-t-2xl border border-border bg-surface-card p-5 md:hidden">
+            <Dialog.Title className="text-base font-semibold text-text">
+              {t("admin.filters", "Filters")}
+            </Dialog.Title>
+            <label className="block space-y-1.5 text-sm font-medium text-text">
+              {t("admin.filterByStatus")}
+              <select
+                value={selectedStatus}
+                onChange={(event) =>
+                  setSelectedStatus(event.target.value as UserStatus | "")
+                }
+                className={selectClass}
+              >
+                <option value="">{t("admin.allStatuses")}</option>
+                <option value="active">{t("admin.active")}</option>
+                <option value="suspended">{t("admin.suspended")}</option>
+                <option value="pending_deletion">
+                  {t("admin.pendingDeletion")}
+                </option>
+                <option value="deleted">{t("admin.deleted")}</option>
+              </select>
+            </label>
+            <div className="flex justify-between gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setSelectedStatus("");
+                  setSearchQuery("");
+                  setMobileFiltersOpen(false);
+                }}
+              >
+                {t("admin.clearSelection", "Reset filters")}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setMobileFiltersOpen(false);
+                  void fetchUsers(undefined);
+                }}
+              >
+                {t("common.apply", "Apply")}
+              </Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       {selected.size > 0 && (
         <div className="flex flex-col gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">

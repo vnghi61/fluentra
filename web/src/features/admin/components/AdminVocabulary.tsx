@@ -22,6 +22,7 @@ import { AdminEditWordSenseModal } from "./AdminEditWordSenseModal";
 import { PERMISSIONS, usePermissions } from "../model/permissions";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
+import * as AlertDialog from "@radix-ui/react-alert-dialog";
 
 type SubTab = "words" | "queue";
 
@@ -52,6 +53,11 @@ export const AdminVocabulary: React.FC = () => {
   // Action status message
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmWithdraw, setConfirmWithdraw] = useState<
+    | { kind: "word"; word: AdminWordSummary }
+    | { kind: "sense"; item: LearnerWordQueueItem }
+    | null
+  >(null);
 
   // Both tabs read through useQuery rather than a fetch inside an effect. The
   // filters are the cache key, the inactive tab does not fetch, and a withdrawal
@@ -120,10 +126,7 @@ export const AdminVocabulary: React.FC = () => {
 
   // Withdraw a word from the shared dictionary.
   const handleWithdrawWord = async (word: AdminWordSummary) => {
-    if (!window.confirm(t("admin.confirmWithdrawWord", { term: word.lemma }))) {
-      return;
-    }
-
+    setConfirmWithdraw(null);
     setActionError(null);
     try {
       await adminApi.deleteWord(word.id);
@@ -138,10 +141,7 @@ export const AdminVocabulary: React.FC = () => {
   // Withdraw one sense from the shared dictionary.
   const handleWithdrawSense = async (item: LearnerWordQueueItem) => {
     if (!item.word_sense_id) return;
-    if (!window.confirm(t("admin.confirmWithdrawSense", { term: item.term }))) {
-      return;
-    }
-
+    setConfirmWithdraw(null);
     setActionError(null);
     try {
       await adminApi.deleteWordSense(item.word_sense_id);
@@ -271,7 +271,48 @@ export const AdminVocabulary: React.FC = () => {
           )}
 
           {/* Words Table */}
-          <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+          <div
+            className="space-y-3 md:hidden"
+            data-testid="vocabulary-word-cards"
+          >
+            {words.map((word) => (
+              <article
+                key={word.id}
+                className="space-y-3 rounded-xl border border-border bg-card p-4"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-semibold">{word.lemma}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {word.pos} · {word.cefr_level}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full border px-2 py-1 text-xs">
+                    {word.is_uploaded
+                      ? t("admin.sourceUpload")
+                      : t("admin.sourceSeed")}
+                  </span>
+                </div>
+                <p className="line-clamp-2 text-sm text-muted-foreground">
+                  {word.senses_count} {t("admin.senses")}
+                </p>
+                <div className="flex justify-end">
+                  {can(PERMISSIONS.contentEdit) && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="min-h-[44px]"
+                      onClick={() => setConfirmWithdraw({ kind: "word", word })}
+                    >
+                      <Trash2 className="mr-1 h-4 w-4" />
+                      {t("admin.withdraw")}
+                    </Button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="hidden bg-card border border-border rounded-xl overflow-hidden shadow-sm md:block">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="bg-muted/50 border-b border-border text-xs uppercase text-muted-foreground">
@@ -368,7 +409,9 @@ export const AdminVocabulary: React.FC = () => {
                               size="sm"
                               variant="ghost"
                               className="text-destructive hover:bg-destructive/10 min-h-11 px-3 text-xs"
-                              onClick={() => void handleWithdrawWord(w)}
+                              onClick={() =>
+                                setConfirmWithdraw({ kind: "word", word: w })
+                              }
                               title={t("admin.withdrawWordTitle")}
                             >
                               <Trash2 className="w-3.5 h-3.5 mr-1" />
@@ -466,7 +509,66 @@ export const AdminVocabulary: React.FC = () => {
           )}
 
           {/* Queue Table */}
-          <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+          <div
+            className="space-y-3 md:hidden"
+            data-testid="vocabulary-queue-cards"
+          >
+            {queueItems.map((item) => (
+              <article
+                key={item.upload_item_id}
+                className="space-y-3 rounded-xl border border-border bg-card p-4"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="min-w-0 truncate font-semibold">
+                    {item.term}
+                  </h3>
+                  <span
+                    className={`shrink-0 rounded-full border px-2 py-1 text-xs ${getQueueStatusBadge(item.status)}`}
+                  >
+                    {t(`admin.queueStatus.${item.status}`, item.status)}
+                  </span>
+                </div>
+                <p className="text-sm">{item.provided_meaning || "—"}</p>
+                <details>
+                  <summary className="cursor-pointer text-sm font-medium">
+                    {t("admin.definitionAndGloss")}
+                  </summary>
+                  <p className="mt-2 break-words text-sm text-muted-foreground">
+                    {item.definition || "—"}
+                  </p>
+                </details>
+                <p className="text-xs text-muted-foreground">
+                  {item.deck_name || t("admin.sourceUpload")}
+                </p>
+                <div className="flex gap-2">
+                  {item.word_sense_id && can(PERMISSIONS.contentEdit) && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-h-[44px] flex-1"
+                        onClick={() => setEditingQueueItem(item)}
+                      >
+                        {t("admin.editEntry")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={t("admin.withdrawSenseTitle")}
+                        className="min-h-[44px]"
+                        onClick={() =>
+                          setConfirmWithdraw({ kind: "sense", item })
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="hidden bg-card border border-border rounded-xl overflow-hidden shadow-sm md:block">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="bg-muted/50 border-b border-border text-xs uppercase text-muted-foreground">
@@ -606,7 +708,9 @@ export const AdminVocabulary: React.FC = () => {
                                   size="sm"
                                   variant="ghost"
                                   className="min-h-11 min-w-11 text-xs px-3 text-destructive hover:bg-destructive/10"
-                                  onClick={() => void handleWithdrawSense(item)}
+                                  onClick={() =>
+                                    setConfirmWithdraw({ kind: "sense", item })
+                                  }
                                   title={t("admin.withdrawSenseTitle")}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -654,6 +758,53 @@ export const AdminVocabulary: React.FC = () => {
           }}
         />
       )}
+      <AlertDialog.Root
+        open={confirmWithdraw !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmWithdraw(null);
+        }}
+      >
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
+          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(calc(100%-2rem),28rem)] -translate-x-1/2 -translate-y-1/2 space-y-4 rounded-xl border border-border bg-card p-6 shadow-xl">
+            <AlertDialog.Title className="font-semibold">
+              {t("admin.withdraw", "Withdraw")}
+            </AlertDialog.Title>
+            <AlertDialog.Description className="text-sm text-muted-foreground">
+              {confirmWithdraw?.kind === "word"
+                ? t("admin.confirmWithdrawWord", {
+                    term: confirmWithdraw.word.lemma,
+                  })
+                : confirmWithdraw?.kind === "sense"
+                  ? t("admin.confirmWithdrawSense", {
+                      term: confirmWithdraw.item.term,
+                    })
+                  : ""}
+            </AlertDialog.Description>
+            <div className="flex justify-end gap-2">
+              <AlertDialog.Cancel asChild>
+                <Button variant="outline" className="min-h-[44px]">
+                  {t("common.cancel")}
+                </Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button
+                  variant="destructive"
+                  className="min-h-[44px]"
+                  onClick={() => {
+                    if (confirmWithdraw?.kind === "word")
+                      void handleWithdrawWord(confirmWithdraw.word);
+                    else if (confirmWithdraw?.kind === "sense")
+                      void handleWithdrawSense(confirmWithdraw.item);
+                  }}
+                >
+                  {t("admin.withdraw")}
+                </Button>
+              </AlertDialog.Action>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </div>
   );
 };

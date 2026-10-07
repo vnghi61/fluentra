@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { adminApi, type PayoutResponse } from "../api/adminApi";
 import { formatVnd } from "@/lib/currency";
+import * as AlertDialog from "@radix-ui/react-alert-dialog";
 
 export function AdminPayoutsList(): React.JSX.Element {
   const { t } = useTranslation();
@@ -41,8 +42,9 @@ export function AdminPayoutsList(): React.JSX.Element {
   const [note, setNote] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmFulfill, setConfirmFulfill] = useState(false);
 
-  const handleFulfill = async (e: React.FormEvent) => {
+  const handleFulfill = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activePayout) return;
     setActionError(null);
@@ -57,6 +59,13 @@ export function AdminPayoutsList(): React.JSX.Element {
       return;
     }
 
+    setConfirmFulfill(true);
+  };
+
+  const performFulfill = async () => {
+    if (!activePayout) return;
+    setConfirmFulfill(false);
+
     setActionLoading(true);
     try {
       await adminApi.fulfillBillingPayout(activePayout.id, {
@@ -66,6 +75,7 @@ export function AdminPayoutsList(): React.JSX.Element {
       setActivePayout(null);
       setBankReference("");
       setNote("");
+      setConfirmFulfill(false);
       void refetch();
     } catch (err) {
       setActionError(
@@ -138,13 +148,45 @@ export function AdminPayoutsList(): React.JSX.Element {
           {error}
         </div>
       )}
+      <AlertDialog.Root open={confirmFulfill} onOpenChange={setConfirmFulfill}>
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 z-[60] bg-black/60" />
+          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[60] w-[min(calc(100%-2rem),28rem)] -translate-x-1/2 -translate-y-1/2 space-y-4 rounded-xl border border-border bg-surface-card p-6 shadow-xl">
+            <AlertDialog.Title className="font-semibold">
+              {t("adminPayouts.confirmFulfill", "Confirm Fulfillment")}
+            </AlertDialog.Title>
+            <AlertDialog.Description className="text-sm text-muted-foreground">
+              {activePayout
+                ? `${formatVnd(activePayout.amount_vnd)} · ${activePayout.creator_id}`
+                : ""}
+            </AlertDialog.Description>
+            <div className="flex justify-end gap-2">
+              <AlertDialog.Cancel asChild>
+                <Button variant="outline" className="min-h-[44px]">
+                  {t("app.cancel", "Cancel")}
+                </Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button
+                  variant="primary"
+                  className="min-h-[44px]"
+                  disabled={actionLoading}
+                  onClick={() => void performFulfill()}
+                >
+                  {t("adminPayouts.confirmFulfill", "Confirm Fulfillment")}
+                </Button>
+              </AlertDialog.Action>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
 
       {loading ? (
         <div className="py-16 text-center text-sm text-text-muted">
           {t("app.loading", "Loading payouts...")}
         </div>
       ) : payouts.length === 0 ? (
-        <Card className="border-border-subtle bg-surface-card p-10 text-center space-y-2">
+        <Card className="border-border-subtle bg-surface-card p-6 text-center space-y-2">
           <DollarSign className="h-10 w-10 text-text-muted mx-auto" />
           <CardTitle className="text-base font-bold text-text">
             {t("adminPayouts.emptyTitle", "No payouts requested")}
@@ -157,78 +199,119 @@ export function AdminPayoutsList(): React.JSX.Element {
           </CardDescription>
         </Card>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface-card shadow-sm">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-surface-base border-b border-border-subtle text-text-muted uppercase tracking-wider">
-              <tr>
-                <th className="p-3.5">
-                  {t("adminPayouts.colCreator", "Creator ID")}
-                </th>
-                <th className="p-3.5">
-                  {t("adminPayouts.colAmount", "Amount")}
-                </th>
-                <th className="p-3.5">
-                  {t("adminPayouts.colStatus", "Status")}
-                </th>
-                <th className="p-3.5">
-                  {t("adminPayouts.colReference", "Bank Reference")}
-                </th>
-                <th className="p-3.5">
-                  {t("adminPayouts.colDate", "Requested At")}
-                </th>
-                <th className="p-3.5 text-right">
-                  {t("adminPayouts.colAction", "Action")}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle">
-              {payouts.map((payout) => (
-                <tr
-                  key={payout.id}
-                  className="hover:bg-surface-base/50 transition-colors"
-                >
-                  <td className="p-3.5 font-mono text-[11px] text-text">
+        <>
+          <div className="space-y-3 md:hidden">
+            {payouts.map((payout) => (
+              <article
+                key={payout.id}
+                className="space-y-3 rounded-xl border border-border-subtle bg-surface-card p-4"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="break-all font-mono text-xs">
                     {payout.creator_id}
-                  </td>
-                  <td className="p-3.5 font-bold text-text">
-                    {formatVnd(payout.amount_vnd)}
-                  </td>
-                  <td className="p-3.5">{getStatusBadge(payout.status)}</td>
-                  <td className="p-3.5 font-mono text-[11px] text-text-muted">
-                    {payout.bank_reference || "—"}
-                  </td>
-                  <td className="p-3.5 text-text-muted">
-                    {new Date(payout.created_at).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </td>
-                  <td className="p-3.5 text-right">
-                    {payout.status === "pending" && (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => {
-                          setActivePayout(payout);
-                          setBankReference("");
-                          setNote("");
-                          setActionError(null);
-                        }}
-                        className="gap-1 text-xs"
-                      >
-                        <ArrowUpRight className="h-3.5 w-3.5" />
-                        {t("adminPayouts.fulfillBtn", "Fulfill")}
-                      </Button>
-                    )}
-                  </td>
+                  </span>
+                  {getStatusBadge(payout.status)}
+                </div>
+                <p className="text-lg font-bold">
+                  {formatVnd(payout.amount_vnd)}
+                </p>
+                <p className="text-sm text-text-muted">
+                  {new Date(payout.created_at).toLocaleString()}
+                </p>
+                {payout.status === "pending" && (
+                  <Button
+                    variant="primary"
+                    className="min-h-[44px] w-full"
+                    onClick={() => {
+                      setActivePayout(payout);
+                      setBankReference("");
+                      setNote("");
+                      setActionError(null);
+                    }}
+                  >
+                    <ArrowUpRight className="mr-1 h-4 w-4" />
+                    {t("adminPayouts.fulfillBtn", "Fulfill")}
+                  </Button>
+                )}
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto rounded-xl border border-border-subtle bg-surface-card shadow-sm md:block">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-surface-base border-b border-border-subtle text-text-muted uppercase tracking-wider">
+                <tr>
+                  <th className="p-3.5">
+                    {t("adminPayouts.colCreator", "Creator ID")}
+                  </th>
+                  <th className="p-3.5">
+                    {t("adminPayouts.colAmount", "Amount")}
+                  </th>
+                  <th className="p-3.5">
+                    {t("adminPayouts.colStatus", "Status")}
+                  </th>
+                  <th className="p-3.5">
+                    {t("adminPayouts.colReference", "Bank Reference")}
+                  </th>
+                  <th className="p-3.5">
+                    {t("adminPayouts.colDate", "Requested At")}
+                  </th>
+                  <th className="p-3.5 text-right">
+                    {t("adminPayouts.colAction", "Action")}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {payouts.map((payout) => (
+                  <tr
+                    key={payout.id}
+                    className="hover:bg-surface-base/50 transition-colors"
+                  >
+                    <td className="p-3.5 font-mono text-[11px] text-text">
+                      {payout.creator_id}
+                    </td>
+                    <td className="p-3.5 font-bold text-text">
+                      {formatVnd(payout.amount_vnd)}
+                    </td>
+                    <td className="p-3.5">{getStatusBadge(payout.status)}</td>
+                    <td className="p-3.5 font-mono text-[11px] text-text-muted">
+                      {payout.bank_reference || "—"}
+                    </td>
+                    <td className="p-3.5 text-text-muted">
+                      {new Date(payout.created_at).toLocaleDateString(
+                        undefined,
+                        {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        },
+                      )}
+                    </td>
+                    <td className="p-3.5 text-right">
+                      {payout.status === "pending" && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => {
+                            setActivePayout(payout);
+                            setBankReference("");
+                            setNote("");
+                            setActionError(null);
+                          }}
+                          className="gap-1 text-xs"
+                        >
+                          <ArrowUpRight className="h-3.5 w-3.5" />
+                          {t("adminPayouts.fulfillBtn", "Fulfill")}
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Fulfill Payout Modal */}

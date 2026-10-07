@@ -20,7 +20,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { SheetDialog } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { examApi, problemCode } from "../api/examApi";
@@ -541,7 +541,7 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
               ? t("exam.parts.hideQuestionList")
               : t("exam.parts.questionList")}
           </Button>
-          <BottomSheet
+          <SheetDialog
             open={listOpen}
             onOpenChange={setListOpen}
             title={t("exam.parts.questionList")}
@@ -560,7 +560,7 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
                 }}
               />
             </div>
-          </BottomSheet>
+          </SheetDialog>
         </div>
 
         <aside

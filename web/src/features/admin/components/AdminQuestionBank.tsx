@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { SheetDialog } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,7 +23,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
-import { Modal, ModalBody, ModalFooter } from "@/components/ui/modal";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -250,7 +257,24 @@ function QuestionsTab(): React.JSX.Element {
         </div>
 
         {/* Mobile Filter Controls (below md) */}
-        <div className="flex md:hidden items-center justify-between gap-2">
+        <div className="flex md:hidden items-center gap-2">
+          <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-surface px-3">
+            <Search
+              className="h-4 w-4 shrink-0 text-text-muted"
+              aria-hidden="true"
+            />
+            <input
+              type="text"
+              value={filter.node_code ?? ""}
+              onChange={(e) => setFilterValue("node_code", e.target.value)}
+              placeholder={t(
+                "adminQuestions.nodePlaceholder",
+                "Search questions",
+              )}
+              aria-label={t("adminQuestions.search", "Search questions")}
+              className="h-11 w-full min-h-[44px] min-w-[44px] flex-1 bg-transparent text-base focus:outline-none"
+            />
+          </label>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -269,28 +293,7 @@ function QuestionsTab(): React.JSX.Element {
                 </Badge>
               )}
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void refetch()}
-              disabled={isFetching}
-              className="h-11 w-11 shrink-0 p-0"
-              title={t("admin.refresh", "Refresh")}
-            >
-              <RefreshCw
-                className={cn("h-4 w-4", isFetching && "animate-spin")}
-                aria-hidden="true"
-              />
-            </Button>
           </div>
-          <Button
-            variant="secondary"
-            onClick={() => setGenerateOpen((open) => !open)}
-            className="h-11 min-h-[44px] gap-2"
-          >
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
-            <span>{t("adminQuestions.generateBtn", "Generate drafts")}</span>
-          </Button>
         </div>
 
         {/* Applied Filter Chips & Status Bar */}
@@ -419,7 +422,7 @@ function QuestionsTab(): React.JSX.Element {
         </div>
 
         {/* Mobile BottomSheet for filters */}
-        <BottomSheet
+        <SheetDialog
           open={filterSheetOpen}
           onOpenChange={setFilterSheetOpen}
           title={t("adminQuestions.filtersTitle", "Filter Questions")}
@@ -526,7 +529,7 @@ function QuestionsTab(): React.JSX.Element {
               </Button>
             </div>
           </div>
-        </BottomSheet>
+        </SheetDialog>
 
         {generateOpen && (
           <GenerateForm
@@ -760,76 +763,81 @@ function QuestionsTab(): React.JSX.Element {
         </div>
       )}
 
-      <Modal
+      <Dialog
         open={selected !== null}
-        onClose={() => setSelected(null)}
-        size="md"
-        title={t("adminQuestions.statsTitle", "Item performance")}
-        icon={
-          <BarChart3
-            className="h-5 w-5 text-primary-accent"
-            aria-hidden="true"
-          />
-        }
+        onOpenChange={(open) => {
+          if (!open) setSelected(null);
+        }}
       >
-        <ModalBody>
-          {stats.isLoading ? (
-            <div aria-busy="true" className="grid grid-cols-2 gap-3">
-              {Array.from({ length: 4 }, (_, i) => (
-                <Skeleton key={i} className="h-16 rounded-lg" />
-              ))}
-            </div>
-          ) : stats.isError ? (
-            <div className="space-y-3">
-              <p role="alert" className="text-sm text-danger-accent">
-                {t(
-                  "adminQuestions.statsError",
-                  "Statistics could not be loaded.",
-                )}
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => void stats.refetch()}
-                className="min-h-[44px]"
-              >
-                {t("adminQuestions.retry", "Retry")}
-              </Button>
-            </div>
-          ) : (
-            <dl className="grid grid-cols-2 gap-3 text-sm">
-              <Stat
-                label={t("adminQuestions.attempts", "Attempts")}
-                value={String(stats.data?.attempts ?? 0)}
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+              <BarChart3
+                className="h-5 w-5 text-primary-accent"
+                aria-hidden="true"
               />
-              <Stat
-                label={t("adminQuestions.pValue", "P-value")}
-                value={stats.data?.p_value?.toFixed(2) ?? "—"}
-              />
-              <Stat
-                label={t("adminQuestions.discrimination", "Discrimination")}
-                value={stats.data?.discrimination?.toFixed(2) ?? "—"}
-              />
-              <Stat
-                label={t("adminQuestions.avgTime", "Avg time")}
-                value={
-                  stats.data?.avg_time_ms
-                    ? `${(stats.data.avg_time_ms / 1000).toFixed(1)} s`
-                    : "—"
-                }
-              />
-            </dl>
-          )}
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            variant="outline"
-            onClick={() => setSelected(null)}
-            className="min-h-[44px]"
-          >
-            {t("common.close", "Close")}
-          </Button>
-        </ModalFooter>
-      </Modal>
+              {t("adminQuestions.statsTitle", "Item performance")}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {stats.isLoading ? (
+              <div aria-busy="true" className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <Skeleton key={i} className="h-16 rounded-lg" />
+                ))}
+              </div>
+            ) : stats.isError ? (
+              <div className="space-y-3">
+                <p role="alert" className="text-sm text-danger-accent">
+                  {t(
+                    "adminQuestions.statsError",
+                    "Statistics could not be loaded.",
+                  )}
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => void stats.refetch()}
+                  className="min-h-[44px]"
+                >
+                  {t("adminQuestions.retry", "Retry")}
+                </Button>
+              </div>
+            ) : (
+              <dl className="grid grid-cols-2 gap-3 text-sm">
+                <Stat
+                  label={t("adminQuestions.attempts", "Attempts")}
+                  value={String(stats.data?.attempts ?? 0)}
+                />
+                <Stat
+                  label={t("adminQuestions.pValue", "P-value")}
+                  value={stats.data?.p_value?.toFixed(2) ?? "—"}
+                />
+                <Stat
+                  label={t("adminQuestions.discrimination", "Discrimination")}
+                  value={stats.data?.discrimination?.toFixed(2) ?? "—"}
+                />
+                <Stat
+                  label={t("adminQuestions.avgTime", "Avg time")}
+                  value={
+                    stats.data?.avg_time_ms
+                      ? `${(stats.data.avg_time_ms / 1000).toFixed(1)} s`
+                      : "—"
+                  }
+                />
+              </dl>
+            )}
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSelected(null)}
+              className="min-h-[44px]"
+            >
+              {t("common.close", "Close")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1230,7 +1238,11 @@ export function AdminQuestionBank(): React.JSX.Element {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 border-b border-border-subtle pb-px">
+      <div
+        role="tablist"
+        aria-label={t("adminQuestions.tabs", "Question bank views")}
+        className="flex gap-2 border-b border-border-subtle pb-px"
+      >
         {(
           [
             ["questions", t("adminQuestions.tabQuestions", "Questions")],
@@ -1240,6 +1252,8 @@ export function AdminQuestionBank(): React.JSX.Element {
           <button
             key={key}
             type="button"
+            role="tab"
+            aria-selected={tab === key}
             onClick={() => setTab(key)}
             className={cn(
               "min-h-[44px] whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors",

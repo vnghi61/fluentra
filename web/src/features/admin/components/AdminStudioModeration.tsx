@@ -144,7 +144,7 @@ export function AdminStudioModeration(): React.JSX.Element {
           {t("app.loading", "Loading moderation queue...")}
         </div>
       ) : items.length === 0 ? (
-        <Card className="border-border-subtle bg-surface-card p-10 text-center space-y-2">
+        <Card className="border-border-subtle bg-surface-card p-6 text-center space-y-2">
           <CheckCircle2 className="h-10 w-10 text-success mx-auto" />
           <CardTitle className="text-base font-bold text-text">
             {t("adminModeration.emptyTitle", "Queue is clear")}
@@ -157,107 +157,158 @@ export function AdminStudioModeration(): React.JSX.Element {
           </CardDescription>
         </Card>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface-card shadow-sm">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-surface-base border-b border-border-subtle text-text-muted uppercase tracking-wider">
-              <tr>
-                <th className="p-3.5">
-                  {t("adminModeration.colCourse", "Course & Author")}
-                </th>
-                <th className="p-3.5">
-                  {t("adminModeration.colLevel", "Level")}
-                </th>
-                <th className="p-3.5">
-                  {t("adminModeration.colPricing", "Pricing")}
-                </th>
-                <th className="p-3.5">
-                  {t("adminModeration.colGate1", "Gate 1 Status")}
-                </th>
-                <th className="p-3.5">
-                  {t("adminModeration.colSubmittedAt", "Submitted")}
-                </th>
-                <th className="p-3.5 text-right">
-                  {t("adminModeration.colAction", "Action")}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle">
-              {items.map(({ draft, submission }) => {
-                const report = submission.verification_report as
-                  { passed?: boolean } | null | undefined;
-
-                return (
-                  <tr
-                    key={submission.id}
-                    className="hover:bg-surface-base/50 transition-colors"
+        <>
+          <div className="space-y-3 md:hidden">
+            {items.map(({ draft, submission }) => {
+              const report = submission.verification_report;
+              return (
+                <article
+                  key={submission.id}
+                  className="space-y-3 rounded-xl border border-border-subtle bg-surface-card p-4"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold">{draft.title}</h3>
+                      <p className="break-all text-xs text-text-muted">
+                        {draft.owner_id}
+                      </p>
+                    </div>
+                    <Badge variant={report?.passed ? "success" : "warning"}>
+                      {report?.passed
+                        ? t("adminModeration.passed", "Passed")
+                        : t("adminModeration.verifying", "Verification Check")}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-text-muted">
+                    {draft.cefr_level} ·{" "}
+                    {new Date(submission.submitted_at).toLocaleString()}
+                  </p>
+                  <p className="text-sm">
+                    {report?.items_checked ?? 0}{" "}
+                    {t("adminModeration.checksPassed", "checks")};{" "}
+                    {(report?.failures ?? []).length}{" "}
+                    {t("adminModeration.flags", "flags")}
+                  </p>
+                  <Button
+                    variant="primary"
+                    className="min-h-[44px] w-full"
+                    onClick={() => {
+                      setActiveItem({ draft, submission });
+                      setDecisionNotes("");
+                      setActionError(null);
+                    }}
                   >
-                    <td className="p-3.5">
-                      <div className="font-bold text-text">{draft.title}</div>
-                      <div className="text-text-muted text-[11px] font-mono mt-0.5">
-                        Author: {draft.owner_id.slice(0, 8)}...
-                      </div>
-                    </td>
-                    <td className="p-3.5">
-                      <Badge variant="primary" className="font-mono text-xs">
-                        {draft.cefr_level}
-                      </Badge>
-                    </td>
-                    <td className="p-3.5">
-                      {draft.price_vnd > 0 ? (
-                        <span className="font-semibold text-text">
-                          {formatVnd(draft.price_vnd)}
-                        </span>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">
-                          {t("studio.courses.freeBadge", "Free")}
+                    <Eye className="mr-1 h-4 w-4" />
+                    {t("adminModeration.reviewBtn", "Review")}
+                  </Button>
+                </article>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-x-auto rounded-xl border border-border-subtle bg-surface-card shadow-sm md:block">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-surface-base border-b border-border-subtle text-text-muted uppercase tracking-wider">
+                <tr>
+                  <th className="p-3.5">
+                    {t("adminModeration.colCourse", "Course & Author")}
+                  </th>
+                  <th className="p-3.5">
+                    {t("adminModeration.colLevel", "Level")}
+                  </th>
+                  <th className="p-3.5">
+                    {t("adminModeration.colPricing", "Pricing")}
+                  </th>
+                  <th className="p-3.5">
+                    {t("adminModeration.colGate1", "Gate 1 Status")}
+                  </th>
+                  <th className="p-3.5">
+                    {t("adminModeration.colSubmittedAt", "Submitted")}
+                  </th>
+                  <th className="p-3.5 text-right">
+                    {t("adminModeration.colAction", "Action")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {items.map(({ draft, submission }) => {
+                  const report = submission.verification_report;
+
+                  return (
+                    <tr
+                      key={submission.id}
+                      className="hover:bg-surface-base/50 transition-colors"
+                    >
+                      <td className="p-3.5">
+                        <div className="font-bold text-text">{draft.title}</div>
+                        <div className="text-text-muted text-[11px] font-mono mt-0.5">
+                          Author: {draft.owner_id.slice(0, 8)}...
+                        </div>
+                      </td>
+                      <td className="p-3.5">
+                        <Badge variant="primary" className="font-mono text-xs">
+                          {draft.cefr_level}
                         </Badge>
-                      )}
-                    </td>
-                    <td className="p-3.5">
-                      {report?.passed ? (
-                        <Badge variant="success" className="gap-1 text-xs">
-                          <CheckCircle2 className="h-3 w-3" />
-                          {t("adminModeration.passed", "Passed")}
-                        </Badge>
-                      ) : (
-                        <Badge variant="warning" className="gap-1 text-xs">
-                          <Clock className="h-3 w-3" />
-                          {t("adminModeration.verifying", "Verification Check")}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-text-muted">
-                      {new Date(submission.submitted_at).toLocaleDateString(
-                        undefined,
-                        {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        },
-                      )}
-                    </td>
-                    <td className="p-3.5 text-right">
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => {
-                          setActiveItem({ draft, submission });
-                          setDecisionNotes("");
-                          setActionError(null);
-                        }}
-                        className="gap-1 text-xs"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        {t("adminModeration.reviewBtn", "Review")}
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                      <td className="p-3.5">
+                        {draft.price_vnd > 0 ? (
+                          <span className="font-semibold text-text">
+                            {formatVnd(draft.price_vnd)}
+                          </span>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">
+                            {t("studio.courses.freeBadge", "Free")}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="p-3.5">
+                        {report?.passed ? (
+                          <Badge variant="success" className="gap-1 text-xs">
+                            <CheckCircle2 className="h-3 w-3" />
+                            {t("adminModeration.passed", "Passed")}
+                          </Badge>
+                        ) : (
+                          <Badge variant="warning" className="gap-1 text-xs">
+                            <Clock className="h-3 w-3" />
+                            {t(
+                              "adminModeration.verifying",
+                              "Verification Check",
+                            )}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="p-3.5 text-text-muted">
+                        {new Date(submission.submitted_at).toLocaleDateString(
+                          undefined,
+                          {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )}
+                      </td>
+                      <td className="p-3.5 text-right">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => {
+                            setActiveItem({ draft, submission });
+                            setDecisionNotes("");
+                            setActionError(null);
+                          }}
+                          className="min-h-[44px] gap-1 text-xs"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          {t("adminModeration.reviewBtn", "Review")}
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Review Detail Modal */}
@@ -366,15 +417,39 @@ export function AdminStudioModeration(): React.JSX.Element {
                     )}
                   </h4>
                 </div>
-                <Badge variant="success" className="text-xs">
-                  {t(
-                    "adminModeration.checksPassed",
-                    "All 6 Automated Checks Passed",
-                  )}
+                <Badge
+                  variant={
+                    activeItem.submission.verification_report?.passed
+                      ? "success"
+                      : "warning"
+                  }
+                  className="text-xs"
+                >
+                  {activeItem.submission.verification_report?.items_checked ??
+                    0}{" "}
+                  {t("adminModeration.checksPassed", "checks")}
                 </Badge>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-text-muted pt-1">
+              {activeItem.submission.verification_report?.failures?.length ? (
+                <ul className="space-y-2 text-sm text-danger-accent">
+                  {activeItem.submission.verification_report.failures.map(
+                    (failure, index) => (
+                      <li key={`${failure.check}-${index}`}>
+                        <strong>{failure.check}:</strong> {failure.message}
+                      </li>
+                    ),
+                  )}
+                </ul>
+              ) : (
+                <p className="text-sm text-text-muted">
+                  {t(
+                    "adminModeration.noGate1Flags",
+                    "No Gate 1 failures reported.",
+                  )}
+                </p>
+              )}
+              <div className="hidden">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
                   <span>

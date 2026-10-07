@@ -1,7 +1,7 @@
 import {
   fireEvent,
   screen,
-  waitForElementToBeRemoved,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { render } from "@testing-library/react";
@@ -118,7 +118,9 @@ describe("exam sitting shell", () => {
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Go to question 1" }),
     );
-    await waitForElementToBeRemoved(() => screen.queryByRole("dialog"));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
   });
 
   it("filters answered and unanswered questions", async () => {

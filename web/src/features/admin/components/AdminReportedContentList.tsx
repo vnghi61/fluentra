@@ -14,6 +14,7 @@ import {
 import { adminApi, type ReportedContentVersion } from "../api/adminApi";
 import { AdminContentDetailModal } from "./AdminContentDetailModal";
 import { Button } from "@/components/ui/button";
+import { CopyableId } from "./CopyableId";
 
 export const AdminReportedContentList: React.FC = () => {
   const { t } = useTranslation();
@@ -149,9 +150,7 @@ export const AdminReportedContentList: React.FC = () => {
                     <p className="break-words font-semibold leading-snug text-text">
                       {row.slug}
                     </p>
-                    <p className="truncate font-mono text-xs text-text-muted">
-                      {row.content_version_id}
-                    </p>
+                    <CopyableId id={row.content_version_id} />
                   </div>
                   <span
                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${
@@ -190,7 +189,7 @@ export const AdminReportedContentList: React.FC = () => {
                   <Button
                     variant="outline"
                     onClick={() => setSelectedItemId(row.item_id)}
-                    className="gap-1.5 font-medium min-h-[44px] w-full sm:w-auto"
+                    className="gap-1.5 font-medium min-h-[44px] w-full"
                   >
                     <span>{t("adminReports.reviewBtn", "Review item")}</span>
                     <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
@@ -268,12 +267,10 @@ export const AdminReportedContentList: React.FC = () => {
                       className="hover:bg-surface-muted/30 transition-colors"
                     >
                       <td className="px-5 py-3.5 font-medium text-text">
-                        <div className="font-mono text-xs text-primary-accent">
+                        <div className="truncate text-sm font-semibold text-text">
                           {row.slug}
                         </div>
-                        <div className="text-[11px] text-text-muted font-mono truncate max-w-[200px]">
-                          {row.content_version_id}
-                        </div>
+                        <CopyableId id={row.content_version_id} />
                       </td>
                       <td className="px-5 py-3.5">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-muted border border-border text-text">

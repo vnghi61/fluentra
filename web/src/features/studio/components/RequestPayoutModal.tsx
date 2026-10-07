@@ -5,11 +5,13 @@ import { ArrowUpRight, CheckCircle2, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  MODAL_FORM_CLASS,
-  Modal,
-  ModalBody,
-  ModalFooter,
-} from "@/components/ui/modal";
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useCreatorEarnings, useRequestPayout } from "../hooks/useStudio";
 import { formatVnd } from "@/lib/currency";
 
@@ -80,125 +82,132 @@ export function RequestPayoutModal({
   };
 
   return (
-    <Modal
+    <Dialog
       open
-      onClose={onClose}
-      size="md"
-      closeDisabled={requestMutation.isPending}
-      icon={<DollarSign className="h-5 w-5 text-primary-accent" />}
-      title={t("studio.payout.requestTitle", "Request Earnings Payout")}
+      onOpenChange={(open) => {
+        if (!open && !requestMutation.isPending) onClose();
+      }}
     >
-      <form
-        onSubmit={(e) => {
-          void handleSubmit(e);
-        }}
-        className={MODAL_FORM_CLASS}
-      >
-        <ModalBody>
-          {/* Balance Card */}
-          <div className="rounded-lg border border-border-subtle bg-surface-base p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-muted">
-                {t("studio.earnings.availableBalance", "Available Balance")}
-              </span>
-              <span className="text-base font-bold text-primary-accent">
-                {formatVnd(availableBalance)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-text-muted pt-1 border-t border-border-subtle">
-              <span>
-                {t("studio.payout.minimumThreshold", "Minimum Payout")}
-              </span>
-              <span>{formatVnd(threshold)}</span>
-            </div>
-            {earnings?.payout_account_configured && (
-              <div className="flex items-center justify-between text-xs text-text-muted pt-1">
-                <span>
-                  {t("studio.payout.destination", "Destination Bank")}
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+            <DollarSign className="h-5 w-5 text-primary-accent" />
+            {t("studio.payout.requestTitle", "Request Earnings Payout")}
+          </DialogTitle>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            void handleSubmit(e);
+          }}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <DialogBody>
+            {/* Balance Card */}
+            <div className="rounded-lg border border-border-subtle bg-surface-base p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-muted">
+                  {t("studio.earnings.availableBalance", "Available Balance")}
                 </span>
-                <span className="font-mono text-text">
-                  {earnings.payout_bank_code} - {earnings.payout_masked_account}
+                <span className="text-base font-bold text-primary-accent">
+                  {formatVnd(availableBalance)}
                 </span>
               </div>
-            )}
-          </div>
-
-          {error && (
-            <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger font-medium">
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success font-medium">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              {t(
-                "studio.payout.requestSuccess",
-                "Payout requested! It will be reviewed and processed by our finance team.",
+              <div className="flex items-center justify-between text-xs text-text-muted pt-1 border-t border-border-subtle">
+                <span>
+                  {t("studio.payout.minimumThreshold", "Minimum Payout")}
+                </span>
+                <span>{formatVnd(threshold)}</span>
+              </div>
+              {earnings?.payout_account_configured && (
+                <div className="flex items-center justify-between text-xs text-text-muted pt-1">
+                  <span>
+                    {t("studio.payout.destination", "Destination Bank")}
+                  </span>
+                  <span className="font-mono text-text">
+                    {earnings.payout_bank_code} -{" "}
+                    {earnings.payout_masked_account}
+                  </span>
+                </div>
               )}
             </div>
-          )}
 
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label
-                htmlFor="payout-amount-input"
-                className="text-xs font-semibold text-text uppercase tracking-wider"
-              >
-                {t("studio.payout.amountLabel", "Payout Amount (VND)")}
-              </label>
-              <button
-                type="button"
-                onClick={handleMax}
-                className="text-xs font-semibold text-primary-accent hover:underline cursor-pointer"
-              >
-                {t("studio.payout.maxButton", "Use Max")}
-              </button>
+            {error && (
+              <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger font-medium">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success font-medium">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                {t(
+                  "studio.payout.requestSuccess",
+                  "Payout requested! It will be reviewed and processed by our finance team.",
+                )}
+              </div>
+            )}
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label
+                  htmlFor="payout-amount-input"
+                  className="text-xs font-semibold text-text uppercase tracking-wider"
+                >
+                  {t("studio.payout.amountLabel", "Payout Amount (VND)")}
+                </label>
+                <button
+                  type="button"
+                  onClick={handleMax}
+                  className="text-xs font-semibold text-primary-accent hover:underline cursor-pointer"
+                >
+                  {t("studio.payout.maxButton", "Use Max")}
+                </button>
+              </div>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">
+                  ₫
+                </span>
+                <Input
+                  id="payout-amount-input"
+                  type="number"
+                  min={threshold}
+                  max={availableBalance}
+                  step={1000}
+                  value={amountVnd}
+                  onChange={(e) => setAmountVnd(Number(e.target.value))}
+                  required
+                  className="pl-8 text-base font-semibold"
+                />
+              </div>
             </div>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">
-                ₫
-              </span>
-              <Input
-                id="payout-amount-input"
-                type="number"
-                min={threshold}
-                max={availableBalance}
-                step={1000}
-                value={amountVnd}
-                onChange={(e) => setAmountVnd(Number(e.target.value))}
-                required
-                className="pl-8 text-base font-semibold"
-              />
-            </div>
-          </div>
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={requestMutation.isPending}
-          >
-            {t("app.cancel", "Cancel")}
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={
-              requestMutation.isPending ||
-              availableBalance < threshold ||
-              !earnings?.payout_account_configured
-            }
-            className="gap-2"
-          >
-            <ArrowUpRight className="h-4 w-4" />
-            {requestMutation.isPending
-              ? t("studio.payout.requesting", "Submitting...")
-              : t("studio.payout.submitRequest", "Confirm Payout")}
-          </Button>
-        </ModalFooter>
-      </form>
-    </Modal>
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={requestMutation.isPending}
+            >
+              {t("app.cancel", "Cancel")}
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={
+                requestMutation.isPending ||
+                availableBalance < threshold ||
+                !earnings?.payout_account_configured
+              }
+              className="gap-2"
+            >
+              <ArrowUpRight className="h-4 w-4" />
+              {requestMutation.isPending
+                ? t("studio.payout.requesting", "Submitting...")
+                : t("studio.payout.submitRequest", "Confirm Payout")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

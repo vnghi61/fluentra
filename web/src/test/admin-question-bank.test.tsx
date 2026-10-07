@@ -276,7 +276,7 @@ describe("AdminQuestionBank", () => {
     renderBank();
     await screen.findByTestId("question-table");
 
-    await userEvent.click(screen.getByRole("button", { name: /Coverage/i }));
+    await userEvent.click(screen.getByRole("tab", { name: /Coverage/i }));
 
     // The headline number appears beside the "2" test counts in the table.
     expect((await screen.findAllByText("2")).length).toBeGreaterThan(0);
@@ -329,6 +329,10 @@ describe("AdminQuestionBank", () => {
     ).toBeInTheDocument();
     await userEvent.selectOptions(statusSelect, "draft");
 
+    await userEvent.click(
+      within(sheet).getByRole("button", { name: "Close" }),
+    );
+
     // Applied filter chip appears with translated status
     const chipContainer = await screen.findByTestId("applied-filter-chips");
     expect(chipContainer).toHaveTextContent(/Status.*Draft/i);
@@ -377,6 +381,10 @@ describe("AdminQuestionBank", () => {
       expect(lastQuery).toContain("kind=grammar_tense_choice");
       expect(lastQuery).toContain("status=draft");
     });
+
+    await userEvent.click(
+      within(sheet).getByRole("button", { name: "Close" }),
+    );
 
     // Remove the kind filter chip
     const removeKindBtn = screen.getByRole("button", {
@@ -431,6 +439,10 @@ describe("AdminQuestionBank", () => {
     await userEvent.selectOptions(
       within(sheet).getByLabelText(/^Status/i),
       "published",
+    );
+
+    await userEvent.click(
+      within(sheet).getByRole("button", { name: "Close" }),
     );
 
     await waitFor(() => {

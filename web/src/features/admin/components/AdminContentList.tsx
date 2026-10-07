@@ -12,6 +12,8 @@ import { adminApi, type ContentItem } from "../api/adminApi";
 import { AdminContentDetailModal } from "./AdminContentDetailModal";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
+import { CopyableId } from "./CopyableId";
+import { StatusBadge, type StatusTone } from "./StatusBadge";
 
 // The filter values are the server's, so they stay literals; only the labels are
 // translated. Both lists live inside the component because a module-level
@@ -91,20 +93,20 @@ export const AdminContentList: React.FC = () => {
     setAppliedSearch(searchQuery.trim());
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusTone = (status: string): StatusTone => {
     switch (status) {
       case "draft":
-        return "bg-amber-500/10 text-amber-500 border-amber-500/20";
+        return "warning";
       case "in_review":
-        return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+        return "info";
       case "approved":
-        return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+        return "success";
       case "published":
-        return "bg-green-500/10 text-green-500 border-green-500/20";
+        return "success";
       case "archived":
-        return "bg-muted text-muted-foreground border-border";
+        return "neutral";
       default:
-        return "bg-muted text-muted-foreground";
+        return "neutral";
     }
   };
 
@@ -188,7 +190,7 @@ export const AdminContentList: React.FC = () => {
 
       {/* Content Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/50 border-b border-border text-xs uppercase text-muted-foreground">
               <tr>
@@ -249,13 +251,9 @@ export const AdminContentList: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`text-xs px-2.5 py-0.5 rounded-full font-medium border ${getStatusBadge(
-                          item.status,
-                        )}`}
-                      >
+                      <StatusBadge tone={getStatusTone(item.status)}>
                         {t(`admin.contentStatus.${item.status}`, item.status)}
-                      </span>
+                      </StatusBadge>
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {new Date(item.updated_at).toLocaleString()}
@@ -278,6 +276,37 @@ export const AdminContentList: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        <ul className="divide-y divide-border-subtle md:hidden">
+          {items.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                onClick={() => setSelectedItemId(item.id)}
+                className="flex min-h-11 w-full flex-col items-start gap-2 p-4 text-left hover:bg-surface-muted"
+              >
+                <span className="w-full truncate text-sm font-semibold text-text">
+                  {item.slug}
+                </span>
+                <CopyableId id={item.id} />
+                <span className="flex flex-wrap items-center gap-2">
+                  <StatusBadge tone={getStatusTone(item.status)}>
+                    {t(`admin.contentStatus.${item.status}`, item.status)}
+                  </StatusBadge>
+                  <span className="text-xs text-text-muted">{item.kind}</span>
+                </span>
+                <span className="text-xs text-text-muted">
+                  {new Date(item.updated_at).toLocaleString()}
+                </span>
+              </button>
+            </li>
+          ))}
+          {items.length === 0 && !isLoading && (
+            <li className="p-4 text-sm text-text-muted">
+              {t("admin.noContentFound")}
+            </li>
+          )}
+        </ul>
 
         {/* This endpoint takes limit+offset, so every page has an address and
             the numbers are live. */}

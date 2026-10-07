@@ -17,6 +17,7 @@ import { adminApi, type AdminUserDetail } from "../api/adminApi";
 import { AdminActionReasonModal } from "./AdminActionReasonModal";
 import { PERMISSIONS, usePermissions } from "../model/permissions";
 import { Button } from "@/components/ui/button";
+import * as Dialog from "@radix-ui/react-dialog";
 
 interface AdminUserDetailModalProps {
   userId: string | null;
@@ -95,168 +96,173 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
 
   return (
     <>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="user-detail-modal-title"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/80 backdrop-blur-sm p-4"
+      <Dialog.Root
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
       >
-        <div className="w-full max-w-2xl rounded-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl space-y-6">
-          <div className="flex items-center justify-between border-b border-border-subtle pb-4">
-            <h2
-              id="user-detail-modal-title"
-              className="text-lg font-semibold text-text flex items-center gap-2"
-            >
-              <User className="h-5 w-5 text-primary-accent" />
-              {t("admin.learnerAccountDetails")}
-            </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg p-1 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-overlay/80 backdrop-blur-sm" />
+          <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl md:inset-auto md:left-1/2 md:top-1/2 md:w-[min(100%-2rem,42rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-4">
+              <Dialog.Title
+                className="text-lg font-semibold text-text flex items-center gap-2"
+              >
+                <User className="h-5 w-5 text-primary-accent" />
+                {t("admin.learnerAccountDetails")}
+              </Dialog.Title>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label={t("common.close", "Close")}
+                className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
+              >
+                <X aria-hidden="true" className="h-5 w-5" />
+              </button>
+            </div>
 
-          {isLoading ? (
-            <div className="flex min-h-[250px] items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary-accent" />
-            </div>
-          ) : error ? (
-            <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-4 text-xs text-danger-accent">
-              <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
-              <span>{error}</span>
-            </div>
-          ) : detail ? (
-            <div className="space-y-6">
-              {/* Audited notice */}
-              <div className="rounded-lg border border-primary/30 bg-primary/10 px-3.5 py-2.5 text-xs text-primary-accent flex items-center gap-2">
-                <Shield className="h-4 w-4 shrink-0 text-primary-accent" />
-                <span>
-                  {t(
-                    "admin.userViewedAuditNotice",
-                    "This account profile read was logged to the security audit trail",
-                  )}{" "}
-                  (<code>admin.user_viewed</code>).
-                </span>
+            {isLoading ? (
+              <div className="flex min-h-[250px] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary-accent" />
               </div>
-
-              {/* Profile Card */}
-              <div className="flex items-center gap-4 rounded-xl border border-border-subtle bg-surface-muted p-4">
-                <div className="h-16 w-16 overflow-hidden rounded-full border-2 border-primary/40 bg-surface-muted flex items-center justify-center text-xl font-bold text-primary-accent shrink-0">
-                  {detail.avatar_url ? (
-                    <img
-                      src={detail.avatar_url}
-                      alt={detail.display_name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span>{detail.display_name.charAt(0).toUpperCase()}</span>
-                  )}
+            ) : error ? (
+              <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-4 text-xs text-danger-accent">
+                <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
+                <span>{error}</span>
+              </div>
+            ) : detail ? (
+              <div className="space-y-6">
+                {/* Audited notice */}
+                <div className="rounded-lg border border-primary/30 bg-primary/10 px-3.5 py-2.5 text-xs text-primary-accent flex items-center gap-2">
+                  <Shield className="h-4 w-4 shrink-0 text-primary-accent" />
+                  <span>
+                    {t(
+                      "admin.userViewedAuditNotice",
+                      "This account profile read was logged to the security audit trail",
+                    )}{" "}
+                    (<code>admin.user_viewed</code>).
+                  </span>
                 </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2.5">
-                    <h3 className="text-base font-semibold text-text">
-                      {detail.display_name}
-                    </h3>
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium uppercase border ${
-                        detail.status === "active"
-                          ? "bg-success/10 text-success-accent border-success/20"
-                          : detail.status === "suspended"
-                            ? "bg-danger/10 text-danger-accent border-danger/20"
-                            : "bg-warning/10 text-warning-accent border-warning/20"
-                      }`}
-                    >
-                      {detail.status}
-                    </span>
+
+                {/* Profile Card */}
+                <div className="flex items-center gap-4 rounded-xl border border-border-subtle bg-surface-muted p-4">
+                  <div className="h-16 w-16 overflow-hidden rounded-full border-2 border-primary/40 bg-surface-muted flex items-center justify-center text-xl font-bold text-primary-accent shrink-0">
+                    {detail.avatar_url ? (
+                      <img
+                        src={detail.avatar_url}
+                        alt={detail.display_name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span>{detail.display_name.charAt(0).toUpperCase()}</span>
+                    )}
                   </div>
-                  <p className="text-xs text-text-muted flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5" />
-                    {detail.email}
-                  </p>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <h3 className="text-base font-semibold text-text">
+                        {detail.display_name}
+                      </h3>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium uppercase border ${
+                          detail.status === "active"
+                            ? "bg-success/10 text-success-accent border-success/20"
+                            : detail.status === "suspended"
+                              ? "bg-danger/10 text-danger-accent border-danger/20"
+                              : "bg-warning/10 text-warning-accent border-warning/20"
+                        }`}
+                      >
+                        {detail.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-text-muted flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5" />
+                      {detail.email}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Meta Grid */}
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
+                    <span className="text-text-muted">{t("admin.userId")}</span>
+                    <p className="font-mono text-text truncate">{detail.id}</p>
+                  </div>
+                  <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
+                    <span className="text-text-muted">
+                      {t("admin.languageLocale")}
+                    </span>
+                    <p className="text-text flex items-center gap-1">
+                      <Globe className="h-3.5 w-3.5 text-text-muted" />
+                      {detail.locale}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
+                    <span className="text-text-muted">
+                      {t("admin.timezone")}
+                    </span>
+                    <p className="text-text">{detail.timezone}</p>
+                  </div>
+                  <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
+                    <span className="text-text-muted">
+                      {t("admin.registered")}
+                    </span>
+                    <p className="text-text flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5 text-text-muted" />
+                      {new Date(detail.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Administrative Actions */}
+                <div className="border-t border-border-subtle pt-4 space-y-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                    {t("admin.administrativeControls")}
+                  </h4>
+                  <div className="flex flex-wrap gap-3">
+                    {detail.status === "active" &&
+                    can(PERMISSIONS.userSuspend) ? (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setActionType("suspend")}
+                      >
+                        <Ban className="mr-1.5 h-3.5 w-3.5" />
+                        {t("admin.suspendUser")}
+                      </Button>
+                    ) : detail.status === "suspended" &&
+                      can(PERMISSIONS.userReinstate) ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setActionType("reinstate")}
+                        className="border-success/40 text-success-accent hover:bg-success/10"
+                      >
+                        <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                        {t("admin.reinstateUser")}
+                      </Button>
+                    ) : null}
+
+                    {can(PERMISSIONS.userManageSessions) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setActionType("revoke_sessions")}
+                      >
+                        <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                        {t("admin.revokeActiveSessions")}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              {/* Meta Grid */}
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                  <span className="text-text-muted">{t("admin.userId")}</span>
-                  <p className="font-mono text-text truncate">{detail.id}</p>
-                </div>
-                <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                  <span className="text-text-muted">
-                    {t("admin.languageLocale")}
-                  </span>
-                  <p className="text-text flex items-center gap-1">
-                    <Globe className="h-3.5 w-3.5 text-text-muted" />
-                    {detail.locale}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                  <span className="text-text-muted">{t("admin.timezone")}</span>
-                  <p className="text-text">{detail.timezone}</p>
-                </div>
-                <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                  <span className="text-text-muted">
-                    {t("admin.registered")}
-                  </span>
-                  <p className="text-text flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5 text-text-muted" />
-                    {new Date(detail.created_at).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-
-              {/* Administrative Actions */}
-              <div className="border-t border-border-subtle pt-4 space-y-3">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                  {t("admin.administrativeControls")}
-                </h4>
-                <div className="flex flex-wrap gap-3">
-                  {detail.status === "active" &&
-                  can(PERMISSIONS.userSuspend) ? (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setActionType("suspend")}
-                    >
-                      <Ban className="mr-1.5 h-3.5 w-3.5" />
-                      {t("admin.suspendUser")}
-                    </Button>
-                  ) : detail.status === "suspended" &&
-                    can(PERMISSIONS.userReinstate) ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setActionType("reinstate")}
-                      className="border-success/40 text-success-accent hover:bg-success/10"
-                    >
-                      <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                      {t("admin.reinstateUser")}
-                    </Button>
-                  ) : null}
-
-                  {can(PERMISSIONS.userManageSessions) && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setActionType("revoke_sessions")}
-                    >
-                      <LogOut className="mr-1.5 h-3.5 w-3.5" />
-                      {t("admin.revokeActiveSessions")}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
+            ) : null}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       {actionType && (
         <AdminActionReasonModal

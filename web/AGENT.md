@@ -21,22 +21,28 @@ Rationale for each: [`/DEPENDENCIES.md`](../DEPENDENCIES.md) §2 and
 
 ## 2. Folder map
 
-| Path | Contains | Import rule |
-|---|---|---|
-| `src/app/` | Providers, router, error boundary, theme, bootstrap | May import anything |
-| `src/pages/` | Route components — thin, compose features | May import feature roots |
-| `src/features/<name>/` | A vertical slice: `api/`, `components/`, `hooks/`, `model/`, `index.ts` | **May import another slice only via its `index.ts`** |
-| `src/components/ui/` | Design system primitives (shadcn) | Imported by everything |
-| `src/components/layout/` | Shells, navigation | Imported by pages |
-| `src/api/` | Generated OpenAPI client, fetch wrapper, interceptors | Imported by feature `api/` only |
-| `src/hooks/` | Cross-feature hooks | — |
-| `src/lib/` | Pure utilities (date, cefr, format, audio) | No React, no network |
-| `src/stores/` | Zustand stores — UI/session state only | — |
-| `src/types/` | Generated + shared types | — |
-| `src/test/` | Setup, MSW handlers, factories | Test files only |
-| `e2e/` | Playwright specs and page objects | — |
+| Path                             | Contains                                                                                                 | Import rule                                                     |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `src/app/`                       | Providers, router, error boundary, theme, bootstrap                                                      | May import anything                                             |
+| `src/pages/`                     | Route components — thin, compose features                                                                | May import feature roots                                        |
+| `src/features/<name>/`           | A vertical slice: `api/`, `components/`, `hooks/`, `model/`, `index.ts`                                  | **May import another slice only via its `index.ts`**            |
+| `src/features/admin/components/` | `ResponsiveDataList`, `StatusBadge`, `AdminPageHeader`, `AdminModuleSwitcher`, and AI `QuotaBar`         | Presentation helpers only; preserve API-backed data and actions |
+| `src/components/ui/`             | shadcn primitives (Radix-backed Dialog, AlertDialog, Sheet, Tooltip, Popover/Combobox) and shared states | Imported by everything                                          |
+| `components.json`                | shadcn/ui CLI configuration and `@/components/ui` aliases                                                | Source of truth for generated primitives                        |
+| `src/components/layout/`         | Shells, navigation                                                                                       | Imported by pages                                               |
+| `src/api/`                       | Generated OpenAPI client, fetch wrapper, interceptors                                                    | Imported by feature `api/` only                                 |
+| `src/hooks/`                     | Cross-feature hooks                                                                                      | —                                                               |
+| `src/lib/`                       | Pure utilities (date, cefr, format, audio)                                                               | No React, no network                                            |
+| `src/stores/`                    | Zustand stores — UI/session state only                                                                   | —                                                               |
+| `src/types/`                     | Generated + shared types                                                                                 | —                                                               |
+| `src/test/`                      | Setup, MSW handlers, factories                                                                           | Test files only                                                 |
+| `e2e/`                           | Playwright specs and page objects                                                                        | —                                                               |
 
 `eslint-plugin-boundaries` enforces the slice rule. A cross-slice deep import fails lint.
+The shadcn token aliases in `src/index.css` map card/foreground/muted/destructive
+roles to Fluentra surface, text and semantic-color tokens. AI quota status is
+normal through 70%, highlight above 70%, warning above 85%, and critical above
+95% or when exhausted.
 
 ## 3. Feature slices (one per learner-facing capability)
 
@@ -46,29 +52,29 @@ Rationale for each: [`/DEPENDENCIES.md`](../DEPENDENCIES.md) §2 and
 
 ## 4. State — pick the right tool
 
-| Kind | Tool | Example |
-|---|---|---|
-| Server data | TanStack Query | lessons, progress, submissions |
-| URL state | Router search params | filters, tab, page |
-| Global UI | Zustand | theme, sidebar, audio player |
-| Form | React Hook Form + Zod | every form |
-| Local ephemeral | `useState` | open/closed, hover |
+| Kind            | Tool                  | Example                        |
+| --------------- | --------------------- | ------------------------------ |
+| Server data     | TanStack Query        | lessons, progress, submissions |
+| URL state       | Router search params  | filters, tab, page             |
+| Global UI       | Zustand               | theme, sidebar, audio player   |
+| Form            | React Hook Form + Zod | every form                     |
+| Local ephemeral | `useState`            | open/closed, hover             |
 
 **Never copy server data into a Zustand store.** The query cache is the source of truth; a
 duplicate is a stale copy waiting to be shown to a learner.
 
 ## 5. Data fetching rules
 
-| # | Rule |
-|---|---|
-| F1 | Never hand-write an API type. Run `pnpm run gen:api` — types come from `api/openapi/openapi.yaml` |
-| F2 | Never call `fetch` in a component. Use a hook in the feature's `api/` folder |
-| F3 | Query keys are centralised per feature (`api/keys.ts`) so invalidation is greppable |
-| F4 | Mutations invalidate explicitly; no blanket `invalidateQueries()` |
-| F5 | Optimistic updates only where a rollback is genuinely safe (review grading, deck edits) |
-| F6 | A 401 triggers a single-flight silent refresh, then one retry |
-| F7 | Every list uses cursor pagination; never assume page numbers |
-| F8 | Long operations (writing, speaking) use the SSE stream, with polling as a fallback |
+| #   | Rule                                                                                              |
+| --- | ------------------------------------------------------------------------------------------------- |
+| F1  | Never hand-write an API type. Run `pnpm run gen:api` — types come from `api/openapi/openapi.yaml` |
+| F2  | Never call `fetch` in a component. Use a hook in the feature's `api/` folder                      |
+| F3  | Query keys are centralised per feature (`api/keys.ts`) so invalidation is greppable               |
+| F4  | Mutations invalidate explicitly; no blanket `invalidateQueries()`                                 |
+| F5  | Optimistic updates only where a rollback is genuinely safe (review grading, deck edits)           |
+| F6  | A 401 triggers a single-flight silent refresh, then one retry                                     |
+| F7  | Every list uses cursor pagination; never assume page numbers                                      |
+| F8  | Long operations (writing, speaking) use the SSE stream, with polling as a fallback                |
 
 ## 6. Error handling
 
@@ -87,16 +93,16 @@ in Vietnamese or when repeating the verdict, while authored learning content
 `src/lib/errors/catalogue.ts`; a missing entry falls back to `title` **and logs a warning**, so
 gaps are visible rather than silent.
 
-| Status | UI |
-|---|---|
-| 422 | Map `errors[]` onto form fields; focus the first |
-| 401 expired | Silent refresh, retry once |
-| 401 revoked | Clear state, redirect to login with an explanation |
-| 403 | Inline "no access" panel — never a blank page |
-| 404 | Route-level not-found view |
-| 409 | Contextual toast + refetch the affected query |
-| 429 | Disable the action, count down from `Retry-After` |
-| 5xx | Error boundary with retry, showing the `request_id` for support |
+| Status      | UI                                                              |
+| ----------- | --------------------------------------------------------------- |
+| 422         | Map `errors[]` onto form fields; focus the first                |
+| 401 expired | Silent refresh, retry once                                      |
+| 401 revoked | Clear state, redirect to login with an explanation              |
+| 403         | Inline "no access" panel — never a blank page                   |
+| 404         | Route-level not-found view                                      |
+| 409         | Contextual toast + refetch the affected query                   |
+| 429         | Disable the action, count down from `Retry-After`               |
+| 5xx         | Error boundary with retry, showing the `request_id` for support |
 
 ## 6b. Responsive & mobile — the baseline (ADR-0024)
 
@@ -104,9 +110,8 @@ gaps are visible rather than silent.
 
 See `docs/ui-review/IMPLEMENTATION_PLAN.md` and `UX_AUDIT.md` for the current
 source-adapted design brief and verified limitations. Reuse the shell, the
-lazy-loaded `MoreSheet`/`BottomSheet`, `ErrorState`/`EmptyState` and the
-route-level 404/error/loading views. `BottomSheet` portals surround
-`AnimatePresence` (not the reverse). Authenticated mobile headers do not show
+lazy-loaded `MoreSheet`/shadcn `Sheet`, `ErrorState`/`EmptyState` and the
+route-level 404/error/loading views. Authenticated mobile headers do not show
 global theme/language controls; `AppShell` passes them to `MoreSheet` through
 its optional `controls` prop, rendered in an "Appearance & language" section
 when signed in. Desktop keeps them in the header. `components/` cannot import
@@ -134,7 +139,7 @@ panels. `playwright.ui-review.config.ts` captures the fixture-only Dashboard mat
 already-running app, with server startup disabled. Auth pages use the same lazy route
 loading as learner pages; URLs and guards are unchanged.
 
-Exam practice options below md open in a `BottomSheet` from a 'Practice options'
+Exam practice options below md open in a shadcn `Sheet` from a 'Practice options'
 button, keeping the unfinished-sitting resume link visible on the page; desktop
 (md+) retains the inline layout. Placement intro leads with a summary (duration
 and item count only when present in data/props, followed by post-test outcome)
@@ -143,16 +148,29 @@ scrolling on 375px screens. Functional tests cover mobile sheet entry and placem
 summary hierarchy; visual captures (screenshots) were not produced.
 The Progress page displays only API-backed KPI figures (completed activities, in-progress and completed courses), derives course titles and slugs from the catalogue query, and maintains course status filtering in local state.
 
-Dialogs: use the shared `components/ui/modal.tsx` (`Modal`, `ModalBody`,
-`ModalFooter`). It portals to `document.body`, bounds the panel with `dvh`, scrolls
-only its body, locks `documentElement` overflow (restored on close), traps focus,
-closes on Escape (not while a combobox listbox is open) and has a 44px close
-button. Studio payout and Checkout modals use it. The global
-`html:has([aria-modal])` scroll lock is narrowed to legacy inline dialogs; the
-primitive marks itself `data-scroll-lock="managed"`. Learn and exam pages use the
+Dialogs use the Radix-backed shadcn `Dialog` primitive from
+`components/ui/dialog.tsx`; `AlertDialog` is imported directly from
+`@radix-ui/react-alert-dialog` where needed, and some admin modals use
+`@radix-ui/react-dialog` directly. Drawers use `Sheet`, navigation hints use
+`Tooltip`, and searchable country/timezone/bank pickers use `Popover`-backed
+`Combobox`. Dialog focus containment, Escape handling and scroll locking come
+from Radix, while `DialogContent` and `SheetContent` restore focus to the element
+focused when a controlled dialog opened via `components/ui/use-return-focus.ts`.
+Use controlled `onOpenChange` to prevent closing while a mutation is pending;
+destructive and financial actions require `AlertDialog` confirmation.
+`components.json` configures the shadcn CLI.
+The Tailwind token aliases in `index.css` map `bg-card` to `surface-card`,
+`text-foreground` to `text`, `text-muted-foreground` to `text-muted`, `bg-primary`
+to the primary action fill, `text-primary-accent` to readable primary text,
+`bg-destructive` to destructive fill, and success/warning/danger accents to
+mode-aware semantic text. Admin shared presentation helpers are
+`ResponsiveDataList`, `StatusBadge`, `AdminPageHeader`, and
+`AdminModuleSwitcher`; AI usage quota bars use primary through 70%, highlight
+above 70%, warning above 85%, and critical above 95% or when exhausted.
+The global `html:has([aria-modal])` scroll lock remains only for legacy inline
+dialogs still listed in `web/TODO.md`. Learn and exam pages use the
 shell width (max ~1440px) with `max-w-3xl`/`max-w-xl` caps on long text, and mobile
 lesson rows are compact row links with a trailing 44px chevron.
-
 
 **Mobile-first is the default, not an adaptation.** Build every component at 375 px first and
 enhance upward. Most learners study on a phone; the layout they see should not be the one that
@@ -160,26 +178,26 @@ was checked last.
 
 ### Breakpoints
 
-| Token | Width | Layout |
-|---|---|---|
-| base | 0–639 px | Single column, bottom navigation, sheets instead of modals, tables become card lists |
-| `sm` | 640 px | Two-column forms where it helps |
-| `md` | 768 px | Sidebar replaces bottom navigation |
-| `lg` | 1024 px | Content + sidebar + detail pane |
-| `xl` | 1280 px | Max content width; do not stretch text lines further |
+| Token | Width    | Layout                                                                               |
+| ----- | -------- | ------------------------------------------------------------------------------------ |
+| base  | 0–639 px | Single column, bottom navigation, sheets instead of modals, tables become card lists |
+| `sm`  | 640 px   | Two-column forms where it helps                                                      |
+| `md`  | 768 px   | Sidebar replaces bottom navigation                                                   |
+| `lg`  | 1024 px  | Content + sidebar + detail pane                                                      |
+| `xl`  | 1280 px  | Max content width; do not stretch text lines further                                 |
 
 ### Enforced rules
 
-| # | Rule | Why it matters |
-|---|---|---|
-| R1 | Touch targets ≥ **44×44 CSS px**, with ≥ 8 px between adjacent targets | Below this, mis-taps dominate; it is the single most common mobile defect |
-| R2 | Input `font-size` ≥ **16 px** | Below 16 px, iOS Safari zooms the viewport on focus and the learner must pinch back out |
-| R3 | Honour `env(safe-area-inset-*)` | Otherwise the bottom navigation sits under the home indicator and the header under the notch |
-| R4 | No hover-only affordance | There is no hover on touch. Anything revealed by hover must also be reachable by tap or be always visible |
-| R5 | Layout is `visualViewport`-aware | The virtual keyboard must never cover the field being typed into — most visible on the OTP screen |
-| R6 | No horizontal scroll at **320 px** | The narrowest device still in real use |
-| R7 | `inputmode` and `autocomplete` set correctly on every input | `autocomplete="one-time-code"` is what lets the OS offer the OTP above the keyboard |
-| R8 | Tap feedback within 100 ms | Optimistic state or a skeleton; a dead-feeling tap reads as a broken app |
+| #   | Rule                                                                   | Why it matters                                                                                            |
+| --- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| R1  | Touch targets ≥ **44×44 CSS px**, with ≥ 8 px between adjacent targets | Below this, mis-taps dominate; it is the single most common mobile defect                                 |
+| R2  | Input `font-size` ≥ **16 px**                                          | Below 16 px, iOS Safari zooms the viewport on focus and the learner must pinch back out                   |
+| R3  | Honour `env(safe-area-inset-*)`                                        | Otherwise the bottom navigation sits under the home indicator and the header under the notch              |
+| R4  | No hover-only affordance                                               | There is no hover on touch. Anything revealed by hover must also be reachable by tap or be always visible |
+| R5  | Layout is `visualViewport`-aware                                       | The virtual keyboard must never cover the field being typed into — most visible on the OTP screen         |
+| R6  | No horizontal scroll at **320 px**                                     | The narrowest device still in real use                                                                    |
+| R7  | `inputmode` and `autocomplete` set correctly on every input            | `autocomplete="one-time-code"` is what lets the OS offer the OTP above the keyboard                       |
+| R8  | Tap feedback within 100 ms                                             | Optimistic state or a skeleton; a dead-feeling tap reads as a broken app                                  |
 
 R1 and R2 are enforced by lint rules (`web/eslint-local-rules/mobile-baseline.js`) and by the
 design-system primitives. R6 and R1-at-320 are enforced by the `narrow-320` Playwright project,
@@ -187,14 +205,14 @@ which is the only one at 320 px — the device matrix below starts at 390 px and
 
 ### Device matrix (Playwright projects)
 
-| Project | Viewport | Runs |
-|---|---|---|
-| `mobile-ios` | 390×844, WebKit | every PR |
-| `mobile-android` | 412×915, Chromium | every PR |
-| `tablet` | 768×1024 | every PR |
-| `desktop` | 1280×800 | every PR |
-| `narrow-320` | 320×640 | every PR — runs `e2e/responsive/` only |
-| `google-manual` | 1280×800, headed | manual, opt-in via `E2E_GOOGLE=1` — see `web/e2e/google/README.md` |
+| Project          | Viewport          | Runs                                                               |
+| ---------------- | ----------------- | ------------------------------------------------------------------ |
+| `mobile-ios`     | 390×844, WebKit   | every PR                                                           |
+| `mobile-android` | 412×915, Chromium | every PR                                                           |
+| `tablet`         | 768×1024          | every PR                                                           |
+| `desktop`        | 1280×800          | every PR                                                           |
+| `narrow-320`     | 320×640           | every PR — runs `e2e/responsive/` only                             |
+| `google-manual`  | 1280×800, headed  | manual, opt-in via `E2E_GOOGLE=1` — see `web/e2e/google/README.md` |
 
 ### Running the suite
 
@@ -222,16 +240,16 @@ several round trips — says `test.slow()` and says why.
 Each of these was found by a journey failing for a reason that had nothing to do with what
 it was testing:
 
-| Guess | What the product actually does |
-|---|---|
-| `Password123!@#` as a test password | Refused: it is in the breach corpus. Generate one — see `newPassword()`. |
-| A display name containing the journey's tag | "admin", "support", "fluentra" and friends are refused as impersonation (BR-USER-02). `newLearner()` keeps the tag out of the name. |
-| A "Confirm password" field on registration | There isn't one. |
-| `getByLabel(/^Password$/)` | Labels render a required marker, so the accessible name is `Password *`. |
-| Clicking "Verify & continue" after typing the code | The screen submits itself on the sixth digit; the click races a detached element. |
-| Re-typing a code over filled boxes | They are not cleared after a refusal, so `onComplete` fires on the first keystroke with five stale digits. `enterOtp()` clears first. |
-| `getByRole("button", { name: /Sign out/i })` | Desktop says "Sign out", mobile says "Logout". Use `expectSignedIn()`. |
-| `clearMailbox()` between steps | One inbox serves every parallel worker; clearing it deletes another journey's code. Match on recipient, subject and a time bound instead. |
+| Guess                                              | What the product actually does                                                                                                            |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `Password123!@#` as a test password                | Refused: it is in the breach corpus. Generate one — see `newPassword()`.                                                                  |
+| A display name containing the journey's tag        | "admin", "support", "fluentra" and friends are refused as impersonation (BR-USER-02). `newLearner()` keeps the tag out of the name.       |
+| A "Confirm password" field on registration         | There isn't one.                                                                                                                          |
+| `getByLabel(/^Password$/)`                         | Labels render a required marker, so the accessible name is `Password *`.                                                                  |
+| Clicking "Verify & continue" after typing the code | The screen submits itself on the sixth digit; the click races a detached element.                                                         |
+| Re-typing a code over filled boxes                 | They are not cleared after a refusal, so `onComplete` fires on the first keystroke with five stale digits. `enterOtp()` clears first.     |
+| `getByRole("button", { name: /Sign out/i })`       | Desktop says "Sign out", mobile says "Logout". Use `expectSignedIn()`.                                                                    |
+| `clearMailbox()` between steps                     | One inbox serves every parallel worker; clearing it deletes another journey's code. Match on recipient, subject and a time bound instead. |
 
 The per-IP OTP cap and `RATE_LIMIT_AUTH_PER_MIN` are raised for the test stack only, in
 `compose.dev.yaml` and the E2E job. At the shipped values the suite refuses its own
@@ -245,15 +263,15 @@ LCP < 2.5 s · INP < 200 ms · CLS < 0.1 · initial download ≤ 500 kB gzip (us
 
 ### Mobile-specific patterns
 
-| Situation | Pattern |
-|---|---|
-| Modal | Bottom sheet below `md`, centred dialog above |
-| Data table | Card list below `md`, table above |
-| Long form | One step per screen below `md` |
-| Navigation | Bottom bar (≤ 5 items) below `md`, sidebar above |
-| OTP entry | Six segmented inputs, numeric keypad, paste-fills-all, `autocomplete="one-time-code"` |
-| Audio recording | Large primary control, waveform above, thumb-reachable placement |
-| Destructive action | Confirmation sheet — never a hover-revealed control |
+| Situation          | Pattern                                                                               |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| Modal              | shadcn Sheet below `md`, centred shadcn Dialog above                                  |
+| Data table         | Card list below `md`, table above                                                     |
+| Long form          | One step per screen below `md`                                                        |
+| Navigation         | Bottom bar (≤ 5 items) below `md`, sidebar above                                      |
+| OTP entry          | Six segmented inputs, numeric keypad, paste-fills-all, `autocomplete="one-time-code"` |
+| Audio recording    | Large primary control, waveform above, thumb-reachable placement                      |
+| Destructive action | Confirmation sheet — never a hover-revealed control                                   |
 
 ## 7. Accessibility (non-negotiable)
 
@@ -264,25 +282,25 @@ correct/incorrect states carry an icon and text.
 
 ## 8. Performance budget (enforced in CI)
 
-| Metric | Budget |
-|---|---|
+| Metric                  | Budget        |
+| ----------------------- | ------------- |
 | Initial static JS + CSS | ≤ 500 kB gzip |
-| Route chunk | < 120 KB gzip |
-| LCP | < 2.0 s |
-| CLS | < 0.1 |
-| INP | < 200 ms |
+| Route chunk             | < 120 KB gzip |
+| LCP                     | < 2.0 s       |
+| CLS                     | < 0.1         |
+| INP                     | < 200 ms      |
 
 Tiptap (writing editor) and wavesurfer (audio) are lazy-loaded on the routes that need them.
 
 ## 9. Common tasks
 
-| Task | Steps |
-|---|---|
-| New page | Route in `app/router.tsx` → page in `pages/` → compose feature components → add the E2E path |
-| New feature slice | Create the folder with `api/ components/ hooks/ model/ index.ts`; export only through `index.ts` |
-| Consume a new endpoint | `pnpm run gen:api` → add a hook in the slice's `api/` → add a query key → add an MSW handler |
-| New form | Zod schema in `model/` → RHF → map server field errors → test the invalid path |
-| New design-system component | Add under `components/ui/` with a story and an a11y test |
+| Task                        | Steps                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| New page                    | Route in `app/router.tsx` → page in `pages/` → compose feature components → add the E2E path     |
+| New feature slice           | Create the folder with `api/ components/ hooks/ model/ index.ts`; export only through `index.ts` |
+| Consume a new endpoint      | `pnpm run gen:api` → add a hook in the slice's `api/` → add a query key → add an MSW handler     |
+| New form                    | Zod schema in `model/` → RHF → map server field errors → test the invalid path                   |
+| New design-system component | Add under `components/ui/` with a story and an a11y test                                         |
 
 ## 10. Testing
 
@@ -293,14 +311,18 @@ lists poll explicit `processing_status`; details offer content revalidation and
 open ready exercises instead of posting another generation request. Exercise
 generation is disabled unless the server reports `learning_suitable=true`.
 
-| Level | Rule |
-|---|---|
+| Level     | Rule                                                                                 |
+| --------- | ------------------------------------------------------------------------------------ |
 | Component | Query by role and accessible name. `getByTestId` only when nothing accessible exists |
-| Hook | Test through a component or `renderHook`; never assert internal state |
-| Network | MSW handlers generated from the OpenAPI examples — mocks cannot drift from the API |
-| Async | `findBy*` / `waitFor`; never a fixed timeout |
-| a11y | `vitest-axe` on page-level components |
-| E2E | Only the journeys in `ARCHITECTURE.md` §16.3; zero tolerance for flakes |
+| Hook      | Test through a component or `renderHook`; never assert internal state                |
+| Network   | MSW handlers generated from the OpenAPI examples — mocks cannot drift from the API   |
+| Async     | `findBy*` / `waitFor`; never a fixed timeout                                         |
+| a11y      | `vitest-axe` on page-level components                                                |
+| E2E       | Only the journeys in `ARCHITECTURE.md` §16.3; zero tolerance for flakes              |
+
+The admin dialog regression suite (`src/test/admin-dialog-a11y.test.tsx`) renders
+the four real admin dialogs and checks their role/name contracts plus the
+accessible labels on icon-only close buttons.
 
 ## 11. Do NOT
 

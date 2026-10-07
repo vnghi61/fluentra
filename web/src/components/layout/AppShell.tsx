@@ -20,10 +20,7 @@ import { LazyMotion, m, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
-import {
-  NavTooltip,
-  SidebarCollapsedContext,
-} from "@/components/ui/nav-tooltip";
+import { NavTooltip, SidebarCollapsedContext } from "@/components/ui/tooltip";
 import { BrandMark } from "./BrandMark";
 
 /** Lazy: see AccountMenu's own comment for why it is not in the entry chunk. */
@@ -330,8 +327,8 @@ export const AppShell: React.FC<AppShellProps> = ({
         <aside
           data-collapsed={collapsed ? "true" : "false"}
           className={cn(
-            "group theme-surface hidden md:flex flex-col shrink-0 bg-surface-card border-r border-border-subtle p-3 md:sticky md:top-0 md:h-screen md:self-start transition-[width] duration-200 ease-in-out motion-reduce:transition-none",
-            collapsed ? "w-[72px]" : "w-[232px]",
+            "group theme-surface hidden md:flex flex-col shrink-0 bg-surface-card border-r border-border-subtle p-3 md:sticky md:top-0 md:h-screen md:self-start transition-[width] duration-[200ms] ease-in-out motion-reduce:transition-none",
+            collapsed ? "w-[72px]" : "w-[240px]",
           )}
         >
           <SidebarCollapsedContext.Provider value={collapsed}>
@@ -339,7 +336,6 @@ export const AppShell: React.FC<AppShellProps> = ({
               <div
                 className={cn(
                   "flex shrink-0 items-center justify-between gap-2 pb-3",
-                  collapsed && "flex-col items-center justify-center",
                 )}
               >
                 <NavTooltip label="Fluentra">
@@ -397,7 +393,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
               <nav
                 aria-label={t("nav.mainNavigation", "Main navigation")}
-                className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
+                className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto [scrollbar-width:thin]"
               >
                 {destinations.map(({ to, labelKey, fallback, Icon, exact }) => {
                   const label = t(labelKey, fallback);
@@ -536,7 +532,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
           <main
             className={cn(
-              "flex-1 min-w-0 p-4 md:p-6 max-w-[1480px] mx-auto w-full",
+              "flex-1 min-w-0 w-[min(100%,1440px)] p-4 md:p-6 xl:px-8 min-[1600px]:max-w-[1520px] mx-auto",
               bottomNav
                 ? "pb-[calc(4rem+env(safe-area-inset-bottom)+16px)] md:pb-6"
                 : "pb-4 md:pb-6",

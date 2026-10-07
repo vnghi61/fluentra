@@ -4,7 +4,7 @@ import { ChevronDown, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { navActive, navBase, navIdle } from "@/components/layout/AppShell";
-import { NavTooltip } from "@/components/ui/nav-tooltip";
+import { NavTooltip } from "@/components/ui/tooltip";
 
 import { useVisibleAdminSections } from "../model/sections";
 

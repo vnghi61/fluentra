@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { SheetDialog } from "@/components/ui/sheet";
 
 export interface MoreSheetProps {
   open: boolean;
@@ -41,7 +41,7 @@ export default function MoreSheet({
   };
 
   return (
-    <BottomSheet
+    <SheetDialog
       open={open}
       onOpenChange={onOpenChange}
       title={t("nav.more", "More")}
@@ -167,6 +167,6 @@ export default function MoreSheet({
           </section>
         ) : null}
       </div>
-    </BottomSheet>
+    </SheetDialog>
   );
 }

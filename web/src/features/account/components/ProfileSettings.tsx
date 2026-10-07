@@ -19,10 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { settingsAlert, settingsCard } from "./settingsStyles";
-import {
-  SearchableSelect,
-  type SearchableSelectOption,
-} from "@/components/ui/searchable-select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import {
   countryOptions,
   timezoneOptions,
@@ -47,7 +44,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   // A searchable list, like the time zone, not a native select: ~250 countries
   // is too many to scroll, and a native select cannot be searched by the
   // English name or the code. The first entry clears the field.
-  const countries = useMemo<SearchableSelectOption[]>(
+  const countries = useMemo<ComboboxOption[]>(
     () => [
       { value: "", label: t("account.countryUnset") },
       ...countryOptions(i18n.language).map((c) => ({
@@ -58,7 +55,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     ],
     [i18n.language, t],
   );
-  const timezones = useMemo<SearchableSelectOption[]>(
+  const timezones = useMemo<ComboboxOption[]>(
     () =>
       timezoneOptions(profile.profile.timezone)
         .map(getTimezoneInfo)
@@ -292,7 +289,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                 validated only the length, so "US" and "XX" were equally
                 acceptable and "Viet Nam" was rejected for being too long. */}
             <input type="hidden" {...register("country")} />
-            <SearchableSelect
+            <Combobox
               id="country"
               value={selectedCountry}
               options={countries}
@@ -324,7 +321,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               {t("account.timezone")}
             </Label>
             <input type="hidden" {...register("timezone")} />
-            <SearchableSelect
+            <Combobox
               id="timezone"
               value={selectedTz}
               options={timezones}

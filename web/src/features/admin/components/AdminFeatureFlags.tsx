@@ -18,7 +18,8 @@ import {
 import { adminApi, type FeatureFlag } from "../api/adminApi";
 import { CreateFeatureFlagModal } from "./CreateFeatureFlagModal";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import * as AlertDialog from "@radix-ui/react-alert-dialog";
 
 const columnHelper = createColumnHelper<FeatureFlag>();
 
@@ -30,6 +31,7 @@ export const AdminFeatureFlags: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [updatingKey, setUpdatingKey] = useState<string | null>(null);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const fetchFlags = useCallback(async () => {
     setIsLoading(true);
@@ -102,12 +104,7 @@ export const AdminFeatureFlags: React.FC = () => {
 
   const handleDelete = useCallback(
     async (key: string) => {
-      if (
-        !confirm(`Are you sure you want to permanently delete flag "${key}"?`)
-      ) {
-        return;
-      }
-
+      setDeleteTarget(null);
       setDeletingKey(key);
       try {
         await adminApi.deleteFlag(key);
@@ -148,12 +145,13 @@ export const AdminFeatureFlags: React.FC = () => {
           const isUpdating = updatingKey === flag.key;
           return (
             <div className="flex items-center gap-2">
-              <Checkbox
+              <Switch
+                aria-label={`${t("admin.state")}: ${flag.key}`}
                 checked={flag.enabled}
                 disabled={isUpdating}
-                onCheckedChange={(checked) => {
-                  void handleToggleEnabled(flag, !!checked);
-                }}
+                onCheckedChange={(checked) =>
+                  void handleToggleEnabled(flag, checked)
+                }
               />
               <span
                 className={`text-xs font-medium ${
@@ -228,9 +226,7 @@ export const AdminFeatureFlags: React.FC = () => {
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => {
-                void handleDelete(flag.key);
-              }}
+              onClick={() => setDeleteTarget(flag.key)}
               disabled={deletingKey === flag.key}
               className="text-text-muted hover:text-danger-accent hover:bg-danger/10"
             >
@@ -297,7 +293,7 @@ export const AdminFeatureFlags: React.FC = () => {
             <Loader2 className="h-8 w-8 animate-spin text-primary-accent" />
           </div>
         ) : flags.length === 0 ? (
-          <div className="flex min-h-[200px] flex-col items-center justify-center p-8 text-center space-y-2">
+          <div className="flex min-h-[280px] flex-col items-center justify-center p-8 text-center space-y-2">
             <Flag className="h-8 w-8 text-text-muted" />
             <p className="text-sm font-medium text-text-muted">
               {t("admin.noFeatureFlagsConfigured")}
@@ -307,49 +303,92 @@ export const AdminFeatureFlags: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr
-                    key={headerGroup.id}
-                    className="border-b border-border-subtle bg-surface-muted"
+          <>
+            <div className="space-y-3 p-3 md:hidden">
+              {flags.map((flag) => (
+                <article
+                  key={flag.key}
+                  className="space-y-3 rounded-xl border border-border-subtle bg-surface-card p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h4 className="break-all font-mono font-semibold">
+                        {flag.key}
+                      </h4>
+                      <p className="text-sm text-text-muted">
+                        {flag.description}
+                      </p>
+                    </div>
+                    <Switch
+                      aria-label={`${t("admin.state")}: ${flag.key}`}
+                      checked={flag.enabled}
+                      disabled={updatingKey === flag.key}
+                      onCheckedChange={(checked) =>
+                        void handleToggleEnabled(flag, checked)
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-wrap justify-between gap-2 text-sm">
+                    <span>
+                      {t("admin.rollout")}: {flag.rollout_percent}%
+                    </span>
+                    <span className="text-text-muted">{flag.owner}</span>
+                    <span className="text-text-muted">{flag.expires_on}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="min-h-[44px]"
+                    onClick={() => setDeleteTarget(flag.key)}
                   >
-                    {headerGroup.headers.map((header) => (
-                      <th
-                        key={header.id}
-                        className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-text-muted"
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                      </th>
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody className="divide-y divide-border-subtle">
-                {table.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="hover:bg-surface-muted/40 transition-colors"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-3.5 text-sm">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    {t("admin.deleteFlag")}
+                  </Button>
+                </article>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr
+                      key={headerGroup.id}
+                      className="border-b border-border-subtle bg-surface-muted"
+                    >
+                      {headerGroup.headers.map((header) => (
+                        <th
+                          key={header.id}
+                          className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-text-muted"
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
+                <tbody className="divide-y divide-border-subtle">
+                  {table.getRowModel().rows.map((row) => (
+                    <tr
+                      key={row.id}
+                      className="hover:bg-surface-muted/40 transition-colors"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id} className="px-4 py-3.5 text-sm">
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -360,6 +399,50 @@ export const AdminFeatureFlags: React.FC = () => {
           setFlags((prev) => [...prev, newFlag]);
         }}
       />
+      <AlertDialog.Root
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
+          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(calc(100%-2rem),28rem)] -translate-x-1/2 -translate-y-1/2 space-y-4 rounded-xl border border-border bg-surface-card p-6 shadow-xl">
+            <AlertDialog.Title className="font-semibold">
+              {t("admin.deleteFlag")}
+            </AlertDialog.Title>
+            <AlertDialog.Description className="text-sm text-text-muted">
+              {deleteTarget
+                ? t("admin.confirmDeleteFlag", {
+                    key: deleteTarget,
+                    defaultValue: `Delete feature flag "${deleteTarget}"?`,
+                  })
+                : ""}
+            </AlertDialog.Description>
+            <div className="flex justify-end gap-2">
+              <AlertDialog.Cancel asChild>
+                <Button variant="outline" className="min-h-[44px]">
+                  {t("common.cancel", "Cancel")}
+                </Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button
+                  variant="destructive"
+                  className="min-h-[44px]"
+                  disabled={
+                    deleteTarget !== null && deletingKey === deleteTarget
+                  }
+                  onClick={() => {
+                    if (deleteTarget) void handleDelete(deleteTarget);
+                  }}
+                >
+                  {t("admin.deleteFlag")}
+                </Button>
+              </AlertDialog.Action>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </div>
   );
 };

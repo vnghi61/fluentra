@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExerciseMultipleChoice } from "@/features/learning/components/Runner/ExerciseMultipleChoice";
 import { cn } from "@/lib/utils";
+import { CopyableId } from "./CopyableId";
 import {
   adminApi,
   type AdminReviewBatch,
@@ -802,6 +803,7 @@ export function AdminReviewQueue(): React.JSX.Element {
                   <span className="block truncate text-sm font-medium text-text">
                     {item.slug}
                   </span>
+                  <CopyableId id={item.item_id} />
                   <span className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
                     <Badge variant="secondary">{item.kind}</Badge>
                     <Badge variant="outline">{item.cefr_level}</Badge>
