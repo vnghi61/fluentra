@@ -225,6 +225,9 @@ cd web && pnpm exec playwright test        # all projects
 pnpm exec playwright test --project=desktop -g "Journey 6"   # one of them
 ```
 
+For a non-writing review check, run `make check-ci` from the repository root, or run
+`pnpm run format:check` from `web`. `make check` and `pnpm run format` write files.
+
 Playwright serves the app itself on **5174**, beside the `make dev` container on 5173, so
 the two never fight over a port. It serves the **built bundle** through `vite preview`,
 not the dev server: `vite dev` transforms modules on demand and WebKit pays about 25

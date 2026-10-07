@@ -199,6 +199,20 @@ db-reset-DANGEROUS: ## DESTROYS all local data. Requires confirmation.
 
 check: fmt vet lint arch test ## Everything that must pass before you finish
 
+# Read-only review gate. goimports-reviser is excluded because its normal mode
+# writes files; arch is excluded because go-arch-lint differs on Windows and CI
+# runs `make arch` on Linux in ci-backend.
+check-ci: ## Non-writing review and verification gate
+	$(MAKE) fmt-check vet
+	golangci-lint run ./...
+	cd web && pnpm run lint
+	npx @stoplight/spectral-cli lint api/openapi/openapi.yaml
+	cd web && pnpm run format:check
+	cd web && pnpm run typecheck
+	$(MAKE) test-web
+	# No -race: it requires cgo and cannot run on the Windows development box.
+	go test -short ./...
+
 fmt: ## Format
 	gofmt -w .
 	goimports-reviser -project-name github.com/fluentra/fluentra ./...
@@ -374,6 +388,6 @@ security: ## Security scans
 
 .PHONY: help setup dev dev-infra dev-infra-down dev-down logs prod-up api worker web gen gen-backend gen-sql gen-api gen-mocks gen-web \
         gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed seed-audio promote-admin due-reviews audit-logs \
-        db-reset-DANGEROUS check fmt fmt-check vet lint lint-int lint-go arch test test-int \
+        db-reset-DANGEROUS check check-ci fmt fmt-check vet lint lint-int lint-go arch test test-int \
         test-contract test-web test-e2e test-load test-eval cover cover-check cover-gate docs \
         docs-check ci ci-backend ci-frontend ci-fast security

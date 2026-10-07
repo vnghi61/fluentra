@@ -205,6 +205,7 @@ Dependency direction is always **inward**: transport → service → repository 
 make help          # list everything
 make dev           # docker compose up (full stack + observability)
 make check         # fmt + vet + lint + arch-lint + unit tests  ← run before finishing
+make check-ci      # non-writing review and verification gate
 make test          # unit tests
 make test-int      # integration tests (testcontainers)
 make test-e2e      # Playwright
@@ -217,6 +218,11 @@ make audit-logs    # prove no OTP code or personal data is searchable in Loki
 make docs          # regenerate module doc scaffolding
 make docs-check    # docs lint + drift check
 ```
+
+Use `make check-ci` for review and verify: it never writes files. `make check` still formats
+files. `check-ci` leaves out `arch` because go-arch-lint differs on Windows; CI runs `make arch`
+on Linux in `ci-backend`. It also leaves out goimports-reviser because its normal mode writes
+files.
 
 **Never** run `docker compose down -v`, `make db-reset`, or anything that deletes volumes
 without explicit human approval — it destroys local learning data.
@@ -326,7 +332,7 @@ cd web && pnpm exec playwright test
 
 A change is done when **all** of these are true:
 
-- [ ] Code compiles; `make check` is green
+- [ ] Code compiles; `make check` is green; use non-writing `make check-ci` for review and verify
 - [ ] Unit tests cover the new branches; integration test if it touches DB/cache/storage
 - [ ] `api/openapi/openapi.yaml` updated if the HTTP surface changed
 - [ ] Migration added if the schema changed, and it is reversible
