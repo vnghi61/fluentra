@@ -45,7 +45,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	var cfg databaseConfig
 	if err := config.Load(ctx, config.Options{Required: []config.RequiredKey{{
 		Name:       "db.dsn",
-		DocSection: "docs/deployment/configuration.md#database",
+		DocSection: ".env.example",
 	}}}, &cfg); err != nil {
 		return fmt.Errorf("load migration configuration: %w", err)
 	}

@@ -238,7 +238,7 @@
           "Change `ACCESS_TTL` / `REFRESH_TTL` in config — never hard-code a duration.",
           "Check the frontend's silent-refresh margin still fits (it refreshes at 80 % of the access TTL).",
           "Update the denylist TTL, which must be ≥ the access TTL.",
-          "Update `docs/deployment/configuration.md` and this file §9."
+          "Update `.env.example` and this file §9."
         ]
       },
       {

@@ -25,6 +25,10 @@
     // handful of <br/> in tables are load-bearing.
     "MD033": false,
 
+    // Emphasis marker style. Generated fallbacks use _x_ and hand-written prose
+    // uses *x*; both render the same, and one AGENT.md now holds both.
+    "MD049": false,
+
     // Duplicate headings are expected across a repository of per-module
     // documents that all follow the same template.
     "MD024": false,

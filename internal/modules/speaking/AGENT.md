@@ -100,7 +100,7 @@ Migrations: `db/migrations/speaking/` · Queries: `db/queries/speaking/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `speaking`). See also [`API.md`](API.md).
+(tag: `speaking`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -184,7 +184,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -208,8 +208,6 @@ _No deviations from the global standard._
 - Admin access to a recording requires a stated reason and is audited.
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -239,6 +237,187 @@ go test -tags=integration ./internal/modules/speaking/...  # integration (testco
 - Do not record without explicit consent.
 - Do not retain audio beyond the retention window.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `POST /api/v1/speaking/upload-intent`
+
+Presigned PUT URL for recording upload to storage
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `UNSUPPORTED_AUDIO_FORMAT`, `SPEECH_DAILY_LIMIT_REACHED` |
+
+#### `DELETE /api/v1/speaking/attempts/{id}/recording`
+
+Purges the recording object while keeping scores and feedback
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 204 |
+| Errors | standard set |
+
+#### `GET /api/v1/speaking/attempts/{id}/feedback`
+
+Read feedback on a graded speaking attempt, with a presigned audio_url while the recording lives
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `FEEDBACK_NOT_FOUND` |
+
+#### `GET /api/v1/speaking/submissions`
+
+Paginated history of the learner's graded speaking attempts
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/speaking/consent`
+
+Whether the learner has consented to voice recording, and when
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/speaking/consent`
+
+Record the learner's consent to voice recording (BR-SPEAKING-03)
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `RECORDING_CONSENT_REQUIRED` | 403 | Voice consent not yet given |
+| `AUDIO_TOO_LONG` | 422 | Exceeds the task maximum |
+| `AUDIO_TOO_QUIET` | 422 | Signal level too low to assess |
+| `TRANSCRIPTION_LOW_CONFIDENCE` | 422 | Ask the learner to re-record |
+| `SCORING_FAILED` | 500 | Assessment pipeline failed after retries |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Record to score
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Learner
+    participant S as speaking
+    participant ST as storage
+    participant M as media
+    participant AI as platform/ai
+
+    U->>S: POST /speaking/upload-intent
+    S->>S: consent check, quota check
+    S->>ST: PresignPut (5 min, type + size pinned)
+    S-->>U: { upload_url, asset_id }
+    U->>ST: PUT audio directly
+    U->>S: POST /speaking/attempts { asset_id, task_id }
+    S->>ST: Stat — verify size and type
+    S->>S: BEGIN; INSERT attempt(status=processing); enqueue job; COMMIT
+    S-->>U: 202 { attempt_id }
+
+    M->>M: transcode → 16 kHz mono
+    M->>M: ASR → transcript + word timings
+    alt low confidence
+        M->>S: fail with TRANSCRIPTION_LOW_CONFIDENCE
+        S-->>U: ask to re-record; no quota charged
+    else
+        M->>M: pronunciation assessment
+        M->>S: media.transcribed + scores
+        S->>AI: Run(speaking.feedback, { transcript, scores, task, level })
+        AI-->>S: structured coaching
+        S->>S: clamp + persist; publish speaking.scored
+        S-->>U: attempt ready (poll or SSE)
+    end
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Buy or build pronunciation assessment? | Buy, behind an interface | Phoneme-level scoring is a research problem; buying lets us ship and measure, and the interface keeps a self-hosted GOP option open (plan review Q2) |
+| Keep recordings indefinitely? | 90 days, learner-deletable, pinnable | Storage cost and privacy exposure both grow with retention, and the scores — which are what progress is built on — do not need the audio |
+| Send audio to the LLM? | No — transcript and scores only | Cheaper, faster, and it keeps voice data out of a second vendor's hands |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Backlog
+
+_Empty. Add items with acceptance criteria as they are identified._
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Real-time streaming feedback
+- Noise suppression before ASR
+- Accent-aware scoring calibration
+- Conversation practice with a model
+<!-- END GENERATED: todo-future -->
 
 ---
 

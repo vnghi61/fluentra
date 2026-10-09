@@ -47,7 +47,7 @@ func runAudioBackfill(ctx context.Context, out io.Writer) error {
 		Defaults: map[string]any{"app.env": "local"},
 		Required: []config.RequiredKey{{
 			Name:       "db.dsn",
-			DocSection: "docs/deployment/configuration.md#database",
+			DocSection: ".env.example",
 		}},
 	}, &cfg); err != nil {
 		return fmt.Errorf("load seed configuration: %w", err)

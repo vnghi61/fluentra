@@ -147,7 +147,7 @@ func loadTTSConfig(ctx context.Context) (ttsCLIConfig, error) {
 		},
 		EnvSections: []string{"SPEECH"},
 		Required: []config.RequiredKey{
-			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
+			{Name: "db.dsn", DocSection: ".env.example"},
 		},
 	}
 	if err := config.Load(ctx, opts, &cfg); err != nil {

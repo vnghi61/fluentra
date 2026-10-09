@@ -17,7 +17,7 @@ const (
 )
 
 // DefaultAllowedLogKeys is the reviewed, non-sensitive set shared by application
-// logs. It covers every attribute the situation table in LOGGING_GUIDELINE.md §4
+// logs. It covers every attribute the situation table in docs/CONVENTIONS.md#logging §4
 // requires. Adding a key here is a reviewed change (LG6): anything absent is
 // redacted, so a new field fails closed.
 var DefaultAllowedLogKeys = []string{

@@ -28,7 +28,7 @@ groups:
           description: >-
             More than one submission in twenty is returning 5xx. Learners are losing
             answers they believe they submitted.
-          runbook_url: "https://fluentra.dev/runbooks/stuck-attempt"
+          runbook_url: "https://github.com/vnghi61/fluentra/blob/main/docs/OPERATIONS.md#runbook-stuck-attempt"
 
   - name: scheduled_jobs
     interval: 30s
@@ -50,4 +50,4 @@ groups:
             A cron job has failed every run for half an hour. For
             srs.rotate_partitions and learning.rotate_partitions this ends as a
             failed insert on the first of the month.
-          runbook_url: "https://fluentra.dev/runbooks/missing-monthly-partition"
+          runbook_url: "https://github.com/vnghi61/fluentra/blob/main/docs/OPERATIONS.md#runbook-missing-monthly-partition"

@@ -94,7 +94,7 @@ This module owns no tables.
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `telemetry`). See also [`API.md`](API.md).
+(tag: `telemetry`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -170,7 +170,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -178,8 +178,6 @@ _No deviations from the global standard._
 <!-- END GENERATED: conventions -->
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -207,6 +205,136 @@ go test -tags=integration ./internal/platform/telemetry/...  # integration (test
 - Do not log a value whose key is not on the allowlist.
 - Do not skip instrumenting a new external call — it will be the one that fails.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /health`
+
+Liveness — the process is running
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /ready`
+
+Readiness — dependencies reachable and migrations current
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | `DEPENDENCY_UNAVAILABLE` |
+
+#### `GET /version`
+
+Build version and commit
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | standard set |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+_None yet._
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Correlation across a request and its background work
+
+```mermaid
+flowchart LR
+    A[Browser click<br/>OTel Web SDK] -->|traceparent + X-Request-Id| B[API middleware]
+    B --> C[root span]
+    C --> D[slog records carry trace_id]
+    C --> E[service span]
+    E --> F[pgx span]
+    E --> G[job enqueued with job.Meta<br/>trace_id + request_id]
+    G --> H[worker span links to the same trace]
+    H --> I[ai span<br/>provider, model, cost]
+    D & F & I --> J[Grafana: log → trace → span → exemplar]
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Direct exporters or a Collector? | Collector | One ingest point; backend changes, sampling and redaction become operational configuration instead of a deploy |
+| Jaeger or Tempo? | Tempo in production, Jaeger only in the dev profile | Tempo shares MinIO for storage and integrates natively with Grafana; running both in production would double the operational surface for no benefit — see the plan review §6 |
+| zap/zerolog or slog? | slog | Standard library, structured, and the performance difference is immaterial at our request volume |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+- [ADR-0013](../../../docs/adr/ADR-0013-observability-otel.md) — OTel SDK + Collector; Tempo over Jaeger
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 0
+
+- [ ] Provider construction and graceful shutdown
+- [ ] OTLP exporters with resource attributes including version and commit
+- [ ] HTTP middleware: trace, request ID, recovery, structured access log
+- [ ] slog handler with the OTLP bridge and redaction allowlist
+- [ ] Standard instruments for HTTP, DB, cache, storage and jobs
+- [ ] `/health`, `/ready`, `/version`
+- [ ] Collector pipeline configuration including tail sampling
+- [ ] The first Grafana dashboard, proving log→trace correlation works
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Continuous profiling with Pyroscope
+- RUM metrics from the browser SDK
+- Exemplars on all latency histograms
+<!-- END GENERATED: todo-future -->
 
 ---
 

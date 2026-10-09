@@ -123,8 +123,7 @@ gaps are visible rather than silent.
 
 ### Product UI redesign
 
-See `docs/ui-review/IMPLEMENTATION_PLAN.md` and `UX_AUDIT.md` for the current
-source-adapted design brief and verified limitations. Reuse the shell, the
+Reuse the shell, the
 lazy-loaded `MoreSheet`/shadcn `Sheet`, `ErrorState`/`EmptyState` and the
 route-level 404/error/loading views. Authenticated mobile headers do not show
 global theme/language controls; `AppShell` passes them to `MoreSheet` through

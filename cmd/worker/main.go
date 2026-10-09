@@ -333,10 +333,10 @@ func configOptions() config.Options {
 		},
 		EnvSections: []string{"SPEECH", "EXAM", "SEPAY", "STUDIO", "MEDIA"},
 		Required: []config.RequiredKey{
-			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
-			{Name: "redis.url", DocSection: "docs/deployment/configuration.md#redis"},
-			{Name: "otp.hmac_key", DocSection: "docs/deployment/configuration.md#auth"},
-			{Name: "jwt.signing_key", DocSection: "docs/deployment/configuration.md#auth"},
+			{Name: "db.dsn", DocSection: ".env.example"},
+			{Name: "redis.url", DocSection: ".env.example"},
+			{Name: "otp.hmac_key", DocSection: ".env.example"},
+			{Name: "jwt.signing_key", DocSection: ".env.example"},
 		},
 	}
 }
@@ -348,7 +348,7 @@ func loadConfig(ctx context.Context) (workerConfig, error) {
 	}
 	trimmed := strings.TrimPrefix(strings.TrimPrefix(target.Telemetry.Endpoint, "https://"), "http://")
 	target.Telemetry.Endpoint = strings.TrimSuffix(trimmed, "/")
-	const jobsDoc = "docs/deployment/configuration.md#jobs"
+	const jobsDoc = ".env.example"
 	if target.Worker.ShutdownGrace <= 0 {
 		return target, fmt.Errorf(
 			"config key worker.shutdown_grace must be a positive duration; see %s", jobsDoc)
@@ -537,7 +537,7 @@ func (r roleAuthorResolver) FirstHolderOf(ctx context.Context, role string) (uui
 }
 
 // startLearning wires the learning module's scheduled work: the attempt-table
-// partition rotation, and the retention refresh that makes ROADMAP.md's Phase 2
+// partition rotation, and the retention refresh that makes the Phase 2
 // exit criterion a number rather than a query someone could write.
 func startLearning(
 	ctx context.Context, pool *pgxpool.Pool, cron *job.CronScheduler,

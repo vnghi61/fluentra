@@ -560,7 +560,7 @@ func loadMediaConfig(ctx context.Context) (mediaCLIConfig, error) {
 			"s3.use_ssl":      false,
 		},
 		Required: []config.RequiredKey{
-			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
+			{Name: "db.dsn", DocSection: ".env.example"},
 		},
 	}
 	if err := config.Load(ctx, opts, &cfg); err != nil {

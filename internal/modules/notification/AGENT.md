@@ -109,7 +109,7 @@ Migrations: `db/migrations/notification/` · Queries: `db/queries/notification/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `notification`). See also [`API.md`](API.md).
+(tag: `notification`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -197,7 +197,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -220,8 +220,6 @@ _No deviations from the global standard._
 | `INVALID_QUIET_HOURS` | 422 | Window is malformed or spans more than 12 hours |
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -249,6 +247,213 @@ go test -tags=integration ./internal/modules/notification/...  # integration (te
 - Do not put personal content (essay text, scores) in a push payload — link to the app.
 - Do not add a category without templates for every supported locale.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/notifications`
+
+Inbox, newest first
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/notifications/unread-count`
+
+Badge count (cached)
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/notifications/{id}/read`
+
+Mark one read
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 204 |
+| Errors | standard set |
+
+#### `POST /api/v1/notifications/read-all`
+
+Mark all read
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 204 |
+| Errors | standard set |
+
+#### `GET /api/v1/me/notification-preferences`
+
+Read preferences
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `PUT /api/v1/me/notification-preferences`
+
+Update preferences
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/me/devices`
+
+Register a push device
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 201 |
+| Errors | standard set |
+
+#### `DELETE /api/v1/me/devices/{id}`
+
+Unregister
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 204 |
+| Errors | standard set |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `DEVICE_LIMIT_REACHED` | 409 | Too many registered push devices |
+| `INVALID_QUIET_HOURS` | 422 | Window is malformed or spans more than 12 hours |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Event to delivered notification
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant W as writing
+    participant OB as outbox
+    participant N as notification
+    participant C as Redis
+    participant J as job
+    participant M as mailer
+    actor U as User
+
+    W->>OB: writing.graded (in the grading transaction)
+    OB->>N: deliver event
+    N->>N: load preferences + timezone
+    alt category disabled on every channel
+        N->>N: drop, record reason
+    else
+        N->>C: check dedupe key
+        alt duplicate
+            N->>N: suppress
+        else
+            N->>N: INSERT notifications (in-app is always written)
+            N->>C: bust unread count
+            alt inside quiet hours
+                N->>J: schedule for the next allowed slot
+            else
+                N->>J: enqueue push + email now
+                J->>M: render + send
+                M-->>U: email
+            end
+        end
+    end
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| One notification module or per-channel modules? | One | Preferences, quiet hours, dedupe and digesting are channel-independent policy; splitting by channel would triplicate the policy and let the three copies diverge |
+| Write in-app notifications even when other channels are disabled? | Yes | The inbox is the durable record; suppressing it would lose information the learner may want later |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 2
+
+- [ ] Inbox tables, endpoints and unread-count caching
+- [ ] Preferences with per-category channel settings and quiet hours
+- [ ] Event subscriptions for grading, reviews, streaks, security
+- [ ] Deduplication and per-user rate limits
+- [ ] Email templates in English and Vietnamese
+- [ ] Web push registration and delivery with token pruning
+
+### Phase 3
+
+- [ ] Digest scheduling
+- [ ] Send-time heuristic
+- [ ] Weekly progress email
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Learned send-time optimisation
+- In-app notification centre with filters
+- Native push when a mobile app exists
+<!-- END GENERATED: todo-future -->
 
 ---
 

@@ -110,7 +110,7 @@ Migrations: `db/migrations/exam/` · Queries: `db/queries/exam/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `exam`). See also [`API.md`](API.md).
+(tag: `exam`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -217,7 +217,7 @@ that sitting; it must not silently submit or discard their answers.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -235,8 +235,6 @@ _No deviations from the global standard._
 | `INSUFFICIENT_ITEMS` | 409 | Not enough approved items to build the exam |
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -266,6 +264,286 @@ go test -tags=integration ./internal/modules/exam/...  # integration (testcontai
 - Do not invalidate an attempt automatically from integrity signals.
 - Do not duplicate question storage — sample from `questionbank`.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/exams`
+
+Available mock exams
+
+| | |
+|---|---|
+| Permission | `content.read.published` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/exams/{id}/attempts`
+
+Start a sitting
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 201 |
+| Errors | `EXAM_WINDOW_CLOSED`, `ATTEMPT_IN_PROGRESS`, `INSUFFICIENT_ITEMS` |
+
+#### `GET /api/v1/exam-attempts`
+
+List past sittings for current user
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/exam-attempts/{id}`
+
+Current state with server time remaining
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `PUT /api/v1/exam-attempts/{id}/answers`
+
+Save answers (autosave)
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `ATTEMPT_EXPIRED` |
+
+#### `POST /api/v1/exam-attempts/{id}/sections/{n}/complete`
+
+Finish a section
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/exam-attempts/{id}/submit`
+
+Submit the whole exam
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 202 |
+| Errors | standard set |
+| Notes | 202 because writing and speaking sections grade asynchronously |
+
+#### `GET /api/v1/exam-attempts/{id}/report`
+
+Score report when ready
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/exam-versions`
+
+Current verified exam versions and their blueprints
+
+| | |
+|---|---|
+| Permission | `content.read.published` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/exam-versions/{id}/tests`
+
+The numbered fixed tests of one exam version
+
+| | |
+|---|---|
+| Permission | `content.read.published` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/mock-tests`
+
+Compose a mock test
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 201 |
+| Errors | standard set |
+
+#### `POST /api/v1/mock-tests/{id}/attempts`
+
+Start or retake a mock test attempt
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 201 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/exams/versions/{id}/coverage`
+
+Exam version coverage report
+
+| | |
+|---|---|
+| Permission | `questionbank.read` |
+| Success | 200 |
+| Errors | standard set |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `ATTEMPT_IN_PROGRESS` | 409 | Finish or abandon the existing attempt first |
+| `EXAM_ALREADY_SUBMITTED` | 409 | Terminal state |
+| `EXAM_WINDOW_CLOSED` | 403 | Outside the availability window |
+| `SECTION_TIME_EXPIRED` | 409 | Section time is over |
+| `INSUFFICIENT_ITEMS` | 409 | Not enough approved items to build the exam |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Exam sitting with auto-submit
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Learner
+    participant E as exam
+    participant Q as questionbank
+    participant J as job
+    participant W as writing/speaking
+
+    U->>E: POST /exams/{id}/attempts
+    E->>Q: SampleItems per section with exposure control
+    alt not enough items
+        E-->>U: 409 INSUFFICIENT_ITEMS
+    else
+        E->>E: INSERT attempt (expires_at = now + total)
+        E->>J: schedule auto-submit at expires_at
+        E-->>U: 201 { attempt, section 1, server_time }
+    end
+
+    loop while time remains
+        U->>E: PUT /answers (autosave)
+        E->>E: reject if section time has expired
+    end
+
+    alt learner submits
+        U->>E: POST /submit
+    else time expires
+        J->>E: auto-submit
+    end
+
+    E->>E: score objective sections immediately
+    E->>W: dispatch writing and speaking for async grading
+    E-->>U: 202 { report pending }
+    W-->>E: graded events
+    E->>E: complete the report; publish exam.attempt_finished
+
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+### State machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> InProgress: start
+    InProgress --> SectionComplete: finish a section
+    SectionComplete --> InProgress: next section
+    InProgress --> Submitted: learner submits
+    InProgress --> AutoSubmitted: time expires
+    SectionComplete --> Submitted: last section
+    Submitted --> Scoring: objective scored, AI sections pending
+    AutoSubmitted --> Scoring
+    Scoring --> Reported: all sections complete
+    Scoring --> PartiallyReported: an AI section failed
+    PartiallyReported --> Reported: admin retry succeeds
+    Reported --> [*]
+```
+
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+| Failure | Detected by | Behaviour |
+|---|---|---|
+| Learner loses connection mid-exam | No autosave for N seconds | Answers to that point are saved; the timer keeps running (as in a real exam); the learner can rejoin |
+| AI section grading fails | `writing.grading_failed` | Report is partial and clearly marked; admin can retry; the learner is not charged an attempt |
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Client or server timing? | Server, always | Client timing is trivially manipulable, and an exam whose timing can be manipulated has no value as practice |
+| Auto-invalidate on integrity signals? | No — record and show | False positives (a notification, a second monitor) would penalise honest learners; the signal is more useful as self-awareness feedback than as enforcement |
+| Store or recompute score reports? | Store | A learner's past band must not change because we revised a conversion table |
+| How are exam timeouts enforced? | 3-tier expiry: River job at deadline, 1-minute sweep cron, and lazy check on read | Guarantees attempt finalisation and score reporting even if learner abandons sitting or background workers experience delays |
+| How does practice mode differ from exam mode? | Custom duration 10–180 minutes or unlimited (a generous backstop still applies), free section navigation, and re-recordable speaking | Enables targeted practice without breaking realistic exam constraints |
+| How is the exam pool isolated from the practice pool? | Distinct pool course pool-exam and strict refusal guards in preview and lessons | Prevents exam questions from leaking through regular study or practice routes |
+| When can a listening item be drawn for an exam sitting? | Only when TTS audio has been rendered and object key exists in storage | A learner cannot be tested on listening audio that does not exist |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Backlog
+
+_Empty. Add items with acceptance criteria as they are identified._
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Adaptive placement variant
+- Percentile comparison once the population is large enough
+- Proctoring integration
+- Section-only practice mode
+<!-- END GENERATED: todo-future -->
 
 ---
 

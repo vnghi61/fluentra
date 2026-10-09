@@ -123,7 +123,7 @@ type identityDeps struct {
 	// Windows are the session lifetimes, from the SESSION_* keys.
 	Windows authdomain.WindowConfig
 
-	// RateLimit applies the classes in API_GUIDELINE.md §11. Nil disables it,
+	// RateLimit applies the classes in docs/CONVENTIONS.md#api §11. Nil disables it,
 	// which is the same direction the middleware takes when its store is
 	// unreachable: a missing limiter must not refuse everything.
 	RateLimit *httpx.RateLimiter
@@ -646,7 +646,7 @@ func (i *identity) Routes(api chi.Router) {
 		// After Authenticate and not before it. The class a request belongs to
 		// depends on whether there is an actor in the context: a signed-in
 		// caller charged against the 60/min anonymous budget would be cut off
-		// ten times sooner than API_GUIDELINE.md §11 promises, and — worse —
+		// ten times sooner than docs/CONVENTIONS.md#api §11 promises, and — worse —
 		// every learner behind one office NAT would share it.
 		//
 		// Inside this Group for the reason the Group exists at all: `/health`,

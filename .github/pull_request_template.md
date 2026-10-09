@@ -14,4 +14,4 @@ Brief summary of changes included in this PR.
 - [ ] Unit tests added/updated covering new functionality
 - [ ] OpenAPI spec updated if API contracts changed
 - [ ] Database migrations reversible with indexes added
-- [ ] Module `AGENT.md` and `TODO.md` updated if changed
+- [ ] Module `AGENT.md` updated if changed (§18 backlog included)

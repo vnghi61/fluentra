@@ -102,7 +102,7 @@ Migrations: `db/migrations/admin/` · Queries: `db/queries/admin/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `admin`). See also [`API.md`](API.md).
+(tag: `admin`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -199,7 +199,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -223,8 +223,6 @@ _No deviations from the global standard._
 - Impersonation tokens carry an `act` claim so downstream audit entries record both identities.
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -252,6 +250,391 @@ go test -tags=integration ./internal/modules/admin/...  # integration (testconta
 - Do not add an admin action without a permission and an audit entry.
 - Do not allow impersonation of another admin.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/admin/users`
+
+Search accounts, cursor-paginated
+
+| | |
+|---|---|
+| Permission | `user.list` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | The search itself is not audited; opening one result is |
+
+#### `GET /api/v1/admin/users/{id}`
+
+One account in full
+
+| | |
+|---|---|
+| Permission | `user.read` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Recorded as `admin.user_viewed` |
+
+#### `POST /api/v1/admin/users/{id}/suspend`
+
+Suspend an account and end its sessions
+
+| | |
+|---|---|
+| Permission | `user.suspend` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Reason required; refused on the caller's own account |
+
+#### `POST /api/v1/admin/users/{id}/reinstate`
+
+Return a suspended account to active
+
+| | |
+|---|---|
+| Permission | `user.reinstate` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Reason required; sessions are not restored |
+
+#### `POST /api/v1/admin/users/{id}/delete`
+
+Soft-delete an account and end its sessions
+
+| | |
+|---|---|
+| Permission | `user.delete` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Reason required; opens the same 30-day grace period the owner's own request opens, and only the owner can cancel it |
+
+#### `POST /api/v1/admin/users/{id}/sessions/revoke`
+
+Sign a user out everywhere
+
+| | |
+|---|---|
+| Permission | `user.manage_sessions` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Reason required; status is unchanged |
+
+#### `GET /api/v1/admin/flags`
+
+List every feature flag
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Unpaginated — the set is small by design |
+
+#### `GET /api/v1/admin/ai/usage`
+
+Read today's AI usage and budget headroom per provider
+
+| | |
+|---|---|
+| Permission | `admin.dashboard` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | A read over ai_usage and ai_budgets; shows an exhausted provider before a learner meets one |
+
+#### `POST /api/v1/admin/flags`
+
+Create a feature flag
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 201 |
+| Errors | standard set |
+| Notes | `owner` and a future `expires_on` are required |
+
+#### `PUT /api/v1/admin/flags/{key}`
+
+Update a feature flag
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Visible within one 30 s cache generation |
+
+#### `DELETE /api/v1/admin/flags/{key}`
+
+Delete a feature flag
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 204 |
+| Errors | standard set |
+| Notes | Evaluations of the key then return false |
+
+#### `GET /api/v1/banners/active`
+
+The dashboard banners showing now (at most 3 announcements and 6 slides)
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Any signed-in account; no admin fields; cached 30 s |
+
+#### `GET /api/v1/admin/banners`
+
+List every banner
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Unpaginated, capped at 200 |
+
+#### `POST /api/v1/admin/banners`
+
+Create a banner
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 201 |
+| Errors | standard set |
+| Notes | Audited as `admin.banner_created` |
+
+#### `PUT /api/v1/admin/banners/{id}`
+
+Replace a banner
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Audited as `admin.banner_updated`; invalidates the active cache |
+
+#### `DELETE /api/v1/admin/banners/{id}`
+
+Delete a banner
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 204 |
+| Errors | standard set |
+| Notes | Audited as `admin.banner_deleted`; deletes its image |
+
+#### `POST /api/v1/admin/banners/image-upload-intent`
+
+Presigned upload for a banner image
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | JPEG, PNG or WebP, at most 5 MB, ten minutes; key scoped to the admin |
+
+#### `POST /api/v1/admin/banners/images`
+
+Check and publish an uploaded banner image
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 201 |
+| Errors | standard set |
+| Notes | Sniffs the bytes, refuses over 40 MP, fits 1600x900, re-encodes JPEG without metadata, deletes the raw upload |
+
+#### `GET /api/v1/admin/dashboard`
+
+Composed KPI summary
+
+| | |
+|---|---|
+| Permission | `admin.dashboard` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/moderation`
+
+Moderation queue
+
+| | |
+|---|---|
+| Permission | `moderation.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/moderation/{id}/resolve`
+
+Resolve a queue item
+
+| | |
+|---|---|
+| Permission | `moderation.act` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/jobs/{id}/retry`
+
+Retry a failed job
+
+| | |
+|---|---|
+| Permission | `system.jobs` |
+| Success | 202 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/impersonate/{user_id}`
+
+Start a time-boxed impersonation session
+
+| | |
+|---|---|
+| Permission | `user.impersonate` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Audited; blocked for payment actions; a banner is shown throughout |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `IMPERSONATION_FORBIDDEN_ACTION` | 403 | The attempted action is not permitted while impersonating |
+| `SELF_ADMIN_ACTION_FORBIDDEN` | 403 | An admin may not administer their own account |
+| `REASON_REQUIRED` | 422 | A state-changing admin action was sent without a reason of at least 10 characters |
+| `USER_NOT_FOUND` | 404 | The target user account does not exist |
+| `FEATURE_FLAG_NOT_FOUND` | 404 | The requested feature flag does not exist |
+| `FEATURE_FLAG_ALREADY_EXISTS` | 409 | A feature flag with that key already exists |
+| `BANNER_INVALID` | 422 | A banner field failed validation; `errors[]` names each field |
+| `BANNER_NOT_FOUND` | 404 | No banner has that id |
+| `BANNER_IMAGE_INVALID` | 422 | The image type is not JPEG, PNG or WebP, or the upload is not a usable image |
+| `BANNER_IMAGES_UNAVAILABLE` | 503 | Storage is not configured or not reachable |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Impersonation
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor AD as Admin
+    participant A as admin
+    participant AU as auth
+    participant AD2 as audit
+
+    AD->>A: POST /admin/impersonate/{user_id} { reason }
+    A->>A: require permission user.impersonate
+    A->>A: reject if target is an admin
+    A->>AU: IssueImpersonationToken(admin_id, user_id, 30m)
+    AU-->>A: token with act claim
+    A->>AD2: audit(impersonation_started, reason)
+    A-->>AD: token + banner flag
+    Note over AD: every subsequent request records both identities
+    Note over AD: payment, deletion and role changes are refused
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Separate admin service or the same binary? | Same binary, separate route group | A separate service would duplicate every contract call over the network for a handful of screens; the route group plus per-operation permissions gives the isolation that matters |
+| Does admin own data? | Only flags, notes and the moderation queue | Anything else would duplicate another module's state and drift from it |
+| Does user erasure purge `core.admin_actions`? | Retained as an accountability record | The rows record who acted on whom and why. Like `audit`, this is an accountability log that must outlive the account it describes, or an administrator could erase the evidence of their own action by deleting the target. The erasure completeness check excludes it by name for this reason — see `internal/modules/user/job/erasure_checker.go` |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 2
+
+- [ ] Dashboard composing user, learning and AI-cost summaries
+- [ ] Moderation queue with assignment and resolution
+- [ ] Job retry and webhook replay tooling
+- [ ] Impersonation with all its guards
+<!-- END GENERATED: todo -->
+
+### Done (hand-written)
+
+- [x] Dashboard announcement banners (2026-10-08): `core.banners`, `GET /banners/active`,
+  `/admin/banners` CRUD under `system.flags`, audited writes, 30 s in-process cache of the
+  active list, admin screen and dashboard carousel. A write invalidates the cache only on the
+  instance that served it; other instances catch up within the TTL. Repository SQL has no
+  integration test yet (add one to `admin_integration_test.go` beside the flag cases).
+- [x] Banner images (2026-10-08, migration 952): presigned upload to `banners/raw/<admin>/`,
+  server-side sniff, 40 MP guard, fit 1600x900, JPEG re-encode (metadata dropped, alpha on
+  white), unique `image_key` per banner, old image deleted on replace/clear/delete, URLs signed
+  when the active cache fills. Migration constraints checked by hand against dev Postgres in a
+  rolled-back transaction; still no integration test (same gap as above).
+- [x] Banner kinds (2026-10-09, migration 953): `announcement` (dialog once per visit; a
+  dismissible one stays closed on the device, a non-dismissible one returns next session)
+  and `slide` (image-only carousel, 6 s autoplay with pause, prev/next, dots and swipe,
+  never dismissed). Per-kind limits 3 and 6. Constraints checked against dev Postgres in
+  a rolled-back transaction.
+- [ ] Sweep orphaned banner images: an image processed but never saved on a banner (the admin
+  closed the form) stays under `banners/images/`. Done when a periodic job deletes objects
+  older than a day that no `core.banners.image_key` names. Raw uploads that were never
+  processed need a bucket lifecycle rule on `banners/raw/`.
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Materialised dashboard read model
+- Bulk content operations
+- Saved admin searches
+- Automated moderation triage
+<!-- END GENERATED: todo-future -->
 
 ---
 

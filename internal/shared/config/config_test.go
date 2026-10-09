@@ -175,11 +175,11 @@ func TestLoad_MissingRequiredKeyNamesDocumentation(t *testing.T) {
 	var target struct{}
 	err := Load(context.Background(), Options{Required: []RequiredKey{{
 		Name:       keyDBDSN,
-		DocSection: "docs/deployment/configuration.md#database",
+		DocSection: ".env.example",
 	}}}, &target)
 	if err == nil ||
 		!strings.Contains(err.Error(), keyDBDSN) ||
-		!strings.Contains(err.Error(), "configuration.md") {
+		!strings.Contains(err.Error(), ".env.example") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -194,7 +194,7 @@ func TestLoad_SatisfiedRequiredKey(t *testing.T) {
 		Defaults: map[string]any{keyDBDSN: fakeDSN},
 		Required: []RequiredKey{{
 			Name:       keyDBDSN,
-			DocSection: "docs/deployment/configuration.md#database",
+			DocSection: ".env.example",
 		}},
 	}, &target)
 	if err != nil {

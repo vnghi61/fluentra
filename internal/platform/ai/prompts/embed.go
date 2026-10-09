@@ -13,8 +13,7 @@
 //
 // The rule's intent is met in full: the prompts are versioned `.md` files,
 // reviewable on their own, and no prompt string appears in Go. What changed is
-// the folder. `docs/prompts/README.md` points here, and `DECISIONS.md` in this
-// module records it.
+// the folder, and this module's AGENT.md (§17) records it.
 //
 // Nothing in this package interprets a template. Rendering, versioning and the
 // provider call are internal/platform/ai's; this is the file system, and only

@@ -93,7 +93,7 @@ This module owns no tables.
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `storage`). See also [`API.md`](API.md).
+(tag: `storage`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -170,7 +170,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -192,8 +192,6 @@ _No deviations from the global standard._
 - Export and report artefacts are single-use in practice: short expiry plus an unguessable key.
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -221,6 +219,129 @@ go test -tags=integration ./internal/platform/storage/...  # integration (testco
 - Do not store a file reference before verifying the object exists.
 - Do not put personal data in an object key.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/admin/storage/stats`
+
+Object counts and sizes per bucket
+
+| | |
+|---|---|
+| Permission | `system.storage` |
+| Success | 200 |
+| Errors | standard set |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `UPLOAD_VERIFICATION_FAILED` | 422 | The uploaded object does not match the intent |
+| `STORAGE_UNAVAILABLE` | 503 | Object store unreachable |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Presigned upload with verification
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor B as Browser
+    participant A as API (calling module)
+    participant ST as storage
+    participant M as MinIO
+
+    B->>A: POST …/upload-intent { content_type, size }
+    A->>A: authorise + quota check
+    A->>ST: PresignPut(bucket, key, 5m, max_bytes, content_type)
+    ST->>M: sign
+    ST-->>A: UploadIntent
+    A-->>B: { upload_url, asset_id }
+    B->>M: PUT bytes directly
+    B->>A: POST …/confirm { asset_id }
+    A->>ST: Stat(key)
+    alt missing, wrong size, or wrong type
+        A-->>B: 422 UPLOAD_VERIFICATION_FAILED
+    else ok
+        A->>A: mark asset uploaded; enqueue processing
+        A-->>B: 202
+    end
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Proxy uploads through the API or presign? | Presign | Proxying makes API memory and bandwidth scale with file size, which would cap horizontal scaling on the exact operation that grows fastest |
+| MinIO or S3? | MinIO, S3-compatible | Self-hosted in v1 with no code change required to move to S3 later — the SDK and the semantics are the same |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+- [ADR-0018](../../../docs/adr/ADR-0018-media-presigned-upload.md) — Presigned direct-to-storage uploads
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 1
+
+- [ ] Bucket definitions, policies and lifecycle rules
+- [ ] Presign PUT/GET with pinned constraints
+- [ ] Post-upload verification helper
+- [ ] Deterministic key builder
+- [ ] Orphan GC job
+- [ ] Per-bucket metrics and a disk alert
+- [ ] Purge handler for `user.deleted`
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- CDN in front of public buckets
+- Multi-node MinIO with erasure coding
+- Virus scanning for publicly visible uploads
+<!-- END GENERATED: todo-future -->
 
 ---
 

@@ -28,7 +28,7 @@
       "Deciding what a good essay score is — the rubric belongs to `writing`",
       "Storing a graded submission — that is the calling module's data",
       "Speech recognition or synthesis — that is `platform/media`",
-      "Choosing when to call an LLM — see `/AI_GUIDE.md` §B2 before you do"
+      "Choosing when to call an LLM — see `docs/AI.md#working-with-and-building-on-llms` §B2 before you do"
     ],
     "tables": [
       { "name": "ai_requests", "purpose": "One row per LLM call", "notes": "Partitioned monthly. `task`, `prompt_version`, `provider`, `model`, `status`, `attempt`, `fallback_from`, `cache_hit`, `latency_ms`, `trace_id`. Request/response bodies redacted and retained 30 days." },
@@ -66,7 +66,7 @@
     "dependedOnBy": ["writing", "speaking", "grammar", "questionbank", "content", "reading", "media", "learning"],
     "rules": [
       "Business code names a **task**, never a model or a provider. A task not present in the routing config is a startup error, not a runtime surprise.",
-      "Prompts are loaded from `docs/prompts/runtime/<task>/v<N>.md`; a published version is immutable, and the active version is pinned by configuration.",
+      "Prompts are loaded from `internal/platform/ai/prompts/<task>.v<N>.md`; a published version is immutable, and the active version is pinned by configuration.",
       "Learner-supplied text is inserted only inside the untrusted-content wrapper; it is never concatenated into the instruction block.",
       "Output must validate against the task's JSON schema. One repair attempt is allowed; a second failure fails the call with `AI_OUTPUT_INVALID`.",
       "Numeric outputs are clamped to the rubric's range and cross-checked for internal consistency before being returned.",
@@ -79,7 +79,7 @@
       "A prompt version cannot be activated unless its eval suite meets its thresholds and is no worse than the currently active version."
     ],
     "cache": [
-      { "key": "fluentra:{env}:ai:resp:{task}:{prompt_version}:{input_hash}:v1", "ttl": "per task (see /PROMPT_LIBRARY.md §2.5)", "invalidation": "Prompt version bump" },
+      { "key": "fluentra:{env}:ai:resp:{task}:{prompt_version}:{input_hash}:v1", "ttl": "per task (see docs/AI.md#prompt-library §2.5)", "invalidation": "Prompt version bump" },
       { "key": "fluentra:{env}:ai:quota:{user_id}:{date}:v1", "ttl": "until midnight in the user's timezone", "invalidation": "Natural expiry" },
       { "key": "fluentra:{env}:ai:budget:{date}:v1", "ttl": "48 h", "invalidation": "Natural expiry" },
       { "key": "fluentra:{env}:ai:breaker:{provider}:v1", "ttl": "30 s", "invalidation": "Half-open probe" }
@@ -132,9 +132,9 @@
         "Run the eval suites against it and record the results in `docs/ai/provider-comparison.md`."
       ]},
       { "title": "Add an AI task", "steps": [
-        "Follow the checklist in `/AI_GUIDE.md` §B4 — it is the authoritative list.",
+        "Follow the checklist in `docs/AI.md#working-with-and-building-on-llms` §B4 — it is the authoritative list.",
         "Define the task in the routing config with tier, timeout, cache policy and budget.",
-        "Write `docs/prompts/runtime/<task>/v1.md` plus input and output schemas.",
+        "Write `internal/platform/ai/prompts/<task>.v1.md` plus input and output schemas.",
         "Build the golden set (≥ 30 examples) and `thresholds.yaml`, including red-team cases.",
         "Add `mock` fixtures.",
         "Call it from the owning module by task name only."
@@ -176,7 +176,7 @@
     "coverage": "85% service, 90% domain",
     "decisions": [
       { "question": "Task-based or model-based API?", "choice": "Task-based", "why": "Callers should not know or care which model runs; it makes model changes a config decision, keeps routing and cost policy in one place, and makes the eval story coherent" },
-      { "question": "Where do prompts live?", "choice": "Versioned Markdown in `docs/prompts/runtime/`", "why": "Reviewable by non-engineers, diffable, evaluable in CI, rollback-able by config — none of which is true of a Go string constant" },
+      { "question": "Where do prompts live?", "choice": "Versioned Markdown in `internal/platform/ai/prompts/`", "why": "Reviewable by non-engineers, diffable, evaluable in CI, rollback-able by config — none of which is true of a Go string constant" },
       { "question": "Fail open or closed on budget exhaustion?", "choice": "Shed non-critical tasks, keep grading", "why": "A learner who paid for grading should still get it; example-sentence generation can wait" },
       { "question": "Semantic cache everywhere?", "choice": "Only where measured hit rate justifies the embedding cost", "why": "An embedding call to save a small-model call can be a net loss" }
     ],
@@ -212,7 +212,7 @@
       "Do not trust model output — validate the schema, clamp the numbers, check the consistency.",
       "Do not concatenate learner text into the instruction block.",
       "Do not skip the eval suite because \"it's a small prompt change\". That is exactly when regressions slip through.",
-      "Do not use an LLM where an algorithm exists — read `/AI_GUIDE.md` §B2 first."
+      "Do not use an LLM where an algorithm exists — read `docs/AI.md#working-with-and-building-on-llms` §B2 first."
     ],
     "runtimePrompts": [
       { "task": "writing.grade_essay", "purpose": "CEFR/IELTS rubric grading with actionable feedback" },

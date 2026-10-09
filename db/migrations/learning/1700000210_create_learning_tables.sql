@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS learn.attempts (
 
 -- Every index here is inherited by every monthly partition, on the table that
 -- takes more writes than any other in the product, so each one has to earn its
--- place (DATABASE_GUIDELINE.md: "never index everything just in case").
+-- place (docs/CONVENTIONS.md#database: "never index everything just in case").
 --
 -- These two are the reads AGENT.md §5 names, and their leading columns also
 -- cover fk_attempts_user and fk_attempts_activity, so no single-column index on

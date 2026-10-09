@@ -24,7 +24,7 @@ export interface OverallStatsProps {
  *
  * Nothing is derived. Total all-time study time, words mastered and the
  * "vs last week" deltas in the design have no API behind them (see
- * docs/development/phase-2/P10-learner-web.md §1) and are not drawn.
+ * the P10 learner-web card) and are not drawn.
  */
 export const OverallStats: React.FC<OverallStatsProps> = ({
   totalActivitiesCompleted,

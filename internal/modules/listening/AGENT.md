@@ -97,7 +97,7 @@ Migrations: `db/migrations/listening/` · Queries: `db/queries/listening/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `listening`). See also [`API.md`](API.md).
+(tag: `listening`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -170,7 +170,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -186,8 +186,6 @@ _No deviations from the global standard._
 | `AUDIO_NOT_READY` | 409 | Media still processing |
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -214,6 +212,130 @@ go test -tags=integration ./internal/modules/listening/...  # integration (testc
 - Do not issue a long-lived audio URL.
 - Do not publish an item without a transcript.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `POST /api/v1/listening/items/{versionId}/plays`
+
+Checks the play policy, records the play, and returns a short-lived presigned audio GET URL
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `PLAY_LIMIT_REACHED` |
+
+#### `GET /api/v1/listening/items/{versionId}/transcript`
+
+Returns script only for a graded attempt belonging to caller
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `TRANSCRIPT_LOCKED` |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `PLAY_LIMIT_REACHED` | 403 | No plays remaining for this attempt |
+| `TRANSCRIPT_LOCKED` | 403 | Transcript not yet available |
+| `AUDIO_NOT_READY` | 409 | Media still processing |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Exam-mode listening
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Learner
+    participant L as listening
+    participant ST as storage
+
+    U->>L: POST /listening/attempts { item_id }
+    L->>L: INSERT attempt (plays_used = 0)
+    L->>ST: PresignGet (attempt-scoped, 15 min)
+    L-->>U: { attempt_id, audio_url, plays_allowed: 1 }
+    U->>L: POST /attempts/{id}/play
+    L->>L: plays_used = 1
+    L-->>U: { plays_remaining: 0 }
+    U->>L: POST /attempts/{id}/play
+    L-->>U: 403 PLAY_LIMIT_REACHED
+    U->>L: POST /attempts/{id}/submit
+    L->>L: grade; unlock the transcript
+    L-->>U: score + transcript
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Count plays on the client or the server? | Server | Anything the client enforces alone is not enforced; exam realism depends on the limit being real |
+| Reveal the transcript when? | After submission by default, configurable per activity | Seeing the transcript first turns a listening exercise into a reading exercise |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Backlog
+
+_Empty. Add items with acceptance criteria as they are identified._
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Adaptive speed for study mode
+- Accent-targeted practice
+- Shadowing exercises combining listening and speaking
+<!-- END GENERATED: todo-future -->
 
 ---
 

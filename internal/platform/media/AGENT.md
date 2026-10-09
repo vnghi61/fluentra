@@ -95,7 +95,7 @@ Migrations: `db/migrations/media/` · Queries: `db/queries/media/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `media`). See also [`API.md`](API.md).
+(tag: `media`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 _None yet._
@@ -194,7 +194,7 @@ must not delete its caller's workspace before returning its output path.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -218,8 +218,6 @@ _No deviations from the global standard._
 - Voice recordings are personal data: 90-day retention, deletable by the learner, and never sent to a provider without no-training terms.
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service; integration tests carry the pipeline**
@@ -248,6 +246,138 @@ go test -tags=integration ./internal/platform/media/...  # integration (testcont
 - Do not retain raw uploads once derivatives exist.
 - Do not interpret scores here — return the numbers and let `speaking` decide what they mean.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+_This module exposes no HTTP endpoints. It is consumed through its `contract` package._
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `UNSUPPORTED_AUDIO_FORMAT` | 415 | Magic bytes do not match a supported container |
+| `AUDIO_TOO_LONG` | 422 | Exceeds the configured maximum duration |
+| `MEDIA_PROCESSING_FAILED` | 500 | A pipeline stage failed after retries |
+| `TRANSCRIPTION_LOW_CONFIDENCE` | 422 | Audio too noisy or too quiet to score fairly |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Speaking attempt pipeline
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant J as job queue
+    participant W as worker (media)
+    participant S as storage
+    participant F as ffmpeg
+    participant A as ASR provider
+    participant P as pronunciation provider
+
+    J->>W: speaking.transcribe_and_score { asset_id }
+    W->>S: GET raw upload
+    W->>W: sniff magic bytes, probe duration
+    alt invalid or too long
+        W->>W: fail with a user-safe reason
+    else valid
+        W->>F: transcode → 16 kHz mono WAV
+        W->>F: transcode → 64 kbps Opus (playback)
+        W->>F: extract waveform peaks
+        W->>S: PUT derivatives
+        W->>A: transcribe (16 kHz WAV)
+        A-->>W: transcript + word timings + confidence
+        alt confidence below threshold
+            W->>W: TRANSCRIPTION_LOW_CONFIDENCE — ask the learner to re-record
+        else
+            W->>P: assess against the reference text
+            P-->>W: phoneme accuracy, fluency, completeness
+            W->>W: persist transcript + scores; publish media.transcribed
+            W->>S: DELETE raw upload
+        end
+    end
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| ffmpeg in the worker or a separate service? | In the worker for now | One fewer moving part; the boundary is already an interface, so extraction is a transport change when CPU contention justifies it — see ARCHITECTURE §20.2 where media is the first extraction candidate |
+| Which pronunciation scoring approach? | Provider API first, GOP self-hosted as a fallback option | Building phoneme-level scoring in-house is a research project; buying it lets us ship and measure. Open question Q2 in the plan review |
+| Keep raw uploads? | Delete after derivatives are verified | Storage cost and privacy; the normalised copy is what any re-scoring would use anyway |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 3
+
+- [ ] ffmpeg transcode stages with resource limits
+- [ ] Waveform extraction
+- [ ] ASR adapter with word timings
+- [ ] Pronunciation assessment adapter
+- [ ] TTS adapter with content-hash caching
+- [ ] Image processing for avatars and content images
+- [ ] Orphan GC job
+- [ ] Speech benchmark corpus and a provider comparison document
+<!-- END GENERATED: todo -->
+
+### Completed local processing repair (2026-09-30)
+
+- [x] Automatically process pending/new local resources in a dedicated, non-root Compose renderer with LibreOffice, Poppler and ffmpeg; `make dev-media` supports host-run API/worker setups.
+- [x] Keep render output files until extraction and upload finish instead of deleting them when `processRendition` returns; cover output lifetime with a regression test.
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Self-hosted Whisper for cost control at volume
+- Forced alignment fallback
+- Per-learner voice preference
+- Noise suppression before ASR
+<!-- END GENERATED: todo-future -->
 
 ---
 

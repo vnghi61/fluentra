@@ -283,7 +283,7 @@ func loadFoundationConfig(ctx context.Context) (foundationCLIConfig, error) {
 			"ai.auto_publish":        false,
 		},
 		Required: []config.RequiredKey{
-			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
+			{Name: "db.dsn", DocSection: ".env.example"},
 		},
 	}, &cfg); err != nil {
 		return cfg, fmt.Errorf("load foundation configuration: %w", err)

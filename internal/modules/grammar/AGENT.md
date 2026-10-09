@@ -105,7 +105,7 @@ Migrations: `db/migrations/grammar/` · Queries: `db/queries/grammar/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `grammar`). See also [`API.md`](API.md).
+(tag: `grammar`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -182,7 +182,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -197,8 +197,6 @@ _No deviations from the global standard._
 | `EXPLANATION_UNGROUNDED` | 500 | The model could not cite a valid rule |
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -225,6 +223,154 @@ go test -tags=integration ./internal/modules/grammar/...  # integration (testcon
 - Do not drill a point whose prerequisites are unmastered.
 - Do not let the taxonomy be edited without a retag plan.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/grammar/points`
+
+Browse the taxonomy by level
+
+| | |
+|---|---|
+| Permission | `content.read.published` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/grammar/points/{code}`
+
+Rule with examples and common errors
+
+| | |
+|---|---|
+| Permission | `content.read.published` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/me/grammar/weaknesses`
+
+Ranked weak points with drill suggestions
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/grammar/explain`
+
+Explain a tagged error, citing a rule
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `AI_QUOTA_EXCEEDED` |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `GRAMMAR_POINT_NOT_FOUND` | 404 | Unknown taxonomy code |
+| `EXPLANATION_UNGROUNDED` | 500 | The model could not cite a valid rule |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### From an essay error to a targeted drill
+
+```mermaid
+flowchart LR
+    A[writing.graded<br/>with annotations] --> B["grammar.TagErrors"]
+    B --> C[map each annotation to a taxonomy point]
+    C --> D[INSERT error_tags]
+    D --> E[update user_grammar_state error rate]
+    E --> F[weakness profile reranked]
+    F --> G[drills recommended, respecting prerequisites]
+    G --> H[learner completes a drill]
+    H --> I[grammar point enters srs]
+    I --> J[error rate falls → point drops down the ranking]
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Free-form AI explanation or grounded citation? | Grounded | An ungrounded model will invent a confident, plausible, wrong rule — and a learner cannot tell the difference. Citation makes the explanation checkable and the failure mode visible |
+| Tag errors on first occurrence or after teaching? | Tag always, schedule only after teaching | The weakness profile needs all the data; spaced repetition of something never taught is just confusing |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 3
+
+- [ ] Taxonomy with CEFR levels and prerequisites
+- [ ] Rules with examples and common errors
+- [ ] Error tagging consuming writing and speaking events
+- [ ] Weakness profile with decay
+- [ ] Drill types and graders
+- [ ] Grounded `grammar.explain` with a citation check
+- [ ] Seed taxonomy covering A1–B2
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Corpus-derived common error lists
+- Contrastive explanations for Vietnamese speakers specifically
+- Automatic drill generation from a learner's own errors
+<!-- END GENERATED: todo-future -->
+
+### Done in work order 8
+
+- [x] **Drill types and graders.** `grammar_tense_choice` and `grammar_sentence_transform`,
+      graded by this module's own `learning.ExerciseGrader` — the first grader in the project
+      that is not vocabulary's, which is what finally gives `cmd/api`'s start-up validation of
+      the grader registry something to fail on (ADR-0015).
 
 ---
 

@@ -28,7 +28,7 @@ paths = [
   # production cannot originate from a _test.go file because production reads
   # from environment variables, not test fixtures.
   '''.*_test\.go$''',
-  # Documentation examples (API_GUIDELINE.md, OpenAPI specs) contain example
+  # Documentation examples (docs/CONVENTIONS.md, OpenAPI specs) contain example
   # tokens and ULIDs for illustration. These are structurally fake and clearly
   # marked as examples in surrounding text.
   '''API_GUIDELINE\.md$''',
@@ -42,6 +42,6 @@ regexes = [
   '''test-jwt-previous-key-at-least-32-bytes-long''',
   # Test OTP HMAC key: same pattern
   '''test-otp-hmac-key-at-least-32-bytes-long''',
-  # Example ULID in API_GUIDELINE.md for Idempotency-Key header illustration
+  # Example ULID in docs/CONVENTIONS.md#api for Idempotency-Key header illustration
   '''01J8XQ7Z9K3M4N5P6Q7R8S9T0V''',
 ]

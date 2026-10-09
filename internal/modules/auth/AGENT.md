@@ -233,7 +233,7 @@ account yet.
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `auth`). See also [`API.md`](API.md).
+(tag: `auth`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -348,7 +348,7 @@ and fails `go-arch-lint` in CI.
 1. Change `ACCESS_TTL` / `REFRESH_TTL` in config — never hard-code a duration.
 2. Check the frontend's silent-refresh margin still fits (it refreshes at 80 % of the access TTL).
 3. Update the denylist TTL, which must be ≥ the access TTL.
-4. Update `docs/deployment/configuration.md` and this file §9.
+4. Update `.env.example` and this file §9.
 
 ### Add a new security event kind
 
@@ -373,7 +373,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -430,8 +430,6 @@ for this module:
 
 ## 13. Testing
 
-See [`TESTING.md`](TESTING.md) for the full plan.
-
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **90% domain, 85% service (elevated: this is security-critical)**
 
@@ -480,7 +478,702 @@ go test -tags=integration ./internal/modules/auth/...  # integration (testcontai
 - Do not skip PKCE because we are a confidential client — it costs nothing and blocks code interception on mobile browsers.
 <!-- END GENERATED: donot -->
 
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `POST /api/v1/auth/register`
+
+Create an account and issue a `verify_email` OTP challenge
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 201 |
+| Errors | `EMAIL_ALREADY_REGISTERED`, `PASSWORD_TOO_WEAK`, `VALIDATION_FAILED`, `RATE_LIMITED` |
+| Notes | Returns a `challenge_id`; the 6-digit code goes to the email. The account cannot sign in until verified. |
+
+#### `POST /api/v1/auth/challenges/{id}/verify`
+
+Submit the OTP code for a challenge
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | `OTP_INVALID`, `OTP_EXPIRED`, `OTP_ATTEMPTS_EXCEEDED`, `CHALLENGE_NOT_FOUND` |
+| Notes | Generic across every purpose. Consumes the challenge on success; burns it after `max_attempts`. |
+
+#### `POST /api/v1/auth/challenges/{id}/resend`
+
+Resend the code for a challenge
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 202 |
+| Errors | `OTP_RESEND_TOO_SOON`, `RATE_LIMITED`, `CHALLENGE_NOT_FOUND` |
+| Notes | 60-second cooldown, 3 issuances per subject per hour. Issues a new code and resets attempts; the challenge id is unchanged. |
+
+#### `POST /api/v1/auth/login`
+
+Validate credentials and enforce lockout
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `MFA_REQUIRED`, `EMAIL_NOT_VERIFIED` |
+| Notes | Accepts `remember_device` and an optional client `device_id`. Response timing is equalised between 'unknown email' and 'wrong password'; token issuance arrives in P2.4. |
+
+#### `GET /api/v1/auth/oauth/google/start`
+
+Begin Google sign-in; returns the authorization URL
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Generates `state`, `nonce` and a PKCE challenge, stored server-side with a 10-minute TTL |
+
+#### `POST /api/v1/auth/mfa/verify`
+
+Complete a login that required a second factor
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | `MFA_INVALID`, `TOKEN_EXPIRED` |
+
+#### `POST /api/v1/auth/refresh`
+
+Rotate the refresh token and issue a new access token
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | `TOKEN_INVALID`, `SESSION_REVOKED` |
+| Notes | Reuse of an already-used token revokes the entire family and raises a security event |
+
+#### `POST /api/v1/auth/logout`
+
+Revoke the current session and refresh family
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 204 |
+| Errors | standard set |
+
+#### `POST /api/v1/auth/forgot-password`
+
+Send a reset code
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 202 |
+| Errors | `RATE_LIMITED` |
+| Notes | Always returns 202 regardless of whether the email exists |
+
+#### `POST /api/v1/auth/reset-password`
+
+Consume a reset token and set a new password
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | `TOKEN_INVALID`, `TOKEN_EXPIRED`, `PASSWORD_TOO_WEAK` |
+| Notes | Revokes all sessions on success |
+
+#### `POST /api/v1/auth/change-password`
+
+Change the password while signed in
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `INVALID_CREDENTIALS`, `PASSWORD_TOO_WEAK` |
+
+#### `GET /api/v1/auth/sessions`
+
+List the caller's active sessions
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `DELETE /api/v1/auth/sessions/{id}`
+
+Revoke one session
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 204 |
+| Errors | `RESOURCE_NOT_FOUND` |
+
+#### `POST /api/v1/auth/mfa/enroll`
+
+Begin TOTP enrolment; returns a provisioning URI and recovery codes
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/auth/oauth/google/callback`
+
+Complete Google sign-in: verify state, exchange the code, validate the ID token, link or create the account
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | `OAUTH_STATE_INVALID`, `OAUTH_EMAIL_UNVERIFIED`, `OAUTH_ACCOUNT_CONFLICT`, `TOKEN_INVALID` |
+
+#### `POST /api/v1/auth/oauth/google/link`
+
+Link a Google identity to the signed-in account
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `OAUTH_ALREADY_LINKED`, `OAUTH_EMAIL_MISMATCH` |
+
+#### `DELETE /api/v1/auth/oauth/google`
+
+Unlink Google
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 204 |
+| Errors | `LAST_SIGN_IN_METHOD` |
+| Notes | Refused if it would leave the account with no way to sign in |
+
+#### `GET /api/v1/auth/devices`
+
+List trusted devices with their idle and absolute expiry
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `DELETE /api/v1/auth/devices/{id}`
+
+Untrust a device, revoking its refresh family
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 204 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/users/{id}/sessions/revoke`
+
+Admin revokes all sessions for a user
+
+| | |
+|---|---|
+| Permission | `user.manage_sessions` |
+| Success | 204 |
+| Errors | `PERMISSION_DENIED`, `RESOURCE_NOT_FOUND` |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `INVALID_CREDENTIALS` | 401 | Wrong email or password — never says which |
+| `ACCOUNT_LOCKED` | 429 | Too many failed attempts |
+| `EMAIL_NOT_VERIFIED` | 403 | Verification required for this action |
+| `TOKEN_EXPIRED` | 401 | Access token expired; refresh |
+| `TOKEN_INVALID` | 401 | Malformed, unknown, or bad signature |
+| `SESSION_REVOKED` | 401 | Session revoked, including refresh-reuse detection |
+| `MFA_REQUIRED` | 401 | Second factor needed to complete login |
+| `MFA_INVALID` | 401 | Wrong or reused TOTP code |
+| `EMAIL_ALREADY_REGISTERED` | 409 | Registration conflict |
+| `PASSWORD_TOO_WEAK` | 422 | Fails policy or found in a breach corpus |
+| `OTP_INVALID` | 401 | Wrong code; the response includes `attempts_remaining` |
+| `OTP_EXPIRED` | 401 | Code older than 10 minutes |
+| `OTP_ATTEMPTS_EXCEEDED` | 429 | Challenge burned; request a new one |
+| `OTP_RESEND_TOO_SOON` | 429 | Within the 60-second cooldown; `Retry-After` set |
+| `CHALLENGE_NOT_FOUND` | 404 | Unknown, consumed or expired challenge |
+| `OAUTH_STATE_INVALID` | 400 | Missing, reused or expired state — a possible CSRF attempt |
+| `OAUTH_EMAIL_UNVERIFIED` | 403 | The provider did not assert a verified email |
+| `OAUTH_ACCOUNT_CONFLICT` | 409 | The email belongs to an unverified local account; verify it first |
+| `OAUTH_EMAIL_MISMATCH` | 409 | Linking attempted with an address other than the account's |
+| `OAUTH_ALREADY_LINKED` | 409 | That Google identity is already linked to another account |
+| `LAST_SIGN_IN_METHOD` | 409 | Unlinking would leave no way to sign in |
+| `SESSION_ABSOLUTE_EXPIRED` | 401 | Absolute session lifetime reached; full re-authentication required |
+| `DEVICE_LIMIT_REACHED` | 409 | Too many trusted devices; untrust one first |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+- `/auth/login`, `/auth/register`, `/auth/forgot-password`: 5/min per IP **and** per account, with exponential lockout
+- `/auth/refresh`: 30/min per session
+- `/auth/mfa/verify`: 5 attempts per login challenge
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Registration with OTP verification
+
+The account, the credential and the challenge are created in one transaction; the email is dispatched through the outbox so a code can never be sent for a rolled-back registration. The learner stays on the same screen and types the code — no context switch to a second browser.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant A as auth
+    participant US as user (contract)
+    participant D as PostgreSQL
+    participant M as mailer
+
+    U->>A: POST /auth/register { email, password }
+    A->>A: validate email + password policy + breach corpus
+    A->>D: BEGIN
+    A->>US: CreateUser(email, locale)
+    US->>D: INSERT core.users (status=pending_verification)
+    A->>D: INSERT core.credentials (argon2id)
+    A->>D: INSERT auth_challenges (purpose=verify_email, code_hash=HMAC(code), attempts=0, ttl=10m)
+    A->>D: INSERT outbox(send verify_email code)
+    A->>D: COMMIT
+    A-->>U: 201 { challenge_id, expires_at, resend_after }
+    Note over D,M: outbox → mailer job — never a direct call
+    M->>U: email containing the 6-digit code
+
+    loop up to 5 attempts
+        U->>A: POST /auth/challenges/{id}/verify { code }
+        A->>D: load challenge; check expiry and attempts
+        A->>A: constant-time compare against code_hash
+        alt wrong
+            A->>D: attempts += 1
+            A-->>U: 401 OTP_INVALID { attempts_remaining }
+        else attempts exhausted
+            A->>D: burn challenge
+            A-->>U: 429 OTP_ATTEMPTS_EXCEEDED
+        else correct
+            A->>D: BEGIN; consume challenge; users.status = active
+            A->>D: INSERT outbox(user.registered); COMMIT
+            A-->>U: 200 { access_token } + refresh cookie
+        end
+    end
+```
+
+### Google sign-in with account linking
+
+The dangerous branch is the one in the middle: a Google email that matches an **unverified** local account. Auto-linking there is the classic account-takeover path, so it is refused.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant W as SPA
+    participant A as auth
+    participant G as Google
+    participant D as PostgreSQL
+
+    U->>W: tap 'Continue with Google'
+    W->>A: GET /auth/oauth/google/start
+    A->>D: INSERT oauth_states (state, nonce, pkce_verifier_hash, ttl=10m)
+    A-->>W: { authorization_url }
+    W->>G: redirect
+    U->>G: consent
+    G->>W: redirect back with code + state
+    W->>A: POST /auth/oauth/google/callback { code, state }
+    A->>D: load + consume state (single use)
+    alt missing, reused or expired
+        A-->>W: 400 OAUTH_STATE_INVALID + security event
+    end
+    A->>G: exchange code (with PKCE verifier)
+    G-->>A: id_token + access_token
+    A->>G: fetch JWKS; verify signature, iss, aud, exp, nonce
+    alt email_verified is false
+        A-->>W: 403 OAUTH_EMAIL_UNVERIFIED
+    end
+    A->>D: look up oauth_identities by (google, sub)
+    alt identity known
+        A->>A: sign in
+    else email matches a VERIFIED local account
+        A->>D: INSERT oauth_identities (link)
+        A->>A: sign in
+    else email matches an UNVERIFIED local account
+        A-->>W: 409 OAUTH_ACCOUNT_CONFLICT — verify by OTP first
+    else no local account
+        A->>D: create user (status=active, email already verified by Google)
+        A->>A: sign in
+    end
+    A-->>W: 200 { access_token } + refresh cookie
+```
+
+### Staying signed in — sliding window with an absolute cap
+
+This is what 'log in once' actually means in a design that can still revoke a stolen credential. The idle window moves forward on every use; the absolute expiry does not.
+
+```mermaid
+flowchart TD
+    A[Login with remember_device = true] --> B[create session:<br/>idle_window = 90d<br/>absolute_expires_at = now + 180d]
+    B --> C[refresh token issued, expires = now + idle_window]
+    C --> D{App opened}
+    D --> E{now > absolute_expires_at?}
+    E -->|yes| F[401 SESSION_ABSOLUTE_EXPIRED<br/>full re-authentication]
+    E -->|no| G{refresh token expired?}
+    G -->|yes| H[401 — idle too long, sign in again]
+    G -->|no| I[rotate: new token, expires = now + idle_window]
+    I --> J[access token issued<br/>learner never saw a login screen]
+    J --> D
+
+    K[Password change / reset /<br/>admin suspend / device untrusted] --> L[revoke every family<br/>+ every trusted device]
+    L --> F
+```
+
+### Refresh rotation with reuse detection
+
+The single most security-critical flow in the system. A stolen refresh token is detectable because the legitimate client will eventually present the same token the attacker already used.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant A as auth
+    participant D as PostgreSQL
+    participant AU as audit
+
+    C->>A: POST /auth/refresh (cookie)
+    A->>D: SELECT refresh_tokens WHERE token_hash = $1
+    alt not found
+        A-->>C: 401 TOKEN_INVALID
+    else used_at IS NOT NULL
+        A->>D: UPDATE refresh_tokens SET revoked_at = now() WHERE family_id = $f
+        A->>D: UPDATE sessions SET revoked_at = now() WHERE id = $s
+        A->>AU: security_event(refresh_reuse, severity=high)
+        A-->>C: 401 SESSION_REVOKED
+    else valid
+        A->>D: BEGIN
+        A->>D: UPDATE refresh_tokens SET used_at = now() WHERE id = $1
+        A->>D: INSERT refresh_tokens (new hash, same family_id)
+        A->>D: UPDATE sessions SET last_seen_at = now()
+        A->>D: COMMIT
+        A-->>C: 200 { access_token } + Set-Cookie
+    end
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+### State machine
+
+Account lifecycle. Note that `suspended` is reversible and `deleted` is not — deletion runs through a 30-day grace period owned by `user`.
+
+```mermaid
+stateDiagram-v2
+    [*] --> PendingVerification: register
+    PendingVerification --> Active: verify email
+    PendingVerification --> [*]: expire after 7 days
+    Active --> Locked: too many failed attempts
+    Locked --> Active: lockout expires or admin unlocks
+    Active --> Suspended: admin suspends
+    Suspended --> Active: admin reinstates
+    Active --> PendingDeletion: user requests deletion
+    Suspended --> PendingDeletion: user requests deletion
+    PendingDeletion --> Active: user cancels within 30 days
+    PendingDeletion --> [*]: anonymised after 30 days
+```
+
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+| Failure | Detected by | Behaviour |
+|---|---|---|
+| Mailer unavailable at registration | Outbox job retries | Account is created; the email is retried with backoff; the user can request a resend |
+| Redis unavailable | `cache_unavailable_total` | Lockout counters fall back to a database query; login still works, with a warn log |
+| Breached-password service unreachable | Timeout after 800 ms | Fail open with a warn log — a weak password is worse than a blocked registration, but an outage must not block signups |
+| Clock skew between replicas | Token validation failures spike | 60-second leeway on `exp`/`nbf`; NTP is a host requirement |
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| JWT or opaque access tokens? | JWT (HS256 now, EdDSA when services split) | Stateless validation keeps the middleware free of a database round trip on every request; the 15-minute lifetime bounds the revocation window, and the denylist covers explicit logout |
+| Where does the refresh token live? | HttpOnly cookie scoped to `/api/v1/auth` | Not reachable by JavaScript, so an XSS cannot steal it; the narrow path limits CSRF surface to one endpoint, which also carries a double-submit token |
+| Argon2id or bcrypt? | Argon2id | OWASP's first recommendation; memory-hardness resists GPU cracking; parameters embedded in the hash allow raising cost without a migration |
+| Store sessions in Redis or Postgres? | Postgres, cached in Redis | Sessions are durable state a user can audit and an admin can revoke; Redis is a 5-minute read cache, not the source of truth |
+| Verification by emailed link or by OTP code? | OTP code | A majority of learners open email on a phone. A link launches a second browser context with no session, which breaks the flow and loses the registration. A 6-digit code is typed into the tab already open. See ADR-0021 |
+| One challenge table or a table per purpose? | One, with a `purpose` enum | Rate limiting, attempt capping, hashing, expiry and burning are identical across purposes. Three copies would mean three places to get constant-time comparison wrong |
+| How is 'stay signed in' implemented? | Sliding idle window + absolute cap, not a long-lived token | An active learner is never signed out, which is the actual requirement, while every credential still has a bounded lifetime and a revocation path. See ADR-0022 |
+| Which social providers in Phase 1? | Google only | It covers the overwhelming majority of the target market. Apple can wait until there is an iOS app, where it becomes a store requirement |
+| What happens when a Google email matches an unverified local account? | Refuse and require OTP verification of that address first | Auto-linking would let anyone who registers an address they do not own capture it later via Google. This is the subtle account-takeover path in every social login integration |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+- [ADR-0007](../../../docs/adr/ADR-0007-auth-jwt-refresh-rotation.md) — JWT access + rotating refresh tokens
+- [ADR-0021](../../../docs/adr/ADR-0021-email-otp-challenges.md) — Email OTP challenges instead of verification links
+- [ADR-0022](../../../docs/adr/ADR-0022-persistent-sessions.md) — Persistent sign-in: sliding window with an absolute cap
+- [ADR-0023](../../../docs/adr/ADR-0023-google-oauth-linking.md) — Google OAuth and the account-linking policy
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+- Do we support passkeys in Phase 2, and if so do they replace or supplement TOTP?
+- Should admin MFA also require a hardware key, or is TOTP sufficient for our threat model?
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 1 — core
+
+- [ ] Argon2id credential storage with parameter upgrade on login
+- [ ] Challenge subsystem: issue, resend, verify, burn — generic over `purpose`
+- [ ] Registration + OTP email verification, with the outbox path proven end-to-end
+- [ ] Login with equalised timing and per-account/per-IP lockout
+- [ ] Access token issuance and validating middleware, with `Actor` in the request context
+- [ ] Refresh rotation with family revocation on reuse, covered by an integration test
+- [ ] Sliding idle window, absolute cap, trusted devices, device list and revoke
+- [ ] Google OAuth: PKCE, state, nonce, JWKS verification, linking policy
+- [ ] Session list and revoke, for the user and for an admin
+- [ ] Password reset and change, revoking sessions and trusted devices
+- [ ] Security event emission wired to `audit`
+
+### Phase 2
+
+- [ ] TOTP enrolment, verification, recovery codes; mandatory for admins
+- [ ] OTP as a step-up factor on an untrusted device (reuses the `login_otp` purpose — already built)
+- [ ] Apple sign-in (required if an iOS app ships)
+- [ ] New-device notification email
+- [ ] Offline breached-password Bloom filter as a fallback
+<!-- END GENERATED: todo -->
+
+### Progress
+
+The list above is generated from `tools/docgen/data/core.json`, so its checkboxes cannot be ticked
+by hand. Completed work is recorded here instead.
+
+| Task | Done | What landed |
+|---|---|---|
+| P2.1 | 2026-08-10 | `core.credentials`, with the cost parameters as a generated column and a CHECK that only a PHC-encoded Argon2id hash may be stored; `domain.Hasher` at m=64 MiB/t=3/p=2, parameters embedded in the hash, a rehash decision returned by every verify; `domain.Policy` — length, not equal to the email local part, and the breach corpus, failing open; `domain.PasswordRange` and the HIBP k-anonymity adapter over `net/http` |
+| P2.1b | 2026-08-10 | `core.auth_challenges` with the `purpose` enum, the attempt cap as a CHECK and no `burned_at`; `domain.Keyring` — subject and code HMACs, the code hash bound to the challenge id; uniform code draw from `crypto/rand`; `ChallengeService.Issue`/`Verify`/`Resend` with the two issuance limiters and the resend cooldown; every state transition a guarded single-statement UPDATE, proven single-use under ten concurrent consumers |
+| P2.2 | 2026-08-10 | `module.go` — `New(Deps)`, `Routes`, `Subscribe`, `CronJobs`, adapters for all service surfaces; `RegisterService.Register/VerifyEmail/Resend/PurgeUnverified`; three HTTP endpoints (`POST /auth/register`, `POST /auth/challenges/{id}/verify`, `POST /auth/challenges/{id}/resend`); `registration_attempt` email template (en + vi); outbox consumer for `auth.verification_requested` and `auth.registration_attempted`; `purge_unverified` cron job; OTP_HMAC_KEY plus MAIL_FROM and SMTP transport config wired in both `cmd/api` and `cmd/worker` |
+| P2.3 | 2026-08-10 | `core.login_attempts` migration & table; `LoginService` handling Argon2id constant-time timing equalisation (`DummyVerify` for unknown emails), per-account and per-IP lockouts backed by persisted failures with 15-minute-to-24-hour exponential backoff, account status checks (suspended/unverified), transparent Argon2id parameter rehash on login, and `POST /auth/login` HTTP endpoint |
+| P2.4 | 2026-08-11 | `TokenService` — HS256 access tokens carrying `sub`/`sid`/`role`/`jti`/`iat`/`exp`/`aud`/`iss` and no PII, two-key rotation, 60-second leeway, the signing method pinned so an `alg: none` token cannot verify, and the parser driven by the injected clock; `TokenDenylist` over Redis for explicit logout, failing open per ADR-0007; `Authenticate` middleware placing `httpx.Actor` in the request context; login and email verification both return an `AuthSession`; `EMAIL_NOT_VERIFIED` corrected to 403 and account suspension split out of `ACCOUNT_LOCKED` into `ACCOUNT_SUSPENDED` |
+| P2.10 | 2026-08-12 | `core.oauth_states` + `core.oauth_identities`; `domain.DecideLink` — ADR-0023's five branches as a pure function, ordered so an unverified provider email is refused before anything is matched; `Keyring.PKCEFor` deriving the verifier from the state so the exchange needs nothing stored; `service/oauth/google` — JWKS cache with a refresh floor, ID token verification against signature/`iss`/`aud`/`exp`/`nonce`, and the PKCE token exchange; `OAuthService.Start/Callback/Link/Unlink`; the `oauth_state_invalid` security event on a forged, reused or expired state; four HTTP operations; `sweep_oauth_states` cron job; the `OAUTH_*` config keys wired in `cmd/api` |
+
+### Open after P2.10
+
+- [ ] **`user.Registrar` cannot open an account that is already verified.** Google sign-in for a new
+      learner is three writes and they are not one transaction, because rule L4 forbids one spanning
+      two modules: `CreateAccount`, then `MarkEmailVerified`, then the identity row. If the second
+      fails, the retry finds an unverified local account and takes the conflict branch — so a
+      transient failure locks that learner out of Google sign-in for the seven days the sweep takes
+      to remove the account. The window is narrow (two consecutive calls on one pool) and the fix is
+      a `Verified` field on `user/contract.NewUser`, which is another module's contract and another
+      card.
+- [ ] **A suspended account is caught by address, not by id.** `OAuthService.checkUsable` resolves
+      the account from the address Google asserted, so a learner suspended *after* changing their
+      Google address cannot be matched and their status is not read. `service.Accounts` has no lookup
+      by id and adding one is a change to the `user` contract. Nothing can suspend an account today —
+      `admin` does not exist — and BR-AUTH-09's session revocation still applies to every session
+      they already hold.
+- [ ] **Nothing prunes consumed `core.oauth_states`.** The hourly sweep deletes rows an hour past
+      expiry, consumed or not, which is the whole table's lifecycle — but a row that was spent
+      successfully sits there until then. Harmless (it is already refused) and worth folding into
+      the same card as the refresh-token, session and trusted-device sweeps.
+- [ ] **`redirect_to` is stored and never read.** The column, the query parameter and the same-site
+      guard are all in place, and the callback returns JSON rather than a redirect — so nothing
+      consumes it yet. The SPA route that will is P3's.
+
+### Open after P2.9
+
+- [ ] **Nothing sweeps expired trusted devices.** A device past its absolute expiry stops being
+      listed and stops lengthening anything, because `ListTrustedDevices` filters on it — but the row
+      stays. Same shape as the refresh-token and session sweeps already filed; probably one card for
+      all three.
+- [ ] **`TRUSTED_DEVICE_LIMIT` is in `.env.example` and enforced nowhere.** A learner can trust an
+      unbounded number of browsers. The unique index keeps one row per device id, so this is a
+      nuisance rather than a hole, and capping it needs a decision about what happens at the limit —
+      refuse, or evict the least recently used.
+- [ ] **`cmd/worker` gets the default windows.** It builds an auth module for the mailer consumer and
+      the sweep, and reads no `SESSION_*` key. Nothing in the worker opens a session, so it does not
+      matter today.
+
+### Open after P2.8
+
+- [ ] **`/api/v1/ping` is not rate limited.** The middleware is mounted inside the group the modules
+      register into, which is where the auth middleware runs and therefore the only place the actor
+      is known. `/ping` is registered outside that group, beside `/health` and `/ready`, and it does
+      real work — a `SELECT 1` and a Redis `PING` per call. Limiting it needs either a second
+      middleware instance for the anonymous class alone or moving the probe endpoints, and neither
+      is worth doing blind.
+- [ ] **The upload class has nothing to guard.** `RATE_LIMIT_UPLOAD_PER_HOUR` is read and the class
+      matches `/uploads` and `/avatar`, neither of which exists until P3.1. The path matcher is
+      written and untested against a real route.
+- [ ] **The limiter is a fixed window, not a sliding one.** `cache.RedisLimiter` counts per key with
+      an EXPIRE, so a caller can spend a full budget at the end of one window and another at the
+      start of the next — twice the nominal rate across the boundary. Acceptable for these classes
+      and worth knowing before somebody sizes an alert off the numbers.
+
+### Open after P2.7
+
+- [ ] **A reset does not notify the address it was completed for.** `auth.password_changed` is
+      published and nothing consumes it; the mailer has no `password_changed` template. A change the
+      learner did not make is the first sign of a takeover, and the notification is often the only
+      way they find out. The event is in place so the consumer is a small card.
+- [ ] **`PASSWORD_RESET_TTL` is read by `cmd/api` and not by `cmd/worker`.** The worker builds an
+      auth module to run the mailer consumer and the sweep, and gets the ten-minute default. Nothing
+      in the worker issues a challenge, so it does not matter today; it will the moment something
+      does.
+
+### Open after P2.6
+
+- [ ] **The session list shows no country.** P2.6's card specifies "IP country from a local
+      database", which cannot coexist with storing only `ip_hash` — a country has to be resolved at
+      sign-in, while the address is still in hand, and stored in a column of its own. Doing it needs
+      a migration, `oschwald/geoip2-golang` in `DEPENDENCIES.md`, a `GEOIP_DATABASE_PATH` key in
+      `.env.example`, and a MaxMind licence key wired into CI and Compose. Deferred deliberately,
+      with the human's agreement; the schema description in `components/auth.yaml` says so, so a
+      client reading the spec is not surprised when the field appears.
+- [ ] **`POST /admin/users/{id}/sessions/revoke` does not exist.** `SessionRevoker.RevokeAll` is
+      built and tested and nothing calls it. The endpoint belongs to `admin`, which arrives in P4.1.
+- [ ] **Sessions are never swept.** A revoked row is kept for forensics and an idle one simply stops
+      being listed once its refresh token expires, so `core.sessions` grows without bound. The same
+      argument as the refresh-token sweep, and probably the same card.
+- [ ] **`device_label` is null for sessions opened by email verification.** `VerifyEmail` has a
+      context but not a request, so there is no user agent to read. Threading the header through
+      three signatures was not worth it for a column nothing read at the time; now that the session
+      list renders it, it is worth revisiting.
+
+### Open after P2.5
+
+- [ ] **`core.sessions.device_label` is never written.** The column exists and the session list
+      P2.6 builds is what fills it, from the user agent digest recorded at sign-in. Until then a
+      learner's session list would have nothing to call each device.
+- [ ] **Verification opens a session with no user agent.** `RegisterService.VerifyEmail` has a
+      context but not a request, so `user_agent_hash` is null on sessions started by proving an
+      address — unlike sessions started by login. Threading the header through would touch three
+      signatures for a column nothing reads yet; done when P2.6 needs the label there too.
+- [ ] **`RefreshService` opens its transactions READ COMMITTED through a private helper** rather
+      than `dbx.InTx`, which is SERIALIZABLE-only with three retries. The reason is in the comment
+      on `inTx`: the claim's correctness is a row predicate, not a snapshot, and SERIALIZABLE would
+      spend retries colliding on exactly the rows a replay storm hammers. The tidy fix is an
+      isolation option on `dbx.InTx` — a shared-package change, so it is a card of its own.
+- [ ] **Nothing prunes spent refresh tokens.** Rows are kept deliberately (a deleted row cannot be
+      told from one that never existed, which is what detection needs), but a family that has
+      rotated daily for six months is 180 rows nobody will ever read again. A sweep bounded by
+      `expires_at` plus a margin is safe; sizing it wants real data.
+- [ ] **The `RefreshCookie` security scheme in `openapi.yaml` is still referenced by nothing.**
+      `POST /auth/refresh` declares `security: []` like every other auth operation, because the
+      `fluentra-operation-permission` spectral rule demands an `x-permission` for anything with a
+      non-empty `security` and there is no RBAC permission that fits a cookie-authenticated
+      operation. Done when the rule exempts cookie-only schemes and the operation declares one.
+
+### Open after P2.4
+
+- [x] **Logout has no endpoint yet.** Closed by P2.6: `POST /auth/logout` revokes the session and
+      its refresh family in Postgres and denylists the access token id in Redis. The denylist write
+      fails open — an unreachable Redis leaves one access token alive for at most its remaining
+      fifteen minutes, while the durable half of the sign-out has already committed.
+- [x] **`sid` identifies nothing yet.** Closed by P2.5: `core.sessions` exists, `sid` is its
+      primary key, and revoking the row stops the refresh family immediately. The access token it
+      names still survives to its own expiry — that is ADR-0007's accepted trade, and `POST
+      /auth/logout` in P2.6 is what denylists it sooner.
+- [ ] **The `/auth/login` 200 schema is declared inline** in `openapi.yaml` rather than in
+      `components/auth.yaml` where every other module's schemas live. P2.4 replaced it with a
+      `$ref` to `AuthSession`, so this is closed — but check the same has not happened again the
+      next time an endpoint is added in a hurry.
+
+### Open after P2.1
+
+- [ ] **Wire the policy to configuration.** `ARGON2_MEMORY_KIB`, `ARGON2_ITERATIONS`,
+      `ARGON2_PARALLELISM`, `PASSWORD_MIN_LENGTH` and `BREACHED_PASSWORD_CHECK` are all in
+      `.env.example` and none is read yet — P2.1 ships no service and no `module.go`, so there is
+      nothing to read them into. `domain.DefaultHashParams` carries the same numbers, so the
+      defaults are already the documented ones. Done when `cmd/api` loads them and a test proves
+      `BREACHED_PASSWORD_CHECK=false` leaves `Policy.Breaches` nil.
+- [ ] **A metric for the breach check.** The fail-open path logs at warn and nothing counts it, so
+      "how often did a password go unchecked?" is a log query rather than a number.
+      `platform/telemetry.Instruments` has no module-level counter to hang it on, which makes this
+      a platform change rather than a follow-up commit — the same blocker
+      `internal/modules/audit/TODO.md` records for dropped entries. Done when the fail-open path
+      increments something Prometheus scrapes.
+- [ ] **The offline fallback.** Listed under Phase 2 above, but worth stating why it matters
+      sooner than that: failing open means a sustained HIBP outage silently disables BR-AUTH-01
+      entirely, and nothing currently makes that visible. A local Bloom filter satisfies
+      `domain.BreachChecker` and needs no new port. Done when the corpus check works with no
+      network.
+
+### Open after P2.1b
+
+- [ ] **Sweep expired challenges.** Nothing deletes them, so the table grows without bound and
+      keeps subject hashes long past any use for them. It needs a cron job in `job/` and an index
+      on `expires_at` to go with it — the only access path this card created is the primary key,
+      and an index nothing queries would be dead weight until the sweeper exists. Done when a
+      challenge past its expiry is removed on a schedule and the retention window is documented.
+- [ ] **Emit `auth.security_event` for a burned challenge.** Five wrong codes against one
+      challenge is a signal `audit` should hold; today it is a warn log and nothing more. The
+      payload follows the field convention `audit` reads structurally (`occurred_at`, `user_id`,
+      `severity`). Blocked on nothing but scope. Done when burning a challenge produces a row in
+      `security_events`.
+- [x] **Wire the subsystem in.** `module.go` now reads `OTP_HMAC_KEY` and both binaries declare
+      it as a required key. The six OTP tuning parameters (`OTP_TTL`, `OTP_MAX_ATTEMPTS`,
+      `OTP_CODE_LENGTH`, `OTP_RESEND_COOLDOWN`, `OTP_ISSUE_PER_SUBJECT_PER_HOUR`,
+      `OTP_ISSUE_PER_IP_PER_HOUR`) are still read from `service.DefaultConfig`; wiring them to
+      the env block is a follow-up that belongs in P2.8 alongside the rate-limiter wiring.
+- [ ] **A rotation story for `OTP_HMAC_KEY`.** Changing the key invalidates every live challenge —
+      ten minutes of them, so the blast radius is small, but it is currently undocumented and
+      there is no two-key path as `JWT_PREVIOUS_KEY` gives tokens. Done when the operational
+      consequence is written down in `.env.example`.
+
+### Open after P2.2
+
+- [x] **The code-in-plaintext outbox payload.** Published OTP payloads now have a bounded lifetime. `platform/job` owns `ops.outbox_events` and its daily, advisory-lock-protected retention task deletes only published, non-dead-lettered events after `OUTBOX_PUBLISHED_RETENTION_DAYS` (30 by default). Deletion was chosen over redaction so the OTP and email are actually removed; the bounded dispatch trail is the trade-off, while dead letters remain for operator triage.
+- [ ] **OTP tuning parameters wired to config.** `OTP_TTL`, `OTP_MAX_ATTEMPTS`, `OTP_CODE_LENGTH`,
+      `OTP_RESEND_COOLDOWN`, `OTP_ISSUE_PER_SUBJECT_PER_HOUR`, and `OTP_ISSUE_PER_IP_PER_HOUR`
+      are all in `.env.example` and all read from `service.DefaultConfig` today. Done when
+      `cmd/api` loads them and a test proves a non-default `OTP_CODE_LENGTH` takes effect (P2.8).
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+- WebAuthn / passkeys — Phase 3 at the earliest
+- SSO / SAML — only if the product ever serves institutions, which would also mean multi-tenancy
+- Magic-link login — adds an email-delivery dependency to the critical path
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Risk-based authentication: step up to MFA on an unusual country or device
+- Session anomaly detection feeding the security dashboard
+- Per-device token binding once passkeys land
+<!-- END GENERATED: todo-future -->
+
 ---
 
-*Generated by `tools/docgen` from `tools/docgen/data/`. Hand-written text outside the
-GENERATED markers is preserved. Update the manifest, then run `make docs`.*
+_Generated by `tools/docgen` from `tools/docgen/data/`. Hand-written text outside the
+GENERATED markers is preserved. Update the manifest, then run `make docs`._

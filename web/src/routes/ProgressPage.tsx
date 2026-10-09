@@ -104,7 +104,7 @@ export function ProgressPage(): React.JSX.Element {
         words mastered, week-over-week deltas, a date-range filter and a
         per-day activity chart have no endpoint yet and are not drawn; the
         earlier derived "3 minutes per activity" figures were removed for that
-        reason. See docs/development/phase-2/P10-learner-web.md §1.
+        reason (the P10 learner-web card).
       */}
       <OverallStats
         totalActivitiesCompleted={totalActivities}

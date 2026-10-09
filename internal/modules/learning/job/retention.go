@@ -21,7 +21,7 @@ const retentionInterval = 15 * time.Minute
 
 // RetentionRefresher recomputes the two cohorts D1 retention is a ratio of.
 //
-// ROADMAP.md's Phase 2 exit criterion is "D1 retention measurable", and the trap
+// The Phase 2 exit criterion is "D1 retention measurable", and the trap
 // the brief names is a dashboard of raw event counts that nobody can turn into
 // that number without writing SQL — measurable in principle, which is the state
 // the criterion exists to rule out. So the query runs here, on a schedule, and

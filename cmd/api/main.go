@@ -510,7 +510,7 @@ const (
 	// defaultOTLPEndpoint is the collector address in the local compose stack.
 	defaultOTLPEndpoint = "localhost:4317"
 	// docSectionStorage is the anchor a missing S3 key points the operator at.
-	docSectionStorage = "docs/deployment/configuration.md#storage"
+	docSectionStorage = ".env.example"
 )
 
 // configOptions declares every key this binary reads. A key absent from here
@@ -611,13 +611,13 @@ func configOptions() config.Options {
 		},
 		EnvSections: []string{"SPEECH", "EXAM", "SEPAY", "STUDIO"},
 		Required: []config.RequiredKey{
-			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
-			{Name: "redis.url", DocSection: "docs/deployment/configuration.md#redis"},
+			{Name: "db.dsn", DocSection: ".env.example"},
+			{Name: "redis.url", DocSection: ".env.example"},
 			{Name: "s3.endpoint", DocSection: docSectionStorage},
 			{Name: "s3.access_key", DocSection: docSectionStorage},
 			{Name: "s3.secret_key", DocSection: docSectionStorage},
-			{Name: "otp.hmac_key", DocSection: "docs/deployment/configuration.md#auth"},
-			{Name: "jwt.signing_key", DocSection: "docs/deployment/configuration.md#auth"},
+			{Name: "otp.hmac_key", DocSection: ".env.example"},
+			{Name: "jwt.signing_key", DocSection: ".env.example"},
 		},
 	}
 }
@@ -670,7 +670,7 @@ func loadConfig(ctx context.Context) (applicationConfig, error) {
 	} {
 		if timeout.value <= 0 {
 			return target, fmt.Errorf(
-				"config key %s must be a positive duration; see docs/deployment/configuration.md#app",
+				"config key %s must be a positive duration; see .env.example",
 				timeout.key)
 		}
 	}

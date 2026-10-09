@@ -94,7 +94,7 @@ This module owns no tables.
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `cache`). See also [`API.md`](API.md).
+(tag: `cache`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -174,7 +174,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -188,8 +188,6 @@ _No deviations from the global standard._
 | `RATE_LIMITED` | 429 | Rate limiter rejected the request |
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -218,6 +216,117 @@ go test -tags=integration ./internal/platform/cache/...  # integration (testcont
 - Do not cache a permission decision across users.
 - Do not use `KEYS` — ever.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `DELETE /api/v1/admin/cache/{pattern}`
+
+Operational invalidation by key prefix
+
+| | |
+|---|---|
+| Permission | `system.cache` |
+| Success | 204 |
+| Errors | standard set |
+| Notes | Prefix-scoped and audited; never a bare `KEYS *` |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `RATE_LIMITED` | 429 | Rate limiter rejected the request |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Cache-aside with single-flight and degradation
+
+```mermaid
+flowchart TD
+    A["GetOrLoad(key, loader)"] --> B{Redis reachable?}
+    B -->|no| L[call loader directly<br/>warn + cache_unavailable_total]
+    B -->|yes| C[GET key]
+    C -->|hit| D[deserialise → return<br/>cache_requests_total result=hit]
+    C -->|miss| E[single-flight per key]
+    E --> F[loader]
+    F -->|error| G[return error, cache nothing]
+    F -->|value| H[SET with jittered TTL]
+    H --> I[return value<br/>result=miss]
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| go-redis or rueidis? | go-redis v9 | Maturity and instrumentation; rueidis is faster and supports client-side caching — revisit if Redis latency becomes a measured problem |
+| Typed facade or raw client? | Typed facade | It is the only way to enforce key conventions, degradation and metrics consistently; a raw client in 20 modules produces 20 conventions |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 1
+
+- [ ] Typed `Cache[T]` with JSON and msgpack codecs
+- [ ] `cache.Key` builder with environment and version segments
+- [ ] `GetOrLoad` with single-flight and jittered TTL
+- [ ] Degradation path plus `cache_unavailable_total`
+- [ ] Distributed locks with token-checked release
+- [ ] Rate limiter wrapping `redis_rate`
+- [ ] Per-module hit-ratio metrics
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Two-tier cache with an in-process L1
+- Redis Cluster or Valkey if licensing or scale demands
+- Cache warming for the daily review queue
+<!-- END GENERATED: todo-future -->
 
 ---
 

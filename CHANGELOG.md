@@ -272,14 +272,14 @@ generated text describes commits; release notes should describe change.
 - WP4 Observability (P4.3): Prometheus alerting rules (`deploy/prometheus/rules/phase1.yml`), Grafana dashboards (API Overview, Database, Jobs, Auth & Security), and operational runbooks (`docs/operations/runbooks/`).
 
 - Complete Software Architecture Document ([ARCHITECTURE.md](ARCHITECTURE.md))
-- Plan review and optimisation record ([docs/architecture/00-plan-review.md](docs/architecture/00-plan-review.md))
-- AI context engineering strategy ([AI_CONTEXT.md](AI_CONTEXT.md)) and root [AGENT.md](AGENT.md)
+- Plan review and optimisation record (docs/architecture/00-plan-review.md)
+- AI context engineering strategy ([AI_CONTEXT.md](docs/AI.md#context-engineering)) and root [AGENT.md](AGENT.md)
 - 30 module specifications with the nine-file documentation set each
 - 20 Architecture Decision Records
 - Repository conventions: coding, API, database, errors, logging, testing, security, observability
-- Prompt library design, development and runtime ([PROMPT_LIBRARY.md](PROMPT_LIBRARY.md))
+- Prompt library design, development and runtime ([PROMPT_LIBRARY.md](docs/AI.md#prompt-library))
 - Dependency register with alternatives and rationale ([DEPENDENCIES.md](DEPENDENCIES.md))
-- Delivery roadmap through Phase 5 ([ROADMAP.md](ROADMAP.md))
+- Delivery roadmap through Phase 5 (ROADMAP.md)
 - Module documentation generator (`tools/docgen`) with drift checking
 - Module boundary enforcement configuration (`.go-arch-lint.yml`)
 - Configuration reference (`.env.example`) and `Makefile`
@@ -391,7 +391,7 @@ generated text describes commits; release notes should describe change.
 
 Authentication is live: P2.4 added the bearer middleware and P2.5 the refresh cookie behind it,
 so the operations above are usable by a real client. What is still missing is `POST
-/auth/logout` and the session list — P2.6. See [ROADMAP.md](ROADMAP.md).
+/auth/logout` and the session list — P2.6. See ROADMAP.md.
 
 A refresh token is deliberately **not** in any response body. It exists only as an `HttpOnly`
 cookie scoped to `/api/v1/auth`: a value the page can read is a value an injected script can

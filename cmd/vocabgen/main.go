@@ -535,7 +535,7 @@ func loadConfig(ctx context.Context) (vocabCLIConfig, error) {
 	if err := config.Load(ctx, config.Options{
 		Defaults: defaults,
 		Required: []config.RequiredKey{
-			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
+			{Name: "db.dsn", DocSection: ".env.example"},
 		},
 	}, &cfg); err != nil {
 		return cfg, fmt.Errorf("load vocabgen configuration: %w", err)

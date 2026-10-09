@@ -12,7 +12,7 @@ import (
 )
 
 // The default budgets, mirroring the RATE_LIMIT_* keys in `.env.example` and
-// the table in API_GUIDELINE.md §11.
+// the table in docs/CONVENTIONS.md#api §11.
 const (
 	DefaultAnonymousPerMinute  = 60
 	DefaultUserPerMinute       = 600
@@ -94,7 +94,7 @@ func (c RateLimitConfig) withDefaults() RateLimitConfig {
 	return c
 }
 
-// RateLimiter applies the classes in API_GUIDELINE.md §11.
+// RateLimiter applies the classes in docs/CONVENTIONS.md#api §11.
 type RateLimiter struct {
 	config RateLimitConfig
 }
@@ -144,7 +144,7 @@ func (r *RateLimiter) Middleware(next http.Handler) http.Handler {
 				// Allow. A limiter that denies when its backing store is down
 				// turns a cache outage into a total outage of every endpoint
 				// for every caller, and the rate limit protects far less than
-				// availability costs (API_GUIDELINE.md §11).
+				// availability costs (docs/CONVENTIONS.md#api §11).
 				//
 				// Nothing is advertised either: a RateLimit-Remaining derived
 				// from a budget that was never evaluated is a number a client
@@ -237,7 +237,7 @@ func (r *RateLimiter) bucketsFor(request *http.Request) []bucket {
 		}}
 
 	case isCredentialPath(path):
-		// "5/min per IP **and** per account" (API_GUIDELINE.md §11). Per-IP
+		// "5/min per IP **and** per account" (docs/CONVENTIONS.md#api §11). Per-IP
 		// alone lets a botnet spread a credential-stuffing run across
 		// addresses; per-account alone lets one address work through a list of
 		// accounts. Both, or neither is worth much.

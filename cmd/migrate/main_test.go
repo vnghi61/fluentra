@@ -11,7 +11,7 @@ import (
 	"github.com/fluentra/fluentra/db/migrations"
 )
 
-// timestampedName is the naming contract from DATABASE_GUIDELINE.md: a globally
+// timestampedName is the naming contract from docs/CONVENTIONS.md#database: a globally
 // unique Unix timestamp, then the description, then the module the flattening
 // appended.
 var timestampedName = regexp.MustCompile(`^\d{10}_[a-z0-9_]+\.sql$`)

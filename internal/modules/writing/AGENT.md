@@ -103,7 +103,7 @@ Migrations: `db/migrations/writing/` · Queries: `db/queries/writing/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `writing`). See also [`API.md`](API.md).
+(tag: `writing`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -190,7 +190,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -220,8 +220,6 @@ _No deviations from the global standard._
 - Similarity checking never exposes another learner's text; it reports a score, not a source.
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -253,6 +251,259 @@ go test -tags=integration ./internal/modules/writing/...  # integration (testcon
 - Do not mutate a submitted body.
 - Do not put learner text into the instruction block of a prompt.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/writing/tasks`
+
+Available tasks by level and type
+
+| | |
+|---|---|
+| Permission | `content.read.published` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `PUT /api/v1/writing/tasks/{id}/draft`
+
+Autosave a draft
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/writing/submissions`
+
+Submit for grading
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 202 |
+| Errors | `SUBMISSION_TOO_SHORT`, `SUBMISSION_TOO_LONG`, `AI_QUOTA_EXCEEDED`, `AI_OPTED_OUT` |
+| Notes | Requires an `Idempotency-Key`; returns a stream URL |
+
+#### `GET /api/v1/writing/submissions/{id}`
+
+Submission with feedback when ready
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/writing/submissions/{id}/stream`
+
+SSE stream of grading progress and partial feedback
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/writing/submissions`
+
+History with band progression
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/writing/submissions/{id}/dispute`
+
+Flag a grade for human review
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 202 |
+| Errors | standard set |
+
+#### `GET /api/v1/writing/attempts/{id}/feedback`
+
+Read detailed writing feedback for an attempt
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `SUBMISSION_TOO_SHORT` | 422 | Below the task's minimum word count |
+| `SUBMISSION_TOO_LONG` | 422 | Above the maximum |
+| `SUBMISSION_ALREADY_GRADED` | 409 | Immutable once graded |
+| `GRADING_FAILED` | 500 | All grading attempts failed |
+| `DISPUTE_ALREADY_OPEN` | 409 | One open dispute per submission |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Submit and stream feedback
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Learner
+    participant W as writing
+    participant DB as PostgreSQL
+    participant K as worker
+    participant AI as platform/ai
+
+    U->>W: POST /writing/submissions (Idempotency-Key)
+    W->>W: word bounds, task validity, quota, opt-out
+    W->>DB: BEGIN; INSERT submission(status=queued)
+    W->>DB: INSERT river_job(writing.grade); INSERT outbox(submission_created); COMMIT
+    W-->>U: 202 { submission_id, stream_url }
+    U->>W: GET /writing/submissions/{id}/stream (SSE)
+
+    K->>AI: Run(writing.grade_essay, { essay, rubric, level, locale })
+    AI-->>K: streamed chunks
+    K->>DB: append partial feedback
+    K-->>W: chunk (pg NOTIFY)
+    W-->>U: SSE chunk
+    AI-->>K: final structured result
+    K->>K: validate schema, clamp bands, consistency check
+    alt invalid
+        K->>DB: status=failed; do not consume quota
+        W-->>U: SSE error with a safe message
+    else valid
+        K->>DB: BEGIN; UPDATE submission(graded, bands); INSERT feedback
+        K->>DB: consume quota; INSERT outbox(writing.graded); COMMIT
+        W-->>U: SSE done
+    end
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+### State machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft: autosave
+    Draft --> Queued: submit
+    Queued --> Grading: worker picks it up
+    Grading --> Graded: valid result
+    Grading --> Failed: all attempts exhausted or invalid output
+    Failed --> Queued: admin retry (no quota charge)
+    Graded --> Disputed: learner disputes
+    Disputed --> Graded: admin resolves (original retained)
+    Graded --> [*]
+```
+
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+| Failure | Detected by | Behaviour |
+|---|---|---|
+| All AI providers down | `AI_UNAVAILABLE` from the chain | Job retries with backoff for up to an hour; the learner sees "still grading"; no quota charged |
+| Output fails schema after repair | `ai_schema_violation_total` | Job fails; alert if the rate exceeds 5 %; the prompt version is a suspect |
+| Learner disconnects mid-stream | SSE connection closed | Grading continues; partials are persisted; the result is waiting when they return |
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Synchronous or asynchronous grading? | Asynchronous with polling | 10–30 seconds is outside an acceptable request budget; adaptive polling on attempt status replaces SSE streaming with simpler reconnect and delivery semantics |
+| Charge quota on submit or on success? | On success | A learner should never lose a credit to our infrastructure failure |
+| Allow editing a submission? | No — resubmit instead | Band progression only means something if each submission is a fixed artefact |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 3
+
+- [ ] Tasks, drafts with autosave, revision snapshots
+- [ ] Submission with idempotency and server-side bounds
+- [ ] Async grading job calling `writing.grade_essay`
+- [ ] SSE streaming with partial persistence and reconnection
+- [ ] Band and criterion validation with clamping
+- [ ] Feedback rendering with inline annotations
+- [ ] History view with band progression
+- [ ] Dispute flow and admin review queue
+- [ ] Red-team eval suite for injection
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Second-opinion grading for borderline bands
+- Model ensemble for high-stakes submissions
+- Guided revision with tracked improvement
+- Peer review
+<!-- END GENERATED: todo-future -->
+
+### Shipped in work orders 10 & 11
+
+The boxes above are unticked because docgen renders every generated item that
+way. What exists in code today:
+
+- [x] `writing.Grader` implements `learning.ExerciseGrader` for
+      `writing_prompt`, registered through `cmd/api/modules.go` and rendered by
+      `ExerciseWriting.tsx`.
+- [x] `writing_grade.v1.md` and `writing_grade.v2.md` prompts.
+- [x] Background grading via River worker (`writingjob.GradeSubmissionWorker`).
+- [x] `skill.writing_feedback` table storing structured IELTS feedback (criteria, located annotations, band scores).
+- [x] `GET /writing/attempts/{id}/feedback` endpoint for reading learner feedback.
+- [x] Grading guarantees, corrected in review on 2026-09-12. There is no synchronous path: without
+      a queue the grader refuses with `WRITING_QUEUE_UNAVAILABLE` (BR-WRITING-01). No AI provider
+      is an error, never a default band. Model output is checked against the rubric — score 0–100,
+      bands 0–9, exactly four criteria — before it is stored. A provider error fails the attempt
+      only on River's last attempt, so a retry can still grade it.
+
+#### Schema rationalisation (tables retired)
+
+- `writing_tasks`: prompts and rubrics are authored directly into `content.versions` (kind `writing_prompt`), eliminating a duplicate tasks table.
+- `writing_drafts`: drafts are saved client-side in localStorage (`fluentra.writing_draft.<activityId>`), eliminating ephemeral database writes.
+- `writing_revisions`: draft revisions are handled locally; server-side snapshot history is deferred until high-stakes exam tracking is built.
+
+The only table `writing` owns is `writing_feedback`.
 
 ---
 

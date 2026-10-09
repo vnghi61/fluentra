@@ -112,7 +112,7 @@ Migrations: `db/migrations/job/` · Queries: `db/queries/job/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `job`). See also [`API.md`](API.md).
+(tag: `job`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -227,7 +227,7 @@ broken, the other that it is too slow.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -241,8 +241,6 @@ _No deviations from the global standard._
 | `JOB_NOT_RETRYABLE` | 409 | Admin attempted to retry a job that failed for a business reason |
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -272,6 +270,183 @@ go test -tags=integration ./internal/platform/job/...  # integration (testcontai
 - Do not use `go func()` in a handler instead of a job.
 - Do not run a long job on the `default` queue and starve everything else.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/admin/jobs`
+
+List jobs by queue and state
+
+| | |
+|---|---|
+| Permission | `system.jobs` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/jobs/{id}/retry`
+
+Retry a failed job
+
+| | |
+|---|---|
+| Permission | `system.jobs` |
+| Success | 202 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/jobs/{id}/cancel`
+
+Cancel a pending job
+
+| | |
+|---|---|
+| Permission | `system.jobs` |
+| Success | 204 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/queues`
+
+Depth, oldest pending age, throughput per queue
+
+| | |
+|---|---|
+| Permission | `system.jobs` |
+| Success | 200 |
+| Errors | standard set |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `JOB_NOT_RETRYABLE` | 409 | Admin attempted to retry a job that failed for a business reason |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Transactional enqueue and the outbox
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as Service
+    participant DB as PostgreSQL
+    participant OB as Outbox publisher
+    participant W as Worker
+
+    S->>DB: BEGIN
+    S->>DB: INSERT business row
+    S->>DB: INSERT river_job (same tx)
+    S->>DB: INSERT outbox_events (same tx)
+    S->>DB: COMMIT
+    Note over S,DB: all three commit atomically — no orphans, no lost work
+    W->>DB: dequeue job (FOR UPDATE SKIP LOCKED)
+    W->>W: run handler inside span + timeout
+    alt transient failure
+        W->>DB: reschedule with exponential backoff
+    else business failure
+        W->>DB: INSERT job_failures; publish job.failed_permanently
+    else success
+        W->>DB: mark completed
+    end
+    OB->>DB: poll unpublished outbox rows
+    OB->>OB: dispatch to in-process subscribers
+    OB->>DB: mark published
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| River, Asynq, or a broker? | River | Transactional enqueue is worth more to us than raw throughput; see the comparison in ARCHITECTURE §11.1 and ADR-0010 |
+| Job args: IDs or full payloads? | IDs | A payload captured at enqueue time is stale by the time the job runs; re-reading is correct and keeps the queue table small |
+| One queue or several? | Five, by workload shape | A three-minute transcode must not delay a notification; separate queues give independent concurrency and independent alerting |
+| Run cron jobs once at startup? | Yes, before the ticker | A fresh deployment otherwise waits out a whole interval doing nothing, which is an hour for upload verification. The advisory lock still stops two instances colliding, and the orchestrator's restart backoff bounds how often a crash-loop can repeat the call |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+- [ADR-0010](../../../docs/adr/ADR-0010-job-queue-river.md) — River (Postgres) for background jobs
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 1
+
+- [ ] River client and worker wiring with the five queues
+- [ ] Job middleware: span, log, recover, timeout, metrics
+- [ ] Outbox table and publisher loop with `SKIP LOCKED`
+- [ ] Cron scheduler with advisory locking
+- [ ] Dead-letter recording and the `job.failed_permanently` event
+- [ ] Admin inspect/retry/cancel endpoints
+- [ ] Queue depth and oldest-pending-age metrics with alerts
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Progress
+
+| Task | Done | What landed |
+|---|---|---|
+| Outbox retention | 2026-08-13 | Daily, advisory-lock-protected pruning of published, non-dead-lettered `ops.outbox_events` rows after `OUTBOX_PUBLISHED_RETENTION_DAYS` (30 by default); the matching partial index keeps the time-bounded sweep off pending and dead-letter rows. |
+
+#### Carried over from P0.R6 — the two `[~]` items above are half done
+
+- **`job.failed_permanently` event.** `ops.job_failures` is written on the attempt that exhausts
+  the budget (BR-JOB-08), verified by integration test. The _event_ half is not published: doing it
+  from River's `ErrorHandler` would need an outbox write outside the job's transaction, which is the
+  one place the outbox contract does not fit. Decide the shape when the first consumer exists.
+- **`job_queue_depth`.** `job_oldest_pending_seconds` now has a callback and reports real values.
+  `job_queue_depth` is still declared in `telemetry.Instruments` with nothing writing to it. It is
+  an `Int64UpDownCounter`, which is the wrong instrument for a value read from a table — it wants
+  to be an observable gauge alongside the age one. Changing its type is a telemetry change, not a
+  job change, so it was left alone rather than half-wired here.
+- **Alerts.** The metrics exist; no alert rule consumes them yet. That belongs with the Grafana
+  provisioning in P0.R15.
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Per-queue autoscaling hints
+- Job dependency graphs for multi-stage pipelines
+- Broker-backed queue after a module is extracted
+<!-- END GENERATED: todo-future -->
 
 ---
 

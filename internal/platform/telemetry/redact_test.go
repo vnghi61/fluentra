@@ -87,7 +87,7 @@ func TestRedactingHandler_NamesContextErrors(t *testing.T) {
 }
 
 // TestDefaultAllowedLogKeys_CoversGuidelineAttributes keeps the allowlist in
-// step with the situation table in LOGGING_GUIDELINE.md §4.
+// step with the situation table in docs/CONVENTIONS.md#logging §4.
 func TestDefaultAllowedLogKeys_CoversGuidelineAttributes(t *testing.T) {
 	t.Parallel()
 	allowed := make(map[string]struct{}, len(DefaultAllowedLogKeys))
@@ -102,7 +102,7 @@ func TestDefaultAllowedLogKeys_CoversGuidelineAttributes(t *testing.T) {
 		"config_digest",
 	} {
 		if _, ok := allowed[key]; !ok {
-			t.Errorf("LOGGING_GUIDELINE.md requires attribute %q but it is not on the allowlist", key)
+			t.Errorf("docs/CONVENTIONS.md#logging requires attribute %q but it is not on the allowlist", key)
 		}
 	}
 }

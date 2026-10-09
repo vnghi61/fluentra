@@ -16,7 +16,7 @@ info:
     depends on reading them.
 
 
-    The classes are in `API_GUIDELINE.md` §11: 60/min per IP for anonymous
+    The classes are in `docs/CONVENTIONS.md#api` §11: 60/min per IP for anonymous
     callers, 600/min per user once signed in, and 5/min per IP **and** per
     account on the operations that hand out or reset a credential. A caller can
     be inside one budget and outside another; the response describes whichever

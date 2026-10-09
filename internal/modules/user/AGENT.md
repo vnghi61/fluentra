@@ -138,7 +138,7 @@ enum column generates `interface{}` instead of a typed Go constant.
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `user`). See also [`API.md`](API.md).
+(tag: `user`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -302,7 +302,7 @@ This module publishes the following domain events for account deletion:
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -334,8 +334,6 @@ _No deviations from the global standard._
 
 ## 13. Testing
 
-See [`TESTING.md`](TESTING.md) for the full plan.
-
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **85% service, 90% domain**
 
@@ -362,6 +360,363 @@ go test -tags=integration ./internal/modules/user/...  # integration (testcontai
 - Do not expose `email` in any response other than the owner's own `/me`.
 - Do not implement deletion as a cascade of `DELETE` statements from this module — publish the event.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### What is live
+
+Four of the thirteen operations below exist as of **P1.2**:
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/v1/me` | Identity plus profile. The learning profile is not exposed yet |
+| `PATCH` | `/api/v1/me` | `display_name`, `country`, `timezone`, `date_of_birth`. Unknown and null members are 422 |
+| `GET` | `/api/v1/me/preferences` | |
+| `PUT` | `/api/v1/me/preferences` | Full replacement; a missing member is 422, not "unchanged" |
+
+The rest are specified here and not implemented: avatar and export arrive with WP3, the
+`/admin/users` group with P4.1.
+
+**There is no operation that takes a user id.** `GET /me` reads the actor from the access token,
+and this module exposes no `/users/{id}` route at all, so one learner cannot reach another's
+record by changing a path segment. That is a property of the routing table, not of a permission
+check, and there is a test that fails if a user-id route ever appears.
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/me`
+
+Full profile of the caller
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `PATCH /api/v1/me`
+
+Update profile fields
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `VALIDATION_FAILED` |
+
+#### `GET /api/v1/me/preferences`
+
+Read preferences
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `PUT /api/v1/me/preferences`
+
+Replace preferences
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/me/learning-profile`
+
+Read the caller's learning profile
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `NOT_FOUND` |
+
+#### `PUT /api/v1/me/learning-profile`
+
+Replace the caller's learning profile
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `VALIDATION_FAILED` |
+
+#### `POST /api/v1/me/avatar/upload-intent`
+
+Get a presigned URL for an avatar upload
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `UNSUPPORTED_MEDIA_TYPE`, `TOO_LARGE` |
+
+#### `PUT /api/v1/me/avatar`
+
+Confirm the uploaded avatar
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/storage/avatars/{assetId}`
+
+Serve a stored avatar image
+
+| | |
+|---|---|
+| Permission | `authenticated` |
+| Success | 200 |
+| Errors | `AVATAR_NOT_FOUND` |
+
+#### `POST /api/v1/me/export`
+
+Request a data export
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 202 |
+| Errors | standard set |
+
+#### `GET /api/v1/me/export/{id}`
+
+Get status of a data export request
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `DELETE /api/v1/me`
+
+Request account deletion (30-day grace)
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 202 |
+| Errors | standard set |
+
+#### `POST /api/v1/me/deletion/cancel`
+
+Cancel a pending deletion
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `INVALID_STATE_TRANSITION` |
+
+#### `GET /api/v1/me/deletion/{id}`
+
+Get status of an account deletion request
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/users`
+
+Search and list users
+
+| | |
+|---|---|
+| Permission | `user.list` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/users/{id}`
+
+Read one user
+
+| | |
+|---|---|
+| Permission | `user.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/users/{id}/suspend`
+
+Suspend an account
+
+| | |
+|---|---|
+| Permission | `user.suspend` |
+| Success | 200 |
+| Errors | `INVALID_STATE_TRANSITION` |
+
+#### `POST /api/v1/admin/users/{id}/reinstate`
+
+Reinstate a suspended account
+
+| | |
+|---|---|
+| Permission | `user.reinstate` |
+| Success | 200 |
+| Errors | standard set |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `DISPLAY_NAME_NOT_ALLOWED` | 422 | Reserved or moderated name |
+| `INVALID_STATE_TRANSITION` | 409 | e.g. cancelling a deletion that already executed |
+| `EXPORT_ALREADY_PENDING` | 409 | One export at a time |
+| `AGE_RESTRICTED` | 403 | Under-16 account without guardian consent |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Account deletion
+
+Deletion fans out to every module holding personal data. Each module is responsible for its own erasure, driven by an event rather than a central script — that is what keeps the boundary intact.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant US as user
+    participant A as auth
+    participant J as job
+    participant M as all modules
+
+    U->>US: DELETE /me
+    US->>US: INSERT deletion_request (execute_after = now + 30d)
+    US->>US: users.status = pending_deletion
+    US->>A: RevokeAllSessions(user_id)
+    US->>US: publish user.deletion_requested
+    US-->>U: 202 { execute_after }
+
+    alt user cancels within 30 days
+        U->>US: POST /me/deletion/cancel
+        US->>US: status = active; cancel request
+    else grace elapses
+        J->>US: scheduled job picks up due requests
+        US->>US: anonymise profile, hard-delete PII
+        US->>M: publish user.deleted
+        M->>M: each module purges or anonymises its own data
+        US->>US: mark completed
+    end
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+### State machine
+
+Account status. `auth` reads this on every login; a non-active status blocks authentication.
+
+```mermaid
+stateDiagram-v2
+    [*] --> PendingVerification
+    PendingVerification --> Active: email verified
+    Active --> Suspended: admin action
+    Suspended --> Active: admin reinstates
+    Active --> PendingDeletion: user request
+    Suspended --> PendingDeletion: user request
+    PendingDeletion --> Active: cancelled within 30 days
+    PendingDeletion --> Anonymised: grace elapsed
+    Anonymised --> [*]
+```
+
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+| Failure | Detected by | Behaviour |
+|---|---|---|
+| A module fails to purge on `user.deleted` | Erasure completeness job compares expected vs actual | Retries, then raises an alert — an incomplete erasure is a compliance incident |
+| Export job exceeds its timeout on a very large account | Job timeout metric | Chunked export with resumable state; user notified when ready |
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| One `users` table or split identity and profile? | Split | `users` is referenced by every schema; keeping it narrow and stable means profile churn never touches a table with a dozen inbound foreign keys |
+| Hard delete or anonymise? | Hard-delete PII, anonymise statistics | Satisfies erasure while keeping historical aggregates truthful — deleting the rows outright would silently rewrite past reports |
+| Who owns cross-module erasure? | Each module, driven by an event | A central deletion script would need to know every module's schema, which is exactly the coupling the architecture exists to prevent |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+- Do we need a verified email-change flow in Phase 2, or is support-assisted change acceptable?
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 1
+
+- [ ] `users`, `profiles`, `user_preferences` tables and CRUD
+- [ ] `GET/PATCH /me` and preferences endpoints
+- [ ] Avatar upload via presigned URL, with EXIF stripping
+- [ ] Admin user list, search, suspend, reinstate — all audited
+- [ ] Deletion request with 30-day grace and cancellation
+- [ ] Export job producing a signed link
+- [ ] `user.deleted` fan-out with an erasure completeness check
+<!-- END GENERATED: todo -->
+
+### Progress
+
+The list above is generated from `tools/docgen/data/core.json`, so its checkboxes cannot be
+ticked by hand — `make docs` would put them back. Completed work is recorded here instead.
+
+| P1.1 | 2026-08-09 | `core.users`, `core.profiles`, `core.user_preferences`, `core.learning_profiles`, the four `core` enums and the `citext` extension; the sqlc query set in `db/queries/user/`; schema and query integration tests |
+| P1.2 | 2026-08-09 | The vertical slice: `contract` (`Reader` with batched `GetManyByIDs`, `Creator`, `Summary`, events), `domain`, `repository`, `service`, `transport/http`. `GET`/`PATCH /me` and `GET`/`PUT /me/preferences` |
+| P3.1 | 2026-08-15 | Avatar upload lifecycle: `POST /api/v1/me/avatar/upload-intent` presigned upload, `PUT /api/v1/me/avatar` confirmation, magic bytes sniffing, pure-Go JPEG image resizing to 3 sizes (64x64, 128x128, 256x256) with EXIF GPS stripping, outbox event publishing, and safe old-avatar cleanup |
+| P3.2 | 2026-08-16 | GDPR User Data Export: `POST /api/v1/me/export` & `GET /api/v1/me/export/{id}`, River background export worker collecting data across modules (`user`, `auth`, `rbac`, `audit`), ZIP packaging with `metadata.json`, MinIO upload, 24h presigned URL email delivery, 7-day retention cleanup cron job |
+| P3.3 | 2026-08-16 | GDPR User Account Deletion: `DELETE /api/v1/me`, `POST /api/v1/me/deletion/cancel`, `GET /api/v1/me/deletion/{id}` with 30-day grace period, immediate session revocation (`user.deletion_requested`), daily `DeletionExecutor` cron job (`1_700_000_050`), user/profile anonymisation preserving aggregate stats, preferences/learning profile deletion, and event-driven data purge (`user.deleted`) across `auth` and `rbac`. |
+| WO11 §3.11 | 2026-09-12 | `core.user_preferences.practice_level` (migration `1700000530`; A2, B1, B2 or null): the level the daily practice set is drawn at, chosen once on the practice card and returned by `GET`/`PUT /me/preferences`, so it follows the learner between devices. A PUT that omits it stores null, so every web caller builds its body with `replacementFor`. `core.learning_profiles.declared_level` was not used: nothing writes it. |
+| WO13 §3.5 | 2026-09-14 | Learning profile lifecycle for onboarding & calibration: `GetLearningProfile` and `ReplaceLearningProfile` in service, `Reader.GetLearningProfile` in contract, HTTP endpoints `GET/PUT /api/v1/me/learning-profile`, validating target exam, CEFR levels, weekly minutes, and motivations. Drives `/welcome` wizard and Account Settings. |
+
+That closes the first three generated items, export (P3.2), deletion (P3.3), and the `user.deleted` fan-out. Still open in Phase 1: the
+admin user group (P4.1).
+
+Landed in WO13 §3.5: `core.learning_profiles` exposed through service, contract, and HTTP endpoints (`GET/PUT /api/v1/me/learning-profile`), wired to onboarding and settings.
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Verified email change
+- Profile completeness prompts driving onboarding
+- Per-user data-retention preferences
+<!-- END GENERATED: todo-future -->
 
 ---
 
