@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -408,11 +407,4 @@ func (s *SessionService) inTx(ctx context.Context, fn func(context.Context, Sess
 // error for a session that does not exist and one that belongs to somebody else.
 func errSessionNotFound() error {
 	return apperr.New(apperr.NotFound, "RESOURCE_NOT_FOUND", "That session was not found.")
-}
-
-// ErrSessionNotFound reports whether err is that refusal, for callers that need
-// to tell it apart from a failure.
-func ErrSessionNotFound(err error) bool {
-	var appErr *apperr.Error
-	return errors.As(err, &appErr) && appErr.Code == "RESOURCE_NOT_FOUND"
 }

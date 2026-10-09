@@ -1152,45 +1152,6 @@ func (s *Service) createMockSitting(
 	return attempt, nil
 }
 
-// BlueprintDrawer implements PoolDrawer for a specific blueprint and seed.
-type BlueprintDrawer struct {
-	svc       *Service
-	blueprint *domain.Blueprint
-	seed      int64
-}
-
-// NewBlueprintDrawer constructs a BlueprintDrawer.
-func NewBlueprintDrawer(svc *Service, blueprint *domain.Blueprint, seed int64) *BlueprintDrawer {
-	return &BlueprintDrawer{
-		svc:       svc,
-		blueprint: blueprint,
-		seed:      seed,
-	}
-}
-
-// DrawSitting implements PoolDrawer.
-func (d *BlueprintDrawer) DrawSitting(ctx context.Context, userID uuid.UUID, _ string) ([]SectionActivities, error) {
-	mt, err := d.svc.ComposeMockTest(ctx, &userID, ComposeMockTestRequest{
-		BlueprintID: d.blueprint.ID,
-		Mode:        domain.MockModeRandom,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	parts, err := d.svc.repo.ListExamPartsByVersionID(ctx, d.blueprint.VersionID)
-	if err != nil {
-		return nil, err
-	}
-	partMap := make(map[uuid.UUID]*domain.ExamPart, len(parts))
-	for _, p := range parts {
-		partMap[p.ID] = p
-	}
-
-	drawn, _ := d.svc.compositionToSectionActivities(ctx, mt.Composition, partMap)
-	return drawn, nil
-}
-
 func sortParts(parts []*domain.ExamPart) {
 	sort.Slice(parts, func(i, j int) bool {
 		pi := skillToSectionPosition(parts[i].Section)

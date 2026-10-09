@@ -32,8 +32,6 @@ help: ## Show this help
 setup: ## Install tool binaries, git hooks and frontend dependencies
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 	go install github.com/pressly/goose/v3/cmd/goose@latest
-	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
-	go install github.com/matryer/moq@latest
 	go install github.com/incu6us/goimports-reviser/v3@latest
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	go install github.com/fe3dback/go-arch-lint@latest
@@ -108,26 +106,16 @@ web: ## Run the frontend dev server on the host
 
 gen: gen-backend gen-web ## Regenerate everything
 
-gen-backend: gen-sql gen-api gen-mocks ## Regenerate the Go side only (what backend CI checks)
+gen-backend: gen-sql ## Regenerate the Go side only (what backend CI checks)
 
 gen-sql: ## sqlc: SQL -> typed Go
 	sqlc generate
 
-gen-api: bundle-api ## oapi-codegen: OpenAPI -> server interfaces + client
-	oapi-codegen -config api/openapi/codegen-server.yaml api/openapi/openapi.bundle.yaml
-	oapi-codegen -config api/openapi/codegen-client.yaml api/openapi/openapi.bundle.yaml
-
-# The bundler version is pinned. Unpinned, `npx @redocly/cli` resolves to
-# whatever is current, two bundlers emit subtly different YAML, and that lands in
-# the base64 spec embedded in server.gen.go — so the staleness gate would fail on
-# pull requests that changed nothing. That is exactly what it was doing.
+# The bundler version is pinned: two bundler versions emit subtly different YAML.
 REDOCLY_VERSION ?= 2.46.0
 
-bundle-api: ## Bundle split OpenAPI components for code generators
+bundle-api: ## Bundle the split OpenAPI spec into one file for the contract tests
 	npx --yes @redocly/cli@$(REDOCLY_VERSION) bundle api/openapi/openapi.yaml -o api/openapi/openapi.bundle.yaml
-
-gen-mocks: ## moq: interfaces -> mocks
-	go generate ./...
 
 gen-web: ## openapi-typescript: OpenAPI -> TS types + MSW handlers
 	cd web && pnpm run gen:api
@@ -255,7 +243,7 @@ test: ## Unit tests with the race detector
 test-int: ## Integration tests (testcontainers; Docker required)
 	go test -race -tags=integration ./... -timeout 10m
 
-test-contract: ## Handler <-> OpenAPI conformance
+test-contract: bundle-api ## Handler <-> OpenAPI conformance
 	go test -tags=contract ./internal/... -run TestContract
 
 test-web: ## Frontend unit tests
@@ -328,7 +316,7 @@ cover-gate: ## Fail if coverage.out is below COVERAGE_MIN
 # GENERATED_PATHS is everything `make gen-backend` writes. The check is scoped to
 # these rather than the whole tree so it reports codegen drift and not whatever
 # else the working copy happens to have in flight.
-GENERATED_PATHS := api/openapi/server.gen.go api/openapi/client.gen.go internal/generated
+GENERATED_PATHS := internal/generated
 
 # gen-check is the staleness gate. It uses `git status --porcelain` rather than
 # `git diff --exit-code` because codegen can create *new* files, and a new
@@ -386,7 +374,7 @@ security: ## Security scans
 	gitleaks detect --no-banner
 	cd web && pnpm audit --audit-level=high
 
-.PHONY: help setup dev dev-infra dev-infra-down dev-down logs prod-up api worker web gen gen-backend gen-sql gen-api gen-mocks gen-web \
+.PHONY: help setup dev dev-infra dev-infra-down dev-down logs prod-up api worker web gen gen-backend gen-sql bundle-api gen-web \
         gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed seed-audio promote-admin due-reviews audit-logs \
         db-reset-DANGEROUS check check-ci fmt fmt-check vet lint lint-int lint-go arch test test-int \
         test-contract test-web test-e2e test-load test-eval cover cover-check cover-gate docs \

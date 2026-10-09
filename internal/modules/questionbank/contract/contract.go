@@ -122,7 +122,6 @@ type Author interface {
 	CreateQuestion(ctx context.Context, q *Question) (*Question, error)
 	GenerateQuestions(ctx context.Context, req GenerateRequest) ([]*Question, error)
 	PublishQuestion(ctx context.Context, id uuid.UUID) (*Question, error)
-	RetireQuestion(ctx context.Context, id uuid.UUID) (*Question, error)
 }
 
 // BatchPrefix is the start of every generation batch id for one exam version:

@@ -23,10 +23,6 @@ paths = [
   # this scan also covers, so a secret cannot enter the repository through this
   # file — it can only be copied into it from a file that was already checked.
   '''web/src/types/api\.ts''',
-  # oapi-codegen and sqlc output, for the same reason. The OpenAPI spec is
-  # embedded in server.gen.go as base64, which additionally means any example in
-  # it is re-detected here at a different entropy than in the source.
-  '''.*\.gen\.go''',
   # Test files contain mock credentials by design. Every test key is prefixed
   # "test-" and scoped to localhost/test containers only. A key that works in
   # production cannot originate from a _test.go file because production reads

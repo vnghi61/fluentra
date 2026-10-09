@@ -32,7 +32,8 @@ func TestFoundationCoursesOnlyRepairsBindingsWithoutReseedingAccounts(t *testing
 		t.Fatal(err)
 	}
 	// Reproduce the old ordering: course structure existed before its content.
-	if err := seedFoundationCourses(ctx, seedPool, adminID, lessonservice.LessonCaches{}, "local", io.Discard); err != nil {
+	err := seedFoundationCourses(ctx, seedPool, adminID, lessonservice.LessonCaches{}, "local", io.Discard)
+	if err != nil {
 		t.Fatal(err)
 	}
 	if err := seedFoundationFixtures(ctx, seedPool, adminID,
@@ -72,7 +73,8 @@ func TestFoundationCoursesOnlyRepairsBindingsWithoutReseedingAccounts(t *testing
 	}
 	var count, distinctPositions int
 	if err := seedPool.QueryRow(ctx, `SELECT count(*), count(DISTINCT position)
-		FROM learn.activities WHERE lesson_id = $1 AND retired_at IS NULL`, lessonID).Scan(&count, &distinctPositions); err != nil {
+		FROM learn.activities WHERE lesson_id = $1 AND retired_at IS NULL`, lessonID).
+		Scan(&count, &distinctPositions); err != nil {
 		t.Fatal(err)
 	}
 	if count == 0 || count != distinctPositions {

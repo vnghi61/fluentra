@@ -48,12 +48,6 @@ SELECT COUNT(*)::bigint AS awards
 FROM learn.xp_events
 WHERE user_id = $1 AND source = $2 AND awarded_at >= $3;
 
--- name: ListXPEvents :many
-SELECT * FROM learn.xp_events
-WHERE user_id = $1
-ORDER BY awarded_at DESC, id DESC
-LIMIT $2;
-
 -- name: WeeklyXPStandings :many
 -- The raw ranking a leaderboard snapshot is built from.
 --

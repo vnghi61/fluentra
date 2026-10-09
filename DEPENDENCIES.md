@@ -142,8 +142,7 @@ time. Standard-library gravity wins.
 
 | Library | Verdict | Notes |
 |---|---|---|
-| **`go-playground/validator` v10** ✅ | **Chosen** | De-facto standard, struct tags, custom rules, translations |
-| `ozzo-validation` | Rejected | Programmatic API is nicer for complex rules but far less common; agents know validator |
+| **Hand-written checks in each module's `domain`** ✅ | **Chosen** | Validation rules are business rules; a struct-tag library was tried and nothing imported it |
 | Hand-written | Used **in `domain/`** | Invariants belong in the domain, not in tags |
 
 Two-layer approach: struct tags validate *shape* at the transport edge; the domain validates
@@ -153,8 +152,8 @@ Two-layer approach: struct tags validate *shape* at the transport edge; the doma
 
 | Library | Verdict | Notes |
 |---|---|---|
-| **`oapi-codegen` v2** ✅ | **Chosen** | Spec-first: generates chi server interfaces, typed clients, request validation middleware |
-| **`getkin/kin-openapi`** ✅ | **Chosen** | OpenAPI 3.0/3.1 model and validator in Go, dependency of oapi-codegen generated server |
+| `oapi-codegen` v2 | Removed (v1) | Generated a server and client nothing imported; handlers are hand-written and the contract tests check them against the spec |
+| **`getkin/kin-openapi`** ✅ | **Chosen** | OpenAPI 3.0/3.1 model and validator in Go, used by the contract tests to check handlers against the spec |
 | `danielgtaylor/huma` v2 | Strong alternative | Code-first, generates the spec — rejected because we want the spec reviewable *before* implementation, and shared with the frontend team |
 | `ogen` | Considered | Very fast generated code, stricter spec support; smaller community |
 | `swaggo/swag` | Rejected | Comment-driven, OpenAPI 2/3.0 only, drifts easily |
@@ -239,7 +238,7 @@ and no vendor lock. Add an SDK when a provider-specific capability needs it
 |---|---|---|---|
 | Assertions | `stretchr/testify` | `is`, `gotest.tools`, stdlib | Ubiquitous; every model knows it |
 | Containers | `testcontainers-go` | `ory/dockertest`, docker-compose in CI | Programmatic, waits for readiness, auto-cleanup, works locally and in CI identically |
-| Mocks | `matryer/moq` | `mockery`, `gomock` | Generates plain readable Go; diffs are reviewable; no DSL for agents to get wrong |
+| Mocks | Hand-written fakes | `moq`, `mockery`, `gomock` | Each fake implements the module's own small interface; nothing to generate |
 | Golden files | `sebdah/goldie` v2 | hand-rolled | `-update` flag, good diffs |
 | Property-based | `pgregory.net/rapid` | `gopter`, stdlib fuzz | Used for FSRS scheduling and scoring invariants |
 | HTTP assertions | stdlib `httptest` | `gavv/httpexpect` | Keep it boring |

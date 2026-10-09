@@ -243,18 +243,6 @@ func (q *Queries) CountLearnerWordsQueueAdmin(ctx context.Context, arg CountLear
 	return column_1, err
 }
 
-const countVerifiedItemsForUser = `-- name: CountVerifiedItemsForUser :one
-SELECT COUNT(*)::bigint FROM skill.vocab_upload_items
-WHERE user_id = $1 AND status = 'verified'
-`
-
-func (q *Queries) CountVerifiedItemsForUser(ctx context.Context, userID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countVerifiedItemsForUser, userID)
-	var column_1 int64
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
 const failExhaustedUploadItems = `-- name: FailExhaustedUploadItems :execrows
 UPDATE skill.vocab_upload_items
 SET status = 'failed', reason = $1::text

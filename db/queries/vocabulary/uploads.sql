@@ -123,10 +123,6 @@ WHERE u.status IN ('pending', 'processing')
   AND EXISTS (SELECT 1 FROM skill.vocab_upload_items i WHERE i.upload_id = u.id)
 RETURNING *;
 
--- name: CountVerifiedItemsForUser :one
-SELECT COUNT(*)::bigint FROM skill.vocab_upload_items
-WHERE user_id = $1 AND status = 'verified';
-
 -- name: MarkUploadItemQueued :one
 UPDATE skill.vocab_upload_items
 SET status            = 'queued',
@@ -230,4 +226,3 @@ SELECT COUNT(*)::bigint
 FROM skill.vocab_upload_items i
 WHERE (sqlc.narg('status')::text IS NULL OR i.status = sqlc.narg('status'))
   AND (sqlc.narg('query')::text IS NULL OR i.term ILIKE sqlc.narg('query') || '%');
-

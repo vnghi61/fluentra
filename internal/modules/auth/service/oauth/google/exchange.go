@@ -237,8 +237,5 @@ var (
 	ErrProviderUnavailable = errors.New("google's token endpoint could not be reached")
 )
 
-// ErrRejected reports whether err is Google refusing the exchange.
-func ErrRejected(err error) bool { return errors.Is(err, errExchangeRejected) }
-
 // ErrUnavailable reports whether err is a failure to reach Google at all.
 func ErrUnavailable(err error) bool { return errors.Is(err, ErrProviderUnavailable) }

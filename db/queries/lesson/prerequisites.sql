@@ -28,7 +28,3 @@ INSERT INTO learn.lesson_prerequisites (
 ) VALUES (
     $1, $2, $3
 );
-
--- name: DeletePrerequisitesByLessonID :exec
-DELETE FROM learn.lesson_prerequisites
-WHERE lesson_id = $1;

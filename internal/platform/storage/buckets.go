@@ -10,14 +10,3 @@ const (
 	BucketUploads = "fluentra-uploads"
 	BucketDerived = "fluentra-derived"
 )
-
-// DefaultBuckets returns the list of buckets managed by the system.
-func DefaultBuckets() []string {
-	return []string{
-		BucketAvatars,
-		BucketMedia,
-		BucketExports,
-		BucketUploads,
-		BucketDerived,
-	}
-}

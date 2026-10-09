@@ -97,46 +97,6 @@ func (q *Queries) GetActivityHighWater(ctx context.Context, arg GetActivityHighW
 	return i, err
 }
 
-const listXPEvents = `-- name: ListXPEvents :many
-SELECT id, user_id, source, source_id, amount, multiplier, awarded_at FROM learn.xp_events
-WHERE user_id = $1
-ORDER BY awarded_at DESC, id DESC
-LIMIT $2
-`
-
-type ListXPEventsParams struct {
-	UserID uuid.UUID
-	Limit  int32
-}
-
-func (q *Queries) ListXPEvents(ctx context.Context, arg ListXPEventsParams) ([]LearnXpEvent, error) {
-	rows, err := q.db.Query(ctx, listXPEvents, arg.UserID, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []LearnXpEvent
-	for rows.Next() {
-		var i LearnXpEvent
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.Source,
-			&i.SourceID,
-			&i.Amount,
-			&i.Multiplier,
-			&i.AwardedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const totalXP = `-- name: TotalXP :one
 SELECT COALESCE(SUM(amount), 0)::bigint AS total
 FROM learn.xp_events

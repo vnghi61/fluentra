@@ -339,45 +339,6 @@ func (q *Queries) CreatePlacementResult(ctx context.Context, arg CreatePlacement
 	return i, err
 }
 
-const createProgress = `-- name: CreateProgress :one
-INSERT INTO learn.progress (user_id, scope, scope_id, status, score, completed_at)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, user_id, scope, scope_id, status, score, completed_at, created_at, updated_at
-`
-
-type CreateProgressParams struct {
-	UserID      uuid.UUID
-	Scope       string
-	ScopeID     uuid.UUID
-	Status      string
-	Score       *int32
-	CompletedAt *time.Time
-}
-
-func (q *Queries) CreateProgress(ctx context.Context, arg CreateProgressParams) (LearnProgress, error) {
-	row := q.db.QueryRow(ctx, createProgress,
-		arg.UserID,
-		arg.Scope,
-		arg.ScopeID,
-		arg.Status,
-		arg.Score,
-		arg.CompletedAt,
-	)
-	var i LearnProgress
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Scope,
-		&i.ScopeID,
-		&i.Status,
-		&i.Score,
-		&i.CompletedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const deleteNodeMasteryByUser = `-- name: DeleteNodeMasteryByUser :exec
 DELETE FROM learn.node_mastery
 WHERE user_id = $1
@@ -553,39 +514,6 @@ func (q *Queries) GetEnrollmentByUserCourse(ctx context.Context, arg GetEnrollme
 	return i, err
 }
 
-const getLatestPlacementResult = `-- name: GetLatestPlacementResult :one
-SELECT id, user_id, estimated_level, per_skill, taken_at, created_at, updated_at
-FROM learn.placement_results
-WHERE user_id = $1
-ORDER BY taken_at DESC
-LIMIT 1
-`
-
-type GetLatestPlacementResultRow struct {
-	ID             uuid.UUID
-	UserID         uuid.UUID
-	EstimatedLevel string
-	PerSkill       []byte
-	TakenAt        time.Time
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-}
-
-func (q *Queries) GetLatestPlacementResult(ctx context.Context, userID uuid.UUID) (GetLatestPlacementResultRow, error) {
-	row := q.db.QueryRow(ctx, getLatestPlacementResult, userID)
-	var i GetLatestPlacementResultRow
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.EstimatedLevel,
-		&i.PerSkill,
-		&i.TakenAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const getLearningSessionByID = `-- name: GetLearningSessionByID :one
 SELECT id, user_id, started_at, ended_at, activities_completed, minutes, metadata, created_at, updated_at
 FROM learn.learning_sessions
@@ -708,54 +636,6 @@ func (q *Queries) ListActiveLearnersSince(ctx context.Context, createdAt time.Ti
 			return nil, err
 		}
 		items = append(items, user_id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listAttemptsByUserAndActivity = `-- name: ListAttemptsByUserAndActivity :many
-SELECT id, created_at, updated_at, user_id, activity_id, idempotency_key,
-       response, score, max_score, grader, duration_ms, status
-FROM learn.attempts
-WHERE user_id = $1 AND activity_id = $2
-ORDER BY created_at DESC
-LIMIT $3
-`
-
-type ListAttemptsByUserAndActivityParams struct {
-	UserID     uuid.UUID
-	ActivityID uuid.UUID
-	Limit      int32
-}
-
-func (q *Queries) ListAttemptsByUserAndActivity(ctx context.Context, arg ListAttemptsByUserAndActivityParams) ([]LearnAttempt, error) {
-	rows, err := q.db.Query(ctx, listAttemptsByUserAndActivity, arg.UserID, arg.ActivityID, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []LearnAttempt
-	for rows.Next() {
-		var i LearnAttempt
-		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.UserID,
-			&i.ActivityID,
-			&i.IdempotencyKey,
-			&i.Response,
-			&i.Score,
-			&i.MaxScore,
-			&i.Grader,
-			&i.DurationMs,
-			&i.Status,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -1142,49 +1022,6 @@ func (q *Queries) UpdateEnrollmentStatus(ctx context.Context, arg UpdateEnrollme
 		&i.CourseID,
 		&i.Status,
 		&i.StartedAt,
-		&i.CompletedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const updateProgress = `-- name: UpdateProgress :one
-UPDATE learn.progress
-SET status = $4,
-    score = $5,
-    completed_at = $6,
-    updated_at = now()
-WHERE user_id = $1 AND scope = $2 AND scope_id = $3
-RETURNING id, user_id, scope, scope_id, status, score, completed_at, created_at, updated_at
-`
-
-type UpdateProgressParams struct {
-	UserID      uuid.UUID
-	Scope       string
-	ScopeID     uuid.UUID
-	Status      string
-	Score       *int32
-	CompletedAt *time.Time
-}
-
-func (q *Queries) UpdateProgress(ctx context.Context, arg UpdateProgressParams) (LearnProgress, error) {
-	row := q.db.QueryRow(ctx, updateProgress,
-		arg.UserID,
-		arg.Scope,
-		arg.ScopeID,
-		arg.Status,
-		arg.Score,
-		arg.CompletedAt,
-	)
-	var i LearnProgress
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Scope,
-		&i.ScopeID,
-		&i.Status,
-		&i.Score,
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,

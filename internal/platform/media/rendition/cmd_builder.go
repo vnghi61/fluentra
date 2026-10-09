@@ -21,13 +21,6 @@ func BuildFFmpegArgs(customArgs ...string) []string {
 	return args
 }
 
-// BuildFFprobeArgs wraps ffprobe arguments ensuring -protocol_whitelist file.
-func BuildFFprobeArgs(customArgs ...string) []string {
-	args := []string{ProtocolWhitelistArg, ProtocolWhitelistVal}
-	args = append(args, customArgs...)
-	return args
-}
-
 // ValidateFFmpegArgs inspects an argument list to assert that -protocol_whitelist file
 // is explicitly present and cannot be dropped.
 func ValidateFFmpegArgs(args []string) error {

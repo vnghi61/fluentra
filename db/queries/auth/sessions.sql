@@ -11,12 +11,6 @@ VALUES (
 RETURNING id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at,
           absolute_expires_at, idle_window, trusted_device_id;
 
--- name: GetSession :one
-SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at,
-       absolute_expires_at, idle_window, trusted_device_id
-FROM core.sessions
-WHERE id = $1;
-
 -- name: TouchSession :execrows
 UPDATE core.sessions
 SET last_seen_at = sqlc.arg(now)::timestamptz
@@ -111,4 +105,3 @@ WHERE user_id = $1;
 DELETE FROM core.refresh_tokens rt
 USING core.sessions s
 WHERE s.id = rt.session_id AND s.user_id = $1;
-

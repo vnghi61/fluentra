@@ -45,26 +45,6 @@ func (q *Queries) CreateContentReview(ctx context.Context, arg CreateContentRevi
 	return i, err
 }
 
-const getContentReviewByID = `-- name: GetContentReviewByID :one
-SELECT id, version_id, reviewer_id, decision, comments, created_at
-FROM content.content_reviews
-WHERE id = $1
-`
-
-func (q *Queries) GetContentReviewByID(ctx context.Context, id uuid.UUID) (ContentContentReview, error) {
-	row := q.db.QueryRow(ctx, getContentReviewByID, id)
-	var i ContentContentReview
-	err := row.Scan(
-		&i.ID,
-		&i.VersionID,
-		&i.ReviewerID,
-		&i.Decision,
-		&i.Comments,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const listContentReviewsForVersion = `-- name: ListContentReviewsForVersion :many
 SELECT id, version_id, reviewer_id, decision, comments, created_at
 FROM content.content_reviews

@@ -275,47 +275,6 @@ func (q *Queries) ListAllPrerequisiteEdgesInNamespace(ctx context.Context, names
 	return items, nil
 }
 
-const listAllTaxonomies = `-- name: ListAllTaxonomies :many
-SELECT
-    id, namespace, code, label, parent_id,
-    created_at, updated_at,
-    description, cefr_level, position, deprecated_at
-FROM content.taxonomies
-ORDER BY namespace, position, code
-`
-
-func (q *Queries) ListAllTaxonomies(ctx context.Context) ([]ContentTaxonomy, error) {
-	rows, err := q.db.Query(ctx, listAllTaxonomies)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ContentTaxonomy
-	for rows.Next() {
-		var i ContentTaxonomy
-		if err := rows.Scan(
-			&i.ID,
-			&i.Namespace,
-			&i.Code,
-			&i.Label,
-			&i.ParentID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Description,
-			&i.CefrLevel,
-			&i.Position,
-			&i.DeprecatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listAllTaxonomiesInNamespace = `-- name: ListAllTaxonomiesInNamespace :many
 SELECT
     id, namespace, code, label, parent_id,
@@ -460,48 +419,6 @@ LIMIT 2
 // "ambiguous", and `LIMIT 1` answered an arbitrary one of them.
 func (q *Queries) ListTaxonomiesByCode(ctx context.Context, code string) ([]ContentTaxonomy, error) {
 	rows, err := q.db.Query(ctx, listTaxonomiesByCode, code)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ContentTaxonomy
-	for rows.Next() {
-		var i ContentTaxonomy
-		if err := rows.Scan(
-			&i.ID,
-			&i.Namespace,
-			&i.Code,
-			&i.Label,
-			&i.ParentID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Description,
-			&i.CefrLevel,
-			&i.Position,
-			&i.DeprecatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listTaxonomiesByNamespace = `-- name: ListTaxonomiesByNamespace :many
-SELECT
-    id, namespace, code, label, parent_id,
-    created_at, updated_at,
-    description, cefr_level, position, deprecated_at
-FROM content.taxonomies
-WHERE namespace = $1
-ORDER BY position, code
-`
-
-func (q *Queries) ListTaxonomiesByNamespace(ctx context.Context, namespace string) ([]ContentTaxonomy, error) {
-	rows, err := q.db.Query(ctx, listTaxonomiesByNamespace, namespace)
 	if err != nil {
 		return nil, err
 	}

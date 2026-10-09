@@ -59,16 +59,11 @@ commonComponents:
   - s_config
   - s_dbx
   - s_eventbus
-  - s_flags
   - s_httpx
-  - s_i18n
   - s_id
-  - s_idempotency
-  - s_money
   - s_outbox
   - s_pagination
   - s_secret
-  - s_validation
 
 exclude:
   - mocks
@@ -91,16 +86,11 @@ components:
   s_config:        { in: shared/config }
   s_dbx:           { in: shared/dbx }
   s_eventbus:      { in: shared/eventbus }
-  s_flags:         { in: shared/flags }
   s_httpx:         { in: shared/httpx }
-  s_i18n:          { in: shared/i18n }
   s_id:            { in: shared/id }
-  s_idempotency:   { in: shared/idempotency }
-  s_money:         { in: shared/money }
   s_outbox:        { in: shared/outbox }
   s_pagination:    { in: shared/pagination }
   s_secret:        { in: shared/secret }
-  s_validation:    { in: shared/validation }
 
   # These are exact paths, not `generated/**`. A `**` glob matches nothing at
   # all on Windows in go-arch-lint v1.17 while matching normally on Linux, so a
@@ -114,7 +104,6 @@ components:
   # this file exists to catch. One `generated: { in: generated/** }` component
   # would not catch it — granting a module its own queries would grant it
   # everybody's.
-  g_ops:         { in: generated/ops/sqlc }
   g_job:         { in: generated/job/sqlc }
   g_auth:        { in: generated/auth/sqlc }
   g_user:        { in: generated/user/sqlc }
@@ -328,20 +317,14 @@ deps:
   s_config:        { anyVendorDeps: true }
   s_dbx:           { anyVendorDeps: true }
   s_eventbus:      { anyVendorDeps: true }
-  s_flags:         { anyVendorDeps: true }
   s_httpx:         { anyVendorDeps: true }
-  s_i18n:          { anyVendorDeps: true }
   s_id:            { anyVendorDeps: true }
-  s_idempotency:   { anyVendorDeps: true }
-  s_money:         { anyVendorDeps: true }
   s_outbox:        { anyVendorDeps: true }
   s_pagination:    { anyVendorDeps: true }
   s_secret:        { anyVendorDeps: true }
-  s_validation:    { anyVendorDeps: true }
 
   # sqlc emits pgx types, so it needs the vendor allowance. It depends on nothing
   # of ours, which is what makes it safe for its owner to import.
-  g_ops:       { anyVendorDeps: true }
   g_job:       { anyVendorDeps: true }
   g_auth:      { anyVendorDeps: true }
   g_user:      { anyVendorDeps: true }

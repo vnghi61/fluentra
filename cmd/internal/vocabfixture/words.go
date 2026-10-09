@@ -259,16 +259,3 @@ func WriteFile(dir string, file *File) (string, error) {
 	}
 	return path, nil
 }
-
-// SortedLemmas returns every lemma across the files, sorted, for the seed and
-// for a person reading the 2 % sample.
-func SortedLemmas(files []*File) []string {
-	var lemmas []string
-	for _, file := range files {
-		for _, word := range file.Words {
-			lemmas = append(lemmas, strings.ToLower(word.Lemma))
-		}
-	}
-	sort.Strings(lemmas)
-	return lemmas
-}

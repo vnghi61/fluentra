@@ -38,23 +38,6 @@ WHERE code = $1
 ORDER BY namespace
 LIMIT 2;
 
--- name: ListTaxonomiesByNamespace :many
-SELECT
-    id, namespace, code, label, parent_id,
-    created_at, updated_at,
-    description, cefr_level, position, deprecated_at
-FROM content.taxonomies
-WHERE namespace = $1
-ORDER BY position, code;
-
--- name: ListAllTaxonomies :many
-SELECT
-    id, namespace, code, label, parent_id,
-    created_at, updated_at,
-    description, cefr_level, position, deprecated_at
-FROM content.taxonomies
-ORDER BY namespace, position, code;
-
 -- name: ListTaxonomiesFiltered :many
 SELECT
     id, namespace, code, label, parent_id,

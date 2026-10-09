@@ -237,6 +237,8 @@ func TestPayoutAccount_PreservesExistingProfileFields(t *testing.T) {
 	}
 }
 
+const sameSlug = "same-slug"
+
 // TestCreateCourseDraft_DuplicateSlugIsAConflict: the unique constraint must
 // surface as the documented 409, not a raw database error.
 func TestCreateCourseDraft_DuplicateSlugIsAConflict(t *testing.T) {
@@ -244,14 +246,14 @@ func TestCreateCourseDraft_DuplicateSlugIsAConflict(t *testing.T) {
 	repo, ownerID := newRepo(ctx, t)
 
 	draft := &domain.CourseDraft{
-		OwnerID: ownerID, Title: "One", Slug: "same-slug", CEFRLevel: "B1", Structure: []byte(`{}`),
+		OwnerID: ownerID, Title: "One", Slug: sameSlug, CEFRLevel: "B1", Structure: []byte(`{}`),
 	}
 	if _, err := repo.CreateCourseDraft(ctx, draft); err != nil {
 		t.Fatalf("create draft: %v", err)
 	}
 
 	_, err := repo.CreateCourseDraft(ctx, &domain.CourseDraft{
-		OwnerID: ownerID, Title: "Two", Slug: "same-slug", CEFRLevel: "B1",
+		OwnerID: ownerID, Title: "Two", Slug: sameSlug, CEFRLevel: "B1",
 		Structure: []byte(`{}`),
 	})
 	if !errors.Is(err, domain.ErrDraftSlugConflict) {
@@ -261,7 +263,7 @@ func TestCreateCourseDraft_DuplicateSlugIsAConflict(t *testing.T) {
 	// Another creator may use the same slug.
 	repoOther, otherID := newRepo(ctx, t)
 	if _, err := repoOther.CreateCourseDraft(ctx, &domain.CourseDraft{
-		OwnerID: otherID, Title: "Three", Slug: "same-slug", CEFRLevel: "B1",
+		OwnerID: otherID, Title: "Three", Slug: sameSlug, CEFRLevel: "B1",
 		Structure: []byte(`{}`),
 	}); err != nil {
 		t.Fatalf("another creator's draft should not conflict: %v", err)
@@ -275,7 +277,7 @@ func TestCreateCourseDraft_DuplicateSlugIsAConflict(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create second draft: %v", err)
 	}
-	second.Slug = "same-slug"
+	second.Slug = sameSlug
 	if _, err := repo.UpdateCourseDraft(ctx, second); !errors.Is(err, domain.ErrDraftSlugConflict) {
 		t.Fatalf("rename onto an owned slug should conflict, got %v", err)
 	}
@@ -284,6 +286,8 @@ func TestCreateCourseDraft_DuplicateSlugIsAConflict(t *testing.T) {
 // TestSubmitDraft_IsAtomicAndPersistsGate2 covers the transaction the service
 // delegates to: one active submission, monotonic versions and the review
 // decision stored with the row.
+//
+//nolint:gocyclo // one end-to-end scenario; splitting it hides the ordering it checks
 func TestSubmitDraft_IsAtomicAndPersistsGate2(t *testing.T) {
 	ctx := context.Background()
 	repo, ownerID := newRepo(ctx, t)

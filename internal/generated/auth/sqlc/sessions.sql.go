@@ -127,32 +127,6 @@ func (q *Queries) GetOwnedSession(ctx context.Context, arg GetOwnedSessionParams
 	return i, err
 }
 
-const getSession = `-- name: GetSession :one
-SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at,
-       absolute_expires_at, idle_window, trusted_device_id
-FROM core.sessions
-WHERE id = $1
-`
-
-func (q *Queries) GetSession(ctx context.Context, id uuid.UUID) (CoreSession, error) {
-	row := q.db.QueryRow(ctx, getSession, id)
-	var i CoreSession
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.DeviceLabel,
-		&i.IpHash,
-		&i.UserAgentHash,
-		&i.CreatedAt,
-		&i.LastSeenAt,
-		&i.RevokedAt,
-		&i.AbsoluteExpiresAt,
-		&i.IdleWindow,
-		&i.TrustedDeviceID,
-	)
-	return i, err
-}
-
 const listLiveSessions = `-- name: ListLiveSessions :many
 SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at,
        absolute_expires_at, idle_window, trusted_device_id

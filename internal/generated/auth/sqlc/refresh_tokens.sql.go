@@ -85,19 +85,6 @@ func (q *Queries) ClaimRefreshToken(ctx context.Context, arg ClaimRefreshTokenPa
 	return i, err
 }
 
-const countLiveRefreshTokensInFamily = `-- name: CountLiveRefreshTokensInFamily :one
-SELECT count(*)
-FROM core.refresh_tokens
-WHERE family_id = $1 AND revoked_at IS NULL AND used_at IS NULL
-`
-
-func (q *Queries) CountLiveRefreshTokensInFamily(ctx context.Context, familyID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countLiveRefreshTokensInFamily, familyID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const createRefreshToken = `-- name: CreateRefreshToken :one
 INSERT INTO core.refresh_tokens (id, token_hash, family_id, session_id, issued_at, expires_at)
 VALUES ($1, $2, $3, $4, $5::timestamptz, $6::timestamptz)

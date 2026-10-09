@@ -55,40 +55,6 @@ func (q *Queries) CreateMediaAsset(ctx context.Context, arg CreateMediaAssetPara
 	return i, err
 }
 
-const deleteMediaAsset = `-- name: DeleteMediaAsset :exec
-DELETE FROM content.media_assets
-WHERE id = $1
-`
-
-func (q *Queries) DeleteMediaAsset(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteMediaAsset, id)
-	return err
-}
-
-const getMediaAssetByID = `-- name: GetMediaAssetByID :one
-SELECT id, object_key, kind, duration_ms, checksum, status, byte_size, mime_type, created_at, updated_at
-FROM content.media_assets
-WHERE id = $1
-`
-
-func (q *Queries) GetMediaAssetByID(ctx context.Context, id uuid.UUID) (ContentMediaAsset, error) {
-	row := q.db.QueryRow(ctx, getMediaAssetByID, id)
-	var i ContentMediaAsset
-	err := row.Scan(
-		&i.ID,
-		&i.ObjectKey,
-		&i.Kind,
-		&i.DurationMs,
-		&i.Checksum,
-		&i.Status,
-		&i.ByteSize,
-		&i.MimeType,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const getMediaAssetByObjectKey = `-- name: GetMediaAssetByObjectKey :one
 SELECT id, object_key, kind, duration_ms, checksum, status, byte_size, mime_type, created_at, updated_at
 FROM content.media_assets

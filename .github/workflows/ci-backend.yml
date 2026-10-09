@@ -106,18 +106,10 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: '22'
-
-      # Versions are pinned. `@latest` in CI means a generator upgrade lands as a
-      # mystery diff on an unrelated pull request.
-      - name: Install code generators
-        run: |
-          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
-          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
-          go install github.com/matryer/moq@v0.7.1
+      # Pinned: `@latest` in CI lands a generator upgrade as a mystery diff on an
+      # unrelated pull request.
+      - name: Install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 
       # No `|| true`. A gate that cannot fail is not a gate: the previous version
       # of this step let broken codegen pass, which is the whole reason P0.R11

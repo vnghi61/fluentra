@@ -21,7 +21,9 @@ The HTTP contract is consumed by the Go server, the TypeScript client, the MSW m
 
 ## Decision
 
-`api/openapi/openapi.yaml` is the single source of truth. Server interfaces are generated with `oapi-codegen`, TypeScript types with `openapi-typescript`, and mocks from the spec's examples. Editing the spec is the first step of any API change (rule L10).
+`api/openapi/openapi.yaml` is the single source of truth. TypeScript types are generated with `openapi-typescript` and mocks from the spec's examples. Go handlers are hand-written and checked against the spec by contract tests. Editing the spec is the first step of any API change (rule L10).
+
+**Amended for v1 (2026-10-09):** the `oapi-codegen` server and client were removed. Nothing imported them (about 91,000 generated lines), and the handlers were already hand-written.
 
 ## Alternatives considered
 
@@ -54,9 +56,9 @@ The HTTP contract is consumed by the Go server, the TypeScript client, the MSW m
 ### Positive
 
 - Frontend and backend can proceed in parallel from an agreed contract
-- Generated types make a breaking change a compile error on both sides
+- Generated types make a breaking change a compile error in the frontend
 - MSW handlers generated from spec examples cannot drift from the API
-- An AI agent cannot invent an endpoint — the generated interface will not compile
+- An AI agent cannot invent an endpoint: Spectral and the contract tests reject a handler the spec does not describe
 
 ### Negative — accepted knowingly
 
@@ -66,7 +68,7 @@ The HTTP contract is consumed by the Go server, the TypeScript client, the MSW m
 
 ## Compliance
 
-CI runs `spectral` on the spec, regenerates code and fails on a diff, and runs contract tests asserting handlers match the spec.
+CI runs `spectral` on the spec and fails if the generated web types are stale. `make test-contract` asserts that handlers match the spec.
 
 ## Revisit when
 

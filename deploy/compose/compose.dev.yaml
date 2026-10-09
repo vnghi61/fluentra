@@ -39,7 +39,6 @@ services:
       # five attempts — the stack looks healthy and no code ever arrives.
       - SMTP_USERNAME=
       - SMTP_PASSWORD=
-      - SMTP_TLS=false
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - CORS_ALLOWED_ORIGINS=http://localhost:5173
       # The E2E suite is ten journeys across four device projects, and every one
@@ -94,7 +93,6 @@ services:
       # five attempts — the stack looks healthy and no code ever arrives.
       - SMTP_USERNAME=
       - SMTP_PASSWORD=
-      - SMTP_TLS=false
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTP_HMAC_KEY=change-me-32-bytes-minimum-for-otp-hmac
       - JWT_SIGNING_KEY=change-me-at-least-32-bytes-long-secret
