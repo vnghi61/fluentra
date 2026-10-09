@@ -45,12 +45,12 @@ func TestRun_CoursesOnlyRefusesProduction(t *testing.T) {
 
 // TestDemoAccounts_MatchTheGuide keeps the dataset and its documentation from
 // drifting. The addresses below are the ones
-// docs/development/getting-started.md §4 tells a new contributor to sign in
+// CONTRIBUTING.md tells a new contributor to sign in
 // with, and a rename here without a rename there is how a guide starts lying.
 func TestDemoAccounts_MatchTheGuide(t *testing.T) {
 	want := map[string]bool{
-		"nghitienvl@gmail.com":        false,
-		"nguyenvannghi1110@gmail.com": true,
+		"learner@example.test": false,
+		"admin@example.test":   true,
 	}
 
 	if len(demoAccounts) != len(want) {
@@ -59,7 +59,7 @@ func TestDemoAccounts_MatchTheGuide(t *testing.T) {
 	for _, account := range demoAccounts {
 		admin, named := want[account.email]
 		if !named {
-			t.Errorf("%s is seeded but not named in getting-started.md", account.email)
+			t.Errorf("%s is seeded but not named in CONTRIBUTING.md", account.email)
 			continue
 		}
 		if account.admin != admin {

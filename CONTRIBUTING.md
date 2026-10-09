@@ -33,6 +33,17 @@ make check     # confirm a green baseline before changing anything
 
 Prerequisites: Go 1.25+, Node 24+, Docker with Compose v2, `make`.
 
+`make seed` loads the catalogue and two demo accounts, both with the password
+`Password123!demo`:
+
+| Account | Role |
+|---|---|
+| `admin@example.test` | admin: review queue, question bank, authoring |
+| `learner@example.test` | learner with no permissions |
+
+The seed refuses to create them when `APP_ENV=production`; production uses
+`go run ./cmd/seed -reference` (see [docs/OPERATIONS.md](docs/OPERATIONS.md#free-tier-deployment)).
+
 ## 3. Workflow
 
 ```mermaid

@@ -2,6 +2,7 @@
 
 Deploying, releasing and running Fluentra.
 
+- [Free-tier deployment](#free-tier-deployment)
 - [Deployment](#deployment)
 - [Docker](#docker)
 - [GitHub Actions](#github-actions)
@@ -17,6 +18,89 @@ Deploying, releasing and running Fluentra.
 - [Runbook: slow-queries](#runbook-slow-queries)
 - [Runbook: slow-requests](#runbook-slow-requests)
 - [Runbook: stuck-attempt](#runbook-stuck-attempt)
+
+## Free-tier deployment
+
+How v1 runs on free plans. The [Deployment](#deployment) section below describes
+the self-hosted Docker Compose topology instead.
+
+| Piece | Host | Notes |
+|---|---|---|
+| Web (`web/`) | Vercel Hobby | `web/vercel.json` proxies `/api/*` to Render, so cookies stay same-site |
+| API and worker | Render free web service | One service runs both through `deploy/render/start.sh` |
+| PostgreSQL | Supabase free | Session pooler, port 5432 |
+| Redis | Upstash free | `rediss://` URL |
+| Object storage | Cloudflare R2 | Five buckets, created by hand, CORS on three |
+| Mail | Resend | Render blocks outbound SMTP |
+
+### Render service
+
+| Setting | Value |
+|---|---|
+| Runtime | Go |
+| Build command | `go build -o bin/api ./cmd/api && go build -o bin/worker ./cmd/worker` |
+| Start command | `bash deploy/render/start.sh` |
+| Health check path | `/health` — never `/ready`, which pings Redis and R2 on every check and would spend the Upstash quota |
+
+`start.sh` maps Render's `PORT` to the API's `HTTP_PORT`, runs the worker on
+8081, points `WORKER_URL` at it, and splits the database pool (API 8, worker
+`WORKER_DB_MAX_CONNS`, default 5).
+
+Environment variables (everything else keeps its `.env.example` default):
+
+| Key | Value |
+|---|---|
+| `APP_ENV` | `production` (Secure cookies; the demo seed refuses to run) |
+| `DB_DSN` | `postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require` |
+| `DB_MAX_CONNS` | `8` |
+| `REDIS_URL` | `rediss://default:<password>@<host>.upstash.io:6379` |
+| `S3_ENDPOINT` | `https://<account-id>.r2.cloudflarestorage.com` |
+| `S3_REGION`, `S3_USE_SSL`, `S3_USE_POST_POLICY` | `auto`, `true`, `false` |
+| `S3_ACCESS_KEY`, `S3_SECRET_KEY` | An R2 "Object Read & Write" token for the five buckets |
+| `JWT_SIGNING_KEY`, `OTP_HMAC_KEY` | Two different random values of at least 32 bytes |
+| `CORS_ALLOWED_ORIGINS` | The site's origins, comma-separated |
+| `HTTP_TRUSTED_PROXIES` | Render's internal range (`10.0.0.0/8`). Without it every client shares one IP, and the per-IP auth limits and lockout hit everyone at once |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Empty: logs go to stdout (the Render log view) and nothing is exported |
+| `MAIL_TRANSPORT`, `RESEND_API_KEY`, `MAIL_FROM` | `resend`, the key, an address on a domain verified in Resend |
+| `OAUTH_GOOGLE_CLIENT_ID`, `OAUTH_GOOGLE_CLIENT_SECRET`, `OAUTH_GOOGLE_REDIRECT_URL` | `https://<site>/auth/google/callback` |
+| `AI_PROVIDER_1_*`, `SPEECH_ASR_*` | A real provider; `mock` grades everything as correct |
+
+Session mode (5432) is required: transaction mode (6543) breaks River's
+`LISTEN`, the cron scheduler's advisory locks and the migrator's `SET ROLE`.
+
+### First deploy
+
+1. **Supabase.** Create the project. Under API settings, turn the Data API off; the
+   app does not use it.
+2. **Migrate** from your machine; Render's free plan has no shell or pre-deploy step:
+   `DB_DSN='<session pooler DSN>' go run ./cmd/migrate up`.
+3. **R2.** Create the buckets and apply CORS: [deploy/r2/README.md](../deploy/r2/README.md).
+4. **Render**, then **Vercel** (root directory `web`). If the Render hostname
+   changes, update the `/api` rewrite in `web/vercel.json`.
+5. **Admin.** Register on the site, then promote the account:
+   `psql '<DSN>' -v seed_admin_email=you@example.com -f db/seeds/rbac.sql`.
+6. **Catalogue.** `APP_ENV=production DB_DSN='<DSN>' go run ./cmd/seed -reference`
+   loads the courses, 10,000 words and the mock tests (about 77 MB), owned by that admin.
+   It takes about 20 minutes against a local database and longer over the internet;
+   it is idempotent, so an interrupted run can simply be repeated.
+
+### Every deploy
+
+Push to `main`; Render rebuilds. When the release adds migrations, run step 2
+first. Migrations must stay backward-compatible with the running version.
+
+### Free-plan limits
+
+- **Render:** sleeps after 15 idle minutes. The first request then takes about a
+  minute, inside Vercel's 120 s proxy timeout. 750 instance-hours a month.
+- **Supabase:** 500 MB; pauses after 7 days without activity.
+- **Upstash:** 500K commands a month, roughly 4,000–8,000 API requests a day.
+- **Resend:** 100 emails a day.
+- **Vercel Hobby:** non-commercial use only. Move to Pro before taking payments.
+- **GitHub Actions:** on a private repository the hourly `tts-render` and
+  `media-render` schedules use most of the 2,000 free minutes.
+- **Memory:** a password hash costs 64 MiB. `start.sh` sets `GOMEMLIMIT` for both
+  processes, but many simultaneous sign-ins can still exhaust 512 MB.
 
 ## Deployment
 

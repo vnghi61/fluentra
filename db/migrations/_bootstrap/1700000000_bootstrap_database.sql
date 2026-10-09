@@ -2,30 +2,9 @@
 -- +goose StatementBegin
 DO $$
 BEGIN
-    -- On Supabase / cloud PostgreSQL, extensions live in the 'extensions' schema.
-    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'extensions') THEN
-        BEGIN
-            CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
-        EXCEPTION WHEN OTHERS THEN NULL;
-        END;
-        BEGIN
-            CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA extensions;
-        EXCEPTION WHEN OTHERS THEN NULL;
-        END;
-        BEGIN
-            CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
-        EXCEPTION WHEN OTHERS THEN NULL;
-        END;
-        BEGIN
-            CREATE EXTENSION IF NOT EXISTS btree_gin WITH SCHEMA extensions;
-        EXCEPTION WHEN OTHERS THEN NULL;
-        END;
-    ELSE
-        CREATE EXTENSION IF NOT EXISTS pgcrypto;
-        CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
-        CREATE EXTENSION IF NOT EXISTS pg_trgm;
-        CREATE EXTENSION IF NOT EXISTS btree_gin;
-    END IF;
+    -- No extensions: gen_random_uuid() is core since PostgreSQL 13, the one GIN
+    -- index is on jsonb (built-in operator class), and citext is created by the
+    -- user module, which needs it.
 
     -- Roles are cluster-wide, and `IF NOT EXISTS` around CREATE ROLE is a check
     -- and an act with a gap between them. Two databases in one cluster migrating
@@ -85,6 +64,12 @@ BEGIN
         EXECUTE 'ALTER TABLE goose_db_version OWNER TO fluentra_migrator';
         IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'goose_db_version_id_seq' AND relkind = 'S') THEN
             EXECUTE 'ALTER SEQUENCE goose_db_version_id_seq OWNER TO fluentra_migrator';
+        END IF;
+        -- Supabase grants its Data API roles everything on new tables in
+        -- public, which would let anyone holding the anon key rewrite migration
+        -- history over REST. The application never uses the Data API.
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+            EXECUTE 'REVOKE ALL ON TABLE goose_db_version FROM anon, authenticated';
         END IF;
     END IF;
 END $$;
@@ -165,13 +150,4 @@ DROP ROLE IF EXISTS fluentra_app;
 DROP OWNED BY fluentra_migrator;
 DROP ROLE IF EXISTS fluentra_migrator;
 
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'extensions') THEN
-        DROP EXTENSION IF EXISTS btree_gin;
-        DROP EXTENSION IF EXISTS pg_trgm;
-        DROP EXTENSION IF EXISTS pg_stat_statements;
-        DROP EXTENSION IF EXISTS pgcrypto;
-    END IF;
-END $$;
 -- +goose StatementEnd

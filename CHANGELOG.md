@@ -11,6 +11,25 @@ generated text describes commits; release notes should describe change.
 
 ## [Unreleased]
 
+### Changed — v1 packaging
+
+- **Free-tier deployment.** `deploy/render/start.sh` runs the API and the worker
+  in one Render service. Logs now go to stdout as JSON, and an empty
+  `OTEL_EXPORTER_OTLP_ENDPOINT` turns OTLP export off. `docs/OPERATIONS.md`
+  covers Vercel, Render, Supabase, Upstash, R2 and Resend.
+- **Seed.** `cmd/seed -reference` loads the catalogue without demo accounts, owned
+  by the first admin, and is allowed in production. The demo accounts are now
+  `admin@example.test` and `learner@example.test`.
+- **Migrations.** The bootstrap no longer installs the unused pgcrypto, pg_trgm,
+  btree_gin and pg_stat_statements extensions. On Supabase it revokes the Data
+  API roles from `goose_db_version`. The `ai` Down no longer drops the
+  bootstrap-owned schema. `cmd/migrate` uses one connection, and decides whether
+  to assume the migrator role from goose's history, not from whether the role
+  exists.
+- **Cleanup.** Removed the unused generated OpenAPI Go server and client (about
+  91,000 lines), dead functions and queries, empty packages and 45 unread config
+  keys. The 491 Markdown files are consolidated into about 110.
+
 ### Added
 
 - **Dashboard announcement banners.** Administrators holding `system.flags`

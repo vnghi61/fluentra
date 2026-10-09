@@ -333,10 +333,10 @@ func configOptions() config.Options {
 		},
 		EnvSections: []string{"SPEECH", "EXAM", "SEPAY", "STUDIO", "MEDIA"},
 		Required: []config.RequiredKey{
-			{Name: "db.dsn", DocSection: ".env.example"},
-			{Name: "redis.url", DocSection: ".env.example"},
-			{Name: "otp.hmac_key", DocSection: ".env.example"},
-			{Name: "jwt.signing_key", DocSection: ".env.example"},
+			{Name: "db.dsn", DocSection: configDoc},
+			{Name: "redis.url", DocSection: configDoc},
+			{Name: "otp.hmac_key", DocSection: configDoc},
+			{Name: "jwt.signing_key", DocSection: configDoc},
 		},
 	}
 }
@@ -348,33 +348,32 @@ func loadConfig(ctx context.Context) (workerConfig, error) {
 	}
 	trimmed := strings.TrimPrefix(strings.TrimPrefix(target.Telemetry.Endpoint, "https://"), "http://")
 	target.Telemetry.Endpoint = strings.TrimSuffix(trimmed, "/")
-	const jobsDoc = ".env.example"
 	if target.Worker.ShutdownGrace <= 0 {
 		return target, fmt.Errorf(
-			"config key worker.shutdown_grace must be a positive duration; see %s", jobsDoc)
+			"config key worker.shutdown_grace must be a positive duration; see %s", configDoc)
 	}
 	if target.Outbox.PollInterval <= 0 {
 		return target, fmt.Errorf(
-			"config key outbox.poll_interval must be a positive duration; see %s", jobsDoc)
+			"config key outbox.poll_interval must be a positive duration; see %s", configDoc)
 	}
 	if target.Outbox.BatchSize <= 0 {
 		return target, fmt.Errorf(
-			"config key outbox.batch_size must be a positive integer; see %s", jobsDoc)
+			"config key outbox.batch_size must be a positive integer; see %s", configDoc)
 	}
 	if target.Outbox.PublishedRetentionDays <= 0 {
 		return target, fmt.Errorf(
-			"config key outbox.published_retention_days must be a positive integer; see %s", jobsDoc)
+			"config key outbox.published_retention_days must be a positive integer; see %s", configDoc)
 	}
 	if target.Job.Timeout <= 0 {
 		return target, fmt.Errorf(
-			"config key job.timeout must be a positive duration; see %s", jobsDoc)
+			"config key job.timeout must be a positive duration; see %s", configDoc)
 	}
 	// Queue concurrency is configuration. Parsing it here means a malformed
 	// WORKER_QUEUES fails the boot rather than silently falling back to a
 	// hardcoded default that nobody notices is in use.
 	queues, err := job.ParseQueues(target.Worker.Queues)
 	if err != nil {
-		return target, fmt.Errorf("%w; see %s", err, jobsDoc)
+		return target, fmt.Errorf("%w; see %s", err, configDoc)
 	}
 	target.Queues = queues
 	return target, nil
@@ -1375,3 +1374,6 @@ func newLessonCaches(client redis.Cmdable) lessonservice.LessonCaches {
 		Gen:       cache.NewRedisCache[int64](client),
 	}
 }
+
+// configDoc is where a missing or invalid config key points the operator.
+const configDoc = ".env.example"

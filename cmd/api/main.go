@@ -509,8 +509,8 @@ const (
 	defaultTimeout = "30s"
 	// defaultOTLPEndpoint is the collector address in the local compose stack.
 	defaultOTLPEndpoint = "localhost:4317"
-	// docSectionStorage is the anchor a missing S3 key points the operator at.
-	docSectionStorage = ".env.example"
+	// configDoc is where a missing or invalid config key points the operator.
+	configDoc = ".env.example"
 )
 
 // configOptions declares every key this binary reads. A key absent from here
@@ -611,13 +611,13 @@ func configOptions() config.Options {
 		},
 		EnvSections: []string{"SPEECH", "EXAM", "SEPAY", "STUDIO"},
 		Required: []config.RequiredKey{
-			{Name: "db.dsn", DocSection: ".env.example"},
-			{Name: "redis.url", DocSection: ".env.example"},
-			{Name: "s3.endpoint", DocSection: docSectionStorage},
-			{Name: "s3.access_key", DocSection: docSectionStorage},
-			{Name: "s3.secret_key", DocSection: docSectionStorage},
-			{Name: "otp.hmac_key", DocSection: ".env.example"},
-			{Name: "jwt.signing_key", DocSection: ".env.example"},
+			{Name: "db.dsn", DocSection: configDoc},
+			{Name: "redis.url", DocSection: configDoc},
+			{Name: "s3.endpoint", DocSection: configDoc},
+			{Name: "s3.access_key", DocSection: configDoc},
+			{Name: "s3.secret_key", DocSection: configDoc},
+			{Name: "otp.hmac_key", DocSection: configDoc},
+			{Name: "jwt.signing_key", DocSection: configDoc},
 		},
 	}
 }

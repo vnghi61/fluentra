@@ -55,6 +55,11 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return fmt.Errorf("open database: %w", err)
 	}
 	defer func() { _ = db.Close() }()
+	// SET ROLE belongs to one connection. With a pool, the next statement could
+	// run on another connection as the login user and create objects the
+	// migrator does not own. This also needs a session-mode connection
+	// (Supabase: the direct host or the session pooler on 5432, never 6543).
+	db.SetMaxOpenConns(1)
 	if err := db.PingContext(ctx); err != nil {
 		return fmt.Errorf("ping database: %w", err)
 	}
@@ -139,7 +144,30 @@ func runStatus(ctx context.Context, provider *goose.Provider, out io.Writer) err
 	return nil
 }
 
+// bootstrapVersion is the migration that creates migrationRole and grants it.
+const bootstrapVersion = 1700000000
+
+// setMigrationRole assumes migrationRole once this database has been
+// bootstrapped. It asks goose's table rather than trying the role, because
+// roles are cluster-wide: on a second database in the same cluster the role
+// exists before this database's bootstrap has granted it anything.
 func setMigrationRole(ctx context.Context, db *sql.DB) error {
+	var tracked bool
+	if err := db.QueryRowContext(ctx, `SELECT to_regclass('goose_db_version') IS NOT NULL`).Scan(&tracked); err != nil {
+		return fmt.Errorf("look for migration history: %w", err)
+	}
+	if !tracked {
+		return nil
+	}
+	var bootstrapped bool
+	if err := db.QueryRowContext(ctx,
+		`SELECT EXISTS (SELECT 1 FROM goose_db_version WHERE version_id = $1 AND is_applied)`,
+		bootstrapVersion).Scan(&bootstrapped); err != nil {
+		return fmt.Errorf("read migration history: %w", err)
+	}
+	if !bootstrapped {
+		return nil
+	}
 	if _, err := db.ExecContext(ctx, "SET ROLE "+migrationRole); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "22023" {
