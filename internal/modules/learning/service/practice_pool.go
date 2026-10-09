@@ -1287,8 +1287,9 @@ func (s *Service) resolveWeakNodeActivity(
 		return uuid.Nil, nil, nil
 	}
 
+	gate := s.newPrereqGate(userID)
 	for _, w := range weakNodes {
-		if !s.isNodePrerequisitesMet(ctx, userID, w.NodeID) {
+		if !gate.nodeMet(ctx, w.NodeID) {
 			continue
 		}
 
@@ -1312,44 +1313,6 @@ func (s *Service) resolveWeakNodeActivity(
 	return uuid.Nil, nil, nil
 }
 
-// isNodePrerequisitesMet checks if all prerequisites of a taxonomy node have been met by the learner.
-func (s *Service) isNodePrerequisitesMet(ctx context.Context, userID, nodeID uuid.UUID) bool {
-	if s.taxonomies == nil || s.repo == nil {
-		return true
-	}
-	prereqs, err := s.taxonomies.ListPrerequisites(ctx, nodeID)
-	if err != nil || len(prereqs) == 0 {
-		return true
-	}
-	for _, p := range prereqs {
-		pm, err := s.repo.GetNodeMastery(ctx, userID, p.ID)
-		if err != nil || pm == nil || !pm.IsNodePrerequisiteMet() {
-			return false
-		}
-	}
-	return true
-}
-
-// isActivityPrerequisitesMet checks if an activity's tagged taxonomy nodes have their prerequisites met.
-func (s *Service) isActivityPrerequisitesMet(
-	ctx context.Context, userID uuid.UUID, tags []string,
-) bool {
-	for _, tag := range tags {
-		code := tag
-		if idx := strings.LastIndex(tag, "."); idx >= 0 {
-			code = tag[idx+1:]
-		}
-		node, err := s.taxonomies.GetTaxonomyByCode(ctx, code)
-		if err != nil || node == nil {
-			continue
-		}
-		if !s.isNodePrerequisitesMet(ctx, userID, node.ID) {
-			return false
-		}
-	}
-	return true
-}
-
 // filterActivitiesWithMetPrerequisites filters candidate activities so that any activity
 // tagged with a node whose prerequisites have not been met is excluded.
 func (s *Service) filterActivitiesWithMetPrerequisites(
@@ -1364,6 +1327,7 @@ func (s *Service) filterActivitiesWithMetPrerequisites(
 	}
 	versions := s.loadVersions(ctx, versionIDs)
 
+	gate := s.newPrereqGate(userID)
 	eligible := make([]lessoncontract.Activity, 0, len(activities))
 	for _, a := range activities {
 		ver, ok := versions[a.ContentVersionID]
@@ -1371,7 +1335,7 @@ func (s *Service) filterActivitiesWithMetPrerequisites(
 			eligible = append(eligible, a)
 			continue
 		}
-		if s.isActivityPrerequisitesMet(ctx, userID, ver.Tags) {
+		if gate.activityMet(ctx, ver.Tags) {
 			eligible = append(eligible, a)
 		}
 	}
@@ -1434,8 +1398,9 @@ func (s *Service) collectWeakNodeNeeds(
 		if err != nil {
 			continue
 		}
+		gate := s.newPrereqGate(u)
 		for _, w := range weak {
-			if s.isNodePrerequisitesMet(ctx, u, w.NodeID) {
+			if gate.nodeMet(ctx, w.NodeID) {
 				needed[weakNodeNeed{nodeID: w.NodeID, cefrLevel: defaultPracticeLevel}] = struct{}{}
 			}
 		}
@@ -1621,8 +1586,9 @@ func (s *Service) weakNodeFor(ctx context.Context, userID uuid.UUID) *domain.Wea
 	if err != nil || len(weakNodes) == 0 {
 		return nil
 	}
+	gate := s.newPrereqGate(userID)
 	for _, w := range weakNodes {
-		if !s.isNodePrerequisitesMet(ctx, userID, w.NodeID) {
+		if !gate.nodeMet(ctx, w.NodeID) {
 			continue
 		}
 		node, err := s.taxonomies.GetTaxonomyByID(ctx, w.NodeID)
@@ -1677,14 +1643,21 @@ func weakNodeMatches(tags []string, weak *domain.WeakNodeLabel) bool {
 func (s *Service) resolveActivityDTOs(
 	ctx context.Context, activityIDs []uuid.UUID,
 ) ([]domain.DailySetActivityDTO, map[uuid.UUID]*contentcontract.Version, error) {
+	var found map[uuid.UUID]*lessoncontract.ActivityHierarchy
+	if len(activityIDs) > 0 {
+		var err error
+		if found, err = s.lesson.ResolveActivities(ctx, activityIDs); err != nil {
+			slog.WarnContext(ctx, "practice set activities could not be resolved", "count", len(activityIDs), "error", err)
+		}
+	}
 	resolved := make([]*lessoncontract.ActivityHierarchy, 0, len(activityIDs))
 	versionIDs := make([]uuid.UUID, 0, len(activityIDs))
 	for _, id := range activityIDs {
-		activity, err := s.lesson.ResolveActivity(ctx, id)
-		if err != nil || activity == nil {
+		activity := found[id]
+		if activity == nil {
 			// An item that can no longer be resolved is left out rather than
 			// failing the whole set.
-			slog.WarnContext(ctx, "practice set activity could not be resolved", "activity_id", id, "error", err)
+			slog.WarnContext(ctx, "practice set activity could not be resolved", "activity_id", id)
 			continue
 		}
 		resolved = append(resolved, activity)

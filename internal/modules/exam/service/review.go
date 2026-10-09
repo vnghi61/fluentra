@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"log/slog"
 
+	"github.com/google/uuid"
+
 	sqlc "github.com/fluentra/fluentra/internal/generated/exam/sqlc"
 	"github.com/fluentra/fluentra/internal/modules/exam/domain"
+	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 )
 
 // attachReview adds to each item of a submitted sitting's report what the learner
@@ -28,22 +31,47 @@ func (s *Service) attachReview(ctx context.Context, attempt *sqlc.AssessExamAtte
 		_ = json.Unmarshal(attempt.DraftAnswers, &answers)
 	}
 
+	var ids []uuid.UUID
+	for _, section := range sections {
+		for _, item := range section.Items {
+			ids = append(ids, item.ActivityID)
+		}
+	}
+	resolved := s.resolveActivities(ctx, ids)
+
 	for i := range sections {
-		for j := range sections[i].Items {
-			item := &sections[i].Items[j]
+		items := sections[i].Items // shares the backing array, so writes land in sections
+		for j := range items {
+			item := &items[j]
 			if raw, ok := answers[item.ActivityID.String()]; ok && !isEmptyAnswer(raw) {
 				item.Response = raw
 			}
 			if s.lesson == nil {
 				continue
 			}
-			activity, err := s.lesson.ResolveActivity(ctx, item.ActivityID)
-			if err != nil || activity == nil {
+			activity := resolved[item.ActivityID]
+			if activity == nil {
 				slog.WarnContext(ctx, "could not load an item for the report review",
-					"attempt_id", attempt.ID, "activity_id", item.ActivityID, "error", err)
+					"attempt_id", attempt.ID, "activity_id", item.ActivityID)
 				continue
 			}
 			item.Content = activity.Config
 		}
 	}
+}
+
+// resolveActivities reads every activity in one call. A failure leaves the map
+// empty, so each item keeps the defaults it had before resolution.
+func (s *Service) resolveActivities(
+	ctx context.Context, ids []uuid.UUID,
+) map[uuid.UUID]*lessoncontract.ActivityHierarchy {
+	if s.lesson == nil || len(ids) == 0 {
+		return nil
+	}
+	found, err := s.lesson.ResolveActivities(ctx, ids)
+	if err != nil {
+		slog.WarnContext(ctx, "could not resolve exam activities", "count", len(ids), "error", err)
+		return nil
+	}
+	return found
 }

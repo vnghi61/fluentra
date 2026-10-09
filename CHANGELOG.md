@@ -26,6 +26,19 @@ generated text describes commits; release notes should describe change.
   bootstrap-owned schema. `cmd/migrate` uses one connection, and decides whether
   to assume the migrator role from goose's history, not from whether the role
   exists.
+- **N+1 queries removed.**
+  - Starting a mock test and opening its report resolve every activity in one
+    read: a TOEIC test was 142 queries each time.
+  - `GET /exams` counts the question bank with one grouped query instead of
+    reading every drawable question of every part. Its blueprints, parts,
+    fixed-test counts and best scores are read once for all versions.
+  - The fixed-test list reads the learner's latest attempts in one query.
+  - The daily set's prerequisite check reads each taxonomy node and the
+    learner's mastery once per request, not per candidate activity.
+  - A course's lessons are listed in one query.
+  - New contract reads: `lesson.Reader.ResolveActivities`,
+    `lesson.Reader.ListLessonsByCourseID` and
+    `questionbank.Reader.DrawableSizes`.
 - **Cleanup.** Removed the unused generated OpenAPI Go server and client (about
   91,000 lines), dead functions and queries, empty packages and 45 unread config
   keys. The 491 Markdown files are consolidated into about 110.

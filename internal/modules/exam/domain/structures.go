@@ -159,3 +159,11 @@ func (m *MockTest) Validate() error {
 		return ErrInvalidMockMode
 	}
 }
+
+// LatestAttempt is a learner's most recent sitting of one fixed test.
+type LatestAttempt struct {
+	ID     uuid.UUID
+	Status string
+	Score  *float64
+	Band   *string
+}

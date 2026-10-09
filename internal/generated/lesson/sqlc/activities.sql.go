@@ -244,6 +244,71 @@ func (q *Queries) ListLessonIDsByContentVersionID(ctx context.Context, contentVe
 	return items, nil
 }
 
+const resolveActivityHierarchies = `-- name: ResolveActivityHierarchies :many
+SELECT
+    a.id AS activity_id,
+    a.lesson_id,
+    a.kind AS activity_kind,
+    a.content_version_id,
+    a.config AS activity_config,
+    a.weight AS activity_weight,
+    l.unit_id,
+    l.skill_focus AS lesson_skill_focus,
+    u.course_id,
+    c.slug AS course_slug
+FROM learn.activities a
+JOIN learn.lessons l ON l.id = a.lesson_id
+JOIN learn.course_units u ON u.id = l.unit_id
+JOIN learn.courses c ON c.id = u.course_id
+WHERE a.id = ANY($1::uuid[])
+`
+
+type ResolveActivityHierarchiesRow struct {
+	ActivityID       uuid.UUID
+	LessonID         uuid.UUID
+	ActivityKind     string
+	ContentVersionID uuid.UUID
+	ActivityConfig   []byte
+	ActivityWeight   int32
+	UnitID           uuid.UUID
+	LessonSkillFocus string
+	CourseID         uuid.UUID
+	CourseSlug       string
+}
+
+// ResolveActivityHierarchy for many activities in one round trip: a mock test
+// holds over a hundred, and resolving them one by one was a query each.
+func (q *Queries) ResolveActivityHierarchies(ctx context.Context, ids []uuid.UUID) ([]ResolveActivityHierarchiesRow, error) {
+	rows, err := q.db.Query(ctx, resolveActivityHierarchies, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ResolveActivityHierarchiesRow
+	for rows.Next() {
+		var i ResolveActivityHierarchiesRow
+		if err := rows.Scan(
+			&i.ActivityID,
+			&i.LessonID,
+			&i.ActivityKind,
+			&i.ContentVersionID,
+			&i.ActivityConfig,
+			&i.ActivityWeight,
+			&i.UnitID,
+			&i.LessonSkillFocus,
+			&i.CourseID,
+			&i.CourseSlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const resolveActivityHierarchy = `-- name: ResolveActivityHierarchy :one
 SELECT
     a.id AS activity_id,

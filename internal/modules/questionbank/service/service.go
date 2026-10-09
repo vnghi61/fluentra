@@ -189,6 +189,11 @@ func (s *Service) DrawableForPart(ctx context.Context, examPartID uuid.UUID) ([]
 	return res, nil
 }
 
+// DrawableSizes implements contract.Reader.
+func (s *Service) DrawableSizes(ctx context.Context, examPartIDs []uuid.UUID) (map[uuid.UUID]map[int]int, error) {
+	return s.repo.CountDrawableBySize(ctx, examPartIDs)
+}
+
 // SampleQuestions draws random published questions matching criteria.
 func (s *Service) SampleQuestions(ctx context.Context, criteria contract.SampleCriteria) ([]*contract.Question, error) {
 	items, err := s.repo.SamplePublishedQuestions(ctx, criteria)

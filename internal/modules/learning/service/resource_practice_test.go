@@ -404,3 +404,35 @@ func TestWithoutPoolCourse_KeepsEverythingWithoutResourcePractice(t *testing.T) 
 		t.Fatalf("a learner with no generated practice lost an enrolment: %+v", kept)
 	}
 }
+
+// ResolveActivities resolves each id through ResolveActivity.
+func (s stubActivityResolver) ResolveActivities(
+	ctx context.Context, ids []uuid.UUID,
+) (map[uuid.UUID]*lessoncontract.ActivityHierarchy, error) {
+	out := make(map[uuid.UUID]*lessoncontract.ActivityHierarchy, len(ids))
+	for _, id := range ids {
+		if h, err := s.ResolveActivity(ctx, id); err == nil && h != nil {
+			out[id] = h
+		}
+	}
+	return out, nil
+}
+
+// ListLessonsByCourseID walks ListUnitsByCourseID and ListLessons.
+func (s stubActivityResolver) ListLessonsByCourseID(
+	ctx context.Context, courseID uuid.UUID,
+) ([]*lessoncontract.Lesson, error) {
+	units, err := s.ListUnitsByCourseID(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+	var out []*lessoncontract.Lesson
+	for _, u := range units {
+		lessons, err := s.ListLessons(ctx, u.ID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, lessons...)
+	}
+	return out, nil
+}

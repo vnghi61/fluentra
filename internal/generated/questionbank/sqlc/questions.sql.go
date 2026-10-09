@@ -13,6 +13,46 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countDrawableQuestionsByPart = `-- name: CountDrawableQuestionsByPart :many
+SELECT exam_part_id::uuid AS exam_part_id,
+       GREATEST(question_count, 1)::int AS group_size,
+       count(*)::int AS items
+FROM assess.questions
+WHERE exam_part_id = ANY($1::uuid[])
+  AND status = 'published'
+  AND activity_id IS NOT NULL
+GROUP BY exam_part_id, GREATEST(question_count, 1)
+`
+
+type CountDrawableQuestionsByPartRow struct {
+	ExamPartID uuid.UUID
+	GroupSize  int32
+	Items      int32
+}
+
+// The same drawable set as ListDrawableQuestionsForPart, counted per part and
+// per group size (questions one bank item holds), for many parts at once. The
+// coverage report needs these counts, not the questions.
+func (q *Queries) CountDrawableQuestionsByPart(ctx context.Context, partIds []uuid.UUID) ([]CountDrawableQuestionsByPartRow, error) {
+	rows, err := q.db.Query(ctx, countDrawableQuestionsByPart, partIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountDrawableQuestionsByPartRow
+	for rows.Next() {
+		var i CountDrawableQuestionsByPartRow
+		if err := rows.Scan(&i.ExamPartID, &i.GroupSize, &i.Items); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countQuestions = `-- name: CountQuestions :one
 SELECT count(*) FROM assess.questions
 WHERE ($1::text IS NULL OR kind = $1)

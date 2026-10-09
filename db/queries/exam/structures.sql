@@ -63,3 +63,21 @@ ORDER BY number;
 SELECT * FROM assess.exams
 WHERE version_id = $1
 LIMIT 1;
+
+-- name: ListBlueprintsByVersionIDs :many
+-- ListBlueprintsByVersionID for every version on the learner's exam list at once.
+SELECT * FROM assess.blueprints
+WHERE version_id = ANY(sqlc.arg(version_ids)::uuid[])
+ORDER BY name ASC;
+
+-- name: ListExamPartsByVersionIDs :many
+SELECT * FROM assess.exam_parts
+WHERE version_id = ANY(sqlc.arg(version_ids)::uuid[])
+ORDER BY section ASC, part_number ASC;
+
+-- name: CountFixedMockTestsByBlueprint :many
+-- How many numbered fixed tests each blueprint has, without reading their compositions.
+SELECT blueprint_id::uuid AS blueprint_id, count(*)::int AS tests
+FROM assess.mock_tests
+WHERE blueprint_id = ANY(sqlc.arg(blueprint_ids)::uuid[]) AND mode = 'fixed'
+GROUP BY blueprint_id;

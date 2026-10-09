@@ -132,3 +132,26 @@ func TestComposeNextFixedTests_DisjointAndStopsWhenShort(t *testing.T) {
 	assert.Equal(t, 1, *stored.Number)
 	assert.Len(t, repo.mockTests, 5)
 }
+
+// DrawableSizes counts DrawableForPart by group size.
+func (f *fakeQuestionbank) DrawableSizes(
+	ctx context.Context, examPartIDs []uuid.UUID,
+) (map[uuid.UUID]map[int]int, error) {
+	out := make(map[uuid.UUID]map[int]int, len(examPartIDs))
+	for _, id := range examPartIDs {
+		questions, err := f.DrawableForPart(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		for _, q := range questions {
+			if q.ActivityID == nil || *q.ActivityID == uuid.Nil {
+				continue
+			}
+			if out[id] == nil {
+				out[id] = map[int]int{}
+			}
+			out[id][max(q.QuestionCount, 1)]++
+		}
+	}
+	return out, nil
+}

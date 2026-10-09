@@ -74,6 +74,19 @@ WHERE exam_part_id = $1
   AND activity_id IS NOT NULL
 ORDER BY id;
 
+-- name: CountDrawableQuestionsByPart :many
+-- The same drawable set as ListDrawableQuestionsForPart, counted per part and
+-- per group size (questions one bank item holds), for many parts at once. The
+-- coverage report needs these counts, not the questions.
+SELECT exam_part_id::uuid AS exam_part_id,
+       GREATEST(question_count, 1)::int AS group_size,
+       count(*)::int AS items
+FROM assess.questions
+WHERE exam_part_id = ANY(sqlc.arg(part_ids)::uuid[])
+  AND status = 'published'
+  AND activity_id IS NOT NULL
+GROUP BY exam_part_id, GREATEST(question_count, 1);
+
 -- name: SamplePublishedQuestions :many
 SELECT * FROM assess.questions
 WHERE status = 'published'

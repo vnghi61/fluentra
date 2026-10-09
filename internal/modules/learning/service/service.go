@@ -1824,40 +1824,28 @@ func (s *Service) activeEnrollment(
 
 // courseLessonsInOrder lists a course's lessons in unit-then-position order.
 //
-// One read per unit, not one per lesson: walking the course with NextLesson costs
-// a call for every lesson already finished, which is the N+1 the batched
-// UnlockChecker exists to avoid, on the same page. A course whose units cannot be
-// listed falls back to a single NextLesson call rather than to nothing.
+// One read for the whole course: walking it with NextLesson cost a call for
+// every finished lesson, and listing unit by unit a call for every unit. A
+// course with no lessons listed falls back to a single NextLesson call rather
+// than to nothing.
 func (s *Service) courseLessonsInOrder(
 	ctx context.Context, courseID uuid.UUID,
 ) ([]*lessoncontract.Lesson, error) {
-	units, err := s.lesson.ListUnitsByCourseID(ctx, courseID)
+	ordered, err := s.lesson.ListLessonsByCourseID(ctx, courseID)
 	if err != nil {
-		return nil, fmt.Errorf("list course units %s: %w", courseID, err)
+		return nil, fmt.Errorf("list lessons of course %s: %w", courseID, err)
 	}
-	if len(units) == 0 {
-		first, firstErr := s.lesson.NextLesson(ctx, courseID, nil)
-		if firstErr != nil {
-			return nil, fmt.Errorf("find first lesson of course %s: %w", courseID, firstErr)
-		}
-		if first == nil {
-			return nil, nil
-		}
-		return []*lessoncontract.Lesson{first}, nil
+	if len(ordered) > 0 {
+		return ordered, nil
 	}
-
-	var ordered []*lessoncontract.Lesson
-	for _, u := range units {
-		if u == nil {
-			continue
-		}
-		unitLessons, listErr := s.lesson.ListLessons(ctx, u.ID)
-		if listErr != nil {
-			return nil, fmt.Errorf("list lessons of unit %s: %w", u.ID, listErr)
-		}
-		ordered = append(ordered, unitLessons...)
+	first, err := s.lesson.NextLesson(ctx, courseID, nil)
+	if err != nil {
+		return nil, fmt.Errorf("find first lesson of course %s: %w", courseID, err)
 	}
-	return ordered, nil
+	if first == nil {
+		return nil, nil
+	}
+	return []*lessoncontract.Lesson{first}, nil
 }
 
 // completedScopeIDs reads the learner's completed rows for one progress scope.

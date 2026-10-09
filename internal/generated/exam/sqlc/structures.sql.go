@@ -12,6 +12,39 @@ import (
 	"github.com/google/uuid"
 )
 
+const countFixedMockTestsByBlueprint = `-- name: CountFixedMockTestsByBlueprint :many
+SELECT blueprint_id::uuid AS blueprint_id, count(*)::int AS tests
+FROM assess.mock_tests
+WHERE blueprint_id = ANY($1::uuid[]) AND mode = 'fixed'
+GROUP BY blueprint_id
+`
+
+type CountFixedMockTestsByBlueprintRow struct {
+	BlueprintID uuid.UUID
+	Tests       int32
+}
+
+// How many numbered fixed tests each blueprint has, without reading their compositions.
+func (q *Queries) CountFixedMockTestsByBlueprint(ctx context.Context, blueprintIds []uuid.UUID) ([]CountFixedMockTestsByBlueprintRow, error) {
+	rows, err := q.db.Query(ctx, countFixedMockTestsByBlueprint, blueprintIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountFixedMockTestsByBlueprintRow
+	for rows.Next() {
+		var i CountFixedMockTestsByBlueprintRow
+		if err := rows.Scan(&i.BlueprintID, &i.Tests); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createMockTest = `-- name: CreateMockTest :one
 INSERT INTO assess.mock_tests (id, blueprint_id, mode, number, seed, composition, owner_id, created_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -245,6 +278,39 @@ func (q *Queries) ListBlueprintsByVersionID(ctx context.Context, versionID uuid.
 	return items, nil
 }
 
+const listBlueprintsByVersionIDs = `-- name: ListBlueprintsByVersionIDs :many
+SELECT id, version_id, name, cefr_distribution, node_distribution FROM assess.blueprints
+WHERE version_id = ANY($1::uuid[])
+ORDER BY name ASC
+`
+
+// ListBlueprintsByVersionID for every version on the learner's exam list at once.
+func (q *Queries) ListBlueprintsByVersionIDs(ctx context.Context, versionIds []uuid.UUID) ([]AssessBlueprint, error) {
+	rows, err := q.db.Query(ctx, listBlueprintsByVersionIDs, versionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AssessBlueprint
+	for rows.Next() {
+		var i AssessBlueprint
+		if err := rows.Scan(
+			&i.ID,
+			&i.VersionID,
+			&i.Name,
+			&i.CefrDistribution,
+			&i.NodeDistribution,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCurrentExamVersions = `-- name: ListCurrentExamVersions :many
 SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, listed FROM assess.exam_versions
 WHERE is_current = true AND listed = true
@@ -293,6 +359,42 @@ ORDER BY section ASC, part_number ASC
 
 func (q *Queries) ListExamPartsByVersionID(ctx context.Context, versionID uuid.UUID) ([]AssessExamPart, error) {
 	rows, err := q.db.Query(ctx, listExamPartsByVersionID, versionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AssessExamPart
+	for rows.Next() {
+		var i AssessExamPart
+		if err := rows.Scan(
+			&i.ID,
+			&i.VersionID,
+			&i.Section,
+			&i.PartNumber,
+			&i.Kind,
+			&i.QuestionCount,
+			&i.GroupSize,
+			&i.DurationMinutes,
+			&i.Constraints,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExamPartsByVersionIDs = `-- name: ListExamPartsByVersionIDs :many
+SELECT id, version_id, section, part_number, kind, question_count, group_size, duration_minutes, constraints FROM assess.exam_parts
+WHERE version_id = ANY($1::uuid[])
+ORDER BY section ASC, part_number ASC
+`
+
+func (q *Queries) ListExamPartsByVersionIDs(ctx context.Context, versionIds []uuid.UUID) ([]AssessExamPart, error) {
+	rows, err := q.db.Query(ctx, listExamPartsByVersionIDs, versionIds)
 	if err != nil {
 		return nil, err
 	}

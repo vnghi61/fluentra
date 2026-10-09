@@ -1026,6 +1026,15 @@ func (r lazyQuestionbankReader) DrawableForPart(
 	return r.of.questionbank.Reader().DrawableForPart(ctx, examPartID)
 }
 
+func (r lazyQuestionbankReader) DrawableSizes(
+	ctx context.Context, examPartIDs []uuid.UUID,
+) (map[uuid.UUID]map[int]int, error) {
+	if r.of.questionbank == nil {
+		return nil, fmt.Errorf("questionbank module is not assembled")
+	}
+	return r.of.questionbank.Reader().DrawableSizes(ctx, examPartIDs)
+}
+
 func (r lazyQuestionbankReader) SampleQuestions(
 	ctx context.Context, criteria questionbankcontract.SampleCriteria,
 ) ([]*questionbankcontract.Question, error) {

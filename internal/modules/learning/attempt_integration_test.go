@@ -700,3 +700,35 @@ func TestSubmitAttempt_GraderErrorUnclaimsAttempt_Integration(t *testing.T) {
 		t.Fatalf("resubmission after grader error failed: %v", err)
 	}
 }
+
+// ResolveActivities resolves each id through ResolveActivity.
+func (s stubLessonReader) ResolveActivities(
+	ctx context.Context, ids []uuid.UUID,
+) (map[uuid.UUID]*lessoncontract.ActivityHierarchy, error) {
+	out := make(map[uuid.UUID]*lessoncontract.ActivityHierarchy, len(ids))
+	for _, id := range ids {
+		if h, err := s.ResolveActivity(ctx, id); err == nil && h != nil {
+			out[id] = h
+		}
+	}
+	return out, nil
+}
+
+// ListLessonsByCourseID walks ListUnitsByCourseID and ListLessons.
+func (s stubLessonReader) ListLessonsByCourseID(
+	ctx context.Context, courseID uuid.UUID,
+) ([]*lessoncontract.Lesson, error) {
+	units, err := s.ListUnitsByCourseID(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+	var out []*lessoncontract.Lesson
+	for _, u := range units {
+		lessons, err := s.ListLessons(ctx, u.ID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, lessons...)
+	}
+	return out, nil
+}

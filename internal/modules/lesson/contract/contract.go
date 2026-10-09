@@ -101,11 +101,17 @@ type CourseCatalog interface {
 type Reader interface {
 	GetLesson(ctx context.Context, id uuid.UUID) (*Lesson, error)
 	ListLessons(ctx context.Context, unitID uuid.UUID) ([]*Lesson, error)
+	// ListLessonsByCourseID returns every lesson of a course in one read,
+	// ordered by unit position, then lesson position.
+	ListLessonsByCourseID(ctx context.Context, courseID uuid.UUID) ([]*Lesson, error)
 	ListUnitsByCourseID(ctx context.Context, courseID uuid.UUID) ([]*Unit, error)
 	ListPrerequisitesForLessons(ctx context.Context, lessonIDs []uuid.UUID) ([]PrerequisiteItem, error)
 	ListActivitiesByCourseIDs(ctx context.Context, courseIDs []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error)
 	NextLesson(ctx context.Context, courseID uuid.UUID, currentLessonID *uuid.UUID) (*Lesson, error)
 	ResolveActivity(ctx context.Context, activityID uuid.UUID) (*ActivityHierarchy, error)
+	// ResolveActivities is ResolveActivity for many ids in one read. Ids that do
+	// not exist are absent from the map.
+	ResolveActivities(ctx context.Context, activityIDs []uuid.UUID) (map[uuid.UUID]*ActivityHierarchy, error)
 }
 
 // CourseSpec describes a generated course, addressed by its slug.

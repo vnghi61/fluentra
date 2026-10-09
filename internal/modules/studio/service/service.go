@@ -1720,23 +1720,15 @@ func (s *Service) courseCompletion(ctx context.Context, userID, courseID uuid.UU
 		return 0, nil
 	}
 
-	units, err := s.lessonReader.ListUnitsByCourseID(ctx, courseID)
+	lessons, err := s.lessonReader.ListLessonsByCourseID(ctx, courseID)
 	if err != nil {
 		slog.WarnContext(ctx, "could not size course for a refund; treating it as not started",
 			"course_id", courseID, "error", err)
 		return 0, nil
 	}
-	lessonIDs := make(map[uuid.UUID]bool)
-	for _, unit := range units {
-		lessons, err := s.lessonReader.ListLessons(ctx, unit.ID)
-		if err != nil {
-			slog.WarnContext(ctx, "could not list unit lessons for a refund",
-				"unit_id", unit.ID, "error", err)
-			return 0, nil
-		}
-		for _, lesson := range lessons {
-			lessonIDs[lesson.ID] = true
-		}
+	lessonIDs := make(map[uuid.UUID]bool, len(lessons))
+	for _, lesson := range lessons {
+		lessonIDs[lesson.ID] = true
 	}
 	if len(lessonIDs) == 0 {
 		return 0, nil

@@ -4,11 +4,9 @@ package repository
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/fluentra/fluentra/internal/generated/exam/sqlc"
@@ -590,47 +588,107 @@ func (r *Repository) ListFixedMockTests(ctx context.Context, blueprintID uuid.UU
 	return res, nil
 }
 
-// GetUserBestVersionScore returns the caller's best full exam-mode score on a
-// version, or nil when there is none.
-func (r *Repository) GetUserBestVersionScore(ctx context.Context, userID, versionID uuid.UUID) (*float64, error) {
-	if r.queries == nil {
-		return nil, nil
+// ListBlueprintsByVersionIDs returns the blueprints of many versions, by version.
+func (r *Repository) ListBlueprintsByVersionIDs(
+	ctx context.Context, versionIDs []uuid.UUID,
+) (map[uuid.UUID][]*domain.Blueprint, error) {
+	out := make(map[uuid.UUID][]*domain.Blueprint, len(versionIDs))
+	if r.queries == nil || len(versionIDs) == 0 {
+		return out, nil
 	}
-	best, err := r.queries.GetUserBestVersionScore(ctx, sqlc.GetUserBestVersionScoreParams{
-		UserID: userID, VersionID: &versionID,
-	})
+	rows, err := r.queries.ListBlueprintsByVersionIDs(ctx, versionIDs)
 	if err != nil {
 		return nil, err
 	}
-	if !best.Valid {
-		return nil, nil
+	for _, row := range rows {
+		bp := toDomainBlueprint(row)
+		out[bp.VersionID] = append(out[bp.VersionID], bp)
 	}
-	value, err := best.Float64Value()
-	if err != nil || !value.Valid {
-		return nil, err
-	}
-	return &value.Float64, nil
+	return out, nil
 }
 
-// GetLatestUserMockTestAttempt returns the caller's most recent sitting of a
-// mock test with its score report, or nil when the caller has not sat it.
-func (r *Repository) GetLatestUserMockTestAttempt(
-	ctx context.Context, userID, mockTestID uuid.UUID,
-) (*sqlc.GetLatestUserMockTestAttemptRow, error) {
-	if r.queries == nil {
-		return nil, nil
+// ListExamPartsByVersionIDs returns the parts of many versions, by version.
+func (r *Repository) ListExamPartsByVersionIDs(
+	ctx context.Context, versionIDs []uuid.UUID,
+) (map[uuid.UUID][]*domain.ExamPart, error) {
+	out := make(map[uuid.UUID][]*domain.ExamPart, len(versionIDs))
+	if r.queries == nil || len(versionIDs) == 0 {
+		return out, nil
 	}
-	row, err := r.queries.GetLatestUserMockTestAttempt(ctx, sqlc.GetLatestUserMockTestAttemptParams{
-		UserID:     userID,
-		MockTestID: &mockTestID,
-	})
+	rows, err := r.queries.ListExamPartsByVersionIDs(ctx, versionIDs)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, err
 	}
-	return &row, nil
+	for _, row := range rows {
+		part := toDomainExamPart(row)
+		out[part.VersionID] = append(out[part.VersionID], part)
+	}
+	return out, nil
+}
+
+// CountFixedMockTests counts the numbered fixed tests of each blueprint.
+func (r *Repository) CountFixedMockTests(ctx context.Context, blueprintIDs []uuid.UUID) (map[uuid.UUID]int, error) {
+	out := make(map[uuid.UUID]int, len(blueprintIDs))
+	if r.queries == nil || len(blueprintIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.queries.CountFixedMockTestsByBlueprint(ctx, blueprintIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		out[row.BlueprintID] = int(row.Tests)
+	}
+	return out, nil
+}
+
+// ListUserBestVersionScores returns the caller's best full exam-mode score on
+// each version; a version with none is absent.
+func (r *Repository) ListUserBestVersionScores(
+	ctx context.Context, userID uuid.UUID, versionIDs []uuid.UUID,
+) (map[uuid.UUID]float64, error) {
+	out := make(map[uuid.UUID]float64, len(versionIDs))
+	if r.queries == nil || len(versionIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.queries.ListUserBestVersionScores(ctx, sqlc.ListUserBestVersionScoresParams{
+		UserID: userID, VersionIds: versionIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		if value, err := row.BestScore.Float64Value(); err == nil && value.Valid {
+			out[row.VersionID] = value.Float64
+		}
+	}
+	return out, nil
+}
+
+// ListLatestUserMockTestAttempts returns the caller's most recent sitting of
+// each mock test with its score report; a test never sat is absent.
+func (r *Repository) ListLatestUserMockTestAttempts(
+	ctx context.Context, userID uuid.UUID, mockTestIDs []uuid.UUID,
+) (map[uuid.UUID]*domain.LatestAttempt, error) {
+	out := make(map[uuid.UUID]*domain.LatestAttempt, len(mockTestIDs))
+	if r.queries == nil || len(mockTestIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.queries.ListLatestUserMockTestAttempts(ctx, sqlc.ListLatestUserMockTestAttemptsParams{
+		UserID: userID, MockTestIds: mockTestIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		attempt := &domain.LatestAttempt{ID: row.ID, Status: row.Status, Band: row.OverallBand}
+		if value, err := row.OverallScore.Float64Value(); err == nil && value.Valid {
+			score := value.Float64
+			attempt.Score = &score
+		}
+		out[row.MockTestID] = attempt
+	}
+	return out, nil
 }
 
 // GetExamByVersionID finds an exam template linked to this version.

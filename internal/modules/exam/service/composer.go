@@ -138,7 +138,9 @@ type ExamCoverageReportDTO struct {
 	Parts                 []ExamPartCoverageDTO `json:"parts"`
 }
 
-// ListCurrentExamVersions returns all current verified exam versions with their blueprints.
+// ListCurrentExamVersions returns all current verified exam versions with their
+// blueprints. Every read is batched across versions: the list used to cost a
+// handful of queries per version plus a full question read per part.
 func (s *Service) ListCurrentExamVersions(ctx context.Context, userID uuid.UUID) ([]ExamVersionDTO, error) {
 	if s.repo == nil {
 		return nil, errors.New("repository not configured")
@@ -148,21 +150,45 @@ func (s *Service) ListCurrentExamVersions(ctx context.Context, userID uuid.UUID)
 	if err != nil {
 		return nil, fmt.Errorf("list current exam versions: %w", err)
 	}
+	versionIDs := make([]uuid.UUID, len(versions))
+	for i, v := range versions {
+		versionIDs[i] = v.ID
+	}
+	blueprints, err := s.repo.ListBlueprintsByVersionIDs(ctx, versionIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list blueprints: %w", err)
+	}
+	partsByVersion, err := s.repo.ListExamPartsByVersionIDs(ctx, versionIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list exam parts: %w", err)
+	}
+	var blueprintIDs []uuid.UUID
+	var allParts []*domain.ExamPart
+	for _, v := range versions {
+		for _, bp := range blueprints[v.ID] {
+			blueprintIDs = append(blueprintIDs, bp.ID)
+		}
+		allParts = append(allParts, partsByVersion[v.ID]...)
+	}
+	fixedCounts, err := s.repo.CountFixedMockTests(ctx, blueprintIDs)
+	if err != nil {
+		return nil, fmt.Errorf("count fixed tests: %w", err)
+	}
+	sizes := s.drawableSizes(ctx, allParts)
+	var best map[uuid.UUID]float64
+	if userID != uuid.Nil {
+		if best, err = s.repo.ListUserBestVersionScores(ctx, userID, versionIDs); err != nil {
+			return nil, fmt.Errorf("best scores: %w", err)
+		}
+	}
 
 	out := make([]ExamVersionDTO, 0, len(versions))
 	for _, v := range versions {
-		bps, err := s.repo.ListBlueprintsByVersionID(ctx, v.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list blueprints for version %s: %w", v.ID, err)
-		}
 		fixedTests := 0
+		bps := blueprints[v.ID]
 		bpDTOs := make([]BlueprintSummaryDTO, len(bps))
 		for i, bp := range bps {
-			tests, err := s.repo.ListFixedMockTests(ctx, bp.ID)
-			if err != nil {
-				return nil, fmt.Errorf("list fixed tests for blueprint %s: %w", bp.ID, err)
-			}
-			fixedTests += len(tests)
+			fixedTests += fixedCounts[bp.ID]
 			bpDTOs[i] = BlueprintSummaryDTO{
 				ID:               bp.ID,
 				Name:             bp.Name,
@@ -171,10 +197,7 @@ func (s *Service) ListCurrentExamVersions(ctx context.Context, userID uuid.UUID)
 			}
 		}
 
-		parts, err := s.repo.ListExamPartsByVersionID(ctx, v.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list parts for version %s: %w", v.ID, err)
-		}
+		parts := partsByVersion[v.ID]
 		sortParts(parts)
 		partDTOs := make([]ExamVersionPartDTO, 0, len(parts))
 		for _, p := range parts {
@@ -187,7 +210,7 @@ func (s *Service) ListCurrentExamVersions(ctx context.Context, userID uuid.UUID)
 			})
 		}
 
-		out = append(out, ExamVersionDTO{
+		dto := ExamVersionDTO{
 			ID:           v.ID,
 			ExamFamily:   v.ExamFamily,
 			Code:         v.Code,
@@ -202,22 +225,19 @@ func (s *Service) ListCurrentExamVersions(ctx context.Context, userID uuid.UUID)
 			Parts:        partDTOs,
 			// The same number the admin coverage report shows, so the learner's
 			// test list and the operator's report cannot disagree.
-			DistinctTestsPossible: s.coverageForParts(ctx, v, parts).DistinctTestsPossible,
+			DistinctTestsPossible: coverageForParts(v, parts, sizes).DistinctTestsPossible,
 			FixedTestCount:        fixedTests,
-		})
-		if userID != uuid.Nil {
-			best, err := s.repo.GetUserBestVersionScore(ctx, userID, v.ID)
-			if err != nil {
-				return nil, fmt.Errorf("best score on %s: %w", v.Code, err)
-			}
-			out[len(out)-1].BestScore = best
 		}
+		if score, ok := best[v.ID]; ok {
+			dto.BestScore = &score
+		}
+		out = append(out, dto)
 	}
 	return out, nil
 }
 
 // ListFixedTests returns a version's numbered fixed tests in order, with the
-// caller's latest attempt at each (WO 22 Stage J).
+// caller's latest attempt at each (WO 22 Stage J), read in one query.
 func (s *Service) ListFixedTests(
 	ctx context.Context, userID, versionID uuid.UUID,
 ) (*FixedTestListResponseDTO, error) {
@@ -242,43 +262,45 @@ func (s *Service) ListFixedTests(
 		questionCount += p.QuestionCount
 	}
 
-	items := []FixedTestSummaryDTO{}
+	var numbered []*domain.MockTest
 	for _, bp := range blueprints {
 		tests, err := s.repo.ListFixedMockTests(ctx, bp.ID)
 		if err != nil {
 			return nil, fmt.Errorf("list fixed tests for blueprint %s: %w", bp.ID, err)
 		}
 		for _, mt := range tests {
-			if mt.Number == nil {
-				continue
+			if mt.Number != nil {
+				numbered = append(numbered, mt)
 			}
-			dto := FixedTestSummaryDTO{
-				ID:            mt.ID,
-				Number:        *mt.Number,
-				Title:         fmt.Sprintf("Đề %d", *mt.Number),
-				QuestionCount: questionCount,
-				Minutes:       version.TotalMinutes,
-			}
-			attempt, err := s.repo.GetLatestUserMockTestAttempt(ctx, userID, mt.ID)
-			if err != nil {
-				return nil, fmt.Errorf("latest attempt for test %s: %w", mt.ID, err)
-			}
-			if attempt != nil {
-				summary := &FixedTestAttemptSummaryDTO{
-					AttemptID: attempt.ID,
-					Status:    attempt.Status,
-					Band:      attempt.OverallBand,
-				}
-				if attempt.OverallScore.Valid {
-					if f, ferr := attempt.OverallScore.Float64Value(); ferr == nil {
-						score := f.Float64
-						summary.Score = &score
-					}
-				}
-				dto.LatestAttempt = summary
-			}
-			items = append(items, dto)
 		}
+	}
+	ids := make([]uuid.UUID, len(numbered))
+	for i, mt := range numbered {
+		ids[i] = mt.ID
+	}
+	latest, err := s.repo.ListLatestUserMockTestAttempts(ctx, userID, ids)
+	if err != nil {
+		return nil, fmt.Errorf("latest attempts for version %s: %w", versionID, err)
+	}
+
+	items := make([]FixedTestSummaryDTO, 0, len(numbered))
+	for _, mt := range numbered {
+		dto := FixedTestSummaryDTO{
+			ID:            mt.ID,
+			Number:        *mt.Number,
+			Title:         fmt.Sprintf("Đề %d", *mt.Number),
+			QuestionCount: questionCount,
+			Minutes:       version.TotalMinutes,
+		}
+		if attempt := latest[mt.ID]; attempt != nil {
+			dto.LatestAttempt = &FixedTestAttemptSummaryDTO{
+				AttemptID: attempt.ID,
+				Status:    attempt.Status,
+				Band:      attempt.Band,
+				Score:     attempt.Score,
+			}
+		}
+		items = append(items, dto)
 	}
 	return &FixedTestListResponseDTO{Items: items}, nil
 }
@@ -309,14 +331,14 @@ func (s *Service) coverageForVersion(ctx context.Context, version *domain.ExamVe
 			Parts:     []ExamPartCoverageDTO{},
 		}
 	}
-	return s.coverageForParts(ctx, version, parts)
+	return coverageForParts(version, parts, s.drawableSizes(ctx, parts))
 }
 
 // coverageForParts computes the report from parts already loaded. The exam
 // version list calls it per version, so a learner's list and the operator's
 // report are one computation rather than two that can disagree.
-func (s *Service) coverageForParts(
-	ctx context.Context, version *domain.ExamVersion, parts []*domain.ExamPart,
+func coverageForParts(
+	version *domain.ExamVersion, parts []*domain.ExamPart, sizes map[uuid.UUID]map[int]int,
 ) *ExamCoverageReportDTO {
 	sortParts(parts)
 
@@ -325,7 +347,7 @@ func (s *Service) coverageForParts(
 	var bottleneckID *uuid.UUID
 
 	for _, p := range parts {
-		cov := s.computePartCoverage(ctx, p)
+		cov := computePartCoverage(p, sizes[p.ID])
 		if minTestsPossible == -1 || cov.TestsPossible < minTestsPossible {
 			minTestsPossible = cov.TestsPossible
 			partID := p.ID
@@ -349,27 +371,41 @@ func (s *Service) coverageForParts(
 	}
 }
 
-func (s *Service) computePartCoverage(ctx context.Context, p *domain.ExamPart) ExamPartCoverageDTO {
+// drawableSizes reads the drawable counts of every part in one call. A failed
+// read reports no coverage, as a failed per-part read did.
+func (s *Service) drawableSizes(ctx context.Context, parts []*domain.ExamPart) map[uuid.UUID]map[int]int {
+	if s.questionbank == nil || len(parts) == 0 {
+		return nil
+	}
+	ids := make([]uuid.UUID, len(parts))
+	for i, p := range parts {
+		ids[i] = p.ID
+	}
+	sizes, err := s.questionbank.DrawableSizes(ctx, ids)
+	if err != nil {
+		slog.WarnContext(ctx, "could not count drawable questions", "parts", len(ids), "error", err)
+		return nil
+	}
+	return sizes
+}
+
+// computePartCoverage applies fitPart's rule to the counts: a part with a fixed
+// group size takes only items of exactly that size; a part seeded with group
+// size 1 takes any size and is measured in questions.
+func computePartCoverage(p *domain.ExamPart, sizes map[int]int) ExamPartCoverageDTO {
 	groupsNeeded := groupsPerTest(p)
 
-	testsPossible := 0
-	publishedAvailable := 0
-	if s.questionbank != nil {
-		candidates, err := s.questionbank.DrawableForPart(ctx, p.ID)
-		if err == nil {
-			usable := fitPart(p, candidates)
-			publishedAvailable = len(usable)
-			// A test needs part.QuestionCount questions; count what the usable
-			// groups hold, so a variable-size part (TOEIC Part 7) is measured in
-			// questions and a fixed-size one comes out as groups / groups needed.
-			held := 0
-			for _, q := range usable {
-				held += groupSize(q)
-			}
-			if p.QuestionCount > 0 {
-				testsPossible = held / p.QuestionCount
-			}
+	publishedAvailable, held := 0, 0
+	for size, items := range sizes {
+		if p.GroupSize > 1 && size != p.GroupSize {
+			continue
 		}
+		publishedAvailable += items
+		held += size * items
+	}
+	testsPossible := 0
+	if p.QuestionCount > 0 {
+		testsPossible = held / p.QuestionCount
 	}
 
 	return ExamPartCoverageDTO{
@@ -904,6 +940,11 @@ func (s *Service) compositionToSectionActivities(
 
 	var allActivityIDs []uuid.UUID
 	for _, c := range comp {
+		allActivityIDs = append(allActivityIDs, c.ActivityIDs...)
+	}
+	resolved := s.resolveActivities(ctx, allActivityIDs)
+
+	for _, c := range comp {
 		part, ok := partMap[c.PartID]
 		skill := skillReading
 		kind := "question"
@@ -924,22 +965,19 @@ func (s *Service) compositionToSectionActivities(
 		}
 
 		for _, actID := range c.ActivityIDs {
-			allActivityIDs = append(allActivityIDs, actID)
 			actDTO := SittingActivityDTO{
 				ID:     actID,
 				Kind:   kind,
 				Weight: 1,
 			}
-			if s.lesson != nil {
-				if h, err := s.lesson.ResolveActivity(ctx, actID); err == nil && h != nil {
-					actDTO.Kind = h.Kind
-					actDTO.ContentVersionID = h.ContentVersionID
-					// Redacted, exactly as the exam pool's draw redacts. The
-					// sitting is served from this stored copy, so a key that
-					// reaches here reaches the learner (WO 19 H.6 trap 1); the
-					// grader reads the content version, not this config.
-					actDTO.Config = contentcontract.RedactForLearner(h.Config)
-				}
+			if h := resolved[actID]; h != nil {
+				actDTO.Kind = h.Kind
+				actDTO.ContentVersionID = h.ContentVersionID
+				// Redacted, exactly as the exam pool's draw redacts. The
+				// sitting is served from this stored copy, so a key that
+				// reaches here reaches the learner (WO 19 H.6 trap 1); the
+				// grader reads the content version, not this config.
+				actDTO.Config = contentcontract.RedactForLearner(h.Config)
 			}
 			group.acts = append(group.acts, actDTO)
 		}

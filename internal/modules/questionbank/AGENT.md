@@ -74,7 +74,7 @@ Other modules may import **only** `internal/modules/questionbank/contract`.
 <!-- BEGIN GENERATED: contract -->
 | Kind | Name | Purpose |
 |---|---|---|
-| interface | `questionbank.Reader` | `ListQuestions` (permission-checked) and `DrawableForPart` (system read for `exam`: published questions with an activity, stable order) |
+| interface | `questionbank.Reader` | `ListQuestions` (permission-checked), `DrawableForPart` (system read for `exam`: published questions with an activity, stable order) and `DrawableSizes` (the same set counted per part and group size, for coverage) |
 | interface | `questionbank.Author` | `GenerateQuestions`, `PublishQuestion` (refuses unreviewed content), `RetireQuestion` |
 | struct | `questionbank.Question` | Bank metadata only; the body is the content version it points at |
 

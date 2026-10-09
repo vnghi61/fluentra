@@ -383,42 +383,6 @@ func (q *Queries) GetExamBySlug(ctx context.Context, slug string) (AssessExam, e
 	return i, err
 }
 
-const getLatestUserMockTestAttempt = `-- name: GetLatestUserMockTestAttempt :one
-SELECT a.id, a.status, a.started_at, r.overall_score, r.overall_band
-FROM assess.exam_attempts a
-LEFT JOIN assess.score_reports r ON r.attempt_id = a.id
-WHERE a.user_id = $1 AND a.mock_test_id = $2
-ORDER BY a.started_at DESC
-LIMIT 1
-`
-
-type GetLatestUserMockTestAttemptParams struct {
-	UserID     uuid.UUID
-	MockTestID *uuid.UUID
-}
-
-type GetLatestUserMockTestAttemptRow struct {
-	ID           uuid.UUID
-	Status       string
-	StartedAt    time.Time
-	OverallScore pgtype.Numeric
-	OverallBand  *string
-}
-
-// The caller's most recent sitting of one fixed test, with its report if any.
-func (q *Queries) GetLatestUserMockTestAttempt(ctx context.Context, arg GetLatestUserMockTestAttemptParams) (GetLatestUserMockTestAttemptRow, error) {
-	row := q.db.QueryRow(ctx, getLatestUserMockTestAttempt, arg.UserID, arg.MockTestID)
-	var i GetLatestUserMockTestAttemptRow
-	err := row.Scan(
-		&i.ID,
-		&i.Status,
-		&i.StartedAt,
-		&i.OverallScore,
-		&i.OverallBand,
-	)
-	return i, err
-}
-
 const getScoreReportByAttemptID = `-- name: GetScoreReportByAttemptID :one
 SELECT id, attempt_id, user_id, exam_id, overall_score, overall_band, status, per_section, feedback, integrity_signals, created_at, updated_at
 FROM assess.score_reports
@@ -443,29 +407,6 @@ func (q *Queries) GetScoreReportByAttemptID(ctx context.Context, attemptID uuid.
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const getUserBestVersionScore = `-- name: GetUserBestVersionScore :one
-SELECT MAX(r.overall_score)::numeric AS best_score
-FROM assess.exam_attempts a
-JOIN assess.score_reports r ON r.attempt_id = a.id
-JOIN assess.exams e ON e.id = a.exam_id
-WHERE a.user_id = $1 AND e.version_id = $2 AND a.mode = 'exam' AND r.status = 'ready'
-`
-
-type GetUserBestVersionScoreParams struct {
-	UserID    uuid.UUID
-	VersionID *uuid.UUID
-}
-
-// The caller's best overall score on one exam version: full sittings in exam
-// mode with a ready report only, since a practice of one section is not
-// comparable (WO 22 Stage L, the exam card).
-func (q *Queries) GetUserBestVersionScore(ctx context.Context, arg GetUserBestVersionScoreParams) (pgtype.Numeric, error) {
-	row := q.db.QueryRow(ctx, getUserBestVersionScore, arg.UserID, arg.VersionID)
-	var best_score pgtype.Numeric
-	err := row.Scan(&best_score)
-	return best_score, err
 }
 
 const listExamSections = `-- name: ListExamSections :many
@@ -624,6 +565,58 @@ func (q *Queries) ListIntegrityEvents(ctx context.Context, attemptID uuid.UUID) 
 	return items, nil
 }
 
+const listLatestUserMockTestAttempts = `-- name: ListLatestUserMockTestAttempts :many
+SELECT DISTINCT ON (a.mock_test_id)
+       a.mock_test_id::uuid AS mock_test_id, a.id, a.status, a.started_at, r.overall_score, r.overall_band
+FROM assess.exam_attempts a
+LEFT JOIN assess.score_reports r ON r.attempt_id = a.id
+WHERE a.user_id = $1 AND a.mock_test_id = ANY($2::uuid[])
+ORDER BY a.mock_test_id, a.started_at DESC
+`
+
+type ListLatestUserMockTestAttemptsParams struct {
+	UserID      uuid.UUID
+	MockTestIds []uuid.UUID
+}
+
+type ListLatestUserMockTestAttemptsRow struct {
+	MockTestID   uuid.UUID
+	ID           uuid.UUID
+	Status       string
+	StartedAt    time.Time
+	OverallScore pgtype.Numeric
+	OverallBand  *string
+}
+
+// GetLatestUserMockTestAttempt for many fixed tests at once: the caller's most
+// recent sitting of each, with its report if any.
+func (q *Queries) ListLatestUserMockTestAttempts(ctx context.Context, arg ListLatestUserMockTestAttemptsParams) ([]ListLatestUserMockTestAttemptsRow, error) {
+	rows, err := q.db.Query(ctx, listLatestUserMockTestAttempts, arg.UserID, arg.MockTestIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLatestUserMockTestAttemptsRow
+	for rows.Next() {
+		var i ListLatestUserMockTestAttemptsRow
+		if err := rows.Scan(
+			&i.MockTestID,
+			&i.ID,
+			&i.Status,
+			&i.StartedAt,
+			&i.OverallScore,
+			&i.OverallBand,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPendingScoreReports = `-- name: ListPendingScoreReports :many
 SELECT id, attempt_id, user_id, exam_id, overall_score, overall_band, status, per_section, feedback, integrity_signals, created_at, updated_at
 FROM assess.score_reports
@@ -657,6 +650,47 @@ func (q *Queries) ListPendingScoreReports(ctx context.Context) ([]AssessScoreRep
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserBestVersionScores = `-- name: ListUserBestVersionScores :many
+SELECT e.version_id::uuid AS version_id, MAX(r.overall_score)::numeric AS best_score
+FROM assess.exam_attempts a
+JOIN assess.score_reports r ON r.attempt_id = a.id
+JOIN assess.exams e ON e.id = a.exam_id
+WHERE a.user_id = $1 AND e.version_id = ANY($2::uuid[])
+  AND a.mode = 'exam' AND r.status = 'ready'
+GROUP BY e.version_id
+`
+
+type ListUserBestVersionScoresParams struct {
+	UserID     uuid.UUID
+	VersionIds []uuid.UUID
+}
+
+type ListUserBestVersionScoresRow struct {
+	VersionID uuid.UUID
+	BestScore pgtype.Numeric
+}
+
+// GetUserBestVersionScore for many versions at once.
+func (q *Queries) ListUserBestVersionScores(ctx context.Context, arg ListUserBestVersionScoresParams) ([]ListUserBestVersionScoresRow, error) {
+	rows, err := q.db.Query(ctx, listUserBestVersionScores, arg.UserID, arg.VersionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserBestVersionScoresRow
+	for rows.Next() {
+		var i ListUserBestVersionScoresRow
+		if err := rows.Scan(&i.VersionID, &i.BestScore); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

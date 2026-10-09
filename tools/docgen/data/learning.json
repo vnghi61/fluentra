@@ -232,7 +232,7 @@
       { "method": "POST", "path": "/api/v1/admin/lessons/{id}/publish", "permission": "content.publish", "purpose": "Publish an approved lesson", "success": "200", "errors": ["ACTIVITY_CONTENT_UNPUBLISHED", "EMPTY_ACTIVITIES"] }
     ],
     "contract": [
-      { "kind": "interface", "name": "lesson.Reader", "purpose": "`GetLesson`, `ListLessons`, `NextLesson`, `ResolveActivity`, `ListActivitiesByCourseIDs` — used heavily by `learning`" },
+      { "kind": "interface", "name": "lesson.Reader", "purpose": "`GetLesson`, `ListLessons`, `ListLessonsByCourseID`, `NextLesson`, `ResolveActivity`, `ResolveActivities` (batch), `ListActivitiesByCourseIDs` — used heavily by `learning` and `exam`" },
       { "kind": "struct", "name": "lesson.Activity", "purpose": "`{ID, Kind, ContentVersionID, Config, Weight}`" },
       { "kind": "struct", "name": "lesson.ActivityHierarchy", "purpose": "`{ActivityID, LessonID, UnitID, CourseID, Kind, ContentVersionID, Config, Weight, LessonSkillFocus}` — single-call structural resolution for activity attempts (P8.3 Trap 1)" }
     ],
@@ -1502,7 +1502,7 @@
       {
         "kind": "interface",
         "name": "questionbank.Reader",
-        "purpose": "`ListQuestions` (permission-checked) and `DrawableForPart` (system read for `exam`: published questions with an activity, stable order)"
+        "purpose": "`ListQuestions` (permission-checked), `DrawableForPart` (system read for `exam`: published questions with an activity, stable order) and `DrawableSizes` (the same set counted per part and group size, for coverage)"
       },
       {
         "kind": "interface",

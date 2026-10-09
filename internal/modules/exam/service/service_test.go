@@ -367,18 +367,8 @@ func (m *mockExamRepo) ListMockTestsByOwner(_ context.Context, _ *uuid.UUID) ([]
 	return m.mockTests, nil
 }
 
-func (m *mockExamRepo) GetUserBestVersionScore(_ context.Context, _, _ uuid.UUID) (*float64, error) {
-	return m.bestScore, nil
-}
-
 func (m *mockExamRepo) ListFixedMockTests(_ context.Context, _ uuid.UUID) ([]*domain.MockTest, error) {
 	return m.mockTests, nil
-}
-
-func (m *mockExamRepo) GetLatestUserMockTestAttempt(
-	_ context.Context, _, _ uuid.UUID,
-) (*sqlc.GetLatestUserMockTestAttemptRow, error) {
-	return nil, nil
 }
 
 func (m *mockExamRepo) GetExamByVersionID(_ context.Context, _ uuid.UUID) (*sqlc.AssessExam, error) {
@@ -974,4 +964,64 @@ func TestListeningPlayPolicy_CoversTOEICPartsOneAndTwo(t *testing.T) {
 			require.ErrorIs(t, err, domain.ErrPlayNotAllowed, "another learner's sitting")
 		})
 	}
+}
+
+func (m *mockExamRepo) ListBlueprintsByVersionIDs(
+	ctx context.Context, versionIDs []uuid.UUID,
+) (map[uuid.UUID][]*domain.Blueprint, error) {
+	out := map[uuid.UUID][]*domain.Blueprint{}
+	for _, id := range versionIDs {
+		bps, err := m.ListBlueprintsByVersionID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = bps
+	}
+	return out, nil
+}
+
+func (m *mockExamRepo) ListExamPartsByVersionIDs(
+	ctx context.Context, versionIDs []uuid.UUID,
+) (map[uuid.UUID][]*domain.ExamPart, error) {
+	out := map[uuid.UUID][]*domain.ExamPart{}
+	for _, id := range versionIDs {
+		parts, err := m.ListExamPartsByVersionID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = parts
+	}
+	return out, nil
+}
+
+func (m *mockExamRepo) CountFixedMockTests(
+	ctx context.Context, blueprintIDs []uuid.UUID,
+) (map[uuid.UUID]int, error) {
+	out := map[uuid.UUID]int{}
+	for _, id := range blueprintIDs {
+		tests, err := m.ListFixedMockTests(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = len(tests)
+	}
+	return out, nil
+}
+
+func (m *mockExamRepo) ListLatestUserMockTestAttempts(
+	_ context.Context, _ uuid.UUID, _ []uuid.UUID,
+) (map[uuid.UUID]*domain.LatestAttempt, error) {
+	return map[uuid.UUID]*domain.LatestAttempt{}, nil
+}
+
+func (m *mockExamRepo) ListUserBestVersionScores(
+	_ context.Context, _ uuid.UUID, versionIDs []uuid.UUID,
+) (map[uuid.UUID]float64, error) {
+	out := map[uuid.UUID]float64{}
+	if m.bestScore != nil {
+		for _, id := range versionIDs {
+			out[id] = *m.bestScore
+		}
+	}
+	return out, nil
 }

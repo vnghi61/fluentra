@@ -53,15 +53,6 @@ SELECT *
 FROM assess.exam_attempts
 WHERE id = $1;
 
--- name: GetLatestUserMockTestAttempt :one
--- The caller's most recent sitting of one fixed test, with its report if any.
-SELECT a.id, a.status, a.started_at, r.overall_score, r.overall_band
-FROM assess.exam_attempts a
-LEFT JOIN assess.score_reports r ON r.attempt_id = a.id
-WHERE a.user_id = $1 AND a.mock_test_id = $2
-ORDER BY a.started_at DESC
-LIMIT 1;
-
 -- name: GetExamAttemptForUser :one
 SELECT *
 FROM assess.exam_attempts
@@ -183,12 +174,22 @@ FROM assess.integrity_events
 WHERE attempt_id = $1
 ORDER BY occurred_at ASC;
 
--- name: GetUserBestVersionScore :one
--- The caller's best overall score on one exam version: full sittings in exam
--- mode with a ready report only, since a practice of one section is not
--- comparable (WO 22 Stage L, the exam card).
-SELECT MAX(r.overall_score)::numeric AS best_score
+-- name: ListLatestUserMockTestAttempts :many
+-- GetLatestUserMockTestAttempt for many fixed tests at once: the caller's most
+-- recent sitting of each, with its report if any.
+SELECT DISTINCT ON (a.mock_test_id)
+       a.mock_test_id::uuid AS mock_test_id, a.id, a.status, a.started_at, r.overall_score, r.overall_band
+FROM assess.exam_attempts a
+LEFT JOIN assess.score_reports r ON r.attempt_id = a.id
+WHERE a.user_id = sqlc.arg(user_id) AND a.mock_test_id = ANY(sqlc.arg(mock_test_ids)::uuid[])
+ORDER BY a.mock_test_id, a.started_at DESC;
+
+-- name: ListUserBestVersionScores :many
+-- GetUserBestVersionScore for many versions at once.
+SELECT e.version_id::uuid AS version_id, MAX(r.overall_score)::numeric AS best_score
 FROM assess.exam_attempts a
 JOIN assess.score_reports r ON r.attempt_id = a.id
 JOIN assess.exams e ON e.id = a.exam_id
-WHERE a.user_id = $1 AND e.version_id = $2 AND a.mode = 'exam' AND r.status = 'ready';
+WHERE a.user_id = sqlc.arg(user_id) AND e.version_id = ANY(sqlc.arg(version_ids)::uuid[])
+  AND a.mode = 'exam' AND r.status = 'ready'
+GROUP BY e.version_id;

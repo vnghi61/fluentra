@@ -115,6 +115,10 @@ type Reader interface {
 	// no permission check — a learner composing a mock test holds no
 	// questionbank permission, and nothing unpublished can come back.
 	DrawableForPart(ctx context.Context, examPartID uuid.UUID) ([]*Question, error)
+	// DrawableSizes counts the same drawable set for many parts in one read:
+	// part -> group size (questions one item holds, at least 1) -> items. A
+	// coverage report needs only these counts.
+	DrawableSizes(ctx context.Context, examPartIDs []uuid.UUID) (map[uuid.UUID]map[int]int, error)
 }
 
 // Author provides question bank modification and generation operations.

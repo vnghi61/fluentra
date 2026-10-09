@@ -126,10 +126,15 @@ type ExamRepository interface {
 	GetMockTestByID(ctx context.Context, id uuid.UUID) (*domain.MockTest, error)
 	ListMockTestsByOwner(ctx context.Context, ownerID *uuid.UUID) ([]*domain.MockTest, error)
 	ListFixedMockTests(ctx context.Context, blueprintID uuid.UUID) ([]*domain.MockTest, error)
-	GetUserBestVersionScore(ctx context.Context, userID, versionID uuid.UUID) (*float64, error)
-	GetLatestUserMockTestAttempt(
-		ctx context.Context, userID, mockTestID uuid.UUID,
-	) (*sqlc.GetLatestUserMockTestAttemptRow, error)
+	ListBlueprintsByVersionIDs(ctx context.Context, versionIDs []uuid.UUID) (map[uuid.UUID][]*domain.Blueprint, error)
+	ListExamPartsByVersionIDs(ctx context.Context, versionIDs []uuid.UUID) (map[uuid.UUID][]*domain.ExamPart, error)
+	CountFixedMockTests(ctx context.Context, blueprintIDs []uuid.UUID) (map[uuid.UUID]int, error)
+	ListUserBestVersionScores(
+		ctx context.Context, userID uuid.UUID, versionIDs []uuid.UUID,
+	) (map[uuid.UUID]float64, error)
+	ListLatestUserMockTestAttempts(
+		ctx context.Context, userID uuid.UUID, mockTestIDs []uuid.UUID,
+	) (map[uuid.UUID]*domain.LatestAttempt, error)
 	GetExamByVersionID(ctx context.Context, versionID uuid.UUID) (*sqlc.AssessExam, error)
 	CreateMockTestAttempt(ctx context.Context, arg sqlc.CreateMockTestAttemptParams) (*sqlc.AssessExamAttempt, error)
 	CountUserMockTestAttempts(ctx context.Context, userID, mockTestID uuid.UUID) (int64, error)

@@ -357,10 +357,6 @@ func (r *inMemoryGateRepo) GetMockTestByID(_ context.Context, id uuid.UUID) (*do
 	defer r.mu.Unlock()
 	return r.mockTests[id], nil
 }
-func (r *inMemoryGateRepo) GetUserBestVersionScore(_ context.Context, _, _ uuid.UUID) (*float64, error) {
-	return nil, nil
-}
-
 func (r *inMemoryGateRepo) ListFixedMockTests(_ context.Context, blueprintID uuid.UUID) ([]*domain.MockTest, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -371,12 +367,6 @@ func (r *inMemoryGateRepo) ListFixedMockTests(_ context.Context, blueprintID uui
 		}
 	}
 	return out, nil
-}
-
-func (r *inMemoryGateRepo) GetLatestUserMockTestAttempt(
-	_ context.Context, _, _ uuid.UUID,
-) (*sqlc.GetLatestUserMockTestAttemptRow, error) {
-	return nil, nil
 }
 
 func (r *inMemoryGateRepo) ListMockTestsByOwner(_ context.Context, ownerID *uuid.UUID) ([]*domain.MockTest, error) {
@@ -759,4 +749,81 @@ func gateCheckFixed(
 	assert.Equal(t, fixedTest1.ID, forVeteran.ID, "a fixed test is one stored row")
 	assert.Equal(t, fixedTest1.ID, forNewcomer.ID, "a fixed test is one stored row")
 	assert.Nil(t, forVeteran.OwnerID)
+}
+
+// DrawableSizes counts DrawableForPart by group size.
+func (f *fakeQBReader) DrawableSizes(
+	ctx context.Context, examPartIDs []uuid.UUID,
+) (map[uuid.UUID]map[int]int, error) {
+	out := make(map[uuid.UUID]map[int]int, len(examPartIDs))
+	for _, id := range examPartIDs {
+		questions, err := f.DrawableForPart(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		for _, q := range questions {
+			if q.ActivityID == nil || *q.ActivityID == uuid.Nil {
+				continue
+			}
+			if out[id] == nil {
+				out[id] = map[int]int{}
+			}
+			out[id][max(q.QuestionCount, 1)]++
+		}
+	}
+	return out, nil
+}
+
+func (r *inMemoryGateRepo) ListBlueprintsByVersionIDs(
+	ctx context.Context, versionIDs []uuid.UUID,
+) (map[uuid.UUID][]*domain.Blueprint, error) {
+	out := map[uuid.UUID][]*domain.Blueprint{}
+	for _, id := range versionIDs {
+		bps, err := r.ListBlueprintsByVersionID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = bps
+	}
+	return out, nil
+}
+
+func (r *inMemoryGateRepo) ListExamPartsByVersionIDs(
+	ctx context.Context, versionIDs []uuid.UUID,
+) (map[uuid.UUID][]*domain.ExamPart, error) {
+	out := map[uuid.UUID][]*domain.ExamPart{}
+	for _, id := range versionIDs {
+		parts, err := r.ListExamPartsByVersionID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = parts
+	}
+	return out, nil
+}
+
+func (r *inMemoryGateRepo) CountFixedMockTests(
+	ctx context.Context, blueprintIDs []uuid.UUID,
+) (map[uuid.UUID]int, error) {
+	out := map[uuid.UUID]int{}
+	for _, id := range blueprintIDs {
+		tests, err := r.ListFixedMockTests(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = len(tests)
+	}
+	return out, nil
+}
+
+func (r *inMemoryGateRepo) ListLatestUserMockTestAttempts(
+	_ context.Context, _ uuid.UUID, _ []uuid.UUID,
+) (map[uuid.UUID]*domain.LatestAttempt, error) {
+	return map[uuid.UUID]*domain.LatestAttempt{}, nil
+}
+
+func (r *inMemoryGateRepo) ListUserBestVersionScores(
+	_ context.Context, _ uuid.UUID, _ []uuid.UUID,
+) (map[uuid.UUID]float64, error) {
+	return map[uuid.UUID]float64{}, nil
 }

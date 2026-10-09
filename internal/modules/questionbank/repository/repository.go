@@ -190,6 +190,28 @@ func (r *Repository) ListQuestions(
 	return items, int(total), nil
 }
 
+// CountDrawableBySize counts the drawable questions of each part by group size
+// (part -> size -> items), for many parts in one query.
+func (r *Repository) CountDrawableBySize(
+	ctx context.Context, examPartIDs []uuid.UUID,
+) (map[uuid.UUID]map[int]int, error) {
+	out := make(map[uuid.UUID]map[int]int, len(examPartIDs))
+	if len(examPartIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.queries.CountDrawableQuestionsByPart(ctx, examPartIDs)
+	if err != nil {
+		return nil, fmt.Errorf("count drawable questions: %w", err)
+	}
+	for _, row := range rows {
+		if out[row.ExamPartID] == nil {
+			out[row.ExamPartID] = map[int]int{}
+		}
+		out[row.ExamPartID][int(row.GroupSize)] = int(row.Items)
+	}
+	return out, nil
+}
+
 // ListDrawableQuestionsForPart returns the published questions of a part that
 // have an activity in the bank course, in a stable order.
 func (r *Repository) ListDrawableQuestionsForPart(

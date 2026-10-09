@@ -56,3 +56,16 @@ func TestReport_CarriesTheAnswerAndTheItemForReview(t *testing.T) {
 	unanswered := report.PerSection[1].Items[0]
 	assert.Empty(t, unanswered.Response, "an unanswered item has no response to show")
 }
+
+// ResolveActivities resolves each id through ResolveActivity.
+func (r reviewLessons) ResolveActivities(
+	ctx context.Context, ids []uuid.UUID,
+) (map[uuid.UUID]*lessoncontract.ActivityHierarchy, error) {
+	out := make(map[uuid.UUID]*lessoncontract.ActivityHierarchy, len(ids))
+	for _, id := range ids {
+		if h, err := r.ResolveActivity(ctx, id); err == nil && h != nil {
+			out[id] = h
+		}
+	}
+	return out, nil
+}
