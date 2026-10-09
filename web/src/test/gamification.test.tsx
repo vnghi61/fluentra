@@ -23,7 +23,10 @@ import {
   TodayProgressCard,
   XPProgressBar,
 } from "@/features/gamification";
-import type { GamificationSummary } from "@/features/gamification";
+import type {
+  GamificationSummary,
+  LeaderboardResponse,
+} from "@/features/gamification";
 import i18n, { initI18n, loadLocale } from "@/i18n";
 import { server } from "./msw-server";
 
@@ -243,6 +246,82 @@ describe("Gamification Feature Slice (WP14)", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows all returned standings rather than truncating at five learners", async () => {
+    const board: LeaderboardResponse = {
+      opted_in: true,
+      entries: Array.from({ length: 6 }, (_, index) => ({
+        rank: index + 1,
+        user_id: `0199a1c2-3d4e-7f80-9abc-def01234560${index}`,
+        display_name: `Learner ${index + 1}`,
+        xp: 600 - index * 10,
+        is_self: index === 5,
+      })),
+    };
+    server.use(http.get("/api/v1/leaderboard", () => HttpResponse.json(board)));
+    renderWithProviders(<LeaderboardWidget />);
+    expect(await screen.findByText("Learner 6")).toBeInTheDocument();
+    expect(screen.getByText("550 XP")).toBeInTheDocument();
+  });
+
+  it("shows a retryable load error instead of pretending the board is empty", async () => {
+    let requests = 0;
+    server.use(
+      http.get("/api/v1/leaderboard", () => {
+        requests++;
+        return requests === 1
+          ? HttpResponse.json(
+              { title: "Forbidden", status: 403 },
+              { status: 403 },
+            )
+          : HttpResponse.json({
+              opted_in: false,
+              entries: [],
+            } satisfies LeaderboardResponse);
+      }),
+    );
+    renderWithProviders(<LeaderboardWidget />);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Unable to load the leaderboard",
+    );
+    expect(
+      screen.queryByText("No standings available yet for this week."),
+    ).toBeNull();
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Try again" }));
+    expect(
+      await screen.findByText("No standings available yet for this week."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows an error when joining fails and keeps the standings visible", async () => {
+    server.use(
+      http.get("/api/v1/leaderboard", () =>
+        HttpResponse.json({
+          opted_in: false,
+          entries: [],
+        } satisfies LeaderboardResponse),
+      ),
+      http.put("/api/v1/me/leaderboard-opt-in", () =>
+        HttpResponse.json(
+          { title: "Unable to join", status: 422 },
+          { status: 422 },
+        ),
+      ),
+    );
+    renderWithProviders(<LeaderboardWidget />);
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: "Join League" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Unable to join the league",
+    );
+    expect(
+      screen.getByText("No standings available yet for this week."),
+    ).toBeInTheDocument();
+  });
+
   it("BadgesWidget renders unlocked badges and tier styling", () => {
     const badges = [
       {
@@ -450,7 +529,7 @@ describe("Gamification Feature Slice (WP14)", () => {
     expect(screen.getByText("50 XP to next")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Leaderboard →" })).toHaveAttribute(
       "href",
-      "/progress",
+      "/leaderboard",
     );
   });
 

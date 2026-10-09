@@ -1,90 +1,91 @@
 import React from "react";
-import { BookOpen, CheckCircle2, Trophy } from "lucide-react";
+import { BookOpen, CheckCircle2, Clock, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { Card } from "@/components/ui/card";
+import { StatTile } from "@/components/ui/stat-tile";
+import { cn } from "@/lib/utils";
 
 export interface OverallStatsProps {
   totalActivitiesCompleted: number;
   coursesInProgress: number;
   coursesCompleted: number;
+  /**
+   * Minutes from learning sessions this week and the weekly goal, from
+   * GET /me/weekly-plan (`progress.minutes`, `minutes_goal`). Omitted while
+   * that loads or when it fails: the tile is left out, not zeroed.
+   */
+  studyThisWeek?: { minutes: number; goal: number } | undefined;
 }
 
 /**
- * The headline figures for the progress screen.
+ * The headline figures for the progress screen, each one measured:
+ * completed activities, courses in progress and courses completed from
+ * GET /me/progress, and this week's study minutes from GET /me/weekly-plan.
  *
- * There are three real figures rendered from GET /me/progress:
- * completed activities count, courses in progress count, and courses completed count.
- * This card previously sat beside "Total Study Time" and "Words Mastered",
- * both computed by multiplying activity counts.
- *
- * TODO(backend): Study minutes, streak, and weekly deltas need dedicated fields
- * on GET /me/progress before those metrics can be displayed (see
- * docs/development/phase-2/P10-learner-web.md §1). Until then, do not render
- * fabricated measurements, "no data" placeholders, or fake cards.
+ * Nothing is derived. Total all-time study time, words mastered and the
+ * "vs last week" deltas in the design have no API behind them (see
+ * docs/development/phase-2/P10-learner-web.md §1) and are not drawn.
  */
 export const OverallStats: React.FC<OverallStatsProps> = ({
   totalActivitiesCompleted,
   coursesInProgress,
   coursesCompleted,
+  studyThisWeek,
 }) => {
   const { t } = useTranslation();
 
+  const duration = (minutes: number) => {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0
+      ? t("overview.progress.hoursMinutes", { h, m })
+      : t("overview.progress.minutesOnly", { m });
+  };
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-      {/* Activities Completed */}
-      <Card className="col-span-2 md:col-span-1 p-4 flex items-center gap-4 border-border-subtle bg-surface-card">
-        <div className="h-10 w-10 rounded-xl bg-warning/10 text-warning-accent flex items-center justify-center shrink-0">
-          <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
-        </div>
-        <div>
-          <p className="text-xs text-text-muted font-medium">
-            {t("progress.kpi.activitiesDone")}
-          </p>
-          <p
-            className="text-2xl font-extrabold text-text mt-0.5"
-            data-testid="activities-completed"
-          >
-            {totalActivitiesCompleted}
-          </p>
-        </div>
-      </Card>
-
-      {/* Courses in Progress */}
-      <Card className="p-4 flex items-center gap-4 border-border-subtle bg-surface-card">
-        <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary-accent flex items-center justify-center shrink-0">
-          <BookOpen className="h-5 w-5" aria-hidden="true" />
-        </div>
-        <div>
-          <p className="text-xs text-text-muted font-medium">
-            {t("progress.kpi.coursesInProgress")}
-          </p>
-          <p
-            className="text-2xl font-extrabold text-text mt-0.5"
-            data-testid="courses-in-progress"
-          >
-            {coursesInProgress}
-          </p>
-        </div>
-      </Card>
-
-      {/* Courses Completed */}
-      <Card className="p-4 flex items-center gap-4 border-border-subtle bg-surface-card">
-        <div className="h-10 w-10 rounded-xl bg-success/10 text-success-accent flex items-center justify-center shrink-0">
-          <Trophy className="h-5 w-5" aria-hidden="true" />
-        </div>
-        <div>
-          <p className="text-xs text-text-muted font-medium">
-            {t("progress.kpi.coursesCompleted")}
-          </p>
-          <p
-            className="text-2xl font-extrabold text-text mt-0.5"
-            data-testid="courses-completed"
-          >
-            {coursesCompleted}
-          </p>
-        </div>
-      </Card>
+    <div
+      className={cn(
+        "grid grid-cols-2 gap-3 md:gap-4",
+        studyThisWeek ? "lg:grid-cols-4" : "md:grid-cols-3",
+      )}
+    >
+      <StatTile
+        icon={CheckCircle2}
+        iconClassName="bg-warning/10 text-warning-accent"
+        label={t("progress.kpi.activitiesDone")}
+        value={totalActivitiesCompleted}
+        valueTestId="activities-completed"
+        labelFirst
+        className={cn(!studyThisWeek && "col-span-2 md:col-span-1")}
+      />
+      <StatTile
+        icon={BookOpen}
+        label={t("progress.kpi.coursesInProgress")}
+        value={coursesInProgress}
+        valueTestId="courses-in-progress"
+        labelFirst
+      />
+      <StatTile
+        icon={Trophy}
+        iconClassName="bg-success/10 text-success-accent"
+        label={t("progress.kpi.coursesCompleted")}
+        value={coursesCompleted}
+        valueTestId="courses-completed"
+        labelFirst
+      />
+      {studyThisWeek && (
+        <StatTile
+          icon={Clock}
+          iconClassName="bg-violet-500/10 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300"
+          label={t("overview.progress.studyThisWeek")}
+          value={duration(studyThisWeek.minutes)}
+          hint={t("overview.progress.weeklyGoal", {
+            goal: duration(studyThisWeek.goal),
+          })}
+          valueTestId="study-this-week"
+          labelFirst
+        />
+      )}
     </div>
   );
 };

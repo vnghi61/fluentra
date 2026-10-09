@@ -26,10 +26,10 @@ type Level = (typeof TARGET_LEVELS)[number];
 
 const choiceClass = (selected: boolean) =>
   cn(
-    "min-h-[44px] rounded-xl border px-3 py-2 text-base font-medium transition-colors",
+    "min-h-[44px] min-w-0 rounded-xl border px-2 py-2 text-base font-semibold transition-colors",
     selected
       ? "border-primary bg-primary/10 text-text"
-      : "border-border-subtle bg-surface-base text-text hover:border-border",
+      : "border-border-subtle bg-surface-muted text-text hover:border-border",
   );
 
 /**
@@ -104,7 +104,7 @@ export function WelcomePage(): React.JSX.Element {
   const inviteAvailable = overview.data?.invite_available === true;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-base px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center bg-surface-muted px-4 py-10">
       <div className="w-full max-w-xl space-y-6 rounded-2xl border border-border bg-surface-card p-6 shadow-lg md:p-8">
         <p className="text-sm font-medium text-text-muted">
           {t("welcome.step", { current: step, total: 3 })}
@@ -112,7 +112,7 @@ export function WelcomePage(): React.JSX.Element {
 
         {step === 1 && (
           <section className="space-y-5">
-            <h1 className="text-2xl font-extrabold text-text">
+            <h1 className="text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
               {t("welcome.goalTitle")}
             </h1>
             <div className="space-y-2">
@@ -166,7 +166,8 @@ export function WelcomePage(): React.JSX.Element {
             <Button
               type="button"
               onClick={() => setStep(2)}
-              className="min-h-[44px] w-full text-base"
+              size="lg"
+              className="w-full"
             >
               {t("welcome.continue")}
             </Button>
@@ -175,7 +176,7 @@ export function WelcomePage(): React.JSX.Element {
 
         {step === 2 && (
           <section className="space-y-5">
-            <h1 className="text-2xl font-extrabold text-text">
+            <h1 className="text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
               {t("welcome.minutesTitle")}
             </h1>
             <p className="text-base text-text-muted">
@@ -203,14 +204,15 @@ export function WelcomePage(): React.JSX.Element {
                 type="button"
                 variant="outline"
                 onClick={() => setStep(1)}
-                className="min-h-[44px] text-base"
+                size="lg"
               >
                 {t("welcome.back")}
               </Button>
               <Button
                 type="button"
                 onClick={() => setStep(3)}
-                className="min-h-[44px] flex-1 text-base"
+                size="lg"
+                className="flex-1"
               >
                 {t("welcome.continue")}
               </Button>
@@ -220,7 +222,7 @@ export function WelcomePage(): React.JSX.Element {
 
         {step === 3 && (
           <section className="space-y-5">
-            <h1 className="text-2xl font-extrabold text-text">
+            <h1 className="text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
               {t("welcome.placementTitle")}
             </h1>
             {inviteAvailable && !choosing ? (
@@ -232,7 +234,8 @@ export function WelcomePage(): React.JSX.Element {
                   type="button"
                   onClick={() => void takeTest()}
                   disabled={pending}
-                  className="min-h-[44px] w-full text-base"
+                  size="lg"
+                  className="w-full"
                 >
                   {pending ? t("welcome.starting") : t("welcome.takeTest")}
                 </Button>
@@ -240,7 +243,8 @@ export function WelcomePage(): React.JSX.Element {
                   type="button"
                   variant="ghost"
                   onClick={() => setChoosing(true)}
-                  className="min-h-[44px] w-full text-base"
+                  size="lg"
+                  className="w-full"
                 >
                   {t("welcome.chooseInstead")}
                 </Button>
@@ -273,7 +277,8 @@ export function WelcomePage(): React.JSX.Element {
                   type="button"
                   onClick={() => void chooseLevel()}
                   disabled={pending}
-                  className="min-h-[44px] w-full text-base"
+                  size="lg"
+                  className="w-full"
                 >
                   {pending ? t("welcome.saving") : t("welcome.finish")}
                 </Button>
@@ -282,7 +287,7 @@ export function WelcomePage(): React.JSX.Element {
             {error && (
               <p
                 role="alert"
-                className="rounded-lg bg-danger/10 p-3 text-sm text-danger"
+                className="rounded-lg bg-danger/10 p-3 text-base leading-relaxed text-danger-accent"
               >
                 {error}
               </p>
@@ -291,7 +296,7 @@ export function WelcomePage(): React.JSX.Element {
               type="button"
               variant="outline"
               onClick={() => setStep(2)}
-              className="min-h-[44px] text-base"
+              size="lg"
             >
               {t("welcome.back")}
             </Button>

@@ -10,6 +10,24 @@ const toneClasses = {
 } as const;
 export type StatusTone = keyof typeof toneClasses;
 
-export function StatusBadge({ tone, children, icon: Icon }: { tone: StatusTone; children: React.ReactNode; icon?: React.ElementType }): React.JSX.Element {
-  return <span className={cn("inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium", toneClasses[tone])}>{Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}{children}</span>;
+export function StatusBadge({
+  tone,
+  children,
+  icon: Icon,
+}: {
+  tone: StatusTone;
+  children: React.ReactNode;
+  icon?: React.ElementType;
+}): React.JSX.Element {
+  return (
+    <span
+      className={cn(
+        "inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+        toneClasses[tone],
+      )}
+    >
+      {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />}
+      {children}
+    </span>
+  );
 }

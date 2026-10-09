@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, {
   useCallback,
   useEffect,
@@ -49,6 +50,7 @@ import {
   SittingClock,
 } from "./SittingClock";
 import { QuestionNavigator } from "./QuestionNavigator";
+import { Textarea } from "@/components/ui/textarea";
 
 const AUTOSAVE_MS = 15_000;
 const DEFAULT_SPEAKING_SECONDS = 45;
@@ -423,29 +425,36 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-text">
-      {timeUp && (
-        <div
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="time-up-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 text-center"
-        >
-          <div className="max-w-md space-y-3 text-white">
-            <Clock className="mx-auto h-12 w-12" aria-hidden="true" />
-            <h2 id="time-up-title" className="text-2xl font-bold">
-              {t("exam.runner.timeUpTitle")}
-            </h2>
-            <p className="text-sm">{t("exam.runner.timeUpBody")}</p>
-          </div>
-        </div>
-      )}
+      {/* Portalled: an ancestor with a transform or filter would otherwise
+          become the containing block, and the overlay was centred on the
+          whole tall page instead of the viewport. */}
+      {timeUp &&
+        createPortal(
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="time-up-title"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 text-center"
+          >
+            <div className="max-w-md space-y-3 text-white">
+              <Clock className="mx-auto h-12 w-12" aria-hidden="true" />
+              <h2 id="time-up-title" className="text-2xl font-bold">
+                {t("exam.runner.timeUpTitle")}
+              </h2>
+              <p className="text-base leading-relaxed">
+                {t("exam.runner.timeUpBody")}
+              </p>
+            </div>
+          </div>,
+          document.body,
+        )}
 
       <header className="sticky top-0 z-40 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-card px-4 py-3 sm:px-8">
         <div className="min-w-0">
           <h1 className="truncate text-base font-bold text-text sm:text-lg">
             {attempt.exam_title || t("exam.title")}
           </h1>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
             <Badge variant="outline">
               {isExamMode ? t("exam.mode.exam") : t("exam.mode.practice")}
             </Badge>
@@ -472,7 +481,7 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
                 aria-label={sectionLabels[s.skill]}
                 onClick={() => goToSection(s.section_position)}
                 className={cn(
-                  "flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium",
+                  "flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold",
                   isCurrent
                     ? "bg-primary text-primary-fg"
                     : locked
@@ -509,7 +518,7 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
       {saveState === "failed" && (
         <div
           role="alert"
-          className="flex flex-wrap items-center justify-between gap-2 border-b border-danger/20 bg-danger/10 px-4 py-2 text-xs text-danger-accent"
+          className="flex flex-wrap items-center justify-between gap-2 border-b border-danger/20 bg-danger/10 px-4 py-2 text-sm text-danger-accent"
         >
           <span className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -582,17 +591,17 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
           {section && (
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-primary-accent">
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary-accent">
                   {t("exam.runner.sectionOf", {
                     num: sectionIndex + 1,
                     total: sections.length,
                   })}
                 </p>
-                <h2 className="text-xl font-bold text-text sm:text-2xl">
+                <h2 className="text-lg font-semibold leading-snug text-text md:text-xl">
                   {sectionLabels[section.skill]}
                 </h2>
               </div>
-              <div className="flex flex-col items-end gap-1 text-xs text-text-muted">
+              <div className="flex flex-col items-end gap-1 text-sm text-text-muted">
                 {isExamMode && (
                   <SectionClock
                     format={formatClock}
@@ -607,7 +616,7 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
                       : "text-success-accent",
                   )}
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                   {saveState === "saving"
                     ? t("exam.runner.saving")
                     : t("exam.runner.saved")}
@@ -632,7 +641,7 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-8">
-            <p className="text-xs text-text-muted">
+            <p className="text-sm text-text-muted">
               {isExamMode
                 ? t("exam.runner.forwardOnly")
                 : t("exam.runner.practiceNav")}
@@ -652,50 +661,55 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
         </main>
       </div>
 
-      {confirmOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="submit-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        >
-          <div className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-surface-card p-6 shadow-2xl">
-            <h3 id="submit-title" className="text-lg font-bold text-text">
-              {t("exam.runner.submitTitle")}
-            </h3>
-            <p className="text-sm text-text">
-              {t("exam.runner.answered", { answered, total })}
-            </p>
-            {answered < total && (
-              <p className="text-xs font-medium text-warning-accent">
-                {t("exam.runner.unansweredCount", { n: total - answered })}
+      {confirmOpen &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="submit-title"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          >
+            <div className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-surface-card p-6 shadow-2xl">
+              <h2
+                id="submit-title"
+                className="text-lg font-semibold leading-tight text-text"
+              >
+                {t("exam.runner.submitTitle")}
+              </h2>
+              <p className="text-sm text-text">
+                {t("exam.runner.answered", { answered, total })}
               </p>
-            )}
-            <p className="text-xs leading-relaxed text-text-muted">
-              {t("exam.runner.submitBody")}
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setConfirmOpen(false)}
-                disabled={isSubmitting}
-              >
-                {t("exam.runner.cancel")}
-              </Button>
-              <Button
-                type="button"
-                onClick={() => void handleSubmit()}
-                disabled={isSubmitting}
-              >
-                {isSubmitting
-                  ? t("exam.runner.submitting")
-                  : t("exam.runner.confirmSubmit")}
-              </Button>
+              {answered < total && (
+                <p className="text-sm font-medium text-warning-accent">
+                  {t("exam.runner.unansweredCount", { n: total - answered })}
+                </p>
+              )}
+              <p className="text-sm leading-relaxed text-text-muted">
+                {t("exam.runner.submitBody")}
+              </p>
+              <div className="flex flex-wrap justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setConfirmOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  {t("exam.runner.cancel")}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void handleSubmit()}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting
+                    ? t("exam.runner.submitting")
+                    : t("exam.runner.confirmSubmit")}
+                </Button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };
@@ -711,7 +725,7 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
 const WordLimitNote: React.FC<{ max: number }> = ({ max }) => {
   const { t } = useTranslation();
   return (
-    <p className="text-xs text-text-muted">
+    <p className="text-sm text-text-muted">
       {t("exam.reading.wordLimit", {
         max,
         defaultValue: `No more than ${max} words`,
@@ -757,7 +771,7 @@ const ChoiceQuestions: React.FC<ChoiceQuestionsProps> = ({
           id={slotAnchor({ number: firstNumber + qIndex })}
           className="scroll-mt-28 space-y-3 rounded-xl bg-surface-muted/30 p-4"
         >
-          <legend className="text-sm font-semibold text-text">
+          <legend className="text-base font-semibold leading-relaxed text-text">
             {firstNumber + qIndex}. {question.prompt}
           </legend>
           {options.length > 0 ? (
@@ -771,7 +785,7 @@ const ChoiceQuestions: React.FC<ChoiceQuestionsProps> = ({
                     aria-pressed={isSelected}
                     onClick={() => onSelect(question.id, option.id)}
                     className={cn(
-                      "flex min-h-[44px] items-center gap-3 rounded-lg border p-3 text-left text-sm",
+                      "flex min-h-11 items-center gap-3 rounded-lg border p-3 text-left text-base leading-snug",
                       isSelected
                         ? "border-primary bg-primary/10 font-medium text-primary-accent"
                         : "border-border bg-surface-card text-text hover:bg-surface-muted",
@@ -790,6 +804,7 @@ const ChoiceQuestions: React.FC<ChoiceQuestionsProps> = ({
             <>
               <input
                 type="text"
+                aria-label={`${firstNumber + qIndex}. ${question.prompt}`}
                 value={selected[question.id] ?? ""}
                 onChange={(e) => onSelect(question.id, e.target.value)}
                 className="min-h-[44px] w-full rounded-lg border border-border bg-surface-card px-3 py-2 text-base text-text focus:outline-hidden focus:ring-2 focus:ring-primary"
@@ -842,11 +857,13 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
             })
           : t("exam.parts.questionOne", { num: firstNumber })}
       </Badge>
-      <h3 className="text-base font-bold text-text">{title}</h3>
+      <h3 className="min-w-0 break-words text-base font-semibold leading-snug text-text">
+        {title}
+      </h3>
       {activity.kind === "speaking_task" ? (
         <Badge variant="secondary">{t("exam.sections.speaking")}</Badge>
       ) : part ? (
-        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary-accent">
+        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary-accent">
           #{t(`exam.parts.${part}`)}
         </span>
       ) : null}
@@ -877,8 +894,8 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
             title={config.title}
           />
         ) : (
-          <div className="max-h-96 overflow-y-auto rounded-xl bg-surface-muted/60 p-5 text-sm leading-relaxed text-text sm:text-base">
-            <p className="whitespace-pre-line">{config.passage}</p>
+          <div className="max-h-96 overflow-y-auto rounded-xl bg-surface-muted/60 p-5 text-base leading-relaxed text-text">
+            <p className="max-w-prose whitespace-pre-line">{config.passage}</p>
           </div>
         )}
         <ChoiceQuestions
@@ -934,7 +951,7 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
               className="max-h-72 rounded-xl border border-border-subtle object-contain shadow-sm"
             />
             {config.image_credit && (
-              <figcaption className="text-xs text-text-muted">
+              <figcaption className="text-sm text-text-muted">
                 <a
                   href={config.image_credit}
                   target="_blank"
@@ -958,7 +975,7 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
           />
         )}
         {config.sentence && (
-          <div className="rounded-xl bg-surface-muted/60 p-5 text-sm font-medium leading-relaxed text-text sm:text-base">
+          <div className="max-w-3xl rounded-xl bg-surface-muted/60 p-5 text-base font-medium leading-relaxed text-text">
             <p>{config.sentence}</p>
           </div>
         )}
@@ -972,7 +989,7 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
                 aria-pressed={isSelected}
                 onClick={() => select(option.id)}
                 className={cn(
-                  "flex min-h-[44px] items-center gap-3 rounded-lg border p-3 text-left text-sm",
+                  "flex min-h-11 items-center gap-3 rounded-lg border p-3 text-left text-base leading-snug",
                   isSelected
                     ? "border-primary bg-primary/10 font-medium text-primary-accent"
                     : "border-border bg-surface-card text-text hover:bg-surface-muted",
@@ -1010,13 +1027,13 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
           )}
         </div>
         {(config.prompt || config.sentence) && (
-          <p className="rounded-xl bg-surface-muted/60 p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
+          <p className="max-w-3xl rounded-xl bg-surface-muted/60 p-4 text-base font-medium leading-relaxed text-text">
             {config.prompt || config.sentence}
           </p>
         )}
         <label
           htmlFor={inputId}
-          className="text-xs font-medium text-text-muted"
+          className="text-sm font-medium text-text-muted"
         >
           {t("exam.reading.answerLabel", "Your answer")}
         </label>
@@ -1044,7 +1061,7 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
             {t("exam.writing.words", { count: words, min: minWords })}
           </Badge>
         </div>
-        <p className="rounded-xl bg-surface-muted/60 p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
+        <p className="max-w-3xl rounded-xl bg-surface-muted/60 p-4 text-base font-medium leading-relaxed text-text">
           {config.prompt}
         </p>
         {config.image_url && (
@@ -1057,13 +1074,13 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
         <label htmlFor={inputId} className="sr-only">
           {t("exam.writing.essay")}
         </label>
-        <textarea
+        <Textarea
           id={inputId}
           rows={10}
           value={text}
           onChange={(e) => onChange({ text_answer: e.target.value })}
           placeholder={t("exam.writing.essayPlaceholder")}
-          className="min-h-[220px] w-full resize-y rounded-xl border border-border bg-surface-card p-4 text-base leading-relaxed text-text placeholder:text-text-muted focus:outline-hidden focus:ring-2 focus:ring-primary"
+          className="min-h-[220px] resize-y"
         />
       </div>
     );
@@ -1075,12 +1092,12 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
     return (
       <div className={cardClass} id={anchor}>
         {heading(t("exam.writing.rewrite"))}
-        <p className="rounded-xl bg-surface-muted/60 p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
+        <p className="max-w-3xl rounded-xl bg-surface-muted/60 p-4 text-base font-medium leading-relaxed text-text">
           {config.prompt}
         </p>
         <label
           htmlFor={inputId}
-          className="text-xs font-medium text-text-muted"
+          className="text-sm font-medium text-text-muted"
         >
           {t("exam.writing.rewriteLabel")}
         </label>

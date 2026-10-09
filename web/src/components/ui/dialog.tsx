@@ -14,33 +14,45 @@ export const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     showClose?: boolean;
   }
->(({ className, children, showClose = true, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
-  const focusProps = useReturnFocus({ onOpenAutoFocus, onCloseAutoFocus });
+>(
+  (
+    {
+      className,
+      children,
+      showClose = true,
+      onOpenAutoFocus,
+      onCloseAutoFocus,
+      ...props
+    },
+    ref,
+  ) => {
+    const focusProps = useReturnFocus({ onOpenAutoFocus, onCloseAutoFocus });
 
-  return (
-    <DialogPortal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-overlay/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-      <DialogPrimitive.Content
-        ref={ref}
-        data-scroll-lock="managed"
-        className={cn(
-          "fixed left-1/2 top-1/2 z-[60] flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-border-subtle bg-surface-card shadow-xl outline-none",
-          className,
-        )}
-        {...props}
-        {...focusProps}
-      >
-        {children}
-        {showClose && (
-          <DialogPrimitive.Close className="absolute right-3 top-3 flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-text-muted hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-            <X className="h-5 w-5" aria-hidden="true" />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        )}
-      </DialogPrimitive.Content>
-    </DialogPortal>
-  );
-});
+    return (
+      <DialogPortal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-overlay/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Content
+          ref={ref}
+          data-scroll-lock="managed"
+          className={cn(
+            "fixed left-1/2 top-1/2 z-[60] flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-border-subtle bg-surface-card shadow-xl outline-none",
+            className,
+          )}
+          {...props}
+          {...focusProps}
+        >
+          {children}
+          {showClose && (
+            <DialogPrimitive.Close className="absolute right-3 top-3 flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-text-muted hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              <X className="h-5 w-5" aria-hidden="true" />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          )}
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    );
+  },
+);
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 export const DialogHeader = ({
@@ -55,8 +67,29 @@ export const DialogHeader = ({
     {...props}
   />
 );
-export const DialogTitle = DialogPrimitive.Title;
-export const DialogDescription = DialogPrimitive.Description;
+/** Defaults to the dialog title role: 18px semibold, tight leading. */
+export const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title
+    ref={ref}
+    className={cn("text-lg font-semibold leading-tight text-text", className)}
+    {...props}
+  />
+));
+DialogTitle.displayName = DialogPrimitive.Title.displayName;
+export const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description
+    ref={ref}
+    className={cn("text-sm leading-relaxed text-text-muted", className)}
+    {...props}
+  />
+));
+DialogDescription.displayName = DialogPrimitive.Description.displayName;
 export const DialogBody = ({
   className,
   ...props

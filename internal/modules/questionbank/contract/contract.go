@@ -54,7 +54,9 @@ type QuestionStats struct {
 	PValue         *float64  `json:"p_value,omitempty"`
 	Discrimination *float64  `json:"discrimination,omitempty"`
 	AvgTimeMs      int       `json:"avg_time_ms"`
-	LastComputedAt time.Time `json:"last_computed_at"`
+	// LastComputedAt is nil until statistics have been computed for the
+	// question; Attempts is then zero and the indices nil.
+	LastComputedAt *time.Time `json:"last_computed_at"`
 }
 
 // Filter defines search criteria for listing questions.

@@ -256,7 +256,7 @@ describe("PracticePage hub", () => {
     }
 
     const startDailyLink = screen.getByRole("link", {
-      name: /Continue practice/i,
+      name: /Start practising/i,
     });
     expect(startDailyLink).toHaveAttribute(
       "href",
@@ -299,14 +299,14 @@ describe("PracticePage hub", () => {
       await screen.findByText(/Choose your level to start/i),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("link", { name: /Continue practice/i }),
+      screen.queryByRole("link", { name: /Start practising/i }),
     ).not.toBeInTheDocument();
 
     const select = screen.getByRole("combobox", { name: "Practice level" });
     fireEvent.change(select, { target: { value: "A2" } });
 
     const start = await screen.findByRole("link", {
-      name: /Continue practice/i,
+      name: /Start practising/i,
     });
     expect(start).toHaveAttribute("href", expect.stringContaining("level=A2"));
     await waitFor(() =>

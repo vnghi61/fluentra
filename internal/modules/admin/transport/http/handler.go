@@ -1,6 +1,7 @@
-// Package http is the admin module's HTTP surface: the `/admin/users` and
-// `/admin/flags` handlers. Every handler authorises the caller with a named
-// permission before it does any work.
+// Package http is the admin module's HTTP surface: the `/admin/users`,
+// `/admin/flags` and `/admin/banners` handlers, plus the learner-facing
+// `/banners/active`. Every admin handler authorises the caller with a named
+// permission before it does any work; `/banners/active` needs only a session.
 package http
 
 import (
@@ -11,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	admincontract "github.com/fluentra/fluentra/internal/modules/admin/contract"
+	admindomain "github.com/fluentra/fluentra/internal/modules/admin/domain"
 	"github.com/fluentra/fluentra/internal/modules/admin/service"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
@@ -39,6 +41,17 @@ type AdminService interface {
 	UpdateFlag(ctx context.Context, key string, req service.UpdateFlagRequest) (admincontract.FeatureFlag, error)
 	DeleteFlag(ctx context.Context, key string) error
 	GetAIUsage(ctx context.Context) ([]service.AIUsageStatus, error)
+	ListActiveBanners(ctx context.Context) ([]admindomain.Banner, error)
+	ListBanners(ctx context.Context) ([]admindomain.Banner, error)
+	CreateBanner(ctx context.Context, actorID uuid.UUID, in admindomain.BannerInput) (admindomain.Banner, error)
+	UpdateBanner(
+		ctx context.Context, actorID, id uuid.UUID, in admindomain.BannerInput,
+	) (admindomain.Banner, error)
+	DeleteBanner(ctx context.Context, actorID, id uuid.UUID) error
+	RequestBannerImageUpload(
+		ctx context.Context, actorID uuid.UUID, contentType string,
+	) (admindomain.BannerImageUpload, error)
+	ProcessBannerImage(ctx context.Context, actorID uuid.UUID, objectKey string) (admindomain.BannerImage, error)
 }
 
 // Handler serves HTTP endpoints for the admin module.
@@ -66,6 +79,19 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Post("/admin/flags", h.createFlag)
 	router.Put("/admin/flags/{key}", h.updateFlag)
 	router.Delete("/admin/flags/{key}", h.deleteFlag)
+
+	router.Get("/admin/banners", h.listBanners)
+	router.Post("/admin/banners", h.createBanner)
+	router.Put("/admin/banners/{id}", h.updateBanner)
+	router.Delete("/admin/banners/{id}", h.deleteBanner)
+	router.Post("/admin/banners/image-upload-intent", h.requestBannerImageUpload)
+	router.Post("/admin/banners/images", h.processBannerImage)
+}
+
+// LearnerRoutes registers the operations any signed-in account may call. They
+// are mounted outside the admin-only group, so they check the actor themselves.
+func (h *Handler) LearnerRoutes(router chi.Router) {
+	router.Get("/banners/active", h.listActiveBanners)
 }
 
 func (h *Handler) authorise(r *http.Request, permission string) (httpx.Actor, error) {

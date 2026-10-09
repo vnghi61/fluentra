@@ -325,7 +325,7 @@ func configOptions() config.Options {
 			"sepay.account_holder":           "",
 			"sepay.allowed_ips":              "",
 			"sepay.order_ttl":                "24h",
-			"studio.min_price_vnd":           int64(49000),
+			"studio.min_price_vnd":           int64(5000),
 			"studio.max_price_vnd":           int64(5000000),
 			"studio.revenue_share_bps":       7000,
 			"media.dispatch_workflow":        "media-render.yml",

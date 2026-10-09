@@ -45,6 +45,11 @@ const (
 	// and the log fills with one failure.
 	maxVerifyAttempts = 3
 
+	// msgVerifyExhausted is what a word says when every attempt to check it
+	// failed for reasons that were ours (the dictionary or the model never
+	// answered). It is a failure, not a verdict on the word.
+	msgVerifyExhausted = "We could not check this word after several tries. Add it again later."
+
 	// uploadDeckSlug is the deck verified words land in. One per learner, not
 	// one per upload: a learner reviewing their own words wants them together,
 	// not split across however many times they happened to paste.
@@ -440,6 +445,12 @@ func (u *Uploads) VerifyPending(ctx context.Context) error {
 		return nil
 	}
 
+	if retired, err := u.repo.FailExhaustedUploadItems(ctx, maxVerifyAttempts, msgVerifyExhausted); err != nil {
+		slog.WarnContext(ctx, "could not retire exhausted upload items", "error", err)
+	} else if retired > 0 {
+		slog.InfoContext(ctx, "retired upload items that used every attempt", "count", retired)
+	}
+
 	items, err := u.repo.ClaimPendingUploadItems(ctx, maxVerifyAttempts, verifyBatch)
 	if err != nil {
 		return fmt.Errorf("claim pending upload items: %w", err)
@@ -460,7 +471,9 @@ func (u *Uploads) VerifyPending(ctx context.Context) error {
 			// retried for ever.
 			slog.WarnContext(ctx, "upload item verification failed",
 				"term", item.Term, "error", err)
-			if recErr := u.repo.RecordUploadItemAttempt(ctx, item.ID, ""); recErr != nil {
+			if recErr := u.repo.RecordUploadItemAttempt(
+				ctx, item.ID, maxVerifyAttempts, msgVerifyExhausted,
+			); recErr != nil {
 				slog.WarnContext(ctx, "could not record verification attempt",
 					"item_id", item.ID, "error", recErr)
 			}
@@ -497,12 +510,18 @@ func (u *Uploads) VerifyUpload(ctx context.Context, uploadID uuid.UUID) error {
 	}
 
 	verified := map[uuid.UUID]int{}
+	retryable := 0
 	for _, item := range items {
 		ok, err := u.verifyItem(ctx, item)
 		if err != nil {
+			if item.Attempts+1 < maxVerifyAttempts {
+				retryable++
+			}
 			slog.WarnContext(ctx, "upload item verification failed",
 				"term", item.Term, "upload_id", uploadID, "error", err)
-			if recErr := u.repo.RecordUploadItemAttempt(ctx, item.ID, ""); recErr != nil {
+			if recErr := u.repo.RecordUploadItemAttempt(
+				ctx, item.ID, maxVerifyAttempts, msgVerifyExhausted,
+			); recErr != nil {
 				slog.WarnContext(ctx, "could not record verification attempt",
 					"item_id", item.ID, "error", recErr)
 			}
@@ -520,8 +539,17 @@ func (u *Uploads) VerifyUpload(ctx context.Context, uploadID uuid.UUID) error {
 	for userID, count := range verified {
 		u.publishVerified(ctx, userID, count)
 	}
+	// Returning an error hands the retry to River, whose backoff is seconds,
+	// rather than to the hourly sweep: a learner watching the list should see
+	// a word settle within a minute or two, not hours later.
+	if retryable > 0 {
+		return fmt.Errorf("%w: %d word(s) of upload %s", errVerifyRetry, retryable, uploadID)
+	}
 	return nil
 }
+
+// errVerifyRetry marks a verification run that left words to retry.
+var errVerifyRetry = errors.New("upload verification will be retried")
 
 // Note codes on an upload item. The learner-facing list renders each through
 // t("uploads.note.<code>"); the English in `reason` is for the admin queue and
@@ -588,6 +616,11 @@ type accepted struct {
 // lookupEntry asks the dictionary, treating "not found" as a verdict rather
 // than a failure: the model still gets a say, because the dictionary has no
 // entry for a valid fixed phrase.
+//
+// An unreachable dictionary stays an error on every attempt, the last one
+// included. Treating it as "not found" would let the missing entry count as
+// evidence, and a good word would be rejected as "not English" because of a
+// network outage; out of attempts, the word is failed instead, never rejected.
 func (u *Uploads) lookupEntry(ctx context.Context, term string) (repository.DictionaryEntry, error) {
 	entry, err := u.dictionary.Lookup(ctx, term)
 	switch {

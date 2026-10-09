@@ -161,6 +161,23 @@
 }
 
 :root {
+  /*
+   * One rhythm for navigation: the sidebar collapsing, the active indicators
+   * sliding and the page entering all share this duration and curve, so they
+   * start and land together instead of three animations disagreeing.
+   */
+  --motion-nav: 240ms;
+  --ease-nav: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /*
+   * Whole-page changes the learner asked for, slower than navigation because
+   * they are the point of the click: the theme reveal and the language switch
+   * (lib/view-transition.ts). The reveal eases in and out, so the circle is
+   * seen leaving the cursor before it sweeps the page.
+   */
+  --motion-theme: 600ms;
+  --ease-theme: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-locale: 360ms;
+
   color-scheme: light;
   --surface: #ffffff;
   --surface-muted: #f8fafc;
@@ -266,9 +283,11 @@ select optgroup {
 
 @theme {
   --animate-shimmer: shimmer 1.6s ease-in-out infinite;
-  --animate-page-enter: page-enter 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  --animate-page-enter: page-enter var(--motion-nav) var(--ease-nav) both;
   --animate-float: float 4s ease-in-out infinite;
-  --animate-route-progress: route-progress 1.2s ease-in-out infinite;
+  --animate-orbit-slow: orbit 18s linear infinite;
+  --animate-orbit-slower: orbit 28s linear infinite;
+  --animate-orbit-reverse: orbit-reverse 22s linear infinite;
   --animate-confetti: confetti-fall 1.4s ease-out forwards;
 }
 
@@ -278,9 +297,341 @@ select optgroup {
   }
 }
 
+/* The dashboard banner carousel's countdown: the current dot fills over the
+   autoplay interval (its duration is set inline from BANNER_AUTOPLAY_MS). */
+@keyframes banner-dot-progress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+.banner-dot-progress {
+  animation: banner-dot-progress linear forwards;
+}
+
 /* Legacy inline aria-modal dialogs remain in several routes; keep the page behind them fixed. */
 html:has([aria-modal="true"]:not([data-scroll-lock="managed"])) {
   overflow: hidden;
+}
+
+/*
+ * Page transitions (View Transitions API, progressive enhancement).
+ *
+ * Nav links pass `viewTransition`, so the router swaps routes inside
+ * document.startViewTransition. Names are assigned only while a transition
+ * runs (`:active-view-transition`): a permanent view-transition-name makes
+ * <main> a stacking context, which would put the legacy inline dialogs inside
+ * it underneath the header and the bottom bar.
+ *
+ * The shell (header, sidebar, bottom bar) is shown live and never cross-fades,
+ * so its sliding indicators are the only thing that moves there. The old page
+ * fades out quickly while the new one runs its own `page-enter`, which is also
+ * the whole effect in browsers without view transitions.
+ */
+html:active-view-transition:not([data-vt]) .app-vt-main {
+  view-transition-name: app-main;
+}
+html:active-view-transition:not([data-vt]) .app-vt-header {
+  view-transition-name: app-header;
+}
+html:active-view-transition:not([data-vt]) .app-vt-sidebar {
+  view-transition-name: app-sidebar;
+}
+html:active-view-transition:not([data-vt]) .app-vt-bottom-nav {
+  view-transition-name: app-bottom-nav;
+}
+
+html:not([data-vt])::view-transition-old(root),
+html:not([data-vt])::view-transition-new(root),
+html:not([data-vt])::view-transition-old(app-header),
+html:not([data-vt])::view-transition-old(app-sidebar),
+html:not([data-vt])::view-transition-old(app-bottom-nav) {
+  animation: none;
+}
+html:not([data-vt])::view-transition-old(app-header),
+html:not([data-vt])::view-transition-old(app-sidebar),
+html:not([data-vt])::view-transition-old(app-bottom-nav) {
+  display: none;
+}
+html:not([data-vt])::view-transition-new(app-header),
+html:not([data-vt])::view-transition-new(app-sidebar),
+html:not([data-vt])::view-transition-new(app-bottom-nav),
+html:not([data-vt])::view-transition-group(app-header),
+html:not([data-vt])::view-transition-group(app-sidebar),
+html:not([data-vt])::view-transition-group(app-bottom-nav) {
+  animation: none;
+}
+
+html:not([data-vt])::view-transition-group(app-main) {
+  animation-duration: 0s;
+}
+html:not([data-vt])::view-transition-old(app-main) {
+  animation: vt-page-exit 120ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+html:not([data-vt])::view-transition-new(app-main) {
+  animation: none;
+}
+
+/*
+ * Transitions the app starts itself (lib/view-transition.ts) set
+ * <html data-vt>. The snapshots carry the whole animation, so CSS transitions
+ * are off while one runs: the new snapshot is live, and a colour or width
+ * transition starting inside it would play a second, slower animation under
+ * the first — the theme reveal would uncover half-blended colours.
+ */
+html[data-vt] *,
+html[data-vt] *::before,
+html[data-vt] *::after {
+  transition: none !important;
+}
+
+/* Theme without a click point (the OS changed it, or no origin): cross-fade. */
+html[data-vt="theme"]::view-transition-old(root) {
+  animation: vt-fade-out 260ms var(--ease-nav) both;
+}
+html[data-vt="theme"]::view-transition-new(root) {
+  animation: vt-fade-in 260ms var(--ease-nav) both;
+}
+
+/*
+ * Theme from a click: the new palette spreads out of the cursor as a circle
+ * until it covers the farthest corner (--vt-x/--vt-y/--vt-r are set on <html>
+ * for the duration). The old page stays still underneath; nothing blends.
+ */
+html[data-vt="reveal"]::view-transition-old(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+html[data-vt="reveal"]::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation: vt-reveal var(--motion-theme) var(--ease-theme) both;
+}
+@keyframes vt-reveal {
+  from {
+    clip-path: circle(0px at var(--vt-x) var(--vt-y));
+  }
+  to {
+    clip-path: circle(var(--vt-r) at var(--vt-x) var(--vt-y));
+  }
+}
+
+/*
+ * Language: every word changes and nothing else does, so nothing moves — the
+ * old words blur away while the new ones sharpen in, the whole page as one
+ * snapshot. Same duration and curve on both sides, added with plus-lighter, so
+ * the unchanged pixels stay solid throughout. The page content used to be its
+ * own group drifting up a few pixels; on a scrolled phone page that group
+ * painted over the sticky header and the bottom bar, which vanished for the
+ * length of the switch, and the drift read as the screen jerking.
+ */
+html[data-vt="locale"]::view-transition-old(root),
+html[data-vt="locale"]::view-transition-new(root) {
+  mix-blend-mode: plus-lighter;
+  animation-duration: var(--motion-locale);
+  animation-timing-function: var(--ease-nav);
+  animation-fill-mode: both;
+}
+html[data-vt="locale"]::view-transition-old(root) {
+  animation-name: vt-focus-out;
+}
+html[data-vt="locale"]::view-transition-new(root) {
+  animation-name: vt-focus-in;
+}
+
+/*
+ * Sidebar collapse: one DOM change, then the browser morphs the snapshots.
+ * Animating the sidebar's width instead re-laid-out the whole page column on
+ * every frame. The images keep their own size (`object-fit: none`) pinned to
+ * the left edge and are clipped by their moving box, so nothing is stretched:
+ * icons stay still, labels are wiped in or out by the edge while they fade,
+ * and the page slides with the sidebar's edge. The brand mark, the toggle and
+ * the nav morph on their own, because the collapsed layout stacks them.
+ */
+html[data-vt="sidebar"] .app-vt-sidebar {
+  view-transition-name: app-sidebar;
+}
+html[data-vt="sidebar"] .app-vt-brand {
+  view-transition-name: app-sidebar-brand;
+}
+html[data-vt="sidebar"] .app-vt-toggle {
+  view-transition-name: app-sidebar-toggle;
+}
+html[data-vt="sidebar"] .app-vt-nav {
+  view-transition-name: app-sidebar-nav;
+}
+html[data-vt="sidebar"] .app-vt-header {
+  view-transition-name: app-header;
+}
+html[data-vt="sidebar"] .app-vt-header-actions {
+  view-transition-name: app-header-actions;
+}
+html[data-vt="sidebar"] .app-vt-main {
+  view-transition-name: app-main;
+}
+html[data-vt="sidebar"]::view-transition-group(*) {
+  animation-duration: var(--motion-nav);
+  animation-timing-function: var(--ease-nav);
+}
+html[data-vt="sidebar"]::view-transition-old(*),
+html[data-vt="sidebar"]::view-transition-new(*) {
+  animation-duration: var(--motion-nav);
+  animation-timing-function: var(--ease-nav);
+  /* Explicit: the UA adds it through animation-name, which is replaced below. */
+  mix-blend-mode: plus-lighter;
+}
+/* Groups paint in DOM order; the sticky header stays over a scrolled page. */
+html[data-vt="sidebar"]::view-transition-group(app-header),
+html[data-vt="sidebar"]::view-transition-group(app-header-actions) {
+  z-index: 1;
+}
+html[data-vt="sidebar"]::view-transition-group(app-sidebar),
+html[data-vt="sidebar"]::view-transition-group(app-sidebar-nav),
+html[data-vt="sidebar"]::view-transition-group(app-header),
+html[data-vt="sidebar"]::view-transition-group(app-main) {
+  overflow: clip;
+}
+html[data-vt="sidebar"]::view-transition-old(app-sidebar),
+html[data-vt="sidebar"]::view-transition-new(app-sidebar),
+html[data-vt="sidebar"]::view-transition-old(app-sidebar-nav),
+html[data-vt="sidebar"]::view-transition-new(app-sidebar-nav),
+html[data-vt="sidebar"]::view-transition-old(app-header),
+html[data-vt="sidebar"]::view-transition-new(app-header),
+html[data-vt="sidebar"]::view-transition-old(app-main),
+html[data-vt="sidebar"]::view-transition-new(app-main) {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: none;
+  object-position: left top;
+}
+/*
+ * The page re-flows to its new width in one step, so its old and new layouts
+ * differ everywhere but the left edge; cross-fade them in the first half of
+ * the slide, while it moves fastest, rather than show both for all of it.
+ */
+html[data-vt="sidebar"]::view-transition-old(app-main),
+html[data-vt="sidebar"]::view-transition-new(app-main) {
+  animation-duration: calc(var(--motion-nav) / 2);
+}
+/*
+ * The sidebar panel and the header are opaque, and a cross-fade of two
+ * different widths lets the page show through the part only one of them
+ * covers. Instead the wider snapshot stays solid and is wiped by the moving
+ * edge, and the narrower one fades in over it (or is not needed at all: the
+ * header's search sits at the same offset in both).
+ */
+html[data-vt="sidebar"]::view-transition-old(app-sidebar),
+html[data-vt="sidebar"]::view-transition-new(app-sidebar),
+html[data-vt="sidebar"]::view-transition-old(app-header),
+html[data-vt="sidebar"]::view-transition-new(app-header) {
+  mix-blend-mode: normal;
+}
+html[data-vt="sidebar"][data-vt-dir="collapse"]::view-transition-old(
+    app-sidebar
+  ),
+html[data-vt="sidebar"][data-vt-dir="expand"]::view-transition-old(app-header) {
+  animation: none;
+}
+html[data-vt="sidebar"][data-vt-dir="collapse"]::view-transition-new(
+    app-sidebar
+  ),
+html[data-vt="sidebar"][data-vt-dir="expand"]::view-transition-new(app-header) {
+  animation-name: vt-fade-in;
+}
+html[data-vt="sidebar"][data-vt-dir="expand"]::view-transition-new(app-sidebar),
+html[data-vt="sidebar"][data-vt-dir="collapse"]::view-transition-new(
+    app-header
+  ) {
+  animation: none;
+}
+html[data-vt="sidebar"][data-vt-dir="expand"]::view-transition-old(app-sidebar),
+html[data-vt="sidebar"][data-vt-dir="collapse"]::view-transition-old(
+    app-header
+  ) {
+  display: none;
+}
+/*
+ * Expanding, the labels arrive once the edge has started to sweep past them
+ * rather than under the narrow box; both sides of the cross-fade wait together
+ * so the icons, present in both, stay solid.
+ */
+html[data-vt="sidebar"][data-vt-dir="expand"]::view-transition-old(
+    app-sidebar-nav
+  ) {
+  animation-name: vt-fade-out-late;
+}
+html[data-vt="sidebar"][data-vt-dir="expand"]::view-transition-new(
+    app-sidebar-nav
+  ) {
+  animation-name: vt-fade-in-late;
+}
+
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in-late {
+  0%,
+  35% {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-out-late {
+  0%,
+  35% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-focus-out {
+  to {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+@keyframes vt-focus-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+
+@keyframes vt-page-exit {
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/*
+ * No double-tap zoom on controls. A double tap on a bottom-bar tab zoomed the
+ * page, and the second tap then landed on the neighbouring tab. `manipulation`
+ * keeps pinch-zoom (an accessibility need) and drops the 300 ms tap delay.
+ */
+a,
+button,
+[role="button"],
+[role="tab"],
+label,
+summary {
+  touch-action: manipulation;
 }
 
 @keyframes page-enter {
@@ -308,12 +659,21 @@ html:has([aria-modal="true"]:not([data-scroll-lock="managed"])) {
   }
 }
 
-@keyframes route-progress {
+@keyframes orbit {
   0% {
-    transform: translateX(-100%);
+    transform: rotate(0deg);
   }
   100% {
-    transform: translateX(250%);
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbit-reverse {
+  0% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(0deg);
   }
 }
 
@@ -332,7 +692,9 @@ html:has([aria-modal="true"]:not([data-scroll-lock="managed"])) {
   .animate-shimmer,
   .animate-page-enter,
   .animate-float,
-  .animate-route-progress,
+  .animate-orbit-slow,
+  .animate-orbit-slower,
+  .animate-orbit-reverse,
   .animate-confetti {
     animation: none !important;
   }

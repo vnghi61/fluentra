@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"golang.org/x/image/draw"
+	_ "golang.org/x/image/webp" // register the WebP decoder: WebP is on the intake allow-list
 )
 
 // Image rendition limits and outputs (WO 18 §5).

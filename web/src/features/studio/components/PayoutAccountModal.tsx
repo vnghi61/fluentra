@@ -8,6 +8,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -139,12 +140,24 @@ export function PayoutAccountModal({
         if (!open && !upsertMutation.isPending) onClose();
       }}
     >
-      <DialogContent>
+      <DialogContent showClose={!upsertMutation.isPending}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <Building2 className="h-5 w-5 text-primary-accent" />
-            {t("studio.payout.accountTitle", "Payout Bank Account")}
-          </DialogTitle>
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary-accent">
+              <Building2 className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <DialogTitle className="break-words">
+                {t("studio.payout.accountTitle", "Payout Bank Account")}
+              </DialogTitle>
+              <DialogDescription>
+                {t(
+                  "studio.payout.accountDescription",
+                  "Add the bank account where you want to receive your earnings.",
+                )}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
         <form
           onSubmit={(e) => {
@@ -152,26 +165,35 @@ export function PayoutAccountModal({
           }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <DialogBody>
-            <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-text-muted">
-              <ShieldCheck className="h-5 w-5 shrink-0 text-primary-accent" />
+          <DialogBody className="space-y-5">
+            <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 text-base leading-relaxed text-text-muted">
+              <ShieldCheck
+                className="mt-0.5 h-5 w-5 shrink-0 text-primary-accent"
+                aria-hidden="true"
+              />
               <p>
                 {t(
                   "studio.payout.securityNotice",
-                  "Your bank details are encrypted and securely stored for earnings payout. Account numbers are never logged or publicly exposed (BR-STUDIO-09).",
+                  "Your bank details are protected and used only to pay your course earnings.",
                 )}
               </p>
             </div>
 
             {error && (
-              <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger font-medium">
+              <div
+                role="alert"
+                className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger-accent font-medium"
+              >
                 {error}
               </div>
             )}
 
             {success && (
-              <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success font-medium">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <div
+                role="status"
+                className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success-accent font-medium"
+              >
+                <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {t(
                   "studio.payout.saveSuccess",
                   "Payout account saved successfully!",
@@ -182,7 +204,7 @@ export function PayoutAccountModal({
             <div>
               <label
                 htmlFor="bank-code-select"
-                className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5"
+                className="block text-sm font-semibold text-text mb-2"
               >
                 {t("studio.payout.bankLabel", "Bank")}
               </label>
@@ -192,6 +214,7 @@ export function PayoutAccountModal({
                 value={bankCode}
                 options={bankOptions}
                 onChange={(next) => setBankCode(next)}
+                disabled={upsertMutation.isPending}
                 placeholder={t("studio.payout.selectBank", "Select a bank...")}
                 searchPlaceholder={t(
                   "studio.payout.searchBank",
@@ -204,13 +227,15 @@ export function PayoutAccountModal({
             <div>
               <label
                 htmlFor="account-number-input"
-                className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5"
+                className="block text-sm font-semibold text-text mb-2"
               >
                 {t("studio.payout.accountNumberLabel", "Account Number")}
               </label>
               <Input
                 id="account-number-input"
                 type="text"
+                inputMode="numeric"
+                autoComplete="off"
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
                 placeholder={t(
@@ -218,6 +243,7 @@ export function PayoutAccountModal({
                   "e.g. 1017588888",
                 )}
                 required
+                disabled={upsertMutation.isPending}
                 className="w-full"
               />
             </div>
@@ -225,13 +251,15 @@ export function PayoutAccountModal({
             <div>
               <label
                 htmlFor="account-holder-input"
-                className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5"
+                className="block text-sm font-semibold text-text mb-2"
               >
                 {t("studio.payout.accountHolderLabel", "Account Holder Name")}
               </label>
               <Input
                 id="account-holder-input"
                 type="text"
+                autoComplete="name"
+                aria-describedby="account-holder-help"
                 value={accountHolder}
                 onChange={(e) => setAccountHolder(e.target.value.toUpperCase())}
                 placeholder={t(
@@ -239,9 +267,13 @@ export function PayoutAccountModal({
                   "e.g. NGUYEN VAN A",
                 )}
                 required
+                disabled={upsertMutation.isPending}
                 className="w-full uppercase font-medium"
               />
-              <span className="text-[11px] text-text-muted mt-1 block">
+              <span
+                id="account-holder-help"
+                className="text-sm leading-relaxed text-text-muted mt-2 block"
+              >
                 {t(
                   "studio.payout.accountHolderHelp",
                   "Unaccented uppercase letters matching your bank account.",
@@ -249,12 +281,13 @@ export function PayoutAccountModal({
               </span>
             </div>
           </DialogBody>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse sm:flex-row">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={upsertMutation.isPending}
+              className="w-full sm:w-auto"
             >
               {t("app.cancel", "Cancel")}
             </Button>
@@ -262,6 +295,8 @@ export function PayoutAccountModal({
               type="submit"
               variant="primary"
               disabled={upsertMutation.isPending}
+              isLoading={upsertMutation.isPending}
+              className="w-full sm:w-auto"
             >
               {upsertMutation.isPending
                 ? t("app.saving", "Saving...")

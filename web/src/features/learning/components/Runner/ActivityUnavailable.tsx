@@ -43,7 +43,7 @@ export const ActivityUnavailable: React.FC<ActivityUnavailableProps> = ({
           />
         </div>
         <CardTitle>{t("runner.activityUnavailable")}</CardTitle>
-        <CardDescription>
+        <CardDescription className="text-base leading-relaxed">
           {t("runner.activityUnavailableDesc")}
           {kind ? ` (${kind})` : null}
         </CardDescription>

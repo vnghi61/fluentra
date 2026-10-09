@@ -25,13 +25,12 @@ export function AdminModuleSwitcher({
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
-        <span>
+        <span className="min-w-0 truncate">
           {t("page.adminSectionPicker", "Section: {{section}}", {
             section: activeLabel,
-          })}{" "}
-          ▾
+          })}
         </span>
-        <ChevronDown className="h-4 w-4" aria-hidden="true" />
+        <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
       </button>
       <SheetDialog
         open={open}
@@ -53,7 +52,7 @@ export function AdminModuleSwitcher({
                   void navigate({ to: section.path });
                 }}
               >
-                <Icon className="h-5 w-5" aria-hidden="true" />
+                <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
                 {t(section.labelKey, section.labelFallback)}
               </button>
             );

@@ -16,7 +16,7 @@ export const QuestsWidget: React.FC<QuestsWidgetProps> = ({ quests = [] }) => {
 
   if (quests.length === 0) {
     return (
-      <p className="text-xs text-text-muted">
+      <p className="text-sm text-text-muted">
         {t(
           "gamification.noQuests",
           "No active quests right now. Check back tomorrow!",
@@ -28,16 +28,16 @@ export const QuestsWidget: React.FC<QuestsWidgetProps> = ({ quests = [] }) => {
   return (
     <Card>
       <CardHeader className="p-4 pb-3 md:p-5 md:pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mission/10 text-mission">
               <Compass className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
-              <CardTitle className="text-base font-semibold text-text">
+              <CardTitle className="text-base font-semibold leading-snug text-text">
                 {t("gamification.questsTitle", "Active Quests")}
               </CardTitle>
-              <p className="text-xs text-text-muted">
+              <p className="text-sm text-text-muted">
                 {t(
                   "gamification.questsSubtitle",
                   "Complete tasks to earn bonus XP",
@@ -91,23 +91,23 @@ export const QuestsWidget: React.FC<QuestsWidgetProps> = ({ quests = [] }) => {
                 className="border-t border-border-subtle pt-3 space-y-2"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h4 className="text-xs font-bold text-text">
+                  <div className="min-w-0">
+                    <h4 className="break-words text-sm font-semibold text-text">
                       {quest.name}
                     </h4>
-                    <p className="text-[11px] text-text-muted line-clamp-1">
+                    <p className="text-sm text-text-muted line-clamp-1">
                       {quest.description}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-1 text-xs font-semibold text-xp shrink-0">
-                    <Gift className="h-3.5 w-3.5" aria-hidden="true" />
+                  <div className="flex items-center gap-1 text-sm font-semibold text-xp shrink-0">
+                    <Gift className="h-4 w-4" aria-hidden="true" />
                     <span>+{quest.reward_xp} XP</span>
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[10px] font-medium text-text-muted">
+                  <div className="flex justify-between text-sm font-medium tabular-nums text-text-muted">
                     <span>
                       {currentProgress} / {totalTarget}
                     </span>

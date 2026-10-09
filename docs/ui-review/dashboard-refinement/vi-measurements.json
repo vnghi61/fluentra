@@ -3,48 +3,48 @@
     "name": "vi-light-320",
     "viewport": 320,
     "scrollWidth": 320,
-    "mainHeight": 1716
+    "mainHeight": 2482
   },
   {
     "name": "vi-light-390",
     "viewport": 390,
     "scrollWidth": 390,
-    "mainHeight": 1648
+    "mainHeight": 2320
   },
   {
     "name": "vi-light-768",
     "viewport": 768,
     "scrollWidth": 768,
-    "mainHeight": 2040
+    "mainHeight": 2653
   },
   {
     "name": "vi-light-1440",
     "viewport": 1440,
     "scrollWidth": 1440,
-    "mainHeight": 1385
+    "mainHeight": 1363
   },
   {
     "name": "vi-dark-320",
     "viewport": 320,
     "scrollWidth": 320,
-    "mainHeight": 1716
+    "mainHeight": 2482
   },
   {
     "name": "vi-dark-390",
     "viewport": 390,
     "scrollWidth": 390,
-    "mainHeight": 1648
+    "mainHeight": 2320
   },
   {
     "name": "vi-dark-768",
     "viewport": 768,
     "scrollWidth": 768,
-    "mainHeight": 2040
+    "mainHeight": 2653
   },
   {
     "name": "vi-dark-1440",
     "viewport": 1440,
     "scrollWidth": 1440,
-    "mainHeight": 1385
+    "mainHeight": 1363
   }
 ]

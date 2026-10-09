@@ -2,6 +2,7 @@ import React from "react";
 
 export interface BrandMarkProps {
   className?: string;
+  decorative?: boolean;
 }
 
 /**
@@ -20,12 +21,16 @@ export interface BrandMarkProps {
  * measured by rasterising both at 256px and comparing masks. The residue is the
  * trace's own hand-drawn wobble, which a geometric mark is meant to lose.
  */
-export const BrandMark: React.FC<BrandMarkProps> = ({ className }) => (
+export const BrandMark: React.FC<BrandMarkProps> = ({
+  className,
+  decorative,
+}) => (
   <svg
     viewBox="0 0 1024 1024"
     fill="none"
-    role="img"
-    aria-label="Fluentra"
+    {...(decorative
+      ? { "aria-hidden": true }
+      : { role: "img", "aria-label": "Fluentra" })}
     className={className}
   >
     <g

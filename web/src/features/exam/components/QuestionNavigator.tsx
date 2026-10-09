@@ -36,11 +36,11 @@ export function QuestionNavigator({
   );
   return (
     <div className="space-y-4">
-      <h2 className="text-sm font-bold text-text">
+      <h2 className="text-base font-semibold leading-snug text-text">
         {t("exam.parts.questionList")}
       </h2>
       <div
-        className="flex gap-1"
+        className="flex flex-wrap gap-2"
         role="group"
         aria-label={t("exam.parts.questionList")}
       >
@@ -51,7 +51,7 @@ export function QuestionNavigator({
             aria-pressed={filter === key}
             onClick={() => setFilter(key)}
             className={cn(
-              "min-h-[44px] rounded-lg px-2 text-xs",
+              "min-h-11 rounded-lg px-3 text-sm font-semibold",
               filter === key
                 ? "bg-primary text-primary-fg"
                 : "text-text-muted hover:bg-surface-muted",
@@ -111,7 +111,7 @@ export function QuestionNavigator({
                   {slot.number}
                   {slot.answered && (
                     <>
-                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                      <Check className="h-4 w-4" aria-hidden="true" />
                       <span className="sr-only">
                         {t("exam.parts.questionFilterAnswered")}
                       </span>

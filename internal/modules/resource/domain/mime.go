@@ -14,6 +14,8 @@ const (
 	MIMEDOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 	MIMEPPT  = "application/vnd.ms-powerpoint"
 	MIMEPPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+	MIMEXLS  = "application/vnd.ms-excel"
+	MIMEXLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 	MIMEPNG  = "image/png"
 	MIMEJPEG = "image/jpeg"
@@ -33,6 +35,8 @@ var allowedMIMETypes = map[string]bool{
 	MIMEDOCX: true,
 	MIMEPPT:  true,
 	MIMEPPTX: true,
+	MIMEXLS:  true,
+	MIMEXLSX: true,
 
 	MIMEPNG:  true,
 	MIMEJPEG: true,
@@ -92,7 +96,8 @@ func KindOf(mime string) MIMEKind {
 	normalized := NormalizeMIME(mime)
 	switch {
 	case normalized == MIMEPDF || normalized == MIMEDOC || normalized == MIMEDOCX ||
-		normalized == MIMEPPT || normalized == MIMEPPTX:
+		normalized == MIMEPPT || normalized == MIMEPPTX ||
+		normalized == MIMEXLS || normalized == MIMEXLSX:
 		return KindDocument
 	case strings.HasPrefix(normalized, "image/"):
 		return KindImage
@@ -136,11 +141,11 @@ func SniffAndValidateMIME(declared string, head []byte) (string, error) {
 func resolveContainerMIME(detected, declared string, head []byte) string {
 	switch detected {
 	case "application/zip":
-		if declared == MIMEDOCX || declared == MIMEPPTX {
+		if declared == MIMEDOCX || declared == MIMEPPTX || declared == MIMEXLSX {
 			return declared
 		}
 	case "application/octet-stream":
-		if (declared == MIMEDOC || declared == MIMEPPT) && isOLE2Header(head) {
+		if (declared == MIMEDOC || declared == MIMEPPT || declared == MIMEXLS) && isOLE2Header(head) {
 			return declared
 		}
 	}

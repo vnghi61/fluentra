@@ -134,6 +134,7 @@ func toSession(row sqlcauth.CoreSession) domain.Session {
 		RevokedAt:     row.RevokedAt,
 
 		AbsoluteExpiresAt: row.AbsoluteExpiresAt,
+		IdleWindow:        durationOf(row.IdleWindow),
 		TrustedDeviceID:   row.TrustedDeviceID,
 	}
 }

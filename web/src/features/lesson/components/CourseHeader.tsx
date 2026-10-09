@@ -92,7 +92,7 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-primary-accent">
                 <GraduationCap className="h-5 w-5" aria-hidden="true" />
-                <span className="text-xs font-bold uppercase tracking-wider">
+                <span className="text-xs font-semibold uppercase tracking-wider">
                   {t("learn.courseBadge", "Course Syllabus")}
                 </span>
               </div>
@@ -104,8 +104,8 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
                   </Badge>
                 )}
                 {totalDurationMinutes > 0 && (
-                  <span className="inline-flex items-center gap-1 text-xs text-text-muted">
-                    <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span className="inline-flex items-center gap-1.5 text-sm text-text-muted">
+                    <Clock className="h-4 w-4" aria-hidden="true" />
                     {formatDuration(t, totalDurationMinutes)}
                   </span>
                 )}
@@ -113,11 +113,11 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
             </div>
 
             <div>
-              <h1 className="text-2xl md:text-3xl font-extrabold text-text tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-bold leading-tight tracking-tight text-text break-words">
                 {courseTitle(t, course)}
               </h1>
               {course.description && (
-                <p className="mt-1 text-sm md:text-base text-text-muted">
+                <p className="mt-1 max-w-prose text-base leading-relaxed text-text-muted">
                   {courseDescription(t, course)}
                 </p>
               )}
@@ -125,8 +125,8 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
 
             {totalLessons > 0 && (
               <div className="space-y-2 pt-1">
-                <div className="flex items-center justify-between text-xs text-text-muted">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between gap-2 text-sm text-text-muted">
+                  <div className="flex min-w-0 items-center gap-2">
                     <BookMarked
                       className="h-4 w-4 text-primary-accent shrink-0"
                       aria-hidden="true"
@@ -139,7 +139,9 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
                       })}
                     </span>
                   </div>
-                  <span className="font-semibold text-text">{percent}%</span>
+                  <span className="shrink-0 font-semibold tabular-nums text-text">
+                    {percent}%
+                  </span>
                 </div>
                 <div
                   role="progressbar"
@@ -175,7 +177,7 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border-subtle/60">
             <div className="flex items-center gap-2">
               {isPaid ? (
-                <span className="text-base font-extrabold text-primary-accent font-mono">
+                <span className="text-base font-bold text-primary-accent font-mono">
                   {formatVnd(effectivePrice)}
                 </span>
               ) : (
@@ -185,7 +187,7 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
               )}
               {isOwned && (
                 <Badge variant="success" className="gap-1 text-xs">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                   {t("learn.courseOwned", "Enrolled")}
                 </Badge>
               )}
@@ -196,11 +198,11 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
                 variant="primary"
                 size="sm"
                 onClick={onBuyOrClaim}
-                className="gap-1.5 text-xs font-bold"
+                className="gap-2"
               >
                 {isPaid ? (
                   <>
-                    <ShoppingBag className="h-3.5 w-3.5" />
+                    <ShoppingBag className="h-4 w-4" aria-hidden="true" />
                     {t("learn.buyCourseBtn", {
                       price: effectivePrice.toLocaleString("vi-VN"),
                       defaultValue: `Buy Course • ${formatVnd(effectivePrice)}`,
@@ -208,7 +210,7 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                     {t("learn.claimCourseBtn", "Enroll for Free")}
                   </>
                 )}

@@ -6,7 +6,7 @@ status: PLANNED
 phase: 2
 owner: "@backend-team"
 schema: core
-tables: [admin_actions, feature_flags, admin_notes, moderation_items]
+tables: [admin_actions, feature_flags, admin_notes, moderation_items, banners]
 depends_on: [user, rbac, audit, auth, content, cache]
 depended_on_by: []
 spec_version: 1.0.0
@@ -34,6 +34,7 @@ Global policy: [`/TESTING_GUIDELINE.md`](../../../TESTING_GUIDELINE.md).
 - Self-administration is refused
 - Every write produces an audit entry with the correct actor
 - Flag changes propagate within the cache TTL
+- Banner links refuse `javascript:`, `data:` and protocol-relative values; the active list honours the window, the order and the limit of three
 <!-- END GENERATED: test-focus -->
 
 ## Edge cases that have bitten similar modules

@@ -2128,6 +2128,325 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /banners/active:
+    get:
+      tags: [admin]
+      operationId: adminListActiveBanners
+      summary: List the announcement banners showing now.
+      description: >-
+        The banners a signed-in learner's dashboard shows right now: switched
+        on, and with the current time inside the optional
+        `starts_at`..`ends_at` window. At most three, highest `priority` first
+        and then newest first.
+
+
+        Any signed-in account may read this; it carries none of the
+        administrative fields (`created_by`, `priority`, the window). The list
+        is cached in-process for 30 seconds, so a change made in the admin
+        screen reaches every learner within one cache generation. `title`,
+        `body` and `cta_label` are plain text and must be rendered as text,
+        never as HTML.
+      x-permission: self
+      responses:
+        '200':
+          description: The banners to show, possibly none.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveBannerList'
+              examples:
+                none:
+                  summary: Nothing is being announced.
+                  value:
+                    items: []
+                one:
+                  summary: One promotion with a call to action.
+                  value:
+                    items:
+                      - id: 0199c3e4-5f60-7a82-9cde-f01234567890
+                        kind: announcement
+                        title: IELTS mock week
+                        body: Take a full mock test free until Sunday.
+                        cta_label: Start a mock test
+                        cta_url: /exams
+                        tone: promo
+                        dismissible: true
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /admin/banners:
+    get:
+      tags: [admin]
+      operationId: adminListBanners
+      summary: List every announcement banner.
+      description: >-
+        Every banner, live or not, unpaginated: the set is small by design and
+        an administrator needs all of it to see what is scheduled, what is
+        showing and what has expired. Ordered by `priority` descending, then
+        newest first, and capped at 200.
+      x-permission: system.flags
+      responses:
+        '200':
+          description: Every banner.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BannerList'
+              example:
+                items:
+                  - id: 0199c3e4-5f60-7a82-9cde-f01234567890
+                    kind: announcement
+                    title: IELTS mock week
+                    body: Take a full mock test free until Sunday.
+                    cta_label: Start a mock test
+                    cta_url: /exams
+                    tone: promo
+                    is_active: true
+                    priority: 10
+                    dismissible: true
+                    starts_at: '2026-10-05T00:00:00Z'
+                    ends_at: '2026-10-12T00:00:00Z'
+                    created_by: 0199a1c2-3d4e-7f80-9abc-def012345678
+                    created_at: '2026-10-01T09:15:00Z'
+                    updated_at: '2026-10-01T09:15:00Z'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [admin]
+      operationId: adminCreateBanner
+      summary: Create an announcement banner.
+      description: >-
+        Defines a new banner, off by default. `cta_label` and `cta_url` are set
+        together or not at all, and `cta_url` must be an internal path (`/...`,
+        never `//...`) or an `https://` URL; `javascript:`, `data:` and
+        protocol-relative links are refused. When both `starts_at` and
+        `ends_at` are given, `ends_at` must be later. Text is stored and served
+        as plain text. The write is recorded in the audit log.
+      x-permission: system.flags
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BannerRequest'
+            example:
+              title: IELTS mock week
+              body: Take a full mock test free until Sunday.
+              cta_label: Start a mock test
+              cta_url: /exams
+              tone: promo
+              is_active: true
+              priority: 10
+              dismissible: true
+              starts_at: '2026-10-05T00:00:00Z'
+              ends_at: '2026-10-12T00:00:00Z'
+      responses:
+        '201':
+          description: The banner was created.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Banner'
+              example:
+                id: 0199c3e4-5f60-7a82-9cde-f01234567890
+                kind: announcement
+                title: IELTS mock week
+                body: Take a full mock test free until Sunday.
+                cta_label: Start a mock test
+                cta_url: /exams
+                tone: promo
+                is_active: true
+                priority: 10
+                dismissible: true
+                starts_at: '2026-10-05T00:00:00Z'
+                ends_at: '2026-10-12T00:00:00Z'
+                created_by: 0199a1c2-3d4e-7f80-9abc-def012345678
+                created_at: '2026-10-01T09:15:00Z'
+                updated_at: '2026-10-01T09:15:00Z'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /admin/banners/image-upload-intent:
+    post:
+      tags: [admin]
+      operationId: adminRequestBannerImageUpload
+      summary: Request a direct upload for a banner image.
+      description: >-
+        Issues a presigned upload into a holding area for one JPEG, PNG or WebP
+        image of at most 5 MB, valid for ten minutes. Nothing is published by
+        the upload itself: `POST /admin/banners/images` checks and processes it.
+      x-permission: system.flags
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BannerImageUploadIntentRequest'
+            example:
+              content_type: image/png
+      responses:
+        '200':
+          description: The upload intent.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BannerImageUploadIntent'
+              example:
+                upload_url: https://storage.example.com/fluentra-media
+                method: POST
+                form_data:
+                  key: banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899
+                file_field: file
+                object_key: banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899
+                expires_at: '2026-10-08T09:25:00Z'
+                max_bytes: 5242880
+                content_type: image/png
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /admin/banners/images:
+    post:
+      tags: [admin]
+      operationId: adminProcessBannerImage
+      summary: Check and publish an uploaded banner image.
+      description: >-
+        Reads the uploaded object and refuses it unless its bytes are a JPEG,
+        PNG or WebP of at most 40 megapixels. It then applies the EXIF
+        orientation, scales the image to fit 1600x900 and re-encodes it as
+        JPEG, which drops every piece of metadata (camera, GPS). The raw upload
+        is deleted either way. The result is attached to no banner until a
+        create or update names its `image_key`.
+      x-permission: system.flags
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BannerImageRequest'
+            example:
+              object_key: banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899
+      responses:
+        '201':
+          description: The processed image.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BannerImage'
+              example:
+                image_key: banners/images/0199c3e4-5f60-7a82-9cde-f01234567899.jpg
+                image_url: https://storage.example.com/fluentra-media/banners/images/0199c3e4-5f60-7a82-9cde-f01234567899.jpg?X-Amz-Signature=abc
+                width: 1600
+                height: 900
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /admin/banners/{id}:
+    put:
+      tags: [admin]
+      operationId: adminUpdateBanner
+      summary: Replace an announcement banner.
+      description: >-
+        A full replacement of the banner's editable fields, under the same
+        rules as creation. Switching a banner off is this call with
+        `is_active: false`. The change invalidates the active-banner cache on
+        the instance that served it and is audited.
+      x-permission: system.flags
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The banner to replace.
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BannerRequest'
+            example:
+              title: IELTS mock week
+              body: Take a full mock test free until Sunday.
+              cta_label: Start a mock test
+              cta_url: https://fluentra.dev/ielts
+              tone: promo
+              is_active: false
+              priority: 10
+              dismissible: true
+              starts_at: null
+              ends_at: null
+      responses:
+        '200':
+          description: The banner as it now stands.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Banner'
+              example:
+                id: 0199c3e4-5f60-7a82-9cde-f01234567890
+                kind: announcement
+                title: IELTS mock week
+                body: Take a full mock test free until Sunday.
+                cta_label: Start a mock test
+                cta_url: https://fluentra.dev/ielts
+                tone: promo
+                is_active: false
+                priority: 10
+                dismissible: true
+                starts_at: null
+                ends_at: null
+                created_by: 0199a1c2-3d4e-7f80-9abc-def012345678
+                created_at: '2026-10-01T09:15:00Z'
+                updated_at: '2026-10-08T06:25:00Z'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    delete:
+      tags: [admin]
+      operationId: adminDeleteBanner
+      summary: Delete an announcement banner.
+      description: >-
+        Removes the banner for good. To stop showing it while keeping it for
+        later, switch it off instead. The deletion is audited.
+      x-permission: system.flags
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The banner to delete.
+          schema: { type: string, format: uuid }
+      responses:
+        '204':
+          description: The banner is gone. No body.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /admin/roles:
     get:
       tags: [rbac]
@@ -2398,7 +2717,11 @@ paths:
       tags: [questionbank]
       operationId: getQuestionStats
       summary: Empirical difficulty and discrimination statistics.
-      description: Returns empirical statistics from real learner attempts.
+      description: >-
+        Returns empirical statistics from real learner attempts. A question
+        whose statistics have not been computed yet answers 200 with zero
+        attempts, null indices and a null `last_computed_at`; 404 means the
+        question itself does not exist.
       x-permission: questionbank.read
       parameters:
         - name: id
@@ -8955,6 +9278,28 @@ components:
       $ref: ./components/admin.yaml#/CreateFeatureFlagRequest
     UpdateFeatureFlagRequest:
       $ref: ./components/admin.yaml#/UpdateFeatureFlagRequest
+    Banner:
+      $ref: ./components/admin.yaml#/Banner
+    BannerTone:
+      $ref: ./components/admin.yaml#/BannerTone
+    BannerKind:
+      $ref: ./components/admin.yaml#/BannerKind
+    BannerList:
+      $ref: ./components/admin.yaml#/BannerList
+    BannerRequest:
+      $ref: ./components/admin.yaml#/BannerRequest
+    ActiveBanner:
+      $ref: ./components/admin.yaml#/ActiveBanner
+    ActiveBannerList:
+      $ref: ./components/admin.yaml#/ActiveBannerList
+    BannerImageUploadIntentRequest:
+      $ref: ./components/admin.yaml#/BannerImageUploadIntentRequest
+    BannerImageUploadIntent:
+      $ref: ./components/admin.yaml#/BannerImageUploadIntent
+    BannerImageRequest:
+      $ref: ./components/admin.yaml#/BannerImageRequest
+    BannerImage:
+      $ref: ./components/admin.yaml#/BannerImage
     AdminAIUsageResponse:
       $ref: ./components/admin.yaml#/AdminAIUsageResponse
     AdminAIUsageItem:

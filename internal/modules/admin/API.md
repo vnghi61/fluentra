@@ -6,7 +6,7 @@ status: PLANNED
 phase: 2
 owner: "@backend-team"
 schema: core
-tables: [admin_actions, feature_flags, admin_notes, moderation_items]
+tables: [admin_actions, feature_flags, admin_notes, moderation_items, banners]
 depends_on: [user, rbac, audit, auth, content, cache]
 depended_on_by: []
 spec_version: 1.0.0
@@ -38,6 +38,13 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `POST` | `/api/v1/admin/flags` | `system.flags` | Create a feature flag |
 | `PUT` | `/api/v1/admin/flags/{key}` | `system.flags` | Update a feature flag |
 | `DELETE` | `/api/v1/admin/flags/{key}` | `system.flags` | Delete a feature flag |
+| `GET` | `/api/v1/banners/active` | `self` | The dashboard banners showing now (at most 3 announcements and 6 slides) |
+| `GET` | `/api/v1/admin/banners` | `system.flags` | List every banner |
+| `POST` | `/api/v1/admin/banners` | `system.flags` | Create a banner |
+| `PUT` | `/api/v1/admin/banners/{id}` | `system.flags` | Replace a banner |
+| `DELETE` | `/api/v1/admin/banners/{id}` | `system.flags` | Delete a banner |
+| `POST` | `/api/v1/admin/banners/image-upload-intent` | `system.flags` | Presigned upload for a banner image |
+| `POST` | `/api/v1/admin/banners/images` | `system.flags` | Check and publish an uploaded banner image |
 | `GET` | `/api/v1/admin/dashboard` | `admin.dashboard` | Composed KPI summary |
 | `GET` | `/api/v1/admin/moderation` | `moderation.read` | Moderation queue |
 | `POST` | `/api/v1/admin/moderation/{id}/resolve` | `moderation.act` | Resolve a queue item |
@@ -169,6 +176,83 @@ Delete a feature flag
 | Errors | standard set |
 | Notes | Evaluations of the key then return false |
 
+### `GET /api/v1/banners/active`
+
+The dashboard banners showing now (at most 3 announcements and 6 slides)
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Any signed-in account; no admin fields; cached 30 s |
+
+### `GET /api/v1/admin/banners`
+
+List every banner
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Unpaginated, capped at 200 |
+
+### `POST /api/v1/admin/banners`
+
+Create a banner
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 201 |
+| Errors | standard set |
+| Notes | Audited as `admin.banner_created` |
+
+### `PUT /api/v1/admin/banners/{id}`
+
+Replace a banner
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Audited as `admin.banner_updated`; invalidates the active cache |
+
+### `DELETE /api/v1/admin/banners/{id}`
+
+Delete a banner
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 204 |
+| Errors | standard set |
+| Notes | Audited as `admin.banner_deleted`; deletes its image |
+
+### `POST /api/v1/admin/banners/image-upload-intent`
+
+Presigned upload for a banner image
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | JPEG, PNG or WebP, at most 5 MB, ten minutes; key scoped to the admin |
+
+### `POST /api/v1/admin/banners/images`
+
+Check and publish an uploaded banner image
+
+| | |
+|---|---|
+| Permission | `system.flags` |
+| Success | 201 |
+| Errors | standard set |
+| Notes | Sniffs the bytes, refuses over 40 MP, fits 1600x900, re-encodes JPEG without metadata, deletes the raw upload |
+
 ### `GET /api/v1/admin/dashboard`
 
 Composed KPI summary
@@ -233,6 +317,10 @@ Start a time-boxed impersonation session
 | `USER_NOT_FOUND` | 404 | The target user account does not exist |
 | `FEATURE_FLAG_NOT_FOUND` | 404 | The requested feature flag does not exist |
 | `FEATURE_FLAG_ALREADY_EXISTS` | 409 | A feature flag with that key already exists |
+| `BANNER_INVALID` | 422 | A banner field failed validation; `errors[]` names each field |
+| `BANNER_NOT_FOUND` | 404 | No banner has that id |
+| `BANNER_IMAGE_INVALID` | 422 | The image type is not JPEG, PNG or WebP, or the upload is not a usable image |
+| `BANNER_IMAGES_UNAVAILABLE` | 503 | Storage is not configured or not reachable |
 <!-- END GENERATED: api-errors -->
 
 ## Rate limits

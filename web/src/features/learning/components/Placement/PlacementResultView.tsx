@@ -56,13 +56,15 @@ export const PlacementResultView: React.FC<PlacementResultViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-surface-base px-4 py-8 md:py-12">
+    <div className="min-h-screen bg-surface-muted px-4 py-8 md:py-12">
       <div className="mx-auto max-w-3xl space-y-6">
         <section className="space-y-4 rounded-2xl border border-primary/30 bg-primary/5 p-6 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-primary">
+          <p className="text-sm font-semibold uppercase tracking-wide text-primary-accent">
             {t("placement.result.eyebrow")}
           </p>
-          <h1 className="text-5xl font-extrabold text-text">{result.level}</h1>
+          <h1 className="text-5xl font-bold leading-none tracking-tight text-text">
+            {result.level}
+          </h1>
           <p className="text-lg text-text-muted">{levelNames[result.level]}</p>
           <dl className="grid grid-cols-2 gap-3 pt-2 sm:grid-cols-4">
             {MEASURED.map((skill) => (
@@ -70,10 +72,10 @@ export const PlacementResultView: React.FC<PlacementResultViewProps> = ({
                 key={skill}
                 className="rounded-xl border border-border-subtle bg-surface-card p-3"
               >
-                <dt className="text-xs text-text-muted">
+                <dt className="text-sm text-text-muted">
                   {t(`skills.${skill}`)}
                 </dt>
-                <dd className="text-lg font-bold text-text">
+                <dd className="text-lg font-bold tabular-nums text-text">
                   {result.per_skill[skill]?.band ??
                     t("placement.result.notMeasured")}
                 </dd>
@@ -93,7 +95,7 @@ export const PlacementResultView: React.FC<PlacementResultViewProps> = ({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Link
             to="/"
-            className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-border px-6 text-base font-medium text-text hover:bg-surface-muted"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-border px-6 text-sm font-semibold text-text hover:bg-surface-muted"
           >
             {t("placement.result.toDashboard")}
           </Link>
@@ -103,7 +105,6 @@ export const PlacementResultView: React.FC<PlacementResultViewProps> = ({
               variant="outline"
               onClick={() => void retake()}
               disabled={retaking}
-              className="min-h-[44px] text-base"
             >
               {t("placement.result.retake")}
             </Button>
@@ -118,7 +119,10 @@ export const PlacementResultView: React.FC<PlacementResultViewProps> = ({
           )}
         </div>
         {retakeError && (
-          <p role="alert" className="text-sm text-danger">
+          <p
+            role="alert"
+            className="text-base leading-relaxed text-danger-accent"
+          >
             {retakeError}
           </p>
         )}

@@ -13,6 +13,73 @@ generated text describes commits; release notes should describe change.
 
 ### Added
 
+- **Dashboard announcement banners.** Administrators holding `system.flags`
+  manage banners from a new Admin → Banners section (create, edit with a live
+  preview, switch on/off, schedule with an optional start and end, delete).
+  Learners see up to three live banners at the top of the Dashboard, one at a
+  time, coloured by tone (info, success, warning, promo), with an optional call
+  to action and a dismiss button that is remembered per user on the device.
+  Banner text is plain text; links must be an internal path or `https://`.
+  New table `core.banners` (migration `1700000951_banners.sql`) and endpoints
+  `GET /api/v1/banners/active` and `GET/POST/PUT/DELETE /api/v1/admin/banners`;
+  every admin write is audited.
+- **Banner kinds: pop-up announcements and promo slides.** Each banner is now
+  one of two kinds, chosen in the admin form. An *announcement* opens as a
+  dialog when a learner visits the Dashboard, one per visit; closing a
+  dismissible one hides it for good on that device, while a non-dismissible
+  one returns in the next session. A *slide* is image only (3:1, shown 4:1 on
+  wide screens), sits in a carousel at the top of the Dashboard for as long as
+  it is live, cannot be dismissed, and may link the whole picture. The
+  carousel advances every 6 seconds, pauses on hover, focus, a hidden tab or
+  the Pause button, never auto-advances under reduced motion, and can be moved
+  with previous/next buttons, dots or a swipe. Up to 3 announcements and 6
+  slides are served. Migration `1700000953_banner_kind.sql`.
+- **Banner images.** A banner may carry one JPEG, PNG or WebP image (up to 5 MB),
+  uploaded straight to storage and then checked and re-encoded by the server:
+  the bytes are sniffed, images over 40 megapixels are refused, the image is
+  scaled to fit 1600×900 and saved as JPEG without camera or location metadata.
+  The dashboard reserves the image's space before it loads, lays the banner out
+  side by side when wide and stacked when narrow, and falls back to text if the
+  image cannot load. Admins can add alt text; replacing or removing an image
+  deletes the old file. Migration `1700000952_banner_images.sql`; new endpoints
+  `POST /api/v1/admin/banners/image-upload-intent` and
+  `POST /api/v1/admin/banners/images`.
+- **Course editor redesign and richer course materials.** The Studio course editor
+  now uses the shared page header, a details form with inline validation, a
+  collapsible chapter → lesson → activity outline with reorder, duplicate and
+  delete confirmation, a separate "Add material" action with drag-and-drop
+  upload and progress, and a live submission checklist. Materials may now be
+  Excel workbooks (XLS, XLSX) and PNG, JPEG or WebP images, besides PDF, Word,
+  PowerPoint and MP4/WebM video. Images reach learners only as the re-encoded
+  display copy (metadata stripped); the browser caps documents at 20 MB, images
+  at 10 MB and video at 50 MB, and the server still checks every file's bytes.
+- Shared `PageHeader`, `Textarea`, `NativeSelect` and `ConfirmDialog` primitives.
+
+### Changed
+
+- The lowest price for a paid community course is 5,000 VND (was 49,000).
+  Deployments that set `STUDIO_MIN_PRICE_VND` explicitly must lower it too.
+- Navigation feels continuous: the mobile tab bar and the desktop sidebar each
+  have one sliding active indicator (under the tabs on mobile), sidebar items
+  have hover feedback, nav links preload on hover/touch and the four main tabs
+  preload when idle, and page changes cross-fade with the View Transitions API
+  where supported. Controls use `touch-action: manipulation`, so a double tap on
+  a tab no longer zooms the page and lands on the neighbouring tab.
+- The `motion` and `@tanstack/react-table` packages were removed from the web app;
+  React DOM and the TanStack libraries are split into long-lived vendor chunks.
+
+### Fixed
+
+- Undefined Tailwind tokens (`surface-base`, `surface-subtle`, `primary-contrast`,
+  `border-focus`, `text-secondary`) rendered as nothing; they now map to real tokens.
+- WebP images failed the media pipeline because no WebP decoder was registered.
+- The course editor mutated React state while adding or removing items, and its
+  slug generator dropped every Vietnamese accented letter.
+
+- Responsive admin content library with API-backed cross-page counts, slug-prefix
+  search, status/kind filters and page-size selection. Authorized editors can create
+  validated drafts using the existing content API before review and publication.
+
 - Compact learner Dashboard statistics and supporting cards, a desktop
   weekly-plan/skills column, and expandable weekly lessons. Continue learning
   opens the recommended lesson directly and displays real activity progress.

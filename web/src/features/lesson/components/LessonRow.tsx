@@ -87,55 +87,55 @@ export const LessonRow: React.FC<LessonRowProps> = ({
 
         <div className="space-y-1 min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 min-w-0">
-            <span className="font-semibold text-text truncate text-sm sm:text-base">
+            <span className="min-w-0 line-clamp-2 break-words text-base font-semibold text-text">
               {title}
             </span>
             {isCompleted ? (
               <Badge
                 variant="success"
-                className="text-[10px] uppercase font-bold py-0"
+                className="text-xs uppercase font-semibold py-0"
               >
                 {t("learn.statusCompleted", "Completed")}
               </Badge>
             ) : locked ? (
               <Badge
                 variant="secondary"
-                className="text-[10px] uppercase font-bold py-0"
+                className="text-xs uppercase font-semibold py-0"
               >
                 {t("learn.statusLocked", "Locked")}
               </Badge>
             ) : isNext ? (
               <Badge
                 variant="primary"
-                className="text-[10px] uppercase font-bold py-0"
+                className="text-xs uppercase font-semibold py-0"
               >
                 {t("learn.statusNext", "Next")}
               </Badge>
             ) : (
               <Badge
                 variant="outline"
-                className="text-[10px] uppercase font-bold py-0 text-text-muted"
+                className="text-xs uppercase font-semibold py-0 text-text-muted"
               >
                 {t("learn.statusNotStarted", "Not started")}
               </Badge>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-muted">
             <span className="capitalize font-medium text-text-muted">
               {skill_focus}
             </span>
-            <span>•</span>
-            <span className="inline-flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+            <span aria-hidden="true">•</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="h-4 w-4" aria-hidden="true" />
               {estimated_minutes} {t("learn.mins", "mins")}
             </span>
           </div>
 
           {locked && lock_reason && (
-            <p className="text-xs text-danger-accent mt-0.5 flex items-center gap-1 font-medium">
-              <span aria-hidden="true">🔒</span>
-              <span>{lock_reason}</span>
+            <p className="text-sm text-danger-accent mt-0.5 flex items-start gap-1.5 font-medium">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 break-words">{lock_reason}</span>
             </p>
           )}
         </div>
@@ -154,17 +154,17 @@ export const LessonRow: React.FC<LessonRowProps> = ({
           <Button
             variant="secondary"
             disabled
-            className="w-full sm:w-auto min-h-[44px] text-xs font-medium cursor-not-allowed opacity-60"
+            className="w-full sm:w-auto cursor-not-allowed opacity-60"
             aria-label={`${title} (${t("learn.locked", "Locked")}: ${lock_reason || ""})`}
           >
-            <Lock className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
+            <Lock className="h-4 w-4" aria-hidden="true" />
             {t("learn.lockedBtn", "Locked")}
           </Button>
         ) : isNext ? (
           <Link
             to={`/learn/lesson/${lesson.id}`}
             onClick={handleClick}
-            className="w-full sm:w-auto inline-flex items-center justify-center font-semibold rounded-lg min-h-[44px] px-4 text-xs bg-primary text-primary-fg hover:bg-primary-hover active:bg-primary-hover shadow-sm gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="w-full sm:w-auto inline-flex items-center justify-center font-semibold rounded-lg min-h-[44px] px-4 text-sm bg-primary text-primary-fg hover:bg-primary-hover active:bg-primary-hover shadow-sm gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <span>
               {isCompleted
@@ -177,7 +177,7 @@ export const LessonRow: React.FC<LessonRowProps> = ({
           <Link
             to={`/learn/lesson/${lesson.id}`}
             onClick={handleClick}
-            className="inline-flex items-center justify-center font-medium rounded-lg h-11 w-11 min-h-[44px] min-w-[44px] text-xs text-text hover:bg-surface-muted gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary after:absolute after:inset-0 md:after:hidden md:h-auto md:w-auto md:px-3 md:border md:border-border md:bg-transparent"
+            className="inline-flex items-center justify-center font-semibold rounded-lg h-11 w-11 min-h-[44px] min-w-[44px] text-sm text-text hover:bg-surface-muted gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary after:absolute after:inset-0 md:after:hidden md:h-auto md:w-auto md:px-3 md:border md:border-border md:bg-transparent"
             aria-label={`${isCompleted ? t("learn.reviewBtn", "Review") : t("learn.startBtn", "Start Lesson")}: ${title}`}
           >
             <span className="hidden md:inline">

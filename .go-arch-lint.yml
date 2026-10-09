@@ -451,9 +451,9 @@ deps:
   m_audit:            { mayDependOn: [m_audit_domain, m_audit_repository, m_audit_service, m_audit_http, c_audit, p_job, p_telemetry] }
   m_admin_domain:     { mayDependOn: [c_admin] }
   m_admin_repository: { mayDependOn: [m_admin_domain, c_admin, g_admin] }
-  m_admin_service:    { mayDependOn: [m_admin_domain, c_admin, c_user, c_auth, c_audit, g_admin] }
+  m_admin_service:    { mayDependOn: [m_admin_domain, c_admin, c_user, c_auth, c_audit, g_admin, p_storage], canUse: [v_imaging, v_ximage] }
   m_admin_http:       { mayDependOn: [m_admin_domain, m_admin_service, c_admin, c_user] }
-  m_admin:            { mayDependOn: [m_admin_domain, m_admin_repository, m_admin_service, m_admin_http, c_admin, c_user, c_auth, c_audit, p_job] }
+  m_admin:            { mayDependOn: [m_admin_domain, m_admin_repository, m_admin_service, m_admin_http, c_admin, c_user, c_auth, c_audit, p_job, p_storage] }
   m_notification: { mayDependOn: [p_mailer, p_job, p_cache, p_telemetry, c_user] }
 
   # content, by layer

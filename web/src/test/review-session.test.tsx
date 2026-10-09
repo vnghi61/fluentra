@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEventDefault from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { I18nextProvider } from "react-i18next";
@@ -294,6 +294,176 @@ describe("ReviewPage SRS Session (P10.4)", () => {
     expect(screen.getByRole("button", { name: /Good/i })).toBeInTheDocument();
   });
 
+  it("shows how far through the session the learner is", async () => {
+    const user = userEventDefault.setup();
+    serveSession({
+      cards: [
+        cardWithContent,
+        { ...cardWithContent, id: "card-2" },
+        { ...cardWithContent, id: "card-3" },
+      ],
+      total_due: 3,
+    });
+    await renderReview();
+    await expectWordOnCard("meticulous");
+
+    const progress = screen.getByTestId("review-progress");
+    expect(progress).toHaveAttribute("data-current", "1");
+    expect(progress).toHaveAttribute("data-total", "3");
+    expect(screen.getByText("Card 1 of 3")).toBeInTheDocument();
+    expect(screen.getByText("3 cards left")).toBeInTheDocument();
+    // The bar measures cards graded, not the card on screen: nothing is done yet.
+    const bar = screen.getByRole("progressbar", { name: "Session progress" });
+    expect(bar).toHaveAttribute("aria-valuenow", "0");
+    expect(bar).toHaveAttribute("aria-valuemax", "3");
+    expect(bar).toHaveAttribute("aria-valuetext", "0 of 3 reviewed");
+
+    await user.keyboard(" ");
+    await user.keyboard("3");
+
+    expect(await screen.findByText("Card 2 of 3")).toBeInTheDocument();
+    expect(screen.getByText("2 cards left")).toBeInTheDocument();
+    expect(bar).toHaveAttribute("aria-valuenow", "1");
+    expect(progress).toHaveAttribute("data-reviewed", "1");
+  });
+
+  it("says what the last grade did once the server has written it", async () => {
+    const user = userEventDefault.setup();
+    serveSession({
+      cards: [cardWithContent, { ...cardWithContent, id: "card-2" }],
+      total_due: 2,
+    });
+    await renderReview();
+    await expectWordOnCard("meticulous");
+
+    await user.keyboard(" ");
+    await user.keyboard("3");
+
+    expect(await screen.findByText(/^Good — back in /)).toBeInTheDocument();
+  });
+
+  it("ignores the grade keys until the answer is shown", async () => {
+    const user = userEventDefault.setup();
+    await renderReview();
+    await expectWordOnCard("meticulous");
+
+    await user.keyboard("3");
+
+    expect(capturedGrades).toHaveLength(0);
+    expect(
+      screen.queryByRole("group", { name: "SRS recall grading" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reveals with Enter and moves focus to the answer", async () => {
+    const user = userEventDefault.setup();
+    await renderReview();
+    await expectWordOnCard("meticulous");
+
+    await user.keyboard("{Enter}");
+
+    expect(
+      await screen.findByText(/Showing great attention to detail/i),
+    ).toBeInTheDocument();
+    // The front face is aria-hidden once turned, so the only heading left with
+    // the word is the answer's.
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "meticulous" })).toHaveFocus(),
+    );
+  });
+
+  it("puts focus on the next card's reveal button after a grade", async () => {
+    const user = userEventDefault.setup();
+    serveSession({
+      cards: [cardWithContent, { ...cardWithContent, id: "card-2" }],
+      total_due: 2,
+    });
+    await renderReview();
+    await expectWordOnCard("meticulous");
+
+    await user.keyboard(" ");
+    await user.keyboard("2");
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Show answer: meticulous" }),
+      ).toHaveFocus(),
+    );
+    // Space on the focused button reveals the second card, as on the first.
+    await user.keyboard(" ");
+    await user.keyboard("4");
+    expect(capturedGrades.map((g) => g.grade)).toEqual(["hard", "easy"]);
+  });
+
+  it("does not grade on a shortcut held with a modifier", async () => {
+    const user = userEventDefault.setup();
+    await renderReview();
+    await expectWordOnCard("meticulous");
+
+    await user.keyboard(" ");
+    await screen.findByText(/Showing great attention to detail/i);
+    // Ctrl+1 switches browser tabs; it must not grade the card on the way.
+    await user.keyboard("{Control>}1{/Control}");
+
+    expect(capturedGrades).toHaveLength(0);
+  });
+
+  it("marks the pressed grade as busy while it is being sent", async () => {
+    const user = userEventDefault.setup();
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      http.post("/api/v1/reviews/:id/answer", async () => {
+        await held;
+        return HttpResponse.json({
+          card: cardWithContent,
+          next_due_at: "2026-08-27T09:00:00Z",
+          interval_days: 3,
+        });
+      }),
+    );
+    await renderReview();
+    await expectWordOnCard("meticulous");
+
+    await user.keyboard(" ");
+    await user.keyboard("3");
+
+    const good = await screen.findByRole("button", { name: /Good/i });
+    await waitFor(() => expect(good).toHaveAttribute("aria-busy", "true"));
+    expect(screen.getByRole("button", { name: /Easy/i })).toBeDisabled();
+
+    release();
+    expect(
+      await screen.findByText("Review Session Summary"),
+    ).toBeInTheDocument();
+  });
+
+  it("closes with a summary of the grades and where to go next", async () => {
+    const user = userEventDefault.setup();
+    serveSession({
+      cards: [cardWithContent, { ...cardWithContent, id: "card-2" }],
+      total_due: 2,
+    });
+    await renderReview();
+    await expectWordOnCard("meticulous");
+
+    for (const digit of ["1", "4"]) {
+      await user.keyboard(" ");
+      await user.keyboard(digit);
+    }
+
+    const heading = await screen.findByRole("heading", {
+      name: "Review Session Summary",
+    });
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(screen.getByText("50%")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Continue learning/i }),
+    ).toHaveAttribute("href", "/learn");
+  });
+
   it("renders an empty state when nothing is due", async () => {
     serveSession({ cards: [], total_due: 0 });
     await renderReview();
@@ -304,5 +474,9 @@ describe("ReviewPage SRS Session (P10.4)", () => {
     expect(
       screen.queryByText("Review Session Summary"),
     ).not.toBeInTheDocument();
+    // Where new cards come from, rather than a dead end.
+    expect(
+      screen.getByRole("link", { name: /Add your own words/i }),
+    ).toHaveAttribute("href", "/practice/my-words");
   });
 });

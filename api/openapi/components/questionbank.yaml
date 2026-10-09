@@ -162,6 +162,7 @@ QuestionStats:
       type: integer
       example: 15400
     last_computed_at:
-      type: string
+      type: [string, "null"]
       format: date-time
+      description: When the statistics were computed; null until they have been.
       example: '2026-09-20T10:00:00Z'

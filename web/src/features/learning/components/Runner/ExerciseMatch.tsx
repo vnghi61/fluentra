@@ -139,7 +139,7 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
             const badge = badgeFor(word.id);
 
             return (
-              <div key={word.id} className="flex items-center gap-1">
+              <div key={word.id} className="flex items-center gap-2">
                 <button
                   type="button"
                   disabled={isLoading || isSubmitted}
@@ -177,11 +177,11 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
                   >
                     {paired ? badge : "—"}
                   </span>
-                  <span className="text-base font-semibold text-text">
+                  <span className="min-w-0 break-words text-base font-semibold text-text">
                     {word.text}
                   </span>
                   {active && (
-                    <span className="ml-auto text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                    <span className="ml-auto shrink-0 text-xs font-semibold text-primary-accent bg-primary/10 px-2 py-0.5 rounded-md">
                       {t("runner.matchSelected", "Selected")}
                     </span>
                   )}
@@ -244,7 +244,9 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
                 >
                   {badge || "?"}
                 </span>
-                <span className="text-sm text-text">{definition.text}</span>
+                <span className="min-w-0 break-words text-base leading-relaxed text-text">
+                  {definition.text}
+                </span>
               </button>
             );
           })}
@@ -252,8 +254,8 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
       </div>
 
       {!isSubmitted && (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-text-muted">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-base text-text-muted">
             {activeWord
               ? t("runner.matchPickMeaning", "Now pick its meaning")
               : t("runner.matchPickWord", "Pick a word to start")}{" "}

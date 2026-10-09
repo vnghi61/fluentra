@@ -67,6 +67,7 @@ func TestEveryPhaseOneOperationIsMounted(t *testing.T) {
 		ownerAudit   = "audit"
 		ownerContent = "content"
 		ownerLesson  = "lesson"
+		ownerAdmin   = "admin"
 	)
 
 	cases := []struct {
@@ -103,6 +104,11 @@ func TestEveryPhaseOneOperationIsMounted(t *testing.T) {
 		{http.MethodPost, "/api/v1/admin/courses", ownerLesson},
 		{http.MethodPut, "/api/v1/admin/lessons/" + someone + "/activities", ownerLesson},
 		{http.MethodPost, "/api/v1/admin/lessons/" + someone + "/publish", ownerLesson},
+		{http.MethodGet, "/api/v1/banners/active", ownerAdmin},
+		{http.MethodGet, "/api/v1/admin/banners", ownerAdmin},
+		{http.MethodPost, "/api/v1/admin/banners", ownerAdmin},
+		{http.MethodPut, "/api/v1/admin/banners/" + someone, ownerAdmin},
+		{http.MethodDelete, "/api/v1/admin/banners/" + someone, ownerAdmin},
 	}
 
 	for _, testCase := range cases {

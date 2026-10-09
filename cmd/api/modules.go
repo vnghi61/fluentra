@@ -261,6 +261,7 @@ func newIdentity(deps identityDeps) *identity {
 		Audit:          assembled.audit.Recorder(),
 		Guard:          lazyGuard{of: assembled},
 		AIUsage:        aiUsageReporter{of: ai.NewDBBudgetChecker(deps.Pool)},
+		Storage:        deps.Storage,
 	})
 
 	assembled.content = content.New(content.Deps{
@@ -673,6 +674,9 @@ func (i *identity) Routes(api chi.Router) {
 		i.studio.ModerationRoutes(authenticated)
 		i.payment.AuthenticatedRoutes(authenticated)
 		i.resource.Routes(authenticated)
+		// The dashboard's announcement banners: any signed-in account reads
+		// them, so they sit outside the admin-only group below.
+		i.admin.LearnerRoutes(authenticated)
 		// Review is a moderator's job, not only an admin's: these check
 		// content.review / content.publish / questionbank.read per route.
 		i.content.ReviewRoutes(authenticated)

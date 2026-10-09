@@ -48,7 +48,7 @@ const OptionList: React.FC<{
         >
           {option.id}
         </span>
-        <span>{option.text}</span>
+        <span className="min-w-0 break-words">{option.text}</span>
       </button>
     ))}
   </div>

@@ -38,7 +38,7 @@ Ordered backlog for the Creator Studio module.
 ## Step 6 Landed (Listings, Purchases, and Paywall Gating)
 
 - [x] Tables `studio.listings`, `studio.purchases`, `studio.creator_ledger`
-- [x] Pricing bounds validation (₫49,000 to ₫5,000,000) per BR-STUDIO-01
+- [x] Pricing bounds validation (₫5,000 to ₫5,000,000) per BR-STUDIO-01
 - [x] Free course claiming (`POST /courses/{id}/claim`) and paid purchase order creation (`POST /courses/{id}/purchase`)
 - [x] Self-service refunds (`POST /me/purchases/{id}/refund`) within 7 days and < 20% course completion
 - [x] 70/30 creator/platform split recording in `creator_ledger` per BR-STUDIO-03
@@ -73,6 +73,14 @@ Ordered backlog for the Creator Studio module.
 - [x] Draft detail carries optional `latest_submission`; the Gate 1 report shape is typed in OpenAPI
 - [ ] Regenerate SQL and API artifacts (`make gen-sql`, `make gen-api`, `make gen-web`) and diff generated output before release; generator execution was not available in the session that made these changes
 
+## Course materials: spreadsheets and images (2026-10-08)
+
+- [x] Material MIMEs widened to XLS/XLSX and PNG/JPEG/WebP; an image is ready once its `display` (or, for a small image, `thumbnail`) rendition is
+- [x] Published image materials carry `display`/`thumbnail` keys and `material_kind: image`; `lesson` signs `sources.image`
+- [x] Minimum paid price lowered to 5,000 VND (BR-STUDIO-01)
+- [ ] Per-kind server-side size caps (the browser enforces 20 MB documents / 10 MB images; the server's ceiling is still 50 MB for all)
+- [ ] An OOXML upload is trusted as XLSX/DOCX/PPTX from its ZIP header plus the declared type; inspecting the archive's content types would close that gap
+
 ## Work Order 20 Landed (Documents and videos in a community course)
 
 - [x] Activity kind `lesson_material` (document / video) accepted by Gate 1 (BR-STUDIO-10, twelve kinds)
@@ -83,7 +91,8 @@ Ordered backlog for the Creator Studio module.
 - [ ] The Gate 2 review screen does not yet render a material with the runner component; reviewers open it from the draft (WO 20 §5, first cut)
 - [ ] Free-preview lessons for non-buyers (D20-4)
 - [ ] Video progress tracking, resume position, subtitles
-# Repository-wide verification follow-up (2026-10-05)
+
+## Repository-wide verification follow-up (2026-10-05)
 
 - [x] Resolve Go lint findings without weakening assertions; split Gate 1 success/failure scenarios.
 - [x] Give repository integration fixtures non-null draft structures.

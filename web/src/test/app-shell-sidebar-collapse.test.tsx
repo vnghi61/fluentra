@@ -85,8 +85,10 @@ describe("AppShell collapsible desktop sidebar", () => {
     expect(aside).not.toBeNull();
     expect(aside).toHaveAttribute("data-collapsed", "false");
     expectExpandedWidth(aside as HTMLElement);
-    expect((aside as HTMLElement).className).toMatch(
-      /(?:^|\s)duration-(?:200|\[200ms\])(?:\s|$)/,
+    // The shared navigation rhythm, so the collapse lands with the indicators.
+    expect(aside).toHaveClass(
+      "duration-[var(--motion-nav)]",
+      "ease-[var(--ease-nav)]",
     );
     expect(aside).toHaveClass(
       "motion-reduce:transition-none",
@@ -177,24 +179,32 @@ describe("AppShell collapsible desktop sidebar", () => {
     });
     expect(dashboardLink).toBeInTheDocument();
     expect(dashboardLink).not.toHaveAttribute("title");
-    expect(dashboardLink).toHaveClass("justify-center", "px-0");
+    // Same padding collapsed or not: the icon never moves, only the label fades.
+    expect(dashboardLink).toHaveClass("px-[15px]");
+    expect(dashboardLink).not.toHaveClass("justify-center");
 
     const learnLink = within(mainNav).getByRole("link", { name: /Learn/i });
     expect(learnLink).toBeInTheDocument();
     expect(learnLink).not.toHaveAttribute("title");
-    expect(learnLink).toHaveClass("justify-center", "px-0");
+    // Same padding collapsed or not: the icon never moves, only the label fades.
+    expect(learnLink).toHaveClass("px-[15px]");
+    expect(learnLink).not.toHaveClass("justify-center");
 
     const settingsLink = within(mainNav).getByRole("link", {
       name: /Settings/i,
     });
     expect(settingsLink).toBeInTheDocument();
     expect(settingsLink).not.toHaveAttribute("title");
-    expect(settingsLink).toHaveClass("justify-center", "px-0");
+    // Same padding collapsed or not: the icon never moves, only the label fades.
+    expect(settingsLink).toHaveClass("px-[15px]");
+    expect(settingsLink).not.toHaveClass("justify-center");
 
     const adminLink = within(mainNav).getByRole("link", { name: /Admin/i });
     expect(adminLink).toBeInTheDocument();
     expect(adminLink).not.toHaveAttribute("title");
-    expect(adminLink).toHaveClass("justify-center", "px-0");
+    // Same padding collapsed or not: the icon never moves, only the label fades.
+    expect(adminLink).toHaveClass("px-[15px]");
+    expect(adminLink).not.toHaveClass("justify-center");
 
     const brandLink = within(aside as HTMLElement).getByRole("link", {
       name: /Fluentra/i,
@@ -223,7 +233,7 @@ describe("AppShell collapsible desktop sidebar", () => {
     expect(screen.queryByText(/Keep the momentum!/i)).not.toBeInTheDocument();
   });
 
-  it("keeps AdminSidebarNav link labels in DOM with group-data-[collapsed=true]:sr-only when collapsed", async () => {
+  it("keeps AdminSidebarNav link labels in the DOM, faded out, when collapsed", async () => {
     const user = userEvent.setup();
     await renderAt("/admin", () => (
       <AppShell
@@ -254,10 +264,11 @@ describe("AppShell collapsible desktop sidebar", () => {
     expect(usersLink).toBeInTheDocument();
     expect(usersLink).not.toHaveAttribute("title");
 
-    // The visible labels are demoted to sr-only when collapsed, not removed.
+    // The visible labels fade out when collapsed; they are not removed, so
+    // the accessible name stays.
     for (const link of [adminLink, usersLink]) {
       const label = Array.from(link.querySelectorAll("span")).find((s) =>
-        s.className.includes("group-data-[collapsed=true]:sr-only"),
+        s.className.includes("opacity-0"),
       );
       expect(label).toBeDefined();
       expect(label).toHaveTextContent(link === adminLink ? "Admin" : /Users/);

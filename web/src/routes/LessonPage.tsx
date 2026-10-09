@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { AlertCircle, Flag, Loader2, RotateCcw } from "lucide-react";
+import { AlertCircle, Loader2, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useAuthStore } from "@/stores/authStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 
@@ -35,6 +36,8 @@ import {
   ExerciseSpeaking,
   ExerciseSentenceTransform,
   ExerciseMaterial,
+  type MaterialKind,
+  type MaterialSources,
   ExerciseTopic,
   ActivityUnavailable,
   ExitDialog,
@@ -168,14 +171,10 @@ interface SpeakingConfig {
 // A non-graded material. `sources` is issued at read time, after the paywall,
 // and expires; the keys it was built from are never URLs.
 interface MaterialConfig {
-  material_kind?: "document" | "video";
+  material_kind?: MaterialKind;
   title?: string;
   description?: string;
-  sources?: {
-    poster_url?: string;
-    video?: { url: string; height: number }[];
-    document?: { url: string; preview_url?: string; page_count?: number };
-  };
+  sources?: MaterialSources;
 }
 
 /**
@@ -330,6 +329,10 @@ export function LessonPage(): React.JSX.Element {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const currentActivity = activities[currentIndex];
+
+  // A session under way asks before it is left by any route out: the sidebar,
+  // the tab bar, Back, or a reload (which gets the browser's own prompt).
+  const leaveGuard = useLeaveGuard(!isCompleted && activities.length > 0);
 
   /**
    * True while a signed-in learner has no attempt to submit against yet.
@@ -664,6 +667,8 @@ export function LessonPage(): React.JSX.Element {
 
   const handleConfirmExit = () => {
     setIsExitDialogOpen(false);
+    // The learner already said yes in our own dialog; do not ask twice.
+    leaveGuard.allowNext();
     if (isResourcePractice && resourceId) {
       void navigate({
         to: "/my-resources/$resourceId",
@@ -691,7 +696,10 @@ export function LessonPage(): React.JSX.Element {
         <Card className="border-danger/30 text-center p-6">
           <CardHeader>
             <div className="flex justify-center mb-2">
-              <AlertCircle className="h-10 w-10 text-danger-accent" />
+              <AlertCircle
+                className="h-10 w-10 text-danger-accent"
+                aria-hidden="true"
+              />
             </div>
             <CardTitle>
               {isDaily
@@ -700,7 +708,7 @@ export function LessonPage(): React.JSX.Element {
                   ? t("resources.practiceErrorTitle", "Unable to Load Practice")
                   : t("learn.errorTitle", "Unable to Load Lesson")}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-base leading-relaxed">
               {error?.message ||
                 (isDaily
                   ? t(
@@ -718,7 +726,7 @@ export function LessonPage(): React.JSX.Element {
                       ))}
             </CardDescription>
           </CardHeader>
-          <CardFooter className="justify-center gap-3">
+          <CardFooter className="flex-wrap justify-center gap-3">
             <Button variant="outline" onClick={() => void refetch()}>
               {t("action.retry", "Try again")}
             </Button>
@@ -761,7 +769,10 @@ export function LessonPage(): React.JSX.Element {
           <CardHeader>
             <div className="flex justify-center mb-2">
               {buildFailed ? (
-                <AlertCircle className="h-10 w-10 text-danger-accent" />
+                <AlertCircle
+                  className="h-10 w-10 text-danger-accent"
+                  aria-hidden="true"
+                />
               ) : (
                 <Loader2
                   className="h-10 w-10 animate-spin text-primary"
@@ -780,7 +791,10 @@ export function LessonPage(): React.JSX.Element {
                     "Building your practice",
                   )}
             </CardTitle>
-            <CardDescription role="status">
+            <CardDescription
+              role="status"
+              className="text-base leading-relaxed"
+            >
               {buildFailed
                 ? resourcePractice?.failure_reason ||
                   t(
@@ -817,11 +831,14 @@ export function LessonPage(): React.JSX.Element {
         <Card className="text-center p-6">
           <CardHeader>
             <CardTitle>{t("runner.emptyTitle")}</CardTitle>
-            <CardDescription role="status">
+            <CardDescription
+              role="status"
+              className="text-base leading-relaxed"
+            >
               {t("runner.emptyDesc")}
             </CardDescription>
           </CardHeader>
-          <CardFooter className="justify-center gap-3">
+          <CardFooter className="flex-wrap justify-center gap-3">
             <Button variant="outline" onClick={() => void refetch()}>
               {t("action.retry", "Try again")}
             </Button>
@@ -1010,7 +1027,8 @@ export function LessonPage(): React.JSX.Element {
     kind === "lesson_material" &&
     ((Array.isArray(materialConfig.sources?.video) &&
       materialConfig.sources.video.length > 0) ||
-      Boolean(materialConfig.sources?.document?.url));
+      Boolean(materialConfig.sources?.document?.url) ||
+      Boolean(materialConfig.sources?.image?.url));
 
   // A topic teaches: objective and explanation are what make it renderable.
   const canRenderTopic =
@@ -1051,7 +1069,7 @@ export function LessonPage(): React.JSX.Element {
     : submissionResult?.feedback;
 
   return (
-    <div className="min-h-full bg-surface flex flex-col justify-between">
+    <div className="min-h-full min-w-0 rounded-2xl border border-border-subtle bg-surface-card shadow-xs flex flex-col justify-between">
       {/* Runner Header */}
       <RunnerHeader
         lessonTitle={
@@ -1070,10 +1088,18 @@ export function LessonPage(): React.JSX.Element {
         currentStep={currentIndex + 1}
         totalSteps={activities.length}
         onExit={() => setIsExitDialogOpen(true)}
+        onReport={
+          signedIn && currentActivity?.content_version_id
+            ? () => {
+                setReportInitialNote("");
+                setIsReportOpen(true);
+              }
+            : undefined
+        }
       />
 
       {/* Main Exercise Canvas */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col justify-center">
+      <main className="flex-1 max-w-4xl min-w-0 w-full mx-auto px-4 py-6 sm:px-6 md:py-8 flex flex-col">
         {/*
           The daily set draws one item to revisit the learner's weakest spine
           node. It says so, because an exercise that looks like every other
@@ -1094,9 +1120,9 @@ export function LessonPage(): React.JSX.Element {
           </div>
         )}
         {submissionError && (
-          <div className="mb-6 p-4 rounded-xl border border-danger/40 bg-danger/10 max-w-2xl mx-auto w-full flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-danger-accent text-sm font-medium">
-              <AlertCircle className="h-5 w-5 shrink-0" />
+          <div className="mb-6 p-4 rounded-xl border border-danger/40 bg-danger/10 max-w-2xl mx-auto w-full flex flex-wrap items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-2 text-danger-accent text-base leading-relaxed font-medium">
+              <AlertCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span>{submissionError}</span>
             </div>
             <Button
@@ -1104,9 +1130,9 @@ export function LessonPage(): React.JSX.Element {
               variant="outline"
               onClick={handleRetrySubmit}
               isLoading={isSubmitting}
-              className="shrink-0 gap-1.5"
+              className="shrink-0 gap-2"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
               {t("runner.retryBtn", "Retry")}
             </Button>
           </div>
@@ -1116,7 +1142,9 @@ export function LessonPage(): React.JSX.Element {
           <Card className="max-w-2xl mx-auto w-full text-center p-6 border-danger/30">
             <CardHeader>
               <CardTitle>{t("runner.attemptFailedTitle")}</CardTitle>
-              <CardDescription>{t("runner.attemptFailedDesc")}</CardDescription>
+              <CardDescription className="text-base leading-relaxed">
+                {t("runner.attemptFailedDesc")}
+              </CardDescription>
             </CardHeader>
             <CardFooter className="justify-center">
               <Button onClick={() => setCurrentIndex((prev) => prev)}>
@@ -1516,35 +1544,24 @@ export function LessonPage(): React.JSX.Element {
             onContinue={handleContinue}
           />
         )}
-
-        {isSubmitted && signedIn && currentActivity?.content_version_id && (
-          <div className="mt-4 max-w-2xl mx-auto w-full flex justify-start animate-in fade-in duration-200">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setReportInitialNote("");
-                setIsReportOpen(true);
-              }}
-              className="text-xs text-text-muted hover:text-danger gap-1.5 min-h-[44px]"
-              title={t("report.reportBtn", "Report issue")}
-            >
-              <Flag className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>{t("report.reportBtn", "Report issue")}</span>
-            </Button>
-          </div>
-        )}
       </main>
 
       {/* Exit Confirmation Dialog */}
       <ExitDialog
-        isOpen={isExitDialogOpen}
-        onCancel={() => setIsExitDialogOpen(false)}
-        onConfirm={handleConfirmExit}
+        isOpen={isExitDialogOpen || leaveGuard.blocked}
+        onCancel={() => {
+          if (leaveGuard.blocked) leaveGuard.stay();
+          setIsExitDialogOpen(false);
+        }}
+        onConfirm={() => {
+          if (leaveGuard.blocked) leaveGuard.proceed();
+          else handleConfirmExit();
+        }}
       />
 
       {/* Report Bad Item / Content Dialog */}
       <ReportDialog
+        key={`${currentActivity?.content_version_id ?? ""}:${reportInitialNote}`}
         isOpen={isReportOpen}
         contentVersionId={currentActivity?.content_version_id ?? null}
         initialNote={reportInitialNote}

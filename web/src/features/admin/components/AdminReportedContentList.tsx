@@ -1,23 +1,29 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import {
-  AlertCircle,
-  AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-  Loader2,
-  RefreshCw,
-} from "lucide-react";
+import { AlertTriangle, ExternalLink, Flag } from "lucide-react";
 
 import { adminApi, type ReportedContentVersion } from "../api/adminApi";
 import { AdminContentDetailModal } from "./AdminContentDetailModal";
 import { Button } from "@/components/ui/button";
 import { CopyableId } from "./CopyableId";
+import { StatusBadge } from "./StatusBadge";
+import {
+  AdminDataPanel,
+  AdminFilterCard,
+  AdminListSkeleton,
+  AdminRefreshButton,
+  AdminRowIcon,
+  AdminTag,
+  adminTable,
+} from "./AdminSurface";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Pagination } from "@/components/ui/pagination";
+import { cn } from "@/lib/utils";
 
 export const AdminReportedContentList: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
 
   const limit = 15;
@@ -44,324 +50,248 @@ export const AdminReportedContentList: React.FC = () => {
     void refetch();
   };
 
-  const formatDate = (isoString: string) => {
-    try {
-      const d = new Date(isoString);
-      return d.toLocaleDateString(undefined, {
-        year: "numeric",
+  const formatDate = (isoString: string) => (
+    <time
+      dateTime={isoString}
+      className="whitespace-nowrap text-sm tabular-nums text-text-muted"
+    >
+      {new Date(isoString).toLocaleString(i18n.resolvedLanguage, {
+        day: "2-digit",
         month: "short",
-        day: "numeric",
+        year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
-      });
-    } catch {
-      return isoString;
-    }
-  };
+      })}
+    </time>
+  );
+  const statusBadge = (status: string) => (
+    <StatusBadge
+      tone={
+        status === "archived"
+          ? "danger"
+          : status === "published"
+            ? "success"
+            : "neutral"
+      }
+    >
+      <span
+        aria-hidden="true"
+        className="h-1.5 w-1.5 shrink-0 rounded-full bg-current"
+      />
+      {t(`adminReports.itemStatus.${status}`, status)}
+    </StatusBadge>
+  );
+  const reportsBadge = (count: number) => (
+    <StatusBadge tone="warning" icon={Flag}>
+      {t("adminReports.reportsCount", { count })}
+    </StatusBadge>
+  );
+  const reviewButton = (row: ReportedContentVersion, className?: string) => (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={() => setSelectedItemId(row.item_id)}
+      className={className}
+    >
+      <span>{t("adminReports.reviewBtn", "Review item")}</span>
+      <ExternalLink className="h-4 w-4" aria-hidden="true" />
+    </Button>
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-text flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-warning-accent" />
-            {t("adminReports.title", "Reported Content Queue")}
-          </h2>
-          <p className="text-sm text-text-muted mt-0.5">
-            {t(
-              "adminReports.desc",
-              "Exercises and content versions reported by learners, sorted by distinct reporters. Review and archive problematic items.",
-            )}
+    <div className="space-y-4">
+      <AdminFilterCard>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p role="status" className="text-sm text-text-muted">
+            {isLoading
+              ? t("admin.loadingContent")
+              : hasMore
+                ? t("adminReports.loadedCount", {
+                    count: items.length,
+                    defaultValue: `${items.length} loaded`,
+                  })
+                : t("adminReports.resultsCount", {
+                    count: items.length,
+                    defaultValue:
+                      items.length === 1
+                        ? "1 result"
+                        : `${items.length} results`,
+                  })}
           </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void refetch()}
-          disabled={isFetching}
-          className="gap-2 shrink-0 self-start sm:self-auto"
-        >
-          <RefreshCw
-            className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+          <AdminRefreshButton
+            onClick={() => void refetch()}
+            busy={isFetching}
           />
-          {t("admin.refresh", "Refresh")}
-        </Button>
-      </div>
-
-      {/* Loaded Result Count Status */}
-      {!isLoading && items.length > 0 && (
-        <div className="flex items-center justify-between text-xs text-text-muted">
-          <p role="status">
-            {hasMore
-              ? t("adminReports.loadedCount", {
-                  count: items.length,
-                  defaultValue: `${items.length} loaded`,
-                })
-              : t("adminReports.resultsCount", {
-                  count: items.length,
-                  defaultValue:
-                    items.length === 1 ? "1 result" : `${items.length} results`,
-                })}
-          </p>
         </div>
-      )}
+      </AdminFilterCard>
 
-      {/* Error state */}
-      {error && (
-        <div
-          role="alert"
-          className="p-4 rounded-xl border border-danger/30 bg-danger/10 text-danger-accent text-sm flex items-center gap-3"
-        >
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <span>
-            {error instanceof Error
-              ? error.message
-              : t("admin.failedToLoadContent", "Failed to load content.")}
-          </span>
-        </div>
-      )}
-
-      {/* Loading state */}
-      {isLoading ? (
-        <div className="flex items-center justify-center min-h-[240px]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-accent" />
-        </div>
-      ) : items.length === 0 ? (
-        /* Empty state */
-        <div className="text-center py-16 px-4 border border-dashed border-border rounded-2xl bg-surface-card/40">
-          <AlertCircle className="h-10 w-10 mx-auto text-text-muted mb-3" />
-          <p className="font-semibold text-text">
-            {t("adminReports.noReports", "No items have been reported yet.")}
-          </p>
-        </div>
-      ) : (
-        <>
-          {/* Mobile Card List (below md) */}
-          <div className="space-y-3 md:hidden" data-testid="reported-cards">
-            {items.map((row) => (
-              <div
-                key={row.content_version_id}
-                data-testid="reported-card"
-                className="space-y-3 rounded-2xl border border-border bg-surface-card p-4 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 space-y-1">
-                    <p className="break-words font-semibold leading-snug text-text">
-                      {row.slug}
-                    </p>
-                    <CopyableId id={row.content_version_id} />
-                  </div>
-                  <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${
-                      row.item_status === "archived"
-                        ? "bg-danger/10 border-danger/30 text-danger-accent"
-                        : row.item_status === "published"
-                          ? "bg-success/10 border-success/30 text-success-accent"
-                          : "bg-surface-muted border-border text-text-muted"
-                    }`}
-                  >
-                    {t(
-                      `adminReports.itemStatus.${row.item_status}`,
-                      row.item_status,
-                    )}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-muted border border-border text-text">
-                    {row.kind}
-                  </span>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-primary/10 text-primary-accent border border-primary/20">
-                    {row.cefr_level}
-                  </span>
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-warning/15 text-warning-accent border border-warning/30">
-                    {t("adminReports.reportsCount", {
-                      count: row.report_count,
-                    })}
-                  </span>
-                  <span className="ml-auto text-xs text-text-muted whitespace-nowrap">
-                    {formatDate(row.last_reported_at)}
-                  </span>
-                </div>
-
-                <div className="flex justify-end border-t border-border/50 pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setSelectedItemId(row.item_id)}
-                    className="gap-1.5 font-medium min-h-[44px] w-full"
-                  >
-                    <span>{t("adminReports.reviewBtn", "Review item")}</span>
-                    <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Mobile Pagination */}
-          {totalPages > 1 && (
-            <div className="md:hidden flex items-center justify-between p-4 border border-border rounded-2xl bg-surface-card">
-              <span className="text-xs text-text-muted">
-                {t("admin.pageOf", "Page {{current}} of {{total}}", {
-                  current: currentPage,
-                  total: totalPages,
-                })}
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  disabled={offset === 0 || isFetching}
-                  onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
-                  className="h-11 w-11 min-h-[44px] min-w-[44px] p-0"
-                  aria-label={t("common.previous", "Previous")}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={offset + limit >= total || isFetching}
-                  onClick={() => setOffset((prev) => prev + limit)}
-                  className="h-11 w-11 min-h-[44px] min-w-[44px] p-0"
-                  aria-label={t("common.next", "Next")}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Table of reported items (md+) */}
-          <div className="hidden md:block border border-border rounded-2xl bg-surface-card overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-border bg-surface-muted/60 text-xs uppercase font-semibold text-text-muted tracking-wider">
+      <AdminDataPanel>
+        {isLoading ? (
+          <AdminListSkeleton label={t("admin.loadingContent")} />
+        ) : error ? (
+          <ErrorState
+            title={t("admin.failedToLoadContent", "Failed to load content.")}
+            {...(error instanceof Error ? { description: error.message } : {})}
+            onRetry={() => void refetch()}
+            className="py-10"
+          />
+        ) : items.length === 0 ? (
+          <EmptyState
+            icon={AlertTriangle}
+            title={t(
+              "adminReports.noReports",
+              "No items have been reported yet.",
+            )}
+            className="py-10"
+          />
+        ) : (
+          <>
+            <div className="hidden overflow-x-auto md:block">
+              <table className={cn(adminTable.table, "min-w-[960px]")}>
+                <caption className="sr-only">
+                  {t("adminReports.title", "Reported Content Queue")}
+                </caption>
+                <thead className={adminTable.head}>
                   <tr>
-                    <th scope="col" className="px-5 py-3.5">
+                    <th
+                      scope="col"
+                      className={cn(adminTable.th, "w-14 text-right")}
+                    >
+                      {t("common.rowNumber")}
+                    </th>
+                    <th scope="col" className={adminTable.th}>
                       {t("adminReports.colItem", "Content Item")}
                     </th>
-                    <th scope="col" className="px-5 py-3.5">
+                    <th scope="col" className={cn(adminTable.th, "w-44")}>
                       {t("adminReports.colKind", "Kind")}
                     </th>
-                    <th scope="col" className="px-5 py-3.5">
+                    <th scope="col" className={cn(adminTable.th, "w-20")}>
                       {t("adminReports.colLevel", "Level")}
                     </th>
-                    <th scope="col" className="px-5 py-3.5">
+                    <th scope="col" className={cn(adminTable.th, "w-36")}>
                       {t("adminReports.colStatus", "Status")}
                     </th>
-                    <th scope="col" className="px-5 py-3.5 text-center">
+                    <th scope="col" className={cn(adminTable.th, "w-36")}>
                       {t("adminReports.colReporters", "Reporters")}
                     </th>
-                    <th scope="col" className="px-5 py-3.5">
+                    <th scope="col" className={cn(adminTable.th, "w-44")}>
                       {t("adminReports.colLastReported", "Last Reported")}
                     </th>
-                    <th scope="col" className="px-5 py-3.5 text-right">
+                    <th
+                      scope="col"
+                      className={cn(adminTable.th, "w-40 text-right")}
+                    >
                       {t("adminReports.colActions", "Actions")}
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
-                  {items.map((row) => (
+                <tbody className={adminTable.body}>
+                  {items.map((row, index) => (
                     <tr
                       key={row.content_version_id}
-                      className="hover:bg-surface-muted/30 transition-colors"
+                      className={cn(adminTable.row, "h-16")}
                     >
-                      <td className="px-5 py-3.5 font-medium text-text">
-                        <div className="truncate text-sm font-semibold text-text">
-                          {row.slug}
+                      <td
+                        className={cn(
+                          adminTable.td,
+                          "text-right tabular-nums text-text-muted",
+                        )}
+                      >
+                        {offset + index + 1}
+                      </td>
+                      <td className={adminTable.td}>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <AdminRowIcon
+                            icon={AlertTriangle}
+                            className="bg-warning/10 text-warning-accent"
+                          />
+                          <div className="min-w-0">
+                            <p
+                              title={row.slug}
+                              className="truncate text-sm font-semibold text-text"
+                            >
+                              {row.slug}
+                            </p>
+                            <CopyableId id={row.content_version_id} />
+                          </div>
                         </div>
-                        <CopyableId id={row.content_version_id} />
                       </td>
-                      <td className="px-5 py-3.5">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-muted border border-border text-text">
-                          {row.kind}
-                        </span>
+                      <td className={adminTable.td}>
+                        <AdminTag title={row.kind}>{row.kind}</AdminTag>
                       </td>
-                      <td className="px-5 py-3.5">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-primary/10 text-primary-accent border border-primary/20">
-                          {row.cefr_level}
-                        </span>
+                      <td className={adminTable.td}>
+                        <AdminTag>{row.cefr_level}</AdminTag>
                       </td>
-                      <td className="px-5 py-3.5">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
-                            row.item_status === "archived"
-                              ? "bg-danger/10 border-danger/30 text-danger-accent"
-                              : row.item_status === "published"
-                                ? "bg-success/10 border-success/30 text-success-accent"
-                                : "bg-surface-muted border-border text-text-muted"
-                          }`}
-                        >
-                          {t(
-                            `adminReports.itemStatus.${row.item_status}`,
-                            row.item_status,
-                          )}
-                        </span>
+                      <td className={adminTable.td}>
+                        {statusBadge(row.item_status)}
                       </td>
-                      <td className="px-5 py-3.5 text-center">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-warning/15 text-warning-accent border border-warning/30">
-                          {t("adminReports.reportsCount", {
-                            count: row.report_count,
-                          })}
-                        </span>
+                      <td className={adminTable.td}>
+                        {reportsBadge(row.report_count)}
                       </td>
-                      <td className="px-5 py-3.5 text-xs text-text-muted whitespace-nowrap">
+                      <td className={adminTable.td}>
                         {formatDate(row.last_reported_at)}
                       </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <Button
-                          variant="outline"
-                          onClick={() => setSelectedItemId(row.item_id)}
-                          className="gap-1.5 font-medium min-h-[44px]"
-                        >
-                          <span>
-                            {t("adminReports.reviewBtn", "Review item")}
-                          </span>
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </Button>
+                      <td className={cn(adminTable.td, "text-right")}>
+                        {reviewButton(row)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-5 py-3.5 border-t border-border bg-surface-muted/30">
-                <span className="text-xs text-text-muted">
-                  {t("admin.pageOf", "Page {{current}} of {{total}}", {
-                    current: currentPage,
-                    total: totalPages,
-                  })}
-                </span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    disabled={offset === 0 || isFetching}
-                    onClick={() =>
-                      setOffset((prev) => Math.max(0, prev - limit))
-                    }
-                    className="h-11 w-11 min-h-[44px] min-w-[44px] p-0"
-                    aria-label={t("common.previous", "Previous")}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={offset + limit >= total || isFetching}
-                    onClick={() => setOffset((prev) => prev + limit)}
-                    className="h-11 w-11 min-h-[44px] min-w-[44px] p-0"
-                    aria-label={t("common.next", "Next")}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </>
-      )}
+            <ul
+              data-testid="reported-cards"
+              className="divide-y divide-border-subtle md:hidden"
+            >
+              {items.map((row) => (
+                <li
+                  key={row.content_version_id}
+                  data-testid="reported-card"
+                  className="space-y-3 p-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <AdminRowIcon
+                      icon={AlertTriangle}
+                      className="h-10 w-10 bg-warning/10 text-warning-accent"
+                    />
+                    <p className="min-w-0 flex-1 break-all pt-2 text-sm font-semibold text-text">
+                      {row.slug}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <AdminTag title={row.kind}>{row.kind}</AdminTag>
+                    <AdminTag>{row.cefr_level}</AdminTag>
+                    {statusBadge(row.item_status)}
+                    {reportsBadge(row.report_count)}
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <CopyableId id={row.content_version_id} />
+                    {formatDate(row.last_reported_at)}
+                  </div>
+                  {reviewButton(row, "w-full")}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {!error && !isLoading && items.length > 0 && (
+          <Pagination
+            page={currentPage}
+            pageCount={totalPages}
+            total={total}
+            rangeFrom={offset + 1}
+            rangeTo={Math.min(offset + items.length, total)}
+            isBusy={isFetching}
+            canPrevious={offset > 0}
+            canNext={offset + limit < total}
+            onPrevious={() => setOffset((prev) => Math.max(0, prev - limit))}
+            onNext={() => setOffset((prev) => prev + limit)}
+            onPageSelect={(next) => setOffset((next - 1) * limit)}
+            className="bg-surface-card"
+          />
+        )}
+      </AdminDataPanel>
 
       {/* Admin Content Detail Modal for reviewing & archiving */}
       {selectedItemId && (

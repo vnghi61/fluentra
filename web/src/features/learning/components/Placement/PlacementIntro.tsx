@@ -99,17 +99,17 @@ export const PlacementIntro: React.FC<PlacementIntroProps> = ({
   ];
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-base px-3 py-4 sm:px-4 sm:py-8">
+    <div className="flex min-h-screen items-center justify-center bg-surface-muted px-3 py-4 sm:px-4 sm:py-8">
       <div className="w-full max-w-xl space-y-4 rounded-2xl border border-border bg-surface-card p-4 shadow-lg sm:p-6 md:p-8">
         <div className="space-y-1.5 text-center">
           <Compass
             className="mx-auto h-8 w-8 text-primary"
             aria-hidden="true"
           />
-          <h1 className="text-xl font-extrabold text-text sm:text-2xl md:text-3xl">
+          <h1 className="text-2xl md:text-3xl font-bold leading-tight tracking-tight text-text">
             {t("placement.intro.title")}
           </h1>
-          <p className="text-xs text-text-muted sm:text-sm">
+          <p className="text-base leading-relaxed text-text-muted">
             {t("placement.intro.subtitle")}
           </p>
         </div>
@@ -117,7 +117,7 @@ export const PlacementIntro: React.FC<PlacementIntroProps> = ({
         {/* Short summary above the detail */}
         <div
           data-testid="placement-summary"
-          className="space-y-1.5 rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-xs sm:text-sm"
+          className="space-y-1.5 rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-base leading-relaxed"
         >
           <div className="font-semibold text-text">
             {t("placement.intro.summaryTitle", "Overview")}
@@ -159,13 +159,13 @@ export const PlacementIntro: React.FC<PlacementIntroProps> = ({
         </div>
 
         {/* Detail */}
-        <details className="group rounded-xl border border-border-subtle bg-surface-base p-3 text-xs sm:text-sm">
-          <summary className="flex cursor-pointer select-none items-center justify-between font-medium text-text">
+        <details className="group rounded-xl border border-border-subtle bg-surface-muted p-3 text-base leading-relaxed">
+          <summary className="flex min-h-11 cursor-pointer select-none items-center justify-between gap-2 font-semibold text-text">
             <span>{t("placement.intro.detailTitle", "Test details")}</span>
-            <span className="text-xs text-text-muted group-open:hidden">
+            <span className="text-sm text-text-muted group-open:hidden">
               {t("placement.intro.showDetails", "Show")}
             </span>
-            <span className="hidden text-xs text-text-muted group-open:inline">
+            <span className="hidden text-sm text-text-muted group-open:inline">
               {t("placement.intro.hideDetails", "Hide")}
             </span>
           </summary>
@@ -173,10 +173,10 @@ export const PlacementIntro: React.FC<PlacementIntroProps> = ({
             {facts.map((fact) => (
               <li
                 key={fact.text}
-                className="flex items-start gap-2.5 text-xs text-text sm:text-sm"
+                className="flex items-start gap-2.5 text-text"
               >
                 <fact.icon
-                  className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                  className="mt-1 h-4 w-4 shrink-0 text-primary"
                   aria-hidden="true"
                 />
                 <span>{fact.text}</span>
@@ -186,14 +186,14 @@ export const PlacementIntro: React.FC<PlacementIntroProps> = ({
         </details>
 
         {notice && (
-          <p className="rounded-lg bg-warning/10 p-3 text-sm text-text">
+          <p className="rounded-lg bg-warning/10 p-3 text-base leading-relaxed text-text">
             {notice}
           </p>
         )}
         {error && (
           <p
             role="alert"
-            className="rounded-lg bg-danger/10 p-3 text-sm text-danger"
+            className="rounded-lg bg-danger/10 p-3 text-base leading-relaxed text-danger-accent"
           >
             {error}
           </p>
@@ -204,7 +204,8 @@ export const PlacementIntro: React.FC<PlacementIntroProps> = ({
             type="button"
             onClick={() => void start()}
             disabled={pending}
-            className="min-h-[44px] w-full text-base"
+            size="lg"
+            className="w-full"
           >
             {pending
               ? t("placement.intro.starting")
@@ -212,7 +213,7 @@ export const PlacementIntro: React.FC<PlacementIntroProps> = ({
           </Button>
           <Link
             to="/"
-            className="flex min-h-[44px] w-full items-center justify-center rounded-lg text-sm font-medium text-text-muted hover:text-text"
+            className="flex min-h-[44px] w-full items-center justify-center rounded-lg text-sm font-semibold text-text-muted hover:text-text"
           >
             {t("placement.intro.notNow")}
           </Link>

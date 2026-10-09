@@ -1925,7 +1925,7 @@
       "Upload intents: a presigned POST policy into fluentra-uploads that pins the content type and a 1 B to 50 MB size range, valid 5 minutes",
       "Confirming an upload and submitting a URL, each writing its row and enqueuing resource.validate in one transaction",
       "Lifecycle pending, uploaded, then validated, rejected or failed",
-      "File validation by magic bytes against an allow-list: PDF, DOC, DOCX, PPT, PPTX, PNG, JPEG, WebP, MP3, WAV, M4A, MP4, WebM",
+      "File validation by magic bytes against an allow-list: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, PNG, JPEG, WebP, MP3, WAV, M4A, MP4, WebM",
       "URL validation that stores the page title and never the body, through a client whose dialer refuses non-public addresses",
       "Per-user quotas: 50 resources and 250 MB, counting everything not rejected or failed",
       "Presigned GET for a validated file its owner requests",

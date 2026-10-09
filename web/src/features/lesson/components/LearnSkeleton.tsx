@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export const LearnSkeleton: React.FC = () => {
   return (
     <div
-      className="max-w-[1440px] mx-auto w-full min-w-0 space-y-8 animate-pulse"
+      className=" mx-auto w-full min-w-0 space-y-4 md:space-y-5 animate-pulse"
       data-testid="learn-skeleton"
     >
       {/* Overview Card Skeleton */}

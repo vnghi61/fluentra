@@ -3,7 +3,10 @@ export {
   resourceFamily,
   renditionsPending,
   materialReady,
-  pollMaterial,
+  materialState,
+  checkMaterialFile,
+  MATERIAL_ACCEPT,
+  MATERIAL_TYPES,
   RESOURCE_ACCEPT,
   RESOURCE_MAX_BYTES,
   RESOURCE_QUOTA_BYTES,
@@ -17,6 +20,8 @@ export {
   type ResourcePracticeSet,
   type ResourcePracticeActivity,
   type MaterialUploadState,
+  type MaterialKind,
+  type MaterialFileCheck,
 } from "./api/resourceApi";
 export { resourceKeys } from "./api/keys";
 export {
@@ -26,6 +31,7 @@ export {
   useDeleteResource,
   useResourcePractice,
   useStartResourcePractice,
+  useMaterialStatus,
   quotaUsage,
 } from "./hooks/useResources";
 export {

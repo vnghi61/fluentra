@@ -6,7 +6,7 @@ status: PLANNED
 phase: 2
 owner: "@backend-team"
 schema: core
-tables: [admin_actions, feature_flags, admin_notes, moderation_items]
+tables: [admin_actions, feature_flags, admin_notes, moderation_items, banners]
 depends_on: [user, rbac, audit, auth, content, cache]
 depended_on_by: []
 spec_version: 1.0.0
@@ -32,6 +32,7 @@ Running the platform must not require database access. Every routine operational
 - User management screens (list, search, inspect, suspend, reinstate, impersonate)
 - Moderation queues (flagged content, reported names, flagged submissions)
 - Feature flag management
+- Dashboard banners of two kinds: announcements shown once as a dialog, and image-only promo slides in a carousel (create, schedule, switch on/off, delete)
 - Operational actions: retry a job, replay a webhook, invalidate a cache key
 - System health summary for non-engineers
 <!-- END GENERATED: readme-resp -->

@@ -191,6 +191,25 @@ describe("LessonPage Runner (P10.3)", () => {
     expect(starts).toBe(0);
   });
 
+  it("renders only one report action before and after answering", async () => {
+    const user = userEventDefault.setup();
+    await renderLessonRunner();
+    await screen.findByText("What is the meaning of 'meticulous'?");
+    expect(
+      screen.getAllByRole("button", { name: "Report issue" }),
+    ).toHaveLength(1);
+    await user.click(screen.getByText("Showing great attention to detail"));
+    await user.click(screen.getByRole("button", { name: /Check Answer/i }));
+    await screen.findAllByText("Correct! Well done.");
+    expect(
+      screen.getAllByRole("button", { name: "Report issue" }),
+    ).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Report issue" }));
+    expect(
+      await screen.findByRole("dialog", { name: "Report an issue" }),
+    ).toBeInTheDocument();
+  });
+
   it("completes full 3-step lesson using keyboard and mouse", async () => {
     const user = userEventDefault.setup();
     await renderLessonRunner();
@@ -434,12 +453,14 @@ describe("LessonPage Runner (P10.3)", () => {
     await user.click(screen.getByLabelText("Exit"));
 
     // Modal dialog pops up
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("alertdialog", { name: "Exit Lesson?" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Exit Lesson?")).toBeInTheDocument();
 
     // Clicking 'Keep Learning' cancels
     await user.click(screen.getByRole("button", { name: /Keep Learning/i }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
   it("renders and submits grammar_sentence_transform activity without expected_answer", async () => {

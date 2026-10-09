@@ -15,11 +15,13 @@ import { useViewport } from "@/hooks/useViewport";
 import { SUPPORTED_LOCALES, type Locale } from "@/i18n";
 import { cn } from "@/lib/utils";
 import type { ThemeChoice } from "@/lib/theme";
+import { revealOriginFrom, type RevealOrigin } from "@/lib/view-transition";
 
 export interface ThemeLanguageControlsProps {
   themeChoice: ThemeChoice;
   locale: Locale;
-  onThemeChoice: (choice: ThemeChoice) => void;
+  /** `origin` is where the choice was made; the new theme spreads from it. */
+  onThemeChoice: (choice: ThemeChoice, origin?: RevealOrigin) => void;
   onLocale: (locale: Locale) => void;
 }
 
@@ -77,13 +79,21 @@ export const ThemeLanguageControls: React.FC<ThemeLanguageControlsProps> = ({
   const active =
     themeOptions.find((o) => o.value === themeChoice) ?? systemOption;
   const ActiveIcon = active.Icon;
+  // The trigger's icon turns into the new one when the learner changes the
+  // theme, in step with the reveal; not on the first paint.
+  const [initialChoice] = React.useState(themeChoice);
+  const iconClass = cn(
+    "h-5 w-5",
+    themeChoice !== initialChoice &&
+      "motion-safe:animate-in motion-safe:spin-in-90 motion-safe:zoom-in-50 motion-safe:fade-in motion-safe:duration-500",
+  );
 
   const themeAriaLabel = `${t("theme.label", "Theme")}: ${t(active.labelKey, active.fallback)}`;
   const langAriaLabel = `${t("language.label", "Language")}: ${localeNames[locale]}`;
 
   if (isMobile) {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         {/* Mobile Theme Trigger */}
         <button
           type="button"
@@ -93,7 +103,11 @@ export const ThemeLanguageControls: React.FC<ThemeLanguageControlsProps> = ({
           onClick={() => setThemeSheetOpen(true)}
           className={trigger}
         >
-          <ActiveIcon className="h-5 w-5" aria-hidden="true" />
+          <ActiveIcon
+            key={active.value}
+            className={iconClass}
+            aria-hidden="true"
+          />
         </button>
 
         {/* Mobile Language Trigger */}
@@ -123,8 +137,8 @@ export const ThemeLanguageControls: React.FC<ThemeLanguageControlsProps> = ({
                   type="button"
                   role="menuitemradio"
                   aria-checked={isSelected}
-                  onClick={() => {
-                    onThemeChoice(value);
+                  onClick={(event) => {
+                    onThemeChoice(value, revealOriginFrom(event));
                     setThemeSheetOpen(false);
                   }}
                   className={cn(
@@ -214,7 +228,7 @@ export const ThemeLanguageControls: React.FC<ThemeLanguageControlsProps> = ({
   }
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-2">
       <DropdownMenu>
         {/*
           aria-label names the control and its current value, so a screen reader
@@ -222,7 +236,11 @@ export const ThemeLanguageControls: React.FC<ThemeLanguageControlsProps> = ({
           took twenty-three E2E specs down when the account button lost its text.
         */}
         <DropdownMenuTrigger aria-label={themeAriaLabel} className={trigger}>
-          <ActiveIcon className="h-5 w-5" aria-hidden="true" />
+          <ActiveIcon
+            key={active.value}
+            className={iconClass}
+            aria-hidden="true"
+          />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>{t("theme.label", "Theme")}</DropdownMenuLabel>
@@ -232,7 +250,9 @@ export const ThemeLanguageControls: React.FC<ThemeLanguageControlsProps> = ({
             return (
               <DropdownMenuItem
                 key={value}
-                onSelect={() => onThemeChoice(value)}
+                onSelect={(event) =>
+                  onThemeChoice(value, revealOriginFrom(event))
+                }
                 className="flex items-center gap-2.5 rounded-xl"
               >
                 <div

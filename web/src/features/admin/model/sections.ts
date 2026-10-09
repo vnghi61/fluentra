@@ -8,6 +8,7 @@ import {
   Flag,
   Gauge,
   ListChecks,
+  Megaphone,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -33,6 +34,7 @@ export type AdminSectionKey =
   | "reports"
   | "vocabulary"
   | "flags"
+  | "banners"
   | "ai"
   | "moderation"
   | "payouts";
@@ -114,6 +116,17 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     labelKey: "page.featureFlags",
     labelFallback: "Feature Flags",
     Icon: Flag,
+    anyOf: [PERMISSIONS.systemFlags],
+  },
+  {
+    // Announcement banners on the learner dashboard. Same permission as the
+    // flags: both are the platform's own switches (see /admin/banners in
+    // api/openapi/openapi.yaml).
+    key: "banners",
+    path: "/admin/banners",
+    labelKey: "adminBanners.tabLabel",
+    labelFallback: "Banners",
+    Icon: Megaphone,
     anyOf: [PERMISSIONS.systemFlags],
   },
   {

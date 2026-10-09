@@ -1,7 +1,6 @@
 import React from "react";
 import { useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { Shield } from "lucide-react";
 import {
   AdminUserList,
   AdminFeatureFlags,
@@ -13,13 +12,32 @@ import {
   AdminVocabulary,
   AdminStudioModeration,
   AdminPayoutsList,
-  AdminPageHeader,
+  AdminBanners,
+  AdminSectionHeader,
   AdminModuleSwitcher,
 } from "@/features/admin";
 import {
   type AdminSectionKey,
   useVisibleAdminSections,
 } from "@/features/admin";
+
+// Sections that render their own header because it carries an action.
+const SELF_HEADED: ReadonlySet<AdminSectionKey> = new Set([
+  "content",
+  "questions",
+  "flags",
+  "banners",
+]);
+
+const SECTION_DESCRIPTIONS: Partial<Record<AdminSectionKey, string>> = {
+  users: "admin.userManagementDescription",
+  review: "adminReview.pageDescription",
+  reports: "adminReports.desc",
+  vocabulary: "admin.vocabularyDescription",
+  ai: "admin.aiUsageSubtitle",
+  moderation: "adminModeration.subtitle",
+  payouts: "adminPayouts.subtitle",
+};
 
 export function AdminPage(): React.JSX.Element {
   const { t } = useTranslation();
@@ -42,11 +60,16 @@ export function AdminPage(): React.JSX.Element {
 
   return (
     <div className="mx-auto w-full space-y-5 py-2 md:space-y-6">
-      {/* Header: the section is the page; "Administration" is only context. */}
-      <div className="space-y-2"><p className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-primary-accent">
-          <Shield className="h-3 w-3" aria-hidden="true" />
-          {t("page.administration")}
-        </p>{currentSection && <AdminPageHeader title={currentLabel} />}</div>
+      {/* Header: the section is the page; "Administration" is only context.
+        Sections whose header carries an action draw their own. */}
+      {currentSection && visible && !SELF_HEADED.has(visible) && (
+        <AdminSectionHeader
+          title={currentLabel}
+          {...(SECTION_DESCRIPTIONS[visible]
+            ? { description: t(SECTION_DESCRIPTIONS[visible]) }
+            : {})}
+        />
+      )}
 
       {/* Mobile section picker for viewports below md */}
       {!isLoading && sections.length > 0 && (
@@ -60,7 +83,7 @@ export function AdminPage(): React.JSX.Element {
             {t("page.checkingYourPermissions")}
           </p>
         ) : sections.length === 0 ? (
-          <p className="text-sm text-text-muted">
+          <p className="text-base leading-relaxed text-text-muted">
             {t("page.yourAccountHoldsNoAdministrativePermissions")}
           </p>
         ) : (
@@ -72,6 +95,7 @@ export function AdminPage(): React.JSX.Element {
             {visible === "reports" && <AdminReportedContentList />}
             {visible === "vocabulary" && <AdminVocabulary />}
             {visible === "flags" && <AdminFeatureFlags />}
+            {visible === "banners" && <AdminBanners />}
             {visible === "ai" && <AdminAIUsage />}
             {visible === "moderation" && <AdminStudioModeration />}
             {visible === "payouts" && <AdminPayoutsList />}

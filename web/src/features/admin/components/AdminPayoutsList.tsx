@@ -8,24 +8,39 @@ import {
   Clock,
   DollarSign,
   Send,
+  Wallet,
   X,
   XCircle,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { cn } from "@/lib/utils";
 import { adminApi, type PayoutResponse } from "../api/adminApi";
 import { formatVnd } from "@/lib/currency";
-import * as AlertDialog from "@radix-ui/react-alert-dialog";
+import { CopyableId } from "./CopyableId";
+import { StatusBadge } from "./StatusBadge";
+import {
+  AdminDataPanel,
+  AdminListSkeleton,
+  AdminRefreshButton,
+  AdminRowIcon,
+  AdminStatGrid,
+  adminStatTones,
+  adminTable,
+  type AdminStat,
+} from "./AdminSurface";
 
 export function AdminPayoutsList(): React.JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const {
     data,
     isLoading: loading,
+    isFetching,
     error: queryError,
     refetch,
   } = useQuery({
@@ -35,7 +50,11 @@ export function AdminPayoutsList(): React.JSX.Element {
 
   const payouts = data?.items ?? [];
   const total = data?.total ?? 0;
-  const error = queryError instanceof Error ? queryError.message : null;
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : t("adminPayouts.errLoadFailed")
+    : null;
 
   const [activePayout, setActivePayout] = useState<PayoutResponse | null>(null);
   const [bankReference, setBankReference] = useState("");
@@ -95,224 +114,266 @@ export function AdminPayoutsList(): React.JSX.Element {
     switch (status) {
       case "sent":
         return (
-          <Badge variant="success" className="gap-1 text-xs">
-            <CheckCircle2 className="h-3 w-3" />
+          <StatusBadge tone="success" icon={CheckCircle2}>
             {t("adminPayouts.statusSent", "Sent / Fulfilled")}
-          </Badge>
+          </StatusBadge>
         );
       case "failed":
         return (
-          <Badge variant="danger" className="gap-1 text-xs">
-            <XCircle className="h-3 w-3" />
+          <StatusBadge tone="danger" icon={XCircle}>
             {t("adminPayouts.statusFailed", "Failed")}
-          </Badge>
+          </StatusBadge>
         );
       default:
         return (
-          <Badge variant="warning" className="gap-1 text-xs">
-            <Clock className="h-3 w-3" />
+          <StatusBadge tone="warning" icon={Clock}>
             {t("adminPayouts.statusPending", "Pending Review")}
-          </Badge>
+          </StatusBadge>
         );
     }
   };
 
+  const openFulfill = (payout: PayoutResponse) => {
+    setActivePayout(payout);
+    setBankReference("");
+    setNote("");
+    setActionError(null);
+  };
+  const requestedAt = (date: string) => (
+    <time
+      dateTime={date}
+      className="whitespace-nowrap text-sm tabular-nums text-text-muted"
+    >
+      {new Date(date).toLocaleString(i18n.resolvedLanguage, {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })}
+    </time>
+  );
+  const fulfillButton = (payout: PayoutResponse, className?: string) =>
+    payout.status === "pending" ? (
+      <Button
+        type="button"
+        size="sm"
+        onClick={() => openFulfill(payout)}
+        className={className}
+      >
+        <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+        {t("adminPayouts.fulfillBtn", "Fulfill")}
+      </Button>
+    ) : null;
+  const countOf = (status: string) =>
+    payouts.filter((payout) => payout.status === status).length;
+  const pendingAmount = payouts
+    .filter((payout) => payout.status === "pending")
+    .reduce((sum, payout) => sum + payout.amount_vnd, 0);
+  const stats: AdminStat[] = [
+    {
+      key: "total",
+      label: t("adminPayouts.statTotal"),
+      value: total.toLocaleString(i18n.resolvedLanguage),
+      Icon: Wallet,
+      tone: adminStatTones.primary,
+    },
+    {
+      key: "pending",
+      label: t("adminPayouts.statusPending", "Pending Review"),
+      value: countOf("pending").toLocaleString(i18n.resolvedLanguage),
+      Icon: Clock,
+      tone: adminStatTones.warning,
+    },
+    {
+      key: "sent",
+      label: t("adminPayouts.statusSent", "Sent / Fulfilled"),
+      value: countOf("sent").toLocaleString(i18n.resolvedLanguage),
+      Icon: CheckCircle2,
+      tone: adminStatTones.success,
+    },
+    {
+      key: "pending-amount",
+      label: t("adminPayouts.statPendingAmount"),
+      value: formatVnd(pendingAmount),
+      Icon: DollarSign,
+      tone: adminStatTones.neutral,
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-text">
-            {t("adminPayouts.title", "Creator Payouts Management")}
-          </h2>
-          <p className="text-xs text-text-muted mt-0.5">
-            {t(
-              "adminPayouts.subtitle",
-              "Review requested creator earnings payouts and record manual bank transfer fulfillment receipts.",
-            )}
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <AdminStatGrid
+          stats={stats}
+          loading={loading}
+          label={t("adminPayouts.summary")}
+        />
+        {!loading && total > payouts.length && (
+          <p className="text-sm text-text-muted">
+            {t("adminPayouts.statScope", { count: payouts.length })}
           </p>
-        </div>
-        <Badge
-          variant="primary"
-          className="text-xs px-2.5 py-1 self-start sm:self-auto"
-        >
-          {t("adminPayouts.count", {
-            count: total,
-            defaultValue: `${total} payouts total`,
-          })}
-        </Badge>
+        )}
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger font-medium">
-          {error}
-        </div>
-      )}
-      <AlertDialog.Root open={confirmFulfill} onOpenChange={setConfirmFulfill}>
-        <AlertDialog.Portal>
-          <AlertDialog.Overlay className="fixed inset-0 z-[60] bg-black/60" />
-          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[60] w-[min(calc(100%-2rem),28rem)] -translate-x-1/2 -translate-y-1/2 space-y-4 rounded-xl border border-border bg-surface-card p-6 shadow-xl">
-            <AlertDialog.Title className="font-semibold">
-              {t("adminPayouts.confirmFulfill", "Confirm Fulfillment")}
-            </AlertDialog.Title>
-            <AlertDialog.Description className="text-sm text-muted-foreground">
-              {activePayout
-                ? `${formatVnd(activePayout.amount_vnd)} · ${activePayout.creator_id}`
-                : ""}
-            </AlertDialog.Description>
-            <div className="flex justify-end gap-2">
-              <AlertDialog.Cancel asChild>
-                <Button variant="outline" className="min-h-[44px]">
-                  {t("app.cancel", "Cancel")}
-                </Button>
-              </AlertDialog.Cancel>
-              <AlertDialog.Action asChild>
-                <Button
-                  variant="primary"
-                  className="min-h-[44px]"
-                  disabled={actionLoading}
-                  onClick={() => void performFulfill()}
-                >
-                  {t("adminPayouts.confirmFulfill", "Confirm Fulfillment")}
-                </Button>
-              </AlertDialog.Action>
-            </div>
-          </AlertDialog.Content>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+      <ConfirmDialog
+        open={confirmFulfill}
+        onOpenChange={setConfirmFulfill}
+        title={t("adminPayouts.confirmFulfill", "Confirm Fulfillment")}
+        description={
+          activePayout
+            ? `${formatVnd(activePayout.amount_vnd)} · ${activePayout.creator_id}`
+            : ""
+        }
+        cancelLabel={t("app.cancel", "Cancel")}
+        confirmLabel={t("adminPayouts.confirmFulfill", "Confirm Fulfillment")}
+        isPending={actionLoading}
+        onConfirm={() => void performFulfill()}
+      />
 
-      {loading ? (
-        <div className="py-16 text-center text-sm text-text-muted">
-          {t("app.loading", "Loading payouts...")}
+      <AdminDataPanel>
+        <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
+          <p className="text-sm text-text-muted">
+            {t("adminPayouts.count", {
+              count: total,
+              defaultValue: `${total} payouts total`,
+            })}
+          </p>
+          <AdminRefreshButton
+            onClick={() => void refetch()}
+            busy={isFetching}
+          />
         </div>
-      ) : payouts.length === 0 ? (
-        <Card className="border-border-subtle bg-surface-card p-6 text-center space-y-2">
-          <DollarSign className="h-10 w-10 text-text-muted mx-auto" />
-          <CardTitle className="text-base font-bold text-text">
-            {t("adminPayouts.emptyTitle", "No payouts requested")}
-          </CardTitle>
-          <CardDescription className="text-xs">
-            {t(
+        {loading ? (
+          <AdminListSkeleton label={t("app.loading", "Loading payouts...")} />
+        ) : error ? (
+          <ErrorState
+            description={error}
+            onRetry={() => void refetch()}
+            className="py-10"
+          />
+        ) : payouts.length === 0 ? (
+          <EmptyState
+            icon={DollarSign}
+            title={t("adminPayouts.emptyTitle", "No payouts requested")}
+            description={t(
               "adminPayouts.emptyDesc",
               "When creators request earnings withdrawals, they will appear here for processing.",
             )}
-          </CardDescription>
-        </Card>
-      ) : (
-        <>
-          <div className="space-y-3 md:hidden">
-            {payouts.map((payout) => (
-              <article
-                key={payout.id}
-                className="space-y-3 rounded-xl border border-border-subtle bg-surface-card p-4"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="break-all font-mono text-xs">
-                    {payout.creator_id}
-                  </span>
-                  {getStatusBadge(payout.status)}
-                </div>
-                <p className="text-lg font-bold">
-                  {formatVnd(payout.amount_vnd)}
-                </p>
-                <p className="text-sm text-text-muted">
-                  {new Date(payout.created_at).toLocaleString()}
-                </p>
-                {payout.status === "pending" && (
-                  <Button
-                    variant="primary"
-                    className="min-h-[44px] w-full"
-                    onClick={() => {
-                      setActivePayout(payout);
-                      setBankReference("");
-                      setNote("");
-                      setActionError(null);
-                    }}
-                  >
-                    <ArrowUpRight className="mr-1 h-4 w-4" />
-                    {t("adminPayouts.fulfillBtn", "Fulfill")}
-                  </Button>
-                )}
-              </article>
-            ))}
-          </div>
-          <div className="hidden overflow-x-auto rounded-xl border border-border-subtle bg-surface-card shadow-sm md:block">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-surface-base border-b border-border-subtle text-text-muted uppercase tracking-wider">
-                <tr>
-                  <th className="p-3.5">
-                    {t("adminPayouts.colCreator", "Creator ID")}
-                  </th>
-                  <th className="p-3.5">
-                    {t("adminPayouts.colAmount", "Amount")}
-                  </th>
-                  <th className="p-3.5">
-                    {t("adminPayouts.colStatus", "Status")}
-                  </th>
-                  <th className="p-3.5">
-                    {t("adminPayouts.colReference", "Bank Reference")}
-                  </th>
-                  <th className="p-3.5">
-                    {t("adminPayouts.colDate", "Requested At")}
-                  </th>
-                  <th className="p-3.5 text-right">
-                    {t("adminPayouts.colAction", "Action")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-subtle">
-                {payouts.map((payout) => (
-                  <tr
-                    key={payout.id}
-                    className="hover:bg-surface-base/50 transition-colors"
-                  >
-                    <td className="p-3.5 font-mono text-[11px] text-text">
-                      {payout.creator_id}
-                    </td>
-                    <td className="p-3.5 font-bold text-text">
-                      {formatVnd(payout.amount_vnd)}
-                    </td>
-                    <td className="p-3.5">{getStatusBadge(payout.status)}</td>
-                    <td className="p-3.5 font-mono text-[11px] text-text-muted">
-                      {payout.bank_reference || "—"}
-                    </td>
-                    <td className="p-3.5 text-text-muted">
-                      {new Date(payout.created_at).toLocaleDateString(
-                        undefined,
-                        {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        },
-                      )}
-                    </td>
-                    <td className="p-3.5 text-right">
-                      {payout.status === "pending" && (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => {
-                            setActivePayout(payout);
-                            setBankReference("");
-                            setNote("");
-                            setActionError(null);
-                          }}
-                          className="gap-1 text-xs"
-                        >
-                          <ArrowUpRight className="h-3.5 w-3.5" />
-                          {t("adminPayouts.fulfillBtn", "Fulfill")}
-                        </Button>
-                      )}
-                    </td>
+            className="py-10"
+          />
+        ) : (
+          <>
+            <div className="hidden overflow-x-auto md:block">
+              <table className={cn(adminTable.table, "min-w-[880px]")}>
+                <caption className="sr-only">
+                  {t("adminPayouts.title", "Creator Payouts Management")}
+                </caption>
+                <thead className={adminTable.head}>
+                  <tr>
+                    <th
+                      scope="col"
+                      className={cn(adminTable.th, "w-14 text-right")}
+                    >
+                      {t("common.rowNumber")}
+                    </th>
+                    <th scope="col" className={adminTable.th}>
+                      {t("adminPayouts.colCreator", "Creator ID")}
+                    </th>
+                    <th scope="col" className={cn(adminTable.th, "w-40")}>
+                      {t("adminPayouts.colAmount", "Amount")}
+                    </th>
+                    <th scope="col" className={cn(adminTable.th, "w-44")}>
+                      {t("adminPayouts.colStatus", "Status")}
+                    </th>
+                    <th scope="col" className={cn(adminTable.th, "w-48")}>
+                      {t("adminPayouts.colReference", "Bank Reference")}
+                    </th>
+                    <th scope="col" className={cn(adminTable.th, "w-44")}>
+                      {t("adminPayouts.colDate", "Requested At")}
+                    </th>
+                    <th
+                      scope="col"
+                      className={cn(adminTable.th, "w-36 text-right")}
+                    >
+                      {t("adminPayouts.colAction", "Action")}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+                </thead>
+                <tbody className={adminTable.body}>
+                  {payouts.map((payout, index) => (
+                    <tr key={payout.id} className={cn(adminTable.row, "h-16")}>
+                      <td
+                        className={cn(
+                          adminTable.td,
+                          "text-right tabular-nums text-text-muted",
+                        )}
+                      >
+                        {index + 1}
+                      </td>
+                      <td className={adminTable.td}>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <AdminRowIcon icon={Wallet} />
+                          <CopyableId id={payout.creator_id} />
+                        </div>
+                      </td>
+                      <td
+                        className={cn(
+                          adminTable.td,
+                          "font-semibold tabular-nums text-text",
+                        )}
+                      >
+                        {formatVnd(payout.amount_vnd)}
+                      </td>
+                      <td className={adminTable.td}>
+                        {getStatusBadge(payout.status)}
+                      </td>
+                      <td
+                        className={cn(
+                          adminTable.td,
+                          "truncate font-mono text-sm text-text-muted",
+                        )}
+                        title={payout.bank_reference || undefined}
+                      >
+                        {payout.bank_reference || "—"}
+                      </td>
+                      <td className={adminTable.td}>
+                        {requestedAt(payout.created_at)}
+                      </td>
+                      <td className={cn(adminTable.td, "text-right")}>
+                        {fulfillButton(payout)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <ul className="divide-y divide-border-subtle md:hidden">
+              {payouts.map((payout) => (
+                <li key={payout.id} className="space-y-3 p-4">
+                  <div className="flex items-start gap-3">
+                    <AdminRowIcon icon={Wallet} className="h-10 w-10" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-lg font-bold tabular-nums text-text">
+                        {formatVnd(payout.amount_vnd)}
+                      </p>
+                      <CopyableId id={payout.creator_id} />
+                    </div>
+                    {getStatusBadge(payout.status)}
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="break-all font-mono text-sm text-text-muted">
+                      {payout.bank_reference || "—"}
+                    </span>
+                    {requestedAt(payout.created_at)}
+                  </div>
+                  {fulfillButton(payout, "w-full")}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </AdminDataPanel>
 
       {/* Fulfill Payout Modal */}
       {activePayout && (
@@ -322,13 +383,16 @@ export function AdminPayoutsList(): React.JSX.Element {
           aria-labelledby="fulfill-payout-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
         >
-          <div className="relative w-full max-w-md rounded-xl border border-border-subtle bg-surface-card p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-border-subtle pb-4">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary-accent" />
+          <div className="relative w-full max-w-md space-y-5 rounded-xl border border-border-subtle bg-surface-card p-4 shadow-2xl sm:p-6">
+            <div className="flex items-center justify-between gap-2 border-b border-border-subtle pb-4">
+              <div className="flex min-w-0 items-center gap-2">
+                <Building2
+                  aria-hidden="true"
+                  className="h-5 w-5 shrink-0 text-primary-accent"
+                />
                 <h2
                   id="fulfill-payout-title"
-                  className="text-lg font-bold text-text"
+                  className="min-w-0 break-words text-lg font-semibold leading-tight text-text"
                 >
                   {t(
                     "adminPayouts.fulfillModalTitle",
@@ -340,23 +404,23 @@ export function AdminPayoutsList(): React.JSX.Element {
                 type="button"
                 onClick={() => setActivePayout(null)}
                 aria-label={t("app.close", "Close")}
-                className="rounded-lg p-1.5 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
+                className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-muted hover:text-text"
               >
-                <X className="h-5 w-5" />
+                <X aria-hidden="true" className="h-5 w-5" />
               </button>
             </div>
 
             {/* Payout Details */}
-            <div className="rounded-lg border border-border-subtle bg-surface-base p-4 space-y-2 text-xs">
-              <div className="flex items-center justify-between">
+            <div className="space-y-2 rounded-lg border border-border-subtle bg-surface-muted p-4 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-text-muted">
                   {t("adminPayouts.colAmount", "Amount")}:
                 </span>
-                <span className="text-base font-extrabold text-primary-accent">
+                <span className="text-base font-bold tabular-nums text-primary-accent">
                   {formatVnd(activePayout.amount_vnd)}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-text-muted pt-1 border-t border-border-subtle">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-1 text-text-muted">
                 <span>{t("adminPayouts.colCreator", "Creator ID")}:</span>
                 <span className="font-mono text-text">
                   {activePayout.creator_id.slice(0, 12)}...
@@ -365,7 +429,7 @@ export function AdminPayoutsList(): React.JSX.Element {
             </div>
 
             {actionError && (
-              <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger font-medium">
+              <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm font-medium text-danger-accent">
                 {actionError}
               </div>
             )}
@@ -379,7 +443,7 @@ export function AdminPayoutsList(): React.JSX.Element {
               <div>
                 <label
                   htmlFor="bank-ref-input"
-                  className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5"
+                  className="mb-1.5 block text-sm font-medium text-text"
                 >
                   {t("adminPayouts.bankRefLabel", "Bank Transaction Reference")}
                 </label>
@@ -392,9 +456,9 @@ export function AdminPayoutsList(): React.JSX.Element {
                     "e.g. VCB-TRF-20260920-001",
                   )}
                   required
-                  className="font-mono text-sm"
+                  className="font-mono"
                 />
-                <span className="text-[11px] text-text-muted mt-1 block">
+                <span className="mt-1 block text-sm text-text-muted">
                   {t(
                     "adminPayouts.bankRefHelp",
                     "The transaction number from your banking portal once the transfer completes.",
@@ -405,7 +469,7 @@ export function AdminPayoutsList(): React.JSX.Element {
               <div>
                 <label
                   htmlFor="payout-note-input"
-                  className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5"
+                  className="mb-1.5 block text-sm font-medium text-text"
                 >
                   {t("adminPayouts.noteLabel", "Note (Optional)")}
                 </label>
@@ -420,7 +484,7 @@ export function AdminPayoutsList(): React.JSX.Element {
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-border-subtle">
+              <div className="flex flex-wrap justify-end gap-3 border-t border-border-subtle pt-3">
                 <Button
                   type="button"
                   variant="outline"
@@ -433,9 +497,8 @@ export function AdminPayoutsList(): React.JSX.Element {
                   type="submit"
                   variant="primary"
                   disabled={actionLoading}
-                  className="gap-1.5"
                 >
-                  <Send className="h-3.5 w-3.5" />
+                  <Send aria-hidden="true" className="h-4 w-4" />
                   {actionLoading
                     ? t("adminPayouts.fulfilling", "Recording...")
                     : t("adminPayouts.confirmFulfill", "Confirm Fulfillment")}

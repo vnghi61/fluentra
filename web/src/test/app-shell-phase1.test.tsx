@@ -8,7 +8,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import type { ReactElement } from "react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "@/components/layout/AppShell";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -56,10 +56,57 @@ describe("Phase 1 shell and status pages", () => {
     await renderAt("/missing", NotFoundPage);
 
     expect(await screen.findByText("404")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Page not found", level: 1 }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Back to home/i })).toHaveAttribute(
       "href",
       "/",
     );
+  });
+
+  it("offers a way back from a More page: to the More menu, or up to its section", async () => {
+    const user = userEvent.setup();
+    const first = await renderAt("/settings", () => (
+      <AppShell status="authenticated" user={{ role: "user" }}>
+        <div>settings content</div>
+      </AppShell>
+    ));
+    await user.click(
+      await screen.findByRole("button", { name: "Back to More" }),
+    );
+    expect(
+      await screen.findByRole("dialog", { name: "More" }),
+    ).toBeInTheDocument();
+    first.unmount();
+
+    await renderAt("/exams/$attemptId", () => (
+      <AppShell status="authenticated" user={{ role: "user" }}>
+        <div>attempt</div>
+      </AppShell>
+    ));
+    expect(
+      await screen.findByRole("link", { name: "Back to Mock Exams" }),
+    ).toHaveAttribute("href", "/exams");
+  });
+
+  it("keeps a page the More menu leads to when More is tapped again", async () => {
+    const user = userEvent.setup();
+    await renderAt("/settings", () => (
+      <AppShell status="authenticated" user={{ role: "user" }}>
+        <div>settings content</div>
+      </AppShell>
+    ));
+
+    const nav = await screen.findByRole("navigation", {
+      name: /Mobile navigation/i,
+    });
+    const more = within(nav).getByRole("button", { name: /More/i });
+    await user.click(more);
+    await user.click(more);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByText("settings content")).toBeInTheDocument();
   });
 
   it("draws five mobile nav items and opens the More sheet", async () => {
@@ -87,13 +134,18 @@ describe("Phase 1 shell and status pages", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the passed controls in the More sheet when signed in", async () => {
+  it("shows theme pickers and account sections on the More screen", async () => {
     const user = userEvent.setup();
+    const onThemeChoice = vi.fn();
+    const onLocale = vi.fn();
     await renderAt("/", () => (
       <AppShell
         status="authenticated"
         user={{ role: "user" }}
-        controls={<button type="button">Theme toggle</button>}
+        themeChoice="light"
+        onThemeChoice={onThemeChoice}
+        locale="en"
+        onLocale={onLocale}
       >
         <div>content</div>
       </AppShell>
@@ -102,18 +154,41 @@ describe("Phase 1 shell and status pages", () => {
     const nav = await screen.findByRole("navigation", {
       name: /Mobile navigation/i,
     });
-    expect(within(nav).getAllByRole("link")).toHaveLength(4);
     await user.click(within(nav).getByRole("button", { name: /More/i }));
 
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("dialog", { name: "More" });
+    expect(within(dialog).queryByText("Preview")).not.toBeInTheDocument();
     expect(
-      within(dialog).getByText(/Appearance & language/i),
-    ).toBeInTheDocument();
+      within(dialog).queryByRole("link", { name: "Settings" }),
+    ).not.toBeInTheDocument();
+    expect(within(dialog).getAllByRole("radio")).toHaveLength(3);
+    expect(within(dialog).getByRole("radio", { name: "Light" })).toBeChecked();
+    await user.click(within(dialog).getByRole("radio", { name: "Dark" }));
+    // The second argument is where the reveal starts; jsdom has no layout, so
+    // there is no point to report.
+    expect(onThemeChoice).toHaveBeenCalledWith("dark", undefined);
+    await user.click(within(dialog).getByRole("radio", { name: "System" }));
+    expect(onThemeChoice).toHaveBeenCalledWith("system", undefined);
+    await user.click(
+      within(dialog).getByRole("button", { name: /App language/i }),
+    );
+    expect(onLocale).toHaveBeenCalledWith("vi");
     expect(
-      within(dialog).getByRole("button", { name: "Theme toggle" }),
-    ).toBeInTheDocument();
-  });
+      within(dialog).getByRole("link", { name: /Profile and avatar/i }),
+    ).toHaveAttribute("href", "/settings?section=profile");
+    expect(
+      within(dialog).getByRole("link", { name: /Data and privacy/i }),
+    ).toHaveAttribute("href", "/settings?section=privacy");
+    expect(
+      within(dialog)
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("href")?.startsWith("/settings")),
+      // Profile now holds the learning preferences: no separate row.
+    ).toHaveLength(4);
 
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
   it("renders all main navigation destinations in desktop sidebar when signed in as admin", async () => {
     await renderAt("/", () => (
       <AppShell status="authenticated" user={{ role: "admin" }}>

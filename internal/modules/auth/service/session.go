@@ -121,8 +121,15 @@ func (s *SessionService) List(ctx context.Context, actor httpx.Actor) ([]Session
 		return nil, err
 	}
 
+	now := s.clock.Now().UTC()
 	views := make([]SessionView, 0, len(sessions))
 	for _, session := range sessions {
+		// A lapsed session is not revoked, only unusable; listing it is how one
+		// browser came to appear dozens of times, once per expired sign-in.
+		// The caller's own session is kept even at the edge of its window.
+		if session.ID != actor.SessionID && session.ExpiredAt(now) {
+			continue
+		}
 		views = append(views, SessionView{
 			ID:          session.ID,
 			Current:     session.ID == actor.SessionID,

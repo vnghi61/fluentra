@@ -149,19 +149,30 @@ func (s *Service) GetQuestionStats(ctx context.Context, id uuid.UUID) (*contract
 
 	stats, err := s.repo.GetQuestionStats(ctx, id)
 	if err != nil {
-		if errors.Is(err, domain.ErrQuestionNotFound) {
-			return nil, apperr.New(apperr.NotFound, "QUESTION_STATS_NOT_FOUND", "Question statistics not found.")
+		if !errors.Is(err, domain.ErrQuestionNotFound) {
+			return nil, fmt.Errorf("get stats for %s: %w", id, err)
 		}
-		return nil, fmt.Errorf("get stats for %s: %w", id, err)
+		// No stats row. Nothing computes question_stats yet, so that is every
+		// question today, and "not computed" is not "not found": answer an
+		// empty record for a question that exists and 404 only for one that
+		// does not.
+		if _, qErr := s.repo.GetQuestionByID(ctx, id); qErr != nil {
+			if errors.Is(qErr, domain.ErrQuestionNotFound) {
+				return nil, apperr.New(apperr.NotFound, "QUESTION_NOT_FOUND", "Question not found.")
+			}
+			return nil, fmt.Errorf("get question %s: %w", id, qErr)
+		}
+		return &contract.QuestionStats{QuestionID: id}, nil
 	}
 
+	computedAt := stats.LastComputedAt
 	return &contract.QuestionStats{
 		QuestionID:     stats.QuestionID,
 		Attempts:       stats.Attempts,
 		PValue:         stats.PValue,
 		Discrimination: stats.Discrimination,
 		AvgTimeMs:      stats.AvgTimeMs,
-		LastComputedAt: stats.LastComputedAt,
+		LastComputedAt: &computedAt,
 	}, nil
 }
 

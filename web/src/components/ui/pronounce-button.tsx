@@ -237,11 +237,11 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
         )}
       >
         {unavailable ? (
-          <VolumeX className="h-4 w-4 text-text-muted" aria-hidden="true" />
+          <VolumeX className="h-5 w-5 text-text-muted" aria-hidden="true" />
         ) : (
           <Volume2
             className={cn(
-              "h-4 w-4 text-primary-accent",
+              "h-5 w-5 text-primary-accent",
               isPlaying && "animate-pulse",
             )}
             aria-hidden="true"
@@ -268,7 +268,7 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
         createPortal(
           <span
             role="status"
-            className="fixed inset-x-4 bottom-24 z-50 mx-auto max-w-sm rounded-lg border border-border-subtle bg-surface-card px-3 py-2 text-left text-xs text-text-muted shadow-lg"
+            className="fixed inset-x-4 bottom-24 z-50 mx-auto max-w-sm rounded-lg border border-border-subtle bg-surface-card px-3 py-2 text-left text-sm text-text-muted shadow-lg"
           >
             {t("pronounce.recordingCredit", "Audio")}
             {": "}

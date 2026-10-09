@@ -146,23 +146,23 @@ export const ExerciseListening: React.FC<ExerciseListeningProps> = ({
               type="button"
               variant="ghost"
               onClick={() => void showTranscript()}
-              className="gap-2 min-h-[44px] text-sm text-text-muted"
+              className="gap-2 text-text-muted"
             >
               <FileText className="h-4 w-4" aria-hidden="true" />
               {t("runner.listening.showTranscript", "Show the transcript")}
             </Button>
           ) : (
             <div className="rounded-xl border border-border bg-surface/60 p-4">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
                 {t("runner.listening.transcriptLabel", "Transcript")}
               </p>
-              <p className="whitespace-pre-line text-sm leading-relaxed text-text">
+              <p className="max-w-prose whitespace-pre-line text-base leading-relaxed text-text">
                 {transcript}
               </p>
             </div>
           )}
           {transcriptError && (
-            <p className="text-xs text-text-muted">
+            <p className="text-sm leading-relaxed text-text-muted">
               {t(
                 "runner.listening.transcriptNotReady",
                 "The transcript is available once this attempt has been marked.",

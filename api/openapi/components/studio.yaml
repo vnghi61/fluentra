@@ -116,7 +116,8 @@ CourseDraft:
         `lesson_material` activity adds `material: {resource_id, material_kind,
         title, description?, rights_confirmed}`, where `resource_id` is the
         creator's own private resource and `material_kind` is a hint the server
-        never trusts — the real kind is derived from the resource's detected MIME.
+        never trusts — the real kind (`document`, `image` or `video`) is derived
+        from the resource's detected MIME.
     created_at:
       type: string
       format: date-time

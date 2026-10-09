@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { reachableStorageUrl } from "@/lib/storage-url";
@@ -61,10 +62,10 @@ function ResourcePreview({
         href={resource.source_url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex min-h-[44px] items-center gap-2 text-sm font-medium text-primary-accent underline"
+        className="inline-flex min-h-[44px] max-w-full items-center gap-2 text-sm font-medium text-primary-accent underline"
       >
-        <ExternalLink className="h-4 w-4" aria-hidden="true" />
-        {resource.source_url}
+        <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="min-w-0 break-all">{resource.source_url}</span>
       </a>
     ) : null;
   }
@@ -194,10 +195,10 @@ export function ResourceDetail({
       {processing && (
         <div
           role="status"
-          className="flex items-start gap-2 rounded-xl border border-border-subtle bg-surface-muted/50 p-3 text-sm text-text-muted"
+          className="flex items-start gap-2 rounded-xl border border-border-subtle bg-surface-muted/50 p-3 text-base leading-relaxed md:text-sm text-text-muted"
         >
           <Loader2
-            className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary"
+            className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-primary"
             aria-hidden="true"
           />
           <span>
@@ -212,20 +213,20 @@ export function ResourceDetail({
       {resource.status === "rejected" && resource.failure_reason && (
         <div
           role="alert"
-          className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/5 p-3 text-sm text-danger-accent"
+          className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/5 p-3 text-base leading-relaxed md:text-sm text-danger-accent"
         >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{resource.failure_reason}</span>
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 break-words">{resource.failure_reason}</span>
         </div>
       )}
 
       {resource.status === "failed" && (
         <div
           role="alert"
-          className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/5 p-3 text-sm text-warning-accent"
+          className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/5 p-3 text-base leading-relaxed md:text-sm text-warning-accent"
         >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 break-words">
             {t(
               "resources.failedNote",
               "Something went wrong on our side while reading this file. Upload it again to retry.",
@@ -298,7 +299,7 @@ export function ResourceDetail({
           (classification.nodes?.length ?? 0) > 0) && (
           <Card>
             <CardContent className="space-y-3 p-4">
-              <h2 className="text-sm font-semibold text-text">
+              <h2 className="text-lg font-semibold leading-snug text-text">
                 {t("resources.classificationTitle", "What we found in it")}
               </h2>
               <div className="flex flex-wrap items-center gap-2">
@@ -319,7 +320,7 @@ export function ResourceDetail({
                   </Badge>
                 ))}
               </div>
-              <p className="text-xs text-text-muted">
+              <p className="text-sm text-text-muted">
                 {t(
                   "resources.estimateNote",
                   "The level is an estimate, not a placement result.",
@@ -332,9 +333,9 @@ export function ResourceDetail({
       {extraction && (
         <details className="group rounded-xl border border-border-subtle bg-surface-card">
           <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-2 p-4 text-sm font-medium text-text">
-            <span className="flex items-center gap-2">
+            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
               <FileText
-                className="h-4 w-4 text-primary-accent"
+                className="h-4 w-4 shrink-0 text-primary-accent"
                 aria-hidden="true"
               />
               {extraction.source === "transcript"
@@ -353,11 +354,11 @@ export function ResourceDetail({
             />
           </summary>
           <div className="border-t border-border-subtle p-4">
-            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-muted">
+            <p className="max-w-prose whitespace-pre-wrap break-words text-base leading-relaxed text-text-muted">
               {extraction.excerpt}
             </p>
             {extraction.truncated && (
-              <p className="mt-2 text-xs text-text-muted">
+              <p className="mt-2 text-sm text-text-muted">
                 {t(
                   "resources.truncatedNote",
                   "Only the beginning of the file is shown here.",
@@ -372,15 +373,15 @@ export function ResourceDetail({
       <Card>
         <CardContent className="space-y-2 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-0.5">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-text">
+            <div className="min-w-0 space-y-0.5">
+              <h2 className="flex items-center gap-2 text-lg font-semibold leading-snug text-text">
                 <Sparkles
-                  className="h-4 w-4 text-primary-accent"
+                  className="h-5 w-5 shrink-0 text-primary-accent"
                   aria-hidden="true"
                 />
                 {t("resources.practiceTitle", "Practice from this file")}
               </h2>
-              <p className="text-xs text-text-muted">
+              <p className="text-base leading-relaxed text-text-muted md:text-sm">
                 {t(
                   "resources.practiceDesc",
                   "Ten exercises built from its text. They are private to you and never enter the shared question bank.",
@@ -405,7 +406,7 @@ export function ResourceDetail({
             </Button>
           </div>
           {!canGeneratePractice && (
-            <p className="text-xs text-text-muted">
+            <p className="text-base leading-relaxed text-text-muted md:text-sm">
               {classification?.learning_suitable === false
                 ? t(
                     "resources.unsuitable",
@@ -491,45 +492,24 @@ export function ResourceDetail({
         </Button>
       </div>
 
-      {confirmOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="resource-delete-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/75 p-4 backdrop-blur-sm"
-        >
-          <div className="w-full max-w-sm space-y-4 rounded-2xl border border-border bg-surface-card p-6 shadow-2xl">
-            <h2
-              id="resource-delete-title"
-              className="text-lg font-bold text-text"
-            >
-              {t("resources.deleteTitle", "Delete this file?")}
-            </h2>
-            <p className="text-sm text-text-muted">
-              {t(
-                "resources.deleteDesc",
-                "The file and everything we made from it are removed. This cannot be undone.",
-              )}
-            </p>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button
-                variant="outline"
-                disabled={remove.isPending}
-                onClick={() => setConfirmOpen(false)}
-              >
-                {t("common.cancel", "Cancel")}
-              </Button>
-              <Button
-                variant="destructive"
-                isLoading={remove.isPending}
-                onClick={handleDelete}
-              >
-                {t("resources.deleteConfirm", "Delete")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          if (!open && remove.isPending) return;
+          setConfirmOpen(open);
+        }}
+        title={t("resources.deleteTitle", "Delete this file?")}
+        description={t(
+          "resources.deleteDesc",
+          "The file and everything we made from it are removed. This cannot be undone.",
+        )}
+        cancelLabel={t("common.cancel", "Cancel")}
+        confirmLabel={t("resources.deleteConfirm", "Delete")}
+        destructive
+        isPending={remove.isPending}
+        keepOpenOnConfirm
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

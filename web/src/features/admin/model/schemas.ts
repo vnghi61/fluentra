@@ -1,5 +1,23 @@
 import { z } from "zod";
 
+export const createContentSchema = z.object({
+  slug: z.string().trim().min(1, "admin.contentFieldRequired"),
+  kind: z.string().trim().min(1, "admin.contentFieldRequired"),
+  cefr_level: z.enum(["A1", "A2", "B1", "B2", "C1", "C2"]),
+  body: z.string().refine((value) => {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return (
+        typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+      );
+    } catch {
+      return false;
+    }
+  }, "admin.contentJsonObject"),
+});
+
+export type CreateContentFormValues = z.infer<typeof createContentSchema>;
+
 export const adminActionReasonSchema = z.object({
   reason: z
     .string()

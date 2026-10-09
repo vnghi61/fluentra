@@ -37,4 +37,6 @@ export { GamificationSummarySection } from "./components/GamificationSummarySect
 export type { GamificationSummarySectionProps } from "./components/GamificationSummarySection";
 
 export { TodayProgressCard } from "./components/TodayProgressCard";
+export { DailyGoalTiles } from "./components/DailyGoalTiles";
+export type { DailyGoalTilesProps } from "./components/DailyGoalTiles";
 export type { TodayProgressCardProps } from "./components/TodayProgressCard";

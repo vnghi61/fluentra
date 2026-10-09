@@ -47,7 +47,7 @@ export const UploadList: React.FC<UploadListProps> = ({
 
   if (uploads.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-text-muted">
+      <p className="rounded-xl border border-dashed border-border p-6 text-center text-base leading-relaxed text-text-muted md:text-sm">
         {t(
           "uploads.empty",
           "Nothing added yet. Paste a list above and we will check it for you.",
@@ -83,20 +83,20 @@ const UploadRow: React.FC<{ upload: VocabUpload }> = ({ upload }) => {
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-3 p-4 text-left"
       >
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-text">
+        <div className="min-w-0 space-y-1">
+          <p className="break-words text-sm font-semibold text-text">
             {upload.item_count} {t("uploads.words", "words")} · {created}
           </p>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <Count
-              icon={<Check className="h-3.5 w-3.5" aria-hidden="true" />}
+              icon={<Check className="h-4 w-4" aria-hidden="true" />}
               label={t("uploads.verified", "added")}
               value={upload.verified_count}
               tone="verified"
             />
             {upload.rejected_count > 0 && (
               <Count
-                icon={<X className="h-3.5 w-3.5" aria-hidden="true" />}
+                icon={<X className="h-4 w-4" aria-hidden="true" />}
                 label={t("uploads.rejected", "not found")}
                 value={upload.rejected_count}
                 tone="rejected"
@@ -104,7 +104,7 @@ const UploadRow: React.FC<{ upload: VocabUpload }> = ({ upload }) => {
             )}
             {pending > 0 && (
               <Count
-                icon={<Clock className="h-3.5 w-3.5" aria-hidden="true" />}
+                icon={<Clock className="h-4 w-4" aria-hidden="true" />}
                 label={t("uploads.checking", "being checked")}
                 value={pending}
                 tone="pending"
@@ -131,9 +131,9 @@ const UploadRow: React.FC<{ upload: VocabUpload }> = ({ upload }) => {
                 return (
                   <li
                     key={item.term}
-                    className="flex items-start justify-between gap-3 text-sm p-2 rounded-lg bg-surface hover:bg-surface-subtle transition-colors"
+                    className="flex items-start justify-between gap-3 text-sm p-2 rounded-lg bg-surface hover:bg-surface-muted transition-colors"
                   >
-                    <div className="space-y-1">
+                    <div className="min-w-0 space-y-1 break-words">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold text-text">
                           {item.term}
@@ -142,18 +142,18 @@ const UploadRow: React.FC<{ upload: VocabUpload }> = ({ upload }) => {
                           <span className="text-text-muted">— {gloss}</span>
                         )}
                         {item.topic && (
-                          <span className="inline-block rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] font-medium text-primary uppercase tracking-wider">
+                          <span className="inline-block rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-xs font-medium text-primary-accent uppercase tracking-wider">
                             {item.topic}
                           </span>
                         )}
                       </div>
                       {item.definition && (
-                        <p className="text-xs text-text-muted">
+                        <p className="text-sm text-text-muted">
                           {item.definition}
                         </p>
                       )}
                       {item.examples && item.examples.length > 0 && (
-                        <ul className="mt-1 space-y-0.5 border-l-2 border-border-subtle pl-2 text-xs text-text-muted">
+                        <ul className="mt-1 space-y-0.5 border-l-2 border-border-subtle pl-2 text-sm text-text-muted">
                           {item.examples.slice(0, 2).map((ex, idx) => (
                             <li key={idx} className="italic">
                               “{ex}”
@@ -164,7 +164,7 @@ const UploadRow: React.FC<{ upload: VocabUpload }> = ({ upload }) => {
                       {/* The reason is written for the learner, so it is shown
                           rather than reduced to a status chip. */}
                       {item.note_code ? (
-                        <p className="text-xs text-text-muted">
+                        <p className="text-sm text-text-muted">
                           {t(`uploads.note.${item.note_code}`, {
                             term: item.term,
                             corrected: item.corrected_term ?? "",
@@ -172,8 +172,14 @@ const UploadRow: React.FC<{ upload: VocabUpload }> = ({ upload }) => {
                             defaultValue: item.reason ?? "",
                           })}
                         </p>
+                      ) : item.status === "failed" ? (
+                        // A failure is ours, not a verdict on the word: say so
+                        // in the learner's language and tell them what to do.
+                        <p className="text-sm text-warning-accent">
+                          {t("uploads.failedHint")}
+                        </p>
                       ) : item.reason ? (
-                        <p className="text-xs text-text-muted">{item.reason}</p>
+                        <p className="text-sm text-text-muted">{item.reason}</p>
                       ) : null}
                     </div>
                     <span

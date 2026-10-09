@@ -14,6 +14,7 @@ import (
 	authcontract "github.com/fluentra/fluentra/internal/modules/auth/contract"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/platform/job"
+	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
@@ -32,6 +33,8 @@ type Deps struct {
 	Audit          auditcontract.Recorder
 	Guard          Guard
 	AIUsage        adminsvc.AIUsageReporter
+	// Storage holds banner images. Optional: without it banners are text-only.
+	Storage storage.Store
 }
 
 // Module is the admin module.
@@ -48,7 +51,7 @@ func New(deps Deps) *Module {
 	}
 
 	repo := adminrepo.New(deps.Pool)
-	service := adminsvc.New(adminsvc.Deps{
+	serviceDeps := adminsvc.Deps{
 		Pool:           deps.Pool,
 		Repo:           repo,
 		UserReader:     deps.UserReader,
@@ -57,7 +60,12 @@ func New(deps Deps) *Module {
 		Audit:          deps.Audit,
 		Clock:          timekeeper,
 		AIUsage:        deps.AIUsage,
-	})
+		Banners:        repo,
+	}
+	if deps.Storage != nil {
+		serviceDeps.Images = deps.Storage
+	}
+	service := adminsvc.New(serviceDeps)
 
 	handler := adminhttp.NewHandler(service, deps.Guard)
 
@@ -70,6 +78,12 @@ func New(deps Deps) *Module {
 // Routes mounts the admin operations on chi.Router.
 func (m *Module) Routes(router chi.Router) {
 	m.handler.Routes(router)
+}
+
+// LearnerRoutes mounts the operations any signed-in account may call (the
+// dashboard's active banners). cmd/api mounts them outside the admin-only group.
+func (m *Module) LearnerRoutes(router chi.Router) {
+	m.handler.LearnerRoutes(router)
 }
 
 // Service returns the underlying service instance.

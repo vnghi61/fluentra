@@ -48,16 +48,16 @@ export const BadgesWidget: React.FC<BadgesWidgetProps> = ({ badges = [] }) => {
   return (
     <Card className="border-border/60 bg-gradient-to-br from-surface-card to-surface/40 shadow-sm">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 shadow-inner">
               <Award className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
-              <CardTitle className="text-lg font-bold text-text">
+              <CardTitle className="text-lg font-semibold leading-snug text-text">
                 {t("gamification.badgesTitle", "Badges & Achievements")}
               </CardTitle>
-              <p className="text-xs text-text-muted">
+              <p className="text-sm text-text-muted">
                 {t(
                   "gamification.badgesSubtitle",
                   "Milestones you have unlocked",
@@ -84,7 +84,7 @@ export const BadgesWidget: React.FC<BadgesWidgetProps> = ({ badges = [] }) => {
               className="mx-auto mb-2 h-6 w-6 text-text-muted"
               aria-hidden="true"
             />
-            <p className="text-xs text-text-muted">
+            <p className="text-sm leading-relaxed text-text-muted">
               {t(
                 "gamification.noBadges",
                 "No badges unlocked yet. Complete lessons, keep streaks and level up to earn them!",
@@ -111,16 +111,16 @@ export const BadgesWidget: React.FC<BadgesWidgetProps> = ({ badges = [] }) => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1">
-                      <h4 className="text-xs font-bold text-text truncate">
+                      <h4 className="text-sm font-semibold text-text truncate">
                         {badge.name}
                       </h4>
                       <span
-                        className={`text-[10px] font-bold uppercase tracking-wider ${tierStyle.text}`}
+                        className={`shrink-0 text-xs font-semibold uppercase tracking-wider ${tierStyle.text}`}
                       >
                         {badge.tier}
                       </span>
                     </div>
-                    <p className="text-[11px] text-text-muted line-clamp-1">
+                    <p className="text-sm text-text-muted line-clamp-1">
                       {badge.description}
                     </p>
                   </div>

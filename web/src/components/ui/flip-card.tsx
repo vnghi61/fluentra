@@ -1,5 +1,4 @@
 import * as React from "react";
-import { useReducedMotion } from "motion/react";
 
 import { cn } from "@/lib/utils";
 
@@ -37,11 +36,6 @@ export const FlipCard: React.FC<FlipCardProps> = ({
   onClick,
   label,
 }) => {
-  // A card that spins is exactly the motion someone with a vestibular disorder
-  // has asked the OS not to show them. The card still turns — the two faces are
-  // how it works — it simply arrives instead of travelling.
-  const reduceMotion = useReducedMotion();
-
   const face =
     "col-start-1 row-start-1 w-full [backface-visibility:hidden] [-webkit-backface-visibility:hidden]";
 
@@ -74,19 +68,16 @@ export const FlipCard: React.FC<FlipCardProps> = ({
         composites on the GPU, interrupts cleanly mid-turn, and cannot be
         undone by a library's opinion about what my keyframe meant.
 
-        `motion` stays installed and stays registered: it was chosen for the
-        gamification work, and this component is not the reason to keep or drop
-        it. What it still provides here is `useReducedMotion`, which is the one
-        piece worth not hand-rolling.
+        A card that spins is exactly the motion someone with a vestibular
+        disorder has asked the OS not to show them: `motion-reduce:` drops the
+        transition, so the card still turns but arrives instead of travelling.
       */}
       <div
         className={cn(
           "grid [transform-style:preserve-3d] will-change-transform",
           // 500ms with an ease-out back: long enough to read as a turn, short
           // enough not to sit between the question and the answer.
-          reduceMotion
-            ? "transition-none"
-            : "transition-transform duration-500 [transition-timing-function:cubic-bezier(0.2,0.8,0.2,1)]",
+          "transition-transform duration-500 [transition-timing-function:cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none",
         )}
         style={{ transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
       >

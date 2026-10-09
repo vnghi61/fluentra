@@ -136,14 +136,12 @@ for (const locale of ["en", "vi"] as const) {
         const weekly = page.getByRole("complementary", {
           name: locale === "vi" ? "Kế hoạch tuần này" : "This week's plan",
         });
-        if (width < 768) {
-          await expect(weekly.getByRole("button", { expanded: false }).first()).toBeVisible();
-        }
-        const viewAll = page.getByRole("button", {
-          name: locale === "vi" ? "Xem tất cả" : "View all",
-          exact: true,
-        });
-        if (width >= 768) await expect(viewAll).toBeVisible();
+        // One "Show N more" expander at every width; the card no longer has a
+        // separate desktop "View all".
+        const expander = weekly
+          .getByRole("button", { expanded: false })
+          .first();
+        await expect(expander).toBeVisible();
         await page.evaluate(() => document.fonts.ready);
         const metrics = await page.evaluate(() => ({
           viewport: document.documentElement.clientWidth,
@@ -167,11 +165,7 @@ for (const locale of ["en", "vi"] as const) {
         });
         measurements.push({ name, ...metrics });
         // Geometry fixture check: expanding exposes, rather than drops, all rows.
-        if (width < 768) {
-          await weekly.getByRole("button", { expanded: false }).first().click();
-        } else {
-          await viewAll.click();
-        }
+        await expander.click();
         await expect(
           page.getByRole("link", { name: /^Lesson 7:/ }),
         ).toBeVisible();

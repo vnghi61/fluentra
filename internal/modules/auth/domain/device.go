@@ -31,6 +31,10 @@ type Session struct {
 	// slide the idle window right up to it and no further (BR-AUTH-22).
 	AbsoluteExpiresAt time.Time
 
+	// IdleWindow is how long the session may go without a refresh before it
+	// lapses. Zero means unknown (a row read without it), never "already idle".
+	IdleWindow time.Duration
+
 	// TrustedDeviceID is set only for a session opened on a device the learner
 	// chose to trust. Nil is the ordinary case.
 	TrustedDeviceID *uuid.UUID
@@ -40,6 +44,19 @@ type Session struct {
 // cannot move.
 func (s Session) AbsolutelyExpiredAt(now time.Time) bool {
 	return !s.AbsoluteExpiresAt.IsZero() && !now.Before(s.AbsoluteExpiresAt)
+}
+
+// ExpiredAt reports whether the session can no longer be renewed: it reached
+// its absolute cap, or it went unused for longer than its idle window.
+//
+// Such a row is never revoked — nothing sweeps it — so `revoked_at IS NULL`
+// alone keeps listing every sign-in that simply lapsed. The "where am I signed
+// in" list answers with live sessions only (SessionList in the API contract).
+func (s Session) ExpiredAt(now time.Time) bool {
+	if s.AbsolutelyExpiredAt(now) {
+		return true
+	}
+	return s.IdleWindow > 0 && !now.Before(s.LastSeenAt.Add(s.IdleWindow))
 }
 
 // TrustedDevice is a device the learner chose to stay signed in on.

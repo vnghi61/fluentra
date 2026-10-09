@@ -1,16 +1,10 @@
-import React, { useEffect } from "react";
-import { createPortal } from "react-dom";
-import { AlertCircle } from "lucide-react";
+import React from "react";
+import * as AlertDialog from "@radix-ui/react-alert-dialog";
+import { LogOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useReturnFocus } from "@/components/ui/use-return-focus";
 
 export interface ExitDialogProps {
   isOpen: boolean;
@@ -24,69 +18,53 @@ export const ExitDialog: React.FC<ExitDialogProps> = ({
   onConfirm,
 }) => {
   const { t } = useTranslation();
+  const focusProps = useReturnFocus({});
 
-  // Escape keeps learning, and the page behind does not scroll under the
-  // overlay.
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
-    };
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [isOpen, onCancel]);
-
-  if (!isOpen) return null;
-
-  // Portalled to <body>: inside the lesson an animated ancestor became the
-  // containing block for `position: fixed`, so the overlay covered only the
-  // content column and the dialog sat off-centre in a framed box.
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="exit-dialog-title"
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-overlay/60 p-4 animate-in fade-in duration-150 motion-reduce:animate-none"
+  return (
+    <AlertDialog.Root
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onCancel();
+      }}
     >
-      <Card className="w-full max-w-md rounded-2xl border-border-subtle bg-surface-card shadow-2xl">
-        <CardHeader className="space-y-2">
-          <div className="flex items-center gap-2 text-warning-accent">
-            <AlertCircle className="h-6 w-6 shrink-0" aria-hidden="true" />
-            <CardTitle id="exit-dialog-title" className="text-xl font-bold">
+      <AlertDialog.Portal>
+        <AlertDialog.Overlay className="fixed inset-0 z-[60] bg-overlay/50" />
+        <AlertDialog.Content
+          {...focusProps}
+          data-scroll-lock="managed"
+          className="fixed left-1/2 top-1/2 z-[60] flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto rounded-2xl border border-border-subtle bg-surface-card shadow-xl outline-none"
+        >
+          <div className="space-y-4 p-5 sm:p-6">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-warning/10 text-warning-accent">
+              <LogOut className="h-6 w-6" aria-hidden="true" />
+            </span>
+            <AlertDialog.Title className="text-lg font-semibold leading-tight text-text">
               {t("runner.exitDialogTitle", "Exit Lesson?")}
-            </CardTitle>
+            </AlertDialog.Title>
+            <AlertDialog.Description className="text-sm leading-relaxed text-text-muted">
+              {t(
+                "runner.exitDialogDesc",
+                "Completed exercises have been saved. Any answer you haven't submitted will be lost. Do you want to leave?",
+              )}
+            </AlertDialog.Description>
           </div>
-          <CardDescription className="text-sm">
-            {t(
-              "runner.exitDialogDesc",
-              "Your progress on completed exercises has been saved. Are you sure you want to leave?",
-            )}
-          </CardDescription>
-        </CardHeader>
-
-        <CardFooter className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
-          <Button
-            variant="outline"
-            onClick={onCancel}
-            className="w-full sm:w-auto min-h-[44px]"
-          >
-            {t("runner.resumeBtn", "Keep Learning")}
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={onConfirm}
-            className="w-full sm:w-auto min-h-[44px]"
-          >
-            {t("runner.confirmExitBtn", "Exit Lesson")}
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>,
-    document.body,
+          <div className="flex flex-col-reverse justify-end gap-3 border-t border-border-subtle p-4 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onConfirm}
+              className="w-full sm:w-auto"
+            >
+              {t("runner.confirmExitBtn", "Exit Lesson")}
+            </Button>
+            <AlertDialog.Cancel asChild>
+              <Button type="button" className="w-full sm:w-auto">
+                {t("runner.resumeBtn", "Keep Learning")}
+              </Button>
+            </AlertDialog.Cancel>
+          </div>
+        </AlertDialog.Content>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
   );
 };

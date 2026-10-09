@@ -89,7 +89,7 @@ export const ExerciseReorder: React.FC<ExerciseReorderProps> = ({
         aria-label={t("runner.reorderAnswer", "Your sentence")}
       >
         {placed.length === 0 && (
-          <p className="text-sm text-text-muted italic py-2">
+          <p className="text-base text-text-muted italic py-2">
             {t("runner.reorderEmpty", "Tap the words below in the right order")}
           </p>
         )}
@@ -137,7 +137,7 @@ export const ExerciseReorder: React.FC<ExerciseReorderProps> = ({
         })}
       </div>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         {isSubmitted && expectedAnswer ? (
           <div className="flex items-center gap-1">
             <PronounceButton
@@ -160,9 +160,9 @@ export const ExerciseReorder: React.FC<ExerciseReorderProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => setPlaced([])}
-            className="gap-1.5"
+            className="gap-2"
           >
-            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
             {t("runner.reorderReset", "Start over")}
           </Button>
         )}

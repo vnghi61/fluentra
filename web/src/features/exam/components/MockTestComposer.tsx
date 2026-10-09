@@ -21,6 +21,7 @@ import {
   type ExamVersion,
   type MockTest,
 } from "../api/examApi";
+import { NativeSelect } from "@/components/ui/native-select";
 
 /**
  * Compose and sit a mock test from the bank (WO 21 Stage E).
@@ -175,10 +176,10 @@ export function MockTestComposer(): React.JSX.Element {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <h1 className="text-2xl font-extrabold tracking-tight text-text">
+        <h1 className="text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
           {t("mockTest.title", "Mock tests")}
         </h1>
-        <p className="text-sm text-text-muted">
+        <p className="text-base leading-relaxed text-text-muted">
           {t(
             "mockTest.subtitle",
             "Compose a test from the published bank, sit it under the real timer, and read the report. A retake replays the same test; a new test draws again.",
@@ -191,7 +192,7 @@ export function MockTestComposer(): React.JSX.Element {
           <span className="font-medium text-text">
             {t("mockTest.version", "Exam version")}
           </span>
-          <select
+          <NativeSelect
             value={version.id}
             onChange={(e) => {
               setVersionId(e.target.value);
@@ -199,17 +200,16 @@ export function MockTestComposer(): React.JSX.Element {
               setChosenParts([]);
               setComposed(null);
             }}
-            className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
           >
             {(versions.data?.items ?? []).map((item) => (
               <option key={item.id} value={item.id}>
                 {versionLabel(item)}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
           <Badge variant="outline">
             {t("mockTest.totalMinutes", {
               minutes: version.total_minutes,
@@ -229,43 +229,43 @@ export function MockTestComposer(): React.JSX.Element {
             <span className="font-medium text-text">
               {t("mockTest.blueprint", "Blueprint")}
             </span>
-            <select
+            <NativeSelect
               value={blueprint?.id ?? ""}
               onChange={(e) => {
                 setBlueprintId(e.target.value);
                 setComposed(null);
               }}
-              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
             >
               {(version.blueprints ?? []).map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           <label className="space-y-1 text-sm">
             <span className="font-medium text-text">
               {t("mockTest.mode", "Mode")}
             </span>
-            <select
+            <NativeSelect
               value={mode}
               onChange={(e) => {
                 setMode(e.target.value as MockMode);
                 setComposed(null);
               }}
-              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
             >
               {MODES.map((value) => (
                 <option key={value} value={value}>
                   {t(modeLabelKey(value), value)}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
         </div>
 
-        <p className="text-xs text-text-muted">{t(modeHintKey(mode))}</p>
+        <p className="text-sm leading-relaxed text-text-muted">
+          {t(modeHintKey(mode))}
+        </p>
 
         {mode === "custom" && version.parts.length > 0 && (
           <fieldset className="space-y-2">
@@ -344,7 +344,7 @@ export function MockTestComposer(): React.JSX.Element {
             {composed.composition.map((part) => (
               <li key={part.part_id} className="flex items-center gap-2">
                 <Layers
-                  className="h-3.5 w-3.5 text-text-muted"
+                  className="h-4 w-4 shrink-0 text-text-muted"
                   aria-hidden="true"
                 />
                 {t("mockTest.partItems", {
@@ -363,7 +363,7 @@ export function MockTestComposer(): React.JSX.Element {
               <Play className="h-4 w-4" aria-hidden="true" />
               {t("mockTest.sitBtn", "Sit this test")}
             </Button>
-            <p className="self-center text-xs text-text-muted">
+            <p className="self-center text-sm text-text-muted">
               {t(
                 "mockTest.retakeNote",
                 "Sitting it again replays this same test; compose a new one to draw different items.",

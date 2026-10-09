@@ -96,12 +96,13 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-overlay/80 backdrop-blur-sm" />
-        <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl md:inset-auto md:left-1/2 md:top-1/2 md:w-[min(calc(100%-2rem),32rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl">
-          <div className="flex items-center justify-between border-b border-border-subtle pb-4">
-            <Dialog.Title
-              className="text-lg font-semibold text-text flex items-center gap-2"
-            >
-              <Flag className="h-5 w-5 text-primary-accent" />
+        <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl md:inset-auto md:left-1/2 md:top-1/2 md:w-[min(calc(100%-2rem),32rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl space-y-4">
+          <div className="flex items-center justify-between gap-2 border-b border-border-subtle pb-4">
+            <Dialog.Title className="flex min-w-0 items-center gap-2 break-words text-lg font-semibold leading-tight text-text">
+              <Flag
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 text-primary-accent"
+              />
               {t("admin.createFeatureFlag", "Create Feature Flag")}
             </Dialog.Title>
             <button
@@ -109,15 +110,18 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
               onClick={onClose}
               disabled={isSubmitting}
               aria-label={t("common.close", "Close")}
-              className="rounded-lg p-1 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
+              className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-muted hover:text-text"
             >
               <X aria-hidden="true" className="h-5 w-5" />
             </button>
           </div>
 
           {error && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
-              <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
+            <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-sm text-danger-accent">
+              <AlertCircle
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 text-danger-accent"
+              />
               <span>{error}</span>
             </div>
           )}
@@ -143,7 +147,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
                 aria-invalid={!!errors.key}
               />
               {errors.key && (
-                <p className="text-xs text-danger-accent">
+                <p className="text-sm text-danger-accent">
                   {t(errors.key.message ?? "")}
                 </p>
               )}
@@ -164,14 +168,14 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
                 aria-invalid={!!errors.description}
               />
               {errors.description && (
-                <p className="text-xs text-danger-accent">
+                <p className="text-sm text-danger-accent">
                   {t(errors.description.message ?? "")}
                 </p>
               )}
             </div>
 
             {/* Owner & Expiry */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="flag-owner">
                   {t("admin.ownerTeam", "Owner / Team")}
@@ -183,7 +187,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
                   aria-invalid={!!errors.owner}
                 />
                 {errors.owner && (
-                  <p className="text-xs text-danger-accent">
+                  <p className="text-sm text-danger-accent">
                     {t(errors.owner.message ?? "")}
                   </p>
                 )}
@@ -200,7 +204,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
                   aria-invalid={!!errors.expires_on}
                 />
                 {errors.expires_on && (
-                  <p className="text-xs text-danger-accent">
+                  <p className="text-sm text-danger-accent">
                     {t(errors.expires_on.message ?? "")}
                   </p>
                 )}
@@ -221,14 +225,14 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
                 aria-invalid={!!errors.rollout_percent}
               />
               {errors.rollout_percent && (
-                <p className="text-xs text-danger-accent">
+                <p className="text-sm text-danger-accent">
                   {t(errors.rollout_percent.message ?? "")}
                 </p>
               )}
             </div>
 
             {/* Enabled Checkbox */}
-            <div className="flex items-center gap-2.5 pt-1">
+            <div className="flex min-h-11 items-center gap-2.5 pt-1">
               <Controller
                 control={control}
                 name="enabled"
@@ -251,7 +255,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
               </Label>
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-border-subtle pt-4 mt-6">
+            <div className="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-border-subtle pt-4">
               <Button
                 type="button"
                 variant="ghost"
@@ -263,7 +267,10 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2
+                      aria-hidden="true"
+                      className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                    />
                     {t("admin.creating", "Creating...")}
                   </>
                 ) : (

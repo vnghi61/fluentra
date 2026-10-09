@@ -4,16 +4,26 @@ import {
   createRoute,
   createRouter,
   lazyRouteComponent,
+  Link,
   Outlet,
   redirect,
   useNavigate,
+  useRouter,
   useRouterState,
   type AnyRoute,
 } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
 import { AppShell, MotivationCard } from "@/components/layout/AppShell";
+import { MinimalHeader } from "@/components/layout/MinimalHeader";
 import { RouteLoading } from "@/components/layout/RouteLoading";
-import { ServerWakingBanner } from "@/components/layout/ServerWakingBanner";
+import { ServerWakingState } from "@/components/layout/ServerWakingState";
+import {
+  SystemStatePage,
+  systemStateActionClass,
+} from "@/components/layout/SystemStatePage";
+import { SLOW_REQUEST_MS, wakeUp } from "@/api/wake";
+import { useDelayedFlag } from "@/hooks/useDelayedFlag";
 import { useWakeStatus } from "@/hooks/useWakeStatus";
 import { usePreferencesSync } from "@/features/account/hooks/usePreferencesSync";
 import {
@@ -221,6 +231,11 @@ const FoundationTopicPage = lazyRouteComponent(
   "FoundationTopicPage",
 );
 
+const LeaderboardPage = lazyRouteComponent(
+  () => import("@/routes/LeaderboardPage"),
+  "LeaderboardPage",
+);
+
 /** Lazy: it reads /me/permissions, which nobody but an administrator needs. */
 
 const AdminSidebarNav = React.lazy(() =>
@@ -230,19 +245,87 @@ const AdminSidebarNav = React.lazy(() =>
 );
 
 function RootApp(): React.JSX.Element {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const status = useAuthStore((s) => s.status);
   const navigate = useNavigate();
+  const router = useRouter();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
   const { themeChoice, locale, setThemeChoice, setLocaleChoice } =
     usePreferencesSync(status === "authenticated");
   const wake = useWakeStatus();
+  const notFound = useRouterState({
+    select: (state) =>
+      state.matches.some((match) => match.status === "notFound") ||
+      // router-core does not expose globalNotFound in the installed declarations; keep the fallback pending-safe.
+      (state.status === "idle" &&
+        !state.isLoading &&
+        state.matches.length === 1 &&
+        state.location.pathname !== "/"),
+  });
+  // Pages keep their own skeletons while the API answers normally; the orbit
+  // takes over only once a wake has run as long as a slow request may.
+  const wakingLongEnough = useDelayedFlag(wake === "waking", SLOW_REQUEST_MS);
   const signedIn = status === "authenticated";
   const displayName = useDisplayName(signedIn);
   const avatarUrl = useAvatarUrl(signedIn);
   const email = useAccountEmail(signedIn);
+
+  const controls = (
+    <React.Suspense fallback={<div className="h-11 w-24" aria-hidden="true" />}>
+      <ThemeLanguageControls
+        themeChoice={themeChoice}
+        locale={locale}
+        onThemeChoice={setThemeChoice}
+        onLocale={setLocaleChoice}
+      />
+    </React.Suspense>
+  );
+
+  // min-h-dvh, not min-h-screen: on iOS Safari 100vh is taller than the
+  // visible area, which pushed the centred auth card down below the middle.
+  const standalone = (content: React.ReactNode) => (
+    <div className="flex min-h-dvh flex-col bg-surface-muted text-text">
+      <MinimalHeader controls={controls} />
+      <main className="flex flex-1">{content}</main>
+    </div>
+  );
+
+  const retryWake = async () => {
+    if (await wakeUp()) await router.invalidate();
+  };
+
+  if (notFound) {
+    return standalone(<Outlet />);
+  }
+
+  if (wake === "unreachable") {
+    return standalone(
+      <SystemStatePage
+        variant="server-unavailable"
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => void retryWake()}
+              className={`${systemStateActionClass} bg-primary text-primary-fg hover:bg-primary-hover`}
+            >
+              {t("systemState.retry", "Try again")}
+            </button>
+            <Link
+              to="/"
+              onClick={() => void wakeUp()}
+              className={`${systemStateActionClass} border border-border bg-transparent text-text hover:bg-surface-muted`}
+            >
+              {t("systemState.home", "Back to home")}
+            </Link>
+          </>
+        }
+      />,
+    );
+  }
 
   const handleLogout = async () => {
     clearAllWritingDrafts();
@@ -268,31 +351,22 @@ function RootApp(): React.JSX.Element {
       displayName={displayName}
       avatarUrl={avatarUrl}
       email={email}
-      banner={
-        <ServerWakingBanner
-          waking={wake === "waking"}
-          unreachable={wake === "unreachable"}
-        />
-      }
-      controls={
-        <React.Suspense
-          fallback={<div className="h-11 w-24" aria-hidden="true" />}
-        >
-          <ThemeLanguageControls
-            themeChoice={themeChoice}
-            locale={locale}
-            onThemeChoice={setThemeChoice}
-            onLocale={setLocaleChoice}
-          />
-        </React.Suspense>
-      }
+      controls={controls}
+      themeChoice={themeChoice}
+      onThemeChoice={setThemeChoice}
+      locale={locale}
+      onLocale={setLocaleChoice}
     >
       {/* Keyed by the top-level section so param changes (admin tabs, lesson to lesson) keep their state. */}
       <div
         key={pathname.split("/")[1] ?? ""}
         className="motion-safe:animate-page-enter"
       >
-        <Outlet />
+        {wake === "waking" && wakingLongEnough ? (
+          <ServerWakingState />
+        ) : (
+          <Outlet />
+        )}
       </div>
     </AppShell>
   );
@@ -655,6 +729,17 @@ export const placementRoute = createRoute({
   component: PlacementPage,
 });
 
+export const leaderboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/leaderboard",
+  beforeLoad: () => {
+    if (useAuthStore.getState().status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: LeaderboardPage,
+});
+
 export const foundationTopicRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/foundation/topics/$code",
@@ -683,6 +768,7 @@ export const routeTree = rootRoute.addChildren([
   examSittingRoute,
   examReportRoute,
   progressRoute,
+  leaderboardRoute,
   settingsRoute,
   studioRoute,
   studioNewCourseRoute,
@@ -697,6 +783,10 @@ export const routeTree = rootRoute.addChildren([
 
 export const router = createRouter({
   routeTree,
+  // A link's chunk starts downloading on hover or touchstart, so by the time
+  // the tap lands the page is usually there and no spinner flashes between
+  // the old page and the new one.
+  defaultPreload: "intent",
   defaultPendingComponent: RouteLoading,
   defaultPendingMs: 150,
   defaultPendingMinMs: 200,
@@ -707,5 +797,24 @@ export const router = createRouter({
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
+  }
+}
+
+/**
+ * The four bottom-bar tabs are where most taps go. Fetch their chunks once the
+ * first screen is idle, so switching tabs never waits on the network. Chunks
+ * only: no loaders run, and a slow connection just finishes later.
+ */
+export function preloadPrimaryTabs(): void {
+  if (typeof window === "undefined") return;
+  const run = () => {
+    for (const page of [DashboardPage, LearnPage, PracticePage, ProgressPage]) {
+      void page.preload?.();
+    }
+  };
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(run, { timeout: 4000 });
+  } else {
+    setTimeout(run, 2000);
   }
 }

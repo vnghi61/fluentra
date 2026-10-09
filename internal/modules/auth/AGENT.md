@@ -179,6 +179,11 @@ Four things about the refresh pair beyond the summary:
   anything. The cap is enforced in the claim's own WHERE clause, so a session past it never spends a
   token, and `refuse` reports it **before** checking idle expiry — the clamp makes the last token
   expire at exactly the cap, and whichever is tested first is what the learner is told.
+- **A lapsed session is never revoked, so `GET /auth/sessions` filters it out in the service.**
+  `ListLiveSessions` means "not revoked" and nothing sweeps rows that passed their cap or idle
+  window; listing them showed one browser dozens of times (one row per expired sign-in).
+  `SessionService.List` drops rows for which `domain.Session.ExpiredAt(now)` holds, keeping the
+  caller's own session. `RevokeAll`/`RevokeAllExcept` still read every unrevoked row, on purpose.
 - **`core.trusted_devices` keys on a keyed digest of a client-generated id**, one live row per device
   per account. Trusting buys the longer idle window and nothing else: it does not move the cap, and
   an `admin` account gets neither extension. `domain.WindowsFor` returns for an admin before it reads

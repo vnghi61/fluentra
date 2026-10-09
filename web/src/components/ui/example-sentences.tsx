@@ -103,9 +103,9 @@ export const ExampleSentences: React.FC<ExampleSentencesProps> = ({
             type="button"
             onClick={contain(() => setTranslated((current) => !current))}
             aria-pressed={translated}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-primary-accent hover:bg-surface-muted"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-primary-accent hover:bg-surface-muted"
           >
-            <Languages className="h-3.5 w-3.5" aria-hidden="true" />
+            <Languages className="h-4 w-4" aria-hidden="true" />
             {translated
               ? t("examples.hideTranslation", "Hide meaning")
               : t("examples.showTranslation", "Show meaning")}
@@ -120,11 +120,11 @@ export const ExampleSentences: React.FC<ExampleSentencesProps> = ({
             className="flex items-start justify-between gap-2 rounded-lg px-2 py-1 hover:bg-surface-muted/50"
           >
             <div className="space-y-0.5 pt-2.5">
-              <p className="text-sm italic leading-relaxed text-text-muted">
+              <p className="text-base italic leading-relaxed text-text-muted md:text-sm">
                 &ldquo;{highlightParts(sentence.text, highlight)}&rdquo;
               </p>
               {translated && sentence.translation && (
-                <p className="text-sm leading-relaxed text-primary-accent">
+                <p className="text-base leading-relaxed text-primary-accent md:text-sm">
                   {sentence.translation}
                 </p>
               )}
@@ -148,7 +148,7 @@ export const ExampleSentences: React.FC<ExampleSentencesProps> = ({
                   // holds for an icon-only control, and the E2E at 320 px checks it.
                   className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-text-muted hover:text-danger hover:bg-surface-muted transition-colors"
                 >
-                  <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+                  <Flag className="h-4 w-4" aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -160,9 +160,9 @@ export const ExampleSentences: React.FC<ExampleSentencesProps> = ({
         <button
           type="button"
           onClick={contain(() => setExpanded(true))}
-          className="inline-flex items-center gap-1 px-2 text-xs font-semibold text-primary-accent hover:underline"
+          className="inline-flex min-h-11 items-center gap-1.5 px-2 text-sm font-semibold text-primary-accent hover:underline"
         >
-          <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+          <ChevronDown className="h-4 w-4" aria-hidden="true" />
           {/*
             The count is rendered beside the label rather than interpolated into
             it. `t(key, default)` returns the raw default when i18next has not

@@ -1,7 +1,7 @@
 ---
 doc_type: agent_entrypoint
 scope: frontend
-last_verified: 2026-10-06
+last_verified: 2026-10-07
 ---
 
 # web/AGENT.md — Frontend Entry Point
@@ -21,22 +21,22 @@ Rationale for each: [`/DEPENDENCIES.md`](../DEPENDENCIES.md) §2 and
 
 ## 2. Folder map
 
-| Path                             | Contains                                                                                                 | Import rule                                                     |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `src/app/`                       | Providers, router, error boundary, theme, bootstrap                                                      | May import anything                                             |
-| `src/pages/`                     | Route components — thin, compose features                                                                | May import feature roots                                        |
-| `src/features/<name>/`           | A vertical slice: `api/`, `components/`, `hooks/`, `model/`, `index.ts`                                  | **May import another slice only via its `index.ts`**            |
-| `src/features/admin/components/` | `ResponsiveDataList`, `StatusBadge`, `AdminPageHeader`, `AdminModuleSwitcher`, and AI `QuotaBar`         | Presentation helpers only; preserve API-backed data and actions |
-| `src/components/ui/`             | shadcn primitives (Radix-backed Dialog, AlertDialog, Sheet, Tooltip, Popover/Combobox) and shared states | Imported by everything                                          |
-| `components.json`                | shadcn/ui CLI configuration and `@/components/ui` aliases                                                | Source of truth for generated primitives                        |
-| `src/components/layout/`         | Shells, navigation                                                                                       | Imported by pages                                               |
-| `src/api/`                       | Generated OpenAPI client, fetch wrapper, interceptors                                                    | Imported by feature `api/` only                                 |
-| `src/hooks/`                     | Cross-feature hooks                                                                                      | —                                                               |
-| `src/lib/`                       | Pure utilities (date, cefr, format, audio)                                                               | No React, no network                                            |
-| `src/stores/`                    | Zustand stores — UI/session state only                                                                   | —                                                               |
-| `src/types/`                     | Generated + shared types                                                                                 | —                                                               |
-| `src/test/`                      | Setup, MSW handlers, factories                                                                           | Test files only                                                 |
-| `e2e/`                           | Playwright specs and page objects                                                                        | —                                                               |
+| Path                             | Contains                                                                                                                 | Import rule                                                     |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| `src/app/`                       | Providers, router, error boundary, theme, bootstrap                                                                      | May import anything                                             |
+| `src/pages/`                     | Route components — thin, compose features                                                                                | May import feature roots                                        |
+| `src/features/<name>/`           | A vertical slice: `api/`, `components/`, `hooks/`, `model/`, `index.ts`                                                  | **May import another slice only via its `index.ts`**            |
+| `src/features/admin/components/` | `AdminSurface` section kit, `ResponsiveDataList`, `StatusBadge`, `AdminPageHeader`, `AdminModuleSwitcher`, AI `QuotaBar` | Presentation helpers only; preserve API-backed data and actions |
+| `src/components/ui/`             | shadcn primitives (Radix-backed Dialog, AlertDialog, Sheet, Tooltip, Popover/Combobox) and shared states                 | Imported by everything                                          |
+| `components.json`                | shadcn/ui CLI configuration and `@/components/ui` aliases                                                                | Source of truth for generated primitives                        |
+| `src/components/layout/`         | Shells, navigation                                                                                                       | Imported by pages                                               |
+| `src/api/`                       | Generated OpenAPI client, fetch wrapper, interceptors                                                                    | Imported by feature `api/` only                                 |
+| `src/hooks/`                     | Cross-feature hooks                                                                                                      | —                                                               |
+| `src/lib/`                       | Pure utilities (date, cefr, format, audio)                                                                               | No React, no network                                            |
+| `src/stores/`                    | Zustand stores — UI/session state only                                                                                   | —                                                               |
+| `src/types/`                     | Generated + shared types                                                                                                 | —                                                               |
+| `src/test/`                      | Setup, MSW handlers, factories                                                                                           | Test files only                                                 |
+| `e2e/`                           | Playwright specs and page objects                                                                                        | —                                                               |
 
 `eslint-plugin-boundaries` enforces the slice rule. A cross-slice deep import fails lint.
 The shadcn token aliases in `src/index.css` map card/foreground/muted/destructive
@@ -78,6 +78,21 @@ duplicate is a stale copy waiting to be shown to a learner.
 
 ## 6. Error handling
 
+The dashboard's Leaderboard action opens the signed-in `/leaderboard` route,
+not `/progress`. The page reuses LeaderboardWidget to show all API-returned
+weekly standings, allows viewing without opt-in, and handles load/join failures.
+
+The lesson runner exposes a single Report issue action in its header for
+authenticated learners with a content version, before or after answering. The
+report dialog uses the shared portalled Dialog with a scrollable mobile form.
+Sentence transforms use a labelled multiline answer field without a hint panel;
+expected answers and explanations remain hidden until submission.
+The exit confirmation uses a portalled Radix AlertDialog, focuses Keep Learning,
+and returns focus to the exit trigger on cancellation. It warns about unsent
+answers rather than promising to save the current input. Payout-account forms
+use spaced, scrollable fields and lock inputs/dismissal during save. Combobox
+popovers render above dialog overlays and Enter selects without submitting forms.
+
 The mock-test hub keeps an open-sitting resume link visible while browsing exam
 versions, fixed tests and the custom composer. A start refused with
 `ATTEMPT_IN_PROGRESS` explains that the existing sitting must be submitted first.
@@ -116,8 +131,35 @@ global theme/language controls; `AppShell` passes them to `MoreSheet` through
 its optional `controls` prop, rendered in an "Appearance & language" section
 when signed in. Desktop keeps them in the header. `components/` cannot import
 features, so `AppShell` gets `email` and `controls` as props from `router.tsx`.
+Mobile More keeps functional Light/Dark/System controls and the language toggle,
+without decorative theme previews or a duplicate Settings link at the bottom.
+Signed-in learners still reach each account/settings section directly from its row.
+`SystemStatePage` and `OrbitBrandMark` provide shared system-state presentation. The 404 and
+server-unavailable pages are standalone layouts with `MinimalHeader`, without sidebar, bottom
+navigation, or the More sheet.
 Admin tables pair a `hidden md:block` table with a `md:hidden` card list, and
 show ids through `features/admin/components/CopyableId` (truncated, 44px copy).
+Every admin section follows the content library's layout, built from
+`features/admin/components/AdminSurface`: `AdminSectionHeader` (eyebrow, title,
+action), `AdminFilterCard` (search, `lg`/`md` selects, mobile filter Sheet, refresh,
+active-filter chips), optional `AdminStatGrid` tiles, and one `AdminDataPanel`
+holding the table (`adminTable` classes, `#` column), the card list and the pager.
+`AdminPage` draws the header unless the section carries its own action
+(content, questions, flags). Stat tiles computed from a capped page say so.
+The user directory groups search, status filtering and API-backed result count
+with its table/card list. Select-all is page-scoped and permission-aware; selections
+clear on refetch and mixed active/suspended batches cannot suspend again.
+Submitted search terms stay separate from draft input, reset restores unfiltered
+results, and older requests cannot overwrite newer results. Mobile filters use Sheet.
+The content library uses `api/contentKeys.ts` and `api/useAdminContent.ts` for
+offset/page-size pagination and cached cross-page counts (all/published/in-review,
+with other = draft + approved + archived). Counts follow slug-prefix search and
+kind, not the selected status; failures remain unknown rather than becoming zero.
+Content creation uses the existing POST contract, requires `content.create`,
+validates a JSON object and creates only a draft before opening its detail editor.
+Filters use a mobile Sheet; copying IDs is separate from opening content details.
+Date filtering, global sorting and bulk actions remain absent because the list
+contract has no corresponding parameters or batch operation.
 Card radius/shadow, raised surface and XP/mission colors live in `index.css`.
 Every animation respects reduced motion; no fabricated learner metrics or
 unimplemented controls may be added for visual fidelity.
@@ -128,10 +170,18 @@ dependencies); `scripts/check-bundle.mjs` still enforces it. Studio submission
 status reads `latest_submission` from the owned draft detail, not a nonexistent
 history endpoint, and polls while submitted/verifying. Gate 1 reports use the
 generated `VerificationReport` shape with `failures` and `items_checked`.
-Row 1 pairs the lesson hero (2fr) with TodayProgressCard (1fr), Row 2 pairs DailyPractice
-with ReviewsDue, Row 3 pairs FoundationNext with SkillProgress, and Row 4 renders WeeklyPlan
-full width (multi-column on lg). On mobile, items order: greeting, continue, today progress,
-daily practice, reviews, foundation, weekly plan, CEFR skills. Data-driven omissions are
+Dashboard/Practice/Progress redesign (2026-10-08): the greeting (`learning/model/greeting.ts`
+`greetingKeyFor`) sits in `PageHeader` with gamification `DailyGoalTiles` (streak, XP ring;
+md+ only). Row 1 pairs the lesson hero (2fr, `StackedCardsArt`) with TodayProgressCard (1fr),
+Row 2 pairs DailyPractice with `ReviewPathCard` (reviews + `/me/foundation/next`; tabs from md,
+stacked with one action on a phone, reviews-only without a path), Row 3 pairs WeeklyPlan
+(two columns via container query) with SkillProgress (xl). On mobile, items order: greeting,
+continue, today progress, daily practice, review & path, weekly plan, CEFR skills. Shared
+pieces: `ui/stat-tile`, `ui/progress-ring`, `ui/stacked-cards-art`, learning `CardHeading`
+and `SkillBarList` (one row per skill at every width, Dashboard and Progress),
+`hooks/useMediaQuery`. Progress adds a "study time this week" tile from
+`/me/weekly-plan` (`progress.minutes`); no range filter, deltas or per-day chart (no API).
+Data-driven omissions are
 strictly preserved: no per-day weekly strip (WeeklyPlan lacks per-day data) and no daily-set
 done/total or estimated minutes (LessonActivity lacks estimated_minutes and DailyPracticeSet
 lacks done flags). Compact statistics retain freeze use and league opt-in without duplicate
@@ -146,7 +196,7 @@ and item count only when present in data/props, followed by post-test outcome)
 above collapsible test details, keeping the primary start action visible without
 scrolling on 375px screens. Functional tests cover mobile sheet entry and placement
 summary hierarchy; visual captures (screenshots) were not produced.
-The Progress page displays only API-backed KPI figures (completed activities, in-progress and completed courses), derives course titles and slugs from the catalogue query, and maintains course status filtering in local state.
+The Progress page displays only API-backed KPI figures (completed activities, in-progress and completed courses, this week's study minutes from the weekly plan), derives course titles and slugs from the catalogue query, and maintains course status filtering in local state.
 
 Dialogs use the Radix-backed shadcn `Dialog` primitive from
 `components/ui/dialog.tsx`; `AlertDialog` is imported directly from
@@ -171,6 +221,87 @@ The global `html:has([aria-modal])` scroll lock remains only for legacy inline
 dialogs still listed in `web/TODO.md`. Learn and exam pages use the
 shell width (max ~1440px) with `max-w-3xl`/`max-w-xl` caps on long text, and mobile
 lesson rows are compact row links with a trailing 44px chevron.
+
+**Typography roles (2026-10-09).** Only the Tailwind steps 12–36 px (`text-xs`…`text-4xl`);
+no `text-[Npx]`, nothing under 12 px. Page H1 `text-2xl md:text-3xl font-bold leading-tight
+tracking-tight` (one per page); section titles `text-lg`/`xl` semibold; card and dialog titles
+`text-base`/`lg` semibold (`DialogTitle` defaults to 18 px semibold); `font-extrabold` is not used.
+Reading text (lesson/exam content, feedback, explanations, consent notices) is `text-base` on
+mobile; `text-xs` is for badges, overlines and tiny meta only. Form controls are 16 px below `md`
+(`text-base md:text-sm` in Input/Textarea/NativeSelect/Combobox); never override them smaller.
+Buttons are semibold, `sm` is 14 px, every size ≥ 44 px tall. Icons: 16 px beside text and in
+labelled buttons, 20 px in icon-only buttons/nav/rows, 24 px in feature tiles; decorative ones
+`aria-hidden`.
+
+**Shared page and form primitives (2026-10-08).** Page titles use
+`components/layout/PageHeader` (back link, eyebrow chips, H1 24/30 px,
+description, actions). Forms use `ui/input`, `ui/textarea` and `ui/native-select`
+(native `<select>`, styled; `Combobox` only when the list needs search); raw
+`<select>`/`<textarea>` and local select class constants are not added again.
+Confirmations use `ui/confirm-dialog` (Radix AlertDialog) instead of importing
+`@radix-ui/react-alert-dialog` in a feature. Only tokens defined in `index.css`
+exist: an undefined class such as `bg-surface-base` compiles to nothing, silently.
+Animation is CSS only (`tw-animate-css`, `motion-reduce:`); the `motion` library
+was removed. Whole-page changes go through `lib/view-transition.ts`
+(`withPageTransition(kind, update, { origin, dir })`, View Transitions API,
+direct update when unsupported or reduced motion): `sidebar` morphs the
+collapse/expand snapshots instead of transitioning the sidebar width (which
+re-laid-out the page column every frame); `theme` is a circular reveal from the
+click point (`revealOriginFrom(event)` — every theme entry point passes it as
+`onThemeChoice(choice, origin)`), cross-fade without one; `locale` blurs the old
+words out and the new ones in. `index.css` keys the animations on
+`html[data-vt]`, with durations from `--motion-nav`, `--motion-theme`,
+`--motion-locale`; CSS transitions are suspended while one runs. The Studio course editor lives in `features/studio`: outline
+model and Gate 1 rules in `model/courseStructure.ts`, the details form in
+`model/courseForm.ts` (react-hook-form + zod), tree updates through immer, and
+material uploads in `components/MaterialUploader.tsx` (types and per-kind size
+caps in `features/resource` `MATERIAL_TYPES`, status polled with TanStack Query).
+
+**Announcement banners (2026-10-08).** `features/banners` owns the banner API
+(`api/keys.ts`, `api/useBanners.ts`), the shared rules in `model/banner.ts`
+(`isSafeBannerUrl`, `bannerStatus`, per-user dismissals in localStorage behind
+try/catch) and `BannerCard`, which both the Dashboard (`DashboardBanners`, one
+banner at a time with position dots, no auto-advance, renders nothing until the
+list arrives or when it fails) and the admin preview use. The admin screen is the
+`banners` entry in `features/admin/model/sections.ts` (`system.flags`), with the
+form schema in `features/admin/model/bannerForm.ts`. Banner text is rendered as
+text; an internal link uses the router `Link`, an https link opens a new tab
+with `rel="noopener noreferrer"`.
+
+**Vocabulary review (2026-10-08).** `/practice/review` uses PageHeader at the
+shell width with the card in a centred `max-w-2xl` column. The reveal is a real
+Button named "Show answer: <word>"; the turned-away face is `inert`. Global keys
+go through `features/review/model/shortcuts.ts` (`isForeignKeyEvent`,
+`isActivationTarget`): Space/Enter reveal unless a control has focus, 1-4 grade
+only after reveal, modifiers and dialogs are ignored. Focus moves to the answer
+heading on reveal, to the next card's reveal button after a grade, and to the
+summary heading at the end. Interval labels come only from `next_due_by_grade`
+and the answer's `next_due_at` (`model/interval.ts`).
+
+**Account settings (2026-10-08).** `/settings` uses the shell width (`max-w-[1440px]`)
+with four sections (`?section=profile|learning|security|privacy`). One `<nav>`: a
+scrolling pill strip below `lg` (short labels below `sm`), a side card of rows from `lg`;
+the H1 is the open section. No mobile hub/Back page any more. Cards share
+`components/SettingsCard` (`IconTile`, `SettingsCardHeader`) and size by container
+queries (`@container`, 3 across from `@5xl`). Profile: `ProfileHeroCard` (avatar via
+`AvatarUploadModal`; no remove, the API has none), `ProfileCompletenessCard` (5 steps from
+`model/profileCompleteness.ts`), `ProfileSettings` (personal info) and
+`PreferencesSettings` as two forms: learning preferences (daily goal, practice level) and
+appearance (theme, language; `applySaved` keeps the reveal origin). Each PUT builds on the
+store's freshest record. `?section=preferences` is an alias that
+opens the profile tab at `#learning-preferences`. Notification channels, quiet hours
+and the AI opt-out have no controls; `replacementFor` sends the stored values back on
+every PUT. Security: `SecurityOverview` (status from `model/securityStatus.ts`: password
+inferred from Google `can_unlink`; no strength, 2FA or monitoring claims), password card,
+`GoogleAccountLink` (query `useGoogleLinkStatus`, AlertDialog unlink), a remote sign-out
+card, then `DeviceSessionsList`: device cards grouped by label (`model/deviceSessions.ts`;
+the API shares no device id), per-device sign-out, a ⋮ menu (sign-ins, stop trusting) and
+"sign out all other devices" (per-item calls; there is no self revoke-all endpoint). No
+IP/location rows: the API stores neither. Privacy offers an
+`.xlsx` (`write-excel-file`) and a PDF (`jspdf` + `jspdf-autotable`, Inter from
+`public/fonts/report/` for Vietnamese) report built in the browser from existing
+endpoints (`api/accountReportData.ts`, `model/accountReport.ts`); the writers in
+`features/account/export/` load only via `import()`. The server ZIP export stays.
 
 **Mobile-first is the default, not an adaptation.** Build every component at 375 px first and
 enhance upward. Most learners study on a phone; the layout they see should not be the one that

@@ -57,18 +57,18 @@ export const TodayProgressCard: React.FC<TodayProgressCardProps> = ({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border-subtle bg-surface-card p-4 md:p-5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] space-y-4",
+        "@container h-full space-y-4 rounded-[var(--radius-card)] border border-border-subtle bg-surface-card p-4 shadow-[var(--shadow-card)] md:p-5",
         className,
       )}
     >
       {/* Header: Title and Ghost Leaderboard Link */}
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-base md:text-lg font-semibold text-text">
+        <h2 className="text-base font-bold tracking-tight text-text md:text-lg">
           {t("gamification.todayProgress.title", "Today's Progress")}
-        </h3>
+        </h2>
         <Link
-          to="/progress"
-          className="inline-flex items-center text-xs md:text-sm font-medium text-primary-accent hover:underline min-h-[44px]"
+          to="/leaderboard"
+          className="inline-flex shrink-0 items-center whitespace-nowrap text-sm font-medium text-primary-accent hover:underline min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
         >
           {t("gamification.todayProgress.leaderboardLink", "Leaderboard →")}
         </Link>
@@ -98,12 +98,15 @@ export const TodayProgressCard: React.FC<TodayProgressCardProps> = ({
         />
       </div>
 
-      {/* 3-column Stat Row (grid-cols-3) */}
+      {/* Stat row. Three tiles need the card's own width (~28rem); in a
+        narrower card (the dashboard's side column, a phone) streak and level
+        share a row and quests take a full-width row of their own, so no label
+        is cut off or wrapped to three lines. */}
       <div
-        className={cn("grid gap-3", hasQuests ? "grid-cols-3" : "grid-cols-2")}
+        className={cn("grid grid-cols-2 gap-3", hasQuests && "@md:grid-cols-3")}
       >
         {/* Streak */}
-        <div className="flex flex-col gap-1 rounded-xl border border-border-subtle bg-surface-muted/50 p-2.5 min-w-0">
+        <div className="flex min-w-0 flex-col gap-1 rounded-xl border border-border-subtle bg-surface-muted/50 p-3">
           <div className="flex items-center gap-1.5 text-xs text-text-muted font-medium">
             <Flame
               className={cn(
@@ -133,7 +136,7 @@ export const TodayProgressCard: React.FC<TodayProgressCardProps> = ({
         </div>
 
         {/* Level: Level N shown once, not repeated, plus XP to next level */}
-        <div className="flex flex-col gap-1 rounded-xl border border-border-subtle bg-surface-muted/50 p-2.5 min-w-0">
+        <div className="flex min-w-0 flex-col gap-1 rounded-xl border border-border-subtle bg-surface-muted/50 p-3">
           <div className="flex items-center gap-1.5">
             <Zap className="h-4 w-4 shrink-0 text-xp" aria-hidden="true" />
             <span className="text-sm font-bold text-text truncate">
@@ -152,8 +155,8 @@ export const TodayProgressCard: React.FC<TodayProgressCardProps> = ({
 
         {/* Quests completed: omitted when quests is empty */}
         {hasQuests && (
-          <div className="flex flex-col gap-1 rounded-xl border border-border-subtle bg-surface-muted/50 p-2.5 min-w-0">
-            <div className="flex items-center gap-1.5 text-xs text-text-muted font-medium">
+          <div className="col-span-2 flex min-w-0 items-center justify-between gap-2 rounded-xl border border-border-subtle bg-surface-muted/50 p-3 @md:col-span-1 @md:flex-col @md:items-start @md:justify-start @md:gap-1">
+            <div className="flex min-w-0 items-center gap-1.5 text-xs text-text-muted font-medium">
               <Trophy
                 className="h-4 w-4 shrink-0 text-mission"
                 aria-hidden="true"

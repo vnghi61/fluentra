@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { http, HttpResponse } from "msw";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -17,9 +24,9 @@ import { AccountSettingsPage } from "@/pages/AccountSettingsPage";
 import { ProfileSettings } from "@/features/account/components/ProfileSettings";
 import { PreferencesSettings } from "@/features/account/components/PreferencesSettings";
 import { AvatarUploadModal } from "@/features/account/components/AvatarUploadModal";
-import { DevicesList } from "@/features/account/components/DevicesList";
-import { SessionsList } from "@/features/account/components/SessionsList";
+import { DeviceSessionsList } from "@/features/account/components/DeviceSessionsList";
 import { GoogleAccountLink } from "@/features/account/components/GoogleAccountLink";
+import { SecurityOverview } from "@/features/account/components/SecurityOverview";
 import { ChangePasswordModal } from "@/features/account/components/ChangePasswordModal";
 import { DataPrivacySettings } from "@/features/account/components/DataPrivacySettings";
 import type {
@@ -27,6 +34,17 @@ import type {
   UserPreferences,
 } from "@/features/account/api/accountApi";
 import { useAuthStore, registerQueryClient } from "@/stores/authStore";
+import { usePreferencesStore } from "@/stores/preferencesStore";
+
+// The report writers are loaded with import() on click; the tests only need to
+// know they were loaded and called. Their output is covered in
+// account-report.test.ts.
+const { exportAccountXlsx, exportAccountPdf } = vi.hoisted(() => ({
+  exportAccountXlsx: vi.fn(() => Promise.resolve()),
+  exportAccountPdf: vi.fn(() => Promise.resolve()),
+}));
+vi.mock("@/features/account/export/reportXlsx", () => ({ exportAccountXlsx }));
+vi.mock("@/features/account/export/reportPdf", () => ({ exportAccountPdf }));
 
 const mockProfile: UserProfile = {
   id: "user-123",
@@ -57,6 +75,15 @@ const mockPreferences: UserPreferences = {
   practice_level: "B1",
   updated_at: "2026-08-10T10:00:00Z",
 };
+
+function renderWithQuery(ui: ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
+  );
+}
 
 describe("Account Management Settings (P5.2)", () => {
   beforeEach(() => {
@@ -249,7 +276,25 @@ describe("Account Management Settings (P5.2)", () => {
   });
 
   describe("PreferencesSettings", () => {
-    it("uses switches for quiet hours and AI grading, with AI shown as on when not opted out", async () => {
+    // A save writes the shared store, and the next save builds on it; each
+    // test starts from what it renders.
+    beforeEach(() => usePreferencesStore.getState().clear());
+
+    it("has no notification, quiet-hours or AI grading controls", () => {
+      render(<PreferencesSettings initialPreferences={mockPreferences} />);
+
+      // AI grading is always on now, and notifications are not edited here.
+      expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+      expect(screen.queryByText(/AI Grading/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Quiet Hours/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Notification Channels/i),
+      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText(/Daily goal/i)).toBeInTheDocument();
+    });
+
+    it("sends back the stored notification, quiet-hours and AI values unchanged", async () => {
       let replacedPreferences: unknown = null;
       server.use(
         http.put("/api/v1/me/preferences", async ({ request }) => {
@@ -261,30 +306,36 @@ describe("Account Management Settings (P5.2)", () => {
         }),
       );
 
+      // An opted-out learner stays opted out: removing the switch must not
+      // flip what the server stored.
+      const stored: UserPreferences = {
+        ...mockPreferences,
+        notification_channels: ["push"],
+        quiet_hours: { start: "23:00", end: "06:30" },
+        ai_processing_opt_out: true,
+      };
       const user = userEvent.setup();
-      render(<PreferencesSettings initialPreferences={mockPreferences} />);
+      render(<PreferencesSettings initialPreferences={stored} />);
 
-      const ai = screen.getByRole("switch", { name: /AI Grading/i });
-      expect(ai).toHaveAttribute("aria-checked", "true");
-      expect(
-        screen.getByRole("switch", { name: /Quiet Hours/i }),
-      ).toHaveAttribute("aria-checked", "true");
-
-      await user.click(ai);
-      expect(ai).toHaveAttribute("aria-checked", "false");
-      expect(screen.getByText(/^Off:/)).toBeInTheDocument();
-
+      await user.selectOptions(screen.getByLabelText(/Daily goal/i), "45");
       await user.click(
         screen.getByRole("button", { name: /Save Preferences/i }),
       );
+
       await waitFor(() =>
-        expect(replacedPreferences).toMatchObject({
+        expect(replacedPreferences).toEqual({
+          locale: "vi",
+          theme: "dark",
+          daily_goal_minutes: 45,
+          notification_channels: ["push"],
+          quiet_hours: { start: "23:00", end: "06:30" },
           ai_processing_opt_out: true,
+          practice_level: "B1",
         }),
       );
     });
 
-    it("updates study goal, notification channels and quiet hours", async () => {
+    it("updates the study goal", async () => {
       let replacedPreferences: unknown = null;
 
       server.use(
@@ -320,76 +371,240 @@ describe("Account Management Settings (P5.2)", () => {
         practice_level: "B1",
       });
     });
-  });
 
-  describe("SecuritySettings & DevicesList", () => {
-    it("lists trusted devices and allows untrusting with confirmation", async () => {
-      let untrustedId: string | null = null;
-
+    it("clears the practice level when set back to not chosen", async () => {
+      let replacedPreferences: unknown = null;
       server.use(
-        http.get("/api/v1/auth/devices", () => {
+        http.put("/api/v1/me/preferences", async ({ request }) => {
+          replacedPreferences = await request.json();
           return HttpResponse.json({
-            devices: [
-              {
-                id: "device-1",
-                label: "Chrome on macOS",
-                trusted_at: "2026-08-01T10:00:00Z",
-                last_seen_at: "2026-08-18T10:00:00Z",
-                idle_expires_at: "2026-11-18T10:00:00Z",
-                absolute_expires_at: "2027-02-18T10:00:00Z",
-              },
-            ],
+            ...mockPreferences,
+            ...(replacedPreferences as object),
           });
         }),
+      );
+      const user = userEvent.setup();
+      render(<PreferencesSettings initialPreferences={mockPreferences} />);
+
+      const level = screen.getByLabelText(/Daily practice level/i);
+      expect(level).toHaveValue("B1");
+      await user.selectOptions(level, "");
+      await user.click(
+        screen.getByRole("button", { name: /Save Preferences/i }),
+      );
+
+      await waitFor(() =>
+        expect(replacedPreferences).toMatchObject({
+          practice_level: null,
+          daily_goal_minutes: 30,
+        }),
+      );
+    });
+
+    it("saves the appearance card without touching the learning fields", async () => {
+      let replacedPreferences: unknown = null;
+      server.use(
+        http.put("/api/v1/me/preferences", async ({ request }) => {
+          replacedPreferences = await request.json();
+          return HttpResponse.json({
+            ...mockPreferences,
+            ...(replacedPreferences as object),
+          });
+        }),
+      );
+      const user = userEvent.setup();
+      render(<PreferencesSettings initialPreferences={mockPreferences} />);
+
+      // Each card saves on its own: a goal changed but not saved stays out.
+      await user.selectOptions(screen.getByLabelText(/Daily goal/i), "60");
+      const save = screen.getByRole("button", { name: /Save appearance/i });
+      expect(save).toBeDisabled();
+      await user.click(screen.getByRole("radio", { name: /System/i }));
+      await user.click(save);
+
+      await waitFor(() =>
+        expect(replacedPreferences).toMatchObject({
+          theme: "system",
+          locale: "vi",
+          daily_goal_minutes: 30,
+          practice_level: "B1",
+        }),
+      );
+    });
+  });
+
+  describe("DeviceSessionsList (devices & sign-ins)", () => {
+    function renderDevices(onLoggedOut?: () => void) {
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      return render(
+        <QueryClientProvider client={client}>
+          <DeviceSessionsList onLoggedOut={onLoggedOut} />
+        </QueryClientProvider>,
+      );
+    }
+
+    const session = (
+      id: string,
+      label: string | null,
+      lastSeen: string,
+      current = false,
+    ) => ({
+      id,
+      current,
+      device_label: label,
+      created_at: "2026-08-15T12:00:00Z",
+      last_seen_at: lastSeen,
+    });
+
+    const trusted = (id: string, label: string, current = false) => ({
+      id,
+      current,
+      label,
+      trusted_at: "2026-08-01T10:00:00Z",
+      last_seen_at: "2026-08-18T10:00:00Z",
+      idle_expires_at: "2026-11-18T10:00:00Z",
+      absolute_expires_at: "2027-02-18T10:00:00Z",
+    });
+
+    it("shows each device once, with its sign-ins and trust grouped under it", async () => {
+      // The duplication learners saw: three sign-ins from one laptop plus its
+      // trust record used to render as four rows across two cards.
+      server.use(
+        http.get("/api/v1/auth/sessions", () =>
+          HttpResponse.json({
+            sessions: [
+              session("s-1", "Chrome on Windows", "2026-08-18T09:00:00Z", true),
+              session("s-2", "Chrome on Windows", "2026-08-17T09:00:00Z"),
+              session("s-3", "Chrome on Windows", "2026-08-10T09:00:00Z"),
+              session("s-4", "Safari on iPhone", "2026-08-16T09:00:00Z"),
+            ],
+          }),
+        ),
+        http.get("/api/v1/auth/devices", () =>
+          HttpResponse.json({
+            devices: [trusted("d-1", "Chrome on Windows", true)],
+          }),
+        ),
+      );
+
+      const user = userEvent.setup();
+      renderDevices();
+
+      const rows = await screen.findAllByTestId("device-row");
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toHaveTextContent("Chrome on Windows");
+      expect(rows[0]).toHaveTextContent("This device");
+      expect(rows[0]).toHaveTextContent("Trusted");
+      expect(rows[0]).toHaveTextContent("3 sign-ins");
+      expect(rows[1]).toHaveTextContent("Safari on iPhone");
+      expect(rows[1]).toHaveTextContent("1 sign-in");
+      expect(screen.getAllByText("Chrome on Windows")).toHaveLength(1);
+
+      // The current device cannot be signed out from here; another can.
+      expect(
+        screen.queryByRole("button", {
+          name: /Sign out of Chrome on Windows/i,
+        }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Sign out of Safari on iPhone/i }),
+      ).toBeInTheDocument();
+
+      // The card's menu lists the device's sign-ins; this one cannot be
+      // ended here.
+      await user.click(
+        screen.getByRole("button", {
+          name: /More actions for Chrome on Windows/i,
+        }),
+      );
+      await user.click(
+        await screen.findByRole("menuitem", { name: /Show sign-ins/i }),
+      );
+      const signIns = screen.getByRole("list", {
+        name: /Sign-ins on Chrome on Windows/i,
+      });
+      expect(within(signIns).getAllByRole("listitem")).toHaveLength(3);
+      expect(within(signIns).getByText("This session")).toBeInTheDocument();
+      expect(
+        within(signIns).getAllByRole("button", { name: /End the sign-in/i }),
+      ).toHaveLength(2);
+    });
+
+    it("signs a whole device out: its trust and every one of its sessions", async () => {
+      const untrusted: string[] = [];
+      const revoked: string[] = [];
+      let sessions = [
+        session("s-1", "Firefox on Linux", "2026-08-18T09:00:00Z", true),
+        session("s-2", "Safari on iPhone", "2026-08-17T09:00:00Z"),
+        session("s-3", "Safari on iPhone", "2026-08-12T09:00:00Z"),
+      ];
+      let devices = [trusted("d-2", "Safari on iPhone")];
+      server.use(
+        http.get("/api/v1/auth/sessions", () =>
+          HttpResponse.json({ sessions }),
+        ),
+        http.get("/api/v1/auth/devices", () => HttpResponse.json({ devices })),
         http.delete("/api/v1/auth/devices/:id", ({ params }) => {
-          untrustedId = params.id as string;
+          untrusted.push(params.id as string);
+          devices = [];
+          // Untrusting revokes the device's trusted session server-side.
+          sessions = sessions.filter((s) => s.id !== "s-2");
+          return new HttpResponse(null, { status: 204 });
+        }),
+        http.delete("/api/v1/auth/sessions/:id", ({ params }) => {
+          const id = params.id as string;
+          if (!sessions.some((s) => s.id === id)) {
+            return HttpResponse.json(
+              { status: 404, title: "Not Found", code: "RESOURCE_NOT_FOUND" },
+              { status: 404 },
+            );
+          }
+          revoked.push(id);
+          sessions = sessions.filter((s) => s.id !== id);
           return new HttpResponse(null, { status: 204 });
         }),
       );
 
       const user = userEvent.setup();
-      render(<DevicesList />);
+      renderDevices();
 
-      await waitFor(() => {
-        expect(screen.getByText("Chrome on macOS")).toBeInTheDocument();
-      });
+      await user.click(
+        await screen.findByRole("button", {
+          name: /Sign out of Safari on iPhone/i,
+        }),
+      );
+      const dialog = await screen.findByRole("alertdialog");
+      expect(dialog).toHaveTextContent("Sign out of Safari on iPhone?");
+      expect(dialog).toHaveTextContent("It will also stop being trusted.");
+      await user.click(
+        within(dialog).getByRole("button", { name: "Sign out" }),
+      );
 
-      const untrustBtn = screen.getByRole("button", {
-        name: /Untrust device/i,
-      });
-      await user.click(untrustBtn);
-
-      expect(
-        screen.getByText(/Stop trusting this device\?/i),
-      ).toBeInTheDocument();
-
-      const confirmBtn = screen.getByRole("button", {
-        name: /Untrust & Sign Out/i,
-      });
-      await user.click(confirmBtn);
-
-      await waitFor(() => {
-        expect(untrustedId).toBe("device-1");
-      });
+      await waitFor(() =>
+        expect(screen.getAllByTestId("device-row")).toHaveLength(1),
+      );
+      expect(untrusted).toEqual(["d-2"]);
+      // s-2 went with the trust; s-3 was signed in without "stay signed in".
+      expect(revoked).toEqual(["s-3"]);
+      expect(screen.queryByText("Safari on iPhone")).not.toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
-    it("lists sessions and revokes session", async () => {
+    it("ends a single sign-in from the device details", async () => {
       let revokedId: string | null = null;
-
       server.use(
-        http.get("/api/v1/auth/sessions", () => {
-          return HttpResponse.json({
+        http.get("/api/v1/auth/sessions", () =>
+          HttpResponse.json({
             sessions: [
-              {
-                id: "session-1",
-                current: false,
-                device_label: "Safari on iPhone",
-                created_at: "2026-08-15T12:00:00Z",
-                last_seen_at: "2026-08-18T09:00:00Z",
-              },
+              session("session-1", "Safari on iPhone", "2026-08-18T09:00:00Z"),
             ],
-          });
-        }),
+          }),
+        ),
+        http.get("/api/v1/auth/devices", () =>
+          HttpResponse.json({ devices: [] }),
+        ),
         http.delete("/api/v1/auth/sessions/:id", ({ params }) => {
           revokedId = params.id as string;
           return new HttpResponse(null, { status: 204 });
@@ -397,92 +612,256 @@ describe("Account Management Settings (P5.2)", () => {
       );
 
       const user = userEvent.setup();
-      render(<SessionsList />);
+      renderDevices();
 
-      await waitFor(() => {
-        expect(screen.getByText("Safari on iPhone")).toBeInTheDocument();
-      });
-
-      const revokeBtn = screen.getByRole("button", { name: /Revoke/i });
-      await user.click(revokeBtn);
-
-      await waitFor(() => {
-        expect(revokedId).toBe("session-1");
-      });
-    });
-
-    it("does not offer revoke button on current session", async () => {
-      server.use(
-        http.get("/api/v1/auth/sessions", () => {
-          return HttpResponse.json({
-            sessions: [
-              {
-                id: "session-curr",
-                current: true,
-                device_label: "This Browser",
-                created_at: "2026-08-15T12:00:00Z",
-                last_seen_at: "2026-08-18T09:00:00Z",
-              },
-            ],
-          });
-        }),
+      await user.click(
+        await screen.findByRole("button", { name: /More actions for/i }),
+      );
+      await user.click(
+        await screen.findByRole("menuitem", { name: /Show sign-ins/i }),
+      );
+      await user.click(
+        screen.getByRole("button", { name: /End the sign-in/i }),
       );
 
-      render(<SessionsList />);
-
-      await waitFor(() => {
-        expect(screen.getByText("This Browser")).toBeInTheDocument();
-      });
-
-      expect(
-        screen.queryByRole("button", { name: /Revoke/i }),
-      ).not.toBeInTheDocument();
-      expect(screen.getByText(/Current Device/i)).toBeInTheDocument();
+      await waitFor(() => expect(revokedId).toBe("session-1"));
     });
 
-    it("puts the current session first and shows five until asked for more", async () => {
-      const others = Array.from({ length: 8 }, (_, i) => ({
-        id: `session-${i}`,
-        current: false,
-        device_label: `Chrome on Windows ${i}`,
-        created_at: "2026-08-15T12:00:00Z",
-        last_seen_at: `2026-08-${String(10 + i).padStart(2, "0")}T09:00:00Z`,
-      }));
+    it("warns before untrusting the device in hand and then signs out", async () => {
+      const onLoggedOut = vi.fn();
+      let untrustedId: string | null = null;
       server.use(
         http.get("/api/v1/auth/sessions", () =>
           HttpResponse.json({
             sessions: [
-              ...others,
+              session("s-1", "Chrome on macOS", "2026-08-18T09:00:00Z", true),
+            ],
+          }),
+        ),
+        http.get("/api/v1/auth/devices", () =>
+          HttpResponse.json({
+            devices: [trusted("device-1", "Chrome on macOS", true)],
+          }),
+        ),
+        http.delete("/api/v1/auth/devices/:id", ({ params }) => {
+          untrustedId = params.id as string;
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+
+      const user = userEvent.setup();
+      renderDevices(onLoggedOut);
+
+      await user.click(
+        await screen.findByRole("button", {
+          name: /More actions for Chrome on macOS/i,
+        }),
+      );
+      await user.click(
+        await screen.findByRole("menuitem", { name: /Stop trusting/i }),
+      );
+
+      const dialog = await screen.findByRole("alertdialog");
+      expect(dialog).toHaveTextContent(/Stop trusting this device\?/i);
+      expect(dialog).toHaveTextContent(/device you are using right now/i);
+      await user.click(
+        within(dialog).getByRole("button", { name: /Untrust & Sign Out/i }),
+      );
+
+      await waitFor(() => expect(untrustedId).toBe("device-1"));
+      await waitFor(() => expect(onLoggedOut).toHaveBeenCalledTimes(1));
+    });
+
+    it("says so when the list cannot be read instead of showing no devices", async () => {
+      server.use(
+        http.get("/api/v1/auth/sessions", () =>
+          HttpResponse.json(
+            { status: 500, title: "Internal Server Error" },
+            { status: 500 },
+          ),
+        ),
+        http.get("/api/v1/auth/devices", () =>
+          HttpResponse.json({ devices: [] }),
+        ),
+      );
+
+      renderDevices();
+
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+      expect(
+        screen.queryByText(/No devices are signed in/i),
+      ).not.toBeInTheDocument();
+    });
+
+    it("signs out every other device and session, never this one", async () => {
+      const untrusted: string[] = [];
+      const revoked: string[] = [];
+      let sessions = [
+        session("s-1", "Chrome on Windows", "2026-08-18T09:00:00Z", true),
+        // Same label as this browser, but another sign-in: it goes too.
+        session("s-2", "Chrome on Windows", "2026-08-17T09:00:00Z"),
+        session("s-3", "Safari on iPhone", "2026-08-16T09:00:00Z"),
+      ];
+      let devices = [
+        trusted("d-1", "Chrome on Windows", true),
+        trusted("d-2", "Safari on iPhone"),
+      ];
+      server.use(
+        http.get("/api/v1/auth/sessions", () =>
+          HttpResponse.json({ sessions }),
+        ),
+        http.get("/api/v1/auth/devices", () => HttpResponse.json({ devices })),
+        http.delete("/api/v1/auth/devices/:id", ({ params }) => {
+          untrusted.push(params.id as string);
+          devices = devices.filter((d) => d.id !== params.id);
+          // Untrusting revokes that device's session server-side.
+          sessions = sessions.filter((s) => s.id !== "s-3");
+          return new HttpResponse(null, { status: 204 });
+        }),
+        http.delete("/api/v1/auth/sessions/:id", ({ params }) => {
+          const id = params.id as string;
+          if (!sessions.some((s) => s.id === id)) {
+            return HttpResponse.json(
+              { status: 404, title: "Not Found", code: "RESOURCE_NOT_FOUND" },
+              { status: 404 },
+            );
+          }
+          revoked.push(id);
+          sessions = sessions.filter((s) => s.id !== id);
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+
+      const user = userEvent.setup();
+      renderDevices();
+
+      await user.click(
+        await screen.findByRole("button", {
+          name: /Sign out all other devices/i,
+        }),
+      );
+      const dialog = await screen.findByRole("alertdialog");
+      expect(dialog).toHaveTextContent("Every other active sign-in (2)");
+      await user.click(
+        within(dialog).getByRole("button", {
+          name: /Sign out all other devices/i,
+        }),
+      );
+
+      await waitFor(() =>
+        expect(screen.getAllByTestId("device-row")).toHaveLength(1),
+      );
+      expect(untrusted).toEqual(["d-2"]);
+      expect(revoked).toEqual(["s-2"]);
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      // Only this device is left, so there is nothing more to sign out.
+      expect(
+        screen.getByRole("button", { name: /Sign out all other devices/i }),
+      ).toBeDisabled();
+    });
+
+    it("shows the current device as in use, with when others were last active", async () => {
+      server.use(
+        http.get("/api/v1/auth/sessions", () =>
+          HttpResponse.json({
+            sessions: [
+              session("s-1", "Chrome on Windows", "2026-08-18T09:00:00Z", true),
+              session("s-2", "Safari on iPhone", "2026-08-16T09:00:00Z"),
+            ],
+          }),
+        ),
+        http.get("/api/v1/auth/devices", () =>
+          HttpResponse.json({ devices: [] }),
+        ),
+      );
+
+      renderDevices();
+
+      const [current, other] = await screen.findAllByTestId("device-row");
+      expect(current).toHaveTextContent("Active now");
+      expect(
+        within(current!).getByRole("button", { name: /In use/i }),
+      ).toBeDisabled();
+      // Browser and OS are split out of the server's coarse label.
+      expect(other).toHaveTextContent(/Safari\s*•\s*,?\s*iPhone/);
+      // A relative time ("2 months ago"), machine-readable underneath.
+      const lastActive = other!.querySelector(
+        'time[datetime="2026-08-16T09:00:00Z"]',
+      );
+      expect(lastActive?.textContent).toMatch(/\d/);
+      // The API stores no IP address or location, so neither is shown.
+      expect(screen.queryByText(/IP address/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/location/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("SecurityOverview", () => {
+    function renderOverview(google: { linked: boolean; can_unlink: boolean }) {
+      server.use(
+        http.get("/api/v1/auth/oauth/google", () => HttpResponse.json(google)),
+        http.get("/api/v1/auth/sessions", () =>
+          HttpResponse.json({
+            sessions: [
               {
-                id: "session-curr",
+                id: "s-1",
                 current: true,
-                device_label: "This Browser",
+                device_label: "Chrome on Windows",
                 created_at: "2026-08-15T12:00:00Z",
-                last_seen_at: "2026-08-01T09:00:00Z",
+                last_seen_at: "2026-08-18T09:00:00Z",
+              },
+              {
+                id: "s-2",
+                current: false,
+                device_label: "Safari on iPhone",
+                created_at: "2026-08-15T12:00:00Z",
+                last_seen_at: "2026-08-17T09:00:00Z",
               },
             ],
           }),
         ),
+        http.get("/api/v1/auth/devices", () =>
+          HttpResponse.json({ devices: [] }),
+        ),
       );
+      return renderWithQuery(<SecurityOverview />);
+    }
 
-      const user = userEvent.setup();
-      render(<SessionsList />);
+    it("suggests connecting Google when only a password is set", async () => {
+      renderOverview({ linked: false, can_unlink: false });
 
-      await screen.findByText("This Browser");
-      const rows = screen.getAllByRole("listitem");
-      expect(rows).toHaveLength(5);
-      expect(rows[0]).toHaveTextContent("This Browser");
-      // Most recently active next.
-      expect(rows[1]).toHaveTextContent("Chrome on Windows 7");
-
-      await user.click(
-        screen.getByRole("button", { name: "Show 4 more sessions" }),
-      );
-      expect(screen.getAllByRole("listitem")).toHaveLength(9);
-      await user.click(screen.getByRole("button", { name: "Show fewer" }));
-      expect(screen.getAllByRole("listitem")).toHaveLength(5);
+      expect(
+        await screen.findByRole("heading", {
+          name: /protected, with 1 suggestion/i,
+        }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Password set")).toBeInTheDocument();
+      expect(screen.getByText("Google not connected")).toBeInTheDocument();
+      expect(await screen.findByText("2 active sessions")).toBeInTheDocument();
+      expect(screen.getByText("on 2 devices")).toBeInTheDocument();
+      // No claims the API cannot back.
+      expect(screen.queryByText(/two-factor|2FA/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/strong/i)).not.toBeInTheDocument();
     });
 
+    it("reads a Google-only account as having no password", async () => {
+      renderOverview({ linked: true, can_unlink: false });
+
+      expect(await screen.findByText("No password yet")).toBeInTheDocument();
+      expect(screen.getByText("Google connected")).toBeInTheDocument();
+    });
+
+    it("says all is in place when both sign-in methods are set up", async () => {
+      renderOverview({ linked: true, can_unlink: true });
+
+      expect(
+        await screen.findByRole("heading", {
+          name: /All your sign-in protections are in place/i,
+        }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("SecuritySettings", () => {
     it("refuses unlinking Google when LAST_SIGN_IN_METHOD is returned", async () => {
       server.use(
         http.delete("/api/v1/auth/oauth/google", () => {
@@ -511,13 +890,14 @@ describe("Account Management Settings (P5.2)", () => {
         ),
       );
 
-      vi.spyOn(window, "confirm").mockReturnValue(true);
-
       const user = userEvent.setup();
-      render(<GoogleAccountLink />);
+      renderWithQuery(<GoogleAccountLink />);
 
       const unlinkBtn = await screen.findByRole("button", { name: /Unlink/i });
       await user.click(unlinkBtn);
+      const dialog = await screen.findByRole("alertdialog");
+      expect(dialog).toHaveTextContent(/disconnect your Google account/i);
+      await user.click(within(dialog).getByRole("button", { name: /Unlink/i }));
 
       await waitFor(() => {
         expect(
@@ -541,7 +921,7 @@ describe("Account Management Settings (P5.2)", () => {
         ),
       );
 
-      render(<GoogleAccountLink />);
+      renderWithQuery(<GoogleAccountLink />);
 
       const unlinkBtn = await screen.findByRole("button", { name: /Unlink/i });
       expect(unlinkBtn).toBeDisabled();
@@ -618,6 +998,48 @@ describe("Account Management Settings (P5.2)", () => {
       await waitFor(() => {
         expect(screen.getByText(/Data export requested/i)).toBeInTheDocument();
       });
+    });
+
+    it("offers Excel and PDF reports, loading each writer only when pressed", async () => {
+      exportAccountXlsx.mockClear();
+      exportAccountPdf.mockClear();
+      const user = userEvent.setup();
+      render(<DataPrivacySettings initialProfile={mockProfile} />);
+
+      expect(exportAccountXlsx).not.toHaveBeenCalled();
+      expect(exportAccountPdf).not.toHaveBeenCalled();
+
+      await user.click(
+        screen.getByRole("button", { name: /Download Excel \(\.xlsx\)/i }),
+      );
+      await waitFor(() => expect(exportAccountXlsx).toHaveBeenCalledTimes(1));
+      expect(
+        await screen.findByText(/Your report has been downloaded/i),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: /Download PDF/i }));
+      await waitFor(() => expect(exportAccountPdf).toHaveBeenCalledTimes(1));
+
+      // The server-built GDPR archive stays, as the secondary option.
+      expect(
+        screen.getByRole("button", { name: /Request Data Export/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("says so when a report cannot be created", async () => {
+      exportAccountPdf.mockClear();
+      exportAccountPdf.mockRejectedValueOnce(new Error("font failed"));
+      const user = userEvent.setup();
+      render(<DataPrivacySettings initialProfile={mockProfile} />);
+
+      await user.click(screen.getByRole("button", { name: /Download PDF/i }));
+
+      expect(
+        await screen.findByText(/Could not create the report/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Your report has been downloaded/i),
+      ).not.toBeInTheDocument();
     });
 
     it("requests account deletion with 30-day grace period and allows cancelling", async () => {
@@ -737,14 +1159,14 @@ describe("Account Management Settings (P5.2)", () => {
         http.get("/api/v1/me/preferences", () =>
           HttpResponse.json(mockPreferences),
         ),
-        http.get("/api/v1/me/sessions", () =>
+        http.get("/api/v1/auth/sessions", () =>
           HttpResponse.json({ sessions: [] }),
         ),
-        http.get("/api/v1/me/trusted-devices", () =>
+        http.get("/api/v1/auth/devices", () =>
           HttpResponse.json({ devices: [] }),
         ),
-        http.get("/api/v1/me/oauth/google", () =>
-          HttpResponse.json({ connected: false, email: null }),
+        http.get("/api/v1/auth/oauth/google", () =>
+          HttpResponse.json({ linked: false, can_unlink: false }),
         ),
         http.get("/api/v1/me/learning-profile", () =>
           HttpResponse.json({
@@ -785,146 +1207,184 @@ describe("Account Management Settings (P5.2)", () => {
       return { ...rendered, router };
     }
 
-    it("covers index -> subpage -> back navigation", async () => {
+    it("opens on the profile section with the section nav beside it", async () => {
+      await renderSettings("/settings");
+
+      const nav = await screen.findByRole("navigation", {
+        name: /Account Settings/i,
+      });
+      // One nav at every width: a strip of pills below lg, a side card above.
+      const tabs = within(nav).getAllByRole("button");
+      expect(tabs).toHaveLength(4);
+      for (const tab of tabs) expect(tab).toHaveClass("min-h-[44px]");
+      expect(
+        within(nav).getByRole("button", { name: /Profile & Preferences/i }),
+      ).toHaveAttribute("aria-current", "page");
+      expect(
+        within(nav).getByRole("button", { name: /Learning Profile/i }),
+      ).toBeInTheDocument();
+      expect(
+        within(nav).getByRole("button", { name: /Security & Devices/i }),
+      ).toBeInTheDocument();
+      expect(
+        within(nav).getByRole("button", { name: /Data & Privacy/i }),
+      ).toBeInTheDocument();
+
+      // The page title is the open section; the old mobile hub and its Back
+      // button are gone, so the content shows at every width.
+      expect(
+        screen.getByRole("heading", {
+          level: 1,
+          name: /Profile & Preferences/i,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Back/i }),
+      ).not.toBeInTheDocument();
+      const panel = screen.getByRole("region", {
+        name: /Profile & Preferences/i,
+      });
+      expect(panel).not.toHaveClass("hidden");
+
+      // Hero, completeness, then the three cards.
+      expect(
+        screen.getByRole("heading", { level: 2, name: "Nghi Nguyen" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Personal account")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Change avatar/i }),
+      ).toBeInTheDocument();
+      // No remove-avatar operation exists, so there is no Remove button.
+      expect(
+        screen.queryByRole("button", { name: /Remove photo|Delete photo/i }),
+      ).not.toBeInTheDocument();
+      // Name, country and birth date, photo, verified email and practice
+      // level are set; the learning profile has no goal (no exam, no target).
+      const progress = await screen.findByRole("progressbar", {
+        name: /Personalised experience/i,
+      });
+      expect(progress).toHaveAttribute("aria-valuenow", "4");
+      expect(progress).toHaveAttribute("aria-valuemax", "5");
+      expect(screen.getByDisplayValue("Nghi Nguyen")).toBeInTheDocument();
+      expect(screen.getByLabelText(/Daily goal/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("radiogroup", { name: /Theme Preference/i }),
+      ).toBeInTheDocument();
+      // No density control: no preference stores one.
+      expect(screen.queryByText(/Density|Compact/i)).not.toBeInTheDocument();
+    });
+
+    it("switches sections from the nav and keeps them in the URL", async () => {
       const user = userEvent.setup();
       const { router } = await renderSettings("/settings");
 
-      // On /settings without a section: shows index list of all sections
-      expect(
-        await screen.findByRole("button", { name: /Profile & Avatar/i }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /Learning Profile/i }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /Learning Preferences/i }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /Security & Devices/i }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /Data & Privacy/i }),
-      ).toBeInTheDocument();
-
-      // Check all rows have >= 44px min-height
-      const navButtons = screen.getAllByRole("button", {
-        name: /Profile|Learning|Security|Data/i,
-      });
-      expect(navButtons.length).toBe(5);
-      for (const btn of navButtons) {
-        expect(btn).toHaveClass("min-h-[44px]");
-      }
-
-      // Back button is not visible on the index
-      expect(
-        screen.queryByRole("button", { name: /Back/i }),
-      ).not.toBeInTheDocument();
-
-      // The tab panel is hidden on mobile below md (has "hidden md:block")
-      const panel = screen.getByRole("region", {
-        name: /Profile & Avatar/i,
-      });
-      expect(panel).toHaveClass("hidden");
-      expect(panel).toHaveClass("md:block");
-
-      // Selecting one navigates to /settings?section=<key>
-      const securityBtn = screen.getByRole("button", {
-        name: /Security & Devices/i,
-      });
-      await user.click(securityBtn);
-
+      await user.click(
+        await screen.findByRole("button", { name: /Security & Devices/i }),
+      );
       await waitFor(() => {
         expect(router.state.location.search).toEqual({ section: "security" });
       });
-
-      // Shows that section with a header back button that returns to /settings
-      const backBtn = await screen.findByRole("button", { name: /Back/i });
-      expect(backBtn).toBeInTheDocument();
-      expect(backBtn).toHaveClass("min-h-[44px]");
-
-      // Header shows the section title
       expect(
-        screen.getByRole("heading", {
-          level: 2,
+        await screen.findByRole("heading", {
+          level: 1,
           name: /Security & Devices/i,
         }),
       ).toBeInTheDocument();
-
-      // Security section content is displayed
       expect(
         await screen.findByText(/Password & Authentication/i),
       ).toBeInTheDocument();
-
-      // Navigation is hidden below md (has "hidden md:grid")
-      const nav = screen.getByRole("navigation", {
-        name: /Account Settings/i,
-      });
-      expect(nav).toHaveClass("hidden");
-      expect(nav).toHaveClass("md:grid");
-
-      // Clicking back button returns to /settings
-      await user.click(backBtn);
-
-      await waitFor(() => {
-        expect(router.state.location.search).toEqual({});
-      });
-
-      // Back button is no longer rendered
       expect(
-        screen.queryByRole("button", { name: /Back/i }),
+        await screen.findByText("Google not connected"),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Remote sign-out/i)).toBeInTheDocument();
+      // No two-factor action: the API has no such operation.
+      expect(
+        screen.queryByRole("button", { name: /two-factor|2FA/i }),
       ).not.toBeInTheDocument();
 
-      // Navigation is visible on index again
-      expect(nav).not.toHaveClass("hidden");
+      await user.click(
+        screen.getByRole("button", { name: /Learning Profile/i }),
+      );
+      await waitFor(() => {
+        expect(router.state.location.search).toEqual({ section: "learning" });
+      });
+      expect(
+        await screen.findByRole("heading", { name: /Weekly study time/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("opens the password dialog from the password row", async () => {
+      const user = userEvent.setup();
+      await renderSettings("/settings?section=security");
+
+      await user.click(
+        await screen.findByRole("button", { name: /^Password/i }),
+      );
+      expect(
+        await screen.findByRole("dialog", { name: /Change Password/i }),
+      ).toBeInTheDocument();
     });
 
     it("covers direct-URL deep link", async () => {
+      const { router } = await renderSettings("/settings?section=security");
+
+      expect(router.state.location.search).toEqual({ section: "security" });
+      expect(
+        await screen.findByText(/Password & Authentication/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Security & Devices/i }),
+      ).toHaveAttribute("aria-current", "page");
+    });
+
+    it("sends an old link to the removed preferences tab to the profile tab", async () => {
       const { router } = await renderSettings("/settings?section=preferences");
 
       expect(router.state.location.search).toEqual({ section: "preferences" });
 
-      // Preferences section is displayed
-      expect(await screen.findByText(/Daily goal/i)).toBeInTheDocument();
+      // The learning preferences now live on the profile tab, beside the profile.
+      expect(await screen.findByLabelText(/Daily goal/i)).toBeInTheDocument();
+      expect(document.getElementById("learning-preferences")).toContainElement(
+        screen.getByLabelText(/Daily goal/i),
+      );
+      expect(screen.getByDisplayValue("Nghi Nguyen")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Profile & Preferences/i }),
+      ).toHaveAttribute("aria-current", "page");
+      expect(
+        screen.getByRole("heading", {
+          level: 1,
+          name: /Profile & Preferences/i,
+        }),
+      ).toBeInTheDocument();
+    });
 
-      // Side-tab is selected (aria-current="page")
-      const prefTab = screen.getByRole("button", {
-        name: /Learning Preferences/i,
-      });
-      expect(prefTab).toHaveAttribute("aria-current", "page");
+    it("no longer shows notification, quiet-hours or AI grading controls", async () => {
+      await renderSettings("/settings?section=profile");
 
-      // Subpage header back button is rendered
-      expect(screen.getByRole("button", { name: /Back/i })).toBeInTheDocument();
+      expect(await screen.findByLabelText(/Daily goal/i)).toBeInTheDocument();
+      expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+      expect(screen.queryByText(/AI Grading/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Quiet Hours/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Notification Channels/i),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Notifications & Quiet Hours/i),
+      ).not.toBeInTheDocument();
     });
 
     it("covers unknown section fallback", async () => {
       await renderSettings("/settings?section=unknown_junk");
 
-      // Unknown section falls back: /settings still opens
-      expect(
-        await screen.findByRole("button", { name: /Profile & Avatar/i }),
-      ).toBeInTheDocument();
-
-      // On mobile: falls back to index (no back button, nav visible)
-      expect(
-        screen.queryByRole("button", { name: /Back/i }),
-      ).not.toBeInTheDocument();
-      const nav = screen.getByRole("navigation", {
-        name: /Account Settings/i,
-      });
-      expect(nav).not.toHaveClass("hidden");
-
-      // On desktop: falls back to first tab ("profile")
-      const profileTab = screen.getByRole("button", {
-        name: /Profile & Avatar/i,
+      // An unknown section opens the first one, profile.
+      const profileTab = await screen.findByRole("button", {
+        name: /Profile & Preferences/i,
       });
       expect(profileTab).toHaveAttribute("aria-current", "page");
-
-      // Tab panel has "hidden md:block" (index on mobile, first tab on desktop)
-      const panel = screen.getByRole("region", {
-        name: /Profile & Avatar/i,
-      });
-      expect(panel).toHaveClass("hidden");
-      expect(panel).toHaveClass("md:block");
+      expect(
+        screen.getByRole("region", { name: /Profile & Preferences/i }),
+      ).toBeInTheDocument();
       expect(screen.getByDisplayValue("Nghi Nguyen")).toBeInTheDocument();
     });
   });

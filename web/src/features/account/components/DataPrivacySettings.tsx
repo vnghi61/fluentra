@@ -5,6 +5,8 @@ import {
   CheckCircle2,
   Download,
   FileArchive,
+  FileSpreadsheet,
+  FileText,
   Loader2,
   Trash2,
   Undo2,
@@ -19,6 +21,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   settingsAlert,
   settingsCard,
@@ -35,8 +46,9 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
   initialProfile,
   onProfileUpdated,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [profile, setProfile] = useState<UserProfile>(initialProfile);
+  const [reportFormat, setReportFormat] = useState<"xlsx" | "pdf" | null>(null);
   const [exportState, setExportState] = useState<ExportResponse | null>(null);
   const [deletionState, setDeletionState] = useState<DeletionResponse | null>(
     null,
@@ -78,6 +90,37 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
       });
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  // The writers (and their libraries) load only when a button is pressed, so
+  // neither jsPDF nor write-excel-file is part of the settings chunk.
+  const handleDownloadReport = async (format: "xlsx" | "pdf") => {
+    if (reportFormat) return;
+    setReportFormat(format);
+    setStatusMessage(null);
+    try {
+      if (format === "xlsx") {
+        const { exportAccountXlsx } = await import("../export/reportXlsx");
+        await exportAccountXlsx(t, i18n.language);
+      } else {
+        const { exportAccountPdf } = await import("../export/reportPdf");
+        await exportAccountPdf(t, i18n.language);
+      }
+      setStatusMessage({
+        type: "success",
+        text: t("account.reportDownloaded", "Your report has been downloaded."),
+      });
+    } catch {
+      setStatusMessage({
+        type: "error",
+        text: t(
+          "account.reportFailed",
+          "Could not create the report. Please try again.",
+        ),
+      });
+    } finally {
+      setReportFormat(null);
     }
   };
 
@@ -162,15 +205,66 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
       {statusMessage && (
         <div role="status" className={settingsAlert(statusMessage.type)}>
           {statusMessage.type === "success" ? (
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden />
           ) : (
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <AlertCircle className="h-5 w-5 shrink-0" aria-hidden />
           )}
           <span>{statusMessage.text}</span>
         </div>
       )}
 
-      {/* Data Export (GDPR) */}
+      {/* Learning report: statistics + tables, built in the browser */}
+      <section className={`${settingsCard} space-y-4`}>
+        <div className="space-y-1">
+          <h3 className={settingsCardTitle}>
+            <Download className="h-5 w-5 text-primary-accent" aria-hidden />
+            {t("account.downloadReportTitle", "Download your learning report")}
+          </h3>
+          <p className={`${settingsCardDesc} max-w-2xl`}>
+            {t(
+              "account.downloadReportDesc",
+              "A summary of your statistics followed by detailed tables: courses, skills, XP and streak, reviews, vocabulary decks and mock tests. Only figures stored in your account are included.",
+            )}
+          </p>
+        </div>
+        <div className="grid gap-2 sm:flex sm:flex-wrap">
+          <Button
+            type="button"
+            onClick={() => {
+              void handleDownloadReport("xlsx");
+            }}
+            disabled={reportFormat !== null}
+            isLoading={reportFormat === "xlsx"}
+            className="w-full sm:w-auto"
+          >
+            {reportFormat !== "xlsx" && (
+              <FileSpreadsheet className="h-4 w-4" aria-hidden />
+            )}
+            {reportFormat === "xlsx"
+              ? t("account.preparingReport", "Preparing report…")
+              : t("account.downloadXlsx", "Download Excel (.xlsx)")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              void handleDownloadReport("pdf");
+            }}
+            disabled={reportFormat !== null}
+            isLoading={reportFormat === "pdf"}
+            className="w-full sm:w-auto"
+          >
+            {reportFormat !== "pdf" && (
+              <FileText className="h-4 w-4" aria-hidden />
+            )}
+            {reportFormat === "pdf"
+              ? t("account.preparingReport", "Preparing report…")
+              : t("account.downloadPdf", "Download PDF")}
+          </Button>
+        </div>
+      </section>
+
+      {/* Full archive (GDPR Article 20), prepared by the server and e-mailed */}
       <section className={`${settingsCard} space-y-3`}>
         <div className="space-y-1">
           <h3 className={settingsCardTitle}>
@@ -196,7 +290,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                 "Download personal archive",
               )}
             </p>
-            <p className="text-xs text-text-muted">
+            <p className="text-sm text-text-muted">
               {exportState
                 ? `${t("account.exportStatus", "Export status")}: ${t(`account.exportState.${exportState.status}`, exportState.status)}`
                 : t(
@@ -214,16 +308,19 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
               void handleRequestExport();
             }}
             disabled={isExporting}
-            className="min-h-[44px] shrink-0 whitespace-nowrap rounded-xl px-4 sm:min-h-10"
+            className="shrink-0 whitespace-nowrap rounded-xl px-4"
           >
             {isExporting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2
+                  aria-hidden="true"
+                  className="mr-2 h-4 w-4 animate-spin"
+                />
                 {t("account.requesting", "Requesting...")}
               </>
             ) : (
               <>
-                <Download className="mr-2 h-4 w-4" />
+                <Download aria-hidden="true" className="mr-2 h-4 w-4" />
                 {t("account.requestDataExport", "Request Data Export")}
               </>
             )}
@@ -252,7 +349,10 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
         {isPendingDeletion ? (
           <div className="space-y-3 rounded-xl border border-warning/30 bg-warning/10 p-3 sm:p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 shrink-0 text-warning-accent mt-0.5" />
+              <AlertTriangle
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 text-warning-accent"
+              />
               <div className="space-y-1">
                 <h4 className="text-sm font-semibold text-warning-accent">
                   {t(
@@ -260,14 +360,14 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                     "Account deletion is currently scheduled",
                   )}
                 </h4>
-                <p className="text-xs text-warning-accent leading-relaxed">
+                <p className="text-sm text-warning-accent leading-relaxed">
                   {t(
                     "account.gracePeriodBody",
                     "Your account is in the 30-day grace period. All active sessions have been revoked, and all data across all modules will be completely purged when the grace period ends. You may cancel this deletion request at any time during this window to restore full access.",
                   )}
                 </p>
                 {deletionState?.execute_at && (
-                  <p className="text-xs font-semibold text-warning-accent pt-1">
+                  <p className="text-sm font-semibold text-warning-accent pt-1">
                     {t("account.scheduledExecution", "Scheduled execution")}:{" "}
                     {new Date(deletionState.execute_at).toLocaleString()}
                   </p>
@@ -288,12 +388,15 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
               >
                 {isCancelling ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2
+                      aria-hidden="true"
+                      className="mr-2 h-4 w-4 animate-spin"
+                    />
                     {t("account.cancelling", "Cancelling...")}
                   </>
                 ) : (
                   <>
-                    <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+                    <Undo2 aria-hidden="true" className="mr-1.5 h-4 w-4" />
                     {t(
                       "account.cancelDeletionRestoreAccount",
                       "Cancel Deletion & Restore Account",
@@ -312,7 +415,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                   "Initiate account erasure",
                 )}
               </p>
-              <p className="text-xs text-text-muted">
+              <p className="text-sm text-text-muted">
                 {t(
                   "account.initiateAccountErasureDesc",
                   "Begins a 30-day grace period during which you can cancel if you change your mind.",
@@ -325,7 +428,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
               variant="destructive"
               size="sm"
               onClick={() => setIsConfirmModalOpen(true)}
-              className="min-h-[44px] shrink-0 whitespace-nowrap rounded-xl px-4 sm:min-h-10"
+              className="shrink-0 whitespace-nowrap rounded-xl px-4"
             >
               {t("account.deleteMyAccount", "Delete My Account")}
             </Button>
@@ -334,27 +437,34 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
       </section>
 
       {/* Deletion Confirmation Modal */}
-      {isConfirmModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/80 backdrop-blur-sm p-4"
-        >
-          <div className="w-full max-w-md space-y-5 rounded-2xl border border-border-subtle bg-surface-card p-5 shadow-2xl sm:p-6">
-            <div className="flex items-center gap-3 text-danger-accent">
-              <AlertTriangle className="h-6 w-6" />
-              <h4 className="text-lg font-semibold text-text">
-                {t("account.areYouAbsolutelySure", "Are you absolutely sure?")}
-              </h4>
-            </div>
+      <Dialog
+        open={isConfirmModalOpen}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) {
+            setIsConfirmModalOpen(false);
+            setConfirmInput("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <AlertTriangle
+                className="h-6 w-6 shrink-0 text-danger-accent"
+                aria-hidden="true"
+              />
+              {t("account.areYouAbsolutelySure", "Are you absolutely sure?")}
+            </DialogTitle>
+          </DialogHeader>
 
-            <div className="space-y-3 text-xs text-text-muted leading-relaxed">
-              <p>
+          <DialogBody className="space-y-5">
+            <div className="space-y-3 text-sm text-text-muted leading-relaxed">
+              <DialogDescription>
                 {t(
                   "account.deletionModalNotice",
                   "Requesting deletion will immediately schedule your account and all associated data for permanent erasure across all system modules.",
                 )}
-              </p>
+              </DialogDescription>
               <ul className="list-disc pl-4 space-y-1 text-text-muted">
                 <li>
                   {t(
@@ -378,10 +488,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label
-                htmlFor="confirm-delete"
-                className="text-xs text-text-muted"
-              >
+              <Label htmlFor="confirm-delete" className="text-text-muted">
                 {t("account.typeDeleteToConfirm", "Type DELETE to confirm:")}
               </Label>
               <Input
@@ -391,43 +498,43 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                 placeholder="DELETE"
               />
             </div>
+          </DialogBody>
 
-            <div className="flex items-center justify-end gap-3 border-t border-border-subtle pt-4">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setIsConfirmModalOpen(false);
-                  setConfirmInput("");
-                }}
-                disabled={isDeleting}
-              >
-                {t("account.cancel", "Cancel")}
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={confirmInput !== "DELETE" || isDeleting}
-                onClick={() => {
-                  void handleRequestDeletion();
-                }}
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("account.schedulingDeletion", "Scheduling Deletion...")}
-                  </>
-                ) : (
-                  t(
-                    "account.confirmDeletionRequest",
-                    "Confirm Deletion Request",
-                  )
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setIsConfirmModalOpen(false);
+                setConfirmInput("");
+              }}
+              disabled={isDeleting}
+            >
+              {t("account.cancel", "Cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={confirmInput !== "DELETE" || isDeleting}
+              onClick={() => {
+                void handleRequestDeletion();
+              }}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2
+                    aria-hidden="true"
+                    className="mr-2 h-4 w-4 animate-spin"
+                  />
+                  {t("account.schedulingDeletion", "Scheduling Deletion...")}
+                </>
+              ) : (
+                t("account.confirmDeletionRequest", "Confirm Deletion Request")
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

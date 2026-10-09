@@ -151,6 +151,31 @@ describe("AdminQuestionBank", () => {
     expect(screen.getByText("42")).toBeInTheDocument();
   });
 
+  it("says statistics are not computed yet instead of showing zeros", async () => {
+    server.use(
+      http.get("/api/v1/admin/questions/:id/stats", ({ params }) =>
+        HttpResponse.json({
+          question_id: params.id,
+          attempts: 0,
+          p_value: null,
+          discrimination: null,
+          avg_time_ms: 0,
+          last_computed_at: null,
+        }),
+      ),
+    );
+    renderBank();
+    await openStatsFromRowMenu();
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      await within(dialog).findByText(/No statistics yet/),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByText("Statistics could not be loaded."),
+    ).toBeNull();
+  });
+
   it("opens stats in a Modal dialog and closes it on Escape", async () => {
     renderBank();
     await openStatsFromRowMenu();
@@ -329,9 +354,7 @@ describe("AdminQuestionBank", () => {
     ).toBeInTheDocument();
     await userEvent.selectOptions(statusSelect, "draft");
 
-    await userEvent.click(
-      within(sheet).getByRole("button", { name: "Close" }),
-    );
+    await userEvent.click(within(sheet).getByRole("button", { name: "Close" }));
 
     // Applied filter chip appears with translated status
     const chipContainer = await screen.findByTestId("applied-filter-chips");
@@ -382,9 +405,7 @@ describe("AdminQuestionBank", () => {
       expect(lastQuery).toContain("status=draft");
     });
 
-    await userEvent.click(
-      within(sheet).getByRole("button", { name: "Close" }),
-    );
+    await userEvent.click(within(sheet).getByRole("button", { name: "Close" }));
 
     // Remove the kind filter chip
     const removeKindBtn = screen.getByRole("button", {
@@ -441,9 +462,7 @@ describe("AdminQuestionBank", () => {
       "published",
     );
 
-    await userEvent.click(
-      within(sheet).getByRole("button", { name: "Close" }),
-    );
+    await userEvent.click(within(sheet).getByRole("button", { name: "Close" }));
 
     await waitFor(() => {
       const updatedStatus = screen.getByRole("status");

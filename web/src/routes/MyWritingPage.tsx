@@ -9,7 +9,6 @@ import {
   PenTool,
   RotateCcw,
   Sparkles,
-  X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -17,6 +16,14 @@ import { Link } from "@tanstack/react-router";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   Card,
@@ -75,7 +82,7 @@ export function MyWritingPage(): React.JSX.Element {
         return (
           <Badge
             variant="outline"
-            className="border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+            className="border-emerald-500/40 bg-emerald-500/10 text-success-accent"
           >
             {t("writing.statusGraded", "Graded")}
           </Badge>
@@ -84,7 +91,7 @@ export function MyWritingPage(): React.JSX.Element {
         return (
           <Badge
             variant="outline"
-            className="border-amber-500/40 bg-amber-500/10 text-amber-500 animate-pulse"
+            className="border-amber-500/40 bg-amber-500/10 text-warning-accent animate-pulse"
           >
             {t("writing.statusGrading", "Marking...")}
           </Badge>
@@ -116,14 +123,14 @@ export function MyWritingPage(): React.JSX.Element {
     <div className="space-y-6 max-w-4xl mx-auto py-6 px-4 animate-in fade-in duration-200">
       {/* Header */}
       <header className="space-y-1">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary-accent">
           <PenTool className="h-4 w-4" aria-hidden="true" />
           <span>{t("writing.myWritingTitle", "My Writing")}</span>
         </div>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-text tracking-tight">
+        <h1 className="text-2xl md:text-3xl font-bold leading-tight text-text tracking-tight">
           {t("writing.myWritingTitle", "My Writing")}
         </h1>
-        <p className="text-sm text-text-muted">
+        <p className="text-base leading-relaxed text-text-muted">
           {t(
             "writing.myWritingDesc",
             "Review your submitted essays, band scores, and AI examiner feedback.",
@@ -153,7 +160,10 @@ export function MyWritingPage(): React.JSX.Element {
         <Card className="border-danger/30 text-center p-6">
           <CardHeader>
             <div className="flex justify-center mb-2">
-              <AlertCircle className="h-8 w-8 text-danger-accent" />
+              <AlertCircle
+                className="h-8 w-8 text-danger-accent"
+                aria-hidden="true"
+              />
             </div>
             <CardTitle>
               {t("writing.errorTitle", "Unable to Load Submissions")}
@@ -172,7 +182,7 @@ export function MyWritingPage(): React.JSX.Element {
               onClick={() => void refetch()}
               className="gap-2"
             >
-              <RotateCcw className="h-4 w-4" />
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
               {t("writing.retry", "Try again")}
             </Button>
           </CardFooter>
@@ -191,7 +201,7 @@ export function MyWritingPage(): React.JSX.Element {
           action={
             <Link
               to="/learn"
-              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-fg shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-fg shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
               {t("writing.startLesson", "Explore lessons")}
             </Link>
@@ -223,7 +233,7 @@ export function MyWritingPage(): React.JSX.Element {
                 className="border-border bg-surface-card hover:border-border/80 transition-all p-4 shadow-sm"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1.5 flex-1">
+                  <div className="min-w-0 space-y-1.5 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       {getStatusBadge(sub.status)}
                       {sub.overall_band > 0 && (
@@ -231,22 +241,24 @@ export function MyWritingPage(): React.JSX.Element {
                           variant="secondary"
                           className="font-mono text-xs font-bold"
                         >
-                          Band {sub.overall_band.toFixed(1)}
+                          {t("writing.bandLabel", {
+                            band: sub.overall_band.toFixed(1),
+                          })}
                         </Badge>
                       )}
                       {sub.score > 0 && (
-                        <span className="text-xs text-text-muted">
+                        <span className="text-sm tabular-nums text-text-muted">
                           {sub.score} / 100
                         </span>
                       )}
-                      <span className="flex items-center gap-1 text-xs text-text-muted">
-                        <Calendar className="h-3.5 w-3.5" />
+                      <span className="flex items-center gap-1.5 text-sm text-text-muted">
+                        <Calendar className="h-4 w-4" aria-hidden="true" />
                         {dateStr}
                       </span>
                     </div>
 
                     {summaryPreview && (
-                      <p className="text-xs text-text-muted line-clamp-2 leading-relaxed">
+                      <p className="text-sm text-text-muted line-clamp-2 leading-relaxed">
                         {summaryPreview}
                       </p>
                     )}
@@ -256,9 +268,9 @@ export function MyWritingPage(): React.JSX.Element {
                     variant={sub.status === "graded" ? "primary" : "outline"}
                     disabled={sub.status === "grading"}
                     onClick={() => setSelectedAttemptId(sub.attempt_id)}
-                    className="shrink-0 gap-1.5 min-h-[44px]"
+                    className="shrink-0 gap-2"
                   >
-                    <Eye className="h-3.5 w-3.5" />
+                    <Eye className="h-4 w-4" aria-hidden="true" />
                     <span>{t("writing.viewFeedbackBtn", "View Feedback")}</span>
                   </Button>
                 </div>
@@ -276,17 +288,17 @@ export function MyWritingPage(): React.JSX.Element {
                 defaultValue: `Showing ${from}–${to} of ${total}`,
               })}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 className="gap-1 min-h-[44px]"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                 <span>{t("common.previous", "Previous")}</span>
               </Button>
-              <span className="text-xs px-2 font-medium">
+              <span className="text-sm tabular-nums px-2 font-medium">
                 {t("writing.pageOf", {
                   current: page,
                   total: totalPages,
@@ -300,7 +312,7 @@ export function MyWritingPage(): React.JSX.Element {
                 className="gap-1 min-h-[44px]"
               >
                 <span>{t("common.next", "Next")}</span>
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -309,46 +321,38 @@ export function MyWritingPage(): React.JSX.Element {
 
       {/* Modal Feedback View */}
       {selectedAttemptId && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="feedback-dialog-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/75 p-4 backdrop-blur-sm animate-in fade-in overflow-y-auto"
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedAttemptId(null);
+          }}
         >
-          <div className="bg-surface-card border border-border rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col my-auto overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface-muted/30">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2
-                  id="feedback-dialog-title"
-                  className="text-lg font-bold text-text"
-                >
-                  {t("writing.feedbackTitle", "Writing Assessment")}
-                </h2>
-              </div>
-              <Button
-                variant="ghost"
-                onClick={() => setSelectedAttemptId(null)}
-                className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 rounded-full text-text-muted hover:text-text"
-                aria-label={t("common.close", "Close")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+          <DialogContent className="max-w-3xl" aria-describedby={undefined}>
+            <DialogHeader className="bg-surface-muted/30">
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+                {t("writing.feedbackTitle", "Writing Assessment")}
+              </DialogTitle>
+            </DialogHeader>
 
             {/* Modal Body */}
-            <div className="overflow-y-auto p-6 flex-1">
+            <DialogBody className="p-6">
               {feedbackQuery.isLoading || attemptQuery.isLoading ? (
                 <div className="flex flex-col items-center justify-center p-12 space-y-3">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-border-subtle border-t-primary" />
+                  <div
+                    className="h-8 w-8 animate-spin rounded-full border-4 border-border-subtle border-t-primary"
+                    aria-hidden="true"
+                  />
                   <p className="text-sm text-text-muted">
                     {t("common.loading", "Loading feedback...")}
                   </p>
                 </div>
               ) : feedbackQuery.isError ? (
                 <div className="text-center p-8 space-y-3">
-                  <AlertCircle className="h-8 w-8 text-danger-accent mx-auto" />
+                  <AlertCircle
+                    className="h-8 w-8 text-danger-accent mx-auto"
+                    aria-hidden="true"
+                  />
                   <p className="text-sm text-danger-accent font-medium">
                     {feedbackQuery.error?.message ||
                       t("writing.feedbackError", "Failed to load feedback")}
@@ -367,19 +371,19 @@ export function MyWritingPage(): React.JSX.Element {
                   essayText={essayText}
                 />
               ) : null}
-            </div>
+            </DialogBody>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3 border-t border-border bg-surface-muted/30 flex justify-end">
+            <DialogFooter className="px-6 py-3 bg-surface-muted/30">
               <Button
                 variant="outline"
                 onClick={() => setSelectedAttemptId(null)}
               >
                 {t("common.close", "Close")}
               </Button>
-            </div>
-          </div>
-        </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

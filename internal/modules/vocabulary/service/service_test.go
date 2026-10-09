@@ -840,8 +840,12 @@ func (f *fakeRepo) MarkUploadItemRejected(
 	return sqlc.SkillVocabUploadItem{}, nil
 }
 
-func (f *fakeRepo) RecordUploadItemAttempt(_ context.Context, _ uuid.UUID, _ string) error {
+func (f *fakeRepo) RecordUploadItemAttempt(_ context.Context, _ uuid.UUID, _ int32, _ string) error {
 	return nil
+}
+
+func (f *fakeRepo) FailExhaustedUploadItems(_ context.Context, _ int32, _ string) (int64, error) {
+	return 0, nil
 }
 
 func (f *fakeRepo) SetUploadDeck(_ context.Context, _, _ uuid.UUID) error { return nil }

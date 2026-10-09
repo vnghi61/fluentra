@@ -186,7 +186,7 @@ and fails `go-arch-lint` in CI.
 ## 9. Business rules
 
 <!-- BEGIN GENERATED: rules -->
-1. **BR-STUDIO-01** — BR-STUDIO-01: A price is a whole number of VND inside configured bounds (49,000 to 5,000,000).
+1. **BR-STUDIO-01** — BR-STUDIO-01: A price is a whole number of VND inside configured bounds (5,000 to 5,000,000).
 2. **BR-STUDIO-02** — BR-STUDIO-02: Free -> paid requires a new review. Paid -> free does not.
 3. **BR-STUDIO-03** — BR-STUDIO-03: A purchase records the price and the 70/30 creator/platform split in creator_ledger at purchase time.
 4. **BR-STUDIO-04** — BR-STUDIO-04: Taking a course down never revokes a purchase.

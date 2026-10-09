@@ -289,3 +289,324 @@ AdminAIUsageItem:
       description: True if today's usage has reached or exceeded any configured limit.
       example: false
 
+BannerTone:
+  type: string
+  description: >-
+    How the banner is coloured. `info` for neutral news, `success` for good
+    news, `warning` for something a learner must act on, `promo` for an offer.
+  enum: [info, success, warning, promo]
+  example: promo
+
+BannerKind:
+  type: string
+  description: >-
+    How the banner is shown. `announcement` is a message shown once as a
+    dialog on the dashboard: closing a dismissible one hides it for good, a
+    non-dismissible one comes back on the next visit. `slide` is an
+    image-only promotion in the dashboard carousel: it needs an image, has no
+    body, button text or dismissal, and its optional `cta_url` makes the whole
+    picture a link.
+  enum: [announcement, slide]
+  example: announcement
+
+Banner:
+  type: object
+  description: >-
+    A banner as an administrator manages it. It shows on the learner
+    dashboard while `is_active` is true and the current time is inside the
+    optional `starts_at`..`ends_at` window. `title`, `body` and `cta_label`
+    are plain text, never HTML.
+  required:
+    [id, kind, title, body, cta_label, cta_url, tone, is_active, priority,
+     dismissible, starts_at, ends_at, created_by, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    kind:
+      $ref: '#/BannerKind'
+    title:
+      type: string
+      minLength: 1
+      maxLength: 120
+      example: IELTS mock week
+    body:
+      type: string
+      maxLength: 500
+      description: Supporting text; may be empty.
+      example: Take a full mock test free until Sunday.
+    cta_label:
+      type: [string, 'null']
+      maxLength: 40
+      description: Call-to-action text. On an announcement, present exactly when `cta_url` is; always null on a slide.
+      example: Start a mock test
+    cta_url:
+      type: [string, 'null']
+      maxLength: 2048
+      description: >-
+        Where the call to action leads: an internal path starting with `/`
+        (never `//`) or an `https://` URL.
+      example: /exams
+    tone:
+      $ref: '#/BannerTone'
+    is_active:
+      type: boolean
+      description: The master switch. An inactive banner never shows.
+    priority:
+      type: integer
+      minimum: 0
+      maximum: 1000
+      description: Higher shows first.
+      example: 10
+    dismissible:
+      type: boolean
+      description: Whether a learner may hide it from their own dashboard.
+    starts_at:
+      type: [string, 'null']
+      format: date-time
+      description: Shown from this instant; null means from now.
+    ends_at:
+      type: [string, 'null']
+      format: date-time
+      description: Shown until this instant (exclusive); null means indefinitely.
+    created_by:
+      type: string
+      format: uuid
+      description: The administrator who created it.
+    image_key:
+      type: [string, 'null']
+      description: >-
+        Storage key of the banner's processed image, or null for a text-only
+        banner. Set it from `POST /admin/banners/images`.
+      example: banners/images/0199c3e4-5f60-7a82-9cde-f01234567899.jpg
+    image_url:
+      type: [string, 'null']
+      format: uri
+      description: A short-lived signed URL for the image; null without one.
+    image_alt:
+      type: string
+      maxLength: 160
+      description: Alternative text; empty marks the image as decorative.
+      example: Learners taking a mock test
+    image_width:
+      type: [integer, 'null']
+      description: Width in pixels of the processed image.
+      example: 1600
+    image_height:
+      type: [integer, 'null']
+      description: Height in pixels of the processed image.
+      example: 900
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+BannerList:
+  type: object
+  description: Every banner, unpaginated and capped at 200.
+  required: [items]
+  properties:
+    items:
+      type: array
+      maxItems: 200
+      items:
+        $ref: '#/Banner'
+
+BannerRequest:
+  type: object
+  description: >-
+    The editable fields of a banner, used for both create and full
+    replacement. Unknown fields are refused. For a `slide`, `body`,
+    `cta_label` and `dismissible` are ignored (stored empty, null and false),
+    `image_key` is required, and an empty `image_alt` defaults to the title.
+  required: [title]
+  additionalProperties: false
+  properties:
+    kind:
+      $ref: '#/BannerKind'
+      default: announcement
+    title:
+      type: string
+      minLength: 1
+      maxLength: 120
+      example: IELTS mock week
+    body:
+      type: string
+      maxLength: 500
+      default: ''
+    cta_label:
+      type: [string, 'null']
+      maxLength: 40
+      description: On an announcement, required when `cta_url` is set, and only then. Ignored on a slide.
+    cta_url:
+      type: [string, 'null']
+      maxLength: 2048
+      description: >-
+        An internal path starting with `/` (not `//`) or an `https://` URL.
+        `javascript:`, `data:`, `http:` and protocol-relative values are
+        refused with 422.
+    tone:
+      $ref: '#/BannerTone'
+    is_active:
+      type: boolean
+      default: false
+    priority:
+      type: integer
+      minimum: 0
+      maximum: 1000
+      default: 0
+    dismissible:
+      type: boolean
+      default: true
+    starts_at:
+      type: [string, 'null']
+      format: date-time
+    ends_at:
+      type: [string, 'null']
+      format: date-time
+      description: Must be later than `starts_at` when both are set.
+    image_key:
+      type: [string, 'null']
+      pattern: '^banners/images/[0-9a-f-]{36}[.]jpg$'
+      description: >-
+        A processed image returned by `POST /admin/banners/images`, or null
+        for no image. Replacing or clearing it deletes the previous image.
+    image_alt:
+      type: string
+      maxLength: 160
+      default: ''
+      description: Alternative text; leave empty when the image is decorative.
+
+ActiveBanner:
+  type: object
+  description: >-
+    A banner as a learner sees it. Plain text only; render `title`, `body` and
+    `cta_label` as text, never as HTML. At most three announcements and six
+    slides are listed, each kind highest priority first.
+  required: [id, kind, title, body, cta_label, cta_url, tone, dismissible]
+  properties:
+    id:
+      type: string
+      format: uuid
+    kind:
+      $ref: '#/BannerKind'
+    title:
+      type: string
+      example: IELTS mock week
+    body:
+      type: string
+      example: Take a full mock test free until Sunday.
+    cta_label:
+      type: [string, 'null']
+      example: Start a mock test
+    cta_url:
+      type: [string, 'null']
+      example: /exams
+    tone:
+      $ref: '#/BannerTone'
+    dismissible:
+      type: boolean
+    image_url:
+      type: [string, 'null']
+      format: uri
+      description: A short-lived signed URL for the banner image; null without one.
+    image_alt:
+      type: string
+      description: Alternative text; empty when the image is decorative.
+    image_width:
+      type: [integer, 'null']
+      description: Lets the client reserve the image's space before it loads.
+    image_height:
+      type: [integer, 'null']
+
+ActiveBannerList:
+  type: object
+  description: The banners showing now, at most three, in display order.
+  required: [items]
+  properties:
+    items:
+      type: array
+      maxItems: 3
+      items:
+        $ref: '#/ActiveBanner'
+
+BannerImageUploadIntentRequest:
+  type: object
+  additionalProperties: false
+  required: [content_type]
+  properties:
+    content_type:
+      type: string
+      enum: [image/jpeg, image/png, image/webp]
+      example: image/png
+
+BannerImageUploadIntent:
+  type: object
+  description: >-
+    A constrained browser upload for a banner image: the store itself enforces
+    the content type and the size limit, and the bytes never pass through the
+    API.
+  required: [upload_url, method, object_key, expires_at, max_bytes, content_type]
+  properties:
+    upload_url:
+      type: string
+      format: uri
+    method:
+      type: string
+      enum: [POST, PUT]
+      example: POST
+    form_data:
+      type: object
+      additionalProperties:
+        type: string
+      description: Form fields for a multipart POST policy upload.
+    file_field:
+      type: string
+      example: file
+    object_key:
+      type: string
+      example: banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899
+    expires_at:
+      type: string
+      format: date-time
+    max_bytes:
+      type: integer
+      format: int64
+      example: 5242880
+    content_type:
+      type: string
+      example: image/png
+
+BannerImageRequest:
+  type: object
+  additionalProperties: false
+  required: [object_key]
+  properties:
+    object_key:
+      type: string
+      description: The `object_key` of an upload intent whose upload finished.
+      example: banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899
+
+BannerImage:
+  type: object
+  description: >-
+    A processed banner image: its bytes checked to be a real JPEG, PNG or
+    WebP, oriented, scaled to fit 1600x900 and re-encoded as JPEG without
+    metadata. Pass `image_key` in a BannerRequest to use it.
+  required: [image_key, image_url, width, height]
+  properties:
+    image_key:
+      type: string
+      example: banners/images/0199c3e4-5f60-7a82-9cde-f01234567899.jpg
+    image_url:
+      type: string
+      format: uri
+      description: A short-lived signed URL, for the preview.
+    width:
+      type: integer
+      example: 1600
+    height:
+      type: integer
+      example: 900

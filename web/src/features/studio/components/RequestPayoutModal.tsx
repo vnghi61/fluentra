@@ -90,8 +90,11 @@ export function RequestPayoutModal({
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <DollarSign className="h-5 w-5 text-primary-accent" />
+          <DialogTitle className="flex items-center gap-2">
+            <DollarSign
+              className="h-5 w-5 shrink-0 text-primary-accent"
+              aria-hidden="true"
+            />
             {t("studio.payout.requestTitle", "Request Earnings Payout")}
           </DialogTitle>
         </DialogHeader>
@@ -103,23 +106,23 @@ export function RequestPayoutModal({
         >
           <DialogBody>
             {/* Balance Card */}
-            <div className="rounded-lg border border-border-subtle bg-surface-base p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-muted">
+            <div className="rounded-lg border border-border-subtle bg-surface-muted p-4 space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                <span className="text-sm text-text-muted">
                   {t("studio.earnings.availableBalance", "Available Balance")}
                 </span>
-                <span className="text-base font-bold text-primary-accent">
+                <span className="text-base font-bold tabular-nums text-primary-accent">
                   {formatVnd(availableBalance)}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs text-text-muted pt-1 border-t border-border-subtle">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm text-text-muted pt-1 border-t border-border-subtle">
                 <span>
                   {t("studio.payout.minimumThreshold", "Minimum Payout")}
                 </span>
                 <span>{formatVnd(threshold)}</span>
               </div>
               {earnings?.payout_account_configured && (
-                <div className="flex items-center justify-between text-xs text-text-muted pt-1">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm text-text-muted pt-1">
                   <span>
                     {t("studio.payout.destination", "Destination Bank")}
                   </span>
@@ -132,14 +135,20 @@ export function RequestPayoutModal({
             </div>
 
             {error && (
-              <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger font-medium">
+              <div
+                role="alert"
+                className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger-accent font-medium"
+              >
                 {error}
               </div>
             )}
 
             {success && (
-              <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success font-medium">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <div
+                role="status"
+                className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success-accent font-medium"
+              >
+                <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
                 {t(
                   "studio.payout.requestSuccess",
                   "Payout requested! It will be reviewed and processed by our finance team.",
@@ -148,7 +157,7 @@ export function RequestPayoutModal({
             )}
 
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between gap-3 mb-1.5">
                 <label
                   htmlFor="payout-amount-input"
                   className="text-xs font-semibold text-text uppercase tracking-wider"
@@ -158,7 +167,7 @@ export function RequestPayoutModal({
                 <button
                   type="button"
                   onClick={handleMax}
-                  className="text-xs font-semibold text-primary-accent hover:underline cursor-pointer"
+                  className="-mr-2 inline-flex min-h-11 shrink-0 cursor-pointer items-center rounded-lg px-2 text-sm font-semibold text-primary-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   {t("studio.payout.maxButton", "Use Max")}
                 </button>
@@ -200,7 +209,7 @@ export function RequestPayoutModal({
               }
               className="gap-2"
             >
-              <ArrowUpRight className="h-4 w-4" />
+              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
               {requestMutation.isPending
                 ? t("studio.payout.requesting", "Submitting...")
                 : t("studio.payout.submitRequest", "Confirm Payout")}

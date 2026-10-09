@@ -1,11 +1,14 @@
 import * as React from "react";
 import { Link, useRouter } from "@tanstack/react-router";
-import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
+import { RefreshCw, WifiOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { ApiError } from "@/api/client";
+import {
+  SystemStatePage,
+  systemStateActionClass,
+} from "@/components/layout/SystemStatePage";
 import { Button } from "@/components/ui/button";
-import { getErrorMessage } from "@/lib/errors/catalogue";
 import { tracer } from "@/lib/telemetry";
 
 export interface RouteErrorPageProps {
@@ -72,10 +75,7 @@ export function RouteErrorPage({
     }
   };
 
-  const isApi = error instanceof ApiError;
-  const problem = isApi ? error.problem : undefined;
-  const errorCode = problem?.code;
-  const cataloguedMessage = problem ? getErrorMessage(problem) : undefined;
+  const problem = error instanceof ApiError ? error.problem : undefined;
   const requestId = problem
     ? ((problem as unknown as Record<string, unknown>).request_id as
         string | undefined)
@@ -91,10 +91,10 @@ export function RouteErrorPage({
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary-accent">
             <RefreshCw className="h-7 w-7" aria-hidden="true" />
           </div>
-          <h1 className="mt-5 text-2xl font-bold tracking-tight text-text">
+          <h1 className="mt-5 text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
             {t("routeError.updateTitle", "A new version is available")}
           </h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-base leading-relaxed text-text-muted">
             {t(
               "routeError.updateDescription",
               "Fluentra was just updated. Reload to get the latest version.",
@@ -113,10 +113,10 @@ export function RouteErrorPage({
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-warning/10 text-warning-accent">
             <WifiOff className="h-7 w-7" aria-hidden="true" />
           </div>
-          <h1 className="mt-5 text-2xl font-bold tracking-tight text-text">
+          <h1 className="mt-5 text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
             {t("routeError.offlineTitle", "You are offline")}
           </h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-base leading-relaxed text-text-muted">
             {t(
               "routeError.offlineDescription",
               "Check your internet connection and try again.",
@@ -131,70 +131,36 @@ export function RouteErrorPage({
       )}
 
       {kind === "generic" && (
-        <div className="flex max-w-md flex-col items-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-danger/10 text-danger-accent">
-            <AlertTriangle className="h-7 w-7" aria-hidden="true" />
-          </div>
-          <h1 className="mt-5 text-2xl font-bold tracking-tight text-text">
-            {t("routeError.genericTitle", "Something went wrong")}
-          </h1>
-          <p className="mt-2 text-sm text-text-muted">
-            {t(
-              "routeError.genericDescription",
-              "An unexpected error occurred. Please try again in a moment.",
-            )}
-          </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Button variant="primary" onClick={handleRetry}>
-              {t("app.tryAgain", "Try again")}
-            </Button>
-            <Link
-              to="/"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-border bg-transparent px-4 text-sm font-medium text-text transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            >
-              {t("routeError.home", "Back to home")}
-            </Link>
-          </div>
-
-          <details className="mt-8 w-full rounded-xl border border-border-subtle bg-surface-card p-4 text-left">
-            <summary className="cursor-pointer text-xs font-semibold text-text-muted select-none hover:text-text">
-              {t("routeError.details", "Technical details")}
-            </summary>
-            <div className="mt-3 flex flex-col gap-2 border-t border-border-subtle pt-3 text-xs text-text-muted">
-              <div>
-                <span className="font-medium text-text">
-                  {t("routeError.error", "Error")}:{" "}
-                </span>
-                <span className="break-all">
-                  {error.message || String(error)}
-                </span>
-              </div>
-              {errorCode && (
-                <div>
-                  <span className="font-medium text-text">
-                    {t("routeError.code", "Code")}:{" "}
-                  </span>
-                  <span className="font-mono">{errorCode}</span>
-                  {cataloguedMessage && (
-                    <p className="mt-1 text-xs text-text-muted">
-                      {cataloguedMessage}
-                    </p>
-                  )}
-                </div>
-              )}
-              {typeof requestId === "string" && requestId && (
-                <div>
-                  <span className="font-medium text-text">
-                    {t("routeError.requestId", "Request ID")}:{" "}
-                  </span>
-                  <code className="rounded bg-surface-muted px-1.5 py-0.5 font-mono select-all">
-                    {requestId}
-                  </code>
-                </div>
-              )}
-            </div>
-          </details>
-        </div>
+        <SystemStatePage
+          variant="500"
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={handleRetry}
+                className={`${systemStateActionClass} bg-primary text-primary-fg hover:bg-primary-hover`}
+              >
+                {t("systemState.retry", "Try again")}
+              </button>
+              <Link
+                to="/"
+                className={`${systemStateActionClass} border border-border bg-transparent text-text hover:bg-surface-muted`}
+              >
+                {t("systemState.home", "Back to home")}
+              </Link>
+            </>
+          }
+        >
+          {/* The request id is what support needs; the raw error is not for learners. */}
+          {typeof requestId === "string" && requestId && (
+            <p className="mt-6 text-xs text-text-muted">
+              {t("routeError.requestId", "Request ID")}:{" "}
+              <code className="rounded bg-surface-muted px-1.5 py-0.5 font-mono select-all">
+                {requestId}
+              </code>
+            </p>
+          )}
+        </SystemStatePage>
       )}
     </div>
   );

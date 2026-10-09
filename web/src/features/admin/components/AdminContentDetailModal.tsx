@@ -20,6 +20,8 @@ import { adminApi, type ContentVersion } from "../api/adminApi";
 import { PERMISSIONS, usePermissions } from "../model/permissions";
 import { Button } from "@/components/ui/button";
 import * as Dialog from "@radix-ui/react-dialog";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
 
 interface AdminContentDetailModalProps {
   // Not nullable. The list renders this modal only when an item is selected, and
@@ -421,16 +423,14 @@ export const AdminContentDetailModal: React.FC<
           className="fixed inset-x-0 bottom-0 z-50 my-0 flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-2xl md:inset-auto md:left-1/2 md:top-1/2 md:my-0 md:w-[min(100%-2rem,64rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/40">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                <Code2 className="w-5 h-5" />
+          <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-4 py-4 md:px-6">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="shrink-0 rounded-lg bg-primary/10 p-2 text-primary">
+                <Code2 aria-hidden="true" className="h-5 w-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <Dialog.Title
-                    className="text-lg font-semibold text-foreground"
-                  >
+              <div className="min-w-0">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <Dialog.Title className="min-w-0 break-all text-lg font-semibold leading-tight text-foreground">
                     {detail?.slug || t("admin.contentDetail")}
                   </Dialog.Title>
                   {detail && (
@@ -448,7 +448,7 @@ export const AdminContentDetailModal: React.FC<
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                <p className="mt-0.5 break-all font-mono text-xs text-muted-foreground">
                   ID: {detail?.id}
                 </p>
                 <Dialog.Description
@@ -464,81 +464,99 @@ export const AdminContentDetailModal: React.FC<
             </div>
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={onClose}
               aria-label={t("common.close", "Close")}
-              className="text-muted-foreground hover:text-foreground"
+              className="shrink-0 text-muted-foreground hover:text-foreground"
             >
-              <X aria-hidden="true" className="w-5 h-5" />
+              <X aria-hidden="true" className="h-5 w-5" />
             </Button>
           </div>
 
           {/* Content Body */}
-          <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          <div className="flex-1 space-y-6 overflow-y-auto p-4 md:p-6">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <Loader2
+                  aria-hidden="true"
+                  className="h-8 w-8 animate-spin text-primary motion-reduce:animate-none"
+                />
                 <p>{t("common.loading")}</p>
               </div>
             ) : error ? (
               <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <AlertCircle aria-hidden="true" className="h-5 w-5 shrink-0" />
                 <p className="text-sm">{error}</p>
               </div>
             ) : detail ? (
               <>
                 {actionSuccess && (
-                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center gap-2 text-sm">
-                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                  <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-success-accent">
+                    <CheckCircle2
+                      aria-hidden="true"
+                      className="h-5 w-5 shrink-0"
+                    />
                     <span>{actionSuccess}</span>
                   </div>
                 )}
 
                 {/* State Machine Transition Flow Banner */}
-                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 p-3 rounded-lg border border-border/50">
-                  <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-border/50 bg-muted/30 p-3 text-sm text-muted-foreground">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
                     {t("admin.workflow")}
                   </span>
                   <span
                     className={
                       detail.status === "draft"
-                        ? "font-bold text-amber-500 underline"
+                        ? "font-bold text-warning-accent underline"
                         : ""
                     }
                   >
                     {t("admin.draft")}
                   </span>
-                  <ArrowRight className="w-3 h-3 text-muted-foreground/60" />
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-muted-foreground/60"
+                  />
                   <span
                     className={
                       detail.status === "in_review"
-                        ? "font-bold text-blue-500 underline"
+                        ? "font-bold text-primary-accent underline"
                         : ""
                     }
                   >
                     {t("admin.inReview")}
                   </span>
-                  <ArrowRight className="w-3 h-3 text-muted-foreground/60" />
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-muted-foreground/60"
+                  />
                   <span
                     className={
                       detail.status === "approved"
-                        ? "font-bold text-emerald-500 underline"
+                        ? "font-bold text-success-accent underline"
                         : ""
                     }
                   >
                     {t("admin.approved")}
                   </span>
-                  <ArrowRight className="w-3 h-3 text-muted-foreground/60" />
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-muted-foreground/60"
+                  />
                   <span
                     className={
                       detail.status === "published"
-                        ? "font-bold text-green-500 underline"
+                        ? "font-bold text-success-accent underline"
                         : ""
                     }
                   >
                     {t("admin.published")}
                   </span>
-                  <ArrowRight className="w-3 h-3 text-muted-foreground/60" />
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-muted-foreground/60"
+                  />
                   <span
                     className={
                       detail.status === "archived"
@@ -553,35 +571,45 @@ export const AdminContentDetailModal: React.FC<
                 {/* Metadata row */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground block mb-1">
+                    <label
+                      htmlFor="content-detail-cefr"
+                      className="mb-1 block text-sm font-medium text-muted-foreground"
+                    >
                       {t("admin.cefrLevel")}
                     </label>
-                    <select
+                    <NativeSelect
+                      id="content-detail-cefr"
                       value={cefrLevel}
                       onChange={(e) => setCefrLevel(e.target.value)}
                       disabled={isArchived || !can(PERMISSIONS.contentEdit)}
-                      className="w-full h-11 rounded-md border border-input bg-background px-3 py-1 text-base shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     >
                       {CEFR_LEVELS.map((lvl) => (
                         <option key={lvl} value={lvl}>
                           {lvl}
                         </option>
                       ))}
-                    </select>
+                    </NativeSelect>
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="text-xs font-medium text-muted-foreground block mb-1">
+                    <label
+                      htmlFor="content-detail-tags"
+                      className="mb-1 block text-sm font-medium text-muted-foreground"
+                    >
                       {t("admin.tagsCommaSeparated")}
                     </label>
                     <div className="relative">
-                      <Tag className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
+                      <Tag
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground"
+                      />
                       <input
+                        id="content-detail-tags"
                         type="text"
                         value={tagsInput}
                         onChange={(e) => setTagsInput(e.target.value)}
                         disabled={isArchived || !can(PERMISSIONS.contentEdit)}
                         placeholder={t("admin.tagsPlaceholder")}
-                        className="w-full h-11 rounded-md border border-input bg-background pl-9 pr-3 py-1 text-base shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="h-11 w-full rounded-md border border-input bg-background py-1 pl-9 pr-3 text-base shadow-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-ring md:text-sm"
                       />
                     </div>
                   </div>
@@ -589,9 +617,12 @@ export const AdminContentDetailModal: React.FC<
 
                 {/* JSON Body Editor */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                      <Code2 className="w-4 h-4" />
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label
+                      htmlFor="content-detail-body"
+                      className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground"
+                    >
+                      <Code2 aria-hidden="true" className="h-4 w-4" />
                       {t("admin.bodyJson")}
                     </label>
                     <Button
@@ -599,15 +630,18 @@ export const AdminContentDetailModal: React.FC<
                       variant="outline"
                       size="sm"
                       onClick={handleValidateOnly}
-                      className="min-h-11 px-4 text-xs"
                     >
-                      <Sparkles className="w-3.5 h-3.5 mr-1 text-amber-500" />
+                      <Sparkles
+                        aria-hidden="true"
+                        className="h-4 w-4 text-amber-500"
+                      />
                       {t("admin.validateJson")}
                     </Button>
                   </div>
 
                   <div className="relative">
-                    <textarea
+                    <Textarea
+                      id="content-detail-body"
                       value={bodyText}
                       onChange={(e) => {
                         setBodyText(e.target.value);
@@ -615,14 +649,17 @@ export const AdminContentDetailModal: React.FC<
                       }}
                       disabled={isArchived || !can(PERMISSIONS.contentEdit)}
                       rows={12}
-                      className="w-full font-mono text-base rounded-lg border border-input bg-muted/20 p-3 leading-relaxed shadow-inner focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="font-mono leading-relaxed"
                       spellCheck={false}
                     />
                   </div>
 
                   {validationError && (
-                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive flex items-center gap-2 text-xs">
-                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive flex items-center gap-2 text-sm">
+                      <AlertCircle
+                        aria-hidden="true"
+                        className="h-5 w-5 shrink-0"
+                      />
                       <span>{validationError}</span>
                     </div>
                   )}
@@ -630,22 +667,25 @@ export const AdminContentDetailModal: React.FC<
 
                 {/* Version History */}
                 <div className="border border-border rounded-lg p-4 bg-muted/10 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                    <History className="w-4 h-4 text-primary" />
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <History
+                      aria-hidden="true"
+                      className="h-4 w-4 text-primary"
+                    />
                     {t("admin.versionHistory")} ({detail.versions.length})
-                  </div>
+                  </h3>
                   <div className="space-y-2 max-h-36 overflow-y-auto">
                     {detail.versions?.map((v: ContentVersion) => (
                       <div
                         key={v.id}
-                        className="flex items-center justify-between p-2 rounded bg-background border border-border/50 text-xs"
+                        className="flex flex-wrap items-center justify-between gap-2 rounded border border-border/50 bg-background p-2 text-sm"
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="font-mono font-medium">
                             v{v.version}
                           </span>
                           <span
-                            className={`px-2 py-0.2 rounded-full font-medium border text-[10px] ${getStatusBadge(v.status)}`}
+                            className={`rounded-full border px-2 py-0.5 text-xs font-medium ${getStatusBadge(v.status)}`}
                           >
                             {v.status}
                           </span>
@@ -654,7 +694,7 @@ export const AdminContentDetailModal: React.FC<
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <Clock className="w-3 h-3" />
+                          <Clock aria-hidden="true" className="h-4 w-4" />
                           <span>
                             {v.published_at
                               ? new Date(v.published_at).toLocaleString()
@@ -669,17 +709,20 @@ export const AdminContentDetailModal: React.FC<
                 {/* Request Changes Comment Input if rejecting */}
                 {isRejecting && (
                   <div className="p-4 rounded-lg border border-amber-500/30 bg-amber-500/5 space-y-3">
-                    <label className="text-xs font-medium text-amber-500 block">
+                    <label
+                      htmlFor="content-detail-feedback"
+                      className="block text-sm font-medium text-warning-accent"
+                    >
                       {t("admin.editorialFeedback")}
                     </label>
-                    <textarea
+                    <Textarea
+                      id="content-detail-feedback"
                       value={rejectComment}
                       onChange={(e) => setRejectComment(e.target.value)}
                       rows={3}
                       placeholder={t("admin.editorialFeedbackPlaceholder")}
-                      className="w-full text-base rounded-md border border-input bg-background p-2.5 focus:outline-none focus:ring-1 focus:ring-ring"
                     />
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -695,7 +738,10 @@ export const AdminContentDetailModal: React.FC<
                         disabled={isSubmitting}
                       >
                         {isSubmitting ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                          <Loader2
+                            aria-hidden="true"
+                            className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                          />
                         ) : null}
                         {t("admin.confirmRequestChanges")}
                       </Button>
@@ -707,12 +753,12 @@ export const AdminContentDetailModal: React.FC<
           </div>
 
           {/* Footer Actions — Strictly gated by permissions & legal state machine transitions */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/40">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/40 px-4 py-4 md:px-6">
             <Button variant="ghost" onClick={onClose} disabled={isSubmitting}>
               {t("common.close")}
             </Button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {/* Can edit and draft/approved/published -> Save Draft */}
               {can(PERMISSIONS.contentEdit) && !isArchived && (
                 <Button
@@ -721,7 +767,10 @@ export const AdminContentDetailModal: React.FC<
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                    <Loader2
+                      aria-hidden="true"
+                      className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                    />
                   ) : null}
                   {currentStatus === "published" ? "New Draft" : "Save Draft"}
                 </Button>
@@ -735,9 +784,12 @@ export const AdminContentDetailModal: React.FC<
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                    <Loader2
+                      aria-hidden="true"
+                      className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                    />
                   ) : (
-                    <Send className="w-4 h-4 mr-1.5" />
+                    <Send aria-hidden="true" className="h-4 w-4" />
                   )}
                   {t("admin.submitForReview")}
                 </Button>
@@ -750,11 +802,11 @@ export const AdminContentDetailModal: React.FC<
                   <>
                     <Button
                       variant="outline"
-                      className="text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+                      className="border-amber-500/30 text-warning-accent hover:bg-amber-500/10"
                       onClick={() => setIsRejecting(true)}
                       disabled={isSubmitting}
                     >
-                      <XCircle className="w-4 h-4 mr-1.5" />
+                      <XCircle aria-hidden="true" className="h-4 w-4" />
                       {t("admin.requestChanges")}
                     </Button>
                     <Button
@@ -764,9 +816,12 @@ export const AdminContentDetailModal: React.FC<
                       disabled={isSubmitting}
                     >
                       {isSubmitting ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                        />
                       ) : (
-                        <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                        <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
                       )}
                       {t("admin.approve")}
                     </Button>
@@ -783,9 +838,12 @@ export const AdminContentDetailModal: React.FC<
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                      <Loader2
+                        aria-hidden="true"
+                        className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                      />
                     ) : (
-                      <Sparkles className="w-4 h-4 mr-1.5" />
+                      <Sparkles aria-hidden="true" className="h-4 w-4" />
                     )}
                     {t("admin.publish")}
                   </Button>
@@ -801,9 +859,12 @@ export const AdminContentDetailModal: React.FC<
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                      <Loader2
+                        aria-hidden="true"
+                        className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                      />
                     ) : (
-                      <Archive className="w-4 h-4 mr-1.5" />
+                      <Archive aria-hidden="true" className="h-4 w-4" />
                     )}
                     {t("admin.archive")}
                   </Button>

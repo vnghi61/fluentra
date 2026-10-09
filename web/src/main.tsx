@@ -4,11 +4,12 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 
-import { router } from "@/app/router";
+import { preloadPrimaryTabs, router } from "@/app/router";
 import { initApp } from "@/app/bootstrap";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import i18n from "@/i18n";
+import { installDevtoolsGuard } from "@/lib/devtools-guard";
 import { startTelemetry } from "@/lib/telemetry";
 
 import { registerQueryClient } from "@/stores/authStore";
@@ -44,6 +45,9 @@ async function bootstrap(): Promise<void> {
       </ErrorBoundary>
     </StrictMode>,
   );
+  preloadPrimaryTabs();
+  // A deterrent only; see the module. Development keeps its DevTools.
+  if (import.meta.env.PROD) installDevtoolsGuard();
 }
 
 void bootstrap();

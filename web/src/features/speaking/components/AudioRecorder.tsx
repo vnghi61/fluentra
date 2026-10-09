@@ -11,6 +11,15 @@ import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { problemCode, speakingApi } from "../api/speakingApi";
 
@@ -303,13 +312,13 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h4 className="text-base font-semibold text-text">
+        <div className="min-w-0">
+          <h4 className="text-base font-semibold leading-snug text-text">
             {taskType === "read_aloud"
               ? t("speaking.readAloudTitle", "Read Aloud")
               : t("speaking.respondTitle", "Spoken Response")}
           </h4>
-          <p className="text-xs text-text-muted">
+          <p className="text-base leading-relaxed text-text-muted md:text-sm">
             {taskType === "read_aloud"
               ? t(
                   "speaking.readAloudDesc",
@@ -321,7 +330,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
                 )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {typeof dailyRecordingsLimit === "number" &&
             dailyRecordingsLimit > 0 && (
               <Badge variant="secondary" className="text-xs">
@@ -349,19 +358,21 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
 
       {taskType === "read_aloud" && referenceText && (
         <div className="rounded-lg border border-border-subtle bg-surface-muted p-4">
-          <p className="text-sm font-medium leading-relaxed text-text sm:text-base">
+          <p className="max-w-prose text-base font-medium leading-relaxed text-text">
             {referenceText}
           </p>
         </div>
       )}
       {promptText && (
-        <p className="text-sm font-medium text-text-muted">{promptText}</p>
+        <p className="max-w-prose text-base font-medium leading-relaxed text-text">
+          {promptText}
+        </p>
       )}
 
       {error && (
         <div
           role="alert"
-          className="flex items-center gap-2 rounded-lg bg-danger/10 p-3 text-xs text-danger"
+          className="flex items-center gap-2 rounded-lg bg-danger/10 p-3 text-sm text-danger-accent"
         >
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error}</span>
@@ -371,8 +382,8 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       <div className="flex flex-col items-center justify-center space-y-4 rounded-xl bg-surface-muted/40 p-6">
         <div
           className={cn(
-            "font-mono text-3xl font-bold tracking-tight sm:text-4xl",
-            isRecording ? "text-danger" : "text-text",
+            "font-mono text-3xl font-bold tabular-nums tracking-tight sm:text-4xl",
+            isRecording ? "text-danger-accent" : "text-text",
           )}
           aria-live="polite"
         >
@@ -386,7 +397,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         </div>
 
         {isRecording && (
-          <div className="flex items-center gap-2 text-sm font-medium text-danger">
+          <div className="flex items-center gap-2 text-sm font-medium text-danger-accent">
             <span
               className="h-2.5 w-2.5 rounded-full bg-danger motion-safe:animate-pulse"
               aria-hidden="true"
@@ -448,67 +459,64 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         )}
 
         {isUploading && (
-          <p className="flex items-center gap-2 text-xs font-medium text-primary">
+          <p className="flex items-center gap-2 text-sm font-medium text-primary-accent">
             <UploadCloud className="h-4 w-4" aria-hidden="true" />
             {t("speaking.uploading", "Uploading recording...")}
           </p>
         )}
         {recordingKey && !isUploading && !isRecording && (
-          <p className="flex items-center gap-1.5 text-xs font-medium text-success">
+          <p className="flex items-center gap-2 text-sm font-medium text-success-accent">
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
             {t("speaking.uploaded", "Recording ready")}
           </p>
         )}
       </div>
 
-      {showNotice && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="voice-notice-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        >
-          <div className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-card p-6 shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+      <Dialog open={showNotice} onOpenChange={setShowNotice}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <ShieldCheck className="h-6 w-6" aria-hidden="true" />
+              </span>
+              {t("speaking.noticeTitle", "Voice Recording Consent")}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <DialogDescription
+              asChild
+              className="space-y-2 rounded-lg border border-border-subtle bg-surface-muted/50 p-3.5 text-base leading-relaxed text-text-muted"
+            >
+              <div>
+                <p>
+                  {t(
+                    "speaking.noticeTranscription",
+                    "Your voice will be recorded and transcribed for automated grading and educational feedback.",
+                  )}
+                </p>
+                <p>
+                  {t(
+                    "speaking.noticeRetention",
+                    "Audio recordings are securely stored and automatically purged after 90 days. Scores and feedback remain in your history.",
+                  )}
+                </p>
               </div>
-              <h3
-                id="voice-notice-title"
-                className="text-base font-semibold text-text"
-              >
-                {t("speaking.noticeTitle", "Voice Recording Consent")}
-              </h3>
-            </div>
-            <div className="space-y-2 rounded-lg border border-border-subtle bg-surface-muted/50 p-3.5 text-xs leading-relaxed text-text-muted">
-              <p>
-                {t(
-                  "speaking.noticeTranscription",
-                  "Your voice will be recorded and transcribed for automated grading and educational feedback.",
-                )}
-              </p>
-              <p>
-                {t(
-                  "speaking.noticeRetention",
-                  "Audio recordings are securely stored and automatically purged after 90 days. Scores and feedback remain in your history.",
-                )}
-              </p>
-            </div>
-            <div className="flex justify-end gap-2.5">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowNotice(false)}
-              >
-                {t("speaking.noticeCancel", "Cancel")}
-              </Button>
-              <Button type="button" onClick={acceptNotice}>
-                {t("speaking.noticeAccept", "I Consent & Continue")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogBody>
+          <DialogFooter className="gap-2.5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowNotice(false)}
+            >
+              {t("speaking.noticeCancel", "Cancel")}
+            </Button>
+            <Button type="button" onClick={acceptNotice}>
+              {t("speaking.noticeAccept", "I Consent & Continue")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

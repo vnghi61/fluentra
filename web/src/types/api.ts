@@ -958,6 +958,116 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/banners/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the announcement banners showing now.
+         * @description The banners a signed-in learner's dashboard shows right now: switched on, and with the current time inside the optional `starts_at`..`ends_at` window. At most three, highest `priority` first and then newest first.
+         *
+         *     Any signed-in account may read this; it carries none of the administrative fields (`created_by`, `priority`, the window). The list is cached in-process for 30 seconds, so a change made in the admin screen reaches every learner within one cache generation. `title`, `body` and `cta_label` are plain text and must be rendered as text, never as HTML.
+         */
+        get: operations["adminListActiveBanners"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/banners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List every announcement banner.
+         * @description Every banner, live or not, unpaginated: the set is small by design and an administrator needs all of it to see what is scheduled, what is showing and what has expired. Ordered by `priority` descending, then newest first, and capped at 200.
+         */
+        get: operations["adminListBanners"];
+        put?: never;
+        /**
+         * Create an announcement banner.
+         * @description Defines a new banner, off by default. `cta_label` and `cta_url` are set together or not at all, and `cta_url` must be an internal path (`/...`, never `//...`) or an `https://` URL; `javascript:`, `data:` and protocol-relative links are refused. When both `starts_at` and `ends_at` are given, `ends_at` must be later. Text is stored and served as plain text. The write is recorded in the audit log.
+         */
+        post: operations["adminCreateBanner"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/banners/image-upload-intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a direct upload for a banner image.
+         * @description Issues a presigned upload into a holding area for one JPEG, PNG or WebP image of at most 5 MB, valid for ten minutes. Nothing is published by the upload itself: `POST /admin/banners/images` checks and processes it.
+         */
+        post: operations["adminRequestBannerImageUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/banners/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check and publish an uploaded banner image.
+         * @description Reads the uploaded object and refuses it unless its bytes are a JPEG, PNG or WebP of at most 40 megapixels. It then applies the EXIF orientation, scales the image to fit 1600x900 and re-encodes it as JPEG, which drops every piece of metadata (camera, GPS). The raw upload is deleted either way. The result is attached to no banner until a create or update names its `image_key`.
+         */
+        post: operations["adminProcessBannerImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/banners/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace an announcement banner.
+         * @description A full replacement of the banner's editable fields, under the same rules as creation. Switching a banner off is this call with `is_active: false`. The change invalidates the active-banner cache on the instance that served it and is audited.
+         */
+        put: operations["adminUpdateBanner"];
+        post?: never;
+        /**
+         * Delete an announcement banner.
+         * @description Removes the banner for good. To stop showing it while keeping it for later, switch it off instead. The deletion is audited.
+         */
+        delete: operations["adminDeleteBanner"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/roles": {
         parameters: {
             query?: never;
@@ -1075,7 +1185,7 @@ export interface paths {
         };
         /**
          * Empirical difficulty and discrimination statistics.
-         * @description Returns empirical statistics from real learner attempts.
+         * @description Returns empirical statistics from real learner attempts. A question whose statistics have not been computed yet answers 200 with zero attempts, null indices and a null `last_computed_at`; 404 means the question itself does not exist.
          */
         get: operations["getQuestionStats"];
         put?: never;
@@ -4737,6 +4847,218 @@ export interface components {
             /** @example Second-generation streak calculation. */
             description: string;
         };
+        /** @description A banner as an administrator manages it. It shows on the learner dashboard while `is_active` is true and the current time is inside the optional `starts_at`..`ends_at` window. `title`, `body` and `cta_label` are plain text, never HTML. */
+        Banner: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["BannerKind"];
+            /** @example IELTS mock week */
+            title: string;
+            /**
+             * @description Supporting text; may be empty.
+             * @example Take a full mock test free until Sunday.
+             */
+            body: string;
+            /**
+             * @description Call-to-action text. On an announcement, present exactly when `cta_url` is; always null on a slide.
+             * @example Start a mock test
+             */
+            cta_label: string | null;
+            /**
+             * @description Where the call to action leads: an internal path starting with `/` (never `//`) or an `https://` URL.
+             * @example /exams
+             */
+            cta_url: string | null;
+            tone: components["schemas"]["BannerTone"];
+            /** @description The master switch. An inactive banner never shows. */
+            is_active: boolean;
+            /**
+             * @description Higher shows first.
+             * @example 10
+             */
+            priority: number;
+            /** @description Whether a learner may hide it from their own dashboard. */
+            dismissible: boolean;
+            /**
+             * Format: date-time
+             * @description Shown from this instant; null means from now.
+             */
+            starts_at: string | null;
+            /**
+             * Format: date-time
+             * @description Shown until this instant (exclusive); null means indefinitely.
+             */
+            ends_at: string | null;
+            /**
+             * Format: uuid
+             * @description The administrator who created it.
+             */
+            created_by: string;
+            /**
+             * @description Storage key of the banner's processed image, or null for a text-only banner. Set it from `POST /admin/banners/images`.
+             * @example banners/images/0199c3e4-5f60-7a82-9cde-f01234567899.jpg
+             */
+            image_key?: string | null;
+            /**
+             * Format: uri
+             * @description A short-lived signed URL for the image; null without one.
+             */
+            image_url?: string | null;
+            /**
+             * @description Alternative text; empty marks the image as decorative.
+             * @example Learners taking a mock test
+             */
+            image_alt?: string;
+            /**
+             * @description Width in pixels of the processed image.
+             * @example 1600
+             */
+            image_width?: number | null;
+            /**
+             * @description Height in pixels of the processed image.
+             * @example 900
+             */
+            image_height?: number | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /**
+         * @description How the banner is coloured. `info` for neutral news, `success` for good news, `warning` for something a learner must act on, `promo` for an offer.
+         * @example promo
+         * @enum {string}
+         */
+        BannerTone: "info" | "success" | "warning" | "promo";
+        /**
+         * @description How the banner is shown. `announcement` is a message shown once as a dialog on the dashboard: closing a dismissible one hides it for good, a non-dismissible one comes back on the next visit. `slide` is an image-only promotion in the dashboard carousel: it needs an image, has no body, button text or dismissal, and its optional `cta_url` makes the whole picture a link.
+         * @example announcement
+         * @enum {string}
+         */
+        BannerKind: "announcement" | "slide";
+        /** @description Every banner, unpaginated and capped at 200. */
+        BannerList: {
+            items: components["schemas"]["Banner"][];
+        };
+        /** @description The editable fields of a banner, used for both create and full replacement. Unknown fields are refused. For a `slide`, `body`, `cta_label` and `dismissible` are ignored (stored empty, null and false), `image_key` is required, and an empty `image_alt` defaults to the title. */
+        BannerRequest: {
+            /** @default announcement */
+            kind: components["schemas"]["BannerKind"];
+            /** @example IELTS mock week */
+            title: string;
+            /** @default  */
+            body: string;
+            /** @description On an announcement, required when `cta_url` is set, and only then. Ignored on a slide. */
+            cta_label?: string | null;
+            /** @description An internal path starting with `/` (not `//`) or an `https://` URL. `javascript:`, `data:`, `http:` and protocol-relative values are refused with 422. */
+            cta_url?: string | null;
+            tone?: components["schemas"]["BannerTone"];
+            /** @default false */
+            is_active: boolean;
+            /** @default 0 */
+            priority: number;
+            /** @default true */
+            dismissible: boolean;
+            /** Format: date-time */
+            starts_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Must be later than `starts_at` when both are set.
+             */
+            ends_at?: string | null;
+            /** @description A processed image returned by `POST /admin/banners/images`, or null for no image. Replacing or clearing it deletes the previous image. */
+            image_key?: string | null;
+            /**
+             * @description Alternative text; leave empty when the image is decorative.
+             * @default
+             */
+            image_alt: string;
+        };
+        /** @description A banner as a learner sees it. Plain text only; render `title`, `body` and `cta_label` as text, never as HTML. At most three announcements and six slides are listed, each kind highest priority first. */
+        ActiveBanner: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["BannerKind"];
+            /** @example IELTS mock week */
+            title: string;
+            /** @example Take a full mock test free until Sunday. */
+            body: string;
+            /** @example Start a mock test */
+            cta_label: string | null;
+            /** @example /exams */
+            cta_url: string | null;
+            tone: components["schemas"]["BannerTone"];
+            dismissible: boolean;
+            /**
+             * Format: uri
+             * @description A short-lived signed URL for the banner image; null without one.
+             */
+            image_url?: string | null;
+            /** @description Alternative text; empty when the image is decorative. */
+            image_alt?: string;
+            /** @description Lets the client reserve the image's space before it loads. */
+            image_width?: number | null;
+            image_height?: number | null;
+        };
+        /** @description The banners showing now, at most three, in display order. */
+        ActiveBannerList: {
+            items: components["schemas"]["ActiveBanner"][];
+        };
+        BannerImageUploadIntentRequest: {
+            /**
+             * @example image/png
+             * @enum {string}
+             */
+            content_type: "image/jpeg" | "image/png" | "image/webp";
+        };
+        /** @description A constrained browser upload for a banner image: the store itself enforces the content type and the size limit, and the bytes never pass through the API. */
+        BannerImageUploadIntent: {
+            /** Format: uri */
+            upload_url: string;
+            /**
+             * @example POST
+             * @enum {string}
+             */
+            method: "POST" | "PUT";
+            /** @description Form fields for a multipart POST policy upload. */
+            form_data?: {
+                [key: string]: string;
+            };
+            /** @example file */
+            file_field?: string;
+            /** @example banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899 */
+            object_key: string;
+            /** Format: date-time */
+            expires_at: string;
+            /**
+             * Format: int64
+             * @example 5242880
+             */
+            max_bytes: number;
+            /** @example image/png */
+            content_type: string;
+        };
+        BannerImageRequest: {
+            /**
+             * @description The `object_key` of an upload intent whose upload finished.
+             * @example banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899
+             */
+            object_key: string;
+        };
+        /** @description A processed banner image: its bytes checked to be a real JPEG, PNG or WebP, oriented, scaled to fit 1600x900 and re-encoded as JPEG without metadata. Pass `image_key` in a BannerRequest to use it. */
+        BannerImage: {
+            /** @example banners/images/0199c3e4-5f60-7a82-9cde-f01234567899.jpg */
+            image_key: string;
+            /**
+             * Format: uri
+             * @description A short-lived signed URL, for the preview.
+             */
+            image_url: string;
+            /** @example 1600 */
+            width: number;
+            /** @example 900 */
+            height: number;
+        };
         /** @description Current AI provider usage and budget status for today. */
         AdminAIUsageResponse: {
             items: components["schemas"]["AdminAIUsageItem"][];
@@ -5211,7 +5533,7 @@ export interface components {
             kind: string;
             /** Format: uuid */
             content_version_id: string;
-            /** @description Activity-specific configuration. A `lesson_material` activity carries the material's object keys and, issued at read time after the paywall, a `sources` object: `{poster_url?, video: [{url, height}], document: {url, preview_url?, page_count?}}`. The URLs expire and are never stored in the lesson cache. A `foundation_topic` activity carries the topic's published body: `{objective, explanation: {en, vi}, examples, common_mistakes}`. */
+            /** @description Activity-specific configuration. A `lesson_material` activity carries the material's object keys and, issued at read time after the paywall, a `sources` object: `{poster_url?, video: [{url, height}], document: {url, preview_url?, page_count?}, image: {url}}`. A material's `material_kind` is `document` (PDF, Word, Excel, PowerPoint), `image` (PNG, JPEG, WebP; served as a re-encoded copy) or `video`. The URLs expire and are never stored in the lesson cache. A `foundation_topic` activity carries the topic's published body: `{objective, explanation: {en, vi}, examples, common_mistakes}`. */
             config?: Record<string, never>;
             /** @example 10 */
             weight: number;
@@ -7169,7 +7491,7 @@ export interface components {
             price_vnd: number;
             /** @enum {string} */
             status: "draft" | "submitted" | "verifying" | "in_review" | "published" | "rejected" | "changes_requested";
-            /** @description Course structure containing units, lessons, and activities. A `lesson_material` activity adds `material: {resource_id, material_kind, title, description?, rights_confirmed}`, where `resource_id` is the creator's own private resource and `material_kind` is a hint the server never trusts — the real kind is derived from the resource's detected MIME. */
+            /** @description Course structure containing units, lessons, and activities. A `lesson_material` activity adds `material: {resource_id, material_kind, title, description?, rights_confirmed}`, where `resource_id` is the creator's own private resource and `material_kind` is a hint the server never trusts — the real kind (`document`, `image` or `video`) is derived from the resource's detected MIME. */
             structure: Record<string, never>;
             /** Format: date-time */
             created_at: string;
@@ -7860,9 +8182,10 @@ export interface components {
             avg_time_ms: number;
             /**
              * Format: date-time
+             * @description When the statistics were computed; null until they have been.
              * @example 2026-09-20T10:00:00Z
              */
-            last_computed_at: string;
+            last_computed_at: string | null;
         };
         DailyPracticeActivity: components["schemas"]["LessonActivity"] & {
             /** @description Set on the one item drawn to revisit the learner's weakest spine node (WO 21 Stage F). Absent on every other item. */
@@ -10067,6 +10390,320 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    adminListActiveBanners: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The banners to show, possibly none. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveBannerList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    adminListBanners: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every banner. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199c3e4-5f60-7a82-9cde-f01234567890",
+                     *           "kind": "announcement",
+                     *           "title": "IELTS mock week",
+                     *           "body": "Take a full mock test free until Sunday.",
+                     *           "cta_label": "Start a mock test",
+                     *           "cta_url": "/exams",
+                     *           "tone": "promo",
+                     *           "is_active": true,
+                     *           "priority": 10,
+                     *           "dismissible": true,
+                     *           "starts_at": "2026-10-05T00:00:00Z",
+                     *           "ends_at": "2026-10-12T00:00:00Z",
+                     *           "created_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "created_at": "2026-10-01T09:15:00Z",
+                     *           "updated_at": "2026-10-01T09:15:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BannerList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    adminCreateBanner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "title": "IELTS mock week",
+                 *       "body": "Take a full mock test free until Sunday.",
+                 *       "cta_label": "Start a mock test",
+                 *       "cta_url": "/exams",
+                 *       "tone": "promo",
+                 *       "is_active": true,
+                 *       "priority": 10,
+                 *       "dismissible": true,
+                 *       "starts_at": "2026-10-05T00:00:00Z",
+                 *       "ends_at": "2026-10-12T00:00:00Z"
+                 *     }
+                 */
+                "application/json": components["schemas"]["BannerRequest"];
+            };
+        };
+        responses: {
+            /** @description The banner was created. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199c3e4-5f60-7a82-9cde-f01234567890",
+                     *       "kind": "announcement",
+                     *       "title": "IELTS mock week",
+                     *       "body": "Take a full mock test free until Sunday.",
+                     *       "cta_label": "Start a mock test",
+                     *       "cta_url": "/exams",
+                     *       "tone": "promo",
+                     *       "is_active": true,
+                     *       "priority": 10,
+                     *       "dismissible": true,
+                     *       "starts_at": "2026-10-05T00:00:00Z",
+                     *       "ends_at": "2026-10-12T00:00:00Z",
+                     *       "created_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "created_at": "2026-10-01T09:15:00Z",
+                     *       "updated_at": "2026-10-01T09:15:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Banner"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    adminRequestBannerImageUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "content_type": "image/png"
+                 *     }
+                 */
+                "application/json": components["schemas"]["BannerImageUploadIntentRequest"];
+            };
+        };
+        responses: {
+            /** @description The upload intent. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "upload_url": "https://storage.example.com/fluentra-media",
+                     *       "method": "POST",
+                     *       "form_data": {
+                     *         "key": "banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899"
+                     *       },
+                     *       "file_field": "file",
+                     *       "object_key": "banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899",
+                     *       "expires_at": "2026-10-08T09:25:00Z",
+                     *       "max_bytes": 5242880,
+                     *       "content_type": "image/png"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BannerImageUploadIntent"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    adminProcessBannerImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "object_key": "banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899"
+                 *     }
+                 */
+                "application/json": components["schemas"]["BannerImageRequest"];
+            };
+        };
+        responses: {
+            /** @description The processed image. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "image_key": "banners/images/0199c3e4-5f60-7a82-9cde-f01234567899.jpg",
+                     *       "image_url": "https://storage.example.com/fluentra-media/banners/images/0199c3e4-5f60-7a82-9cde-f01234567899.jpg?X-Amz-Signature=abc",
+                     *       "width": 1600,
+                     *       "height": 900
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BannerImage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    adminUpdateBanner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The banner to replace. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "title": "IELTS mock week",
+                 *       "body": "Take a full mock test free until Sunday.",
+                 *       "cta_label": "Start a mock test",
+                 *       "cta_url": "https://fluentra.dev/ielts",
+                 *       "tone": "promo",
+                 *       "is_active": false,
+                 *       "priority": 10,
+                 *       "dismissible": true,
+                 *       "starts_at": null,
+                 *       "ends_at": null
+                 *     }
+                 */
+                "application/json": components["schemas"]["BannerRequest"];
+            };
+        };
+        responses: {
+            /** @description The banner as it now stands. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199c3e4-5f60-7a82-9cde-f01234567890",
+                     *       "kind": "announcement",
+                     *       "title": "IELTS mock week",
+                     *       "body": "Take a full mock test free until Sunday.",
+                     *       "cta_label": "Start a mock test",
+                     *       "cta_url": "https://fluentra.dev/ielts",
+                     *       "tone": "promo",
+                     *       "is_active": false,
+                     *       "priority": 10,
+                     *       "dismissible": true,
+                     *       "starts_at": null,
+                     *       "ends_at": null,
+                     *       "created_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "created_at": "2026-10-01T09:15:00Z",
+                     *       "updated_at": "2026-10-08T06:25:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Banner"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    adminDeleteBanner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The banner to delete. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The banner is gone. No body. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     rbacListRoles: {

@@ -151,6 +151,7 @@ type uploadRepo struct {
 	verified                map[uuid.UUID]string
 	rejected                map[uuid.UUID]string
 	attempts                map[uuid.UUID]string
+	failed                  map[uuid.UUID]string
 	queued                  map[uuid.UUID]string
 	correctedTerms          map[uuid.UUID]string
 	suggestedTerms          map[uuid.UUID]string
@@ -171,6 +172,7 @@ func newUploadRepo(items ...sqlc.SkillVocabUploadItem) *uploadRepo {
 		verified:                map[uuid.UUID]string{},
 		rejected:                map[uuid.UUID]string{},
 		attempts:                map[uuid.UUID]string{},
+		failed:                  map[uuid.UUID]string{},
 		queued:                  map[uuid.UUID]string{},
 		correctedTerms:          map[uuid.UUID]string{},
 		suggestedTerms:          map[uuid.UUID]string{},
@@ -267,10 +269,36 @@ func (r *uploadRepo) MarkUploadItemRejected(
 }
 
 func (r *uploadRepo) RecordUploadItemAttempt(
-	_ context.Context, id uuid.UUID, reason string,
+	_ context.Context, id uuid.UUID, maxAttempts int32, exhaustedReason string,
 ) error {
+	reason := ""
+	for i := range r.pending {
+		if r.pending[i].ID != id {
+			continue
+		}
+		r.pending[i].Attempts++
+		if r.pending[i].Attempts >= maxAttempts {
+			reason = exhaustedReason
+			r.failed[id] = exhaustedReason
+		}
+	}
 	r.attempts[id] = reason
 	return nil
+}
+
+func (r *uploadRepo) FailExhaustedUploadItems(
+	_ context.Context, maxAttempts int32, reason string,
+) (int64, error) {
+	var n int64
+	for _, it := range r.pending {
+		if it.Attempts >= maxAttempts {
+			if _, done := r.failed[it.ID]; !done {
+				r.failed[it.ID] = reason
+				n++
+			}
+		}
+	}
+	return n, nil
 }
 
 func (r *uploadRepo) MarkUploadItemQueued(
@@ -709,6 +737,33 @@ func TestVerifyPending_AnUnreachableDictionaryLeavesTheWordPending(t *testing.T)
 	assert.Empty(t, repo.verified)
 	assert.Empty(t, repo.rejected)
 	assert.Contains(t, repo.attempts, entry.ID, "the attempt is recorded, so it eventually retires")
+}
+
+func TestVerifyPending_TheAttemptThatReachesTheLimitRetiresTheWord(t *testing.T) {
+	entry := item(wordLeisure, "")
+	entry.Attempts = 2
+	repo := newUploadRepo(entry)
+	dict := &stubDictionary{err: errors.New("connection refused")}
+
+	// The dictionary never answered. On the last attempt the word is failed,
+	// with a reason, and never rejected: an outage is not a verdict on a word
+	// the learner typed correctly.
+	uploads, _ := newPipeline(t, repo, dict, &stubAI{reply: accepted(t)})
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	assert.Empty(t, repo.rejected, "an unreachable dictionary never rejects a word")
+	assert.Contains(t, repo.failed, entry.ID, "a word out of attempts is failed, not left pending")
+	assert.NotEmpty(t, repo.failed[entry.ID], "and says why")
+}
+
+func TestVerifyPending_RetiresWordsLeftPendingWithEveryAttemptUsed(t *testing.T) {
+	stuck := item(wordLeisure, "")
+	stuck.Attempts = 3
+	repo := newUploadRepo(stuck)
+	uploads, _ := newPipeline(t, repo, &stubDictionary{}, &stubAI{reply: accepted(t)})
+
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+	assert.Contains(t, repo.failed, stuck.ID)
 }
 
 func TestVerifyPending_AModelThatRefusesToAnswerIsNotAVerdict(t *testing.T) {

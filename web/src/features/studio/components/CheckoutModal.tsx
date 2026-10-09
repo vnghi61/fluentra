@@ -105,8 +105,11 @@ export function CheckoutModal({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <GraduationCap className="h-5 w-5 text-primary-accent" />
+          <DialogTitle className="flex items-center gap-2">
+            <GraduationCap
+              className="h-5 w-5 shrink-0 text-primary-accent"
+              aria-hidden="true"
+            />
             {isFree
               ? t("studio.checkout.claimTitle", "Enroll in Course")
               : t("studio.checkout.payTitle", "Course Purchase (VietQR)")}
@@ -114,16 +117,18 @@ export function CheckoutModal({
         </DialogHeader>
         <DialogBody className="space-y-6">
           {/* Course Summary */}
-          <div className="rounded-lg border border-border-subtle bg-surface-base p-4 space-y-1">
-            <span className="text-xs text-text-muted">
+          <div className="rounded-lg border border-border-subtle bg-surface-muted p-4 space-y-1">
+            <span className="text-sm text-text-muted">
               {t("studio.checkout.course", "Course")}
             </span>
-            <div className="text-base font-bold text-text">{courseTitle}</div>
+            <div className="break-words text-base font-semibold leading-snug text-text">
+              {courseTitle}
+            </div>
             <div className="flex items-center gap-2 pt-2">
-              <span className="text-xs text-text-muted">
+              <span className="text-sm text-text-muted">
                 {t("studio.checkout.price", "Price")}:
               </span>
-              <span className="text-base font-extrabold text-primary-accent">
+              <span className="text-base font-bold tabular-nums text-primary-accent">
                 {isFree
                   ? t("studio.courses.freeBadge", "Free")
                   : formatVnd(priceVnd)}
@@ -132,7 +137,7 @@ export function CheckoutModal({
           </div>
 
           {error && (
-            <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger font-medium">
+            <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger-accent font-medium">
               {error}
             </div>
           )}
@@ -141,13 +146,13 @@ export function CheckoutModal({
           {isPaid ? (
             <div className="py-8 text-center space-y-4">
               <div className="h-16 w-16 rounded-full bg-success/10 text-success flex items-center justify-center mx-auto animate-bounce">
-                <CheckCircle2 className="h-10 w-10" />
+                <CheckCircle2 className="h-10 w-10" aria-hidden="true" />
               </div>
               <div>
-                <h3 className="text-xl font-extrabold text-text">
+                <h3 className="text-xl font-bold leading-tight text-text">
                   {t("studio.checkout.paymentConfirmed", "Payment Verified!")}
                 </h3>
-                <p className="text-xs text-text-muted mt-1 max-w-sm mx-auto">
+                <p className="mx-auto mt-1 max-w-sm text-base leading-relaxed text-text-muted">
                   {t(
                     "studio.checkout.accessGranted",
                     "Your bank transfer was matched successfully. You now have full lifetime access to this course.",
@@ -161,7 +166,7 @@ export function CheckoutModal({
                   onSuccess();
                   onClose();
                 }}
-                className="w-full font-bold"
+                className="w-full"
               >
                 {t("studio.checkout.startLearning", "Start Learning Now")}
               </Button>
@@ -170,8 +175,11 @@ export function CheckoutModal({
             /* Free Course Flow */
             <div className="py-4 space-y-4 text-center">
               {claimSuccess ? (
-                <div className="flex items-center justify-center gap-2 text-success font-semibold py-4">
-                  <CheckCircle2 className="h-5 w-5" />
+                <div className="flex items-center justify-center gap-2 text-success-accent font-semibold py-4">
+                  <CheckCircle2
+                    className="h-5 w-5 shrink-0"
+                    aria-hidden="true"
+                  />
                   <span>
                     {t(
                       "studio.checkout.enrolledSuccess",
@@ -181,7 +189,7 @@ export function CheckoutModal({
                 </div>
               ) : (
                 <>
-                  <p className="text-sm text-text-muted">
+                  <p className="text-base leading-relaxed text-text-muted">
                     {t(
                       "studio.checkout.freeConfirmText",
                       "This is a free community course. Click below to add it to your library and unlock all syllabus activities.",
@@ -194,7 +202,7 @@ export function CheckoutModal({
                     onClick={() => {
                       void handleClaimFree();
                     }}
-                    className="w-full font-bold"
+                    className="w-full"
                   >
                     {loading
                       ? t("studio.checkout.enrolling", "Enrolling...")
@@ -205,8 +213,11 @@ export function CheckoutModal({
             </div>
           ) : loading ? (
             <div className="py-12 text-center space-y-3">
-              <Loader2 className="h-8 w-8 animate-spin text-primary-accent mx-auto" />
-              <p className="text-xs text-text-muted">
+              <Loader2
+                className="h-8 w-8 animate-spin text-primary-accent mx-auto"
+                aria-hidden="true"
+              />
+              <p className="text-sm text-text-muted">
                 {t(
                   "studio.checkout.generatingOrder",
                   "Generating secure VietQR transfer code...",
@@ -223,8 +234,8 @@ export function CheckoutModal({
                   alt="VietQR Transfer Code"
                   className="w-56 h-auto rounded-lg shadow-sm"
                 />
-                <span className="text-[11px] text-gray-500 mt-2 flex items-center gap-1">
-                  <QrCode className="h-3.5 w-3.5" />
+                <span className="mt-2 flex items-center gap-1.5 text-center text-sm text-text-muted">
+                  <QrCode className="h-4 w-4 shrink-0" aria-hidden="true" />
                   {t(
                     "studio.checkout.scanInstruction",
                     "Scan using any Vietnamese Banking App or Momo",
@@ -233,17 +244,17 @@ export function CheckoutModal({
               </div>
 
               {/* Transfer Details Card */}
-              <div className="rounded-xl border border-border-subtle bg-surface-base p-4 space-y-3 text-xs">
+              <div className="rounded-xl border border-border-subtle bg-surface-muted p-4 space-y-3 text-sm">
                 {/* Reference */}
-                <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
-                  <div>
-                    <span className="text-text-muted block text-[11px]">
+                <div className="flex items-center justify-between gap-3 pb-2 border-b border-border-subtle">
+                  <div className="min-w-0">
+                    <span className="text-text-muted block text-sm">
                       {t(
                         "studio.checkout.refLabel",
                         "Transfer Content / Description",
                       )}
                     </span>
-                    <span className="font-mono text-base font-extrabold text-primary-accent">
+                    <span className="break-all font-mono text-base font-bold text-primary-accent">
                       {order.reference}
                     </span>
                   </div>
@@ -251,12 +262,15 @@ export function CheckoutModal({
                     variant="outline"
                     size="sm"
                     onClick={() => handleCopy(order.reference, "ref")}
-                    className="gap-1 text-xs"
+                    className="shrink-0"
                   >
                     {copiedField === "ref" ? (
-                      <Check className="h-3.5 w-3.5 text-success" />
+                      <Check
+                        className="h-4 w-4 text-success"
+                        aria-hidden="true"
+                      />
                     ) : (
-                      <Copy className="h-3.5 w-3.5" />
+                      <Copy className="h-4 w-4" aria-hidden="true" />
                     )}
                     {copiedField === "ref"
                       ? t("app.copied", "Copied")
@@ -265,9 +279,9 @@ export function CheckoutModal({
                 </div>
 
                 {/* Amount */}
-                <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
-                  <div>
-                    <span className="text-text-muted block text-[11px]">
+                <div className="flex items-center justify-between gap-3 pb-2 border-b border-border-subtle">
+                  <div className="min-w-0">
+                    <span className="text-text-muted block text-sm">
                       {t("studio.checkout.amountLabel", "Exact Amount")}
                     </span>
                     <span className="font-mono text-sm font-bold text-text">
@@ -280,12 +294,15 @@ export function CheckoutModal({
                     onClick={() =>
                       handleCopy(String(order.amount_vnd), "amount")
                     }
-                    className="gap-1 text-xs"
+                    className="shrink-0"
                   >
                     {copiedField === "amount" ? (
-                      <Check className="h-3.5 w-3.5 text-success" />
+                      <Check
+                        className="h-4 w-4 text-success"
+                        aria-hidden="true"
+                      />
                     ) : (
-                      <Copy className="h-3.5 w-3.5" />
+                      <Copy className="h-4 w-4" aria-hidden="true" />
                     )}
                     {copiedField === "amount"
                       ? t("app.copied", "Copied")
@@ -294,15 +311,15 @@ export function CheckoutModal({
                 </div>
 
                 {/* Bank & Account */}
-                <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
-                  <div>
-                    <span className="text-text-muted block text-[11px]">
+                <div className="flex items-center justify-between gap-3 pb-2 border-b border-border-subtle">
+                  <div className="min-w-0">
+                    <span className="text-text-muted block text-sm">
                       {t("studio.checkout.bankLabel", "Bank & Account Number")}
                     </span>
-                    <span className="font-mono text-sm font-semibold text-text">
+                    <span className="break-all font-mono text-sm font-semibold text-text">
                       {order.bank_code} • {order.account_number}
                     </span>
-                    <span className="block text-[11px] text-text-muted uppercase">
+                    <span className="block break-words text-sm text-text-muted uppercase">
                       {order.account_holder_name}
                     </span>
                   </div>
@@ -310,12 +327,15 @@ export function CheckoutModal({
                     variant="outline"
                     size="sm"
                     onClick={() => handleCopy(order.account_number, "acc")}
-                    className="gap-1 text-xs"
+                    className="shrink-0"
                   >
                     {copiedField === "acc" ? (
-                      <Check className="h-3.5 w-3.5 text-success" />
+                      <Check
+                        className="h-4 w-4 text-success"
+                        aria-hidden="true"
+                      />
                     ) : (
-                      <Copy className="h-3.5 w-3.5" />
+                      <Copy className="h-4 w-4" aria-hidden="true" />
                     )}
                     {copiedField === "acc"
                       ? t("app.copied", "Copied")
@@ -325,8 +345,11 @@ export function CheckoutModal({
               </div>
 
               {/* Warning Callout */}
-              <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-text">
-                <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/10 p-3 text-base leading-relaxed text-text">
+                <AlertTriangle
+                  className="mt-0.5 h-5 w-5 shrink-0 text-warning"
+                  aria-hidden="true"
+                />
                 <p>
                   {t(
                     "studio.checkout.warningContent",
@@ -336,8 +359,11 @@ export function CheckoutModal({
               </div>
 
               {/* Waiting status with spinner */}
-              <div className="flex items-center justify-center gap-2 text-xs text-text-muted pt-1">
-                <Loader2 className="h-4 w-4 animate-spin text-primary-accent" />
+              <div className="flex items-center justify-center gap-2 text-sm text-text-muted pt-1">
+                <Loader2
+                  className="h-4 w-4 shrink-0 animate-spin text-primary-accent"
+                  aria-hidden="true"
+                />
                 <span>
                   {t(
                     "studio.checkout.waitingForPayment",

@@ -190,7 +190,9 @@ describe("ProgressPage (P10.5)", () => {
 
     await renderProgress();
 
-    const courseList = await screen.findByRole("list");
+    const courseList = await screen.findByRole("list", {
+      name: "Your courses",
+    });
 
     // 'All' filter (default) shows both titles
     expect(within(courseList).getByText("Course Alpha")).toBeInTheDocument();
@@ -288,6 +290,57 @@ describe("ProgressPage (P10.5)", () => {
     );
     expect(screen.getByTestId("courses-completed")).toHaveTextContent("1");
     expect(screen.getByTestId("activities-completed")).toHaveTextContent("93");
+  });
+
+  it("shows this week's study minutes from the weekly plan, not a derived total", async () => {
+    server.use(
+      http.get("/api/v1/me/progress", () =>
+        HttpResponse.json({
+          courses: [],
+          skills: [],
+        } satisfies ProgressResponse),
+      ),
+      http.get("/api/v1/me/weekly-plan", () =>
+        HttpResponse.json({
+          week_start: "2026-10-05",
+          minutes_goal: 90,
+          items: [],
+          progress: { minutes: 95, items_done: 0, items_total: 0 },
+        }),
+      ),
+    );
+
+    await renderProgress();
+
+    expect(await screen.findByTestId("study-this-week")).toHaveTextContent(
+      "1h 35m",
+    );
+    expect(screen.getByText("Study time this week")).toBeInTheDocument();
+    expect(screen.getByText("Weekly goal 1h 30m")).toBeInTheDocument();
+  });
+
+  it("leaves the study-time tile out when the weekly plan cannot be read", async () => {
+    server.use(
+      http.get("/api/v1/me/progress", () =>
+        HttpResponse.json({
+          courses: [],
+          skills: [],
+        } satisfies ProgressResponse),
+      ),
+      http.get("/api/v1/me/weekly-plan", () =>
+        HttpResponse.json(
+          { title: "Internal Error", status: 500 },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    await renderProgress();
+
+    expect(
+      await screen.findByTestId("activities-completed"),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("study-this-week")).not.toBeInTheDocument();
   });
 
   it("shows filter-empty message when no courses match selected filter", async () => {

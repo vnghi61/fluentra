@@ -41,3 +41,43 @@ export const isMobileLabel = (label: string | null | undefined): boolean => {
     l.includes("ipad")
   );
 };
+
+const RELATIVE_STEPS: readonly [Intl.RelativeTimeFormatUnit, number][] = [
+  ["second", 60],
+  ["minute", 60],
+  ["hour", 24],
+  ["day", 7],
+  ["week", 4.35],
+  ["month", 12],
+  ["year", Number.POSITIVE_INFINITY],
+];
+
+/** "2 hours ago" in the interface language; empty for an unreadable date. */
+export const formatRelativeTime = (
+  iso: string,
+  locale: string,
+  now: number = Date.now(),
+): string => {
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return "";
+  let value = (then - now) / 1000;
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  for (const [unit, size] of RELATIVE_STEPS) {
+    if (Math.abs(value) < size) return rtf.format(Math.round(value), unit);
+    value /= size;
+  }
+  return "";
+};
+
+/**
+ * The server's coarse device label is "<browser> on <os>" ("Chrome on
+ * Windows"). Split it so the card can show each part; anything else is
+ * shown as it came.
+ */
+export const splitDeviceLabel = (
+  label: string | null | undefined,
+): { browser: string; os: string } | null => {
+  const match = /^(.+?) on (.+)$/.exec(label?.trim() ?? "");
+  if (!match?.[1] || !match[2]) return null;
+  return { browser: match[1], os: match[2] };
+};

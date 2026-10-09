@@ -79,16 +79,20 @@ export interface ActivityFields {
   taskType: "read_aloud" | "respond";
   referenceText: string;
   /**
-   * Lesson material (a document or a video). `resourceId` is the creator's own
-   * private resource; `materialStatus` is the editor's own view of its
-   * processing, never saved to the server.
+   * Lesson material (a document, spreadsheet, slide deck, image or video).
+   * `resourceId` is the creator's own private resource; `materialKind` follows
+   * the picked file, and the server re-derives it from the bytes anyway.
+   * `materialStatus`, `materialFileName` and `materialFileSize` are the
+   * editor's own view, never read by the server.
    */
-  materialKind: "document" | "video";
+  materialKind: "document" | "image" | "video";
   materialTitle: string;
   materialDescription: string;
   resourceId: string;
   rightsConfirmed: boolean;
   materialStatus: "idle" | "uploading" | "processing" | "ready" | "failed";
+  materialFileName: string;
+  materialFileSize: number;
 }
 
 export interface DraftActivity {
@@ -145,6 +149,8 @@ export function emptyFields(): ActivityFields {
     resourceId: "",
     rightsConfirmed: false,
     materialStatus: "idle",
+    materialFileName: "",
+    materialFileSize: 0,
   };
 }
 
@@ -202,7 +208,11 @@ export function readActivity(raw: unknown, fallbackId: string): DraftActivity {
   if (material && typeof material === "object") {
     const m = material as Record<string, unknown>;
     if (typeof m.resource_id === "string") fields.resourceId = m.resource_id;
-    if (m.material_kind === "video" || m.material_kind === "document") {
+    if (
+      m.material_kind === "video" ||
+      m.material_kind === "document" ||
+      m.material_kind === "image"
+    ) {
       fields.materialKind = m.material_kind;
     }
     if (typeof m.title === "string") fields.materialTitle = m.title;

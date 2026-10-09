@@ -574,6 +574,10 @@ func assignPublishedObject(out *contract.PublishedObjects, kind, key string) {
 		out.Preview = &key
 	case domain.RenditionKindAudioWeb:
 		out.AudioWeb = &key
+	case domain.RenditionKindDisplay:
+		out.Display = &key
+	case domain.RenditionKindThumbnail:
+		out.Thumbnail = &key
 	}
 }
 

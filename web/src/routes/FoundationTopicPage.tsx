@@ -16,7 +16,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
   CardDescription,
 } from "@/components/ui/card";
 import {
@@ -88,11 +87,14 @@ export function FoundationTopicPage(): React.JSX.Element {
   if (topicError || !topic) {
     return (
       <div className="max-w-2xl mx-auto p-8 text-center space-y-4">
-        <BookOpen className="h-12 w-12 text-destructive mx-auto opacity-75" />
-        <h2 className="text-xl font-bold text-text">
+        <BookOpen
+          className="h-12 w-12 text-destructive mx-auto opacity-75"
+          aria-hidden="true"
+        />
+        <h1 className="text-2xl md:text-3xl font-bold leading-tight tracking-tight text-text">
           {t("foundation.topicNotFound", "Foundation Topic Not Found")}
-        </h2>
-        <p className="text-sm text-text-muted">
+        </h1>
+        <p className="text-base leading-relaxed text-text-muted">
           {topicErr instanceof Error
             ? topicErr.message
             : t(
@@ -104,7 +106,7 @@ export function FoundationTopicPage(): React.JSX.Element {
           variant="outline"
           onClick={() => void navigate({ to: "/learn" })}
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           {t("foundation.backToLearn", "Back to Learn")}
         </Button>
       </div>
@@ -128,7 +130,7 @@ export function FoundationTopicPage(): React.JSX.Element {
           onClick={() => void navigate({ to: "/learn" })}
           className="text-text-muted hover:text-text mb-2 -ml-2"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           {t("foundation.backToCatalogue", "Learning Catalogue")}
         </Button>
       </div>
@@ -137,8 +139,8 @@ export function FoundationTopicPage(): React.JSX.Element {
       <Card className="border border-border-subtle bg-surface shadow-sm overflow-hidden">
         <div className="bg-primary/5 border-b border-border-subtle px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary" />
-            <span className="text-xs uppercase font-bold tracking-wider text-text-muted">
+            <Layers className="h-5 w-5 text-primary" aria-hidden="true" />
+            <span className="text-xs uppercase font-semibold tracking-wider text-text-muted">
               {topic.namespace} Strand
             </span>
           </div>
@@ -155,9 +157,9 @@ export function FoundationTopicPage(): React.JSX.Element {
         </div>
 
         <CardHeader className="space-y-2">
-          <CardTitle className="text-2xl sm:text-3xl font-extrabold text-text tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-bold leading-tight tracking-tight text-text break-words">
             {topic.label}
-          </CardTitle>
+          </h1>
           {topic.description && (
             <CardDescription className="text-base text-text-muted leading-relaxed">
               {topic.description}
@@ -167,31 +169,31 @@ export function FoundationTopicPage(): React.JSX.Element {
 
         <CardContent className="space-y-6">
           {/* Practice Material Counts */}
-          <div className="grid grid-cols-3 gap-3 p-4 rounded-xl bg-surface-subtle border border-border-subtle text-center">
+          <div className="grid grid-cols-3 gap-3 p-4 rounded-xl bg-surface-muted border border-border-subtle text-center">
             <div>
-              <div className="text-2xl font-bold text-text">
+              <div className="text-2xl font-bold tabular-nums text-text">
                 {topic.exercise_count}
               </div>
-              <div className="text-xs text-text-muted flex items-center justify-center gap-1 mt-1">
-                <CheckSquare className="h-3.5 w-3.5" />
+              <div className="text-sm text-text-muted flex items-center justify-center gap-1.5 mt-1">
+                <CheckSquare className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {t("foundation.exercises", "Exercises")}
               </div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-text">
+              <div className="text-2xl font-bold tabular-nums text-text">
                 {topic.quiz_count}
               </div>
-              <div className="text-xs text-text-muted flex items-center justify-center gap-1 mt-1">
-                <Sparkles className="h-3.5 w-3.5" />
+              <div className="text-sm text-text-muted flex items-center justify-center gap-1.5 mt-1">
+                <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {t("foundation.quizzes", "Quizzes")}
               </div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-text">
+              <div className="text-2xl font-bold tabular-nums text-text">
                 {topic.review_count}
               </div>
-              <div className="text-xs text-text-muted flex items-center justify-center gap-1 mt-1">
-                <BookOpen className="h-3.5 w-3.5" />
+              <div className="text-sm text-text-muted flex items-center justify-center gap-1.5 mt-1">
+                <BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {t("foundation.reviews", "Reviews")}
               </div>
             </div>
@@ -204,7 +206,7 @@ export function FoundationTopicPage(): React.JSX.Element {
             </div>
           )}
           {bodyText && (
-            <div className="prose dark:prose-invert max-w-none text-sm text-text border-t border-border-subtle pt-4 whitespace-pre-wrap">
+            <div className="prose dark:prose-invert max-w-none text-base leading-relaxed text-text border-t border-border-subtle pt-4 whitespace-pre-wrap">
               {bodyText}
             </div>
           )}

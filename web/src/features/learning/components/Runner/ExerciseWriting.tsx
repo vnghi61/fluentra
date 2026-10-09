@@ -19,6 +19,7 @@ import {
   ExerciseActions,
   ExercisePrompt,
 } from "./ExerciseShell";
+import { Textarea } from "@/components/ui/textarea";
 
 export interface ExerciseWritingProps {
   /** The writing prompt / task description. */
@@ -185,13 +186,13 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
       {/* Rubric / Instructions Card */}
       {rubric && (
         <div className="rounded-2xl border border-border bg-surface-card/70 shadow-sm p-4 sm:p-5 space-y-2">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-            <PenTool className="h-3.5 w-3.5" aria-hidden="true" />
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary-accent">
+            <PenTool className="h-4 w-4" aria-hidden="true" />
             <span>
               {t("runner.writingInstructions", "Instructions & Rubric")}
             </span>
           </div>
-          <p className="text-sm text-text-muted leading-relaxed whitespace-pre-line">
+          <p className="text-base text-text-muted leading-relaxed whitespace-pre-line">
             {rubric}
           </p>
         </div>
@@ -208,7 +209,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
           >
             {t("runner.writingLabel", "Your writing")}
           </label>
-          <textarea
+          <Textarea
             id="writing-response"
             value={text}
             disabled={isSubmitted || isLoading || isMarking || isPendingSubmit}
@@ -219,9 +220,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
             )}
             rows={8}
             className={cn(
-              "w-full rounded-xl border border-border bg-surface-card p-4 text-base text-text leading-relaxed",
-              "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm resize-y",
-              "min-h-[220px] md:min-h-[320px]",
+              "min-h-[220px] resize-y rounded-xl bg-surface-card p-4 shadow-sm md:min-h-[320px]",
               isSubmitted && isCorrect && "border-success/50 bg-success/5",
               isSubmitted &&
                 isCorrect === false &&
@@ -230,13 +229,13 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
           />
 
           {/* Word Counter */}
-          <div className="flex items-center justify-between text-xs text-text-muted px-1">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm text-text-muted px-1">
             <span>
               {minWords > 0 ? (
                 <span
                   className={cn(
                     "font-medium",
-                    meetsMinWords ? "text-success" : "text-text-muted",
+                    meetsMinWords ? "text-success-accent" : "text-text-muted",
                   )}
                 >
                   {t(
@@ -255,7 +254,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
               )}
             </span>
             {minWords > 0 && !meetsMinWords && (
-              <span className="text-warning text-xs">
+              <span className="text-warning-accent">
                 {t(
                   "runner.wordsRemaining",
                   `Write ${Math.max(0, minWords - words)} more words to check`,
@@ -275,14 +274,17 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
           <div className="flex justify-center">
             <div className="relative flex items-center justify-center">
               <div className="h-12 w-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-              <Sparkles className="h-5 w-5 text-primary absolute" />
+              <Sparkles
+                className="h-5 w-5 text-primary absolute"
+                aria-hidden="true"
+              />
             </div>
           </div>
           <div className="space-y-1">
-            <h3 className="text-lg font-bold text-text">
+            <h3 className="text-lg font-semibold leading-snug text-text">
               {t("runner.markingTitle", "Marking your essay...")}
             </h3>
-            <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
+            <p className="text-base text-text-muted max-w-md mx-auto leading-relaxed">
               {t(
                 "runner.markingDesc",
                 "Our AI examiner is evaluating your writing against IELTS criteria. This usually takes 15-30 seconds.",
@@ -296,15 +298,18 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
       {markingTimedOut && (
         <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-6 space-y-4 shadow-sm animate-in fade-in duration-200">
           <div className="flex items-start gap-3">
-            <AlertCircle className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-text">
+            <AlertCircle
+              className="h-5 w-5 text-amber-500 shrink-0 mt-0.5"
+              aria-hidden="true"
+            />
+            <div className="min-w-0 space-y-1">
+              <h3 className="text-base font-semibold leading-snug text-text">
                 {t(
                   "runner.markingTimeoutTitle",
                   "Marking continues in the background",
                 )}
               </h3>
-              <p className="text-sm text-text-muted leading-relaxed">
+              <p className="text-base text-text-muted leading-relaxed">
                 {t(
                   "runner.markingTimeoutDesc",
                   "Grading is taking longer than usual. You can continue your lesson, and your score and detailed feedback will appear in My Writing.",
@@ -317,9 +322,9 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
               <Button
                 variant="outline"
                 onClick={onNavigateToMyWriting}
-                className="gap-1.5"
+                className="gap-2"
               >
-                <PenTool className="h-4 w-4" />
+                <PenTool className="h-4 w-4" aria-hidden="true" />
                 <span>{t("runner.goToMyWriting", "View My Writing")}</span>
               </Button>
             )}
@@ -343,15 +348,15 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
       {/* Writing Assessment & Feedback Panel when full interactive view is loading or unavailable */}
       {isSubmitted && !isMarking && !markingTimedOut && !activeFeedback && (
         <div className="rounded-2xl border border-border bg-surface-card p-6 space-y-4 shadow-sm animate-in fade-in duration-200">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <h3 className="text-base font-bold text-text">
+              <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+              <h3 className="text-base font-semibold leading-snug text-text">
                 {t("runner.writingAssessmentTitle", "Đánh giá bài viết")}
               </h3>
             </div>
             {typeof score === "number" && (
-              <span className="font-mono text-sm font-bold px-3 py-1 rounded-lg border bg-primary/10 text-primary border-primary/30">
+              <span className="font-mono text-sm font-bold tabular-nums px-3 py-1 rounded-lg border bg-primary/10 text-primary-accent border-primary/30">
                 {t("writing.score", "Điểm")}: {score} / 100
               </span>
             )}
@@ -359,7 +364,10 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
 
           {isFeedbackLoading && (
             <div className="flex items-center gap-2 text-sm text-text-muted">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <Loader2
+                className="h-4 w-4 animate-spin text-primary"
+                aria-hidden="true"
+              />
               <span>
                 {t("runner.loadingFeedback", "Đang tải chi tiết nhận xét...")}
               </span>
@@ -371,7 +379,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
               <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 {t("writing.summary", "Nhận xét của giám khảo AI")}
               </div>
-              <p className="text-sm text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
+              <p className="text-base text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
                 {feedback}
               </p>
             </div>
@@ -382,7 +390,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
               <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 {t("runner.explanationLabel", "Giải thích")}
               </div>
-              <p className="text-sm text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
+              <p className="text-base text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
                 {pickLocalized(
                   explanation.text,
                   explanation.text_vi,
@@ -397,7 +405,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
               <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 {t("writing.modelAnswer", "Bài mẫu tham khảo")}
               </div>
-              <div className="p-4 rounded-xl border border-border/80 bg-surface-muted/40 text-sm text-text leading-relaxed whitespace-pre-line">
+              <div className="p-4 rounded-xl border border-border/80 bg-surface-muted/40 text-base text-text leading-relaxed whitespace-pre-line">
                 {sampleAnswer}
               </div>
             </div>

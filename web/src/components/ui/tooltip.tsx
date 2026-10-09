@@ -53,6 +53,7 @@ export function NavTooltip({
 }): React.JSX.Element {
   const collapsed = useSidebarCollapsed();
   const enabled = enabledProp ?? collapsed;
+  const [open, setOpen] = React.useState(false);
   const child = React.Children.only(children) as React.ReactElement<{
     className?: string;
   }>;
@@ -62,7 +63,13 @@ export function NavTooltip({
       })
     : child;
   return (
-    <Tooltip>
+    // Controlled, and only ever opened while enabled. Left to itself a Root
+    // hovered while it had no content recorded itself as open, and collapsing
+    // the sidebar then rendered every one of those stale tooltips at once.
+    <Tooltip
+      open={enabled && open}
+      onOpenChange={(next) => setOpen(enabled && next)}
+    >
       <TooltipTrigger asChild>{trigger}</TooltipTrigger>
       {enabled && <TooltipContent side="right">{label}</TooltipContent>}
     </Tooltip>

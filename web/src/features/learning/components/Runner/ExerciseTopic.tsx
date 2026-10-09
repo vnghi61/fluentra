@@ -52,12 +52,14 @@ export const ExerciseTopic: React.FC<ExerciseTopicProps> = ({
       <div className="space-y-1">
         <div className="flex items-center gap-2 text-primary-accent">
           <BookOpen className="h-4 w-4" aria-hidden="true" />
-          <span className="text-[11px] font-bold uppercase tracking-wider">
+          <span className="text-xs font-semibold uppercase tracking-wider">
             {t("runner.topic.label", "Foundation topic")}
           </span>
         </div>
         {title && (
-          <h2 className="text-xl md:text-2xl font-bold text-text">{title}</h2>
+          <h2 className="text-lg md:text-xl font-semibold leading-snug text-text">
+            {title}
+          </h2>
         )}
       </div>
 
@@ -68,7 +70,7 @@ export const ExerciseTopic: React.FC<ExerciseTopicProps> = ({
           <Button
             size="lg"
             onClick={onContinue}
-            className="w-full sm:w-auto min-w-[160px] min-h-[44px] font-bold gap-2"
+            className="w-full sm:w-auto min-w-[160px] gap-2"
           >
             {t("runner.continueBtn", "Tiếp tục")}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -82,7 +84,7 @@ export const ExerciseTopic: React.FC<ExerciseTopicProps> = ({
               setAdvanceOnSubmit(true);
               onSubmit();
             }}
-            className="w-full sm:w-auto min-w-[160px] min-h-[44px] font-bold gap-2"
+            className="w-full sm:w-auto min-w-[160px] gap-2"
           >
             {t("runner.topic.continue", "Tiếp tục")}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />

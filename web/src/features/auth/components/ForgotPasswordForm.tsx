@@ -64,17 +64,17 @@ export function ForgotPasswordForm({
     <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-border-subtle bg-surface-card/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
       <Link
         to="/login"
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-text-muted hover:text-text transition-colors"
+        className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-text-muted hover:text-text transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {t("auth.backToSignIn", "Back to sign in")}
       </Link>
 
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-text">
+        <h1 className="text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
           {t("auth.resetTitle", "Reset your password")}
         </h1>
-        <p className="text-sm text-text-muted">
+        <p className="text-base leading-relaxed text-text-muted">
           Enter your account email to receive a 6-digit recovery code
         </p>
       </div>

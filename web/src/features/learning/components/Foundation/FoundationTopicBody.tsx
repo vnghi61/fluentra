@@ -57,10 +57,12 @@ export function FoundationTopicBody({
     <div className="space-y-6">
       {body.objective && (
         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-primary-accent">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary-accent">
             {t("foundation.objective", "Learning objective")}
           </p>
-          <p className="mt-1 text-sm text-text">{body.objective}</p>
+          <p className="mt-1 text-base leading-relaxed text-text">
+            {body.objective}
+          </p>
         </div>
       )}
 
@@ -68,11 +70,11 @@ export function FoundationTopicBody({
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-text-muted">
             <Lightbulb className="h-4 w-4" aria-hidden="true" />
-            <span className="text-[11px] font-bold uppercase tracking-wider">
+            <span className="text-xs font-semibold uppercase tracking-wider">
               {t("foundation.explanation", "Explanation")}
             </span>
           </div>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-text">
+          <p className="max-w-prose whitespace-pre-wrap text-base leading-relaxed text-text">
             {explanation}
           </p>
         </div>
@@ -82,7 +84,7 @@ export function FoundationTopicBody({
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-text-muted">
             <ListChecks className="h-4 w-4" aria-hidden="true" />
-            <span className="text-[11px] font-bold uppercase tracking-wider">
+            <span className="text-xs font-semibold uppercase tracking-wider">
               {t("foundation.examples", "Examples")}
             </span>
           </div>
@@ -92,9 +94,13 @@ export function FoundationTopicBody({
                 key={index}
                 className="rounded-lg border border-border-subtle bg-surface-muted/40 p-3"
               >
-                <p className="text-sm font-medium text-text">{example.text}</p>
+                <p className="text-base font-medium leading-relaxed text-text">
+                  {example.text}
+                </p>
                 {example.note && (
-                  <p className="mt-1 text-xs text-text-muted">{example.note}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-text-muted">
+                    {example.note}
+                  </p>
                 )}
               </li>
             ))}
@@ -106,7 +112,7 @@ export function FoundationTopicBody({
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-text-muted">
             <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-            <span className="text-[11px] font-bold uppercase tracking-wider">
+            <span className="text-xs font-semibold uppercase tracking-wider">
               {t("foundation.commonMistakes", "Common mistakes")}
             </span>
           </div>
@@ -114,14 +120,16 @@ export function FoundationTopicBody({
             {mistakes.map((mistake, index) => (
               <li
                 key={index}
-                className="rounded-lg border border-border-subtle p-3 text-sm"
+                className="rounded-lg border border-border-subtle p-3 text-base leading-relaxed"
               >
                 <p className="text-danger-accent line-through">
                   {mistake.wrong}
                 </p>
                 <p className="text-text">{mistake.right}</p>
                 {mistake.why && (
-                  <p className="mt-1 text-xs text-text-muted">{mistake.why}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-text-muted">
+                    {mistake.why}
+                  </p>
                 )}
               </li>
             ))}

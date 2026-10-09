@@ -2,8 +2,13 @@ import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useLearningProfile } from "@/features/account";
+import { PageHeader } from "@/components/layout/PageHeader";
+// The API module, not the barrel: the barrel re-exports the settings forms and
+// their zod schemas, which would ride along into the Dashboard chunk.
+import { useLearningProfile } from "@/features/account/api/accountApi";
+import { DashboardBanners, useActiveBanners } from "@/features/banners";
 import {
+  DailyGoalTiles,
   TodayProgressCard,
   useGamificationSummary,
 } from "@/features/gamification";
@@ -12,20 +17,20 @@ import {
   DailyPracticeCard,
   DashboardError,
   DashboardSkeleton,
-  FoundationNextCard,
+  greetingKeyFor,
   PlacementInviteCard,
-  ReviewsDueCard,
+  ReviewPathCard,
   SkillProgressCard,
   useDashboard,
   WeeklyPlanCard,
 } from "@/features/learning";
 import { cn } from "@/lib/utils";
 
-function getGreetingKey(hour: number): "morning" | "afternoon" | "evening" {
-  if (hour >= 5 && hour <= 11) return "morning";
-  if (hour >= 12 && hour <= 17) return "afternoon";
-  return "evening";
-}
+const greetingFallback = {
+  morning: "Good morning! 👋",
+  afternoon: "Good afternoon! 👋",
+  evening: "Good evening! 👋",
+} as const;
 
 export function DashboardPage(): React.JSX.Element {
   const { t } = useTranslation();
@@ -33,6 +38,15 @@ export function DashboardPage(): React.JSX.Element {
   const { data, isLoading, isError, error, refetch } = useDashboard();
   const { data: gamificationData } = useGamificationSummary();
   const { data: profile, isLoading: isProfileLoading } = useLearningProfile();
+  const banners = useActiveBanners();
+  const hasSlides = (banners.data?.items ?? []).some(
+    (banner) => banner.kind === "slide",
+  );
+  // With promo slides the carousel is the page's hero, as in the dashboard
+  // design; without them (or while they load, or if they fail) the continue
+  // and today's-progress row takes that place so the page always opens on an
+  // action. Waiting for the list avoids showing the row and then swapping it.
+  const showStarterRow = !banners.isPending && !hasSlides;
 
   useEffect(() => {
     // If user has no learning profile yet, redirect to onboarding wizard (WO13 §8)
@@ -49,15 +63,9 @@ export function DashboardPage(): React.JSX.Element {
     return <DashboardError onRetry={() => void refetch()} error={error} />;
   }
 
-  const currentHour = new Date().getHours();
-  const greetingKey = getGreetingKey(currentHour);
+  const greetingKey = greetingKeyFor(new Date().getHours());
   const greeting = t(`dashboard.greeting.${greetingKey}`, {
-    defaultValue:
-      greetingKey === "morning"
-        ? "Good morning! 👋"
-        : greetingKey === "afternoon"
-          ? "Good afternoon! 👋"
-          : "Good evening! 👋",
+    defaultValue: greetingFallback[greetingKey],
   });
 
   const xpRemaining =
@@ -69,88 +77,99 @@ export function DashboardPage(): React.JSX.Element {
 
   const subtitle =
     xpRemaining !== null
-      ? t("dashboard.subtitleXpLeft", {
-          xp: xpRemaining,
-          defaultValue: `${xpRemaining} XP to reach today's goal`,
-        })
+      ? t("overview.dashboard.subtitleXpLeft", { xp: xpRemaining })
       : t("dashboard.tagline", "Here is your learning summary for today.");
 
   return (
-    <div className="mx-auto w-full max-w-[1240px] space-y-3 md:space-y-4 lg:space-y-5">
-      {/* Dashboard Top Heading */}
-      <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-text tracking-tight">
-          {greeting}
-        </h1>
-        <p className="text-sm text-text-muted">{subtitle}</p>
-      </header>
+    <div className="mx-auto w-full space-y-4 lg:space-y-5">
+      {/* An announcement opens as a dialog; it has no place in the layout. */}
+      <DashboardBanners part="announcements" />
 
-      {/* Row 1: ContinueLearning (2fr) | TodayProgressCard (1fr) when gamificationData exists */}
-      <div
-        className={cn(
-          "grid grid-cols-1 gap-3 md:gap-4 lg:gap-5",
-          gamificationData && "lg:grid-cols-[2fr_1fr]",
-        )}
-      >
-        <section
-          aria-label={t("dashboard.continue.title", "Continue Learning")}
-          className="min-w-0"
-        >
-          <ContinueLearningCard dashboard={data} />
-        </section>
-
+      {/* Side by side only from xl: below that the sidebar leaves the content
+        column too narrow for the greeting and both tiles, and the tiles sit
+        under the greeting at full width instead. */}
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <PageHeader title={greeting} description={subtitle} />
+        {/* On a phone these are left to "Today's progress" below, unless the
+          carousel has taken that row's place. */}
         {gamificationData && (
-          <section
-            aria-label={t(
-              "gamification.sectionAria",
-              "Learning Motivation & Progress",
+          <DailyGoalTiles
+            summary={gamificationData}
+            className={cn(
+              "xl:w-[420px] xl:shrink-0",
+              hasSlides ? "grid" : "hidden md:grid",
             )}
-            className="min-w-0"
-          >
-            <TodayProgressCard summary={gamificationData} />
-          </section>
+          />
         )}
       </div>
 
-      {/* Placement Test Invitation Card (When eligible and unplaced, spans full width above row 2) */}
+      {/* Promo slides from the admin screen: the hero when there are any. */}
+      <DashboardBanners part="slides" />
+
+      {/* Row 1: continue (2fr) | today's progress (1fr) */}
+      {showStarterRow && (
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-4 lg:gap-5",
+            gamificationData && "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]",
+          )}
+        >
+          <section
+            aria-label={t("dashboard.continue.title", "Continue Learning")}
+            className="min-w-0"
+          >
+            <ContinueLearningCard dashboard={data} />
+          </section>
+
+          {gamificationData && (
+            <section
+              aria-label={t(
+                "gamification.sectionAria",
+                "Learning Motivation & Progress",
+              )}
+              className="min-w-0"
+            >
+              <TodayProgressCard summary={gamificationData} />
+            </section>
+          )}
+        </div>
+      )}
+
+      {/* Placement invitation: only when eligible and unplaced. */}
       <PlacementInviteCard />
 
-      {/* Row 2, Row 3, Row 4 in a responsive grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-5">
-        {/* Row 2: DailyPractice | Reviews */}
+      {/* Row 2: today's practice set | reviews & learning path */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
         <section
           aria-label={t("practice.daily.title", "Today's Practice Set")}
-          className="order-1 lg:order-1 min-w-0"
+          className="min-w-0"
         >
           <DailyPracticeCard />
         </section>
 
         <section
-          aria-label={t("dashboard.reviews.title", "Reviews Due")}
-          className="order-2 lg:order-2 min-w-0"
+          aria-label={t("overview.dashboard.reviewPathTitle")}
+          className="min-w-0"
         >
-          <ReviewsDueCard dueCount={data.due_reviews_count} />
+          <ReviewPathCard dueCount={data.due_reviews_count} />
         </section>
+      </div>
 
-        {/* Row 3: FoundationNext | SkillProgress */}
-        <div className="order-3 lg:order-3 min-w-0">
-          <FoundationNextCard />
-        </div>
-
-        <section
-          aria-label={t("dashboard.skills.title", "Skill Progress")}
-          className="order-5 lg:order-4 min-w-0"
-        >
-          <SkillProgressCard skillMastery={data.skill_mastery} />
-        </section>
-
-        {/* Row 4: WeeklyPlan full width (lg:col-span-2) */}
+      {/* Row 3: this week's plan | CEFR skills */}
+      <div className="grid grid-cols-1 gap-4 lg:gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <aside
           aria-label={t("weeklyPlan.title", "This week's plan")}
-          className="order-4 lg:order-5 lg:col-span-2 min-w-0"
+          className="min-w-0"
         >
           <WeeklyPlanCard />
         </aside>
+
+        <section
+          aria-label={t("dashboard.skills.title", "Skill Progress")}
+          className="min-w-0"
+        >
+          <SkillProgressCard skillMastery={data.skill_mastery} />
+        </section>
       </div>
     </div>
   );

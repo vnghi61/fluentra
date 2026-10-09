@@ -1,6 +1,6 @@
 import React from "react";
-import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -14,10 +14,15 @@ import {
 import { server } from "./msw-server";
 import i18n, { initI18n, loadLocale } from "@/i18n";
 import { AdminUserList } from "@/features/admin/components/AdminUserList";
+import {
+  adminApi,
+  type AdminUserPage,
+  type AdminUserSummary,
+} from "@/features/admin/api/adminApi";
 import { AdminFeatureFlags } from "@/features/admin/components/AdminFeatureFlags";
 import { AdminPage } from "@/pages/AdminPage";
 
-const sampleUser1 = {
+const sampleUser1: AdminUserSummary = {
   id: "11111111-1111-1111-1111-111111111111",
   email: "learner1@example.com",
   display_name: "Learner One",
@@ -26,7 +31,7 @@ const sampleUser1 = {
   created_at: "2026-08-01T10:00:00Z",
 };
 
-const sampleUser2 = {
+const sampleUser2: AdminUserSummary = {
   id: "22222222-2222-2222-2222-222222222222",
   email: "learner2@example.com",
   display_name: "Learner Two",
@@ -35,7 +40,7 @@ const sampleUser2 = {
   created_at: "2026-08-05T10:00:00Z",
 };
 
-const sampleUser3 = {
+const sampleUser3: AdminUserSummary = {
   id: "33333333-3333-3333-3333-333333333333",
   email: "learner3@example.com",
   display_name: "Learner Three",
@@ -141,12 +146,14 @@ describe("Admin Shell & Operations", () => {
         if (cursor === "cursor_page_2") {
           return HttpResponse.json({
             items: [sampleUser2],
+            total: 2,
             next_cursor: undefined, // End of pages
           });
         }
 
         return HttpResponse.json({
           items: [sampleUser1],
+          total: 2,
           next_cursor: "cursor_page_2",
         });
       }),
@@ -281,6 +288,188 @@ describe("Admin Shell & Operations", () => {
     await screen.findAllByText("Learner One");
   });
 
+  it("selects only writable accounts on the current page and clears them on navigation", async () => {
+    const pendingUser = { ...sampleUser3, status: "pending_deletion" };
+    server.use(
+      http.get("/api/v1/admin/users", ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get("cursor");
+        return HttpResponse.json(
+          cursor
+            ? { items: [sampleUser2], total: 4 }
+            : {
+                items: [sampleUser1, pendingUser],
+                total: 4,
+                next_cursor: "next",
+              },
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+    const table = await screen.findByTestId("learner-table");
+    expect(
+      within(table).getAllByRole("checkbox", { name: "Select this account" }),
+    ).toHaveLength(1);
+    await user.click(
+      within(table).getByRole("checkbox", {
+        name: "Select accounts on this page",
+      }),
+    );
+    expect(
+      within(table).getByRole("checkbox", { name: "Select this account" }),
+    ).toBeChecked();
+    expect(screen.getByText("Action for 1 selected")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Next/i }));
+    await screen.findAllByText("Learner Two");
+    expect(screen.queryByText("Action for 1 selected")).not.toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("learner-table")).getByRole("checkbox", {
+        name: "Select this account",
+      }),
+    ).not.toBeChecked();
+  });
+
+  it("marks partial selection and toggles the whole page without performing a mutation", async () => {
+    server.use(
+      http.get("/api/v1/admin/users", () =>
+        HttpResponse.json({ items: [sampleUser1, sampleUser3], total: 2 }),
+      ),
+    );
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+    const table = await screen.findByTestId("learner-table");
+    await user.click(
+      within(table).getAllByRole("checkbox", {
+        name: "Select this account",
+      })[0]!,
+    );
+    expect(
+      within(table).getByRole("checkbox", {
+        name: "Select accounts on this page",
+      }),
+    ).toBePartiallyChecked();
+    await user.click(
+      within(table).getByRole("checkbox", {
+        name: "Select accounts on this page",
+      }),
+    );
+    expect(screen.getByText("Action for 2 selected")).toBeInTheDocument();
+    await user.click(
+      within(table).getByRole("checkbox", {
+        name: "Select accounts on this page",
+      }),
+    );
+    expect(screen.queryByText("Action for 2 selected")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("does not offer bulk selection to a read-only administrator", async () => {
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({
+          roles: ["admin"],
+          permissions: ["user.list", "user.read"],
+        }),
+      ),
+    );
+    render(<AdminUserList />);
+    await screen.findAllByText("Learner One");
+    await openRowMenu(userEvent.setup());
+    expect(
+      screen.getByRole("menuitem", { name: /Inspect account/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("does not offer suspension when the selection includes an already suspended account", async () => {
+    server.use(
+      http.get("/api/v1/admin/users", () =>
+        HttpResponse.json({ items: [sampleUser1, sampleUser2], total: 2 }),
+      ),
+    );
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+    const table = await screen.findByTestId("learner-table");
+    await user.click(
+      within(table).getByRole("checkbox", {
+        name: "Select accounts on this page",
+      }),
+    );
+    const bulk = screen.getByRole("combobox", {
+      name: "Action for 2 selected",
+    });
+    expect(
+      within(bulk).getByRole("option", { name: "Lock login for the selected" }),
+    ).toBeDisabled();
+    expect(
+      within(bulk).getByRole("option", { name: "Soft-delete the selected" }),
+    ).toBeEnabled();
+  });
+
+  it("resets an applied search with no status filter and restores the unfiltered query", async () => {
+    const searches: (string | null)[] = [];
+    server.use(
+      http.get("/api/v1/admin/users", ({ request }) => {
+        const name = new URL(request.url).searchParams.get("display_name");
+        searches.push(name);
+        return HttpResponse.json({
+          items: [sampleUser1],
+          total: name ? 1 : 1284,
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+    await screen.findAllByText("Learner One");
+    await user.type(screen.getByRole("searchbox"), "Learner");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("learner-total")).toHaveTextContent("1"),
+    );
+    await user.click(screen.getByRole("button", { name: "Reset filters" }));
+    await waitFor(() => expect(searches.at(-1)).toBeNull());
+    expect(screen.getByRole("searchbox")).toHaveValue("");
+    await waitFor(() =>
+      expect(screen.getByTestId("learner-total")).toHaveTextContent("1,284"),
+    );
+  });
+
+  it("keeps the latest search results when an older request finishes later", async () => {
+    let releaseOldRequest: (page: AdminUserPage) => void = () => {};
+    const oldResponse = new Promise<AdminUserPage>((resolve) => {
+      releaseOldRequest = resolve;
+    });
+    const searchUsers = vi
+      .spyOn(adminApi, "searchUsers")
+      .mockImplementation(async (params) =>
+        params?.display_name === "First"
+          ? oldResponse
+          : { items: [sampleUser2], total: 1 },
+      );
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+    await screen.findAllByText("Learner Two");
+    const search = screen.getByRole("searchbox");
+    await user.type(search, "First");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() =>
+      expect(searchUsers).toHaveBeenCalledWith(
+        expect.objectContaining({ display_name: "First" }),
+      ),
+    );
+    await user.clear(search);
+    await user.type(search, "Second");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    await screen.findAllByText("Learner Two");
+    await act(async () => {
+      releaseOldRequest({ items: [sampleUser1], total: 1 });
+      await oldResponse;
+    });
+    expect(screen.queryByText("Learner One")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Learner Two")).toHaveLength(2);
+    searchUsers.mockRestore();
+  });
+
   it("renders the learner in both the table and the mobile cards, name before id", async () => {
     render(<AdminUserList />);
     await screen.findAllByText("Learner One");
@@ -292,7 +481,9 @@ describe("Admin Shell & Operations", () => {
     expect(within(table).getByText("Learner One")).toBeInTheDocument();
     expect(within(cards).getByText("Learner One")).toBeInTheDocument();
     expect(within(cards).getByText("learner1@example.com")).toBeInTheDocument();
-    expect(table.querySelector("tbody tr")).toHaveClass("h-14");
+    expect(
+      within(table).getByRole("table", { name: "User accounts" }),
+    ).toBeInTheDocument();
 
     const card = within(cards).getAllByRole("listitem")[0]!;
     const text = card.textContent ?? "";
@@ -307,6 +498,7 @@ describe("Admin Shell & Operations", () => {
         const status = new URL(request.url).searchParams.get("status");
         return HttpResponse.json({
           items: status === "suspended" ? [sampleUser2] : [sampleUser1],
+          total: 1,
           next_cursor: undefined,
         });
       }),
@@ -327,6 +519,7 @@ describe("Admin Shell & Operations", () => {
       screen.getByRole("combobox", { name: /Filter by status/i }),
       "suspended",
     );
+    expect(within(cards).getByText("Learner One")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Apply" }));
     await screen.findAllByText("Learner Two");
     expect(screen.queryByText("Learner One")).not.toBeInTheDocument();
@@ -667,7 +860,11 @@ describe("Admin Shell & Operations", () => {
     // second page. Serving it first keeps this about the row, not the paging.
     server.use(
       http.get("/api/v1/admin/users", () =>
-        HttpResponse.json({ items: [sampleUser2], next_cursor: undefined }),
+        HttpResponse.json({
+          items: [sampleUser2],
+          total: 1,
+          next_cursor: undefined,
+        }),
       ),
     );
 
@@ -1012,7 +1209,7 @@ describe("Mobile admin section picker", () => {
         }),
       ),
       http.get("/api/v1/admin/users", () =>
-        HttpResponse.json({ items: [sampleUser1] }),
+        HttpResponse.json({ items: [sampleUser1], total: 1 }),
       ),
       http.get("/api/v1/admin/flags", () =>
         HttpResponse.json({ items: [sampleFlag] }),
@@ -1078,7 +1275,7 @@ describe("Mobile admin section picker", () => {
         }),
       ),
       http.get("/api/v1/admin/users", () =>
-        HttpResponse.json({ items: [sampleUser1] }),
+        HttpResponse.json({ items: [sampleUser1], total: 1 }),
       ),
       http.get("/api/v1/admin/flags", () =>
         HttpResponse.json({ items: [sampleFlag] }),

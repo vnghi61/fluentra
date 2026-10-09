@@ -1,19 +1,16 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
-import { AlertCircle, ArrowLeft } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { ErrorState } from "@/components/ui/error-state";
 import { FlipCard } from "@/components/ui/flip-card";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { learningKeys, ReportDialog } from "@/features/learning";
 import {
   CardContentUnavailable,
@@ -22,16 +19,41 @@ import {
   FlashcardFront,
   flashcardContent,
   GradeButtonGroup,
+  isActivationTarget,
+  isForeignKeyEvent,
   reviewApi,
   type ReviewGrade,
   reviewKeys,
   ReviewSummary,
+  untilLabel,
   useReviewSession,
 } from "@/features/review";
+import { cn } from "@/lib/utils";
 
 type GradeCounts = Record<ReviewGrade, number>;
 
 const noGrades: GradeCounts = { again: 0, hard: 0, good: 0, easy: 0 };
+
+const gradeLabelKey: Record<ReviewGrade, string> = {
+  again: "review.again",
+  hard: "review.hard",
+  good: "review.good",
+  easy: "review.easy",
+};
+
+const gradeTone: Record<ReviewGrade, string> = {
+  again: "text-danger-accent",
+  hard: "text-warning-accent",
+  good: "text-primary-accent",
+  easy: "text-success-accent",
+};
+
+/** What the server said about the last grade, shown while the next card loads in. */
+interface LastResult {
+  grade: ReviewGrade;
+  nextDueAt: string;
+  answeredAt: number;
+}
 
 export function ReviewPage(): React.JSX.Element {
   const { t } = useTranslation();
@@ -55,42 +77,62 @@ export function ReviewPage(): React.JSX.Element {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingGrade, setPendingGrade] = useState<ReviewGrade | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [gradeFailed, setGradeFailed] = useState(false);
   const [gradeCounts, setGradeCounts] = useState<GradeCounts>(noGrades);
+  const [lastResult, setLastResult] = useState<LastResult | null>(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [reportNote, setReportNote] = useState("");
 
+  const revealRef = useRef<HTMLButtonElement>(null);
+  const answerRef = useRef<HTMLHeadingElement>(null);
+  // Set when a grade moves the session on, so focus follows to the new card
+  // without the page grabbing focus on its first render.
+  const focusNextCard = useRef(false);
+
+  const isSubmitting = pendingGrade !== null;
   const currentCard = cards[currentIndex];
   const content = currentCard ? flashcardContent(currentCard) : null;
+  const canReveal = !isFlipped && content !== null;
+
+  const reveal = useCallback(() => setIsFlipped(true), []);
 
   // Space and Enter reveal the answer. The 1–4 grade shortcuts live in
   // GradeButtonGroup, which mounts only once the card is flipped, so a digit
-  // cannot grade a card whose answer the learner has not seen.
+  // cannot grade a card whose answer the learner has not seen. A focused
+  // control keeps its own Space/Enter: on the pronounce button, Space speaks.
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
-        return;
-      }
-      if ((e.key === " " || e.key === "Enter") && !isFlipped && currentCard) {
-        e.preventDefault();
-        setIsFlipped(true);
-      }
+    if (!canReveal) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== " " && event.key !== "Enter") return;
+      if (isForeignKeyEvent(event) || isActivationTarget(event)) return;
+      event.preventDefault();
+      reveal();
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFlipped, currentCard]);
+  }, [canReveal, reveal]);
+
+  // The reveal button has just turned away with the front face, and focus on
+  // an aria-hidden face reads nothing. The answer's heading takes it instead.
+  useEffect(() => {
+    if (isFlipped) answerRef.current?.focus();
+  }, [isFlipped]);
+
+  useEffect(() => {
+    if (!focusNextCard.current) return;
+    focusNextCard.current = false;
+    revealRef.current?.focus();
+  }, [currentIndex]);
 
   const advance = useCallback(
     (grade: ReviewGrade) => {
       setGradeCounts((prev) => ({ ...prev, [grade]: prev[grade] + 1 }));
       setIsFlipped(false);
       if (currentIndex < cards.length - 1) {
+        focusNextCard.current = true;
         setCurrentIndex((prev) => prev + 1);
       } else {
         setIsCompleted(true);
@@ -107,10 +149,15 @@ export function ReviewPage(): React.JSX.Element {
     async (grade: ReviewGrade) => {
       if (!currentCard || isSubmitting) return;
 
-      setIsSubmitting(true);
+      setPendingGrade(grade);
       setGradeFailed(false);
       try {
-        await reviewApi.answerCard(currentCard.id, grade);
+        const result = await reviewApi.answerCard(currentCard.id, grade);
+        setLastResult({
+          grade,
+          nextDueAt: result.next_due_at,
+          answeredAt: Date.now(),
+        });
         advance(grade);
         // Answering reschedules the card, so the due count the dashboard shows
         // and the learner's mastery are both stale the moment this returns.
@@ -121,47 +168,56 @@ export function ReviewPage(): React.JSX.Element {
       } catch {
         setGradeFailed(true);
       } finally {
-        setIsSubmitting(false);
+        setPendingGrade(null);
       }
     },
     [advance, currentCard, isSubmitting, queryClient],
   );
 
+  const onGrade = useCallback(
+    (grade: ReviewGrade) => void handleGrade(grade),
+    [handleGrade],
+  );
+
+  const header = (
+    <PageHeader
+      back={{ to: "/practice", label: t("review.backToPractice") }}
+      title={t("review.title")}
+      description={t("review.pageDesc")}
+    />
+  );
+
+  let body: React.ReactNode;
+
   if (isLoading) {
-    return (
+    body = (
       <div
-        className="flex items-center justify-center min-h-[50vh]"
         role="status"
         aria-label={t("review.loading")}
+        className="mx-auto w-full max-w-2xl space-y-4"
       >
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-border-subtle border-t-primary" />
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <Skeleton className="h-[340px] w-full rounded-[var(--radius-card)]" />
       </div>
     );
-  }
-
-  if (isError) {
-    return (
-      <div className="py-12 max-w-lg mx-auto">
-        <Card className="border-danger/30 text-center p-6">
-          <CardHeader>
-            <CardTitle>{t("review.errorTitle")}</CardTitle>
-            <CardDescription>{t("review.errorDesc")}</CardDescription>
-          </CardHeader>
-          <CardFooter className="justify-center gap-3">
-            <Button variant="outline" onClick={() => void refetch()}>
-              {t("action.retry")}
+  } else if (isError) {
+    body = (
+      <Card className="mx-auto w-full max-w-2xl">
+        <ErrorState
+          title={t("review.errorTitle")}
+          description={t("review.errorDesc")}
+          onRetry={() => void refetch()}
+          retryLabel={t("action.retry")}
+          action={
+            <Button asChild variant="ghost">
+              <Link to="/practice">{t("review.backToPractice")}</Link>
             </Button>
-            <Link to="/">
-              <Button>{t("review.backToDashboardBtn")}</Button>
-            </Link>
-          </CardFooter>
-        </Card>
-      </div>
+          }
+        />
+      </Card>
     );
-  }
-
-  if (isCompleted) {
-    return (
+  } else if (isCompleted) {
+    body = (
       <ReviewSummary
         totalReviewed={cards.length}
         gradeCounts={gradeCounts}
@@ -171,72 +227,76 @@ export function ReviewPage(): React.JSX.Element {
           setIsCompleted(false);
           setGradeFailed(false);
           setGradeCounts(noGrades);
+          setLastResult(null);
           void refetch();
         }}
       />
     );
-  }
+  } else if (!currentCard) {
+    body = <EmptyQueue />;
+  } else {
+    const total = cards.length;
+    const reviewed = currentIndex;
+    const remaining = total - reviewed;
 
-  if (!currentCard) {
-    return <EmptyQueue />;
-  }
-
-  const progressPercent = Math.round(((currentIndex + 1) / cards.length) * 100);
-
-  return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-200 py-4">
-      <div className="flex items-center justify-between gap-4">
-        <Link to="/">
-          {/*
-            The label is hidden below `sm`, which left the arrow alone in a 32 px
-            button — under the 44 × 44 minimum, and only at 320 px, which is why
-            no test saw it until the narrow-320 project covered this screen.
-            min-w-11 keeps the target while the text goes away, and the
-            accessible name comes from aria-label rather than the hidden span.
-            The negative margin went with it: it pulled the button outside the
-            link wrapping it, so the anchor measured 36 px however wide the
-            button was.
-          */}
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={t("review.backToDashboardBtn")}
-            className="gap-1.5 text-text-muted hover:text-text min-w-11 min-h-11"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden sm:inline">
-              {t("review.backToDashboardBtn")}
-            </span>
-          </Button>
-        </Link>
-
+    body = (
+      <div className="mx-auto w-full max-w-2xl space-y-4 md:space-y-5">
         <div
-          className="flex-1 max-w-xs space-y-1"
+          className="space-y-2"
           data-testid="review-progress"
           data-current={currentIndex + 1}
-          data-total={cards.length}
+          data-total={total}
+          data-reviewed={reviewed}
         >
-          <div className="flex justify-between text-xs text-text-muted font-medium">
-            <span>{t("review.sessionTitle")}</span>
-            <span>
-              {currentIndex + 1} / {cards.length}
+          <div className="flex items-baseline justify-between gap-3 text-sm">
+            <span className="font-semibold text-text">
+              {t("review.progressLabel", {
+                current: currentIndex + 1,
+                total,
+              })}
+            </span>
+            <span className="text-text-muted">
+              {t("review.remaining", { count: remaining })}
             </span>
           </div>
           <Progress
-            value={progressPercent}
-            aria-label={t("review.progressLabel", {
-              current: currentIndex + 1,
-              total: cards.length,
-            })}
+            value={reviewed}
+            max={total}
+            aria-label={t("review.sessionProgress")}
+            getValueLabel={() => t("review.progressValue", { reviewed, total })}
           />
         </div>
-      </div>
 
-      <main className="space-y-6">
+        {/*
+          Always mounted, so the announcement is heard: a live region that
+          appears together with its text is often not read at all.
+        */}
+        <div role="status" className="min-h-6 text-sm">
+          {lastResult && (
+            <p
+              key={lastResult.answeredAt}
+              className="flex items-center gap-1.5 text-text-muted animate-in fade-in duration-200 motion-reduce:animate-none"
+            >
+              <CheckCircle2
+                className={cn("h-4 w-4 shrink-0", gradeTone[lastResult.grade])}
+                aria-hidden="true"
+              />
+              {t("review.lastGraded", {
+                grade: t(gradeLabelKey[lastResult.grade]),
+                when: untilLabel(
+                  t,
+                  lastResult.nextDueAt,
+                  lastResult.answeredAt,
+                ),
+              })}
+            </p>
+          )}
+        </div>
+
         {gradeFailed && (
           <div
             role="alert"
-            className="p-4 rounded-xl border border-danger/40 bg-danger/10 flex items-center gap-2 text-danger-accent text-sm font-medium"
+            className="flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 p-4 text-sm font-medium text-danger-accent"
           >
             <AlertCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
             <span>{t("review.gradeFailed")}</span>
@@ -244,89 +304,109 @@ export function ReviewPage(): React.JSX.Element {
         )}
 
         {/*
-          A card whose version could not be resolved carries no word to show. It is
-          still gradable — the schedule is real — so the grade buttons stay, and the
-          face says what is missing instead of inventing a word to put there.
+          Keyed on the card, so the next one arrives face up instead of
+          spinning back from the previous card's answer.
         */}
-        {content === null ? (
-          <div className="space-y-6">
+        <div
+          key={`${currentIndex}-${currentCard.id}`}
+          className="animate-in fade-in slide-in-from-bottom-2 duration-200 motion-reduce:animate-none"
+        >
+          {/*
+            A card whose version could not be resolved carries no word to show.
+            It is still gradable — the schedule is real — so the grade buttons
+            stay, and the face says what is missing instead of inventing a word.
+          */}
+          {content === null ? (
             <CardContentUnavailable
               contentVersionId={currentCard.content_version_id}
             />
-            <GradeButtonGroup
-              onGrade={(grade) => void handleGrade(grade)}
-              disabled={isSubmitting}
-            />
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/*
-              One card that turns, rather than two that swap.
-
-              The front and back used to be separate branches with a fade
-              between them, so the box changed height while the text changed
-              instantly — the "not smooth" this replaces. Both faces are laid
-              out now and the container rotates.
-            */}
+          ) : (
+            // One card that turns, rather than two that swap: both faces are
+            // laid out and the container rotates, so the box never changes
+            // height mid-turn.
             <FlipCard
               flipped={isFlipped}
-              onClick={isFlipped ? undefined : () => setIsFlipped(true)}
-              label={t("review.sessionTitle", "SRS Vocabulary Review")}
+              // `inert` on the face turned away: hidden from a screen reader is
+              // not enough while its buttons are still in the Tab order.
               front={
-                <FlashcardFront
-                  word={content.word}
-                  {...(content.ipa !== undefined && { ipa: content.ipa })}
-                  {...(content.audioUrl !== undefined && {
-                    audioUrl: content.audioUrl,
-                  })}
-                  {...(content.audioAttribution !== undefined && {
-                    audioAttribution: content.audioAttribution,
-                  })}
-                  {...(content.audioLicence !== undefined && {
-                    audioLicence: content.audioLicence,
-                  })}
-                  onFlip={() => setIsFlipped(true)}
-                />
+                <div inert={isFlipped} className="h-full">
+                  <FlashcardFront
+                    word={content.word}
+                    {...(content.ipa !== undefined && { ipa: content.ipa })}
+                    {...(content.audioUrl !== undefined && {
+                      audioUrl: content.audioUrl,
+                    })}
+                    {...(content.audioAttribution !== undefined && {
+                      audioAttribution: content.audioAttribution,
+                    })}
+                    {...(content.audioLicence !== undefined && {
+                      audioLicence: content.audioLicence,
+                    })}
+                    onFlip={reveal}
+                    revealRef={revealRef}
+                  />
+                </div>
               }
               back={
-                <FlashcardBack
-                  word={content.word}
-                  definition={content.definition}
-                  {...(content.ipa !== undefined && { ipa: content.ipa })}
-                  {...(content.definitionVi !== undefined && {
-                    definitionVi: content.definitionVi,
-                  })}
-                  exampleSentences={content.exampleSentences}
-                  {...(content.audioUrl !== undefined && {
-                    audioUrl: content.audioUrl,
-                  })}
-                  {...(content.audioAttribution !== undefined && {
-                    audioAttribution: content.audioAttribution,
-                  })}
-                  {...(content.audioLicence !== undefined && {
-                    audioLicence: content.audioLicence,
-                  })}
-                  {...(content.pos !== undefined && {
-                    partOfSpeech: content.pos,
-                  })}
-                  onReportSentence={(sentenceText) => {
-                    setReportNote(`Example sentence: ${sentenceText}`);
-                    setIsReportOpen(true);
-                  }}
-                />
+                <div inert={!isFlipped} className="h-full">
+                  <FlashcardBack
+                    word={content.word}
+                    definition={content.definition}
+                    {...(content.ipa !== undefined && { ipa: content.ipa })}
+                    {...(content.definitionVi !== undefined && {
+                      definitionVi: content.definitionVi,
+                    })}
+                    exampleSentences={content.exampleSentences}
+                    {...(content.audioUrl !== undefined && {
+                      audioUrl: content.audioUrl,
+                    })}
+                    {...(content.audioAttribution !== undefined && {
+                      audioAttribution: content.audioAttribution,
+                    })}
+                    {...(content.audioLicence !== undefined && {
+                      audioLicence: content.audioLicence,
+                    })}
+                    {...(content.pos !== undefined && {
+                      partOfSpeech: content.pos,
+                    })}
+                    onReportSentence={(sentenceText) => {
+                      setReportNote(`Example sentence: ${sentenceText}`);
+                      setIsReportOpen(true);
+                    }}
+                    answerRef={answerRef}
+                  />
+                </div>
               }
             />
+          )}
+        </div>
 
-            {isFlipped && (
-              <GradeButtonGroup
-                onGrade={(grade) => void handleGrade(grade)}
-                disabled={isSubmitting}
-                nextDue={currentCard.next_due_by_grade}
-              />
-            )}
+        {(content === null || isFlipped) && (
+          // On a phone the answer can run past the fold; the grades stay in
+          // reach above the bottom navigation instead of below the examples.
+          <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 rounded-2xl border border-border-subtle bg-surface-card/95 p-3 shadow-lg backdrop-blur-sm md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
+            <GradeButtonGroup
+              onGrade={onGrade}
+              disabled={isSubmitting}
+              pendingGrade={pendingGrade}
+              {...(content !== null && {
+                nextDue: currentCard.next_due_by_grade,
+              })}
+            />
           </div>
         )}
-      </main>
+
+        <p className="hidden text-center text-xs text-text-muted md:block">
+          {t("review.keyboardHelp")}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-[1440px] space-y-5 animate-in fade-in duration-200 motion-reduce:animate-none md:space-y-6">
+      {header}
+      {body}
 
       <ReportDialog
         isOpen={isReportOpen}

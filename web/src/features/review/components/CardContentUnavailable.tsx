@@ -24,15 +24,17 @@ export const CardContentUnavailable: React.FC<CardContentUnavailableProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="w-full min-h-[300px] p-8 rounded-3xl border-2 border-dashed border-border-subtle bg-surface-card flex flex-col items-center justify-center text-center gap-3">
-      <FileQuestion className="h-10 w-10 text-text-muted" aria-hidden="true" />
-      <p className="text-base font-semibold text-text">
+    <div className="flex min-h-[300px] w-full flex-col items-center justify-center gap-3 rounded-[var(--radius-card)] border border-dashed border-border bg-surface-card p-5 text-center sm:min-h-[340px] sm:p-8">
+      <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-muted text-text-muted">
+        <FileQuestion className="h-6 w-6" aria-hidden="true" />
+      </span>
+      <h2 className="text-base font-semibold text-text">
         {t("review.contentUnavailable")}
-      </p>
-      <p className="text-sm text-text-muted max-w-sm">
+      </h2>
+      <p className="text-sm leading-relaxed text-text-muted max-w-sm">
         {t("review.contentUnavailableDesc")}
       </p>
-      <code className="text-[11px] text-text-muted font-mono break-all">
+      <code className="text-xs text-text-muted font-mono break-all">
         {contentVersionId}
       </code>
     </div>

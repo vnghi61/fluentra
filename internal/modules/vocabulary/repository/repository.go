@@ -64,7 +64,13 @@ type Repository interface {
 		ctx context.Context, id uuid.UUID, reason string,
 		suggestedTerm, noteCode *string,
 	) (sqlc.SkillVocabUploadItem, error)
-	RecordUploadItemAttempt(ctx context.Context, id uuid.UUID, reason string) error
+	// RecordUploadItemAttempt counts a transient failure; the attempt that
+	// reaches maxAttempts retires the item as failed with exhaustedReason.
+	RecordUploadItemAttempt(
+		ctx context.Context, id uuid.UUID, maxAttempts int32, exhaustedReason string,
+	) error
+	// FailExhaustedUploadItems retires pending items left with every attempt used.
+	FailExhaustedUploadItems(ctx context.Context, maxAttempts int32, reason string) (int64, error)
 	SetUploadDeck(ctx context.Context, uploadID, deckID uuid.UUID) error
 	UpdateWordSenseEnrichment(
 		ctx context.Context, arg sqlc.UpdateWordSenseEnrichmentParams,
@@ -334,9 +340,19 @@ func (r *pgxRepository) MarkUploadItemRejected(
 }
 
 func (r *pgxRepository) RecordUploadItemAttempt(
-	ctx context.Context, id uuid.UUID, reason string,
+	ctx context.Context, id uuid.UUID, maxAttempts int32, exhaustedReason string,
 ) error {
-	return r.q.RecordUploadItemAttempt(ctx, sqlc.RecordUploadItemAttemptParams{ID: id, Reason: reason})
+	return r.q.RecordUploadItemAttempt(ctx, sqlc.RecordUploadItemAttemptParams{
+		ID: id, MaxAttempts: maxAttempts, ExhaustedReason: exhaustedReason,
+	})
+}
+
+func (r *pgxRepository) FailExhaustedUploadItems(
+	ctx context.Context, maxAttempts int32, reason string,
+) (int64, error) {
+	return r.q.FailExhaustedUploadItems(ctx, sqlc.FailExhaustedUploadItemsParams{
+		MaxAttempts: maxAttempts, Reason: reason,
+	})
 }
 
 func (r *pgxRepository) SetUploadDeck(ctx context.Context, uploadID, deckID uuid.UUID) error {

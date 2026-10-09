@@ -170,11 +170,15 @@ describe("work order 13 screens", () => {
         await screen.findByRole("heading", { name: "This week's plan" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /This week's plan/i }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("link", { name: "Making plans" }),
-      ).toBeInTheDocument();
+        screen.getByRole("link", { name: "Making plans, Done" }),
+      ).toHaveAttribute(
+        "href",
+        "/learn/lesson/0199a1c2-3d4e-7f80-9abc-def01234567a",
+      );
+      expect(screen.getByRole("link", { name: "Reviews" })).toHaveAttribute(
+        "href",
+        "/practice/review",
+      );
       expect(screen.getByText("25 of 90 minutes")).toBeInTheDocument();
       expect(screen.getByText("15 reviews")).toBeInTheDocument();
       expect(screen.getByText("Focus")).toBeInTheDocument();

@@ -1,6 +1,7 @@
+import { configureServerErrorMessage } from "@/api/client";
 import { wakeUp } from "@/api/wake";
 import { authApi, initAuthInterceptor } from "@/features/auth/api/authApi";
-import { initI18n } from "@/i18n";
+import i18n, { initI18n } from "@/i18n";
 import { useAuthStore } from "@/stores/authStore";
 
 /**
@@ -32,6 +33,12 @@ export async function initApp(): Promise<void> {
   // and this returns before the first render, so nothing paints untranslated.
   const translations = initI18n();
   initAuthInterceptor();
+  configureServerErrorMessage(() =>
+    i18n.t(
+      "server.errorDescription",
+      "The server ran into a problem handling the request. Please try again later.",
+    ),
+  );
 
   // Not awaited. The point is to start the host booting now, while i18n and the
   // first paint happen, instead of at the moment something needs data.

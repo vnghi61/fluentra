@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  materialState,
   renditionsPending,
   resourceApi,
+  type MaterialKind,
+  type MaterialUploadState,
   type Resource,
 } from "../api/resourceApi";
 import { resourceKeys } from "../api/keys";
@@ -163,4 +166,28 @@ export function quotaUsage(resources: Resource[]): {
     bytes += resource.byte_size ?? 0;
   }
   return { count, bytes };
+}
+
+/**
+ * A course material's processing state, asked every three seconds until it
+ * settles. A reopened draft has nobody else asking, so the editor leans on this
+ * rather than on a state it saved before the renditions finished.
+ */
+export function useMaterialStatus(
+  resourceId: string | undefined,
+  materialKind: MaterialKind,
+): MaterialUploadState | undefined {
+  const query = useQuery({
+    queryKey: [...resourceKeys.detail(resourceId ?? ""), "material"],
+    queryFn: () => resourceApi.getResource(resourceId ?? ""),
+    enabled: Boolean(resourceId),
+    retry: 1,
+    refetchInterval: (q) =>
+      q.state.data && materialState(q.state.data, materialKind) !== "processing"
+        ? false
+        : 3000,
+  });
+  if (!resourceId) return undefined;
+  if (query.isError) return "failed";
+  return query.data ? materialState(query.data, materialKind) : undefined;
 }

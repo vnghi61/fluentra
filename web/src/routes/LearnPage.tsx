@@ -5,12 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { useAuthStore } from "@/stores/authStore";
 
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription, CardHeader } from "@/components/ui/card";
 import {
   CourseHeader,
   LearnError,
@@ -131,10 +126,10 @@ export function LearnPage(): React.JSX.Element {
                 aria-hidden="true"
               />
             </div>
-            <CardTitle className="text-xl font-bold">
+            <h1 className="text-2xl md:text-3xl font-bold leading-tight tracking-tight text-text">
               {t("learn.emptyTitle", "No Courses Available Yet")}
-            </CardTitle>
-            <CardDescription className="mt-2">
+            </h1>
+            <CardDescription className="mt-2 text-base leading-relaxed">
               {t(
                 "learn.emptyDesc",
                 "Curriculum content is currently being prepared and published. Please check back shortly.",
@@ -175,7 +170,7 @@ export function LearnPage(): React.JSX.Element {
   );
 
   return (
-    <div className="max-w-[1440px] mx-auto w-full min-w-0 space-y-8 animate-in fade-in duration-200">
+    <div className="mx-auto w-full min-w-0 space-y-4 md:space-y-5 animate-in fade-in duration-200">
       {!signedIn && <GuestNotice />}
 
       {/* Course Header & Info */}

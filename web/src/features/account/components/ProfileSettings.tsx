@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Camera,
   CheckCircle2,
   Clock,
   Globe,
@@ -14,11 +13,11 @@ import {
 } from "lucide-react";
 import { accountApi, type UserProfile } from "../api/accountApi";
 import { profileFormSchema, type ProfileFormValues } from "../model/schemas";
-import { AvatarUploadModal } from "./AvatarUploadModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { settingsAlert, settingsCard } from "./settingsStyles";
+import { SettingsCardHeader } from "./SettingsCard";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import {
   countryOptions,
@@ -67,7 +66,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     [profile.profile.timezone],
   );
 
-  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
     type: "success" | "error";
@@ -148,82 +146,24 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     }
   };
 
-  const handleAvatarUploaded = (newAvatarUrl: string | null | undefined) => {
-    const updated: UserProfile = {
-      ...profile,
-      profile: {
-        ...profile.profile,
-        avatar_url: newAvatarUrl ?? null,
-      },
-    };
-    setProfile(updated);
-    setStatusMessage({
-      type: "success",
-      text: t(
-        "account.avatarUpdatedSuccessfully",
-        "Avatar updated successfully.",
-      ),
-    });
-    onProfileUpdated?.(updated);
-  };
-
   return (
-    <section className={`${settingsCard} space-y-5`}>
-      {/* Avatar: part of the profile card, not a hero of its own */}
-      <div className="flex items-center gap-4 border-b border-border-subtle pb-5">
-        <div className="group relative shrink-0">
-          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-primary/30 bg-primary/10 text-2xl font-bold text-primary-accent sm:h-[88px] sm:w-[88px]">
-            {profile.profile.avatar_url ? (
-              <img
-                src={profile.profile.avatar_url}
-                alt={profile.profile.display_name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <span>
-                {profile.profile.display_name.charAt(0).toUpperCase()}
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsAvatarModalOpen(true)}
-            className="absolute inset-0 flex items-center justify-center rounded-full bg-overlay/60 text-white opacity-0 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary group-hover:opacity-100 motion-reduce:transition-none"
-            aria-label={t("account.changeAvatar", "Change avatar")}
-          >
-            <Camera className="h-6 w-6" aria-hidden />
-          </button>
-        </div>
-
-        <div className="min-w-0 space-y-1">
-          <h3 className="truncate text-base font-semibold text-text">
-            {profile.profile.display_name}
-          </h3>
-          <p className="text-xs text-text-muted">
-            {t(
-              "account.uploadCustomAvatar",
-              "Upload a custom avatar. PNG, JPG or WebP up to 5 MB.",
-            )}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setIsAvatarModalOpen(true)}
-            className="mt-1.5 min-h-[44px] whitespace-nowrap rounded-xl px-4 sm:min-h-10"
-          >
-            <Camera className="mr-2 h-4 w-4" aria-hidden />
-            {t("account.changePhoto", "Change Photo")}
-          </Button>
-        </div>
-      </div>
+    // The avatar lives in ProfileHeroCard; this card is the editable details.
+    <section className={`${settingsCard} @container flex flex-col gap-5`}>
+      <SettingsCardHeader
+        icon={User}
+        title={t("settings.personal.title", "Personal information")}
+        description={t(
+          "settings.personal.desc",
+          "Your display name is shown to other learners; your email and date of birth are not.",
+        )}
+      />
 
       {statusMessage && (
         <div role="status" className={settingsAlert(statusMessage.type)}>
           {statusMessage.type === "success" ? (
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden />
           ) : (
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <AlertCircle className="h-5 w-5 shrink-0" aria-hidden />
           )}
           <span>{statusMessage.text}</span>
         </div>
@@ -234,13 +174,13 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         onSubmit={(e) => {
           void handleSubmit(onSubmit)(e);
         }}
-        className="space-y-5"
+        className="flex flex-1 flex-col gap-5"
       >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
           {/* Email (Read-only) */}
-          <div className="space-y-2 sm:col-span-2">
+          <div className="space-y-2 @md:col-span-2">
             <Label htmlFor="email" className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-text-muted" />
+              <Mail className="h-4 w-4 text-text-muted" aria-hidden="true" />
               {t("account.emailAddress", "Email Address")}
             </Label>
             <div className="flex min-h-[44px] items-center justify-between gap-2 rounded-[10px] border border-border-subtle bg-surface-muted/40 px-3 py-2 text-sm text-text">
@@ -249,7 +189,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               </span>
               {profile.email_verified_at ? (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success-accent border border-success/20">
-                  <CheckCircle2 className="h-3 w-3" />
+                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                   {t("account.verified", "Verified")}
                 </span>
               ) : (
@@ -263,7 +203,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           {/* Display Name */}
           <div className="space-y-2">
             <Label htmlFor="display_name" className="flex items-center gap-2">
-              <User className="h-4 w-4 text-text-muted" />
+              <User className="h-4 w-4 text-text-muted" aria-hidden="true" />
               {t("account.displayName", "Display Name")}
             </Label>
             <Input
@@ -273,7 +213,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               aria-invalid={!!errors.display_name}
             />
             {errors.display_name && (
-              <p className="text-xs text-danger-accent">
+              <p className="text-sm text-danger-accent">
                 {errors.display_name.message}
               </p>
             )}
@@ -282,7 +222,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           {/* Country */}
           <div className="space-y-2">
             <Label htmlFor="country" className="flex items-center gap-2">
-              <Globe className="h-4 w-4 text-text-muted" />
+              <Globe className="h-4 w-4 text-text-muted" aria-hidden="true" />
               {t("account.country")}
             </Label>
             {/* A list, not a text box. The server stores an ISO alpha-2 code and
@@ -308,7 +248,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               invalid={!!errors.country}
             />
             {errors.country && (
-              <p className="text-xs text-danger-accent">
+              <p className="text-sm text-danger-accent">
                 {errors.country.message}
               </p>
             )}
@@ -317,7 +257,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           {/* Timezone */}
           <div className="space-y-2">
             <Label htmlFor="timezone" className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-text-muted" />
+              <Clock className="h-4 w-4 text-text-muted" aria-hidden="true" />
               {t("account.timezone")}
             </Label>
             <input type="hidden" {...register("timezone")} />
@@ -341,7 +281,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               invalid={!!errors.timezone}
             />
             {errors.timezone && (
-              <p className="text-xs text-danger-accent">
+              <p className="text-sm text-danger-accent">
                 {errors.timezone.message}
               </p>
             )}
@@ -359,14 +299,14 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               aria-invalid={!!errors.date_of_birth}
             />
             {errors.date_of_birth && (
-              <p className="text-xs text-danger-accent">
+              <p className="text-sm text-danger-accent">
                 {errors.date_of_birth.message}
               </p>
             )}
           </div>
         </div>
 
-        <div className="flex justify-end">
+        <div className="mt-auto flex justify-end border-t border-border-subtle pt-4">
           <Button
             type="submit"
             disabled={isSaving || !isDirty}
@@ -374,7 +314,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           >
             {isSaving ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2
+                  aria-hidden="true"
+                  className="mr-2 h-4 w-4 animate-spin"
+                />
                 {t("account.saving", "Saving...")}
               </>
             ) : (
@@ -383,12 +326,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           </Button>
         </div>
       </form>
-
-      <AvatarUploadModal
-        isOpen={isAvatarModalOpen}
-        onClose={() => setIsAvatarModalOpen(false)}
-        onSuccess={handleAvatarUploaded}
-      />
     </section>
   );
 };

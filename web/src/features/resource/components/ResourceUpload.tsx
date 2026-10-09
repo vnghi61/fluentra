@@ -97,7 +97,7 @@ export function ResourceUpload({
                   "Drag a file here, or choose one from your device.",
                 )}
           </p>
-          <p className="text-xs text-text-muted">
+          <p className="text-sm text-text-muted">
             {t(
               "resources.acceptHint",
               "PDF, Word, PowerPoint, images, audio or video · up to 50 MB",

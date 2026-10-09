@@ -9,7 +9,13 @@ import { Check, Copy } from "lucide-react";
  * ticket or a log search. So it is shown short, the full value is on the title
  * and the accessible name, and copying is one tap at the 44 px floor.
  */
-export function CopyableId({ id }: { id: string }): React.JSX.Element {
+export function CopyableId({
+  id,
+  compact = false,
+}: {
+  id: string;
+  compact?: boolean;
+}): React.JSX.Element {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -32,9 +38,11 @@ export function CopyableId({ id }: { id: string }): React.JSX.Element {
 
   return (
     <span className="inline-flex min-w-0 items-center gap-0.5">
-      <span title={id} className="truncate font-mono text-xs text-text-muted">
-        {id.slice(0, 8)}…
-      </span>
+      {!compact && (
+        <span title={id} className="truncate font-mono text-xs text-text-muted">
+          {id.slice(0, 8)}…
+        </span>
+      )}
       <button
         type="button"
         onClick={copy}
@@ -43,9 +51,9 @@ export function CopyableId({ id }: { id: string }): React.JSX.Element {
         className="-my-1.5 flex h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         {copied ? (
-          <Check className="h-3.5 w-3.5" aria-hidden="true" />
+          <Check className="h-4 w-4" aria-hidden="true" />
         ) : (
-          <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+          <Copy className="h-4 w-4" aria-hidden="true" />
         )}
       </button>
       <span aria-live="polite" className="sr-only">

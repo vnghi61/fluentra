@@ -56,17 +56,17 @@ export const GamificationSummarySection: React.FC<
         <div className="rounded-2xl border border-border-subtle bg-surface-card p-4 flex flex-col gap-3 min-w-0">
           <div className="flex items-center justify-between gap-1.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary-accent shrink-0">
-              <Target className="h-4.5 w-4.5" aria-hidden="true" />
+              <Target className="h-5 w-5" aria-hidden="true" />
             </div>
             <span className="text-xs font-semibold text-text-muted truncate">
               {goalPercent}%
             </span>
           </div>
           <div className="space-y-1 min-w-0">
-            <p className="text-xs text-text-muted truncate font-medium">
+            <p className="text-sm text-text-muted truncate font-medium">
               {t("gamification.dailyGoal", "Daily Goal")}
             </p>
-            <p className="text-sm md:text-base font-bold text-text truncate">
+            <p className="text-2xl font-bold leading-tight tabular-nums text-text truncate">
               {xpToday} / {dailyGoalXp} XP
             </p>
             <Progress
@@ -74,7 +74,7 @@ export const GamificationSummarySection: React.FC<
               className="h-1.5 bg-surface-muted"
               aria-label={t("gamification.dailyGoalTooltip", "Daily XP Goal")}
             />
-            <p className="text-xs text-text-muted">
+            <p className="text-sm text-text-muted">
               {t("gamification.goalRemaining", "{{remaining}} XP remaining", {
                 remaining: Math.max(0, dailyGoalXp - xpToday),
               })}
@@ -93,13 +93,13 @@ export const GamificationSummarySection: React.FC<
               }`}
             >
               <Flame
-                className={`h-4.5 w-4.5 ${hasStreak ? "fill-amber-500/20" : ""}`}
+                className={`h-5 w-5 ${hasStreak ? "fill-amber-500/20" : ""}`}
                 aria-hidden="true"
               />
             </div>
             {summary.streak?.longest !== undefined &&
               summary.streak.longest > 0 && (
-                <span className="text-xs text-text-muted truncate">
+                <span className="text-sm text-text-muted truncate">
                   {t("gamification.streakBest", {
                     longest: summary.streak.longest,
                     defaultValue: `Best: ${summary.streak.longest}`,
@@ -108,13 +108,13 @@ export const GamificationSummarySection: React.FC<
               )}
           </div>
           <div className="space-y-1 min-w-0">
-            <p className="text-xs text-text-muted truncate font-medium">
+            <p className="text-sm text-text-muted truncate font-medium">
               {t("gamification.streakTitle", "Day Streak")}
             </p>
-            <p className="text-sm md:text-base font-bold text-text truncate">
+            <p className="text-2xl font-bold leading-tight tabular-nums text-text truncate">
               {currentStreak} {t("gamification.days", "days")}
             </p>
-            <p className="text-xs text-text-muted">
+            <p className="text-sm text-text-muted">
               {hasStreak
                 ? t("gamification.hoursLeft", "{{hours}}h left today", {
                     hours: summary.streak.hours_remaining,
@@ -141,12 +141,12 @@ export const GamificationSummarySection: React.FC<
               </Button>
             )}
             {freeze.isError && (
-              <p role="alert" className="text-xs text-danger-accent">
+              <p role="alert" className="text-sm text-danger-accent">
                 {t("states.errorTitle", "Something went wrong")}
               </p>
             )}
             {freeze.isSuccess && (
-              <p role="status" className="text-xs text-success-accent">
+              <p role="status" className="text-sm text-success-accent">
                 {t("gamification.freezeSuccess")}
               </p>
             )}
@@ -157,20 +157,20 @@ export const GamificationSummarySection: React.FC<
         <div className="rounded-2xl border border-border-subtle bg-surface-card p-4 flex flex-col gap-3 min-w-0">
           <div className="flex items-center justify-between gap-1.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-xp/10 text-xp shrink-0">
-              <Zap className="h-4 w-4" aria-hidden="true" />
+              <Zap className="h-5 w-5" aria-hidden="true" />
             </div>
             <span className="text-xs font-semibold text-text-muted truncate">
               {levelPercent}%
             </span>
           </div>
           <div className="space-y-1 min-w-0">
-            <p className="text-xs text-text-muted truncate font-medium">
+            <p className="text-sm text-text-muted truncate font-medium">
               {t("gamification.levelLabel", {
                 level,
                 defaultValue: `Level ${level}`,
               })}
             </p>
-            <p className="text-sm md:text-base font-bold text-text truncate">
+            <p className="text-2xl font-bold leading-tight tabular-nums text-text truncate">
               {currentLevelXp} / {levelSpan} XP
             </p>
             <Progress
@@ -182,7 +182,7 @@ export const GamificationSummarySection: React.FC<
                 { level: level + 1 },
               )}
             />
-            <p className="text-xs text-text-muted">
+            <p className="text-sm text-text-muted">
               {t("gamification.levelRemaining", {
                 count: Math.max(0, nextLevelXp - totalXp),
                 level: level + 1,
@@ -197,7 +197,7 @@ export const GamificationSummarySection: React.FC<
 
       {/* Secondary standings remain accessible without a card around cards. */}
       <details className="group">
-        <summary className="min-h-[44px] cursor-pointer font-medium text-sm text-primary-accent flex items-center justify-between select-none list-none [&::-webkit-details-marker]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg px-1">
+        <summary className="min-h-[44px] cursor-pointer font-semibold text-sm text-primary-accent flex items-center justify-between gap-2 select-none list-none [&::-webkit-details-marker]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg px-1">
           <span>
             {t(
               "gamification.leaderboardDetails",

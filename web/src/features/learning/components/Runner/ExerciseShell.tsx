@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, X } from "lucide-react";
+import { ArrowRight, Check, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -82,18 +82,20 @@ export const ExerciseFeedback: React.FC<ExerciseFeedbackProps> = ({
       </div>
 
       {!isCorrect && expectedAnswer && (
-        <p className="mt-1 text-sm text-text font-medium">
+        <p className="mt-1 text-base leading-relaxed text-text font-medium">
           {t("runner.correctAnswerLabel", "Correct answer")}:{" "}
           <span className="font-bold underline">{expectedAnswer}</span>
         </p>
       )}
       {showFeedback && (
-        <p className="mt-1 text-sm text-text font-normal">{feedback}</p>
+        <p className="mt-1 text-base leading-relaxed text-text font-normal">
+          {feedback}
+        </p>
       )}
 
       {explanationText ? (
-        <div className="mt-3 pt-3 border-t border-border/40 space-y-1 text-sm">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+        <div className="mt-3 pt-3 border-t border-border/40 space-y-1 text-base">
+          <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
             {t("runner.explanationLabel", "Explanation")}
           </span>
           <p className="text-text/90 font-medium leading-relaxed">
@@ -131,17 +133,19 @@ export const ExerciseActions: React.FC<ExerciseActionsProps> = ({
           disabled={!canSubmit || isLoading}
           isLoading={isLoading}
           onClick={onSubmit}
-          className="w-full sm:w-auto min-w-[160px] font-bold"
+          className="w-full sm:w-auto min-w-[160px]"
         >
           {t("runner.checkBtn", "Check Answer")}
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Button>
       ) : (
         <Button
           size="lg"
           onClick={onContinue}
-          className="w-full sm:w-auto min-w-[160px] font-bold"
+          className="w-full sm:w-auto min-w-[160px]"
         >
           {t("runner.continueBtn", "Continue")}
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Button>
       )}
     </div>
@@ -152,7 +156,7 @@ export const ExerciseActions: React.FC<ExerciseActionsProps> = ({
 export const ExercisePrompt: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => (
-  <h2 className="text-xl md:text-2xl font-bold text-text leading-snug">
+  <h2 className="min-w-0 break-words text-lg md:text-xl font-semibold text-text leading-snug">
     {children}
   </h2>
 );

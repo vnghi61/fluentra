@@ -1,48 +1,45 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
-import { CheckCircle2 } from "lucide-react";
+import { BookMarked, CheckCircle2, GraduationCap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 
 /**
  * Nothing due is not a finished session.
  *
  * It is the common state during the alpha — most learners have no cards — and it
  * gets its own screen rather than a session summary reporting zero reviews, which
- * reads as a session that went wrong.
+ * reads as a session that went wrong. It says where new cards come from: a
+ * finished lesson, or words the learner adds themselves.
  */
 export const EmptyQueue: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="py-12 max-w-lg mx-auto">
-      <Card className="text-center p-6">
-        <CardHeader>
-          <div className="flex justify-center mb-2">
-            <CheckCircle2
-              className="h-10 w-10 text-success"
-              aria-hidden="true"
-            />
-          </div>
-          <CardTitle>{t("review.emptyTitle")}</CardTitle>
-          <CardDescription>{t("review.emptyDesc")}</CardDescription>
-        </CardHeader>
-        <div className="flex justify-center gap-3 pt-2">
-          <Link to="/learn">
-            <Button>{t("review.emptyLearnBtn")}</Button>
-          </Link>
-          <Link to="/">
-            <Button variant="outline">{t("review.backToDashboardBtn")}</Button>
-          </Link>
-        </div>
-      </Card>
-    </div>
+    <EmptyState
+      variant="card"
+      icon={CheckCircle2}
+      title={t("review.emptyTitle")}
+      description={t("review.emptyDesc")}
+      className="mx-auto w-full max-w-2xl py-12 sm:py-16"
+      action={
+        <>
+          <Button asChild>
+            <Link to="/learn">
+              <GraduationCap className="h-4 w-4" aria-hidden="true" />
+              {t("review.emptyLearnBtn")}
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/practice/my-words">
+              <BookMarked className="h-4 w-4" aria-hidden="true" />
+              {t("review.emptyAddWordsBtn")}
+            </Link>
+          </Button>
+        </>
+      }
+    />
   );
 };

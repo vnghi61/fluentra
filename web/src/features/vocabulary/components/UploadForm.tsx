@@ -3,7 +3,7 @@ import { Upload } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
 
 import { useSubmitUpload } from "../api/uploadApi";
 import type { WordSummary } from "../api/searchApi";
@@ -112,7 +112,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onSubmitted }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
         <label
           htmlFor="vocab-single-add"
@@ -121,6 +121,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onSubmitted }) => {
           {t("uploads.searchLabel", "Look a word up")}
         </label>
         <WordAutocomplete
+          id="vocab-single-add"
           onSelectWord={(word: WordSummary) => appendTerm(word.lemma)}
           onCustomSubmit={appendTerm}
           placeholder={t(
@@ -128,7 +129,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onSubmitted }) => {
             "Type a word — we suggest from the dictionary",
           )}
         />
-        <p className="text-xs text-text-muted">
+        <p className="text-sm text-text-muted">
           {t(
             "uploads.searchHint",
             "Pick a suggestion and it drops into the list below. A word we do not have yet can be added anyway.",
@@ -143,7 +144,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onSubmitted }) => {
         >
           {t("uploads.label", "Paste your words")}
         </label>
-        <textarea
+        <Textarea
           id="vocab-upload"
           value={text}
           onChange={(event) => setText(event.target.value)}
@@ -153,16 +154,11 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onSubmitted }) => {
             "uploads.placeholder",
             "leisure - thời gian rảnh\nhabit: thói quen\njourney",
           )}
-          className={cn(
-            "w-full rounded-xl border-2 border-border bg-surface-card p-4",
-            // 16px, not 14: iOS Safari zooms the viewport when a field below
-            // that is focused, and a learner pasting a list on a phone would
-            // land in a zoomed page they then have to pinch out of.
-            "font-mono text-base leading-relaxed text-text",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-          )}
+          // 16px at every width, not only on phones: a pasted list is read
+          // line by line, and the monospace keeps the separators aligned.
+          className="min-h-[200px] font-mono md:text-base"
         />
-        <p className="text-xs text-text-muted">
+        <p className="text-sm text-text-muted">
           {t(
             "uploads.hint",
             "One word per line. Add its meaning after a dash, colon or tab if you want to — a plain list of words is fine.",
@@ -173,7 +169,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onSubmitted }) => {
       {submit.isError && (
         <div
           role="alert"
-          className="rounded-xl border border-danger/30 bg-danger/10 p-3 text-sm text-danger-accent"
+          className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger-accent"
         >
           {submit.error instanceof Error
             ? submit.error.message
@@ -181,7 +177,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onSubmitted }) => {
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col-reverse gap-3 border-t border-border-subtle pt-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-text-muted" aria-live="polite">
           {wordCount > 0
             ? `${wordCount} ${t("uploads.wordsFound", "words found")}`
@@ -192,7 +188,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onSubmitted }) => {
           size="lg"
           disabled={!canSubmit}
           isLoading={submit.isPending}
-          className="gap-2 font-bold min-h-[48px]"
+          className="w-full font-semibold sm:w-auto"
         >
           <Upload className="h-4 w-4" aria-hidden="true" />
           {t("uploads.submit", "Add these words")}

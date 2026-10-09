@@ -70,7 +70,7 @@ test.describe("Journey 4: Google sign-in links a verified local account", () => 
     // now reachable by both methods, so Connected Accounts shows Google.
     await page.goto("/settings");
     await page.getByRole("button", { name: /Security & Devices/i }).click();
-    await expect(page.getByText(/Connected as/i)).toBeVisible({
+    await expect(page.getByText(/Connected since/i)).toBeVisible({
       timeout: 15_000,
     });
   });

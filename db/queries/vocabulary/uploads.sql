@@ -84,11 +84,25 @@ RETURNING *;
 
 -- name: RecordUploadItemAttempt :exec
 -- A transient failure — the dictionary was unreachable, the model timed out.
--- The item stays pending so the next run retries it; only the counter moves,
--- which is what eventually retires a word nothing can resolve.
+-- The item stays pending so the next run retries it, until the attempt that
+-- reaches the limit: that one retires it as failed with the learner-facing
+-- reason. Retiring by status, not only by the claim's `attempts < limit`
+-- filter, is what keeps a word from showing "checking" for ever.
 UPDATE skill.vocab_upload_items
-SET attempts = attempts + 1, reason = $2
-WHERE id = $1 AND status = 'pending';
+SET attempts = attempts + 1,
+    reason   = CASE WHEN attempts + 1 >= sqlc.arg(max_attempts)::int
+                    THEN sqlc.arg(exhausted_reason)::text ELSE sqlc.arg(reason)::text END,
+    status   = CASE WHEN attempts + 1 >= sqlc.arg(max_attempts)::int
+                    THEN 'failed' ELSE status END
+WHERE id = sqlc.arg(id) AND status = 'pending';
+
+-- name: FailExhaustedUploadItems :execrows
+-- Retires pending items that already used every attempt before
+-- RecordUploadItemAttempt retired them itself; they were left pending, which
+-- the learner saw as a word that never finished checking.
+UPDATE skill.vocab_upload_items
+SET status = 'failed', reason = sqlc.arg(reason)::text
+WHERE status = 'pending' AND attempts >= sqlc.arg(max_attempts)::int;
 
 -- name: SetUploadDeck :exec
 UPDATE skill.vocab_uploads SET deck_id = $2 WHERE id = $1;

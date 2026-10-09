@@ -3,7 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Layers, PlayCircle } from "lucide-react";
 
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { GuestNotice } from "@/features/learning";
 import {
   UploadForm,
@@ -32,95 +35,103 @@ export function MyWordsPage(): React.JSX.Element {
   const signedIn = useAuthStore((state) => state.status === "authenticated");
   const uploads = useUploads(signedIn);
   const decks = useDecks(signedIn);
+  const deckList = decks.data?.decks ?? [];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-text tracking-tight">
-            {t("uploads.title", "My words")}
-          </h1>
-          <p className="text-sm text-text-muted">
-            {t(
-              "uploads.tagline",
-              "Add vocabulary from your own course. We check each word, write example sentences for it, and schedule it for review.",
-            )}
-          </p>
-        </div>
-        {signedIn && (
-          <div>
-            <Link to="/practice/review">
-              <Button className="gap-2 bg-primary hover:bg-primary-hover text-surface font-semibold shadow-sm">
+    <div className="mx-auto w-full max-w-[1440px] space-y-6 animate-in fade-in duration-200 motion-reduce:animate-none md:space-y-8">
+      <PageHeader
+        back={{ to: "/practice", label: t("practice.title", "Practice") }}
+        title={t("uploads.title", "My words")}
+        description={t(
+          "uploads.tagline",
+          "Add vocabulary from your own course. We check each word, write example sentences for it, and schedule it for review.",
+        )}
+        actions={
+          signedIn ? (
+            <Button asChild>
+              <Link to="/practice/review">
                 <PlayCircle className="h-4 w-4" aria-hidden="true" />
                 {t("uploads.reviewAll", "Review all due words")}
-              </Button>
-            </Link>
-          </div>
-        )}
-      </header>
+              </Link>
+            </Button>
+          ) : undefined
+        }
+      />
 
       {!signedIn ? (
         <GuestNotice />
       ) : (
-        <>
-          <section className="rounded-2xl border border-border bg-surface-card p-5 shadow-sm">
+        // The box you paste into beside what happened to what you pasted, from
+        // xl up; stacked below that, the form first.
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+          <Card className="p-5 md:p-6">
             <UploadForm />
-          </section>
+          </Card>
 
-          {decks.data?.decks && decks.data.decks.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted flex items-center gap-2">
-                <Layers className="h-4 w-4" />
-                {t("uploads.decksTitle", "Decks")}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {decks.data.decks.map((deck) => (
-                  <div
-                    key={deck.id}
-                    className="flex flex-col justify-between rounded-xl border border-border bg-surface-card p-4 transition-all hover:border-border-focus hover:shadow-sm"
-                  >
-                    <div>
-                      <h3 className="font-semibold text-text text-sm capitalize">
-                        {deck.name}
-                      </h3>
-                      <div className="mt-2 text-xs font-medium text-text-secondary">
-                        {t("uploads.deckWordCount", "{{count}} words", {
-                          count: deck.item_count,
-                        })}
-                      </div>
-                    </div>
-                    <div className="mt-4 pt-2 border-t border-border/50">
-                      <Link
-                        to="/practice/review"
-                        search={{ deck_id: deck.id }}
-                        className="w-full"
-                      >
+          <div className="min-w-0 space-y-6">
+            {deckList.length > 0 && (
+              <section className="space-y-3" aria-labelledby="my-words-decks">
+                <h2
+                  id="my-words-decks"
+                  className="flex items-center gap-2 text-lg font-semibold leading-snug text-text md:text-xl"
+                >
+                  <Layers
+                    className="h-5 w-5 shrink-0 text-text-muted"
+                    aria-hidden="true"
+                  />
+                  {t("uploads.decksTitle", "Decks")}
+                </h2>
+                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2">
+                  {deckList.map((deck) => (
+                    <li key={deck.id}>
+                      <Card className="flex h-full flex-col gap-4 p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="min-w-0 break-words text-base font-semibold capitalize text-text">
+                            {deck.name}
+                          </h3>
+                          <Badge variant="secondary" className="shrink-0">
+                            {t("uploads.deckWordCount", "{{count}} words", {
+                              count: deck.item_count,
+                            })}
+                          </Badge>
+                        </div>
                         <Button
+                          asChild
                           variant="outline"
-                          size="sm"
-                          className="w-full gap-1.5 text-xs font-medium"
+                          className="mt-auto w-full"
                         >
-                          <PlayCircle className="h-3.5 w-3.5" />
-                          {t("uploads.reviewDeck", "Review deck")}
+                          <Link
+                            to="/practice/review"
+                            search={{ deck_id: deck.id }}
+                          >
+                            <PlayCircle
+                              className="h-4 w-4"
+                              aria-hidden="true"
+                            />
+                            {t("uploads.reviewDeck", "Review deck")}
+                          </Link>
                         </Button>
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
-              {t("uploads.history", "What you have added")}
-            </h2>
-            <UploadList
-              uploads={uploads.data?.items ?? []}
-              isLoading={uploads.isLoading}
-            />
-          </section>
-        </>
+            <section className="space-y-3" aria-labelledby="my-words-history">
+              <h2
+                id="my-words-history"
+                className="text-lg font-semibold leading-snug text-text md:text-xl"
+              >
+                {t("uploads.history", "What you have added")}
+              </h2>
+              <UploadList
+                uploads={uploads.data?.items ?? []}
+                isLoading={uploads.isLoading}
+              />
+            </section>
+          </div>
+        </div>
       )}
     </div>
   );

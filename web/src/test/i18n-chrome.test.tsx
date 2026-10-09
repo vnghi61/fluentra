@@ -122,11 +122,16 @@ describe("Vietnamese Chrome (TASK-I18N-A)", () => {
     expect(screen.getByText("Sáng")).toBeInTheDocument();
     expect(screen.queryByText("System")).not.toBeInTheDocument();
 
+    // AI grading is always on: the switch and its description are gone.
     expect(
-      screen.getByText(/Đang bật: AI chấm câu trả lời mở/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/Opt out of AI-assisted grading/i),
+      screen.queryByText(/Đang bật: AI chấm câu trả lời mở/i),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Chấm điểm & xử lý bằng AI/i),
+    ).not.toBeInTheDocument();
+    // Split into two cards: learning preferences and appearance.
+    expect(screen.getByText("Sở thích học tập")).toBeInTheDocument();
+    expect(screen.getByText("Giao diện")).toBeInTheDocument();
+    expect(screen.getByText("Lưu giao diện")).toBeInTheDocument();
   });
 });

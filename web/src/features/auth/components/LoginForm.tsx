@@ -67,10 +67,10 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
   return (
     <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-border-subtle bg-surface-card/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-text">
+        <h1 className="text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
           {t("auth.signInTitle", "Sign in to Fluentra")}
         </h1>
-        <p className="text-sm text-text-muted">
+        <p className="text-base leading-relaxed text-text-muted">
           {t(
             "auth.signInSubtitle",
             "Continue your personalized English learning path",
@@ -92,7 +92,7 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-border-subtle" />
         </div>
-        <span className="relative bg-surface-card px-3 text-xs uppercase tracking-wider text-text-muted">
+        <span className="relative bg-surface-card px-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
           {t("auth.orContinueEmail", "Or continue with email")}
         </span>
       </div>
@@ -146,7 +146,7 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
                     // A standalone control, not a link inside a sentence, so
                     // R1's 44 px minimum applies to it. The negative margin
                     // keeps the row's visual rhythm while the hit area grows.
-                    className="inline-flex min-h-11 items-center -my-3 text-xs font-medium text-primary-accent hover:text-primary-accent hover:underline"
+                    className="inline-flex min-h-11 items-center -my-3 text-sm font-semibold text-primary-accent hover:text-primary-accent hover:underline"
                   >
                     {t("auth.forgotPassword", "Forgot password?")}
                   </Link>

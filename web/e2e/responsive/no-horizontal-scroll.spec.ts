@@ -276,12 +276,9 @@ test.describe("R6/R1 at 320 px", () => {
     await stubAccountApi(page);
 
     await page.goto("/settings");
-    for (const tab of [
-      /Profile & Avatar/i,
-      /Learning Preferences/i,
-      /Security & Devices/i,
-      /Data & Privacy/i,
-    ]) {
+    // Below `sm` the section tabs show short labels ("Security"), above it
+    // the full ones ("Security & Devices"); these match either.
+    for (const tab of [/^Profile/i, /^Learning/i, /^Security/i, /Privacy/i]) {
       await page.getByRole("button", { name: tab }).click();
       await check(page, `settings — ${tab.source}`);
     }

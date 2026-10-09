@@ -104,19 +104,20 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
       >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-overlay/80 backdrop-blur-sm" />
-          <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl md:inset-auto md:left-1/2 md:top-1/2 md:w-[min(100%-2rem,42rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl">
-            <div className="flex items-center justify-between border-b border-border-subtle pb-4">
-              <Dialog.Title
-                className="text-lg font-semibold text-text flex items-center gap-2"
-              >
-                <User className="h-5 w-5 text-primary-accent" />
+          <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl md:inset-auto md:left-1/2 md:top-1/2 md:w-[min(100%-2rem,42rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl space-y-4">
+            <div className="flex items-center justify-between gap-2 border-b border-border-subtle pb-4">
+              <Dialog.Title className="flex min-w-0 items-center gap-2 break-words text-lg font-semibold leading-tight text-text">
+                <User
+                  aria-hidden="true"
+                  className="h-5 w-5 shrink-0 text-primary-accent"
+                />
                 {t("admin.learnerAccountDetails")}
               </Dialog.Title>
               <button
                 type="button"
                 onClick={onClose}
                 aria-label={t("common.close", "Close")}
-                className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
+                className="flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
               >
                 <X aria-hidden="true" className="h-5 w-5" />
               </button>
@@ -124,24 +125,33 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
 
             {isLoading ? (
               <div className="flex min-h-[250px] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary-accent" />
+                <Loader2
+                  aria-hidden="true"
+                  className="h-8 w-8 animate-spin text-primary-accent motion-reduce:animate-none"
+                />
               </div>
             ) : error ? (
-              <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-4 text-xs text-danger-accent">
-                <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
+              <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger-accent">
+                <AlertCircle
+                  aria-hidden="true"
+                  className="h-5 w-5 shrink-0 text-danger-accent"
+                />
                 <span>{error}</span>
               </div>
             ) : detail ? (
               <div className="space-y-6">
                 {/* Audited notice */}
-                <div className="rounded-lg border border-primary/30 bg-primary/10 px-3.5 py-2.5 text-xs text-primary-accent flex items-center gap-2">
-                  <Shield className="h-4 w-4 shrink-0 text-primary-accent" />
+                <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3.5 py-2.5 text-sm leading-relaxed text-primary-accent">
+                  <Shield
+                    aria-hidden="true"
+                    className="mt-0.5 h-5 w-5 shrink-0 text-primary-accent"
+                  />
                   <span>
                     {t(
                       "admin.userViewedAuditNotice",
                       "This account profile read was logged to the security audit trail",
                     )}{" "}
-                    (<code>admin.user_viewed</code>).
+                    (<code className="break-all">admin.user_viewed</code>).
                   </span>
                 </div>
 
@@ -158,9 +168,9 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                       <span>{detail.display_name.charAt(0).toUpperCase()}</span>
                     )}
                   </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2.5">
-                      <h3 className="text-base font-semibold text-text">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="min-w-0 break-words text-base font-semibold leading-snug text-text">
                         {detail.display_name}
                       </h3>
                       <span
@@ -175,40 +185,48 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                         {detail.status}
                       </span>
                     </div>
-                    <p className="text-xs text-text-muted flex items-center gap-1.5">
-                      <Mail className="h-3.5 w-3.5" />
-                      {detail.email}
+                    <p className="flex min-w-0 items-center gap-1.5 text-sm text-text-muted">
+                      <Mail aria-hidden="true" className="h-4 w-4 shrink-0" />
+                      <span className="min-w-0 break-all">{detail.email}</span>
                     </p>
                   </div>
                 </div>
 
                 {/* Meta Grid */}
-                <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 sm:gap-4">
                   <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                    <span className="text-text-muted">{t("admin.userId")}</span>
+                    <span className="block text-text-muted">
+                      {t("admin.userId")}
+                    </span>
                     <p className="font-mono text-text truncate">{detail.id}</p>
                   </div>
                   <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                    <span className="text-text-muted">
+                    <span className="block text-text-muted">
                       {t("admin.languageLocale")}
                     </span>
                     <p className="text-text flex items-center gap-1">
-                      <Globe className="h-3.5 w-3.5 text-text-muted" />
+                      <Globe
+                        aria-hidden="true"
+                        className="h-4 w-4 shrink-0 text-text-muted"
+                      />
                       {detail.locale}
                     </p>
                   </div>
                   <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                    <span className="text-text-muted">
+                    <span className="block text-text-muted">
                       {t("admin.timezone")}
                     </span>
-                    <p className="text-text">{detail.timezone}</p>
+                    <p className="break-words text-text">{detail.timezone}</p>
                   </div>
                   <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                    <span className="text-text-muted">
+                    <span className="block text-text-muted">
                       {t("admin.registered")}
                     </span>
                     <p className="text-text flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5 text-text-muted" />
+                      <Clock
+                        aria-hidden="true"
+                        className="h-4 w-4 shrink-0 text-text-muted"
+                      />
                       {new Date(detail.created_at).toLocaleString()}
                     </p>
                   </div>
@@ -228,7 +246,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                         size="sm"
                         onClick={() => setActionType("suspend")}
                       >
-                        <Ban className="mr-1.5 h-3.5 w-3.5" />
+                        <Ban aria-hidden="true" className="h-4 w-4" />
                         {t("admin.suspendUser")}
                       </Button>
                     ) : detail.status === "suspended" &&
@@ -240,7 +258,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                         onClick={() => setActionType("reinstate")}
                         className="border-success/40 text-success-accent hover:bg-success/10"
                       >
-                        <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                        <RotateCcw aria-hidden="true" className="h-4 w-4" />
                         {t("admin.reinstateUser")}
                       </Button>
                     ) : null}
@@ -252,7 +270,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                         size="sm"
                         onClick={() => setActionType("revoke_sessions")}
                       >
-                        <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                        <LogOut aria-hidden="true" className="h-4 w-4" />
                         {t("admin.revokeActiveSessions")}
                       </Button>
                     )}

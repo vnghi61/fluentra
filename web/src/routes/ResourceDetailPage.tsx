@@ -80,10 +80,10 @@ export function ResourceDetailPage(): React.JSX.Element {
       {data && (
         <>
           <header className="space-y-1">
-            <h1 className="break-words text-2xl font-extrabold tracking-tight text-text md:text-3xl">
+            <h1 className="break-words text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
               {data.title || data.original_filename}
             </h1>
-            <p className="break-words text-xs text-text-muted">
+            <p className="break-all text-sm text-text-muted">
               {data.original_filename}
             </p>
           </header>

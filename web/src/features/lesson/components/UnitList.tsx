@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { CourseUnit } from "../api/lessonApi";
 import { LessonRow } from "./LessonRow";
+import { NativeSelect } from "@/components/ui/native-select";
 
 export interface UnitListProps {
   units: CourseUnit[];
@@ -191,10 +192,10 @@ export const UnitList: React.FC<UnitListProps> = ({
               aria-hidden="true"
             />
           </div>
-          <CardTitle className="text-lg font-bold">
+          <CardTitle className="leading-tight">
             {t("learn.noLessonsTitle", "No lessons")}
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-base leading-relaxed">
             {t(
               "learn.noLessonsDesc",
               "Lessons for this course are currently being authored. Please check back soon.",
@@ -206,15 +207,12 @@ export const UnitList: React.FC<UnitListProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Search & Status Filter Row */}
-      <div className="flex flex-col md:flex-row gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
         {/* Search Input */}
-        <div className="flex-1 space-y-1">
-          <label
-            htmlFor="lesson-search"
-            className="block text-sm font-medium text-text"
-          >
+        <div className="min-w-0 flex-1">
+          <label htmlFor="lesson-search" className="sr-only">
             {t("learn.searchLabel", "Search lessons")}
           </label>
           <div className="relative">
@@ -235,20 +233,17 @@ export const UnitList: React.FC<UnitListProps> = ({
                 "learn.searchPlaceholder",
                 "Search by lesson title…",
               )}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border-subtle bg-surface-card text-base text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary min-h-[44px]"
+              className="w-full min-h-[44px] rounded-xl border border-border-subtle bg-surface-card py-2.5 pl-10 pr-4 text-base text-text shadow-xs transition-colors placeholder:text-text-muted hover:border-border focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 motion-reduce:transition-none"
             />
           </div>
         </div>
 
         {/* Status Select Filter */}
-        <div className="space-y-1 md:w-[220px]">
-          <label
-            htmlFor="status-filter"
-            className="block text-sm font-medium text-text"
-          >
+        <div className="relative sm:w-[220px]">
+          <label htmlFor="status-filter" className="sr-only">
             {t("learn.filterLabel", "Filter by status")}
           </label>
-          <select
+          <NativeSelect
             id="status-filter"
             aria-label={t("learn.filterLabel", "Filter by status")}
             value={statusFilter}
@@ -256,7 +251,7 @@ export const UnitList: React.FC<UnitListProps> = ({
               setStatusFilter(e.target.value as StatusFilter);
               setSearchToggledIds(new Set());
             }}
-            className="w-full h-11 min-h-[44px] px-3 py-2.5 rounded-xl border border-border-subtle bg-surface-card text-base text-text focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+            className="rounded-xl font-medium"
           >
             <option value="all">{t("learn.filterAll", "All lessons")}</option>
             {hasNext && (
@@ -279,7 +274,7 @@ export const UnitList: React.FC<UnitListProps> = ({
                 {t("learn.filterLocked", "Locked lessons")}
               </option>
             )}
-          </select>
+          </NativeSelect>
         </div>
       </div>
 
@@ -287,7 +282,7 @@ export const UnitList: React.FC<UnitListProps> = ({
       <div
         role="status"
         aria-live="polite"
-        className="text-xs text-text-muted min-h-[1.25rem]"
+        className="text-sm text-text-muted empty:hidden"
       >
         {isSearching && totalMatches > 0
           ? totalMatches === 1
@@ -303,7 +298,7 @@ export const UnitList: React.FC<UnitListProps> = ({
       totalMatches === 0 &&
       (queryMatchesCount > 0 || !isSearching) ? (
         <div className="text-center py-12 rounded-xl border border-dashed border-border-subtle bg-surface-card/40 space-y-3">
-          <p className="text-sm text-text-muted">
+          <p className="text-base leading-relaxed text-text-muted">
             {t("learn.filterEmpty", "No lessons match the selected filter.")}
           </p>
           <Button
@@ -314,7 +309,6 @@ export const UnitList: React.FC<UnitListProps> = ({
               setStatusFilter("all");
               setSearchToggledIds(new Set());
             }}
-            className="min-h-[44px]"
           >
             {t("learn.showAllLessons", "Show all lessons")}
           </Button>
@@ -328,7 +322,7 @@ export const UnitList: React.FC<UnitListProps> = ({
           <p className="text-base font-semibold text-text">
             {t("learn.noSearchResults", "No lessons found")}
           </p>
-          <p className="text-sm text-text-muted">
+          <p className="break-words text-base leading-relaxed text-text-muted">
             {t("learn.noSearchResultsQuery", {
               query: searchQuery,
               defaultValue: `No lessons match "${searchQuery}".`,
@@ -343,7 +337,6 @@ export const UnitList: React.FC<UnitListProps> = ({
               setSearchToggledIds(new Set());
               searchInputRef.current?.focus();
             }}
-            className="min-h-[44px]"
           >
             {t("learn.clearSearch", "Clear search")}
           </Button>
@@ -381,16 +374,16 @@ export const UnitList: React.FC<UnitListProps> = ({
                     className="w-full min-h-[44px] px-4 py-3 md:px-5 flex items-center justify-between gap-3 text-left transition-colors hover:bg-surface-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
                   >
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 flex-1">
-                      <span className="text-xs font-bold text-primary-accent uppercase tracking-wider">
+                      <span className="text-xs font-semibold text-primary-accent uppercase tracking-wider">
                         {t("learn.unitPrefix", "Unit")} {unit.position} ·
                       </span>{" "}
-                      <span className="text-base md:text-lg font-bold text-text truncate">
+                      <span className="min-w-0 line-clamp-2 break-words text-base md:text-lg font-semibold leading-snug text-text">
                         {unit.title}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-xs font-medium text-text-muted">
+                      <span className="text-sm font-medium tabular-nums text-text-muted">
                         {t("learn.unitProgress", {
                           completed: completedLessons,
                           total: totalLessons,
@@ -399,7 +392,7 @@ export const UnitList: React.FC<UnitListProps> = ({
                       </span>
                       <ChevronDown
                         className={cn(
-                          "h-4 w-4 text-text-muted transition-transform duration-200",
+                          "h-5 w-5 text-text-muted transition-transform duration-200",
                           isExpanded && "rotate-180",
                         )}
                         aria-hidden="true"
@@ -416,7 +409,7 @@ export const UnitList: React.FC<UnitListProps> = ({
                     className="border-t border-border-subtle"
                   >
                     {unit.description && (
-                      <p className="text-sm text-text-muted px-4 py-2.5 md:px-5 bg-surface-muted/20 border-b border-border-subtle">
+                      <p className="text-sm leading-relaxed text-text-muted px-4 py-2.5 md:px-5 bg-surface-muted/20 border-b border-border-subtle">
                         {unit.description}
                       </p>
                     )}
@@ -439,7 +432,7 @@ export const UnitList: React.FC<UnitListProps> = ({
                           );
                         })
                       ) : (
-                        <p className="text-xs text-text-muted italic px-4 py-3 md:px-5">
+                        <p className="text-sm text-text-muted italic px-4 py-3 md:px-5">
                           {isSearching
                             ? t(
                                 "learn.noMatchesInUnit",

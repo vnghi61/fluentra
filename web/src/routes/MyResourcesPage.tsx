@@ -36,10 +36,10 @@ export function MyResourcesPage(): React.JSX.Element {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 animate-in fade-in duration-200">
       <header className="space-y-1">
-        <h1 className="text-2xl font-extrabold tracking-tight text-text md:text-3xl">
+        <h1 className="text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
           {t("resources.title", "My resources")}
         </h1>
-        <p className="text-sm text-text-muted">
+        <p className="max-w-prose text-base leading-relaxed text-text-muted">
           {t(
             "resources.tagline",
             "Upload a file from your own course. We read it, estimate its level and can build practice from it — and it stays private to you.",

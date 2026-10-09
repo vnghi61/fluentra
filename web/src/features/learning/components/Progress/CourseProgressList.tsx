@@ -3,10 +3,11 @@ import { Link } from "@tanstack/react-router";
 import { BookOpen, CheckCircle2, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { CourseProgress } from "../../api/learningApi";
 import { ProgressBar } from "./ProgressBar";
+import { NativeSelect } from "@/components/ui/native-select";
 
 export interface CourseMeta {
   title: string;
@@ -43,18 +44,18 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
     <Card className="border-border-subtle bg-surface-card">
       <CardHeader>
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <CardTitle className="text-xl font-bold">
+          <h2 className="text-lg font-semibold leading-snug text-text md:text-xl">
             {t("progress.courses.title", "Your courses")}
-          </CardTitle>
+          </h2>
           <div className="flex items-center gap-2">
             <label htmlFor="course-status-filter" className="sr-only">
               {t("progress.courses.filterLabel", "Filter courses")}
             </label>
-            <select
+            <NativeSelect
               id="course-status-filter"
               value={filter}
               onChange={(e) => setFilter(e.target.value as FilterStatus)}
-              className="min-h-[44px] text-base rounded-lg border border-border bg-surface-card px-3 text-text focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+              wrapperClassName="w-auto"
             >
               <option value="all">
                 {t("progress.courses.filterAll", "All")}
@@ -65,7 +66,7 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
               <option value="completed">
                 {t("progress.courses.filterCompleted", "Completed")}
               </option>
-            </select>
+            </NativeSelect>
           </div>
         </div>
       </CardHeader>
@@ -76,7 +77,7 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
             <div className="h-12 w-12 rounded-xl bg-surface-muted flex items-center justify-center mx-auto text-text-muted">
               <BookOpen className="h-6 w-6" aria-hidden="true" />
             </div>
-            <p className="text-sm">
+            <p className="text-base leading-relaxed">
               {t(
                 "progress.courses.empty",
                 "You haven't started any courses yet.",
@@ -85,7 +86,7 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
             <div>
               <Link
                 to="/learn"
-                className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-lg border border-border bg-transparent text-sm font-medium text-text hover:bg-surface-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-lg border border-border bg-transparent text-sm font-semibold text-text hover:bg-surface-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 {t("progress.courses.explore", "Explore courses")}
               </Link>
@@ -93,7 +94,7 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
           </div>
         ) : filteredCourses.length === 0 ? (
           <div className="text-center py-8 text-text-muted">
-            <p className="text-sm">
+            <p className="text-base leading-relaxed">
               {t(
                 "progress.courses.filterEmpty",
                 "No courses match this filter.",
@@ -101,7 +102,10 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
             </p>
           </div>
         ) : (
-          <ul className="space-y-3">
+          <ul
+            className="space-y-3"
+            aria-label={t("progress.courses.title", "Your courses")}
+          >
             {filteredCourses.map((course, idx) => {
               const isDone = isCourseDone(course);
               const meta = courseMeta?.get(course.course_id);
@@ -143,12 +147,12 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
                   {/* Title + Meta + Bar Wrapper (contents on mobile, flex-1 min-w-0 on desktop) */}
                   <div className="contents md:flex md:flex-col md:flex-1 md:min-w-0 md:space-y-1">
                     {/* Title */}
-                    <span className="col-start-2 row-start-1 self-center font-semibold text-text text-base line-clamp-2 min-w-0">
+                    <span className="col-start-2 row-start-1 self-center md:self-start font-semibold text-text text-base line-clamp-2 min-w-0">
                       {courseTitleText}
                     </span>
 
                     {/* Meta line */}
-                    <div className="col-span-3 md:col-auto text-xs text-text-muted tabular-nums whitespace-nowrap">
+                    <div className="col-span-3 md:col-auto min-w-0 truncate text-sm text-text-muted tabular-nums">
                       {metaLineText}
                     </div>
 
@@ -167,12 +171,12 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
                   {/* Action */}
                   <div className="col-span-3 md:col-auto w-full md:w-auto shrink-0">
                     {isDone ? (
-                      <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap min-w-[8.5rem] w-full md:w-auto min-h-[44px] rounded-lg bg-success/10 text-success-accent text-sm font-medium px-4">
+                      <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap min-w-[8.5rem] w-full md:w-auto min-h-[44px] rounded-lg bg-success/10 text-success-accent text-sm font-semibold px-4">
                         <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                         {t("progress.courses.completed", "Completed")}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center justify-center whitespace-nowrap min-w-[8.5rem] w-full md:w-auto min-h-[44px] rounded-lg bg-primary text-primary-fg text-sm font-medium px-4">
+                      <span className="inline-flex items-center justify-center whitespace-nowrap min-w-[8.5rem] w-full md:w-auto min-h-[44px] rounded-lg bg-primary text-primary-fg text-sm font-semibold px-4">
                         {t("progress.courses.continue", "Continue learning")}
                       </span>
                     )}

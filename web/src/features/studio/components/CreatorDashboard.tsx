@@ -22,6 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -81,7 +82,7 @@ function FinanceStatCard({
         >
           <Icon className="h-4 w-4" />
         </span>
-        <p className="min-w-0 truncate text-xs font-medium text-text-muted">
+        <p className="min-w-0 truncate text-sm font-medium text-text-muted">
           {label}
         </p>
       </div>
@@ -92,7 +93,7 @@ function FinanceStatCard({
         {formatVnd(value)}
       </p>
       {helper && (
-        <p className="line-clamp-2 text-[11px] leading-snug text-text-muted sm:text-xs">
+        <p className="line-clamp-2 text-sm leading-snug text-text-muted">
           {helper}
         </p>
       )}
@@ -122,7 +123,7 @@ function SectionError({
         variant="outline"
         size="sm"
         onClick={onRetry}
-        className="min-h-[44px] self-start whitespace-nowrap rounded-xl sm:min-h-10 sm:self-auto"
+        className="self-start whitespace-nowrap rounded-xl sm:self-auto"
       >
         {t("action.retry", "Retry")}
       </Button>
@@ -142,7 +143,7 @@ function SectionHeader({
   return (
     <div className="flex items-center gap-2">
       <Icon className="h-5 w-5 shrink-0 text-primary-accent" aria-hidden />
-      <h2 className="min-w-0 text-base font-bold text-text sm:text-lg">
+      <h2 className="min-w-0 text-lg font-semibold leading-snug text-text md:text-xl">
         {title}
       </h2>
       {count}
@@ -151,7 +152,7 @@ function SectionHeader({
 }
 
 export function CreatorDashboard(): React.JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
 
   const { data: profile } = useCreatorProfile();
@@ -248,57 +249,56 @@ export function CreatorDashboard(): React.JSX.Element {
     : t("studio.payout.addAccount", "Setup Bank Account");
 
   return (
-    <div className="mx-auto w-full max-w-[1240px] space-y-5 md:space-y-6">
-      {/* Header */}
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary-accent">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden />
+    <div className="mx-auto w-full space-y-5 md:space-y-6">
+      <PageHeader
+        eyebrow={
+          <>
+            <Badge variant="primary" icon={<Sparkles className="h-4 w-4" />}>
               {t("studio.badge", "Creator Studio")}
-            </span>
+            </Badge>
             {profile?.payout_eligible && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-success/20 bg-success/10 px-2.5 py-0.5 text-xs font-semibold text-success">
-                <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
+              <Badge
+                variant="success"
+                icon={<BadgeCheck className="h-4 w-4" />}
+              >
                 {t("studio.trustedCreator", "Trusted Creator")}
-              </span>
+              </Badge>
             )}
+          </>
+        }
+        title={t("studio.dashboardTitle", "Author & Creator Studio")}
+        description={
+          profile?.headline ||
+          t(
+            "studio.dashboardSubtitle",
+            "Design engaging syllabuses, publish community courses, and track earnings.",
+          )
+        }
+        actions={
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setPayoutModalOpen(true)}
+              className="gap-2 whitespace-nowrap rounded-xl px-3 md:px-4"
+              aria-label={bankLabel}
+            >
+              <Building2 className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="sm:hidden">
+                {t("studio.payout.accountShort", "Bank")}
+              </span>
+              <span className="hidden sm:inline">{bankLabel}</span>
+            </Button>
+            <Button
+              variant="primary"
+              onClick={goToNewCourse}
+              className="gap-2 whitespace-nowrap rounded-xl px-3 md:px-4"
+            >
+              <Plus className="h-4 w-4 shrink-0" aria-hidden />
+              {t("studio.newCourse", "New Course")}
+            </Button>
           </div>
-          <h1 className="text-[26px] font-bold tracking-tight text-text md:text-3xl lg:text-[34px]">
-            {t("studio.dashboardTitle", "Author & Creator Studio")}
-          </h1>
-          <p className="max-w-[680px] text-sm text-text-muted">
-            {profile?.headline ||
-              t(
-                "studio.dashboardSubtitle",
-                "Design engaging syllabuses, publish community courses, and track earnings.",
-              )}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3 lg:shrink-0">
-          <Button
-            variant="outline"
-            onClick={() => setPayoutModalOpen(true)}
-            className="h-11 gap-2 whitespace-nowrap rounded-xl px-3 md:h-10 md:px-4"
-            aria-label={bankLabel}
-          >
-            <Building2 className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="sm:hidden">
-              {t("studio.payout.accountShort", "Bank")}
-            </span>
-            <span className="hidden sm:inline">{bankLabel}</span>
-          </Button>
-          <Button
-            variant="primary"
-            onClick={goToNewCourse}
-            className="h-11 gap-2 whitespace-nowrap rounded-xl px-3 md:h-10 md:px-4"
-          >
-            <Plus className="h-4 w-4 shrink-0" aria-hidden />
-            {t("studio.newCourse", "New Course")}
-          </Button>
-        </div>
-      </header>
+        }
+      />
 
       {/* Finance KPIs: 2x2 below xl, one row of four above */}
       {earningsError ? (
@@ -333,7 +333,7 @@ export function CreatorDashboard(): React.JSX.Element {
                 size="sm"
                 disabled={!canRequestPayout}
                 onClick={() => setRequestPayoutOpen(true)}
-                className="-ml-2 min-h-[44px] gap-1.5 whitespace-nowrap px-2 font-semibold text-primary-accent sm:min-h-10"
+                className="-ml-2 gap-1.5 whitespace-nowrap px-2 text-primary-accent"
               >
                 {t("studio.earnings.requestPayout", "Request Payout")}
                 <ArrowRight className="h-4 w-4" aria-hidden />
@@ -407,7 +407,7 @@ export function CreatorDashboard(): React.JSX.Element {
             variant="outline"
             size="sm"
             onClick={() => setPayoutModalOpen(true)}
-            className="min-h-[44px] self-start whitespace-nowrap rounded-xl sm:min-h-10 sm:self-auto"
+            className="self-start whitespace-nowrap rounded-xl sm:self-auto"
           >
             {t("studio.payout.configureNow", "Configure Bank Account")}
           </Button>
@@ -423,7 +423,7 @@ export function CreatorDashboard(): React.JSX.Element {
             !draftsLoading &&
             !draftsError && (
               <span
-                className="ml-1 inline-flex min-w-[1.5rem] shrink-0 items-center justify-center rounded-full bg-surface-base px-2 py-0.5 text-xs font-semibold tabular-nums text-text-muted"
+                className="ml-1 inline-flex min-w-[1.5rem] shrink-0 items-center justify-center rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-text-muted"
                 aria-label={t("studio.courses.count", {
                   count: drafts.length,
                   defaultValue: `${drafts.length} courses`,
@@ -467,10 +467,10 @@ export function CreatorDashboard(): React.JSX.Element {
               <Layers className="h-8 w-8" />
             </span>
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-text">
+              <h3 className="text-base font-semibold leading-snug text-text">
                 {t("studio.courses.emptyTitle", "No courses authored yet")}
               </h3>
-              <p className="mx-auto max-w-sm text-sm text-text-muted">
+              <p className="mx-auto max-w-sm text-base leading-relaxed text-text-muted md:text-sm">
                 {t(
                   "studio.courses.emptyDesc",
                   "Create your first course with units, lessons, and interactive activities to share your expertise.",
@@ -480,7 +480,7 @@ export function CreatorDashboard(): React.JSX.Element {
             <Button
               variant="primary"
               onClick={goToNewCourse}
-              className="h-11 gap-2 whitespace-nowrap rounded-xl md:h-10"
+              className="gap-2 whitespace-nowrap rounded-xl"
             >
               <Plus className="h-4 w-4" aria-hidden />
               {t("studio.courses.createFirst", "Create First Course")}
@@ -533,17 +533,17 @@ export function CreatorDashboard(): React.JSX.Element {
                     </div>
 
                     <div>
-                      <h3 className="line-clamp-1 text-base font-bold text-text">
+                      <h3 className="line-clamp-1 break-words text-base font-semibold leading-snug text-text">
                         {draft.title}
                       </h3>
                       {draft.description && (
-                        <p className="mt-1 line-clamp-2 text-xs text-text-muted">
+                        <p className="mt-1 line-clamp-2 text-sm text-text-muted">
                           {draft.description}
                         </p>
                       )}
                     </div>
 
-                    <p className="text-xs text-text-muted">
+                    <p className="text-sm text-text-muted">
                       {t("studio.courses.unitsCount", {
                         count: unitsCount,
                         defaultValue: `${unitsCount} units`,
@@ -556,16 +556,16 @@ export function CreatorDashboard(): React.JSX.Element {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 border-t border-border-subtle pt-3">
+                  <div className="flex flex-wrap items-center gap-2 border-t border-border-subtle pt-3">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() =>
                         void navigate({ to: `/studio/courses/${draft.id}` })
                       }
-                      className="min-h-[44px] flex-1 gap-1.5 whitespace-nowrap rounded-xl text-xs sm:min-h-10"
+                      className="flex-1 gap-2 whitespace-nowrap rounded-xl"
                     >
-                      <Edit3 className="h-3.5 w-3.5" aria-hidden />
+                      <Edit3 className="h-4 w-4" aria-hidden />
                       {t("app.edit", "Edit")}
                     </Button>
 
@@ -574,9 +574,9 @@ export function CreatorDashboard(): React.JSX.Element {
                         variant="secondary"
                         size="sm"
                         onClick={() => setSelectedDraftForStatus(draft)}
-                        className="min-h-[44px] flex-1 gap-1.5 whitespace-nowrap rounded-xl text-xs sm:min-h-10"
+                        className="flex-1 gap-2 whitespace-nowrap rounded-xl"
                       >
-                        <FileCheck className="h-3.5 w-3.5" aria-hidden />
+                        <FileCheck className="h-4 w-4" aria-hidden />
                         {t("studio.courses.viewStatus", "Review Status")}
                       </Button>
                     ) : (
@@ -587,9 +587,9 @@ export function CreatorDashboard(): React.JSX.Element {
                         onClick={() => {
                           void handleSubmitDraft(draft.id);
                         }}
-                        className="min-h-[44px] flex-1 gap-1.5 whitespace-nowrap rounded-xl text-xs sm:min-h-10"
+                        className="flex-1 gap-2 whitespace-nowrap rounded-xl"
                       >
-                        <Send className="h-3.5 w-3.5" aria-hidden />
+                        <Send className="h-4 w-4" aria-hidden />
                         {t("studio.courses.submit", "Submit")}
                       </Button>
                     )}
@@ -622,7 +622,7 @@ export function CreatorDashboard(): React.JSX.Element {
             {/* Desktop: table */}
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-border-subtle bg-surface-base text-xs text-text-muted">
+                <thead className="border-b border-border-subtle bg-surface-muted text-sm text-text-muted">
                   <tr>
                     <th className="px-4 py-3 font-medium">
                       {t("studio.ledger.date", "Date")}
@@ -643,9 +643,9 @@ export function CreatorDashboard(): React.JSX.Element {
                 </thead>
                 <tbody className="divide-y divide-border-subtle">
                   {ledger.map((entry) => (
-                    <tr key={entry.id} className="hover:bg-surface-base/50">
+                    <tr key={entry.id} className="hover:bg-surface-muted/50">
                       <td className="whitespace-nowrap px-4 py-3 text-text-muted">
-                        {formatLedgerDate(entry.created_at)}
+                        {formatLedgerDate(entry.created_at, i18n.language)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <LedgerKindBadge kind={entry.kind} />
@@ -654,8 +654,8 @@ export function CreatorDashboard(): React.JSX.Element {
                         className={cn(
                           "whitespace-nowrap px-4 py-3 text-right font-bold tabular-nums",
                           entry.amount_vnd >= 0
-                            ? "text-success"
-                            : "text-danger",
+                            ? "text-success-accent"
+                            : "text-danger-accent",
                         )}
                       >
                         {entry.amount_vnd >= 0 ? "+" : ""}
@@ -681,10 +681,10 @@ export function CreatorDashboard(): React.JSX.Element {
               {ledger.map((entry) => (
                 <li key={entry.id} className="flex items-start gap-3 p-3">
                   <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-base text-text-muted"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-text-muted"
                     aria-hidden="true"
                   >
-                    <Receipt className="h-4 w-4" />
+                    <Receipt className="h-5 w-5" />
                   </span>
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center justify-between gap-2">
@@ -693,16 +693,16 @@ export function CreatorDashboard(): React.JSX.Element {
                         className={cn(
                           "whitespace-nowrap text-sm font-bold tabular-nums",
                           entry.amount_vnd >= 0
-                            ? "text-success"
-                            : "text-danger",
+                            ? "text-success-accent"
+                            : "text-danger-accent",
                         )}
                       >
                         {entry.amount_vnd >= 0 ? "+" : ""}
                         {formatVnd(entry.amount_vnd)}
                       </span>
                     </div>
-                    <p className="text-xs text-text-muted">
-                      {formatLedgerDate(entry.created_at)}
+                    <p className="break-words text-sm text-text-muted">
+                      {formatLedgerDate(entry.created_at, i18n.language)}
                       {entry.note ? ` · ${entry.note}` : ""}
                     </p>
                   </div>
@@ -718,10 +718,10 @@ export function CreatorDashboard(): React.JSX.Element {
             >
               <Receipt className="h-6 w-6" />
             </span>
-            <h3 className="text-sm font-bold text-text">
+            <h3 className="text-base font-semibold leading-snug text-text">
               {t("studio.ledger.emptyTitle", "No transactions yet")}
             </h3>
-            <p className="max-w-sm text-xs text-text-muted sm:text-sm">
+            <p className="max-w-sm text-base leading-relaxed text-text-muted md:text-sm">
               {t(
                 "studio.ledger.emptyDesc",
                 "Earnings will appear here once learners enrol in your courses.",
@@ -754,8 +754,8 @@ export function CreatorDashboard(): React.JSX.Element {
   );
 }
 
-function formatLedgerDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+function formatLedgerDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -763,6 +763,7 @@ function formatLedgerDate(iso: string): string {
 }
 
 function LedgerKindBadge({ kind }: { kind: string }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <Badge
       variant={
@@ -772,9 +773,9 @@ function LedgerKindBadge({ kind }: { kind: string }): React.JSX.Element {
             ? "primary"
             : "secondary"
       }
-      className="capitalize text-[11px]"
+      className="text-xs"
     >
-      {kind}
+      {t(`studio.ledger.kind.${kind}`, kind)}
     </Badge>
   );
 }

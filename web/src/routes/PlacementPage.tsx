@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
@@ -28,6 +31,8 @@ export function PlacementPage(): React.JSX.Element {
     overview.data?.result?.session_id ??
     null;
   const session = usePlacementSession(sessionId);
+  // The placement test is a sitting too: leaving it half way asks first.
+  const leaveGuard = useLeaveGuard(session.data?.status === "in_progress");
 
   const showSession = (next: PlacementSession) => {
     queryClient.setQueryData(learningKeys.placementSession(next.id), next);
@@ -52,16 +57,19 @@ export function PlacementPage(): React.JSX.Element {
 
   if (overview.isLoading || session.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface-base px-4">
-        <p className="text-sm text-text-muted">{t("placement.loading")}</p>
+      <div className="flex min-h-screen items-center justify-center bg-surface-muted px-4">
+        <p className="text-base text-text-muted">{t("placement.loading")}</p>
       </div>
     );
   }
 
   if (overview.isError || session.isError) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface-base px-4">
-        <p role="alert" className="text-sm text-danger">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface-muted px-4">
+        <p
+          role="alert"
+          className="text-center text-base leading-relaxed text-danger-accent"
+        >
           {t("placement.loadFailed")}
         </p>
         <Button
@@ -71,7 +79,6 @@ export function PlacementPage(): React.JSX.Element {
             void overview.refetch();
             reload();
           }}
-          className="min-h-[44px] text-base"
         >
           {t("placement.retry")}
         </Button>
@@ -82,11 +89,25 @@ export function PlacementPage(): React.JSX.Element {
   const current = session.data;
   if (current?.status === "in_progress") {
     return (
-      <PlacementRunner
-        session={current}
-        onSession={showSession}
-        onReload={reload}
-      />
+      <>
+        <PlacementRunner
+          session={current}
+          onSession={showSession}
+          onReload={reload}
+        />
+        <ConfirmDialog
+          open={leaveGuard.blocked}
+          onOpenChange={(open) => {
+            if (!open) leaveGuard.stay();
+          }}
+          destructive
+          title={t("placement.leave.title")}
+          description={t("placement.leave.description")}
+          confirmLabel={t("placement.leave.confirm")}
+          cancelLabel={t("placement.leave.stay")}
+          onConfirm={leaveGuard.proceed}
+        />
+      </>
     );
   }
   if (current?.result) {

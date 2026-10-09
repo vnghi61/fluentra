@@ -165,7 +165,7 @@ const (
 
 // Price defaults and bounds (BR-STUDIO-01).
 const (
-	DefaultMinPriceVND     int64 = 49_000
+	DefaultMinPriceVND     int64 = 5_000
 	DefaultMaxPriceVND     int64 = 5_000_000
 	DefaultRevenueShareBPS int   = 7000
 )

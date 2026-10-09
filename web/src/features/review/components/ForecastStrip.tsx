@@ -7,12 +7,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import type { ForecastItem } from "../api/reviewApi";
 
 export interface ForecastStripProps {
   days: ForecastItem[];
   /** How many days to draw. The endpoint returns 30; a week reads better. */
   window?: number;
+  className?: string;
 }
 
 /**
@@ -31,6 +33,7 @@ function localDate(iso: string): Date | null {
 export const ForecastStrip: React.FC<ForecastStripProps> = ({
   days,
   window = 7,
+  className,
 }) => {
   const { t, i18n } = useTranslation();
   const visible = days.slice(0, window);
@@ -44,9 +47,9 @@ export const ForecastStrip: React.FC<ForecastStripProps> = ({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base font-semibold">
+    <Card className={cn("flex flex-col p-5 md:p-6", className)}>
+      <CardHeader className="space-y-1 p-0">
+        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-primary-accent">
           {t("practice.forecast.title", "The week ahead")}
         </CardTitle>
         <CardDescription>
@@ -57,43 +60,39 @@ export const ForecastStrip: React.FC<ForecastStripProps> = ({
         </CardDescription>
       </CardHeader>
 
-      {/* Scrolls inside itself: seven columns do not fit a 320px viewport. */}
-      <div className="overflow-x-auto px-6 pb-6">
-        <ul className="flex items-end gap-3 min-w-max">
-          {visible.map((day) => {
-            const date = localDate(day.date);
-            // A zero-count day still gets a visible baseline, so the row reads
-            // as a calendar rather than as gaps.
-            const height =
-              busiest === 0 ? 4 : Math.max(4, (day.due_count / busiest) * 64);
-            return (
-              <li
-                key={day.date}
-                className="flex flex-col items-center gap-1.5 w-12"
+      <ul className="mt-auto grid grid-cols-7 items-end gap-1.5 pt-5">
+        {visible.map((day) => {
+          const date = localDate(day.date);
+          // A zero-count day still gets a visible baseline, so the row reads
+          // as a calendar rather than as gaps.
+          const height =
+            busiest === 0 ? 4 : Math.max(4, (day.due_count / busiest) * 72);
+          return (
+            <li
+              key={day.date}
+              className="flex min-w-0 flex-col items-center gap-1.5"
+            >
+              <span className="text-xs font-semibold tabular-nums text-text">
+                {day.due_count}
+              </span>
+              <div
+                className={cn(
+                  "w-full max-w-8 rounded-md",
+                  day.due_count > 0 ? "bg-primary" : "bg-border-subtle",
+                )}
+                style={{ height: `${height}px` }}
+                aria-hidden="true"
+              />
+              <span
+                className="w-full truncate text-center text-xs text-text-muted"
+                title={date ? full.format(date) : day.date}
               >
-                <span className="text-xs font-semibold text-text tabular-nums">
-                  {day.due_count}
-                </span>
-                <div
-                  className={
-                    day.due_count > 0
-                      ? "w-8 rounded-t bg-primary"
-                      : "w-8 rounded-t bg-border-subtle"
-                  }
-                  style={{ height: `${height}px` }}
-                  aria-hidden="true"
-                />
-                <span
-                  className="text-xs text-text-muted"
-                  title={date ? full.format(date) : day.date}
-                >
-                  {date ? weekday.format(date) : day.date}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+                {date ? weekday.format(date) : day.date}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </Card>
   );
 };

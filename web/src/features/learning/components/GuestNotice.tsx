@@ -19,8 +19,8 @@ export const GuestNotice: React.FC = () => {
       role="note"
       className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-muted"
     >
-      <CloudOff className="h-4 w-4 shrink-0" aria-hidden="true" />
-      <span className="flex-1">
+      <CloudOff className="h-5 w-5 shrink-0" aria-hidden="true" />
+      <span className="flex-1 text-base leading-relaxed">
         {t(
           "guest.notice.text",
           "You are browsing without an account. You can open any lesson and answer its exercises, but nothing is saved.",

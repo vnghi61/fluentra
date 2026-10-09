@@ -96,7 +96,7 @@ export function ExamHub(): React.JSX.Element {
       <Link
         to="/exams/$attemptId"
         params={{ attemptId: openAttempt.id }}
-        className="inline-flex min-h-[44px] items-center gap-2 font-medium text-primary-accent underline"
+        className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary-accent underline"
       >
         <Play className="h-4 w-4" aria-hidden="true" />
         {t("exam.hub.resume")}
@@ -111,10 +111,10 @@ export function ExamHub(): React.JSX.Element {
       {/* Mobile view (< md): options in a BottomSheet from one 'Practice options' button */}
       <div className="space-y-4 md:hidden">
         <div className="space-y-1">
-          <h1 className="text-2xl font-extrabold tracking-tight text-text">
+          <h1 className="text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
             {t("exam.hub.examsTitle", "Exams")}
           </h1>
-          <p className="text-sm text-text-muted">
+          <p className="text-base leading-relaxed text-text-muted">
             {t(
               "exam.hub.examsSubtitle",
               "Pick an exam, then a numbered test or a random one, and sit it full and timed or practise a section at a time.",
@@ -203,7 +203,7 @@ function BackButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-medium text-text-muted hover:text-text"
+      className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-text-muted hover:text-text"
     >
       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
       {label}
@@ -248,10 +248,10 @@ function VersionList({
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <h1 className="text-2xl font-extrabold tracking-tight text-text">
+        <h1 className="text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
           {t("exam.hub.examsTitle", "Exams")}
         </h1>
-        <p className="text-sm text-text-muted">
+        <p className="text-base leading-relaxed text-text-muted">
           {t(
             "exam.hub.examsSubtitle",
             "Pick an exam, then a numbered test or a random one, and sit it full and timed or practise a section at a time.",
@@ -273,10 +273,10 @@ function VersionList({
                   <BookOpenCheck className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1 space-y-1">
-                  <span className="line-clamp-2 font-bold text-text">
+                  <span className="line-clamp-2 font-semibold leading-snug text-text">
                     {versionLabel(version)}
                   </span>
-                  <span className="block text-xs text-text-muted">
+                  <span className="block text-sm text-text-muted">
                     {t("exam.hub.format", {
                       count,
                       minutes: version.total_minutes,
@@ -368,7 +368,7 @@ function VersionTests({
         onClick={onBack}
       />
       <div className="space-y-1">
-        <h1 className="text-2xl font-extrabold tracking-tight text-text">
+        <h1 className="text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
           {versionLabel(version)}
         </h1>
         <p className="text-sm text-text-muted">
@@ -377,7 +377,7 @@ function VersionTests({
             minutes: version.total_minutes,
           })}
         </p>
-        <p className="text-sm text-text-muted">
+        <p className="text-base leading-relaxed text-text-muted">
           {t(
             "exam.hub.testsSubtitle",
             "Choose a test, or let one be drawn for you.",
@@ -465,8 +465,10 @@ function TestCard({
           <FileText className="h-5 w-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 font-bold text-text">{test.title}</p>
-          <p className="text-xs text-text-muted">
+          <p className="line-clamp-2 font-semibold leading-snug text-text">
+            {test.title}
+          </p>
+          <p className="text-sm text-text-muted">
             {t("exam.hub.testFormat", {
               count: test.question_count,
               minutes: test.minutes,
@@ -474,7 +476,7 @@ function TestCard({
             })}
           </p>
           {attempt && (
-            <p className="pt-0.5 text-xs font-medium text-success-accent">
+            <p className="pt-0.5 text-sm font-medium text-success-accent">
               {attempt.score !== undefined && attempt.score !== null
                 ? t("exam.hub.doneScore", {
                     score: attempt.score,
@@ -562,7 +564,7 @@ function SitSheet({
             type="button"
             onClick={() => setMode(key)}
             className={cn(
-              "flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium",
+              "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold",
               mode === key
                 ? "border-primary bg-primary/5 text-primary-accent"
                 : "border-border bg-card text-text-muted hover:text-text",
@@ -573,15 +575,17 @@ function SitSheet({
           </button>
         ))}
       </div>
-      <p className="text-xs text-text-muted">{t("exam.hub.modeExamHint")}</p>
-      <p className="text-xs text-text-muted">
+      <p className="text-sm leading-relaxed text-text-muted">
+        {t("exam.hub.modeExamHint")}
+      </p>
+      <p className="text-sm leading-relaxed text-text-muted">
         {t("exam.hub.modePracticeHint")}
       </p>
 
       {mode === "practice" && (
         <div className="space-y-3">
           <fieldset className="space-y-2">
-            <legend className="text-xs font-medium text-text-muted">
+            <legend className="text-sm font-medium text-text-muted">
               {t("exam.hub.sections", "Sections")}
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -617,7 +621,7 @@ function SitSheet({
           </fieldset>
 
           <fieldset className="space-y-2">
-            <legend className="text-xs font-medium text-text-muted">
+            <legend className="text-sm font-medium text-text-muted">
               {t("exam.hub.duration")}
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -679,7 +683,7 @@ function SitSheet({
                 max={180}
                 value={duration}
                 onChange={(e) => setDuration(Number(e.target.value))}
-                className="h-11 w-24 rounded-lg border border-input bg-background px-3 text-base"
+                className="h-11 w-24 rounded-lg border border-input bg-background px-3 text-base md:text-sm"
               />
             </label>
           )}

@@ -28,6 +28,10 @@ export const handlers = [
       league: "bronze",
     });
   }),
+  // No announcement is the ordinary state; tests that need one override it.
+  http.get("/api/v1/banners/active", () => {
+    return HttpResponse.json({ items: [] });
+  }),
   http.get("/api/v1/leaderboard", () => {
     return HttpResponse.json({
       entries: [],

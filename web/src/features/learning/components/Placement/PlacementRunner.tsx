@@ -2,6 +2,12 @@ import React, { useRef, useState } from "react";
 import { Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -98,13 +104,13 @@ export const PlacementRunner: React.FC<PlacementRunnerProps> = ({
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-base">
+    <div className="flex min-h-screen flex-col bg-surface-muted">
       <header className="sticky top-0 z-20 border-b border-border bg-surface-card px-4 py-3">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div className="min-w-0 space-y-1">
-            <p className="truncate text-sm font-semibold text-text">
+            <h1 className="truncate text-sm font-semibold text-text">
               {stageLabels[session.stage]}
-            </p>
+            </h1>
             <div
               className="h-1.5 w-40 max-w-full overflow-hidden rounded-full bg-border-subtle"
               role="progressbar"
@@ -121,9 +127,9 @@ export const PlacementRunner: React.FC<PlacementRunnerProps> = ({
           </div>
           <p
             className={cn(
-              "flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-sm font-bold",
+              "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-sm font-bold tabular-nums",
               remaining < 120
-                ? "border-danger text-danger"
+                ? "border-danger text-danger-accent"
                 : "border-border text-text",
             )}
           >
@@ -147,7 +153,7 @@ export const PlacementRunner: React.FC<PlacementRunnerProps> = ({
         {error && (
           <p
             role="alert"
-            className="rounded-lg bg-danger/10 p-3 text-sm text-danger"
+            className="rounded-lg bg-danger/10 p-3 text-base leading-relaxed text-danger-accent"
           >
             {error}
           </p>
@@ -160,7 +166,7 @@ export const PlacementRunner: React.FC<PlacementRunnerProps> = ({
             type="button"
             onClick={() => void submit()}
             disabled={!item || !isComplete(item, answer) || submitting}
-            className="min-h-[44px] px-8 text-base"
+            className="px-8"
           >
             {submitting
               ? t("placement.runner.submitting")
@@ -169,30 +175,24 @@ export const PlacementRunner: React.FC<PlacementRunnerProps> = ({
         </div>
       </main>
 
-      {remaining === 0 && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="placement-time-up"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/80 p-4"
+      {/* Not dismissible: the only way on is to reload the test. */}
+      <Dialog open={remaining === 0}>
+        <DialogContent
+          showClose={false}
+          className="max-w-sm space-y-4 p-6 text-center"
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
         >
-          <div className="w-full max-w-sm space-y-4 rounded-2xl border border-border bg-surface-card p-6 text-center shadow-xl">
-            <h2 id="placement-time-up" className="text-xl font-bold text-text">
-              {t("placement.timeUp.title")}
-            </h2>
-            <p className="text-sm text-text-muted">
-              {t("placement.timeUp.description")}
-            </p>
-            <Button
-              type="button"
-              onClick={onReload}
-              className="min-h-[44px] w-full text-base"
-            >
-              {t("placement.timeUp.action")}
-            </Button>
-          </div>
-        </div>
-      )}
+          <DialogTitle>{t("placement.timeUp.title")}</DialogTitle>
+          <DialogDescription>
+            {t("placement.timeUp.description")}
+          </DialogDescription>
+          <Button type="button" onClick={onReload} className="w-full">
+            {t("placement.timeUp.action")}
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

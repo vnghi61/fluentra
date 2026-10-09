@@ -454,6 +454,38 @@ func TestList_MarksTheCallersOwnSessionAndNothingElse(t *testing.T) {
 	}
 }
 
+// TestList_LeavesOutSessionsThatLapsed is the duplicate list a learner saw: every
+// sign-in that ran past its idle window or absolute cap stays unrevoked, and was
+// listed as a place they were still signed in.
+func TestList_LeavesOutSessionsThatLapsed(t *testing.T) {
+	h := newSessionServiceHarness(t)
+
+	idle, capped := uuid.New(), uuid.New()
+	h.repo.sessions[idle] = domain.Session{
+		ID: idle, UserID: h.userID, CreatedAt: sessionNow.Add(-60 * 24 * time.Hour),
+		LastSeenAt: sessionNow.Add(-31 * 24 * time.Hour), IdleWindow: 30 * 24 * time.Hour,
+	}
+	h.repo.sessions[capped] = domain.Session{
+		ID: capped, UserID: h.userID, CreatedAt: sessionNow.Add(-200 * 24 * time.Hour),
+		LastSeenAt: sessionNow.Add(-time.Hour), IdleWindow: 90 * 24 * time.Hour,
+		AbsoluteExpiresAt: sessionNow.Add(-time.Minute),
+	}
+
+	listed, err := h.service.List(context.Background(),
+		httpx.Actor{UserID: h.userID, SessionID: h.current})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(listed) != 2 {
+		t.Fatalf("%d sessions, want the 2 still live", len(listed))
+	}
+	for _, session := range listed {
+		if session.ID == idle || session.ID == capped {
+			t.Errorf("lapsed session %s was listed as live", session.ID)
+		}
+	}
+}
+
 func TestList_ReportsAFailureRatherThanAnEmptyList(t *testing.T) {
 	h := newSessionServiceHarness(t)
 	h.repo.listErr = errors.New("connection refused")

@@ -197,18 +197,18 @@ export function OtpVerificationScreen({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-text-muted hover:text-text transition-colors"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-text-muted hover:text-text transition-colors"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back
         </button>
       )}
 
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-text">
+        <h1 className="text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
           {t("auth.otpTitle", "Enter verification code")}
         </h1>
-        <p className="text-sm text-text-muted">
+        <p className="text-base leading-relaxed text-text-muted">
           We emailed a 6-digit code to{" "}
           <span className="font-semibold text-text">{email}</span>
         </p>
@@ -219,7 +219,7 @@ export function OtpVerificationScreen({
           role="alert"
           className="flex items-start gap-2.5 rounded-lg border border-danger/50 bg-danger/10 p-3.5 text-sm font-medium text-danger-accent"
         >
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <AlertCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
           <span>{error}</span>
         </div>
       )}
@@ -233,7 +233,7 @@ export function OtpVerificationScreen({
           error={!!error}
         />
 
-        <div className="flex items-center justify-between text-xs text-text-muted px-1">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-text-muted px-1">
           <span>
             Expires in:{" "}
             <span
@@ -277,12 +277,11 @@ export function OtpVerificationScreen({
             type="button"
             disabled={secondsUntilResend > 0 || isResending || isBurned}
             onClick={() => void handleResend()}
-            className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-primary-accent hover:text-primary-accent disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary-accent hover:text-primary-accent disabled:opacity-50 disabled:pointer-events-none transition-colors"
           >
             <RotateCw
-              className={
-                isResending ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"
-              }
+              aria-hidden="true"
+              className={isResending ? "h-4 w-4 animate-spin" : "h-4 w-4"}
             />
             {secondsUntilResend > 0
               ? `Resend code in ${secondsUntilResend}s`

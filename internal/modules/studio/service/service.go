@@ -553,7 +553,16 @@ func missingMaterialRendition(mat *resourcecontract.Material) (string, bool) {
 	// document nor a video. Without this they would wait forever for a preview
 	// they never get, and the creator would read "still processing".
 	if !isMaterialMIME(mat.DetectedMIME) {
-		return "Material must be a PDF, Word or PowerPoint document, or an MP4 or WebM video", false
+		return "Material must be a PDF, Word, Excel or PowerPoint document, " +
+			"a PNG, JPEG or WebP image, or an MP4 or WebM video", false
+	}
+	if strings.HasPrefix(mat.DetectedMIME, "image/") {
+		// An image no larger than a thumbnail skips its display rendition; the
+		// re-encoded thumbnail is then the copy learners see.
+		if !ready["display"] && !ready["thumbnail"] {
+			return "Image is still processing; its display copy is not ready", false
+		}
+		return "", true
 	}
 	if strings.HasPrefix(mat.DetectedMIME, "video/") {
 		if !ready["video_360p"] {
@@ -568,13 +577,20 @@ func missingMaterialRendition(mat *resourcecontract.Material) (string, bool) {
 }
 
 // materialMIMEs are the detected types a lesson material may have: the
-// documents the media pipeline renders a preview for, and web video.
+// documents the media pipeline renders a preview for, still images it
+// re-encodes for display, and web video. Audio stays out: the runner has no
+// player for a standalone material track.
 var materialMIMEs = map[string]bool{
 	"application/pdf":    true,
 	"application/msword": true,
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.document":   true,
 	"application/vnd.ms-powerpoint":                                             true,
 	"application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+	"application/vnd.ms-excel":                                                  true,
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         true,
+	"image/png":  true,
+	"image/jpeg": true,
+	"image/webp": true,
 	"video/mp4":  true,
 	"video/webm": true,
 }
@@ -1144,6 +1160,12 @@ func (s *Service) publishMaterial(
 	if objects.Preview != nil {
 		objectMap["preview"] = *objects.Preview
 	}
+	if objects.Display != nil {
+		objectMap["display"] = *objects.Display
+	}
+	if objects.Thumbnail != nil {
+		objectMap["thumbnail"] = *objects.Thumbnail
+	}
 
 	body := map[string]any{
 		"material_kind": materialKindFromMIME(mat.DetectedMIME),
@@ -1166,10 +1188,14 @@ func (s *Service) publishMaterial(
 // materialKindFromMIME derives the material kind from the resource's bytes,
 // never from the creator-controlled draft (Stage B trap 3).
 func materialKindFromMIME(detected string) string {
-	if strings.HasPrefix(detected, "video/") {
+	switch {
+	case strings.HasPrefix(detected, "video/"):
 		return "video"
+	case strings.HasPrefix(detected, "image/"):
+		return "image"
+	default:
+		return "document"
 	}
-	return "document"
 }
 
 // videoDurationSeconds reads a video's duration off its renditions' metadata.

@@ -51,10 +51,10 @@ export const SpeakingRecorder: React.FC<SpeakingRecorderProps> = ({
   if (preparing) {
     return (
       <div className="space-y-3 rounded-2xl border border-border bg-surface-card p-5 text-center sm:p-7">
-        <p className="text-sm font-medium text-text">
+        <p className="text-base font-medium leading-relaxed text-text">
           {t("exam.speaking.prepare", "Take a moment to prepare.")}
         </p>
-        <p className="font-mono text-4xl font-extrabold text-primary-accent">
+        <p className="font-mono text-4xl font-bold tabular-nums text-primary-accent">
           {formatRecorderTime(left)}
         </p>
         <Button onClick={() => setStarted(true)} className="mx-auto">

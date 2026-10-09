@@ -6,11 +6,11 @@ status: PLANNED
 phase: 2
 owner: "@backend-team"
 schema: core
-tables: [admin_actions, feature_flags, admin_notes, moderation_items]
+tables: [admin_actions, feature_flags, admin_notes, moderation_items, banners]
 depends_on: [user, rbac, audit, auth, content, cache]
 depended_on_by: []
 spec_version: 1.0.0
-last_verified: 2026-08-17
+last_verified: 2026-10-08
 ---
 
 # admin — AGENT.md
@@ -45,6 +45,7 @@ The back-office surface. It owns almost no data of its own; it composes other mo
 - User management screens (list, search, inspect, suspend, reinstate, impersonate)
 - Moderation queues (flagged content, reported names, flagged submissions)
 - Feature flag management
+- Dashboard banners of two kinds: announcements shown once as a dialog, and image-only promo slides in a carousel (create, schedule, switch on/off, delete)
 - Operational actions: retry a job, replay a webhook, invalidate a cache key
 - System health summary for non-engineers
 
@@ -94,6 +95,7 @@ Migrations: `db/migrations/admin/` · Queries: `db/queries/admin/`
 | `core.feature_flags` | Runtime feature toggles | `key`, `enabled`, `rollout_percent`, `owner`, `expires_on`. Cached 30 s in-process. |
 | `core.admin_notes` | Free-text notes attached to a user or content item | Visible to admins only; audited on create |
 | `core.moderation_items` | The moderation queue | `kind`, `target_type`, `target_id`, `reason`, `status`, `assignee_id` |
+| `core.banners` | Announcement banners shown on the learner dashboard | `title`, `body`, `cta_label`/`cta_url`, `tone`, `is_active`, `priority`, `dismissible`, `starts_at`/`ends_at`, `created_by`. CHECKs repeat the service rules (lengths, tone, safe link, window order). `kind` is `announcement` or `slide` (migration 953; a slide needs an image and has no body, button text or dismissal). Partial index on active rows. Optional image: `image_key` (a processed JPEG under `banners/images/` in fluentra-media), `image_alt`, `image_width`/`image_height`, all-or-none by CHECK and unique per banner (migration 952). Active list cached 30 s in-process, image URLs signed when it fills. |
 
 <!-- END GENERATED: schema -->
 
@@ -116,6 +118,13 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/admin/flags` | `system.flags` | Create a feature flag |
 | `PUT` | `/api/v1/admin/flags/{key}` | `system.flags` | Update a feature flag |
 | `DELETE` | `/api/v1/admin/flags/{key}` | `system.flags` | Delete a feature flag |
+| `GET` | `/api/v1/banners/active` | `self` | The dashboard banners showing now (at most 3 announcements and 6 slides) |
+| `GET` | `/api/v1/admin/banners` | `system.flags` | List every banner |
+| `POST` | `/api/v1/admin/banners` | `system.flags` | Create a banner |
+| `PUT` | `/api/v1/admin/banners/{id}` | `system.flags` | Replace a banner |
+| `DELETE` | `/api/v1/admin/banners/{id}` | `system.flags` | Delete a banner |
+| `POST` | `/api/v1/admin/banners/image-upload-intent` | `system.flags` | Presigned upload for a banner image |
+| `POST` | `/api/v1/admin/banners/images` | `system.flags` | Check and publish an uploaded banner image |
 | `GET` | `/api/v1/admin/dashboard` | `admin.dashboard` | Composed KPI summary |
 | `GET` | `/api/v1/admin/moderation` | `moderation.read` | Moderation queue |
 | `POST` | `/api/v1/admin/moderation/{id}/resolve` | `moderation.act` | Resolve a queue item |
@@ -162,6 +171,9 @@ and fails `go-arch-lint` in CI.
 4. **BR-ADMIN-04** — A feature flag defaults to disabled and carries an owner and an expiry date; expired flags are reported weekly.
 5. **BR-ADMIN-05** — Operational actions are idempotent — retrying a retry must not double-execute.
 6. **BR-ADMIN-06** — An admin cannot act on their own account through admin screens (suspension, role change) — that path goes through another admin.
+7. **BR-ADMIN-07** — A banner shows only while `is_active` is true and now is inside its optional `starts_at`..`ends_at` window; the dashboard gets at most three announcements and six slides, each kind highest priority first, then newest. An announcement opens as a dialog once per visit; a slide is always shown while live and cannot be dismissed.
+8. **BR-ADMIN-08** — Banner text is plain text, never HTML. A banner link is an internal path starting with `/` (not `//`) or an `https://` URL; `javascript:`, `data:` and protocol-relative links are refused by the service and by a CHECK.
+9. **BR-ADMIN-09** — A banner image is only ever one the admin module processed itself: the browser uploads to a holding key, the server re-encodes it, and a banner may name only a `banners/images/` key that exists. Replacing, clearing or deleting a banner's image deletes the object.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks
@@ -200,6 +212,8 @@ _No deviations from the global standard._
 |---|---|---|
 | `IMPERSONATION_FORBIDDEN_ACTION` | 403 | The attempted action is not permitted while impersonating |
 | `SELF_ADMIN_ACTION_FORBIDDEN` | 403 | An admin may not administer their own account |
+| `BANNER_INVALID` | 422 | A banner field failed validation; `errors[]` names each field |
+| `BANNER_NOT_FOUND` | 404 | No banner has that id |
 
 ### Security considerations
 
@@ -227,6 +241,7 @@ go test -tags=integration ./internal/modules/admin/...  # integration (testconta
 - Self-administration is refused
 - Every write produces an audit entry with the correct actor
 - Flag changes propagate within the cache TTL
+- Banner links refuse `javascript:`, `data:` and protocol-relative values; the active list honours the window, the order and the limit of three
 <!-- END GENERATED: testing -->
 
 ## 14. Do NOT

@@ -105,14 +105,14 @@ export default function AccountMenu({
             {displayName?.trim() || t("nav.greetingFallback", "there")}
           </span>
           {role === "admin" && (
-            <span className="ml-2 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-primary-accent">
+            <span className="ml-2 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-bold uppercase text-primary-accent">
               {role}
             </span>
           )}
           {email ? (
             <span
               title={email}
-              className="block max-w-[220px] truncate text-xs font-normal text-text-muted"
+              className="block max-w-[220px] truncate text-sm font-normal text-text-muted"
             >
               {email}
             </span>

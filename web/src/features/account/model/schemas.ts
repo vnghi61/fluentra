@@ -27,16 +27,35 @@ export const preferencesFormSchema = z.object({
     .number()
     .min(5, "validation.dailyGoalMin")
     .max(180, "validation.dailyGoalMax"),
-  notification_channels: z
-    .array(z.enum(["in_app", "email", "push"]))
-    .default([]),
-  quiet_hours_enabled: z.boolean().default(false),
-  quiet_hours_start: z.string().default("22:00"),
-  quiet_hours_end: z.string().default("07:00"),
-  ai_processing_opt_out: z.boolean().default(false),
 });
 
+// Notification channels, quiet hours and the AI-processing opt-out are no
+// longer edited in the interface (AI grading is always on). They are not on the
+// form, and a save sends back whatever the server stored — see `replacementFor`.
+
 export type PreferencesFormValues = z.infer<typeof preferencesFormSchema>;
+
+/** The "Learning preferences" card: daily goal and daily practice level. */
+export const learningPreferencesSchema = z.object({
+  daily_goal_minutes: z
+    .number()
+    .min(5, "validation.dailyGoalMin")
+    .max(180, "validation.dailyGoalMax"),
+  // "" is "not chosen yet", sent as null.
+  practice_level: z.enum(["", "A2", "B1", "B2"]),
+});
+
+export type LearningPreferencesValues = z.infer<
+  typeof learningPreferencesSchema
+>;
+
+/** The "Appearance" card: display mode and interface language. */
+export const appearanceSchema = preferencesFormSchema.pick({
+  locale: true,
+  theme: true,
+});
+
+export type AppearanceValues = z.infer<typeof appearanceSchema>;
 
 export const changePasswordSchema = z
   .object({

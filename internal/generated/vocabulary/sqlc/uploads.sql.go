@@ -255,6 +255,28 @@ func (q *Queries) CountVerifiedItemsForUser(ctx context.Context, userID uuid.UUI
 	return column_1, err
 }
 
+const failExhaustedUploadItems = `-- name: FailExhaustedUploadItems :execrows
+UPDATE skill.vocab_upload_items
+SET status = 'failed', reason = $1::text
+WHERE status = 'pending' AND attempts >= $2::int
+`
+
+type FailExhaustedUploadItemsParams struct {
+	Reason      string
+	MaxAttempts int32
+}
+
+// Retires pending items that already used every attempt before
+// RecordUploadItemAttempt retired them itself; they were left pending, which
+// the learner saw as a word that never finished checking.
+func (q *Queries) FailExhaustedUploadItems(ctx context.Context, arg FailExhaustedUploadItemsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, failExhaustedUploadItems, arg.Reason, arg.MaxAttempts)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getUpload = `-- name: GetUpload :one
 SELECT id, user_id, raw_text, deck_id, status, item_count, created_at, completed_at FROM skill.vocab_uploads WHERE id = $1 AND user_id = $2
 `
@@ -901,20 +923,33 @@ func (q *Queries) MarkUploadItemVerified(ctx context.Context, arg MarkUploadItem
 
 const recordUploadItemAttempt = `-- name: RecordUploadItemAttempt :exec
 UPDATE skill.vocab_upload_items
-SET attempts = attempts + 1, reason = $2
-WHERE id = $1 AND status = 'pending'
+SET attempts = attempts + 1,
+    reason   = CASE WHEN attempts + 1 >= $1::int
+                    THEN $2::text ELSE $3::text END,
+    status   = CASE WHEN attempts + 1 >= $1::int
+                    THEN 'failed' ELSE status END
+WHERE id = $4 AND status = 'pending'
 `
 
 type RecordUploadItemAttemptParams struct {
-	ID     uuid.UUID
-	Reason string
+	MaxAttempts     int32
+	ExhaustedReason string
+	Reason          string
+	ID              uuid.UUID
 }
 
 // A transient failure — the dictionary was unreachable, the model timed out.
-// The item stays pending so the next run retries it; only the counter moves,
-// which is what eventually retires a word nothing can resolve.
+// The item stays pending so the next run retries it, until the attempt that
+// reaches the limit: that one retires it as failed with the learner-facing
+// reason. Retiring by status, not only by the claim's `attempts < limit`
+// filter, is what keeps a word from showing "checking" for ever.
 func (q *Queries) RecordUploadItemAttempt(ctx context.Context, arg RecordUploadItemAttemptParams) error {
-	_, err := q.db.Exec(ctx, recordUploadItemAttempt, arg.ID, arg.Reason)
+	_, err := q.db.Exec(ctx, recordUploadItemAttempt,
+		arg.MaxAttempts,
+		arg.ExhaustedReason,
+		arg.Reason,
+		arg.ID,
+	)
 	return err
 }
 

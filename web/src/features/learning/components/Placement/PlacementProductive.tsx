@@ -8,7 +8,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { SpeakingRecorder } from "@/features/exam/components/SpeakingRecorder";
 import {
@@ -20,6 +19,7 @@ import {
 } from "../../api/placement";
 import { formatClock, parseItem, wordCount } from "./placementItem";
 import { useCountdown } from "./useCountdown";
+import { Textarea } from "@/components/ui/textarea";
 
 interface ProductiveProps {
   session: PlacementSession;
@@ -68,7 +68,7 @@ const ProductiveItemView: React.FC<{
   if (item.status !== "not_answered") {
     return (
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border-subtle p-3">
-        <span className="text-sm font-medium text-text">{heading}</span>
+        <span className="min-w-0 text-sm font-medium text-text">{heading}</span>
         {item.status === "graded" && item.band ? (
           <Badge variant="success">
             {t("placement.productive.itemBand", { band: item.band })}
@@ -90,17 +90,17 @@ const ProductiveItemView: React.FC<{
       <h3 className="text-base font-semibold text-text">{heading}</h3>
       {item.skill === "writing" ? (
         <>
-          <p className="text-base text-text">{parsed.prompt}</p>
+          <p className="text-base leading-relaxed text-text">{parsed.prompt}</p>
           <label htmlFor={fieldId} className="sr-only">
             {t("placement.productive.writingLabel")}
           </label>
-          <textarea
+          <Textarea
             id={fieldId}
             rows={6}
             value={text}
             onChange={(e) => setText(e.target.value)}
             disabled={disabled || pending}
-            className="min-h-[160px] w-full rounded-xl border border-border bg-surface-base p-3 text-base text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="min-h-[160px]"
           />
           <div className="flex flex-wrap justify-between gap-2 text-sm text-text-muted">
             <span>{t("placement.productive.wordCount", { words })}</span>
@@ -114,7 +114,6 @@ const ProductiveItemView: React.FC<{
             type="button"
             onClick={() => void send({ text_answer: text.trim() })}
             disabled={disabled || pending || words === 0}
-            className="min-h-[44px] text-base"
           >
             {t("placement.productive.submitWriting")}
           </Button>
@@ -131,7 +130,10 @@ const ProductiveItemView: React.FC<{
         />
       )}
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p
+          role="alert"
+          className="text-base leading-relaxed text-danger-accent"
+        >
           {error}
         </p>
       )}
@@ -169,12 +171,7 @@ const ProductiveRunner: React.FC<ProductiveProps> = ({
         />
       ))}
       {remaining === 0 && (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onReload}
-          className="min-h-[44px] text-base"
-        >
+        <Button type="button" variant="outline" onClick={onReload}>
           {t("placement.productive.timeUp")}
         </Button>
       )}
@@ -213,10 +210,10 @@ export const PlacementProductive: React.FC<ProductiveProps> = ({
   return (
     <Card className="border-border bg-surface-card">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-lg font-bold text-text">
+        <h2 className="text-lg font-semibold leading-snug text-text">
           {t("placement.productive.title")}
-        </CardTitle>
-        <CardDescription className="text-sm text-text-muted">
+        </h2>
+        <CardDescription className="text-base leading-relaxed text-text-muted md:text-sm">
           {status === "offered"
             ? t("placement.productive.notMeasured")
             : status === "skipped"
@@ -231,12 +228,12 @@ export const PlacementProductive: React.FC<ProductiveProps> = ({
           {(["writing", "speaking"] as const).map((skill) => (
             <div
               key={skill}
-              className="rounded-xl border border-border-subtle bg-surface-base p-3"
+              className="rounded-xl border border-border-subtle bg-surface-muted p-3"
             >
-              <dt className="text-xs text-text-muted">
+              <dt className="text-sm text-text-muted">
                 {t(`skills.${skill}`)}
               </dt>
-              <dd className="text-lg font-bold text-text">
+              <dd className="text-lg font-bold tabular-nums text-text">
                 {perSkill[skill]?.band ?? t("placement.result.notMeasured")}
               </dd>
             </div>
@@ -249,7 +246,6 @@ export const PlacementProductive: React.FC<ProductiveProps> = ({
               type="button"
               onClick={() => void act(false)}
               disabled={pending}
-              className="min-h-[44px] text-base"
             >
               {t("placement.productive.takeNow")}
             </Button>
@@ -259,7 +255,6 @@ export const PlacementProductive: React.FC<ProductiveProps> = ({
                 variant="outline"
                 onClick={() => void act(true)}
                 disabled={pending}
-                className="min-h-[44px] text-base"
               >
                 {t("placement.productive.later")}
               </Button>
@@ -274,17 +269,15 @@ export const PlacementProductive: React.FC<ProductiveProps> = ({
           />
         )}
         {status === "submitted" && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onReload}
-            className="min-h-[44px] text-base"
-          >
+          <Button type="button" variant="outline" onClick={onReload}>
             {t("placement.productive.refresh")}
           </Button>
         )}
         {error && (
-          <p role="alert" className="text-sm text-danger">
+          <p
+            role="alert"
+            className="text-base leading-relaxed text-danger-accent"
+          >
             {error}
           </p>
         )}

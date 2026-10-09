@@ -32,8 +32,8 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ streak }) => {
   return (
     <Card className="border-border/60 bg-gradient-to-br from-surface-card to-surface/40 shadow-sm">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
             <div
               className={`flex h-9 w-9 items-center justify-center rounded-xl shadow-inner ${
                 hasActiveStreak
@@ -47,10 +47,10 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ streak }) => {
               />
             </div>
             <div>
-              <CardTitle className="text-lg font-bold text-text">
+              <CardTitle className="text-lg font-semibold leading-snug text-text">
                 {t("gamification.streakTitle", "Day Streak")}
               </CardTitle>
-              <p className="text-xs text-text-muted">
+              <p className="text-sm text-text-muted">
                 {hasActiveStreak
                   ? t("gamification.streakBest", "Best: {{longest}} days", {
                       longest,
@@ -64,7 +64,7 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ streak }) => {
           </div>
 
           <div className="text-right">
-            <span className="text-2xl font-extrabold tracking-tight text-text">
+            <span className="text-2xl font-bold tabular-nums tracking-tight text-text">
               {current}
             </span>
             <span className="ml-1 text-xs font-semibold text-text-muted">
@@ -76,7 +76,7 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ streak }) => {
 
       <CardContent className="space-y-3 pt-0">
         {/* Day Boundary Countdown & Freezes info */}
-        <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="flex items-center gap-1.5 rounded-lg bg-surface/60 p-2 text-text-muted">
             <Clock
               className="h-4 w-4 text-primary shrink-0"
@@ -119,7 +119,7 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ streak }) => {
                 // margin lets the hit region overflow the compact grid cell
                 // without making the cell taller than the Clock cell beside
                 // it. R1 is about what a thumb can hit, not what is painted.
-                className="min-h-[44px] -my-2.5 px-2 text-[11px] text-primary hover:text-primary-hover"
+                className="min-h-[44px] -my-2.5 px-2 text-primary-accent hover:text-primary-hover"
                 onClick={handleUseFreeze}
                 disabled={freezeMutation.isPending}
               >

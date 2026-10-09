@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 import { useLeaderboard, useSetLeaderboardOptIn } from "../api/gamificationApi";
 
 export interface LeaderboardWidgetProps {
-  currentLeague?: string;
+  currentLeague?: string | undefined;
 }
 
 const LEAGUE_COLORS: Record<
@@ -42,7 +43,7 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
   currentLeague,
 }) => {
   const { t } = useTranslation();
-  const { data, isLoading } = useLeaderboard();
+  const { data, isLoading, isError, refetch } = useLeaderboard();
   const optInMutation = useSetLeaderboardOptIn();
 
   // Opting in decides whether a learner *appears* in the standings, not
@@ -58,8 +59,8 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
   return (
     <Card className="border-border/60 bg-gradient-to-br from-surface-card to-surface/40 shadow-sm">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 shadow-inner">
               <Trophy
                 className="h-5 w-5 fill-amber-500/20"
@@ -67,10 +68,10 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
               />
             </div>
             <div>
-              <CardTitle className="text-lg font-bold text-text">
+              <CardTitle className="text-lg font-semibold leading-snug text-text">
                 {t("gamification.leaderboardTitle", "Weekly League")}
               </CardTitle>
-              <p className="text-xs text-text-muted">
+              <p className="text-sm text-text-muted">
                 {t(
                   "gamification.standingsSubtitle",
                   "Weekly standings snapshot",
@@ -84,7 +85,7 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
               variant="outline"
               className={`capitalize ${leagueStyle ? `${leagueStyle.bg} ${leagueStyle.text} ${leagueStyle.border}` : ""}`}
             >
-              <Crown className="mr-1 h-3 w-3" aria-hidden="true" />
+              <Crown className="mr-1 h-4 w-4" aria-hidden="true" />
               {currentLeague}
             </Badge>
           )}
@@ -92,9 +93,9 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
       </CardHeader>
 
       <CardContent className="space-y-2 pt-0">
-        {!isLoading && !optedIn && (
+        {!isLoading && !isError && !optedIn && (
           <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border/80 bg-surface/50 p-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-text-muted">
+            <p className="text-sm leading-relaxed text-text-muted">
               {t("gamification.notInLeagueYet")}{" "}
               {t(
                 "gamification.optInNotice",
@@ -106,6 +107,7 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
               className="shrink-0 gap-2 font-semibold"
               onClick={() => optInMutation.mutate(true)}
               disabled={optInMutation.isPending}
+              isLoading={optInMutation.isPending}
             >
               <UserCheck className="h-4 w-4" aria-hidden="true" />
               {currentLeague
@@ -116,14 +118,33 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
             </Button>
           </div>
         )}
+        {optInMutation.isError && (
+          <p
+            role="alert"
+            className="rounded-xl bg-danger/10 p-3 text-sm text-danger-accent"
+          >
+            {t(
+              "gamification.leaderboardJoinError",
+              "Unable to join the league. Please try again.",
+            )}
+          </p>
+        )}
         {isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
           </div>
+        ) : isError ? (
+          <ErrorState
+            title={t(
+              "gamification.leaderboardLoadError",
+              "Unable to load the leaderboard",
+            )}
+            onRetry={() => void refetch()}
+          />
         ) : !data || data.entries.length === 0 ? (
-          <p className="py-4 text-center text-xs text-text-muted">
+          <p className="py-4 text-center text-sm text-text-muted">
             {t(
               "gamification.noEntries",
               "No standings available yet for this week.",
@@ -131,18 +152,18 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
           </p>
         ) : (
           <div className="divide-y divide-border/40 rounded-xl border border-border/60 bg-surface/40">
-            {data.entries.slice(0, 5).map((entry) => (
+            {data.entries.map((entry) => (
               <div
                 key={entry.user_id}
-                className={`flex items-center justify-between px-3 py-2 text-xs transition-colors ${
+                className={`flex items-center justify-between gap-2 px-3 py-2 text-sm transition-colors ${
                   entry.is_self
-                    ? "bg-primary/10 font-semibold text-primary"
+                    ? "bg-primary/10 font-semibold text-primary-accent"
                     : "text-text hover:bg-surface/80"
                 }`}
               >
-                <div className="flex items-center gap-2.5">
+                <div className="min-w-0 flex items-center gap-2.5">
                   <span
-                    className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                       entry.rank === 1
                         ? "bg-amber-400 text-amber-950"
                         : entry.rank === 2
@@ -161,7 +182,7 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
                       className="h-6 w-6 rounded-full object-cover border border-border/50"
                     />
                   ) : (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary-accent">
                       {entry.display_name
                         ? entry.display_name.charAt(0).toUpperCase()
                         : "?"}
@@ -170,13 +191,13 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
                   <span className="truncate max-w-[120px] sm:max-w-[180px]">
                     {entry.display_name}
                     {entry.is_self && (
-                      <span className="ml-1 text-[10px] text-text-muted">
+                      <span className="ml-1 text-xs text-text-muted">
                         ({t("gamification.you", "You")})
                       </span>
                     )}
                   </span>
                 </div>
-                <span className="font-semibold tabular-nums text-text">
+                <span className="shrink-0 font-semibold tabular-nums text-text">
                   {entry.xp} XP
                 </span>
               </div>

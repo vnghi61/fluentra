@@ -106,7 +106,7 @@ export function Pagination({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 border-t border-border-subtle bg-surface-muted px-4 py-3 text-xs text-text-muted sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-3 border-t border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-muted sm:flex-row sm:items-center sm:justify-between",
         className,
       )}
     >
@@ -126,7 +126,7 @@ export function Pagination({
                 onChange={(e) => onPageSizeChange(Number(e.target.value))}
                 // 44px tall and 16px type: web/AGENT.md R1 and R2. A 12px
                 // select is the control iOS Safari zooms the page for.
-                className="min-h-11 rounded-md border border-border-subtle bg-surface-base px-2 py-1 text-base text-text"
+                className="min-h-11 rounded-md border border-border-subtle bg-surface-muted px-2 py-1 text-base text-text md:text-sm"
               >
                 {pageSizeOptions.map((size) => (
                   <option key={size} value={size}>
@@ -151,7 +151,7 @@ export function Pagination({
           aria-label={t("common.previous")}
           className="min-h-11 px-3"
         >
-          <ChevronLeft className="mr-1 h-3.5 w-3.5" />
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           <span className="hidden sm:inline">{t("common.previous")}</span>
         </Button>
 
@@ -200,7 +200,7 @@ export function Pagination({
           className="min-h-11 px-3"
         >
           <span className="hidden sm:inline">{t("common.next")}</span>
-          <ChevronRight className="ml-1 h-3.5 w-3.5" />
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </Button>
       </nav>
     </div>

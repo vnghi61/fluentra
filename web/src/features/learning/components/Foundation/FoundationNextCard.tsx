@@ -33,11 +33,11 @@ export function FoundationNextCard(): React.JSX.Element | null {
             </span>
           </div>
           <div>
-            <h3 className="text-base md:text-lg font-bold text-text">
+            <h3 className="text-base md:text-lg font-semibold leading-snug text-text">
               {t("foundation.next.title", "Next in your path")}
             </h3>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <span className="font-medium text-text text-sm md:text-base">
+              <span className="min-w-0 break-words font-medium text-text text-sm md:text-base">
                 {node.label || node.code}
               </span>
               {node.cefr_level && (
@@ -52,7 +52,7 @@ export function FoundationNextCard(): React.JSX.Element | null {
                 </Badge>
               )}
             </div>
-            <p className="mt-1.5 text-xs md:text-sm text-text-muted">
+            <p className="mt-1.5 text-sm leading-relaxed text-text-muted">
               {t(
                 "foundation.next.desc",
                 "The first topic you have not mastered yet, in prerequisite order.",
@@ -63,7 +63,7 @@ export function FoundationNextCard(): React.JSX.Element | null {
             <Link
               to="/foundation/topics/$code"
               params={{ code: node.code }}
-              className="inline-flex items-center justify-center font-medium rounded-lg min-h-[44px] px-4 text-sm gap-2 bg-primary text-primary-fg hover:bg-primary-hover active:bg-primary-hover shadow-sm transition-[transform,background-color,box-shadow,color] duration-150 ease-out active:scale-[0.97] hover:-translate-y-px motion-reduce:transition-none motion-reduce:active:scale-100 motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 select-none cursor-pointer"
+              className="inline-flex items-center justify-center font-semibold rounded-lg min-h-[44px] px-4 text-sm gap-2 bg-primary text-primary-fg hover:bg-primary-hover active:bg-primary-hover shadow-sm transition-[transform,background-color,box-shadow,color] duration-150 ease-out active:scale-[0.97] hover:-translate-y-px motion-reduce:transition-none motion-reduce:active:scale-100 motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 select-none cursor-pointer"
             >
               {node.attempts > 0
                 ? t("foundation.next.revisitBtn", "Revisit this topic")
@@ -105,7 +105,7 @@ export function LockedBadge(): React.JSX.Element {
   const { t } = useTranslation();
   return (
     <Badge variant="secondary" className="gap-1 text-xs">
-      <Lock className="h-3 w-3" aria-hidden="true" />
+      <Lock className="h-4 w-4" aria-hidden="true" />
       {t("foundation.locked", "Locked")}
     </Badge>
   );

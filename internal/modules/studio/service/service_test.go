@@ -1207,8 +1207,8 @@ func TestGate1_MaterialStillProcessingFails(t *testing.T) {
 	}
 }
 
-// The resource intake accepts audio and images, which are not lesson materials:
-// they must fail with a message saying so, not wait for a preview forever.
+// The resource intake accepts audio, which is not a lesson material: it must
+// fail with a message saying so, not wait for a preview forever.
 func TestGate1_MaterialOfUnsupportedTypeFails(t *testing.T) {
 	ctx := context.Background()
 	repo := newMockRepo()
@@ -1244,6 +1244,84 @@ func TestGate1_MaterialOfUnsupportedTypeFails(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected an unsupported-type failure, report: %s", string(verified.VerificationReport))
+	}
+}
+
+// Spreadsheets and images are materials too. An image is ready on its display
+// copy, or on its thumbnail when it was too small to need one; it is never
+// ready on its original alone, which learners are not served.
+const (
+	testPreviewRendition = "preview"
+	testImageKind        = "image"
+)
+
+func TestGate1_SpreadsheetAndImageMaterials(t *testing.T) {
+	cases := []struct {
+		name       string
+		mime       string
+		kind       string
+		renditions []resourcecontract.Rendition
+		wantPass   bool
+	}{
+		{"xlsx with preview", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "document",
+			[]resourcecontract.Rendition{{Kind: testPreviewRendition, Status: resourcecontract.RenditionReady}}, true},
+		{"xls without preview", "application/vnd.ms-excel", "document",
+			[]resourcecontract.Rendition{{Kind: testPreviewRendition, Status: testPayoutPending}}, false},
+		{"png with display", "image/png", testImageKind,
+			[]resourcecontract.Rendition{{Kind: "display", Status: resourcecontract.RenditionReady}}, true},
+		{"small webp with thumbnail only", "image/webp", testImageKind,
+			[]resourcecontract.Rendition{{Kind: "thumbnail", Status: resourcecontract.RenditionReady}}, true},
+		{"jpeg still processing", "image/jpeg", testImageKind,
+			[]resourcecontract.Rendition{{Kind: "display", Status: testPayoutPending}}, false},
+	}
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			svc := service.NewService(newMockRepo(), &mockVerifier{}, &mockLessonAuthor{}, &mockContentAuthor{})
+			resourceID := uuid.New()
+			svc.SetMaterialPublisher(&mockMaterialPublisher{material: &resourcecontract.Material{
+				ID:           resourceID,
+				Status:       resourcecontract.MaterialValidated,
+				DetectedMIME: tc.mime,
+				Renditions:   tc.renditions,
+			}})
+			creatorID := uuid.New()
+			draft, err := svc.CreateDraft(ctx, creatorID, service.CreateDraftRequest{
+				Title: tc.name, Slug: fmt.Sprintf("material-%d", i), Description: "d", CEFRLevel: "B1",
+				Structure: materialCourseStructureOf(resourceID, tc.kind),
+			})
+			if err != nil {
+				t.Fatalf("create draft: %v", err)
+			}
+			sub, err := svc.SubmitDraft(ctx, creatorID, draft.ID)
+			if err != nil {
+				t.Fatalf("submit draft: %v", err)
+			}
+			verified, err := svc.RunGate1Verification(ctx, sub.ID)
+			if err != nil {
+				t.Fatalf("run Gate 1: %v", err)
+			}
+			passed := verified.Status == domain.SubmissionStatusInReview
+			if passed != tc.wantPass {
+				t.Fatalf("pass = %v, want %v; report: %s", passed, tc.wantPass, string(verified.VerificationReport))
+			}
+		})
+	}
+}
+
+func TestCreateDraft_MinimumPriceIs5000(t *testing.T) {
+	ctx := context.Background()
+	svc := service.NewService(newMockRepo(), &mockVerifier{}, &mockLessonAuthor{}, &mockContentAuthor{})
+	creatorID := uuid.New()
+	if _, err := svc.CreateDraft(ctx, creatorID, service.CreateDraftRequest{
+		Title: "Cheap", Slug: "cheap", CEFRLevel: "A1", PriceVND: 5_000,
+	}); err != nil {
+		t.Fatalf("5,000 VND should be accepted: %v", err)
+	}
+	if _, err := svc.CreateDraft(ctx, creatorID, service.CreateDraftRequest{
+		Title: "Too cheap", Slug: "too-cheap", CEFRLevel: "A1", PriceVND: 4_999,
+	}); !errors.Is(err, domain.ErrPriceOutOfBounds) {
+		t.Fatalf("4,999 VND should be out of bounds, got %v", err)
 	}
 }
 

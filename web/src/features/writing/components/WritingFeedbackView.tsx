@@ -7,6 +7,7 @@ import {
   HelpCircle,
   MessageSquare,
   Sparkles,
+  X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -32,10 +33,11 @@ export interface WritingFeedbackViewProps {
 
 function getBandColor(band: number): string {
   if (band >= 7.0)
-    return "text-emerald-500 bg-emerald-500/10 border-emerald-500/30";
-  if (band >= 6.0) return "text-primary bg-primary/10 border-primary/30";
-  if (band >= 5.0) return "text-amber-500 bg-amber-500/10 border-amber-500/30";
-  return "text-rose-500 bg-rose-500/10 border-rose-500/30";
+    return "text-success-accent bg-emerald-500/10 border-emerald-500/30";
+  if (band >= 6.0) return "text-primary-accent bg-primary/10 border-primary/30";
+  if (band >= 5.0)
+    return "text-warning-accent bg-amber-500/10 border-amber-500/30";
+  return "text-danger-accent bg-rose-500/10 border-rose-500/30";
 }
 
 function getCriterionTitleKey(name: string): string {
@@ -97,7 +99,7 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
     if (!essayText) {
       if (annotations.length === 0) {
         return (
-          <p className="text-sm text-text-muted italic">
+          <p className="text-base leading-relaxed text-text-muted italic">
             {t("writing.noAnnotations", "No specific annotations.")}
           </p>
         );
@@ -107,7 +109,7 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
           {annotations.map((ann, idx) => (
             <div
               key={idx}
-              className="p-3 rounded-lg border border-border bg-surface-muted/50 text-sm"
+              className="p-3 rounded-lg border border-border bg-surface-muted/50 text-base leading-relaxed"
             >
               <div className="font-semibold text-text mb-1">
                 &ldquo;{ann.quoted_text}&rdquo;
@@ -204,7 +206,7 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
       <div className="rounded-2xl border border-border bg-surface-card p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary-accent">
               <Sparkles className="h-4 w-4" aria-hidden="true" />
               <span>{t("writing.feedbackTitle", "Writing Assessment")}</span>
             </div>
@@ -225,13 +227,13 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
           </div>
 
           {feedback.overall_band >= 6.5 ? (
-            <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-emerald-500 text-sm font-medium">
-              <Award className="h-5 w-5 shrink-0" />
+            <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-success-accent text-sm font-medium">
+              <Award className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span>{t("writing.competentUser", "Competent User")}</span>
             </div>
           ) : (
             <div className="flex items-center gap-2 rounded-xl bg-primary/10 border border-primary/30 px-3 py-2 text-primary-accent text-sm font-medium">
-              <HelpCircle className="h-5 w-5 shrink-0" />
+              <HelpCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span>{t("writing.developingSkills", "Developing Skills")}</span>
             </div>
           )}
@@ -243,7 +245,7 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
             <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
               {t("writing.summary", "Examiner Summary")}
             </div>
-            <p className="text-sm text-text leading-relaxed whitespace-pre-line bg-surface-muted/60 rounded-xl p-4 border border-border/60">
+            <p className="text-base text-text leading-relaxed whitespace-pre-line bg-surface-muted/60 rounded-xl p-4 border border-border/60">
               {summary}
             </p>
           </div>
@@ -268,7 +270,7 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between gap-2">
-                      <CardTitle className="text-sm font-semibold text-text">
+                      <CardTitle className="min-w-0 text-base font-semibold leading-snug text-text">
                         {t(
                           getCriterionTitleKey(c.name),
                           getCriterionFallback(c.name),
@@ -283,7 +285,7 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-xs text-text-muted leading-relaxed">
+                    <p className="text-base text-text-muted leading-relaxed">
                       {comment}
                     </p>
                   </CardContent>
@@ -297,15 +299,18 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
       {/* Annotated Essay */}
       <Card className="bg-surface-card border-border shadow-none">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold text-text flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-primary" />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-base font-semibold leading-snug text-text flex items-center gap-2">
+              <MessageSquare
+                className="h-4 w-4 shrink-0 text-primary"
+                aria-hidden="true"
+              />
               <span>
                 {t("writing.annotations", "Essay Corrections & Notes")}
               </span>
             </CardTitle>
             {annotations.length > 0 && (
-              <span className="text-xs text-text-muted">
+              <span className="text-sm text-text-muted">
                 {t(
                   "writing.annotationClickHint",
                   "Click highlighted text for notes",
@@ -315,7 +320,9 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
           </div>
           <CardDescription>
             {annotations.length > 0
-              ? `${annotations.length} highlighted observation${annotations.length > 1 ? "s" : ""}`
+              ? t("writing.annotationCount", {
+                  count: annotations.length,
+                })
               : t("writing.noAnnotations", "No specific corrections")}
           </CardDescription>
         </CardHeader>
@@ -327,23 +334,24 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
           {/* Active Annotation Inspector Card */}
           {selectedAnnotation && (
             <div className="p-4 rounded-xl border border-primary/40 bg-primary/5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-150">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-primary tracking-wider">
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0 break-words text-sm font-semibold text-primary-accent">
                   &ldquo;{selectedAnnotation.quoted_text}&rdquo;
                 </span>
                 <Button
                   variant="ghost"
-                  className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 text-xs text-text-muted hover:text-text"
+                  size="icon"
+                  className="shrink-0 text-text-muted hover:text-text"
                   onClick={() => setSelectedAnnotationIdx(null)}
                   aria-label={t(
                     "writing.closeAnnotationDetails",
                     "Close annotation details",
                   )}
                 >
-                  ✕
+                  <X className="h-5 w-5" aria-hidden="true" />
                 </Button>
               </div>
-              <p className="text-sm text-text">
+              <p className="text-base leading-relaxed text-text">
                 {isVi
                   ? selectedAnnotation.comment_vi ||
                     selectedAnnotation.comment_en
@@ -361,23 +369,32 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
             className="cursor-pointer select-none py-3"
             onClick={() => setShowModelAnswer(!showModelAnswer)}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-semibold text-text">
-                <BookOpen className="h-4 w-4 text-primary" />
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2 text-base font-semibold text-text">
+                <BookOpen
+                  className="h-4 w-4 shrink-0 text-primary"
+                  aria-hidden="true"
+                />
                 <span>{t("writing.modelAnswer", "Model Answer")}</span>
               </div>
-              <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="shrink-0"
+                aria-expanded={showModelAnswer}
+                aria-label={t("writing.modelAnswer", "Model Answer")}
+              >
                 {showModelAnswer ? (
-                  <ChevronUp className="h-4 w-4" />
+                  <ChevronUp className="h-5 w-5" aria-hidden="true" />
                 ) : (
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-5 w-5" aria-hidden="true" />
                 )}
               </Button>
             </div>
           </CardHeader>
           {showModelAnswer && (
             <CardContent className="pt-0 pb-4">
-              <div className="p-4 rounded-xl border border-border/80 bg-surface-muted/40 text-sm text-text leading-relaxed whitespace-pre-line">
+              <div className="p-4 rounded-xl border border-border/80 bg-surface-muted/40 text-base text-text leading-relaxed whitespace-pre-line">
                 {sampleAnswer}
               </div>
             </CardContent>

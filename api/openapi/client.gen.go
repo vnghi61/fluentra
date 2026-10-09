@@ -141,6 +141,92 @@ type ClientInterface interface {
 	// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
 	AuditSearchLogs(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminListBanners List every announcement banner.
+	//
+	// Every banner, live or not, unpaginated: the set is small by design and an administrator needs all of it to see what is scheduled, what is showing and what has expired. Ordered by `priority` descending, then newest first, and capped at 200.
+	//
+	// Corresponds with GET /admin/banners (the `AdminListBanners` operationId).
+	AdminListBanners(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminCreateBannerWithBody Create an announcement banner.
+	//
+	// Defines a new banner, off by default. `cta_label` and `cta_url` are set together or not at all, and `cta_url` must be an internal path (`/...`, never `//...`) or an `https://` URL; `javascript:`, `data:` and protocol-relative links are refused. When both `starts_at` and `ends_at` are given, `ends_at` must be later. Text is stored and served as plain text. The write is recorded in the audit log.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/banners (the `AdminCreateBanner` operationId).
+	AdminCreateBannerWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminCreateBanner Create an announcement banner.
+	//
+	// Defines a new banner, off by default. `cta_label` and `cta_url` are set together or not at all, and `cta_url` must be an internal path (`/...`, never `//...`) or an `https://` URL; `javascript:`, `data:` and protocol-relative links are refused. When both `starts_at` and `ends_at` are given, `ends_at` must be later. Text is stored and served as plain text. The write is recorded in the audit log.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/banners (the `AdminCreateBanner` operationId).
+	AdminCreateBanner(ctx context.Context, body AdminCreateBannerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminRequestBannerImageUploadWithBody Request a direct upload for a banner image.
+	//
+	// Issues a presigned upload into a holding area for one JPEG, PNG or WebP image of at most 5 MB, valid for ten minutes. Nothing is published by the upload itself: `POST /admin/banners/images` checks and processes it.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/banners/image-upload-intent (the `AdminRequestBannerImageUpload` operationId).
+	AdminRequestBannerImageUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminRequestBannerImageUpload Request a direct upload for a banner image.
+	//
+	// Issues a presigned upload into a holding area for one JPEG, PNG or WebP image of at most 5 MB, valid for ten minutes. Nothing is published by the upload itself: `POST /admin/banners/images` checks and processes it.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/banners/image-upload-intent (the `AdminRequestBannerImageUpload` operationId).
+	AdminRequestBannerImageUpload(ctx context.Context, body AdminRequestBannerImageUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminProcessBannerImageWithBody Check and publish an uploaded banner image.
+	//
+	// Reads the uploaded object and refuses it unless its bytes are a JPEG, PNG or WebP of at most 40 megapixels. It then applies the EXIF orientation, scales the image to fit 1600x900 and re-encodes it as JPEG, which drops every piece of metadata (camera, GPS). The raw upload is deleted either way. The result is attached to no banner until a create or update names its `image_key`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/banners/images (the `AdminProcessBannerImage` operationId).
+	AdminProcessBannerImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminProcessBannerImage Check and publish an uploaded banner image.
+	//
+	// Reads the uploaded object and refuses it unless its bytes are a JPEG, PNG or WebP of at most 40 megapixels. It then applies the EXIF orientation, scales the image to fit 1600x900 and re-encodes it as JPEG, which drops every piece of metadata (camera, GPS). The raw upload is deleted either way. The result is attached to no banner until a create or update names its `image_key`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/banners/images (the `AdminProcessBannerImage` operationId).
+	AdminProcessBannerImage(ctx context.Context, body AdminProcessBannerImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminDeleteBanner Delete an announcement banner.
+	//
+	// Removes the banner for good. To stop showing it while keeping it for later, switch it off instead. The deletion is audited.
+	//
+	// Corresponds with DELETE /admin/banners/{id} (the `AdminDeleteBanner` operationId).
+	AdminDeleteBanner(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminUpdateBannerWithBody Replace an announcement banner.
+	//
+	// A full replacement of the banner's editable fields, under the same rules as creation. Switching a banner off is this call with `is_active: false`. The change invalidates the active-banner cache on the instance that served it and is audited.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /admin/banners/{id} (the `AdminUpdateBanner` operationId).
+	AdminUpdateBannerWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminUpdateBanner Replace an announcement banner.
+	//
+	// A full replacement of the banner's editable fields, under the same rules as creation. Switching a banner off is this call with `is_active: false`. The change invalidates the active-banner cache on the instance that served it and is audited.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /admin/banners/{id} (the `AdminUpdateBanner` operationId).
+	AdminUpdateBanner(ctx context.Context, id openapi_types.UUID, body AdminUpdateBannerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PaymentListPayouts List creator payout requests.
 	//
 	// Payouts owed to creators, newest first. Bank details are not in this response; they are on the single payout (BR-STUDIO-09).
@@ -475,7 +561,7 @@ type ClientInterface interface {
 
 	// GetQuestionStats Empirical difficulty and discrimination statistics.
 	//
-	// Returns empirical statistics from real learner attempts.
+	// Returns empirical statistics from real learner attempts. A question whose statistics have not been computed yet answers 200 with zero attempts, null indices and a null `last_computed_at`; 404 means the question itself does not exist.
 	//
 	// Corresponds with GET /admin/questions/{id}/stats (the `GetQuestionStats` operationId).
 	GetQuestionStats(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1112,6 +1198,15 @@ type ClientInterface interface {
 	//
 	// Corresponds with DELETE /auth/sessions/{id} (the `AuthRevokeSession` operationId).
 	AuthRevokeSession(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminListActiveBanners List the announcement banners showing now.
+	//
+	// The banners a signed-in learner's dashboard shows right now: switched on, and with the current time inside the optional `starts_at`..`ends_at` window. At most three, highest `priority` first and then newest first.
+	//
+	// Any signed-in account may read this; it carries none of the administrative fields (`created_by`, `priority`, the window). The list is cached in-process for 30 seconds, so a change made in the admin screen reaches every learner within one cache generation. `title`, `body` and `cta_label` are plain text and must be rendered as text, never as HTML.
+	//
+	// Corresponds with GET /banners/active (the `AdminListActiveBanners` operationId).
+	AdminListActiveBanners(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// BrowsePublishedContent Browse published content with taxonomy filters.
 	//
@@ -2455,6 +2550,192 @@ func (c *Client) AuditSearchLogs(ctx context.Context, params *AuditSearchLogsPar
 	return c.Client.Do(req)
 }
 
+// AdminListBanners List every announcement banner.
+//
+// Every banner, live or not, unpaginated: the set is small by design and an administrator needs all of it to see what is scheduled, what is showing and what has expired. Ordered by `priority` descending, then newest first, and capped at 200.
+//
+// Corresponds with GET /admin/banners (the `AdminListBanners` operationId).
+func (c *Client) AdminListBanners(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminListBannersRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminCreateBannerWithBody Create an announcement banner.
+//
+// Defines a new banner, off by default. `cta_label` and `cta_url` are set together or not at all, and `cta_url` must be an internal path (`/...`, never `//...`) or an `https://` URL; `javascript:`, `data:` and protocol-relative links are refused. When both `starts_at` and `ends_at` are given, `ends_at` must be later. Text is stored and served as plain text. The write is recorded in the audit log.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/banners (the `AdminCreateBanner` operationId).
+func (c *Client) AdminCreateBannerWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminCreateBannerRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminCreateBanner Create an announcement banner.
+//
+// Defines a new banner, off by default. `cta_label` and `cta_url` are set together or not at all, and `cta_url` must be an internal path (`/...`, never `//...`) or an `https://` URL; `javascript:`, `data:` and protocol-relative links are refused. When both `starts_at` and `ends_at` are given, `ends_at` must be later. Text is stored and served as plain text. The write is recorded in the audit log.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/banners (the `AdminCreateBanner` operationId).
+func (c *Client) AdminCreateBanner(ctx context.Context, body AdminCreateBannerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminCreateBannerRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminRequestBannerImageUploadWithBody Request a direct upload for a banner image.
+//
+// Issues a presigned upload into a holding area for one JPEG, PNG or WebP image of at most 5 MB, valid for ten minutes. Nothing is published by the upload itself: `POST /admin/banners/images` checks and processes it.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/banners/image-upload-intent (the `AdminRequestBannerImageUpload` operationId).
+func (c *Client) AdminRequestBannerImageUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminRequestBannerImageUploadRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminRequestBannerImageUpload Request a direct upload for a banner image.
+//
+// Issues a presigned upload into a holding area for one JPEG, PNG or WebP image of at most 5 MB, valid for ten minutes. Nothing is published by the upload itself: `POST /admin/banners/images` checks and processes it.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/banners/image-upload-intent (the `AdminRequestBannerImageUpload` operationId).
+func (c *Client) AdminRequestBannerImageUpload(ctx context.Context, body AdminRequestBannerImageUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminRequestBannerImageUploadRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminProcessBannerImageWithBody Check and publish an uploaded banner image.
+//
+// Reads the uploaded object and refuses it unless its bytes are a JPEG, PNG or WebP of at most 40 megapixels. It then applies the EXIF orientation, scales the image to fit 1600x900 and re-encodes it as JPEG, which drops every piece of metadata (camera, GPS). The raw upload is deleted either way. The result is attached to no banner until a create or update names its `image_key`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/banners/images (the `AdminProcessBannerImage` operationId).
+func (c *Client) AdminProcessBannerImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminProcessBannerImageRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminProcessBannerImage Check and publish an uploaded banner image.
+//
+// Reads the uploaded object and refuses it unless its bytes are a JPEG, PNG or WebP of at most 40 megapixels. It then applies the EXIF orientation, scales the image to fit 1600x900 and re-encodes it as JPEG, which drops every piece of metadata (camera, GPS). The raw upload is deleted either way. The result is attached to no banner until a create or update names its `image_key`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/banners/images (the `AdminProcessBannerImage` operationId).
+func (c *Client) AdminProcessBannerImage(ctx context.Context, body AdminProcessBannerImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminProcessBannerImageRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminDeleteBanner Delete an announcement banner.
+//
+// Removes the banner for good. To stop showing it while keeping it for later, switch it off instead. The deletion is audited.
+//
+// Corresponds with DELETE /admin/banners/{id} (the `AdminDeleteBanner` operationId).
+func (c *Client) AdminDeleteBanner(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminDeleteBannerRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminUpdateBannerWithBody Replace an announcement banner.
+//
+// A full replacement of the banner's editable fields, under the same rules as creation. Switching a banner off is this call with `is_active: false`. The change invalidates the active-banner cache on the instance that served it and is audited.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /admin/banners/{id} (the `AdminUpdateBanner` operationId).
+func (c *Client) AdminUpdateBannerWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminUpdateBannerRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminUpdateBanner Replace an announcement banner.
+//
+// A full replacement of the banner's editable fields, under the same rules as creation. Switching a banner off is this call with `is_active: false`. The change invalidates the active-banner cache on the instance that served it and is audited.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /admin/banners/{id} (the `AdminUpdateBanner` operationId).
+func (c *Client) AdminUpdateBanner(ctx context.Context, id openapi_types.UUID, body AdminUpdateBannerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminUpdateBannerRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // PaymentListPayouts List creator payout requests.
 //
 // Payouts owed to creators, newest first. Bank details are not in this response; they are on the single payout (BR-STUDIO-09).
@@ -3189,7 +3470,7 @@ func (c *Client) GenerateQuestions(ctx context.Context, body GenerateQuestionsJS
 
 // GetQuestionStats Empirical difficulty and discrimination statistics.
 //
-// Returns empirical statistics from real learner attempts.
+// Returns empirical statistics from real learner attempts. A question whose statistics have not been computed yet answers 200 with zero attempts, null indices and a null `last_computed_at`; 404 means the question itself does not exist.
 //
 // Corresponds with GET /admin/questions/{id}/stats (the `GetQuestionStats` operationId).
 func (c *Client) GetQuestionStats(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4437,6 +4718,25 @@ func (c *Client) AuthListSessions(ctx context.Context, reqEditors ...RequestEdit
 // Corresponds with DELETE /auth/sessions/{id} (the `AuthRevokeSession` operationId).
 func (c *Client) AuthRevokeSession(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAuthRevokeSessionRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminListActiveBanners List the announcement banners showing now.
+//
+// The banners a signed-in learner's dashboard shows right now: switched on, and with the current time inside the optional `starts_at`..`ends_at` window. At most three, highest `priority` first and then newest first.
+//
+// Any signed-in account may read this; it carries none of the administrative fields (`created_by`, `priority`, the window). The list is cached in-process for 30 seconds, so a change made in the admin screen reaches every learner within one cache generation. `title`, `body` and `cta_label` are plain text and must be rendered as text, never as HTML.
+//
+// Corresponds with GET /banners/active (the `AdminListActiveBanners` operationId).
+func (c *Client) AdminListActiveBanners(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminListActiveBannersRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -7491,6 +7791,234 @@ func NewAuditSearchLogsRequest(server string, params *AuditSearchLogsParams) (*h
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewAdminListBannersRequest constructs an http.Request for the AdminListBanners method
+func NewAdminListBannersRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/banners")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminCreateBannerRequest calls the generic AdminCreateBanner builder with application/json body
+func NewAdminCreateBannerRequest(server string, body AdminCreateBannerJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminCreateBannerRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAdminCreateBannerRequestWithBody constructs an http.Request for the AdminCreateBanner method, with any body, and a specified content type
+func NewAdminCreateBannerRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/banners")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminRequestBannerImageUploadRequest calls the generic AdminRequestBannerImageUpload builder with application/json body
+func NewAdminRequestBannerImageUploadRequest(server string, body AdminRequestBannerImageUploadJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminRequestBannerImageUploadRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAdminRequestBannerImageUploadRequestWithBody constructs an http.Request for the AdminRequestBannerImageUpload method, with any body, and a specified content type
+func NewAdminRequestBannerImageUploadRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/banners/image-upload-intent")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminProcessBannerImageRequest calls the generic AdminProcessBannerImage builder with application/json body
+func NewAdminProcessBannerImageRequest(server string, body AdminProcessBannerImageJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminProcessBannerImageRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAdminProcessBannerImageRequestWithBody constructs an http.Request for the AdminProcessBannerImage method, with any body, and a specified content type
+func NewAdminProcessBannerImageRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/banners/images")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminDeleteBannerRequest constructs an http.Request for the AdminDeleteBanner method
+func NewAdminDeleteBannerRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/banners/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminUpdateBannerRequest calls the generic AdminUpdateBanner builder with application/json body
+func NewAdminUpdateBannerRequest(server string, id openapi_types.UUID, body AdminUpdateBannerJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminUpdateBannerRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAdminUpdateBannerRequestWithBody constructs an http.Request for the AdminUpdateBanner method, with any body, and a specified content type
+func NewAdminUpdateBannerRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/banners/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -10986,6 +11514,33 @@ func NewAuthRevokeSessionRequest(server string, id openapi_types.UUID) (*http.Re
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminListActiveBannersRequest constructs an http.Request for the AdminListActiveBanners method
+func NewAdminListActiveBannersRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/banners/active")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -16001,6 +16556,96 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
 	AuditSearchLogsWithResponse(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*AuditSearchLogsResponse, error)
 
+	// AdminListBannersWithResponse List every announcement banner.
+	//
+	// Every banner, live or not, unpaginated: the set is small by design and an administrator needs all of it to see what is scheduled, what is showing and what has expired. Ordered by `priority` descending, then newest first, and capped at 200.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/banners (the `AdminListBanners` operationId).
+	AdminListBannersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AdminListBannersResponse, error)
+
+	// AdminCreateBannerWithBodyWithResponse Create an announcement banner.
+	//
+	// Defines a new banner, off by default. `cta_label` and `cta_url` are set together or not at all, and `cta_url` must be an internal path (`/...`, never `//...`) or an `https://` URL; `javascript:`, `data:` and protocol-relative links are refused. When both `starts_at` and `ends_at` are given, `ends_at` must be later. Text is stored and served as plain text. The write is recorded in the audit log.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/banners (the `AdminCreateBanner` operationId).
+	AdminCreateBannerWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminCreateBannerResponse, error)
+
+	// AdminCreateBannerWithResponse Create an announcement banner.
+	//
+	// Defines a new banner, off by default. `cta_label` and `cta_url` are set together or not at all, and `cta_url` must be an internal path (`/...`, never `//...`) or an `https://` URL; `javascript:`, `data:` and protocol-relative links are refused. When both `starts_at` and `ends_at` are given, `ends_at` must be later. Text is stored and served as plain text. The write is recorded in the audit log.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/banners (the `AdminCreateBanner` operationId).
+	AdminCreateBannerWithResponse(ctx context.Context, body AdminCreateBannerJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateBannerResponse, error)
+
+	// AdminRequestBannerImageUploadWithBodyWithResponse Request a direct upload for a banner image.
+	//
+	// Issues a presigned upload into a holding area for one JPEG, PNG or WebP image of at most 5 MB, valid for ten minutes. Nothing is published by the upload itself: `POST /admin/banners/images` checks and processes it.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/banners/image-upload-intent (the `AdminRequestBannerImageUpload` operationId).
+	AdminRequestBannerImageUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminRequestBannerImageUploadResponse, error)
+
+	// AdminRequestBannerImageUploadWithResponse Request a direct upload for a banner image.
+	//
+	// Issues a presigned upload into a holding area for one JPEG, PNG or WebP image of at most 5 MB, valid for ten minutes. Nothing is published by the upload itself: `POST /admin/banners/images` checks and processes it.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/banners/image-upload-intent (the `AdminRequestBannerImageUpload` operationId).
+	AdminRequestBannerImageUploadWithResponse(ctx context.Context, body AdminRequestBannerImageUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminRequestBannerImageUploadResponse, error)
+
+	// AdminProcessBannerImageWithBodyWithResponse Check and publish an uploaded banner image.
+	//
+	// Reads the uploaded object and refuses it unless its bytes are a JPEG, PNG or WebP of at most 40 megapixels. It then applies the EXIF orientation, scales the image to fit 1600x900 and re-encodes it as JPEG, which drops every piece of metadata (camera, GPS). The raw upload is deleted either way. The result is attached to no banner until a create or update names its `image_key`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/banners/images (the `AdminProcessBannerImage` operationId).
+	AdminProcessBannerImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminProcessBannerImageResponse, error)
+
+	// AdminProcessBannerImageWithResponse Check and publish an uploaded banner image.
+	//
+	// Reads the uploaded object and refuses it unless its bytes are a JPEG, PNG or WebP of at most 40 megapixels. It then applies the EXIF orientation, scales the image to fit 1600x900 and re-encodes it as JPEG, which drops every piece of metadata (camera, GPS). The raw upload is deleted either way. The result is attached to no banner until a create or update names its `image_key`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/banners/images (the `AdminProcessBannerImage` operationId).
+	AdminProcessBannerImageWithResponse(ctx context.Context, body AdminProcessBannerImageJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminProcessBannerImageResponse, error)
+
+	// AdminDeleteBannerWithResponse Delete an announcement banner.
+	//
+	// Removes the banner for good. To stop showing it while keeping it for later, switch it off instead. The deletion is audited.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /admin/banners/{id} (the `AdminDeleteBanner` operationId).
+	AdminDeleteBannerWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminDeleteBannerResponse, error)
+
+	// AdminUpdateBannerWithBodyWithResponse Replace an announcement banner.
+	//
+	// A full replacement of the banner's editable fields, under the same rules as creation. Switching a banner off is this call with `is_active: false`. The change invalidates the active-banner cache on the instance that served it and is audited.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/banners/{id} (the `AdminUpdateBanner` operationId).
+	AdminUpdateBannerWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminUpdateBannerResponse, error)
+
+	// AdminUpdateBannerWithResponse Replace an announcement banner.
+	//
+	// A full replacement of the banner's editable fields, under the same rules as creation. Switching a banner off is this call with `is_active: false`. The change invalidates the active-banner cache on the instance that served it and is audited.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/banners/{id} (the `AdminUpdateBanner` operationId).
+	AdminUpdateBannerWithResponse(ctx context.Context, id openapi_types.UUID, body AdminUpdateBannerJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminUpdateBannerResponse, error)
+
 	// PaymentListPayoutsWithResponse List creator payout requests.
 	//
 	// Payouts owed to creators, newest first. Bank details are not in this response; they are on the single payout (BR-STUDIO-09).
@@ -16367,7 +17012,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetQuestionStatsWithResponse Empirical difficulty and discrimination statistics.
 	//
-	// Returns empirical statistics from real learner attempts.
+	// Returns empirical statistics from real learner attempts. A question whose statistics have not been computed yet answers 200 with zero attempts, null indices and a null `last_computed_at`; 404 means the question itself does not exist.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -17052,6 +17697,17 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /auth/sessions/{id} (the `AuthRevokeSession` operationId).
 	AuthRevokeSessionWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AuthRevokeSessionResponse, error)
+
+	// AdminListActiveBannersWithResponse List the announcement banners showing now.
+	//
+	// The banners a signed-in learner's dashboard shows right now: switched on, and with the current time inside the optional `starts_at`..`ends_at` window. At most three, highest `priority` first and then newest first.
+	//
+	// Any signed-in account may read this; it carries none of the administrative fields (`created_by`, `priority`, the window). The list is cached in-process for 30 seconds, so a change made in the admin screen reaches every learner within one cache generation. `title`, `body` and `cta_label` are plain text and must be rendered as text, never as HTML.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /banners/active (the `AdminListActiveBanners` operationId).
+	AdminListActiveBannersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AdminListActiveBannersResponse, error)
 
 	// BrowsePublishedContentWithResponse Browse published content with taxonomy filters.
 	//
@@ -18759,6 +19415,476 @@ func (r AuditSearchLogsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AuditSearchLogsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminListBannersResponse200Headers the declared response headers of an HTTP 200 response for AdminListBanners
+type AdminListBannersResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminListBannersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BannerList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminListBannersResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminListBannersResponse) GetJSON200() *BannerList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminListBannersResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminListBannersResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminListBannersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminListBannersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminListBannersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminListBannersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminCreateBannerResponse201Headers the declared response headers of an HTTP 201 response for AdminCreateBanner
+type AdminCreateBannerResponse201Headers struct {
+	XRequestId *string
+}
+
+type AdminCreateBannerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Banner
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *AdminCreateBannerResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AdminCreateBannerResponse) GetJSON201() *Banner {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AdminCreateBannerResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminCreateBannerResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminCreateBannerResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminCreateBannerResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminCreateBannerResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminCreateBannerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminCreateBannerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminCreateBannerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminRequestBannerImageUploadResponse200Headers the declared response headers of an HTTP 200 response for AdminRequestBannerImageUpload
+type AdminRequestBannerImageUploadResponse200Headers struct {
+	XRequestId *string
+}
+
+// AdminRequestBannerImageUploadResponse503Headers the declared response headers of an HTTP 503 response for AdminRequestBannerImageUpload
+type AdminRequestBannerImageUploadResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AdminRequestBannerImageUploadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BannerImageUploadIntent
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ServiceUnavailable
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminRequestBannerImageUploadResponse200Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AdminRequestBannerImageUploadResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminRequestBannerImageUploadResponse) GetJSON200() *BannerImageUploadIntent {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AdminRequestBannerImageUploadResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminRequestBannerImageUploadResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminRequestBannerImageUploadResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminRequestBannerImageUploadResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AdminRequestBannerImageUploadResponse) GetApplicationproblemJSON503() *ServiceUnavailable {
+	return r.ApplicationproblemJSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminRequestBannerImageUploadResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminRequestBannerImageUploadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminRequestBannerImageUploadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminRequestBannerImageUploadResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminProcessBannerImageResponse201Headers the declared response headers of an HTTP 201 response for AdminProcessBannerImage
+type AdminProcessBannerImageResponse201Headers struct {
+	XRequestId *string
+}
+
+// AdminProcessBannerImageResponse503Headers the declared response headers of an HTTP 503 response for AdminProcessBannerImage
+type AdminProcessBannerImageResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AdminProcessBannerImageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *BannerImage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ServiceUnavailable
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *AdminProcessBannerImageResponse201Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AdminProcessBannerImageResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AdminProcessBannerImageResponse) GetJSON201() *BannerImage {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AdminProcessBannerImageResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminProcessBannerImageResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminProcessBannerImageResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminProcessBannerImageResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AdminProcessBannerImageResponse) GetApplicationproblemJSON503() *ServiceUnavailable {
+	return r.ApplicationproblemJSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminProcessBannerImageResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminProcessBannerImageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminProcessBannerImageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminProcessBannerImageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminDeleteBannerResponse204Headers the declared response headers of an HTTP 204 response for AdminDeleteBanner
+type AdminDeleteBannerResponse204Headers struct {
+	XRequestId *string
+}
+
+type AdminDeleteBannerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *AdminDeleteBannerResponse204Headers
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminDeleteBannerResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminDeleteBannerResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminDeleteBannerResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminDeleteBannerResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminDeleteBannerResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminDeleteBannerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminDeleteBannerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminDeleteBannerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminUpdateBannerResponse200Headers the declared response headers of an HTTP 200 response for AdminUpdateBanner
+type AdminUpdateBannerResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminUpdateBannerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Banner
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminUpdateBannerResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminUpdateBannerResponse) GetJSON200() *Banner {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AdminUpdateBannerResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminUpdateBannerResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminUpdateBannerResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminUpdateBannerResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminUpdateBannerResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminUpdateBannerResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminUpdateBannerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminUpdateBannerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminUpdateBannerResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -24067,6 +25193,61 @@ func (r AuthRevokeSessionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AuthRevokeSessionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminListActiveBannersResponse200Headers the declared response headers of an HTTP 200 response for AdminListActiveBanners
+type AdminListActiveBannersResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminListActiveBannersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ActiveBannerList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminListActiveBannersResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminListActiveBannersResponse) GetJSON200() *ActiveBannerList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminListActiveBannersResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminListActiveBannersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminListActiveBannersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminListActiveBannersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminListActiveBannersResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -32560,6 +33741,156 @@ func (c *ClientWithResponses) AuditSearchLogsWithResponse(ctx context.Context, p
 	return ParseAuditSearchLogsResponse(rsp)
 }
 
+// AdminListBannersWithResponse List every announcement banner.
+//
+// Every banner, live or not, unpaginated: the set is small by design and an administrator needs all of it to see what is scheduled, what is showing and what has expired. Ordered by `priority` descending, then newest first, and capped at 200.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/banners (the `AdminListBanners` operationId).
+func (c *ClientWithResponses) AdminListBannersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AdminListBannersResponse, error) {
+	rsp, err := c.AdminListBanners(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminListBannersResponse(rsp)
+}
+
+// AdminCreateBannerWithBodyWithResponse Create an announcement banner.
+//
+// Defines a new banner, off by default. `cta_label` and `cta_url` are set together or not at all, and `cta_url` must be an internal path (`/...`, never `//...`) or an `https://` URL; `javascript:`, `data:` and protocol-relative links are refused. When both `starts_at` and `ends_at` are given, `ends_at` must be later. Text is stored and served as plain text. The write is recorded in the audit log.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/banners (the `AdminCreateBanner` operationId).
+func (c *ClientWithResponses) AdminCreateBannerWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminCreateBannerResponse, error) {
+	rsp, err := c.AdminCreateBannerWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminCreateBannerResponse(rsp)
+}
+
+// AdminCreateBannerWithResponse Create an announcement banner.
+//
+// Defines a new banner, off by default. `cta_label` and `cta_url` are set together or not at all, and `cta_url` must be an internal path (`/...`, never `//...`) or an `https://` URL; `javascript:`, `data:` and protocol-relative links are refused. When both `starts_at` and `ends_at` are given, `ends_at` must be later. Text is stored and served as plain text. The write is recorded in the audit log.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/banners (the `AdminCreateBanner` operationId).
+func (c *ClientWithResponses) AdminCreateBannerWithResponse(ctx context.Context, body AdminCreateBannerJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateBannerResponse, error) {
+	rsp, err := c.AdminCreateBanner(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminCreateBannerResponse(rsp)
+}
+
+// AdminRequestBannerImageUploadWithBodyWithResponse Request a direct upload for a banner image.
+//
+// Issues a presigned upload into a holding area for one JPEG, PNG or WebP image of at most 5 MB, valid for ten minutes. Nothing is published by the upload itself: `POST /admin/banners/images` checks and processes it.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/banners/image-upload-intent (the `AdminRequestBannerImageUpload` operationId).
+func (c *ClientWithResponses) AdminRequestBannerImageUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminRequestBannerImageUploadResponse, error) {
+	rsp, err := c.AdminRequestBannerImageUploadWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminRequestBannerImageUploadResponse(rsp)
+}
+
+// AdminRequestBannerImageUploadWithResponse Request a direct upload for a banner image.
+//
+// Issues a presigned upload into a holding area for one JPEG, PNG or WebP image of at most 5 MB, valid for ten minutes. Nothing is published by the upload itself: `POST /admin/banners/images` checks and processes it.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/banners/image-upload-intent (the `AdminRequestBannerImageUpload` operationId).
+func (c *ClientWithResponses) AdminRequestBannerImageUploadWithResponse(ctx context.Context, body AdminRequestBannerImageUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminRequestBannerImageUploadResponse, error) {
+	rsp, err := c.AdminRequestBannerImageUpload(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminRequestBannerImageUploadResponse(rsp)
+}
+
+// AdminProcessBannerImageWithBodyWithResponse Check and publish an uploaded banner image.
+//
+// Reads the uploaded object and refuses it unless its bytes are a JPEG, PNG or WebP of at most 40 megapixels. It then applies the EXIF orientation, scales the image to fit 1600x900 and re-encodes it as JPEG, which drops every piece of metadata (camera, GPS). The raw upload is deleted either way. The result is attached to no banner until a create or update names its `image_key`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/banners/images (the `AdminProcessBannerImage` operationId).
+func (c *ClientWithResponses) AdminProcessBannerImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminProcessBannerImageResponse, error) {
+	rsp, err := c.AdminProcessBannerImageWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminProcessBannerImageResponse(rsp)
+}
+
+// AdminProcessBannerImageWithResponse Check and publish an uploaded banner image.
+//
+// Reads the uploaded object and refuses it unless its bytes are a JPEG, PNG or WebP of at most 40 megapixels. It then applies the EXIF orientation, scales the image to fit 1600x900 and re-encodes it as JPEG, which drops every piece of metadata (camera, GPS). The raw upload is deleted either way. The result is attached to no banner until a create or update names its `image_key`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/banners/images (the `AdminProcessBannerImage` operationId).
+func (c *ClientWithResponses) AdminProcessBannerImageWithResponse(ctx context.Context, body AdminProcessBannerImageJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminProcessBannerImageResponse, error) {
+	rsp, err := c.AdminProcessBannerImage(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminProcessBannerImageResponse(rsp)
+}
+
+// AdminDeleteBannerWithResponse Delete an announcement banner.
+//
+// Removes the banner for good. To stop showing it while keeping it for later, switch it off instead. The deletion is audited.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /admin/banners/{id} (the `AdminDeleteBanner` operationId).
+func (c *ClientWithResponses) AdminDeleteBannerWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminDeleteBannerResponse, error) {
+	rsp, err := c.AdminDeleteBanner(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminDeleteBannerResponse(rsp)
+}
+
+// AdminUpdateBannerWithBodyWithResponse Replace an announcement banner.
+//
+// A full replacement of the banner's editable fields, under the same rules as creation. Switching a banner off is this call with `is_active: false`. The change invalidates the active-banner cache on the instance that served it and is audited.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/banners/{id} (the `AdminUpdateBanner` operationId).
+func (c *ClientWithResponses) AdminUpdateBannerWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminUpdateBannerResponse, error) {
+	rsp, err := c.AdminUpdateBannerWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminUpdateBannerResponse(rsp)
+}
+
+// AdminUpdateBannerWithResponse Replace an announcement banner.
+//
+// A full replacement of the banner's editable fields, under the same rules as creation. Switching a banner off is this call with `is_active: false`. The change invalidates the active-banner cache on the instance that served it and is audited.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/banners/{id} (the `AdminUpdateBanner` operationId).
+func (c *ClientWithResponses) AdminUpdateBannerWithResponse(ctx context.Context, id openapi_types.UUID, body AdminUpdateBannerJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminUpdateBannerResponse, error) {
+	rsp, err := c.AdminUpdateBanner(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminUpdateBannerResponse(rsp)
+}
+
 // PaymentListPayoutsWithResponse List creator payout requests.
 //
 // Payouts owed to creators, newest first. Bank details are not in this response; they are on the single payout (BR-STUDIO-09).
@@ -33166,7 +34497,7 @@ func (c *ClientWithResponses) GenerateQuestionsWithResponse(ctx context.Context,
 
 // GetQuestionStatsWithResponse Empirical difficulty and discrimination statistics.
 //
-// Returns empirical statistics from real learner attempts.
+// Returns empirical statistics from real learner attempts. A question whose statistics have not been computed yet answers 200 with zero attempts, null indices and a null `last_computed_at`; 404 means the question itself does not exist.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -34222,6 +35553,23 @@ func (c *ClientWithResponses) AuthRevokeSessionWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseAuthRevokeSessionResponse(rsp)
+}
+
+// AdminListActiveBannersWithResponse List the announcement banners showing now.
+//
+// The banners a signed-in learner's dashboard shows right now: switched on, and with the current time inside the optional `starts_at`..`ends_at` window. At most three, highest `priority` first and then newest first.
+//
+// Any signed-in account may read this; it carries none of the administrative fields (`created_by`, `priority`, the window). The list is cached in-process for 30 seconds, so a change made in the admin screen reaches every learner within one cache generation. `title`, `body` and `cta_label` are plain text and must be rendered as text, never as HTML.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /banners/active (the `AdminListActiveBanners` operationId).
+func (c *ClientWithResponses) AdminListActiveBannersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AdminListActiveBannersResponse, error) {
+	rsp, err := c.AdminListActiveBanners(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminListActiveBannersResponse(rsp)
 }
 
 // BrowsePublishedContentWithResponse Browse published content with taxonomy filters.
@@ -36816,6 +38164,431 @@ func ParseAuditSearchLogsResponse(rsp *http.Response) (*AuditSearchLogsResponse,
 	switch {
 	case rsp.StatusCode == 200:
 		var headers AuditSearchLogsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminListBannersResponse parses an HTTP response from a AdminListBannersWithResponse call
+func ParseAdminListBannersResponse(rsp *http.Response) (*AdminListBannersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminListBannersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BannerList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminListBannersResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminCreateBannerResponse parses an HTTP response from a AdminCreateBannerWithResponse call
+func ParseAdminCreateBannerResponse(rsp *http.Response) (*AdminCreateBannerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminCreateBannerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Banner
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers AdminCreateBannerResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminRequestBannerImageUploadResponse parses an HTTP response from a AdminRequestBannerImageUploadWithResponse call
+func ParseAdminRequestBannerImageUploadResponse(rsp *http.Response) (*AdminRequestBannerImageUploadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminRequestBannerImageUploadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BannerImageUploadIntent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminRequestBannerImageUploadResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 503:
+		var headers AdminRequestBannerImageUploadResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminProcessBannerImageResponse parses an HTTP response from a AdminProcessBannerImageWithResponse call
+func ParseAdminProcessBannerImageResponse(rsp *http.Response) (*AdminProcessBannerImageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminProcessBannerImageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest BannerImage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers AdminProcessBannerImageResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 503:
+		var headers AdminProcessBannerImageResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminDeleteBannerResponse parses an HTTP response from a AdminDeleteBannerWithResponse call
+func ParseAdminDeleteBannerResponse(rsp *http.Response) (*AdminDeleteBannerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminDeleteBannerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers AdminDeleteBannerResponse204Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers204 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminUpdateBannerResponse parses an HTTP response from a AdminUpdateBannerWithResponse call
+func ParseAdminUpdateBannerResponse(rsp *http.Response) (*AdminUpdateBannerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminUpdateBannerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Banner
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminUpdateBannerResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
@@ -41844,6 +43617,52 @@ func ParseAuthRevokeSessionResponse(rsp *http.Response) (*AuthRevokeSessionRespo
 			headers.XRequestId = &value
 		}
 		response.Headers204 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminListActiveBannersResponse parses an HTTP response from a AdminListActiveBannersWithResponse call
+func ParseAdminListActiveBannersResponse(rsp *http.Response) (*AdminListActiveBannersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminListActiveBannersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ActiveBannerList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminListActiveBannersResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil

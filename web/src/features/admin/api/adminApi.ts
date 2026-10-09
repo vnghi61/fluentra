@@ -24,6 +24,8 @@ export type AdminContentItemList =
 export type AdminContentItemDetail =
   components["schemas"]["AdminContentItemDetail"];
 export type ContentItem = components["schemas"]["ContentItem"];
+export type CreateContentItemRequest =
+  components["schemas"]["CreateContentItemRequest"];
 export type ContentVersion = components["schemas"]["ContentVersion"];
 export type AuthoringStatus = components["schemas"]["AuthoringStatus"];
 export type ReportedContentVersion =
@@ -218,6 +220,14 @@ export const adminApi = {
     return apiFetch<AdminContentItemList>(
       `/api/v1/admin/content${qs ? `?${qs}` : ""}`,
     );
+  },
+
+  /** Create an unpublished draft; the server requires content.create. */
+  async createContent(body: CreateContentItemRequest): Promise<ContentItem> {
+    return apiFetch<ContentItem>("/api/v1/admin/content", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   },
 
   /** Get single content item detail with all versions */

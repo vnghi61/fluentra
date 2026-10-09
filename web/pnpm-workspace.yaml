@@ -13,6 +13,9 @@ allowBuilds:
   esbuild: true
   msw: true
   unrs-resolver: true
+  # Denied on purpose: core-js arrives as an optional dependency of jspdf (the
+  # account report PDF) and its postinstall only prints a funding banner.
+  core-js: false
 
 # Transitive advisories that the direct dependency has not picked up yet. Both
 # are patch-level bumps within the range the parent already asks for, so this

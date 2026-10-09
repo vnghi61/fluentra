@@ -89,7 +89,7 @@ export function ResourceQuota({
         variant={ratio >= 0.9 ? "danger" : ratio >= 0.7 ? "warning" : "primary"}
         aria-label={t("resources.quotaLabel", "Storage used")}
       />
-      <p className="text-xs text-text-muted">
+      <p className="text-sm text-text-muted">
         {t("resources.quota", {
           files: count,
           filesMax: RESOURCE_QUOTA_COUNT,
@@ -146,7 +146,7 @@ export function ResourceList({
                 <span className="block truncate text-sm font-medium text-text">
                   {resource.title || resource.original_filename}
                 </span>
-                <span className="block truncate text-xs text-text-muted">
+                <span className="block truncate text-sm text-text-muted">
                   {t(familyLabelKey(resource.detected_mime ?? ""), family)}
                   {" · "}
                   {formatBytes(resource.byte_size)}
@@ -154,14 +154,14 @@ export function ResourceList({
                   {date}
                 </span>
                 {resource.status === "rejected" && resource.failure_reason && (
-                  <span className="block truncate text-xs text-danger-accent">
+                  <span className="block truncate text-sm text-danger-accent">
                     {resource.failure_reason}
                   </span>
                 )}
               </span>
               <Badge
                 variant={statusTone(resource.status)}
-                className={cn(processing && "animate-pulse")}
+                className={cn("shrink-0", processing && "animate-pulse")}
               >
                 {label}
               </Badge>

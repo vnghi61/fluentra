@@ -1,31 +1,20 @@
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import { useTranslation } from "react-i18next";
-import {
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-  Plus,
-  Trash2,
-  Upload,
-} from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import {
-  pollMaterial,
-  resourceApi,
-  type MaterialUploadState,
-} from "@/features/resource/api/resourceApi";
+import { MaterialUploader } from "./MaterialUploader";
 import {
   blankQuestion,
   type ActivityFields,
   type ActivityKind,
 } from "../model/activityKinds";
 
-const textareaClass =
-  "w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-base sm:text-xs text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
-
-const labelClass = "block text-[11px] font-semibold text-text-muted mb-1";
+const labelClass = "mb-1.5 block text-sm font-semibold text-text";
+const hintClass = "text-sm text-text-muted";
 
 type TextKey = {
   [K in keyof ActivityFields]: ActivityFields[K] extends string ? K : never;
@@ -62,13 +51,12 @@ export function ActivityFieldsEditor({
           {label}
         </label>
         {opts.multiline ? (
-          <textarea
+          <Textarea
             id={id}
             rows={opts.rows ?? 3}
             value={f[key]}
             placeholder={opts.placeholder}
             onChange={(e) => set(e.target.value)}
-            className={textareaClass}
           />
         ) : (
           <Input
@@ -76,7 +64,6 @@ export function ActivityFieldsEditor({
             value={f[key]}
             placeholder={opts.placeholder}
             onChange={(e) => set(e.target.value)}
-            className="text-xs"
           />
         )}
       </div>
@@ -95,7 +82,7 @@ export function ActivityFieldsEditor({
     <fieldset className="space-y-1.5">
       <legend className={labelClass}>{k("options")}</legend>
       {options.map((option, i) => (
-        <div key={i} className="flex items-center gap-1">
+        <div key={i} className="flex items-center gap-2">
           <label className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center">
             <input
               type="radio"
@@ -116,11 +103,11 @@ export function ActivityFieldsEditor({
               next[i] = e.target.value;
               set(next, correctIndex);
             }}
-            className={cn("text-xs", correctIndex === i && "border-success")}
+            className={cn("min-w-0", correctIndex === i && "border-success")}
           />
         </div>
       ))}
-      <p className="text-[11px] text-text-muted">{k("optionsHint")}</p>
+      <p className={hintClass}>{k("optionsHint")}</p>
     </fieldset>
   );
 
@@ -133,7 +120,7 @@ export function ActivityFieldsEditor({
     case "vocab_multiple_choice":
     case "grammar_tense_choice":
       return (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {text("prompt", k("question"))}
           {choices(
             f.options,
@@ -147,7 +134,7 @@ export function ActivityFieldsEditor({
 
     case "vocab_context_choice":
       return (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {text("sentence", k("contextSentence"))}
           {text("prompt", k("question"))}
           {choices(
@@ -162,7 +149,7 @@ export function ActivityFieldsEditor({
 
     case "vocab_gap_fill":
       return (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {text("prompt", k("instruction"))}
           <div className="grid gap-2 sm:grid-cols-3">
             {text("sentenceBefore", k("sentenceBefore"))}
@@ -175,7 +162,7 @@ export function ActivityFieldsEditor({
 
     case "vocab_flashcard":
       return (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           <div className="grid gap-2 sm:grid-cols-2">
             {text("answer", k("word"))}
             {text("ipa", k("ipa"), { placeholder: "/ˈwɜːd/" })}
@@ -188,7 +175,7 @@ export function ActivityFieldsEditor({
 
     case "vocab_listen_type":
       return (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {text("prompt", k("instruction"))}
           {text("answer", k("spokenText"))}
         </div>
@@ -196,22 +183,23 @@ export function ActivityFieldsEditor({
 
     case "vocab_reorder":
       return (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {text("prompt", k("instruction"))}
           {text("answer", k("reorderSentence"))}
-          <p className="text-[11px] text-text-muted">{k("reorderHint")}</p>
+          <p className={hintClass}>{k("reorderHint")}</p>
         </div>
       );
 
     case "vocab_match":
       return (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {text("prompt", k("instruction"))}
           <div className="space-y-1.5">
             <span className={labelClass}>{k("pairs")}</span>
             {f.pairs.map((pair, i) => (
               <div key={i} className="flex items-center gap-2">
                 <Input
+                  className="min-w-0"
                   value={pair.word}
                   placeholder={k("pairWord")}
                   onChange={(e) =>
@@ -221,9 +209,9 @@ export function ActivityFieldsEditor({
                       ),
                     })
                   }
-                  className="text-xs"
                 />
                 <Input
+                  className="min-w-0"
                   value={pair.meaning}
                   placeholder={k("pairMeaning")}
                   onChange={(e) =>
@@ -233,38 +221,39 @@ export function ActivityFieldsEditor({
                       ),
                     })
                   }
-                  className="text-xs"
                 />
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() =>
                     onChange({ pairs: f.pairs.filter((_, j) => j !== i) })
                   }
                   disabled={f.pairs.length <= 2}
                   aria-label={k("removePair")}
-                  className="p-1 text-text-muted hover:text-danger disabled:opacity-30"
+                  className="shrink-0 text-text-muted hover:text-danger"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                </Button>
               </div>
             ))}
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() =>
                 onChange({ pairs: [...f.pairs, { word: "", meaning: "" }] })
               }
               disabled={f.pairs.length >= 8}
-              className="flex items-center gap-1 text-[11px] font-semibold text-primary-accent disabled:opacity-40"
+              className="-ml-3"
             >
-              <Plus className="h-3 w-3" /> {k("addPair")}
-            </button>
+              <Plus className="h-4 w-4" aria-hidden="true" /> {k("addPair")}
+            </Button>
           </div>
         </div>
       );
 
     case "grammar_sentence_transform":
       return (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {text("prompt", k("transformPrompt"), { multiline: true, rows: 2 })}
           {text("answer", k("correctAnswer"))}
           {text("acceptable", k("acceptable"), { multiline: true, rows: 2 })}
@@ -274,7 +263,7 @@ export function ActivityFieldsEditor({
 
     case "reading_comprehension":
       return (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {text("passageTitle", k("passageTitle"))}
           {text("passage", k("passage"), { multiline: true, rows: 6 })}
           {f.questions.map((q, qi) => {
@@ -287,14 +276,15 @@ export function ActivityFieldsEditor({
             return (
               <div
                 key={qi}
-                className="space-y-1.5 rounded-md border border-border-subtle p-2"
+                className="space-y-2 rounded-xl border border-border-subtle p-3"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-text">
+                  <span className="text-sm font-semibold text-text">
                     {t("studio.activity.field.questionN", { n: qi + 1 })}
                   </span>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() =>
                       onChange({
                         questions: f.questions.filter((_, j) => j !== qi),
@@ -302,16 +292,15 @@ export function ActivityFieldsEditor({
                     }
                     disabled={f.questions.length <= 4}
                     aria-label={k("removeQuestion")}
-                    className="p-1 text-text-muted hover:text-danger disabled:opacity-30"
+                    className="text-text-muted hover:text-danger"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </Button>
                 </div>
                 <Input
                   value={q.prompt}
                   placeholder={k("question")}
                   onChange={(e) => setQ({ prompt: e.target.value })}
-                  className="text-xs"
                 />
                 {choices(
                   q.options,
@@ -319,36 +308,36 @@ export function ActivityFieldsEditor({
                   (options, correctIndex) => setQ({ options, correctIndex }),
                   `${idPrefix}-q${qi}`,
                 )}
-                <textarea
+                <Textarea
                   rows={2}
                   value={q.explanationVi}
                   placeholder={k("explanationVi")}
                   aria-label={k("explanationVi")}
                   onChange={(e) => setQ({ explanationVi: e.target.value })}
-                  className={textareaClass}
                 />
               </div>
             );
           })}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() =>
               onChange({ questions: [...f.questions, blankQuestion()] })
             }
             disabled={f.questions.length >= 6}
-            className="flex items-center gap-1 text-[11px] font-semibold text-primary-accent disabled:opacity-40"
+            className="-ml-3"
           >
-            <Plus className="h-3 w-3" /> {k("addQuestion")}
-          </button>
+            <Plus className="h-4 w-4" aria-hidden="true" /> {k("addQuestion")}
+          </Button>
         </div>
       );
 
     case "writing_prompt":
       return (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {text("prompt", k("writingPrompt"), { multiline: true, rows: 3 })}
           {text("modelAnswer", k("modelAnswer"), { multiline: true, rows: 5 })}
-          <div className="w-32">
+          <div className="w-36">
             <label htmlFor={`${idPrefix}-minWords`} className={labelClass}>
               {k("minWords")}
             </label>
@@ -359,7 +348,6 @@ export function ActivityFieldsEditor({
               max={400}
               value={f.minWords}
               onChange={(e) => onChange({ minWords: Number(e.target.value) })}
-              className="text-xs"
             />
           </div>
         </div>
@@ -367,10 +355,13 @@ export function ActivityFieldsEditor({
 
     case "speaking_task":
       return (
-        <div className="space-y-2.5">
-          <div className="flex gap-4 text-xs text-text">
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-x-5 text-sm text-text">
             {(["read_aloud", "respond"] as const).map((type) => (
-              <label key={type} className="flex items-center gap-1.5">
+              <label
+                key={type}
+                className="flex min-h-11 cursor-pointer items-center gap-2"
+              >
                 <input
                   type="radio"
                   name={`${idPrefix}-task`}
@@ -400,198 +391,7 @@ export function ActivityFieldsEditor({
 
     case "lesson_material":
       return (
-        <MaterialFields fields={f} onChange={onChange} idPrefix={idPrefix} />
+        <MaterialUploader fields={f} onChange={onChange} idPrefix={idPrefix} />
       );
   }
-}
-
-const MATERIAL_ACCEPT: Record<"document" | "video", string> = {
-  document:
-    ".pdf,.doc,.docx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  video: "video/mp4,video/webm",
-};
-
-/** The file picker, rights declaration and processing status for a material. */
-function MaterialFields({
-  fields: f,
-  onChange,
-  idPrefix,
-}: {
-  fields: ActivityFields;
-  onChange: (patch: Partial<ActivityFields>) => void;
-  idPrefix: string;
-}): React.JSX.Element {
-  const { t } = useTranslation();
-  const [error, setError] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const stopPolling = useRef<(() => void) | null>(null);
-
-  const pollingFor = useRef<string | null>(null);
-
-  useEffect(() => () => stopPolling.current?.(), []);
-
-  const watch = (resourceId: string, kind: "document" | "video") => {
-    stopPolling.current?.();
-    pollingFor.current = resourceId;
-    stopPolling.current = pollMaterial(
-      resourceId,
-      kind,
-      (state: MaterialUploadState) => onChange({ materialStatus: state }),
-    );
-  };
-
-  // A reopened draft reads back as "processing" and nothing had asked the
-  // server since, so the material stayed there and the draft could never be
-  // submitted. Ask again whenever a file is present that nobody is watching.
-  useEffect(() => {
-    if (!f.resourceId || pollingFor.current === f.resourceId) return;
-    if (f.materialStatus === "ready" || f.materialStatus === "uploading")
-      return;
-    watch(f.resourceId, f.materialKind);
-  });
-
-  const handleFile = async (file: File | undefined) => {
-    if (!file) return;
-    setError(null);
-    setIsUploading(true);
-    onChange({ materialStatus: "uploading" });
-    try {
-      const intent = await resourceApi.createUploadIntent(file.name, file.type);
-      await resourceApi.uploadDirect(intent, file);
-      await resourceApi.confirmUpload(intent.id);
-      onChange({
-        resourceId: intent.id,
-        materialStatus: "processing",
-        materialTitle:
-          f.materialTitle.trim() || file.name.replace(/\.[^.]+$/, ""),
-      });
-      watch(intent.id, f.materialKind);
-    } catch (err) {
-      onChange({ materialStatus: "failed" });
-      setError(
-        err instanceof Error
-          ? err.message
-          : t("studio.activity.material.uploadFailed", "Upload failed"),
-      );
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const status = f.materialStatus;
-  const statusText: Record<MaterialUploadState, string> = {
-    idle: t("studio.activity.material.statusIdle", "No file chosen yet"),
-    uploading: t("studio.activity.material.statusUploading", "Uploading…"),
-    processing:
-      f.materialKind === "video"
-        ? t(
-            "studio.activity.material.statusProcessing",
-            "Processing video… renditions are being prepared",
-          )
-        : t(
-            "studio.activity.material.statusProcessingDocument",
-            "Processing document… preparing its preview",
-          ),
-    ready: t("studio.activity.material.statusReady", "Ready to publish"),
-    failed: t("studio.activity.material.statusFailed", "Processing failed"),
-  };
-
-  return (
-    <div className="space-y-2.5">
-      <div className="flex gap-4 text-xs text-text">
-        {(["document", "video"] as const).map((kind) => (
-          <label key={kind} className="flex items-center gap-1.5">
-            <input
-              type="radio"
-              name={`${idPrefix}-material-kind`}
-              checked={f.materialKind === kind}
-              onChange={() => {
-                onChange({ materialKind: kind });
-                if (f.resourceId) watch(f.resourceId, kind);
-              }}
-              className="accent-primary"
-            />
-            {t(
-              kind === "document"
-                ? "studio.activity.material.document"
-                : "studio.activity.material.video",
-            )}
-          </label>
-        ))}
-      </div>
-
-      <div>
-        <label htmlFor={`${idPrefix}-material-title`} className={labelClass}>
-          {t("studio.activity.material.title", "Material title")}
-        </label>
-        <Input
-          id={`${idPrefix}-material-title`}
-          value={f.materialTitle}
-          onChange={(e) => onChange({ materialTitle: e.target.value })}
-          className="text-base sm:text-xs"
-        />
-      </div>
-
-      <div>
-        <label htmlFor={`${idPrefix}-material-desc`} className={labelClass}>
-          {t("studio.activity.material.description", "Description (optional)")}
-        </label>
-        <textarea
-          id={`${idPrefix}-material-desc`}
-          rows={2}
-          value={f.materialDescription}
-          onChange={(e) => onChange({ materialDescription: e.target.value })}
-          className={textareaClass}
-        />
-      </div>
-
-      <div>
-        <label htmlFor={`${idPrefix}-material-file`} className={labelClass}>
-          {t("studio.activity.material.file", "File")}
-        </label>
-        <input
-          id={`${idPrefix}-material-file`}
-          type="file"
-          accept={MATERIAL_ACCEPT[f.materialKind]}
-          disabled={isUploading}
-          onChange={(e) => void handleFile(e.target.files?.[0])}
-          className="block w-full text-base sm:text-xs text-text-muted file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-base sm:file:text-xs file:font-semibold file:text-primary-foreground"
-        />
-        <p className="mt-1 flex items-center gap-1.5 text-[11px] text-text-muted">
-          {status === "uploading" || status === "processing" ? (
-            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-          ) : status === "ready" ? (
-            <CheckCircle2 className="h-3 w-3 text-success" aria-hidden="true" />
-          ) : status === "failed" ? (
-            <AlertCircle className="h-3 w-3 text-danger" aria-hidden="true" />
-          ) : (
-            <Upload className="h-3 w-3" aria-hidden="true" />
-          )}
-          {statusText[status]}
-        </p>
-      </div>
-
-      <label className="flex items-start gap-2 text-[11px] text-text">
-        <input
-          type="checkbox"
-          checked={f.rightsConfirmed}
-          onChange={(e) => onChange({ rightsConfirmed: e.target.checked })}
-          className="mt-0.5 accent-primary"
-        />
-        <span>
-          {t(
-            "studio.activity.material.rights",
-            "I own or have the right to publish this material",
-          )}
-        </span>
-      </label>
-
-      {error && (
-        <p className="flex items-center gap-1.5 text-[11px] text-danger-accent">
-          <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
-          {error}
-        </p>
-      )}
-    </div>
-  );
 }

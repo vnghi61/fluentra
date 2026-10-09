@@ -11,7 +11,7 @@ import { onWakeStatus, wakeStatus, type WakeStatus } from "@/api/wake";
  * is exactly the case where it does — and this is the hook that does not tear.
  *
  * It lives in `hooks` and not in `components` because `components` may not
- * reach into `api`. The banner takes a prop.
+ * reach into `api`. Consumers receive the status through this hook.
  */
 export function useWakeStatus(): WakeStatus {
   return useSyncExternalStore(onWakeStatus, wakeStatus, () => "unknown");

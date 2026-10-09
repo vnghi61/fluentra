@@ -12,7 +12,7 @@ export function ForgotPasswordPage(): React.JSX.Element {
   } | null>(null);
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12">
+    <div className="flex w-full flex-1 items-center justify-center px-4 pb-20 pt-4 sm:pb-24 sm:pt-8">
       {challengeState ? (
         <ResetPasswordForm
           // Same reason as RegisterPage: a fresh challenge must not inherit the

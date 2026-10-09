@@ -36,14 +36,14 @@ export const XPProgressBar: React.FC<XPProgressBarProps> = ({ summary }) => {
   return (
     <Card className="border-border/60 bg-gradient-to-br from-surface-card to-surface/40 shadow-sm">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-inner">
               <Zap className="h-5 w-5 fill-primary/20" aria-hidden="true" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-lg font-bold text-text">
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle className="text-lg font-semibold leading-snug text-text">
                   {t("gamification.levelTitle", "Level {{level}}", { level })}
                 </CardTitle>
                 <Badge
@@ -55,7 +55,7 @@ export const XPProgressBar: React.FC<XPProgressBarProps> = ({ summary }) => {
                   })}
                 </Badge>
               </div>
-              <p className="text-xs text-text-muted">
+              <p className="text-sm text-text-muted">
                 {t(
                   "gamification.levelProgressText",
                   "{{current}} / {{target}} XP to Level {{nextLevel}}",
@@ -76,11 +76,11 @@ export const XPProgressBar: React.FC<XPProgressBarProps> = ({ summary }) => {
           >
             {goalReached ? (
               <CheckCircle2
-                className="h-3.5 w-3.5 text-success"
+                className="h-4 w-4 text-success"
                 aria-hidden="true"
               />
             ) : (
-              <Target className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+              <Target className="h-4 w-4 text-primary" aria-hidden="true" />
             )}
             <span className="text-text">
               {t("gamification.todayXP", "{{today}}/{{goal}} XP today", {
@@ -95,7 +95,7 @@ export const XPProgressBar: React.FC<XPProgressBarProps> = ({ summary }) => {
       <CardContent className="space-y-3 pt-0">
         {/* Level Progress Bar */}
         <div className="space-y-1">
-          <div className="flex justify-between text-xs font-medium text-text-muted">
+          <div className="flex justify-between text-sm font-medium tabular-nums text-text-muted">
             <span>
               {t("gamification.levelLabel", "Level {{level}}", { level })}
             </span>
@@ -115,12 +115,9 @@ export const XPProgressBar: React.FC<XPProgressBarProps> = ({ summary }) => {
         </div>
 
         {/* Daily Goal Sub-bar */}
-        <div className="flex items-center justify-between rounded-lg bg-surface/60 px-3 py-2 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface/60 px-3 py-2 text-sm">
           <div className="flex items-center gap-1.5 text-text-muted">
-            <Sparkles
-              className="h-3.5 w-3.5 text-amber-500"
-              aria-hidden="true"
-            />
+            <Sparkles className="h-4 w-4 text-amber-500" aria-hidden="true" />
             <span>{t("gamification.dailyGoal", "Daily Goal")}</span>
           </div>
           <span className="font-semibold text-text">
