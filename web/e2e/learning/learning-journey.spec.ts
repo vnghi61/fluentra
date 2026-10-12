@@ -169,16 +169,17 @@ test.describe("Phase 2 learning journeys", () => {
     await expect(completed).toBeVisible({ timeout: 10_000 });
     expect(Number(await completed.innerText())).toBeGreaterThanOrEqual(total);
 
-    // 7. Finishing a vocabulary activity schedules review cards, and FSRS puts a
-    //    card answered correctly three days out. Measured against a live stack,
-    //    not assumed: both of this lesson's cards landed on due_at = now + 3d,
-    //    and a card answered wrong still landed ten minutes away. Nothing is due
-    //    the instant the lesson ends, so the honest assertion is the queue's real
-    //    empty state; demanding a full queue asserted a scheduler that does not
-    //    exist here.
+    // 7. Every graded answer schedules a review card. FSRS puts one answered
+    //    correctly three days out and one answered wrong ten minutes away, and
+    //    the queue counts everything due before the end of the learner's local
+    //    day — so whether this queue is empty depends on which options the loop
+    //    happened to pick. The review screen must open on one of its two real
+    //    states, the queue or the empty state, never on an error.
     await page.goto(routes.review);
     await expect(
-      page.getByRole("heading", { name: /Nothing due right now/i }),
+      page
+        .getByTestId("review-progress")
+        .or(page.getByRole("heading", { name: /Nothing due right now/i })),
     ).toBeVisible({ timeout: 15_000 });
   });
 
@@ -219,8 +220,14 @@ test.describe("Phase 2 learning journeys", () => {
     // led to a placeholder page, and the whole SRS session was unreachable for
     // anyone who did not know the URL. A journey that types the URL cannot see
     // that. This one walks in the way a learner has to.
+    // Phones label the action "Start Review"; from md up the review block
+    // leads with "Review now".
     await page.goto(routes.dashboard);
-    await page.getByRole("link", { name: "Start Review" }).click();
+    await page
+      .getByRole("link", { name: /^(Start Review|Review now)$/ })
+      .filter({ visible: true })
+      .first()
+      .click();
     await expect(page).toHaveURL(/\/practice\/review$/, { timeout: 15_000 });
 
     const progress = page.getByTestId("review-progress");
