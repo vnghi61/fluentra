@@ -53,7 +53,7 @@ SELECT
         SELECT 1
         FROM skill.deck_items di
         JOIN skill.decks d ON d.id = di.deck_id
-        WHERE di.sense_id = s.id AND d.is_public
+        WHERE di.word_sense_id = s.id AND d.is_public
     ) AS in_public_deck
 FROM skill.words w
 JOIN skill.word_senses s ON s.word_id = w.id

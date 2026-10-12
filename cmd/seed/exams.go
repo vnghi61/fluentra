@@ -184,17 +184,22 @@ func ensureBankQuestion(
 		return false, fmt.Errorf("fingerprint: %w", err)
 	}
 
+	itemID, err := contentItemIDByVersion(ctx, pool, versionID)
+	if err != nil {
+		return false, err
+	}
+
+	// One bank row per content item (questions.content_item_id is UNIQUE), so a
+	// fixture whose body changed under the same slug already has its row: the
+	// new fingerprint alone would miss it and insert a second one.
 	var existing uuid.UUID
-	err = pool.QueryRow(ctx, "SELECT id FROM assess.questions WHERE fingerprint = $1", fingerprint).Scan(&existing)
+	err = pool.QueryRow(ctx,
+		"SELECT id FROM assess.questions WHERE fingerprint = $1 OR content_item_id = $2 LIMIT 1",
+		fingerprint, itemID).Scan(&existing)
 	if err == nil {
 		return false, nil
 	}
 	if err != pgx.ErrNoRows {
-		return false, err
-	}
-
-	itemID, err := contentItemIDByVersion(ctx, pool, versionID)
-	if err != nil {
 		return false, err
 	}
 	partID, err := uuid.Parse(item.ExamPartID)

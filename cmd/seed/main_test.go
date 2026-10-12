@@ -9,6 +9,7 @@ import (
 	grammarcontract "github.com/fluentra/fluentra/internal/modules/grammar/contract"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
 	"github.com/fluentra/fluentra/internal/modules/user/contract"
+	userdomain "github.com/fluentra/fluentra/internal/modules/user/domain"
 	vocabularycontract "github.com/fluentra/fluentra/internal/modules/vocabulary/contract"
 	writingcontract "github.com/fluentra/fluentra/internal/modules/writing/contract"
 )
@@ -64,6 +65,16 @@ func TestDemoAccounts_MatchTheGuide(t *testing.T) {
 		}
 		if account.admin != admin {
 			t.Errorf("%s admin = %v, want %v", account.email, account.admin, admin)
+		}
+	}
+}
+
+// TestDemoAccounts_DisplayNamesAreAllowed catches a demo name the user module
+// would refuse: "Demo Admin" did, and `make seed` failed on every fresh database.
+func TestDemoAccounts_DisplayNamesAreAllowed(t *testing.T) {
+	for _, account := range demoAccounts {
+		if err := userdomain.ValidateDisplayName(account.displayName); err != nil {
+			t.Errorf("%s display name %q is rejected: %v", account.email, account.displayName, err)
 		}
 	}
 }

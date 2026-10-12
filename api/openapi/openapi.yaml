@@ -6657,11 +6657,13 @@ paths:
       operationId: submitVocabUpload
       summary: Submit your own vocabulary to be checked.
       description: >-
-        Stores the words and returns immediately. The checking — a dictionary
-        lookup and a model call per word — runs hourly in a background job,
-        because it is slow and fails in ways worth retrying, and a learner
-        pasting three hundred words should not be watching a request time out
-        half way through.
+        Stores the words and answers within a few seconds. Words the dictionary
+        already holds are added before the response (within a time budget), so
+        they come back `verified`. New words — a dictionary lookup and a model
+        call each — are checked by a background job that starts at once and
+        stay `pending` here; the same new word pasted by two learners is
+        checked once. A pasted word that the budget did not reach is added by a
+        follow-up job seconds later.
       x-permission: self
       requestBody:
         required: true
@@ -6672,8 +6674,9 @@ paths:
       responses:
         '202':
           description: >-
-            Accepted. The words are stored but not yet checked — which is why
-            this is a 202 and not a 201.
+            Accepted. The words are stored; known words are already added and
+            new ones are still being checked — which is why this is a 202 and
+            not a 201. Carries every word with its status.
           headers:
             X-Request-Id:
               $ref: '#/components/headers/X-Request-Id'
@@ -6702,8 +6705,9 @@ paths:
       operationId: listVocabUploads
       summary: Your uploads, newest first.
       description: >-
-        Each row carries the verified, rejected and still-pending counts, so a
-        learner can see how far the checking has got without opening it.
+        Each row carries the verified, rejected, failed and still-pending
+        counts, so a learner can see how far the checking has got without
+        opening it. Keyset-paginated, newest first.
       x-permission: self
       parameters:
         - name: limit
@@ -6715,6 +6719,12 @@ paths:
             maximum: 100
             default: 20
           description: How many uploads to return.
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque cursor from the previous page's `next_cursor`.
+          schema:
+            $ref: '#/components/schemas/Cursor'
       responses:
         '200':
           description: The caller's uploads.
@@ -6733,9 +6743,98 @@ paths:
                     verified_count: 10
                     rejected_count: 1
                     pending_count: 1
+                    failed_count: 0
                     deck_id: 0199a1c2-3d4e-7f80-9abc-def0123456bb
                     created_at: '2026-08-30T09:00:00Z'
                     completed_at: '2026-08-30T10:00:00Z'
+                page:
+                  has_more: false
+                  limit: 20
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /me/vocabulary/upload-items:
+    get:
+      tags: [vocabulary]
+      operationId: listVocabUploadItems
+      summary: Your pasted words, searchable and a page at a time.
+      description: >-
+        Every word the caller has pasted, across uploads: newest upload first,
+        alphabetical within one. Narrow it to one upload, to some statuses, or
+        to words containing some text. An opened upload pages through this
+        rather than loading three hundred words at once, and the search box
+        answers "did I add this one already?" without opening every upload.
+      x-permission: self
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive substring of the word as typed or as corrected.
+          schema:
+            type: string
+            maxLength: 100
+        - name: status
+          in: query
+          required: false
+          description: Comma-separated statuses to keep. Absent keeps every status.
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [pending, verified, rejected, failed, queued]
+        - name: upload_id
+          in: query
+          required: false
+          description: Keep only the words of this upload.
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque cursor from the previous page's `next_cursor`.
+          schema:
+            $ref: '#/components/schemas/Cursor'
+      responses:
+        '200':
+          description: One page of the caller's words.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VocabUploadItemPage'
+              example:
+                items:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def0123456dd
+                    upload_id: 0199a1c2-3d4e-7f80-9abc-def0123456aa
+                    created_at: '2026-08-30T09:00:00Z'
+                    term: leisure
+                    provided_meaning: thời gian rảnh
+                    status: verified
+                    word_sense_id: 0199a1c2-3d4e-7f80-9abc-def0123456cc
+                    definition_vi: thời gian rảnh
+                    note_code: known_word
+                page:
+                  next_cursor: eyJjIjoiMjAyNi0wOC0zMFQwOTowMDowMFoiLCJ0IjoibGVpc3VyZSIsImkiOiIwMTk5YTFjMi0zZDRlLTdmODAtOWFiYy1kZWYwMTIzNDU2ZGQifQ
+                  has_more: true
+                  limit: 20
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
@@ -9470,6 +9569,8 @@ components:
       $ref: ./components/uploads.yaml#/VocabUploadItem
     VocabUploadList:
       $ref: ./components/uploads.yaml#/VocabUploadList
+    VocabUploadItemPage:
+      $ref: ./components/uploads.yaml#/VocabUploadItemPage
     SubmitVocabUploadRequest:
       $ref: ./components/uploads.yaml#/SubmitVocabUploadRequest
     ForecastItem:

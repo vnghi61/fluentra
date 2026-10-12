@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -163,6 +165,28 @@ type uploadRepo struct {
 	uploadItems             map[uuid.UUID][]sqlc.ListUploadItemsRow
 	sensesNeedingEnrichment []sqlc.ListSensesNeedingExampleEnrichmentRow
 	enrichUpdates           []sqlc.UpdateWordSenseEnrichmentParams
+	// claimedIDs records the item filter of every by-upload claim.
+	claimedIDs [][]uuid.UUID
+	// lockedTerms records every term verification locked.
+	lockedTerms []string
+	// rejections are earlier verdicts by normalised term.
+	rejections map[string]sqlc.FindRecentTermRejectionRow
+	// inserted are the items Submit stored, in order.
+	inserted []sqlc.SkillVocabUploadItem
+}
+
+func (r *uploadRepo) LockUploadTerm(_ context.Context, term string) error {
+	r.lockedTerms = append(r.lockedTerms, term)
+	return nil
+}
+
+func (r *uploadRepo) FindRecentTermRejection(
+	_ context.Context, term string,
+) (sqlc.FindRecentTermRejectionRow, error) {
+	if prior, ok := r.rejections[term]; ok {
+		return prior, nil
+	}
+	return sqlc.FindRecentTermRejectionRow{}, pgx.ErrNoRows
 }
 
 func newUploadRepo(items ...sqlc.SkillVocabUploadItem) *uploadRepo {
@@ -213,6 +237,20 @@ func (r *uploadRepo) ListUploadItems(
 	if it, ok := r.uploadItems[uploadID]; ok {
 		return it, nil
 	}
+	var rows []sqlc.ListUploadItemsRow
+	for _, stored := range r.inserted {
+		if stored.UploadID != uploadID {
+			continue
+		}
+		rows = append(rows, sqlc.ListUploadItemsRow{
+			ID: stored.ID, UploadID: stored.UploadID, UserID: stored.UserID,
+			Term: stored.Term, ProvidedMeaning: stored.ProvidedMeaning,
+			Status: r.insertedStatus(stored.ID), NoteCode: r.noteCodePtr(stored.ID),
+		})
+	}
+	if rows != nil {
+		return rows, nil
+	}
 	return r.fakeRepo.ListUploadItems(ctx, uploadID, userID)
 }
 
@@ -225,11 +263,19 @@ func (r *uploadRepo) ClaimPendingUploadItems(
 // The limit is honoured rather than ignored: a fake that returns everything
 // however small the batch is cannot fail when the caller stops passing one.
 func (r *uploadRepo) ClaimPendingUploadItemsByUploadID(
-	_ context.Context, uploadID uuid.UUID, _, limit int32,
+	_ context.Context, uploadID uuid.UUID, itemIDs []uuid.UUID, _, limit int32,
 ) ([]sqlc.SkillVocabUploadItem, error) {
+	r.claimedIDs = append(r.claimedIDs, itemIDs)
 	var items []sqlc.SkillVocabUploadItem
 	for _, it := range r.pending {
 		if it.UploadID != uploadID {
+			continue
+		}
+		if itemIDs != nil && !slices.Contains(itemIDs, it.ID) {
+			continue
+		}
+		// As the query's `status = 'pending'` does: a settled word is not claimed.
+		if r.insertedStatus(it.ID) != statusPending {
 			continue
 		}
 		if limit > 0 && len(items) >= int(limit) {
@@ -343,14 +389,14 @@ func (r *uploadRepo) MarkQueuedUploadItemRejected(
 	if noteCode != nil {
 		r.noteCodes[id] = *noteCode
 	}
-	return sqlc.SkillVocabUploadItem{ID: id, Status: "rejected"}, nil
+	return sqlc.SkillVocabUploadItem{ID: id, Status: statusRejected}, nil
 }
 
 func (r *uploadRepo) MarkQueuedUploadItemFailed(
 	_ context.Context, id uuid.UUID, reason string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	r.enrichFailed[id] = reason
-	return sqlc.SkillVocabUploadItem{ID: id, Status: "failed"}, nil
+	return sqlc.SkillVocabUploadItem{ID: id, Status: statusFailed}, nil
 }
 
 // ------------------------------------------------------------- fixtures
@@ -425,14 +471,20 @@ func newPipelineWithReviews(
 
 type stubEnqueuer struct {
 	enqueued []uuid.UUID
+	itemIDs  [][]uuid.UUID
+	runAt    []time.Time
 	err      error
 }
 
-func (e *stubEnqueuer) EnqueueVerifyUploadTx(_ context.Context, _ pgx.Tx, uploadID uuid.UUID) error {
+func (e *stubEnqueuer) EnqueueVerifyUploadTx(
+	_ context.Context, _ pgx.Tx, uploadID uuid.UUID, itemIDs []uuid.UUID, runAt time.Time,
+) error {
 	if e.err != nil {
 		return e.err
 	}
 	e.enqueued = append(e.enqueued, uploadID)
+	e.itemIDs = append(e.itemIDs, itemIDs)
+	e.runAt = append(e.runAt, runAt)
 	return nil
 }
 
@@ -478,13 +530,48 @@ func (r *uploadRepo) WithTx(_ pgx.Tx) repository.Repository {
 func (r *uploadRepo) InsertUpload(
 	_ context.Context, arg sqlc.InsertUploadParams,
 ) (sqlc.SkillVocabUpload, error) {
-	return sqlc.SkillVocabUpload{
+	upload := sqlc.SkillVocabUpload{
 		ID:        uuid.New(),
 		UserID:    arg.UserID,
 		RawText:   arg.RawText,
 		ItemCount: arg.ItemCount,
 		Status:    statusPending,
-	}, nil
+	}
+	r.uploads[upload.ID] = upload
+	return upload, nil
+}
+
+// InsertUploadItem stores the word as pending, where the job's claim finds it.
+func (r *uploadRepo) InsertUploadItem(
+	_ context.Context, arg sqlc.InsertUploadItemParams,
+) (sqlc.SkillVocabUploadItem, error) {
+	stored := sqlc.SkillVocabUploadItem{
+		ID: uuid.New(), UploadID: arg.UploadID, UserID: arg.UserID,
+		Term: arg.Term, ProvidedMeaning: arg.ProvidedMeaning, Status: statusPending,
+		CreatedAt: time.Now().UTC(),
+	}
+	r.inserted = append(r.inserted, stored)
+	r.pending = append(r.pending, stored)
+	return stored, nil
+}
+
+// insertedStatus is what became of a stored word, read from the outcome maps.
+func (r *uploadRepo) insertedStatus(id uuid.UUID) string {
+	for status, outcomes := range map[string]map[uuid.UUID]string{
+		statusVerified: r.verified, statusRejected: r.rejected, statusFailed: r.failed, statusQueued: r.queued,
+	} {
+		if _, ok := outcomes[id]; ok {
+			return status
+		}
+	}
+	return statusPending
+}
+
+func (r *uploadRepo) noteCodePtr(id uuid.UUID) *string {
+	if code, ok := r.noteCodes[id]; ok {
+		return &code
+	}
+	return nil
 }
 
 // -------------------------------------------------------------- submitting
@@ -594,7 +681,7 @@ func TestVerifyUpload_VerifiesPendingWordsForSpecificUpload(t *testing.T) {
 	}}
 	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: accepted(t)})
 
-	require.NoError(t, uploads.VerifyUpload(context.Background(), uploadID1))
+	require.NoError(t, uploads.VerifyUpload(context.Background(), uploadID1, nil))
 
 	assert.Contains(t, repo.verified, item1.ID)
 	assert.NotContains(t, repo.verified, item2.ID, "items from other uploads should not be touched")

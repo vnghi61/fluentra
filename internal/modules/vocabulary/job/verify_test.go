@@ -15,14 +15,16 @@ import (
 
 type fakeVerifier struct {
 	verified []uuid.UUID
+	itemIDs  [][]uuid.UUID
 	err      error
 }
 
-func (f *fakeVerifier) VerifyUpload(_ context.Context, uploadID uuid.UUID) error {
+func (f *fakeVerifier) VerifyUpload(_ context.Context, uploadID uuid.UUID, itemIDs []uuid.UUID) error {
 	if f.err != nil {
 		return f.err
 	}
 	f.verified = append(f.verified, uploadID)
+	f.itemIDs = append(f.itemIDs, itemIDs)
 	return nil
 }
 
@@ -42,15 +44,18 @@ func TestVerifyUploadWorker_Work(t *testing.T) {
 	verifier := &fakeVerifier{}
 	worker := vocabjob.NewVerifyUploadWorker(verifier)
 
+	itemIDs := []uuid.UUID{uuid.New()}
 	job := &river.Job[vocabjob.VerifyUploadArgs]{
 		Args: vocabjob.VerifyUploadArgs{
 			UploadID: uploadID,
+			ItemIDs:  itemIDs,
 		},
 	}
 
 	err := worker.Work(context.Background(), job)
 	require.NoError(t, err)
 	assert.Equal(t, []uuid.UUID{uploadID}, verifier.verified)
+	assert.Equal(t, [][]uuid.UUID{itemIDs}, verifier.itemIDs, "the job verifies only the words it was created for")
 }
 
 func TestVerifyUploadWorker_Work_ErrorPropagation(t *testing.T) {

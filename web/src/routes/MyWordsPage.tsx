@@ -8,19 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { GuestNotice } from "@/features/learning";
-import {
-  UploadForm,
-  UploadList,
-  useDecks,
-  useUploads,
-} from "@/features/vocabulary";
+import { UploadForm, UploadList, useDecks } from "@/features/vocabulary";
 import { useAuthStore } from "@/stores/authStore";
 
 /**
  * A learner's own vocabulary.
  *
- * Paste a list, and an hourly job checks each word against a free dictionary
- * and a model, writes it into a deck of their own, and schedules it for review.
+ * Paste a list: words the dictionary already holds are added at once, and a job
+ * checks the new ones against a free dictionary and a model within seconds,
+ * writes them into a deck of their own, and schedules them for review.
  *
  * The page is deliberately two things and no more: the box you paste into, and
  * what happened to what you pasted. Everything else — the deck, the exercises,
@@ -33,7 +29,6 @@ export function MyWordsPage(): React.JSX.Element {
   // they are allowed to be on, which reads as a bug rather than as the honest
   // "there is nothing here for you yet".
   const signedIn = useAuthStore((state) => state.status === "authenticated");
-  const uploads = useUploads(signedIn);
   const decks = useDecks(signedIn);
   const deckList = decks.data?.decks ?? [];
 
@@ -125,10 +120,7 @@ export function MyWordsPage(): React.JSX.Element {
               >
                 {t("uploads.history", "What you have added")}
               </h2>
-              <UploadList
-                uploads={uploads.data?.items ?? []}
-                isLoading={uploads.isLoading}
-              />
+              <UploadList enabled={signedIn} />
             </section>
           </div>
         </div>

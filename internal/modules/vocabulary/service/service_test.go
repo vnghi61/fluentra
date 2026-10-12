@@ -24,6 +24,8 @@ const (
 	statusPending  = "pending"
 	statusQueued   = "queued"
 	statusVerified = "verified"
+	statusRejected = "rejected"
+	statusFailed   = "failed"
 )
 
 type fakeRepo struct {
@@ -369,6 +371,15 @@ func (f *fakeRepo) ListDecksByUser(_ context.Context, userID *uuid.UUID) ([]sqlc
 		}
 	}
 	return result, nil
+}
+
+func (f *fakeRepo) GetOwnDeckBySlug(_ context.Context, ownerID uuid.UUID, slug string) (sqlc.SkillDeck, error) {
+	for _, d := range f.decks {
+		if d.OwnerID != nil && *d.OwnerID == ownerID && d.Slug == slug {
+			return d, nil
+		}
+	}
+	return sqlc.SkillDeck{}, pgx.ErrNoRows
 }
 
 func (f *fakeRepo) InsertDeckItem(_ context.Context, arg sqlc.InsertDeckItemParams) (sqlc.SkillDeckItem, error) {
@@ -805,9 +816,25 @@ func (f *fakeRepo) GetUpload(
 }
 
 func (f *fakeRepo) ListUploadsByUser(
-	_ context.Context, _ uuid.UUID, _ int32,
+	_ context.Context, _ sqlc.ListUploadsByUserParams,
 ) ([]sqlc.ListUploadsByUserRow, error) {
 	return nil, nil
+}
+
+func (f *fakeRepo) SearchUserUploadItems(
+	_ context.Context, _ sqlc.SearchUserUploadItemsParams,
+) ([]sqlc.SearchUserUploadItemsRow, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) LockUploadTerm(_ context.Context, _ string) error {
+	return nil
+}
+
+func (f *fakeRepo) FindRecentTermRejection(
+	_ context.Context, _ string,
+) (sqlc.FindRecentTermRejectionRow, error) {
+	return sqlc.FindRecentTermRejectionRow{}, pgx.ErrNoRows
 }
 
 func (f *fakeRepo) ListUploadItems(
@@ -823,7 +850,7 @@ func (f *fakeRepo) ClaimPendingUploadItems(
 }
 
 func (f *fakeRepo) ClaimPendingUploadItemsByUploadID(
-	_ context.Context, _ uuid.UUID, _, _ int32,
+	_ context.Context, _ uuid.UUID, _ []uuid.UUID, _, _ int32,
 ) ([]sqlc.SkillVocabUploadItem, error) {
 	return nil, nil
 }

@@ -11,6 +11,9 @@ import (
 // VerifyUploadArgs are the River job parameters for verifying a learner's uploaded words.
 type VerifyUploadArgs struct {
 	UploadID uuid.UUID `json:"upload_id"`
+	// ItemIDs narrows the job to these words. Empty means every pending word of
+	// the upload, which is what a job enqueued before the field existed meant.
+	ItemIDs []uuid.UUID `json:"item_ids,omitempty"`
 }
 
 // Kind identifies this job type to River.
@@ -26,7 +29,7 @@ func (VerifyUploadArgs) InsertOpts() river.InsertOpts {
 
 // UploadVerifier defines the verification operation needed by VerifyUploadWorker.
 type UploadVerifier interface {
-	VerifyUpload(ctx context.Context, uploadID uuid.UUID) error
+	VerifyUpload(ctx context.Context, uploadID uuid.UUID, itemIDs []uuid.UUID) error
 }
 
 // VerifyUploadWorker processes uploaded vocabulary verification via River.
@@ -45,5 +48,5 @@ func (w *VerifyUploadWorker) Work(ctx context.Context, job *river.Job[VerifyUplo
 	if w.verifier == nil {
 		return nil
 	}
-	return w.verifier.VerifyUpload(ctx, job.Args.UploadID)
+	return w.verifier.VerifyUpload(ctx, job.Args.UploadID, job.Args.ItemIDs)
 }

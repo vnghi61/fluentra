@@ -133,26 +133,50 @@ func TestVerifyUpload_KnownWordTheModelMatchesToAStoredSenseCostsNoDictionary(t 
 
 // TestSubmit_LabelsKnownWordsBeforeTheJobRuns is step 5: the response says which
 // pasted words the database already holds.
-func TestSubmit_LabelsKnownWordsBeforeTheJobRuns(t *testing.T) {
+// TestSubmit_AddsKnownWordsBeforeAnswering: a known word comes back verified in
+// the response itself. A new word goes to the job that starts at once; a known
+// word Submit cannot settle without the model (its gloss matches no stored
+// sense) goes to the follow-up, which starts after Submit has stopped.
+func TestSubmit_AddsKnownWordsBeforeAnswering(t *testing.T) {
 	repo := newUploadRepo()
 	seedKnownWord(repo, wordLeisure, "thời gian rảnh")
+	seedKnownWord(repo, "habit", "thói quen")
+	enqueuer := &stubEnqueuer{}
+	model := &stubAI{err: assert.AnError}
 
 	svc := service.New(service.Deps{Repo: repo})
 	uploads := service.NewUploads(svc, repo, service.UploadDeps{
+		AI:       model,
 		Pool:     stubPool{},
 		Beginner: stubPool{},
+		Enqueuer: enqueuer,
 	})
 
-	res, err := uploads.Submit(context.Background(), uuid.New(), "leisure - free time\nserendipity")
+	before := time.Now()
+	res, err := uploads.Submit(context.Background(), uuid.New(),
+		"habit\nleisure - free time\nserendipity")
 	require.NoError(t, err)
-	require.Len(t, res.Items, 2)
+	require.Len(t, res.Items, 3)
 
-	byTerm := map[string]string{}
+	byTerm := map[string]service.UploadItem{}
 	for _, it := range res.Items {
-		byTerm[it.Term] = it.Status
+		byTerm[it.Term] = it
 	}
-	assert.Equal(t, "known", byTerm[wordLeisure])
-	assert.Equal(t, "checking", byTerm["serendipity"])
+	assert.Equal(t, "verified", byTerm["habit"].Status, "a known word with no gloss is added before the response")
+	require.NotNil(t, byTerm["habit"].NoteCode)
+	assert.Equal(t, "known_word", *byTerm["habit"].NoteCode)
+	assert.Equal(t, "pending", byTerm[wordLeisure].Status, "a gloss that matches no sense waits for the model")
+	assert.Equal(t, "pending", byTerm["serendipity"].Status)
+	assert.Equal(t, 1, res.Verified)
+	assert.Equal(t, 2, res.Pending)
+	assert.Equal(t, 0, model.calls, "Submit never waits on a provider")
+
+	require.Len(t, enqueuer.itemIDs, 2, "one job for new words, one follow-up for known ones")
+	assert.Equal(t, []uuid.UUID{byTerm["serendipity"].ID}, enqueuer.itemIDs[0])
+	assert.True(t, enqueuer.runAt[0].IsZero(), "new words are checked at once")
+	assert.ElementsMatch(t, []uuid.UUID{byTerm["habit"].ID, byTerm[wordLeisure].ID}, enqueuer.itemIDs[1])
+	assert.True(t, enqueuer.runAt[1].After(before.Add(3*time.Second)),
+		"the follow-up starts after Submit's budget, so the two never work on one word")
 }
 
 // TestVerifyUpload_KnownPhraseCostsNoDictionaryAndNoModel. Stage B resolves

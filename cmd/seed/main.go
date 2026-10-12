@@ -70,7 +70,8 @@ type demoAccount struct {
 // redaction that only bites a learner would never be seen failing.
 var demoAccounts = []demoAccount{
 	{email: "learner@example.test", displayName: "Demo Learner"},
-	{email: "admin@example.test", displayName: "Demo Admin", admin: true},
+	// Not "Demo Admin": BR-USER-02 rejects any display name containing "admin".
+	{email: "admin@example.test", displayName: "Demo Editor", admin: true},
 }
 
 // includeFoundationFixtures is set from -foundation and read by run. Default

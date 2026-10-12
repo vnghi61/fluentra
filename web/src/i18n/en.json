@@ -1701,13 +1701,44 @@
       "proper_noun": "This is a proper noun, not a general vocabulary word.",
       "queued_for_enrichment": "Queued for background enrichment. Your flashcard is ready to review."
     },
-    "failedHint": "We could not check this word because the dictionary service did not respond. Add it again in a few minutes.",
+    "failedHint": "We could not check this word after several tries. Add it again in a few minutes.",
     "status": {
       "pending": "Checking",
       "queued": "Added, enriching",
       "verified": "Added",
       "rejected": "Not accepted",
       "failed": "Could not check"
+    },
+    "failedCount": "could not be checked",
+    "progress": "{{done}}/{{total}} words processed",
+    "loadMore": "Show more",
+    "loadMoreRemaining": "Show more ({{count}} left)",
+    "loadOlder": "Show older uploads",
+    "showDetails": "Show meaning and examples",
+    "hideDetails": "Show less",
+    "tabEmpty": "No words here.",
+    "tabs": {
+      "attention": "Needs a look",
+      "pending": "Being checked",
+      "added": "Added",
+      "all": "All"
+    },
+    "find": {
+      "label": "Search the words you have added",
+      "placeholder": "Type to search, e.g. appoint",
+      "clear": "Clear search",
+      "empty": "No words match “{{query}}”.",
+      "addedOn": "Added {{date}}"
+    },
+    "result": {
+      "title": "{{count}} words received",
+      "addedNow": "{{count}} we already had — added straight away",
+      "checking": "{{count}} new words being checked",
+      "notAdded": "{{count}} words need a look",
+      "done": "Done! {{count}} words are in “My words”.",
+      "review": "Review now",
+      "viewList": "See the list",
+      "dismiss": "Close"
     }
   },
   "validation": {

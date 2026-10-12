@@ -11,6 +11,38 @@ generated text describes commits; release notes should describe change.
 
 ## [Unreleased]
 
+### Fixed — "My words" uploads
+
+- **Every known word failed.** The database-first lookup named
+  `deck_items.sense_id` (the column is `word_sense_id`) inside an `EXISTS` that
+  sqlc does not check, so it never prepared; and the `known_word` note it would
+  have written was missing from `ck_vocab_upload_items_note_code`. Both fixed,
+  with integration tests against Postgres. The learner saw "the dictionary did
+  not respond" for words like `keep` and `appoint`.
+- **Seed.** The demo admin was named "Demo Admin", which the impersonation rule
+  refuses, so `make seed` failed on a fresh database. It is "Demo Editor" now.
+  Re-seeding a database whose exam fixtures had changed under the same slug
+  failed on `questions_content_item_id_key`: the bank row is now found by its
+  content item as well as by fingerprint.
+
+### Changed — "My words" uploads
+
+- **Known words are added before the response.** `POST /me/vocabulary/uploads`
+  adds every word the dictionary already holds (within a 3-second budget) and
+  answers with each word's status; a follow-up job, scheduled after the budget,
+  takes whatever it did not reach.
+- **One model call per new word across learners.** The verification job holds an
+  advisory lock on the normalised term, so a second learner pasting the same new
+  word reuses the stored entry, and a recent rejection of a bare word is reused
+  for 30 days. The job now finishes an upload larger than one batch instead of
+  leaving the rest to the hourly sweep.
+- **Paging and search.** `GET /me/vocabulary/uploads` is cursor-paginated and
+  carries `failed_count`; `GET /me/vocabulary/upload-items` searches and pages a
+  learner's words across uploads. The page shows a live result where the paste
+  was sent, opens an upload on the words that need a look, lists twenty at a
+  time, and has a search box. Polling stops when nothing has moved for a minute
+  rather than after a fixed number of polls.
+
 ### Changed — v1 packaging
 
 - **Free-tier deployment.** `deploy/render/start.sh` runs the API and the worker

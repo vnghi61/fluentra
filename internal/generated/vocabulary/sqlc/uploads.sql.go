@@ -74,15 +74,17 @@ func (q *Queries) ClaimPendingUploadItems(ctx context.Context, arg ClaimPendingU
 const claimPendingUploadItemsByUploadID = `-- name: ClaimPendingUploadItemsByUploadID :many
 SELECT id, upload_id, user_id, term, provided_meaning, status, reason, word_sense_id, verified_by_model, attempts, created_at, verified_at, corrected_term, suggested_term, note_code FROM skill.vocab_upload_items
 WHERE upload_id = $1 AND status = 'pending' AND attempts < $2
+  AND ($3::uuid[] IS NULL OR id = ANY($3::uuid[]))
 ORDER BY created_at, id
-LIMIT $3
+LIMIT $4
 FOR UPDATE SKIP LOCKED
 `
 
 type ClaimPendingUploadItemsByUploadIDParams struct {
-	UploadID uuid.UUID
-	Attempts int32
-	Limit    int32
+	UploadID    uuid.UUID
+	MaxAttempts int32
+	ItemIds     []uuid.UUID
+	RowLimit    int32
 }
 
 // The immediate verification job's input: one upload's pending words.
@@ -91,9 +93,19 @@ type ClaimPendingUploadItemsByUploadIDParams struct {
 // carries up to MaxUploadEntries (300) words and each one is a model call with
 // its own timeout, so an unbounded claim would hold one of the `ai` queue's few
 // slots for hours while every other learner's words waited behind it. The job
-// takes a batch; the hourly sweep collects whatever is left.
+// takes a batch at a time, within the job timeout; the hourly sweep collects
+// whatever is left.
+//
+// `item_ids`, when given, narrows the claim to the words that job was created
+// for: Submit resolves the words the database already holds itself, and a job
+// that claimed those too would race it for the same rows.
 func (q *Queries) ClaimPendingUploadItemsByUploadID(ctx context.Context, arg ClaimPendingUploadItemsByUploadIDParams) ([]SkillVocabUploadItem, error) {
-	rows, err := q.db.Query(ctx, claimPendingUploadItemsByUploadID, arg.UploadID, arg.Attempts, arg.Limit)
+	rows, err := q.db.Query(ctx, claimPendingUploadItemsByUploadID,
+		arg.UploadID,
+		arg.MaxAttempts,
+		arg.ItemIds,
+		arg.RowLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -263,6 +275,33 @@ func (q *Queries) FailExhaustedUploadItems(ctx context.Context, arg FailExhauste
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const findRecentTermRejection = `-- name: FindRecentTermRejection :one
+SELECT reason, suggested_term, note_code
+FROM skill.vocab_upload_items
+WHERE lower(btrim(term)) = $1::text
+  AND status = 'rejected'
+  AND provided_meaning = ''
+  AND note_code IN ('not_a_word', 'proper_noun', 'spelling_suggestion')
+  AND verified_at > now() - interval '30 days'
+ORDER BY verified_at DESC
+LIMIT 1
+`
+
+type FindRecentTermRejectionRow struct {
+	Reason        string
+	SuggestedTerm *string
+	NoteCode      *string
+}
+
+// A verdict on the word itself, not on a learner's gloss, so only one given
+// without a meaning is reused, and only for a month.
+func (q *Queries) FindRecentTermRejection(ctx context.Context, term string) (FindRecentTermRejectionRow, error) {
+	row := q.db.QueryRow(ctx, findRecentTermRejection, term)
+	var i FindRecentTermRejectionRow
+	err := row.Scan(&i.Reason, &i.SuggestedTerm, &i.NoteCode)
+	return i, err
 }
 
 const getUpload = `-- name: GetUpload :one
@@ -563,21 +602,26 @@ func (q *Queries) ListUploadItems(ctx context.Context, arg ListUploadItemsParams
 const listUploadsByUser = `-- name: ListUploadsByUser :many
 SELECT
     u.id, u.user_id, u.raw_text, u.deck_id, u.status, u.item_count, u.created_at, u.completed_at,
-    COUNT(*) FILTER (WHERE i.status = 'verified')::integer AS verified_count,
-    COUNT(*) FILTER (WHERE i.status = 'rejected')::integer AS rejected_count,
-    COUNT(*) FILTER (WHERE i.status = 'pending')::integer  AS pending_count,
-    COUNT(*) FILTER (WHERE i.status = 'queued')::integer   AS queued_count
+    COUNT(i.id) FILTER (WHERE i.status = 'verified')::integer AS verified_count,
+    COUNT(i.id) FILTER (WHERE i.status = 'rejected')::integer AS rejected_count,
+    COUNT(i.id) FILTER (WHERE i.status = 'pending')::integer  AS pending_count,
+    COUNT(i.id) FILTER (WHERE i.status = 'queued')::integer   AS queued_count,
+    COUNT(i.id) FILTER (WHERE i.status = 'failed')::integer   AS failed_count
 FROM skill.vocab_uploads u
 LEFT JOIN skill.vocab_upload_items i ON i.upload_id = u.id
 WHERE u.user_id = $1
+  AND ($2::timestamptz IS NULL
+       OR (u.created_at, u.id) < ($2::timestamptz, $3::uuid))
 GROUP BY u.id
-ORDER BY u.created_at DESC
-LIMIT $2
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT $4
 `
 
 type ListUploadsByUserParams struct {
-	UserID uuid.UUID
-	Limit  int32
+	UserID          uuid.UUID
+	BeforeCreatedAt *time.Time
+	BeforeID        *uuid.UUID
+	RowLimit        int32
 }
 
 type ListUploadsByUserRow struct {
@@ -593,10 +637,18 @@ type ListUploadsByUserRow struct {
 	RejectedCount int32
 	PendingCount  int32
 	QueuedCount   int32
+	FailedCount   int32
 }
 
+// Keyset on (created_at, id), newest first. The caller asks for one row more
+// than the page to learn whether another page exists.
 func (q *Queries) ListUploadsByUser(ctx context.Context, arg ListUploadsByUserParams) ([]ListUploadsByUserRow, error) {
-	rows, err := q.db.Query(ctx, listUploadsByUser, arg.UserID, arg.Limit)
+	rows, err := q.db.Query(ctx, listUploadsByUser,
+		arg.UserID,
+		arg.BeforeCreatedAt,
+		arg.BeforeID,
+		arg.RowLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -617,6 +669,7 @@ func (q *Queries) ListUploadsByUser(ctx context.Context, arg ListUploadsByUserPa
 			&i.RejectedCount,
 			&i.PendingCount,
 			&i.QueuedCount,
+			&i.FailedCount,
 		); err != nil {
 			return nil, err
 		}
@@ -626,6 +679,18 @@ func (q *Queries) ListUploadsByUser(ctx context.Context, arg ListUploadsByUserPa
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockUploadTerm = `-- name: LockUploadTerm :exec
+SELECT pg_advisory_xact_lock(hashtextextended('vocab-upload-term:' || $1::text, 0))
+`
+
+// Serialises verification of one term across every learner for the rest of
+// the caller's transaction: the second learner to paste a new word waits for
+// the first one's dictionary and model call, then finds the word stored.
+func (q *Queries) LockUploadTerm(ctx context.Context, term string) error {
+	_, err := q.db.Exec(ctx, lockUploadTerm, term)
+	return err
 }
 
 const markQueuedUploadItemFailed = `-- name: MarkQueuedUploadItemFailed :one
@@ -939,6 +1004,114 @@ func (q *Queries) RecordUploadItemAttempt(ctx context.Context, arg RecordUploadI
 		arg.ID,
 	)
 	return err
+}
+
+const searchUserUploadItems = `-- name: SearchUserUploadItems :many
+SELECT
+    i.id, i.upload_id, i.user_id, i.term, i.provided_meaning, i.status, i.reason, i.word_sense_id, i.verified_by_model, i.attempts, i.created_at, i.verified_at, i.corrected_term, i.suggested_term, i.note_code,
+    s.definition,
+    s.definition_vi,
+    s.domain AS topic,
+    s.examples
+FROM skill.vocab_upload_items i
+LEFT JOIN skill.word_senses s ON s.id = i.word_sense_id
+WHERE i.user_id = $1
+  AND ($2::uuid IS NULL OR i.upload_id = $2::uuid)
+  AND (cardinality($3::text[]) = 0 OR i.status = ANY($3::text[]))
+  AND ($4::text = ''
+       OR i.term ILIKE '%' || $4::text || '%'
+       OR i.corrected_term ILIKE '%' || $4::text || '%')
+  AND ($5::timestamptz IS NULL
+       OR i.created_at < $5::timestamptz
+       OR (i.created_at = $5::timestamptz
+           AND (i.term, i.id) > ($6::text, $7::uuid)))
+ORDER BY i.created_at DESC, i.term, i.id
+LIMIT $8
+`
+
+type SearchUserUploadItemsParams struct {
+	UserID         uuid.UUID
+	UploadID       *uuid.UUID
+	Statuses       []string
+	Query          string
+	AfterCreatedAt *time.Time
+	AfterTerm      *string
+	AfterID        *uuid.UUID
+	RowLimit       int32
+}
+
+type SearchUserUploadItemsRow struct {
+	ID              uuid.UUID
+	UploadID        uuid.UUID
+	UserID          uuid.UUID
+	Term            string
+	ProvidedMeaning string
+	Status          string
+	Reason          string
+	WordSenseID     *uuid.UUID
+	VerifiedByModel string
+	Attempts        int32
+	CreatedAt       time.Time
+	VerifiedAt      *time.Time
+	CorrectedTerm   *string
+	SuggestedTerm   *string
+	NoteCode        *string
+	Definition      *string
+	DefinitionVi    *string
+	Topic           *string
+	Examples        []byte
+}
+
+// Every word a learner has pasted, across uploads: what the search box and an
+// opened upload page through. Newest upload first, then alphabetical, keyset on
+// (created_at, term, id). `query` arrives LIKE-escaped from the service.
+func (q *Queries) SearchUserUploadItems(ctx context.Context, arg SearchUserUploadItemsParams) ([]SearchUserUploadItemsRow, error) {
+	rows, err := q.db.Query(ctx, searchUserUploadItems,
+		arg.UserID,
+		arg.UploadID,
+		arg.Statuses,
+		arg.Query,
+		arg.AfterCreatedAt,
+		arg.AfterTerm,
+		arg.AfterID,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchUserUploadItemsRow
+	for rows.Next() {
+		var i SearchUserUploadItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UploadID,
+			&i.UserID,
+			&i.Term,
+			&i.ProvidedMeaning,
+			&i.Status,
+			&i.Reason,
+			&i.WordSenseID,
+			&i.VerifiedByModel,
+			&i.Attempts,
+			&i.CreatedAt,
+			&i.VerifiedAt,
+			&i.CorrectedTerm,
+			&i.SuggestedTerm,
+			&i.NoteCode,
+			&i.Definition,
+			&i.DefinitionVi,
+			&i.Topic,
+			&i.Examples,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setUploadDeck = `-- name: SetUploadDeck :exec

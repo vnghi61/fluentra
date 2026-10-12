@@ -27,18 +27,25 @@ import (
 // A learner's own vocabulary: pasted in, checked on a schedule, and turned into
 // something they can review.
 //
-// Submitting is synchronous and does almost nothing: parse, store, return. The
-// work — a dictionary lookup and a model call per word — happens in a job,
-// because it is slow, it fails in ways worth retrying, and a learner should not
-// be watching a spinner while it runs.
+// Submitting answers at once for every word the database already holds: those
+// cost no dictionary and no model call, and they are most of what a learner
+// pastes. The rest — a dictionary lookup and a model call per word — happens in
+// a job, because it is slow, it fails in ways worth retrying, and a learner
+// should not be watching a spinner while it runs. The job serialises each new
+// term across learners, so two of them pasting the same word pay for it once.
 
 const (
-	// verifyBatch is how many words one run checks.
-	//
-	// Bounded because each costs a dictionary call and a model call: a run that
-	// took every pending item would hold the worker for as long as the longest
-	// backlog, and what it does not reach it reaches next hour.
+	// verifyBatch is how many words one claim takes. The job keeps claiming
+	// until the upload is done or its timeout ends it; the bound is what keeps
+	// a claim, not the job, short.
 	verifyBatch = 50
+
+	// submitResolveBudget is how long Submit spends adding known words before it
+	// answers. Whatever it does not reach is left to the follow-up job, which is
+	// scheduled to start after the budget (plus a margin) so the two never work
+	// on the same word.
+	submitResolveBudget = 3 * time.Second
+	knownFollowUpDelay  = submitResolveBudget + 5*time.Second
 
 	// maxVerifyAttempts retires an item nothing can resolve. Without it a word
 	// the dictionary and the model both choke on is retried every hour for ever
@@ -86,7 +93,11 @@ type modelExample struct {
 
 // JobEnqueuer schedules background River jobs within database transactions.
 type JobEnqueuer interface {
-	EnqueueVerifyUploadTx(ctx context.Context, tx pgx.Tx, uploadID uuid.UUID) error
+	// EnqueueVerifyUploadTx schedules verification of itemIDs (every pending word
+	// of the upload when nil) at runAt, or at once when runAt is zero.
+	EnqueueVerifyUploadTx(
+		ctx context.Context, tx pgx.Tx, uploadID uuid.UUID, itemIDs []uuid.UUID, runAt time.Time,
+	) error
 }
 
 // WorkerNudger signals a background worker to wake up when new work has been committed.
@@ -188,6 +199,7 @@ type Upload struct {
 	Rejected    int          `json:"rejected_count"`
 	Pending     int          `json:"pending_count"`
 	Queued      int          `json:"queued_count"`
+	Failed      int          `json:"failed_count"`
 	DeckID      *uuid.UUID   `json:"deck_id,omitempty"`
 	CreatedAt   time.Time    `json:"created_at"`
 	CompletedAt *time.Time   `json:"completed_at,omitempty"`
@@ -196,6 +208,9 @@ type Upload struct {
 
 // UploadItem is one word and what became of it.
 type UploadItem struct {
+	ID              uuid.UUID  `json:"id"`
+	UploadID        uuid.UUID  `json:"upload_id"`
+	CreatedAt       time.Time  `json:"created_at"`
 	Term            string     `json:"term"`
 	ProvidedMeaning string     `json:"provided_meaning,omitempty"`
 	Status          string     `json:"status"`
@@ -211,12 +226,20 @@ type UploadItem struct {
 	NoteCode        *string    `json:"note_code,omitempty"`
 }
 
-// Submit stores a learner's pasted vocabulary within a transaction and enqueues verification.
+// Submit stores a learner's pasted vocabulary and answers with what became of it.
 //
-// Deliberately fast: it parses, writes, enqueues the River job in the same transaction, and returns.
-// No dictionary, no model, no deck. Everything that can fail slowly happens in the
-// job, which is why a learner pasting three hundred words gets an answer in
-// milliseconds rather than a request that times out half way through.
+// One transaction stores the words and enqueues their jobs, so either the words
+// exist and something is coming for them, or neither happened. Two jobs:
+//
+//   - the words the database does not hold, verified at once by the job;
+//   - the words it does hold, scheduled after submitResolveBudget as a
+//     follow-up. Submit adds those itself after the commit, within the budget,
+//     so the learner sees them added in the response. The follow-up only finds
+//     the ones Submit did not reach, and it starts after Submit has stopped, so
+//     the two never race for a word.
+//
+// A known word whose gloss matches none of its stored senses needs the model to
+// choose one; Submit leaves it to the follow-up rather than wait on a provider.
 func (u *Uploads) Submit(ctx context.Context, userID uuid.UUID, rawText string) (Upload, error) {
 	entries := domain.ParseUpload(rawText)
 	if len(entries) == 0 {
@@ -229,15 +252,38 @@ func (u *Uploads) Submit(ctx context.Context, userID uuid.UUID, rawText string) 
 		return Upload{}, fmt.Errorf("submit upload: no transaction source configured")
 	}
 
-	var (
-		upload sqlc.SkillVocabUpload
-		stored int
-	)
+	known := u.knownWordRows(ctx, entries)
+	upload, knownItems, err := u.storeUpload(ctx, userID, rawText, entries, known)
+	if err != nil {
+		return Upload{}, fmt.Errorf("submit upload: %w", err)
+	}
 
-	// One transaction for the rows and the job that will read them. The job is
-	// enqueued through River's own InsertTx, so either the words exist and
-	// something is coming for them, or neither happened -- never a job pointing
-	// at an upload that was rolled back, and never words nothing will collect.
+	if u.nudger != nil {
+		u.nudger.Nudge(ctx)
+	}
+
+	if added := u.resolveKnownOnSubmit(ctx, knownItems, known); added > 0 {
+		if _, err := u.repo.CompleteFinishedUploads(ctx); err != nil {
+			slog.WarnContext(ctx, "could not close finished uploads", "error", err)
+		}
+		u.publishVerified(ctx, userID, added)
+	}
+
+	// The response is the upload as stored, so a word Submit added already says
+	// verified and the counts agree with the list the learner sees next.
+	return u.Get(ctx, userID, upload.ID)
+}
+
+// storeUpload writes the upload, its words and their two jobs in one
+// transaction, and returns the stored words the database already knows.
+func (u *Uploads) storeUpload(
+	ctx context.Context, userID uuid.UUID, rawText string,
+	entries []domain.UploadEntry, known map[string][]sqlc.ListWordsWithSensesByLemmasRow,
+) (sqlc.SkillVocabUpload, []sqlc.SkillVocabUploadItem, error) {
+	var (
+		upload     sqlc.SkillVocabUpload
+		knownItems []sqlc.SkillVocabUploadItem
+	)
 	err := dbx.InTx(ctx, u.beginner, func(txCtx context.Context, tx pgx.Tx) error {
 		txRepo := u.repo.WithTx(tx)
 		var createErr error
@@ -250,21 +296,28 @@ func (u *Uploads) Submit(ctx context.Context, userID uuid.UUID, rawText string) 
 			return fmt.Errorf("store upload: %w", createErr)
 		}
 
-		stored = 0
+		knownItems = knownItems[:0]
+		var unknownIDs, knownIDs []uuid.UUID
 		for _, entry := range entries {
-			if _, itemErr := txRepo.InsertUploadItem(txCtx, sqlc.InsertUploadItemParams{
+			item, itemErr := txRepo.InsertUploadItem(txCtx, sqlc.InsertUploadItemParams{
 				UploadID:        upload.ID,
 				UserID:          userID,
 				Term:            entry.Term,
 				ProvidedMeaning: entry.Meaning,
-			}); itemErr != nil {
+			})
+			if itemErr != nil {
 				if errors.Is(itemErr, pgx.ErrNoRows) {
 					// The unique constraint caught a duplicate the parser did not.
 					continue
 				}
 				return fmt.Errorf("store upload item %q: %w", entry.Term, itemErr)
 			}
-			stored++
+			if _, ok := known[normaliseUploadTerm(item.Term)]; ok {
+				knownItems = append(knownItems, item)
+				knownIDs = append(knownIDs, item.ID)
+			} else {
+				unknownIDs = append(unknownIDs, item.ID)
+			}
 		}
 
 		if u.enqueuer == nil {
@@ -272,77 +325,106 @@ func (u *Uploads) Submit(ctx context.Context, userID uuid.UUID, rawText string) 
 			// the words, and the hourly sweep is what finds them.
 			return nil
 		}
-		if enqueueErr := u.enqueuer.EnqueueVerifyUploadTx(txCtx, tx, upload.ID); enqueueErr != nil {
-			return fmt.Errorf("enqueue verify upload job: %w", enqueueErr)
+		if len(unknownIDs) > 0 {
+			if err := u.enqueuer.EnqueueVerifyUploadTx(txCtx, tx, upload.ID, unknownIDs, time.Time{}); err != nil {
+				return fmt.Errorf("enqueue verify upload job: %w", err)
+			}
+		}
+		if len(knownIDs) > 0 {
+			runAt := time.Now().Add(knownFollowUpDelay)
+			if err := u.enqueuer.EnqueueVerifyUploadTx(txCtx, tx, upload.ID, knownIDs, runAt); err != nil {
+				return fmt.Errorf("enqueue known-word follow-up job: %w", err)
+			}
 		}
 		return nil
 	})
-	if err != nil {
-		return Upload{}, fmt.Errorf("submit upload: %w", err)
-	}
-
-	if u.nudger != nil {
-		u.nudger.Nudge(ctx)
-	}
-
-	return Upload{
-		ID:        upload.ID,
-		Status:    upload.Status,
-		ItemCount: stored,
-		Pending:   stored,
-		CreatedAt: upload.CreatedAt,
-		Items:     u.labelSubmittedItems(ctx, entries),
-	}, nil
+	return upload, knownItems, err
 }
 
-// labelSubmittedItems marks each pasted word `known` when the database already
-// holds it, and `checking` otherwise, so the list says which within seconds
-// rather than waiting for the job (WO 22 Stage B, step 5). The job resolves the
-// known ones from the database and the rest the usual way.
-func (u *Uploads) labelSubmittedItems(
+// knownWordRows reads every pasted word the database already holds, in one
+// query, keyed by normalised lemma. A failed read only means nothing is
+// answered early: every word then goes to the job.
+func (u *Uploads) knownWordRows(
 	ctx context.Context, entries []domain.UploadEntry,
-) []UploadItem {
+) map[string][]sqlc.ListWordsWithSensesByLemmasRow {
 	lemmas := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		lemma := normaliseUploadTerm(entry.Term)
-		if lemma == "" {
-			continue
-		}
-		lemmas = append(lemmas, lemma)
-	}
-	known := map[string]struct{}{}
-	if len(lemmas) > 0 {
-		if rows, err := u.repo.ListWordsWithSensesByLemmas(ctx, lemmas); err == nil {
-			for _, row := range rows {
-				known[row.Lemma] = struct{}{}
-			}
+		if lemma := normaliseUploadTerm(entry.Term); lemma != "" {
+			lemmas = append(lemmas, lemma)
 		}
 	}
-
-	items := make([]UploadItem, 0, len(entries))
-	for _, entry := range entries {
-		status := "checking"
-		if _, ok := known[normaliseUploadTerm(entry.Term)]; ok {
-			status = "known"
-		}
-		items = append(items, UploadItem{
-			Term:            entry.Term,
-			ProvidedMeaning: entry.Meaning,
-			Status:          status,
-		})
+	known := map[string][]sqlc.ListWordsWithSensesByLemmasRow{}
+	if len(lemmas) == 0 {
+		return known
 	}
-	return items
+	rows, err := u.repo.ListWordsWithSensesByLemmas(ctx, lemmas)
+	if err != nil {
+		slog.WarnContext(ctx, "could not look up known words; the job will check them", "error", err)
+		return known
+	}
+	for _, row := range rows {
+		lemma := normaliseUploadTerm(row.Lemma)
+		known[lemma] = append(known[lemma], row)
+	}
+	return known
 }
 
-// List returns a learner's uploads, newest first.
-func (u *Uploads) List(ctx context.Context, userID uuid.UUID, limit int32) ([]Upload, error) {
-	rows, err := u.repo.ListUploadsByUser(ctx, userID, limit)
-	if err != nil {
-		return nil, err
+// resolveKnownOnSubmit adds known words until submitResolveBudget runs out and
+// returns how many senses were new to the learner. Anything it skips or fails
+// on stays pending for the follow-up job.
+func (u *Uploads) resolveKnownOnSubmit(
+	ctx context.Context,
+	items []sqlc.SkillVocabUploadItem,
+	known map[string][]sqlc.ListWordsWithSensesByLemmasRow,
+) int {
+	deadline := time.Now().Add(submitResolveBudget)
+	added := 0
+	for _, item := range items {
+		if ctx.Err() != nil || time.Now().After(deadline) {
+			break
+		}
+		_, inserted, err := u.resolveKnownWordFromRows(ctx, item, known[normaliseUploadTerm(item.Term)], false)
+		if err != nil {
+			slog.WarnContext(ctx, "could not add known word on submit; the follow-up job will",
+				"term", item.Term, "error", err)
+			continue
+		}
+		if inserted {
+			added++
+		}
 	}
-	uploads := make([]Upload, 0, len(rows))
+	return added
+}
+
+// UploadPage is one page of a learner's uploads.
+type UploadPage struct {
+	Items      []Upload
+	NextCursor string
+	HasMore    bool
+	Limit      int
+}
+
+// List returns a learner's uploads, newest first, a page at a time.
+func (u *Uploads) List(ctx context.Context, userID uuid.UUID, limit int32, cursor string) (UploadPage, error) {
+	params := sqlc.ListUploadsByUserParams{UserID: userID, RowLimit: limit + 1}
+	if cursor != "" {
+		position, err := decodeUploadCursor(cursor)
+		if err != nil {
+			return UploadPage{}, err
+		}
+		params.BeforeCreatedAt, params.BeforeID = &position.CreatedAt, &position.ID
+	}
+	rows, err := u.repo.ListUploadsByUser(ctx, params)
+	if err != nil {
+		return UploadPage{}, err
+	}
+
+	page := UploadPage{Limit: int(limit), Items: make([]Upload, 0, len(rows))}
+	if len(rows) > int(limit) {
+		rows, page.HasMore = rows[:limit], true
+	}
 	for _, row := range rows {
-		uploads = append(uploads, Upload{
+		page.Items = append(page.Items, Upload{
 			ID:          row.ID,
 			Status:      row.Status,
 			ItemCount:   int(row.ItemCount),
@@ -350,12 +432,17 @@ func (u *Uploads) List(ctx context.Context, userID uuid.UUID, limit int32) ([]Up
 			Rejected:    int(row.RejectedCount),
 			Pending:     int(row.PendingCount),
 			Queued:      int(row.QueuedCount),
+			Failed:      int(row.FailedCount),
 			DeckID:      row.DeckID,
 			CreatedAt:   row.CreatedAt,
 			CompletedAt: row.CompletedAt,
 		})
 	}
-	return uploads, nil
+	if page.HasMore {
+		last := rows[len(rows)-1]
+		page.NextCursor = encodeCursor(cursorPosition{CreatedAt: last.CreatedAt, ID: last.ID})
+	}
+	return page, nil
 }
 
 // Get returns one upload with every word in it.
@@ -393,35 +480,46 @@ func (u *Uploads) Get(ctx context.Context, userID, uploadID uuid.UUID) (Upload, 
 			upload.Pending++
 		case statusQueued:
 			upload.Queued++
+		case statusFailed:
+			upload.Failed++
 		}
-		var examples []string
-		if len(item.Examples) > 0 {
-			var parsed []domain.ExampleSentence
-			if err := json.Unmarshal(item.Examples, &parsed); err == nil {
-				for _, ex := range parsed {
-					if ex.Sentence != "" {
-						examples = append(examples, ex.Sentence)
-					}
+		upload.Items = append(upload.Items, toUploadItem(item))
+	}
+	return upload, nil
+}
+
+// toUploadItem maps a stored word and the sense it became. The search query
+// returns the same columns, so its rows convert to this type.
+func toUploadItem(item sqlc.ListUploadItemsRow) UploadItem {
+	var examples []string
+	if len(item.Examples) > 0 {
+		var parsed []domain.ExampleSentence
+		if err := json.Unmarshal(item.Examples, &parsed); err == nil {
+			for _, ex := range parsed {
+				if ex.Sentence != "" {
+					examples = append(examples, ex.Sentence)
 				}
 			}
 		}
-		upload.Items = append(upload.Items, UploadItem{
-			Term:            item.Term,
-			ProvidedMeaning: item.ProvidedMeaning,
-			Status:          item.Status,
-			Reason:          item.Reason,
-			WordSenseID:     item.WordSenseID,
-			VerifiedAt:      item.VerifiedAt,
-			Definition:      derefOrEmpty(item.Definition),
-			DefinitionVi:    derefOrEmpty(item.DefinitionVi),
-			Topic:           derefOrEmpty(item.Topic),
-			Examples:        examples,
-			CorrectedTerm:   item.CorrectedTerm,
-			SuggestedTerm:   item.SuggestedTerm,
-			NoteCode:        item.NoteCode,
-		})
 	}
-	return upload, nil
+	return UploadItem{
+		ID:              item.ID,
+		UploadID:        item.UploadID,
+		CreatedAt:       item.CreatedAt,
+		Term:            item.Term,
+		ProvidedMeaning: item.ProvidedMeaning,
+		Status:          item.Status,
+		Reason:          item.Reason,
+		WordSenseID:     item.WordSenseID,
+		VerifiedAt:      item.VerifiedAt,
+		Definition:      derefOrEmpty(item.Definition),
+		DefinitionVi:    derefOrEmpty(item.DefinitionVi),
+		Topic:           derefOrEmpty(item.Topic),
+		Examples:        examples,
+		CorrectedTerm:   item.CorrectedTerm,
+		SuggestedTerm:   item.SuggestedTerm,
+		NoteCode:        item.NoteCode,
+	}
 }
 
 // The item statuses, named because they are compared in multiple places.
@@ -494,41 +592,52 @@ func (u *Uploads) VerifyPending(ctx context.Context) error {
 	return nil
 }
 
-// VerifyUpload processes verification for a specific upload immediately.
-func (u *Uploads) VerifyUpload(ctx context.Context, uploadID uuid.UUID) error {
+// VerifyUpload verifies an upload's pending words now: itemIDs when given (the
+// words its job was created for), otherwise every pending word of the upload.
+//
+// It claims a batch at a time until nothing is left, so a hundred new words do
+// not leave half of them for the hourly sweep. A word that fails is not claimed
+// again in the same run: it goes back to River's retry, whose backoff is
+// seconds, so a learner watching the list sees it settle within a minute or two.
+func (u *Uploads) VerifyUpload(ctx context.Context, uploadID uuid.UUID, itemIDs []uuid.UUID) error {
 	if u.dictionary == nil || u.content == nil || u.author == uuid.Nil {
 		slog.DebugContext(ctx, "upload verification is not configured; skipping", "upload_id", uploadID)
 		return nil
 	}
 
-	items, err := u.repo.ClaimPendingUploadItemsByUploadID(ctx, uploadID, maxVerifyAttempts, verifyBatch)
-	if err != nil {
-		return fmt.Errorf("claim pending upload items for %s: %w", uploadID, err)
-	}
-	if len(items) == 0 {
-		return nil
-	}
-
 	verified := map[uuid.UUID]int{}
+	seen := map[uuid.UUID]bool{}
 	retryable := 0
-	for _, item := range items {
-		ok, err := u.verifyItem(ctx, item)
+	for ctx.Err() == nil {
+		// A word that failed earlier in this run is still pending and sorts
+		// first, so the claim reaches past every word already seen. An upload
+		// holds at most MaxUploadEntries words, which bounds it.
+		limit := int32(verifyBatch + len(seen)) //nolint:gosec // bounded by MaxUploadEntries
+		items, err := u.repo.ClaimPendingUploadItemsByUploadID(ctx, uploadID, itemIDs, maxVerifyAttempts, limit)
 		if err != nil {
-			if item.Attempts+1 < maxVerifyAttempts {
+			return fmt.Errorf("claim pending upload items for %s: %w", uploadID, err)
+		}
+		fresh := 0
+		for _, item := range items {
+			if seen[item.ID] {
+				continue
+			}
+			seen[item.ID] = true
+			fresh++
+
+			added, retry := u.verifyClaimed(ctx, item)
+			if retry {
 				retryable++
 			}
-			slog.WarnContext(ctx, "upload item verification failed",
-				"term", item.Term, "upload_id", uploadID, "error", err)
-			if recErr := u.repo.RecordUploadItemAttempt(
-				ctx, item.ID, maxVerifyAttempts, msgVerifyExhausted,
-			); recErr != nil {
-				slog.WarnContext(ctx, "could not record verification attempt",
-					"item_id", item.ID, "error", recErr)
+			if added {
+				verified[item.UserID]++
 			}
-			continue
 		}
-		if ok {
-			verified[item.UserID]++
+		// A short claim was the last one; a claim of words this run has already
+		// tried is all that is left, and trying them again now would only spend
+		// their attempts.
+		if fresh == 0 || len(items) < int(limit) {
+			break
 		}
 	}
 
@@ -539,13 +648,29 @@ func (u *Uploads) VerifyUpload(ctx context.Context, uploadID uuid.UUID) error {
 	for userID, count := range verified {
 		u.publishVerified(ctx, userID, count)
 	}
-	// Returning an error hands the retry to River, whose backoff is seconds,
-	// rather than to the hourly sweep: a learner watching the list should see
-	// a word settle within a minute or two, not hours later.
 	if retryable > 0 {
 		return fmt.Errorf("%w: %d word(s) of upload %s", errVerifyRetry, retryable, uploadID)
 	}
-	return nil
+	return ctx.Err()
+}
+
+// verifyClaimed verifies one claimed word for the job. added reports a sense new
+// to the learner; retry reports a failure with attempts left, which hands the
+// word back to River's backoff.
+func (u *Uploads) verifyClaimed(ctx context.Context, item sqlc.SkillVocabUploadItem) (added, retry bool) {
+	ok, err := u.verifyItem(ctx, item)
+	if err == nil {
+		return ok, false
+	}
+	slog.WarnContext(ctx, "upload item verification failed",
+		"term", item.Term, "upload_id", item.UploadID, "error", err)
+	if recErr := u.repo.RecordUploadItemAttempt(
+		ctx, item.ID, maxVerifyAttempts, msgVerifyExhausted,
+	); recErr != nil {
+		slog.WarnContext(ctx, "could not record verification attempt",
+			"item_id", item.ID, "error", recErr)
+	}
+	return false, item.Attempts+1 < maxVerifyAttempts
 }
 
 // errVerifyRetry marks a verification run that left words to retry.
@@ -589,13 +714,69 @@ const maxSpellingCandidates = 3
 // verifyItem checks one word and, when it holds up, turns it into something the
 // learner can review. The bool reports whether it added a sense the learner did
 // not already have, which is what XP is paid on.
+//
+// It runs under a lock on the normalised term, shared by every learner: a
+// second learner pasting the same new word waits for the first one's dictionary
+// and model call, then finds the word stored (or its rejection recorded) and
+// pays for neither.
 func (u *Uploads) verifyItem(ctx context.Context, item sqlc.SkillVocabUploadItem) (bool, error) {
-	// A phrase keeps the behaviour it had: an edit distance across a phrase
-	// matches unrelated phrases, so there is no spelling correction for one.
-	if strings.Contains(strings.TrimSpace(item.Term), " ") {
-		return u.verifyPhrase(ctx, item)
+	return u.withTermLock(ctx, normaliseUploadTerm(item.Term), func() (bool, error) {
+		// A phrase keeps the behaviour it had: an edit distance across a phrase
+		// matches unrelated phrases, so there is no spelling correction for one.
+		if strings.Contains(strings.TrimSpace(item.Term), " ") {
+			return u.verifyPhrase(ctx, item)
+		}
+		return u.verifySingleWord(ctx, item)
+	})
+}
+
+// withTermLock runs fn while holding the term's advisory lock. The lock lives in
+// a transaction that does nothing else and is rolled back after fn: fn's own
+// writes go through the pool and commit as they happen, so the next learner
+// waiting on the lock sees them the moment it is released.
+func (u *Uploads) withTermLock(ctx context.Context, term string, fn func() (bool, error)) (bool, error) {
+	if u.beginner == nil || term == "" {
+		return fn()
 	}
-	return u.verifySingleWord(ctx, item)
+	tx, err := u.beginner.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return false, fmt.Errorf("begin term lock: %w", err)
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	if err := u.repo.WithTx(tx).LockUploadTerm(ctx, term); err != nil {
+		return false, fmt.Errorf("lock term %q: %w", term, err)
+	}
+	return fn()
+}
+
+// reuseRejection answers a word from another learner's recent verdict on it:
+// not a word, a proper noun, or a likely misspelling. Only a word given with no
+// meaning qualifies — a gloss can change the verdict — and the reused verdict
+// is only ever a rejection, so a mistake here costs the learner a retry, never
+// a wrong word in their deck.
+func (u *Uploads) reuseRejection(ctx context.Context, item sqlc.SkillVocabUploadItem) (bool, error) {
+	if strings.TrimSpace(item.ProvidedMeaning) != "" {
+		return false, nil
+	}
+	term := normaliseUploadTerm(item.Term)
+	if term != strings.ToLower(strings.TrimSpace(item.Term)) {
+		// The stored lookup compares lower(btrim(term)); a term with trailing
+		// punctuation or inner runs of spaces would never match it.
+		return false, nil
+	}
+	prior, err := u.repo.FindRecentTermRejection(ctx, term)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("look up an earlier verdict: %w", err)
+	}
+	if _, err := u.repo.MarkUploadItemRejected(
+		ctx, item.ID, prior.Reason, prior.SuggestedTerm, prior.NoteCode,
+	); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return false, fmt.Errorf("mark rejected from an earlier verdict: %w", err)
+	}
+	return true, nil
 }
 
 // accepted is a word verification has decided to add, and what to tell the
@@ -641,6 +822,9 @@ func (u *Uploads) verifyPhrase(ctx context.Context, item sqlc.SkillVocabUploadIt
 	} else if handled {
 		return inserted, nil
 	}
+	if reused, err := u.reuseRejection(ctx, item); err != nil || reused {
+		return false, err
+	}
 
 	term := strings.TrimSpace(item.Term)
 	entry, err := u.lookupEntry(ctx, term)
@@ -682,6 +866,9 @@ func (u *Uploads) verifySingleWord(ctx context.Context, item sqlc.SkillVocabUplo
 		return false, err
 	} else if handled {
 		return inserted, nil
+	}
+	if reused, err := u.reuseRejection(ctx, item); err != nil || reused {
+		return false, err
 	}
 
 	entry, err := u.lookupEntry(ctx, strings.TrimSpace(item.Term))
@@ -751,6 +938,16 @@ func (u *Uploads) resolveKnownWord(
 	if err != nil {
 		return false, false, fmt.Errorf("look up known words: %w", err)
 	}
+	return u.resolveKnownWordFromRows(ctx, item, rows, true)
+}
+
+// resolveKnownWordFromRows is resolveKnownWord with the lemma's rows already
+// read. allowModel false skips the model's choice of sense: a gloss matching no
+// stored sense is then left unhandled, for a caller that must not wait on one.
+func (u *Uploads) resolveKnownWordFromRows(
+	ctx context.Context, item sqlc.SkillVocabUploadItem,
+	rows []sqlc.ListWordsWithSensesByLemmasRow, allowModel bool,
+) (handled bool, inserted bool, err error) {
 	if len(rows) == 0 {
 		return false, false, nil
 	}
@@ -762,6 +959,8 @@ func (u *Uploads) resolveKnownWord(
 		chosen = &primary
 	} else if match := matchSenseByVietnamese(rows, meaning); match != nil {
 		chosen = match
+	} else if !allowModel {
+		return false, false, nil
 	} else if id, err := u.chooseSense(ctx, item, choicesFromRows(rows)); err != nil {
 		return false, false, err
 	} else if id != uuid.Nil {
@@ -815,6 +1014,11 @@ func (u *Uploads) addKnownSense(
 	if _, err := u.repo.MarkUploadItemVerified(
 		ctx, item.ID, &row.SenseID, knownModel, note, nil, &code,
 	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// No longer pending: the hourly sweep reached it first. The sense is
+			// the learner's either way, and failing the item would undo nothing.
+			return false, nil
+		}
 		return false, fmt.Errorf("mark verified: %w", err)
 	}
 	return inserted, nil
@@ -1405,15 +1609,13 @@ func (u *Uploads) ensureDeck(ctx context.Context, userID, uploadID uuid.UUID, to
 		description = fmt.Sprintf("Words you added yourself in topic %s, checked and ready to review.", topic)
 	}
 
-	decks, err := u.repo.ListDecksByUser(ctx, &userID)
-	if err != nil {
-		return uuid.Nil, err
+	existing, err := u.repo.GetOwnDeckBySlug(ctx, userID, slug)
+	if err == nil {
+		_ = u.repo.SetUploadDeck(ctx, uploadID, existing.ID)
+		return existing.ID, nil
 	}
-	for _, deck := range decks {
-		if deck.Slug == slug {
-			_ = u.repo.SetUploadDeck(ctx, uploadID, deck.ID)
-			return deck.ID, nil
-		}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, err
 	}
 
 	deck, err := u.service.CreateDeck(ctx, &userID, slug, name, &description, false)

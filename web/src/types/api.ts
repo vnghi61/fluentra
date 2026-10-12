@@ -2682,15 +2682,35 @@ export interface paths {
         };
         /**
          * Your uploads, newest first.
-         * @description Each row carries the verified, rejected and still-pending counts, so a learner can see how far the checking has got without opening it.
+         * @description Each row carries the verified, rejected, failed and still-pending counts, so a learner can see how far the checking has got without opening it. Keyset-paginated, newest first.
          */
         get: operations["listVocabUploads"];
         put?: never;
         /**
          * Submit your own vocabulary to be checked.
-         * @description Stores the words and returns immediately. The checking — a dictionary lookup and a model call per word — runs hourly in a background job, because it is slow and fails in ways worth retrying, and a learner pasting three hundred words should not be watching a request time out half way through.
+         * @description Stores the words and answers within a few seconds. Words the dictionary already holds are added before the response (within a time budget), so they come back `verified`. New words — a dictionary lookup and a model call each — are checked by a background job that starts at once and stay `pending` here; the same new word pasted by two learners is checked once. A pasted word that the budget did not reach is added by a follow-up job seconds later.
          */
         post: operations["submitVocabUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/vocabulary/upload-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your pasted words, searchable and a page at a time.
+         * @description Every word the caller has pasted, across uploads: newest upload first, alphabetical within one. Narrow it to one upload, to some statuses, or to words containing some text. An opened upload pages through this rather than loading three hundred words at once, and the search box answers "did I add this one already?" without opening every upload.
+         */
+        get: operations["listVocabUploadItems"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6259,6 +6279,11 @@ export interface components {
              */
             queued_count?: number;
             /**
+             * @description How many words could not be checked after every attempt. A failure on our side, not a verdict on the word; the learner can add them again.
+             * @example 0
+             */
+            failed_count?: number;
+            /**
              * Format: uuid
              * @description The learner's own deck the verified words land in. Null until the first word is verified — creating an empty deck for a paste that turns out to be nonsense leaves a deck nobody asked for.
              */
@@ -6271,6 +6296,21 @@ export interface components {
             items?: components["schemas"]["VocabUploadItem"][];
         };
         VocabUploadItem: {
+            /**
+             * Format: uuid
+             * @description The stored word. A term is unique within one upload, not across them.
+             */
+            id?: string;
+            /**
+             * Format: uuid
+             * @description The upload the word arrived in.
+             */
+            upload_id?: string;
+            /**
+             * Format: date-time
+             * @description When it was pasted.
+             */
+            created_at?: string;
             /**
              * @description The word as the learner wrote it, before normalisation.
              * @example leisure
@@ -6333,6 +6373,11 @@ export interface components {
         };
         VocabUploadList: {
             items: components["schemas"]["VocabUpload"][];
+            page?: components["schemas"]["Page"];
+        };
+        VocabUploadItemPage: {
+            items: components["schemas"]["VocabUploadItem"][];
+            page: components["schemas"]["Page"];
         };
         SubmitVocabUploadRequest: {
             /**
@@ -14709,6 +14754,8 @@ export interface operations {
             query?: {
                 /** @description How many uploads to return. */
                 limit?: number;
+                /** @description Opaque cursor from the previous page's `next_cursor`. */
+                cursor?: components["schemas"]["Cursor"];
             };
             header?: never;
             path?: never;
@@ -14733,16 +14780,22 @@ export interface operations {
                      *           "verified_count": 10,
                      *           "rejected_count": 1,
                      *           "pending_count": 1,
+                     *           "failed_count": 0,
                      *           "deck_id": "0199a1c2-3d4e-7f80-9abc-def0123456bb",
                      *           "created_at": "2026-08-30T09:00:00Z",
                      *           "completed_at": "2026-08-30T10:00:00Z"
                      *         }
-                     *       ]
+                     *       ],
+                     *       "page": {
+                     *         "has_more": false,
+                     *         "limit": 20
+                     *       }
                      *     }
                      */
                     "application/json": components["schemas"]["VocabUploadList"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             500: components["responses"]["InternalServerError"];
         };
@@ -14760,7 +14813,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Accepted. The words are stored but not yet checked — which is why this is a 202 and not a 201. */
+            /** @description Accepted. The words are stored; known words are already added and new ones are still being checked — which is why this is a 202 and not a 201. Carries every word with its status. */
             202: {
                 headers: {
                     "X-Request-Id": components["headers"]["X-Request-Id"];
@@ -14781,6 +14834,62 @@ export interface operations {
                      *     }
                      */
                     "application/json": components["schemas"]["VocabUpload"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listVocabUploadItems: {
+        parameters: {
+            query?: {
+                /** @description Case-insensitive substring of the word as typed or as corrected. */
+                q?: string;
+                /** @description Comma-separated statuses to keep. Absent keeps every status. */
+                status?: ("pending" | "verified" | "rejected" | "failed" | "queued")[];
+                /** @description Keep only the words of this upload. */
+                upload_id?: string;
+                limit?: number;
+                /** @description Opaque cursor from the previous page's `next_cursor`. */
+                cursor?: components["schemas"]["Cursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of the caller's words. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def0123456dd",
+                     *           "upload_id": "0199a1c2-3d4e-7f80-9abc-def0123456aa",
+                     *           "created_at": "2026-08-30T09:00:00Z",
+                     *           "term": "leisure",
+                     *           "provided_meaning": "thời gian rảnh",
+                     *           "status": "verified",
+                     *           "word_sense_id": "0199a1c2-3d4e-7f80-9abc-def0123456cc",
+                     *           "definition_vi": "thời gian rảnh",
+                     *           "note_code": "known_word"
+                     *         }
+                     *       ],
+                     *       "page": {
+                     *         "next_cursor": "eyJjIjoiMjAyNi0wOC0zMFQwOTowMDowMFoiLCJ0IjoibGVpc3VyZSIsImkiOiIwMTk5YTFjMi0zZDRlLTdmODAtOWFiYy1kZWYwMTIzNDU2ZGQifQ",
+                     *         "has_more": true,
+                     *         "limit": 20
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["VocabUploadItemPage"];
                 };
             };
             400: components["responses"]["BadRequest"];

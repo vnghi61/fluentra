@@ -9,6 +9,13 @@ INSERT INTO skill.decks (
 SELECT * FROM skill.decks
 WHERE id = $1;
 
+-- name: GetOwnDeckBySlug :one
+-- One learner deck by slug, on uq_decks_owner_slug. The upload pipeline finds
+-- the learner's "my-words" deck once per word, and listing every deck with its
+-- item count to find one by name cost more than everything else a word does.
+SELECT * FROM skill.decks
+WHERE owner_id = sqlc.arg(owner_id)::uuid AND slug = sqlc.arg(slug);
+
 -- name: ListDecksByUser :many
 SELECT d.*, COUNT(di.id)::bigint AS item_count
 FROM skill.decks d

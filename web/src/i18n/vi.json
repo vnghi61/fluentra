@@ -1701,13 +1701,44 @@
       "proper_noun": "Đây là tên riêng, không phải từ vựng chung.",
       "queued_for_enrichment": "Đã xếp hàng chờ xử lý bổ sung. Thẻ ghi nhớ của bạn đã sẵn sàng để ôn tập."
     },
-    "failedHint": "Chưa kiểm tra được từ này vì dịch vụ từ điển không phản hồi. Hãy thêm lại sau ít phút.",
+    "failedHint": "Chưa kiểm tra được từ này sau vài lần thử. Hãy thêm lại sau ít phút.",
     "status": {
       "pending": "Đang kiểm tra",
       "queued": "Đã thêm, đang bổ sung",
       "verified": "Đã thêm",
       "rejected": "Không hợp lệ",
       "failed": "Chưa kiểm tra được"
+    },
+    "failedCount": "chưa kiểm tra được",
+    "progress": "{{done}}/{{total}} từ đã xử lý",
+    "loadMore": "Hiện thêm",
+    "loadMoreRemaining": "Hiện thêm (còn {{count}})",
+    "loadOlder": "Xem các lần thêm cũ hơn",
+    "showDetails": "Xem nghĩa và ví dụ",
+    "hideDetails": "Ẩn bớt",
+    "tabEmpty": "Không có từ nào ở mục này.",
+    "tabs": {
+      "attention": "Cần xem",
+      "pending": "Đang kiểm tra",
+      "added": "Đã thêm",
+      "all": "Tất cả"
+    },
+    "find": {
+      "label": "Tìm trong các từ bạn đã thêm",
+      "placeholder": "Gõ để tìm, ví dụ: appoint",
+      "clear": "Xoá tìm kiếm",
+      "empty": "Không có từ nào khớp “{{query}}”.",
+      "addedOn": "Thêm lúc {{date}}"
+    },
+    "result": {
+      "title": "Đã nhận {{count}} từ",
+      "addedNow": "{{count}} từ đã có sẵn — đã thêm ngay",
+      "checking": "{{count}} từ mới đang được kiểm tra",
+      "notAdded": "{{count}} từ cần bạn xem lại",
+      "done": "Xong! {{count}} từ đã vào bộ “Từ của tôi”.",
+      "review": "Ôn tập ngay",
+      "viewList": "Xem danh sách",
+      "dismiss": "Đóng"
     }
   },
   "validation": {

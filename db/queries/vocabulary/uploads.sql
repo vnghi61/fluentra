@@ -16,18 +16,67 @@ RETURNING *;
 SELECT * FROM skill.vocab_uploads WHERE id = $1 AND user_id = $2;
 
 -- name: ListUploadsByUser :many
+-- Keyset on (created_at, id), newest first. The caller asks for one row more
+-- than the page to learn whether another page exists.
 SELECT
     u.*,
-    COUNT(*) FILTER (WHERE i.status = 'verified')::integer AS verified_count,
-    COUNT(*) FILTER (WHERE i.status = 'rejected')::integer AS rejected_count,
-    COUNT(*) FILTER (WHERE i.status = 'pending')::integer  AS pending_count,
-    COUNT(*) FILTER (WHERE i.status = 'queued')::integer   AS queued_count
+    COUNT(i.id) FILTER (WHERE i.status = 'verified')::integer AS verified_count,
+    COUNT(i.id) FILTER (WHERE i.status = 'rejected')::integer AS rejected_count,
+    COUNT(i.id) FILTER (WHERE i.status = 'pending')::integer  AS pending_count,
+    COUNT(i.id) FILTER (WHERE i.status = 'queued')::integer   AS queued_count,
+    COUNT(i.id) FILTER (WHERE i.status = 'failed')::integer   AS failed_count
 FROM skill.vocab_uploads u
 LEFT JOIN skill.vocab_upload_items i ON i.upload_id = u.id
-WHERE u.user_id = $1
+WHERE u.user_id = sqlc.arg(user_id)
+  AND (sqlc.narg(before_created_at)::timestamptz IS NULL
+       OR (u.created_at, u.id) < (sqlc.narg(before_created_at)::timestamptz, sqlc.narg(before_id)::uuid))
 GROUP BY u.id
-ORDER BY u.created_at DESC
-LIMIT $2;
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT sqlc.arg(row_limit);
+
+-- name: SearchUserUploadItems :many
+-- Every word a learner has pasted, across uploads: what the search box and an
+-- opened upload page through. Newest upload first, then alphabetical, keyset on
+-- (created_at, term, id). `query` arrives LIKE-escaped from the service.
+SELECT
+    i.*,
+    s.definition,
+    s.definition_vi,
+    s.domain AS topic,
+    s.examples
+FROM skill.vocab_upload_items i
+LEFT JOIN skill.word_senses s ON s.id = i.word_sense_id
+WHERE i.user_id = sqlc.arg(user_id)
+  AND (sqlc.narg(upload_id)::uuid IS NULL OR i.upload_id = sqlc.narg(upload_id)::uuid)
+  AND (cardinality(sqlc.arg(statuses)::text[]) = 0 OR i.status = ANY(sqlc.arg(statuses)::text[]))
+  AND (sqlc.arg(query)::text = ''
+       OR i.term ILIKE '%' || sqlc.arg(query)::text || '%'
+       OR i.corrected_term ILIKE '%' || sqlc.arg(query)::text || '%')
+  AND (sqlc.narg(after_created_at)::timestamptz IS NULL
+       OR i.created_at < sqlc.narg(after_created_at)::timestamptz
+       OR (i.created_at = sqlc.narg(after_created_at)::timestamptz
+           AND (i.term, i.id) > (sqlc.narg(after_term)::text, sqlc.narg(after_id)::uuid)))
+ORDER BY i.created_at DESC, i.term, i.id
+LIMIT sqlc.arg(row_limit);
+
+-- name: LockUploadTerm :exec
+-- Serialises verification of one term across every learner for the rest of
+-- the caller's transaction: the second learner to paste a new word waits for
+-- the first one's dictionary and model call, then finds the word stored.
+SELECT pg_advisory_xact_lock(hashtextextended('vocab-upload-term:' || sqlc.arg(term)::text, 0));
+
+-- name: FindRecentTermRejection :one
+-- A verdict on the word itself, not on a learner's gloss, so only one given
+-- without a meaning is reused, and only for a month.
+SELECT reason, suggested_term, note_code
+FROM skill.vocab_upload_items
+WHERE lower(btrim(term)) = sqlc.arg(term)::text
+  AND status = 'rejected'
+  AND provided_meaning = ''
+  AND note_code IN ('not_a_word', 'proper_noun', 'spelling_suggestion')
+  AND verified_at > now() - interval '30 days'
+ORDER BY verified_at DESC
+LIMIT 1;
 
 -- name: ListUploadItems :many
 SELECT
@@ -180,11 +229,17 @@ RETURNING *;
 -- carries up to MaxUploadEntries (300) words and each one is a model call with
 -- its own timeout, so an unbounded claim would hold one of the `ai` queue's few
 -- slots for hours while every other learner's words waited behind it. The job
--- takes a batch; the hourly sweep collects whatever is left.
+-- takes a batch at a time, within the job timeout; the hourly sweep collects
+-- whatever is left.
+--
+-- `item_ids`, when given, narrows the claim to the words that job was created
+-- for: Submit resolves the words the database already holds itself, and a job
+-- that claimed those too would race it for the same rows.
 SELECT * FROM skill.vocab_upload_items
-WHERE upload_id = $1 AND status = 'pending' AND attempts < $2
+WHERE upload_id = sqlc.arg(upload_id) AND status = 'pending' AND attempts < sqlc.arg(max_attempts)
+  AND (sqlc.narg(item_ids)::uuid[] IS NULL OR id = ANY(sqlc.narg(item_ids)::uuid[]))
 ORDER BY created_at, id
-LIMIT $3
+LIMIT sqlc.arg(row_limit)
 FOR UPDATE SKIP LOCKED;
 
 -- name: ListLearnerWordsQueueAdmin :many
