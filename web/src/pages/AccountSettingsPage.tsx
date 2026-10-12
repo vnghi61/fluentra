@@ -243,6 +243,11 @@ export function AccountSettingsPage(): React.JSX.Element {
             type="button"
             onClick={() => handleSelectTab(tab.key)}
             aria-current={isActive ? "page" : undefined}
+            // Below `sm` only the short label is shown, and a hidden span is
+            // not part of the accessible name: without this the tab was named
+            // "Security" on a phone and "Security & Devices" on a desktop. The
+            // short label is always a word of the full one (label in name).
+            aria-label={tab.label}
             className={cn(
               "group flex min-h-[44px] min-w-[44px] shrink-0 cursor-pointer snap-start items-center gap-2 whitespace-nowrap rounded-xl border px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none",
               "lg:min-h-[52px] lg:w-full lg:gap-3 lg:border-transparent lg:px-2.5 lg:text-left",

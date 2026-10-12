@@ -54,25 +54,36 @@ test.describe("Journey 9: admin suspends a learner → the learner is locked out
       .fill(learner.email);
     // The list does not search as you type; the button is the trigger.
     await adminPage.getByRole("button", { name: /^Search$/i }).click();
-    await expect(adminPage.getByText(learner.email)).toBeVisible({
-      timeout: 15_000,
-    });
+    // The list renders a table from md and cards below it, both in the DOM,
+    // and the search box echoes the query: the learner is the visible result.
+    const results = adminPage.locator(
+      '[data-testid="learner-table"], [data-testid="learner-cards"]',
+    );
+    await expect(
+      results.getByText(learner.email).filter({ visible: true }),
+    ).toBeVisible({ timeout: 15_000 });
 
-    await adminPage.getByRole("button", { name: /Inspect/i }).first().click();
+    await results
+      .getByRole("button", { name: /Inspect/i })
+      .filter({ visible: true })
+      .first()
+      .click();
     await adminPage.getByRole("button", { name: /Suspend User/i }).click();
 
     // The server enforces a ten-character minimum and answers 422 below it; the
     // form is expected to refuse first.
     await adminPage.getByLabel(/Audit Reason/i).fill("too short");
-    await adminPage.getByRole("button", { name: /Confirm Suspension/i }).click();
-    await expect(
-      adminPage.getByText(/at least 10 characters/i),
-    ).toBeVisible();
+    await adminPage
+      .getByRole("button", { name: /Confirm Suspension/i })
+      .click();
+    await expect(adminPage.getByText(/at least 10 characters/i)).toBeVisible();
 
     await adminPage
       .getByLabel(/Audit Reason/i)
       .fill("Repeated abuse reports from other learners");
-    await adminPage.getByRole("button", { name: /Confirm Suspension/i }).click();
+    await adminPage
+      .getByRole("button", { name: /Confirm Suspension/i })
+      .click();
 
     // The enforcement, in the learner's own browser: the next request their app
     // makes is refused, and the session is gone.

@@ -57,6 +57,18 @@ async function completeActivity(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Continue", exact: true }).click();
 }
 
+/**
+ * The dashboard links to the syllabus twice — the Continue Learning hero and the
+ * Skill Progress card — so the journey takes the hero's, the one a new learner
+ * is pointed at.
+ */
+async function exploreSyllabus(page: Page): Promise<void> {
+  await page
+    .getByLabel("Continue Learning")
+    .getByRole("link", { name: "Explore Syllabus" })
+    .click();
+}
+
 test.describe("Phase 2 learning journeys", () => {
   test("a learner enrols, finishes a lesson, and sees progress move", async ({
     page,
@@ -72,7 +84,7 @@ test.describe("Phase 2 learning journeys", () => {
     });
 
     // 2. The syllabus, reached from the dashboard rather than by typing a URL.
-    await page.getByRole("link", { name: "Explore Syllabus" }).click();
+    await exploreSyllabus(page);
     await expect(page).toHaveURL(/\/learn$/);
 
     const seededCourse = page.getByRole("heading", {
@@ -131,7 +143,7 @@ test.describe("Phase 2 learning journeys", () => {
     await registerAndVerify(page, learner);
     await expectSignedIn(page);
 
-    await page.getByRole("link", { name: "Explore Syllabus" }).click();
+    await exploreSyllabus(page);
     await page.getByRole("link", { name: "Start Lesson" }).first().click();
     await expect(page).toHaveURL(/\/learn\/lesson\/[0-9a-f-]{36}$/, {
       timeout: 15_000,
@@ -223,12 +235,10 @@ test.describe("Phase 2 learning journeys", () => {
     // not one card on this screen is a zero dressed as a statistic. A learner
     // who has done nothing is told what to do, so the streak card says so in
     // words instead of showing them a 0.
-    await expect(
-      page.getByText(/Practice daily to start your streak/i),
-    ).toBeVisible();
+    await expect(page.getByText(/Start your streak today/i)).toBeVisible();
 
     // The empty state is a route to somewhere, not a dead end.
-    await page.getByRole("link", { name: "Explore Syllabus" }).click();
+    await exploreSyllabus(page);
     await expect(page).toHaveURL(/\/learn$/);
     await expect(
       page.getByRole("heading", {
