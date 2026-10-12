@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
@@ -37,6 +38,16 @@ func TestVerifyUploadArgs_JobMetadata(t *testing.T) {
 	opts := args.InsertOpts()
 	assert.Equal(t, "ai", opts.Queue)
 	assert.Equal(t, 3, opts.MaxAttempts)
+}
+
+func TestInsertOptsAt(t *testing.T) {
+	assert.Nil(t, vocabjob.InsertOptsAt(time.Time{}), "a zero time means at once, with the args' own options")
+
+	runAt := time.Date(2026, 10, 12, 9, 0, 0, 0, time.UTC)
+	opts := vocabjob.InsertOptsAt(runAt)
+	require.NotNil(t, opts)
+	assert.Equal(t, runAt, opts.ScheduledAt)
+	assert.Empty(t, opts.Queue, "the queue stays the args' own, which River falls back to")
 }
 
 func TestVerifyUploadWorker_Work(t *testing.T) {

@@ -162,14 +162,16 @@ jobs:
           cache: true
 
       # MinIO cannot be a `services:` entry: it needs `server /data` as its
-      # command, and service containers cannot override an image's command. The image
-      # comes from quay.io: MinIO no longer publishes minio/minio to Docker Hub.
+      # command, and service containers cannot override an image's command.
+      # MinIO publishes no images any more (minio/minio and quay.io/minio both
+      # refuse a pull), so the image is Chainguard's build, as in compose.yaml.
+      # It runs as uid 65532, which cannot write /data, hence --user 0.
       - name: Start MinIO
         run: |
-          docker run -d --name minio -p 9000:9000 \
+          docker run -d --name minio -p 9000:9000 --user 0 \
             -e MINIO_ROOT_USER=minioadmin \
             -e MINIO_ROOT_PASSWORD=minioadmin \
-            quay.io/minio/minio:latest server /data
+            cgr.dev/chainguard/minio:latest server /data
           for i in $(seq 1 30); do
             if curl -sf http://127.0.0.1:9000/minio/health/live; then exit 0; fi
             sleep 2

@@ -3,6 +3,7 @@ package job
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
@@ -25,6 +26,17 @@ func (VerifyUploadArgs) InsertOpts() river.InsertOpts {
 		Queue:       "ai",
 		MaxAttempts: 3,
 	}
+}
+
+// InsertOptsAt schedules a verification at runAt, or returns nil for at once.
+// Queue and attempts still come from InsertOpts above: River takes each field
+// from the insert-time options only when it is set. It lives here, not in
+// module.go, because this package is the module's one door to River.
+func InsertOptsAt(runAt time.Time) *river.InsertOpts {
+	if runAt.IsZero() {
+		return nil
+	}
+	return &river.InsertOpts{ScheduledAt: runAt}
 }
 
 // UploadVerifier defines the verification operation needed by VerifyUploadWorker.

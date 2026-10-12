@@ -25,6 +25,22 @@ generated text describes commits; release notes should describe change.
   failed on `questions_content_item_id_key`: the bank row is now found by its
   content item as well as by fingerprint.
 
+### Fixed — CI
+
+- **MinIO.** MinIO publishes no images any more: `minio/minio` and
+  `quay.io/minio/minio` both refuse a pull, which failed the backend tests and
+  the E2E job before they started. CI and compose use
+  `cgr.dev/chainguard/minio` (run as root, which a fresh volume needs); the
+  healthcheck is `mc ready`, and the bucket one-shot uses the same image.
+- **Security job.** Go toolchain go1.26.9 and `golang.org/x/net` v0.60.0
+  (govulncheck, Trivy); patch-level pnpm overrides for undici, brace-expansion,
+  seroval, source-map-js and handlebars, and braces' unfixed GHSA ignored with
+  the reason (`pnpm audit`); gitleaks allowlists the deleted, generated
+  `api/openapi/server.gen.go`, whose embedded spec still reads as keys in the
+  PR's history.
+- **Architecture lint.** The vocabulary module no longer imports River itself;
+  its job package builds the scheduled insert options.
+
 ### Changed — "My words" uploads
 
 - **Known words are added before the response.** `POST /me/vocabulary/uploads`

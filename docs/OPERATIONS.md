@@ -279,9 +279,9 @@ Root-cause follow-up → Escalation**.
 
 | Image | Base (build → runtime) | Size target | Contains |
 |---|---|---|---|
-| `fluentra-api` | `golang:1.25-alpine` → `gcr.io/distroless/static-debian12:nonroot` | < 40 MB | the `api` binary, CA certs, timezone data |
-| `fluentra-worker` | `golang:1.25-alpine` → `debian:12-slim` | < 220 MB | the `worker` binary + `ffmpeg` + `audiowaveform` |
-| `fluentra-migrate` | `golang:1.25-alpine` → distroless | < 25 MB | the `migrate` binary + embedded migrations |
+| `fluentra-api` | `golang:1.26.9-alpine` → `gcr.io/distroless/static-debian12:nonroot` | < 40 MB | the `api` binary, CA certs, timezone data |
+| `fluentra-worker` | `golang:1.26.9-alpine` → `debian:12-slim` | < 220 MB | the `worker` binary + `ffmpeg` + `audiowaveform` |
+| `fluentra-migrate` | `golang:1.26.9-alpine` → distroless | < 25 MB | the `migrate` binary + embedded migrations |
 | `fluentra-web` | `node:24-alpine` → `nginx:1.27-alpine` | < 60 MB | built SPA assets + nginx config |
 
 The worker cannot be distroless because it shells out to `ffmpeg`; it is the one image where we

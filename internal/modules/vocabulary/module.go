@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/riverqueue/river"
 
 	"github.com/fluentra/fluentra/internal/generated/vocabulary/sqlc"
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
@@ -355,12 +354,6 @@ func (a jobEnqueuerAdapter) EnqueueVerifyUploadTx(
 		UploadID: uploadID,
 		ItemIDs:  itemIDs,
 	}
-	var opts *river.InsertOpts
-	if !runAt.IsZero() {
-		// Queue and attempts still come from the args' own InsertOpts: River
-		// takes each field from here only when it is set.
-		opts = &river.InsertOpts{ScheduledAt: runAt}
-	}
-	_, err := a.enqueuer.EnqueueTx(ctx, tx, args, opts)
+	_, err := a.enqueuer.EnqueueTx(ctx, tx, args, vocabjob.InsertOptsAt(runAt))
 	return err
 }

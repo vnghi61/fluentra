@@ -187,14 +187,16 @@ services:
   # finding. One-shot: it exits 0 once the five buckets are there, and `--ignore-existing`
   # makes a second `up` a no-op rather than an error.
   createbuckets:
-    # MinIO no longer publishes to Docker Hub (minio/minio is gone); quay.io is its official registry.
-    image: quay.io/minio/mc:latest
+    # The server image, not a client one: MinIO's own mc image is gone with its
+    # server image, and Chainguard's minio-client has no shell for this loop.
+    # The server image carries mc and bash.
+    image: cgr.dev/chainguard/minio:latest
     networks: [backend]
     depends_on:
       minio:
         condition: service_healthy
     entrypoint:
-      - /bin/sh
+      - bash
       - -c
       - |
         mc alias set local http://minio:9000 minioadmin minioadmin
