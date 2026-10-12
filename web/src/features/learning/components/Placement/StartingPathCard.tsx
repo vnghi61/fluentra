@@ -9,12 +9,12 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { useStartingPath } from "../../api/placement";
+import { courseTitle } from "@/features/lesson/model/courseText";
 
 const linkClass =
-  "inline-flex min-h-[44px] items-center justify-center rounded-lg bg-primary px-6 text-base font-medium text-primary-fg hover:bg-primary-hover";
+  "inline-flex min-h-[44px] items-center justify-center rounded-lg bg-primary px-6 text-sm font-semibold text-primary-fg hover:bg-primary-hover";
 
 /** The recommended course for the learner's level and the lesson to start at. */
 export const StartingPathCard: React.FC = () => {
@@ -35,16 +35,18 @@ export const StartingPathCard: React.FC = () => {
       <CardHeader className="space-y-1">
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary" aria-hidden="true" />
-          <CardTitle className="text-lg font-bold text-text">
+          <h2 className="text-lg font-semibold leading-snug text-text">
             {t("placement.path.title")}
-          </CardTitle>
+          </h2>
         </div>
-        <CardDescription className="text-sm text-text-muted">
+        <CardDescription className="text-base leading-relaxed text-text-muted md:text-sm">
           {source}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-1">
-        <p className="text-base font-semibold text-text">{course.title}</p>
+        <p className="break-words text-base font-semibold text-text">
+          {courseTitle(t, course)}
+        </p>
         <p className="text-sm text-text-muted">
           {t("placement.path.range", {
             from: course.cefr_from,
@@ -52,7 +54,7 @@ export const StartingPathCard: React.FC = () => {
           })}
         </p>
         {course.start_lesson && (
-          <p className="text-sm text-text">
+          <p className="break-words text-sm text-text">
             {t("placement.path.startAt", { lesson: course.start_lesson.title })}
           </p>
         )}

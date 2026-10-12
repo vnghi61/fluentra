@@ -26,6 +26,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/questionbank/domain"
 	"github.com/fluentra/fluentra/internal/modules/questionbank/repository"
 	"github.com/fluentra/fluentra/internal/modules/questionbank/service"
+	"github.com/fluentra/fluentra/internal/shared/apperr"
 )
 
 const (
@@ -295,4 +296,43 @@ func TestAssessSchema_CrossSchemaForeignKeysRestrictedToUsers(t *testing.T) {
 		t.Errorf("DB4 violation: assess.%s constraint %s references %s.%s", table, constraint, schema, target)
 	}
 	require.NoError(t, rows.Err())
+}
+
+// Statistics are computed by nothing yet, so a stats row is missing for every
+// question. That is "not computed", not "not found": an existing question gets
+// an empty record (and the admin screen says so), and 404 is kept for a
+// question that does not exist.
+func TestQuestionStats_EmptyUntilComputedAndNotFoundOnlyForAMissingQuestion(t *testing.T) {
+	requirePool(t)
+	ctx := context.Background()
+	repo := repository.New(pool)
+	content := &memoryContentReader{versions: map[uuid.UUID]*contentcontract.Version{}}
+	svc := service.New(service.Config{Repo: repo, ContentReader: content, LessonAuthor: &recordingLessonAuthor{}})
+	partID := uuid.MustParse("20000000-0000-0000-0002-000000000004")
+
+	q, _ := seedQuestion(t, repo, content, partID, "draft")
+
+	empty, err := svc.GetQuestionStats(ctx, q.ID)
+	require.NoError(t, err)
+	assert.Equal(t, q.ID, empty.QuestionID)
+	assert.Zero(t, empty.Attempts)
+	assert.Nil(t, empty.PValue)
+	assert.Nil(t, empty.LastComputedAt)
+
+	computedAt := time.Date(2026, 10, 8, 10, 0, 0, 0, time.UTC)
+	pValue := 0.68
+	_, err = repo.UpsertQuestionStats(ctx, &domain.QuestionStats{
+		QuestionID: q.ID, Attempts: 42, PValue: &pValue, AvgTimeMs: 15400, LastComputedAt: computedAt,
+	})
+	require.NoError(t, err)
+
+	computed, err := svc.GetQuestionStats(ctx, q.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 42, computed.Attempts)
+	require.NotNil(t, computed.LastComputedAt)
+	assert.True(t, computed.LastComputedAt.Equal(computedAt))
+
+	_, err = svc.GetQuestionStats(ctx, uuid.New())
+	require.Error(t, err)
+	assert.True(t, apperr.Is(err, apperr.NotFound), "got %v", err)
 }

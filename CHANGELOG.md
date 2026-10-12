@@ -11,7 +11,163 @@ generated text describes commits; release notes should describe change.
 
 ## [Unreleased]
 
+### Fixed — "My words" uploads
+
+- **Every known word failed.** The database-first lookup named
+  `deck_items.sense_id` (the column is `word_sense_id`) inside an `EXISTS` that
+  sqlc does not check, so it never prepared; and the `known_word` note it would
+  have written was missing from `ck_vocab_upload_items_note_code`. Both fixed,
+  with integration tests against Postgres. The learner saw "the dictionary did
+  not respond" for words like `keep` and `appoint`.
+- **Seed.** The demo admin was named "Demo Admin", which the impersonation rule
+  refuses, so `make seed` failed on a fresh database. It is "Demo Editor" now.
+  Re-seeding a database whose exam fixtures had changed under the same slug
+  failed on `questions_content_item_id_key`: the bank row is now found by its
+  content item as well as by fingerprint.
+
+### Fixed — CI
+
+- **MinIO.** MinIO publishes no images any more: `minio/minio` and
+  `quay.io/minio/minio` both refuse a pull, which failed the backend tests and
+  the E2E job before they started. CI and compose use
+  `cgr.dev/chainguard/minio` (run as root, which a fresh volume needs); the
+  healthcheck is `mc ready`, and the bucket one-shot uses the same image.
+- **Security job.** Go toolchain go1.26.9 and `golang.org/x/net` v0.60.0
+  (govulncheck, Trivy); patch-level pnpm overrides for undici, brace-expansion,
+  seroval, source-map-js and handlebars, and braces' unfixed GHSA ignored with
+  the reason (`pnpm audit`); gitleaks allowlists the deleted, generated
+  `api/openapi/server.gen.go`, whose embedded spec still reads as keys in the
+  PR's history.
+- **Architecture lint.** The vocabulary module no longer imports River itself;
+  its job package builds the scheduled insert options.
+
+### Changed — "My words" uploads
+
+- **Known words are added before the response.** `POST /me/vocabulary/uploads`
+  adds every word the dictionary already holds (within a 3-second budget) and
+  answers with each word's status; a follow-up job, scheduled after the budget,
+  takes whatever it did not reach.
+- **One model call per new word across learners.** The verification job holds an
+  advisory lock on the normalised term, so a second learner pasting the same new
+  word reuses the stored entry, and a recent rejection of a bare word is reused
+  for 30 days. The job now finishes an upload larger than one batch instead of
+  leaving the rest to the hourly sweep.
+- **Paging and search.** `GET /me/vocabulary/uploads` is cursor-paginated and
+  carries `failed_count`; `GET /me/vocabulary/upload-items` searches and pages a
+  learner's words across uploads. The page shows a live result where the paste
+  was sent, opens an upload on the words that need a look, lists twenty at a
+  time, and has a search box. Polling stops when nothing has moved for a minute
+  rather than after a fixed number of polls.
+
+### Changed — v1 packaging
+
+- **Free-tier deployment.** `deploy/render/start.sh` runs the API and the worker
+  in one Render service. Logs now go to stdout as JSON, and an empty
+  `OTEL_EXPORTER_OTLP_ENDPOINT` turns OTLP export off. `docs/OPERATIONS.md`
+  covers Vercel, Render, Supabase, Upstash, R2 and Resend.
+- **Seed.** `cmd/seed -reference` loads the catalogue without demo accounts, owned
+  by the first admin, and is allowed in production. The demo accounts are now
+  `admin@example.test` and `learner@example.test`.
+- **Migrations.** The bootstrap no longer installs the unused pgcrypto, pg_trgm,
+  btree_gin and pg_stat_statements extensions. On Supabase it revokes the Data
+  API roles from `goose_db_version`. The `ai` Down no longer drops the
+  bootstrap-owned schema. `cmd/migrate` uses one connection, and decides whether
+  to assume the migrator role from goose's history, not from whether the role
+  exists.
+- **N+1 queries removed.**
+  - Starting a mock test and opening its report resolve every activity in one
+    read: a TOEIC test was 142 queries each time.
+  - `GET /exams` counts the question bank with one grouped query instead of
+    reading every drawable question of every part. Its blueprints, parts,
+    fixed-test counts and best scores are read once for all versions.
+  - The fixed-test list reads the learner's latest attempts in one query.
+  - The daily set's prerequisite check reads each taxonomy node and the
+    learner's mastery once per request, not per candidate activity.
+  - A course's lessons are listed in one query.
+  - New contract reads: `lesson.Reader.ResolveActivities`,
+    `lesson.Reader.ListLessonsByCourseID` and
+    `questionbank.Reader.DrawableSizes`.
+- **Cleanup.** Removed the unused generated OpenAPI Go server and client (about
+  91,000 lines), dead functions and queries, empty packages and 45 unread config
+  keys. The 491 Markdown files are consolidated into about 110.
+
 ### Added
+
+- **Dashboard announcement banners.** Administrators holding `system.flags`
+  manage banners from a new Admin → Banners section (create, edit with a live
+  preview, switch on/off, schedule with an optional start and end, delete).
+  Learners see up to three live banners at the top of the Dashboard, one at a
+  time, coloured by tone (info, success, warning, promo), with an optional call
+  to action and a dismiss button that is remembered per user on the device.
+  Banner text is plain text; links must be an internal path or `https://`.
+  New table `core.banners` (migration `1700000951_banners.sql`) and endpoints
+  `GET /api/v1/banners/active` and `GET/POST/PUT/DELETE /api/v1/admin/banners`;
+  every admin write is audited.
+- **Banner kinds: pop-up announcements and promo slides.** Each banner is now
+  one of two kinds, chosen in the admin form. An *announcement* opens as a
+  dialog when a learner visits the Dashboard, one per visit; closing a
+  dismissible one hides it for good on that device, while a non-dismissible
+  one returns in the next session. A *slide* is image only (3:1, shown 4:1 on
+  wide screens), sits in a carousel at the top of the Dashboard for as long as
+  it is live, cannot be dismissed, and may link the whole picture. The
+  carousel advances every 6 seconds, pauses on hover, focus, a hidden tab or
+  the Pause button, never auto-advances under reduced motion, and can be moved
+  with previous/next buttons, dots or a swipe. Up to 3 announcements and 6
+  slides are served. Migration `1700000953_banner_kind.sql`.
+- **Banner images.** A banner may carry one JPEG, PNG or WebP image (up to 5 MB),
+  uploaded straight to storage and then checked and re-encoded by the server:
+  the bytes are sniffed, images over 40 megapixels are refused, the image is
+  scaled to fit 1600×900 and saved as JPEG without camera or location metadata.
+  The dashboard reserves the image's space before it loads, lays the banner out
+  side by side when wide and stacked when narrow, and falls back to text if the
+  image cannot load. Admins can add alt text; replacing or removing an image
+  deletes the old file. Migration `1700000952_banner_images.sql`; new endpoints
+  `POST /api/v1/admin/banners/image-upload-intent` and
+  `POST /api/v1/admin/banners/images`.
+- **Course editor redesign and richer course materials.** The Studio course editor
+  now uses the shared page header, a details form with inline validation, a
+  collapsible chapter → lesson → activity outline with reorder, duplicate and
+  delete confirmation, a separate "Add material" action with drag-and-drop
+  upload and progress, and a live submission checklist. Materials may now be
+  Excel workbooks (XLS, XLSX) and PNG, JPEG or WebP images, besides PDF, Word,
+  PowerPoint and MP4/WebM video. Images reach learners only as the re-encoded
+  display copy (metadata stripped); the browser caps documents at 20 MB, images
+  at 10 MB and video at 50 MB, and the server still checks every file's bytes.
+- Shared `PageHeader`, `Textarea`, `NativeSelect` and `ConfirmDialog` primitives.
+
+### Changed
+
+- The lowest price for a paid community course is 5,000 VND (was 49,000).
+  Deployments that set `STUDIO_MIN_PRICE_VND` explicitly must lower it too.
+- Navigation feels continuous: the mobile tab bar and the desktop sidebar each
+  have one sliding active indicator (under the tabs on mobile), sidebar items
+  have hover feedback, nav links preload on hover/touch and the four main tabs
+  preload when idle, and page changes cross-fade with the View Transitions API
+  where supported. Controls use `touch-action: manipulation`, so a double tap on
+  a tab no longer zooms the page and lands on the neighbouring tab.
+- The `motion` and `@tanstack/react-table` packages were removed from the web app;
+  React DOM and the TanStack libraries are split into long-lived vendor chunks.
+
+### Fixed
+
+- Undefined Tailwind tokens (`surface-base`, `surface-subtle`, `primary-contrast`,
+  `border-focus`, `text-secondary`) rendered as nothing; they now map to real tokens.
+- WebP images failed the media pipeline because no WebP decoder was registered.
+- The course editor mutated React state while adding or removing items, and its
+  slug generator dropped every Vietnamese accented letter.
+
+- Responsive admin content library with API-backed cross-page counts, slug-prefix
+  search, status/kind filters and page-size selection. Authorized editors can create
+  validated drafts using the existing content API before review and publication.
+
+- Compact learner Dashboard statistics and supporting cards, a desktop
+  weekly-plan/skills column, and expandable weekly lessons. Continue learning
+  opens the recommended lesson directly and displays real activity progress.
+
+- Owner-only uploaded-document content revalidation without reuploading. English
+  learning suitability is checked before resource practice can be generated.
+- Independent AI requests are balanced across configured providers, with bounded
+  waits and immediate fallback after timeouts or permanent provider refusals.
 
 - **Documents and videos in a community course (Phase 3 Work Order 20)**: a creator can now
   build a chapter that is something to read or watch, not only exercises. A new activity kind
@@ -65,6 +221,49 @@ generated text describes commits; release notes should describe change.
   generator stands down quietly rather than failing every twelve hours.
 
 ### Fixed
+
+- Repository-wide verification fixes: restore Studio's typed latest-submission
+  view without nonexistent history requests; fix translated validation messages,
+  duplicate locale sections and accessible dialog/pairing labels. The initial
+  frontend bundle budget is explicitly increased to 500 kB gzip for upcoming
+  features; the gate remains enforced.
+
+- **Creator Studio configuration.** A creator whose first Studio action is configuring a payout
+  account no longer hits the missing profile row: the profile is created on their behalf without
+  touching an existing biography, trust or suspension. A repeated save updates the one account
+  rather than appending another default, an omitted `is_default` follows the documented `true`,
+  `GET /studio/creator/profile` and `GET /studio/creator/payout-account` are implemented as
+  owner-scoped 404-safe routes, and a duplicate draft slug answers `409 DRAFT_SLUG_EXISTS`
+  instead of an internal error.
+
+- **Creator Studio submissions.** `POST /studio/courses/{id}/submit` now returns immediately as
+  the API contract says: Gate 1 runs in the existing worker, with version allocation, the insert
+  and the draft's move to `submitted` in one transaction, so a failed write leaves no partial
+  submission and concurrent submits cannot both create an active version. Gate 2 decisions are
+  stored with the submission; the worker surfaces verification failures and retries instead of
+  discarding them; the worker's material check receives the resource contract and lesson
+  materials are no longer sent to the exercise verifier. A draft's detail endpoint carries the
+  optional `latest_submission`, and the Gate 1 report shape is typed in OpenAPI.
+
+- Daily A2/B1/B2 sets no longer reuse the same learner/day activities under different
+  level labels; legacy sets are preserved as history.
+- Practice skill links now target published foundation courses instead of archived
+  courses. Completed resource previews no longer appear permanently processing;
+  ready resource exercises open directly rather than being generated again.
+
+- Local personal documents no longer wait indefinitely for an unconfigured
+  GitHub renderer: `make dev` includes automatic media processing, and
+  `make dev-media` enables it alongside a host-run API/worker. Rendered files
+  remain available until they have been uploaded, rather than being deleted early.
+
+- Mock-test browsing and custom composition now show a link back to an unfinished
+  sitting and explain why it must be submitted before starting another test.
+- Foundation lesson bindings can be repaired from existing published content with
+  `go run ./cmd/seed -foundation-courses-only`, without reseeding accounts or
+  fixtures, and cached empty details are invalidated. Empty lessons now show a
+  retry/back state instead of an unsupported “Activity 1 of 0”.
+- Answer feedback and explanations now appear only in the chosen interface language
+  instead of English and Vietnamese together.
 
 - **Progress read back stale after every graded answer.** Grading writes progress and
   schedules review cards on the server, but nothing invalidated the caches the course,
@@ -153,14 +352,14 @@ generated text describes commits; release notes should describe change.
 - WP4 Observability (P4.3): Prometheus alerting rules (`deploy/prometheus/rules/phase1.yml`), Grafana dashboards (API Overview, Database, Jobs, Auth & Security), and operational runbooks (`docs/operations/runbooks/`).
 
 - Complete Software Architecture Document ([ARCHITECTURE.md](ARCHITECTURE.md))
-- Plan review and optimisation record ([docs/architecture/00-plan-review.md](docs/architecture/00-plan-review.md))
-- AI context engineering strategy ([AI_CONTEXT.md](AI_CONTEXT.md)) and root [AGENT.md](AGENT.md)
+- Plan review and optimisation record (docs/architecture/00-plan-review.md)
+- AI context engineering strategy ([AI_CONTEXT.md](docs/AI.md#context-engineering)) and root [AGENT.md](AGENT.md)
 - 30 module specifications with the nine-file documentation set each
 - 20 Architecture Decision Records
 - Repository conventions: coding, API, database, errors, logging, testing, security, observability
-- Prompt library design, development and runtime ([PROMPT_LIBRARY.md](PROMPT_LIBRARY.md))
+- Prompt library design, development and runtime ([PROMPT_LIBRARY.md](docs/AI.md#prompt-library))
 - Dependency register with alternatives and rationale ([DEPENDENCIES.md](DEPENDENCIES.md))
-- Delivery roadmap through Phase 5 ([ROADMAP.md](ROADMAP.md))
+- Delivery roadmap through Phase 5 (ROADMAP.md)
 - Module documentation generator (`tools/docgen`) with drift checking
 - Module boundary enforcement configuration (`.go-arch-lint.yml`)
 - Configuration reference (`.env.example`) and `Makefile`
@@ -272,7 +471,7 @@ generated text describes commits; release notes should describe change.
 
 Authentication is live: P2.4 added the bearer middleware and P2.5 the refresh cookie behind it,
 so the operations above are usable by a real client. What is still missing is `POST
-/auth/logout` and the session list — P2.6. See [ROADMAP.md](ROADMAP.md).
+/auth/logout` and the session list — P2.6. See ROADMAP.md.
 
 A refresh token is deliberately **not** in any response body. It exists only as an `HttpOnly`
 cookie scoped to `/api/v1/auth`: a value the page can read is a value an injected script can

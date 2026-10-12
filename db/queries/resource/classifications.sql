@@ -24,3 +24,6 @@ RETURNING resource_id, cefr_estimate, skill, node_codes, prompt_version, model, 
 SELECT resource_id, cefr_estimate, skill, node_codes, prompt_version, model, ai_request_id, created_at
 FROM resource.classifications
 WHERE resource_id = $1;
+
+-- name: DeleteClassificationByResourceID :exec
+DELETE FROM resource.classifications WHERE resource_id = $1;

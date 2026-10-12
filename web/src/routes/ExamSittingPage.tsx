@@ -4,6 +4,8 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useExamAttempt } from "@/features/exam";
 import { ExamSittingRunner } from "@/features/exam/components/ExamSittingRunner";
 
@@ -25,6 +27,12 @@ export function ExamSittingPage(): React.JSX.Element {
   const toReport = useCallback(() => {
     void navigate({ to: "/exams/$attemptId/report", params: { attemptId } });
   }, [attemptId, navigate]);
+
+  // A sitting in progress asks before it is left; its own report is where
+  // finishing leads, so that one never asks.
+  const leaveGuard = useLeaveGuard(attempt?.status === "in_progress", (next) =>
+    next.startsWith(`/exams/${attemptId}/report`),
+  );
 
   // A sitting already submitted — by the learner, the job or its own read — shows its result.
   useEffect(() => {
@@ -56,10 +64,10 @@ export function ExamSittingPage(): React.JSX.Element {
             className="mx-auto h-10 w-10 text-danger"
             aria-hidden="true"
           />
-          <h2 className="text-lg font-bold text-danger">
+          <h2 className="text-lg font-semibold leading-snug text-danger-accent">
             {t("exam.runner.loadFailed")}
           </h2>
-          <div className="flex justify-center gap-3 pt-2">
+          <div className="flex flex-wrap justify-center gap-3 pt-2">
             <Button
               type="button"
               variant="outline"
@@ -90,5 +98,21 @@ export function ExamSittingPage(): React.JSX.Element {
     );
   }
 
-  return <ExamSittingRunner attempt={attempt} onSubmitted={toReport} />;
+  return (
+    <>
+      <ExamSittingRunner attempt={attempt} onSubmitted={toReport} />
+      <ConfirmDialog
+        open={leaveGuard.blocked}
+        onOpenChange={(open) => {
+          if (!open) leaveGuard.stay();
+        }}
+        destructive
+        title={t("exam.leave.title")}
+        description={t("exam.leave.description")}
+        confirmLabel={t("exam.leave.confirm")}
+        cancelLabel={t("exam.leave.stay")}
+        onConfirm={leaveGuard.proceed}
+      />
+    </>
+  );
 }

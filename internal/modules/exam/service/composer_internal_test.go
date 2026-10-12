@@ -1,14 +1,99 @@
 package service
 
 import (
+	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/fluentra/fluentra/internal/modules/exam/domain"
+	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	questionbankcontract "github.com/fluentra/fluentra/internal/modules/questionbank/contract"
 )
+
+// stubLessonReader resolves one activity; the rest of the reader is unused by
+// the composition.
+type stubLessonReader struct {
+	activity *lessoncontract.ActivityHierarchy
+}
+
+func (s stubLessonReader) GetLesson(context.Context, uuid.UUID) (*lessoncontract.Lesson, error) {
+	return nil, nil
+}
+
+func (s stubLessonReader) ListLessons(context.Context, uuid.UUID) ([]*lessoncontract.Lesson, error) {
+	return nil, nil
+}
+
+func (s stubLessonReader) ListUnitsByCourseID(context.Context, uuid.UUID) ([]*lessoncontract.Unit, error) {
+	return nil, nil
+}
+
+func (s stubLessonReader) ListPrerequisitesForLessons(
+	context.Context, []uuid.UUID,
+) ([]lessoncontract.PrerequisiteItem, error) {
+	return nil, nil
+}
+
+func (s stubLessonReader) ListActivitiesByCourseIDs(
+	context.Context, []uuid.UUID,
+) (map[uuid.UUID][]uuid.UUID, error) {
+	return nil, nil
+}
+
+func (s stubLessonReader) NextLesson(
+	context.Context, uuid.UUID, *uuid.UUID,
+) (*lessoncontract.Lesson, error) {
+	return nil, nil
+}
+
+func (s stubLessonReader) ResolveActivity(
+	context.Context, uuid.UUID,
+) (*lessoncontract.ActivityHierarchy, error) {
+	return s.activity, nil
+}
+
+// A mock test's composition is stored in the attempt and served from there, so
+// a key that reaches the composition reaches the learner. The exam pool's draw
+// redacts; this one must too (WO 19 H.6 trap 1).
+func TestCompositionToSectionActivities_RedactsTheAnswerKey(t *testing.T) {
+	activityID := uuid.New()
+	svc := New(Deps{Lesson: stubLessonReader{activity: &lessoncontract.ActivityHierarchy{
+		ActivityID:       activityID,
+		Kind:             "vocab_multiple_choice",
+		ContentVersionID: uuid.New(),
+		Config: json.RawMessage(`{
+			"prompt": "Which word means to ask politely for a meal?",
+			"options": [{"id": "opt_order", "text": "Order"}],
+			"correct_option_id": "opt_order",
+			"correct_answer": "opt_order",
+			"acceptable": ["opt_order"]
+		}`),
+	}}})
+
+	partID := uuid.New()
+	parts := map[uuid.UUID]*domain.ExamPart{
+		partID: {ID: partID, Section: skillListening, Kind: "vocab_multiple_choice", QuestionCount: 1, GroupSize: 1},
+	}
+	drawn, ids := svc.compositionToSectionActivities(
+		context.Background(),
+		[]domain.MockTestPartComposition{{PartID: partID, ActivityIDs: []uuid.UUID{activityID}}},
+		parts,
+	)
+
+	require.Len(t, drawn, 1)
+	require.Len(t, drawn[0].Activities, 1)
+	require.Equal(t, []uuid.UUID{activityID}, ids)
+
+	config := string(drawn[0].Activities[0].Config)
+	assert.NotContains(t, config, "correct_option_id")
+	assert.NotContains(t, config, "correct_answer")
+	assert.NotContains(t, config, "acceptable")
+	assert.Contains(t, config, "prompt")
+}
 
 func bankItem(questions int, level string) *questionbankcontract.Question {
 	act := uuid.New()
@@ -71,4 +156,36 @@ func TestCEFRQuotas_SumToTheTarget(t *testing.T) {
 	quota := cefrQuotas(35, map[string]float64{"B1": 0.33, "B2": 0.34, "C1": 0.33})
 
 	assert.Equal(t, 35, quota["B1"]+quota["B2"]+quota["C1"])
+}
+
+// ResolveActivities resolves each id through ResolveActivity.
+func (s stubLessonReader) ResolveActivities(
+	ctx context.Context, ids []uuid.UUID,
+) (map[uuid.UUID]*lessoncontract.ActivityHierarchy, error) {
+	out := make(map[uuid.UUID]*lessoncontract.ActivityHierarchy, len(ids))
+	for _, id := range ids {
+		if h, err := s.ResolveActivity(ctx, id); err == nil && h != nil {
+			out[id] = h
+		}
+	}
+	return out, nil
+}
+
+// ListLessonsByCourseID walks ListUnitsByCourseID and ListLessons.
+func (s stubLessonReader) ListLessonsByCourseID(
+	ctx context.Context, courseID uuid.UUID,
+) ([]*lessoncontract.Lesson, error) {
+	units, err := s.ListUnitsByCourseID(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+	var out []*lessoncontract.Lesson
+	for _, u := range units {
+		lessons, err := s.ListLessons(ctx, u.ID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, lessons...)
+	}
+	return out, nil
 }

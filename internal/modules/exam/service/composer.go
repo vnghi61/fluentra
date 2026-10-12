@@ -18,6 +18,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/fluentra/fluentra/internal/generated/exam/sqlc"
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/exam/domain"
 	examjob "github.com/fluentra/fluentra/internal/modules/exam/job"
 	questionbankcontract "github.com/fluentra/fluentra/internal/modules/questionbank/contract"
@@ -54,11 +55,57 @@ type ExamVersionDTO struct {
 	IsCurrent    bool                  `json:"is_current"`
 	Notes        string                `json:"notes"`
 	Blueprints   []BlueprintSummaryDTO `json:"blueprints"`
+	// DistinctTestsPossible is the coverage report's number: how many distinct
+	// tests the published bank can compose. Learners see it so the product
+	// never implies more tests than the bank holds (WO 19 H.3).
+	DistinctTestsPossible int `json:"distinct_tests_possible"`
+	// FixedTestCount is how many numbered fixed tests exist (WO 22 Stage J):
+	// what a learner can open, never confused with DistinctTestsPossible.
+	FixedTestCount int `json:"fixed_test_count"`
+	// BestScore is the caller's best full exam-mode score on this version,
+	// 0-100; absent when they have none (WO 22 Stage L).
+	BestScore *float64 `json:"best_score,omitempty"`
+	// Parts is the version's structure: what a "custom" composition chooses
+	// between. Counts of available bank items are not here; those stay in the
+	// admin coverage report.
+	Parts []ExamVersionPartDTO `json:"parts"`
+}
+
+// ExamVersionPartDTO is one part of an exam version's structure.
+type ExamVersionPartDTO struct {
+	PartNumber    int    `json:"part_number"`
+	Section       string `json:"section"`
+	Kind          string `json:"kind"`
+	QuestionCount int    `json:"question_count"`
+	GroupSize     int    `json:"group_size"`
 }
 
 // ExamVersionListResponseDTO wraps the list of exam versions.
 type ExamVersionListResponseDTO struct {
 	Items []ExamVersionDTO `json:"items"`
+}
+
+// FixedTestAttemptSummaryDTO is the caller's latest attempt at a fixed test.
+type FixedTestAttemptSummaryDTO struct {
+	AttemptID uuid.UUID `json:"attempt_id"`
+	Status    string    `json:"status"`
+	Score     *float64  `json:"score"`
+	Band      *string   `json:"band"`
+}
+
+// FixedTestSummaryDTO is one numbered fixed test in a version's list.
+type FixedTestSummaryDTO struct {
+	ID            uuid.UUID                   `json:"id"`
+	Number        int                         `json:"number"`
+	Title         string                      `json:"title"`
+	QuestionCount int                         `json:"question_count"`
+	Minutes       int                         `json:"minutes"`
+	LatestAttempt *FixedTestAttemptSummaryDTO `json:"latest_attempt,omitempty"`
+}
+
+// FixedTestListResponseDTO wraps the list of fixed tests.
+type FixedTestListResponseDTO struct {
+	Items []FixedTestSummaryDTO `json:"items"`
 }
 
 // ComposeMockTestRequest holds the parameters to compose a mock test.
@@ -91,8 +138,10 @@ type ExamCoverageReportDTO struct {
 	Parts                 []ExamPartCoverageDTO `json:"parts"`
 }
 
-// ListCurrentExamVersions returns all current verified exam versions with their blueprints.
-func (s *Service) ListCurrentExamVersions(ctx context.Context) ([]ExamVersionDTO, error) {
+// ListCurrentExamVersions returns all current verified exam versions with their
+// blueprints. Every read is batched across versions: the list used to cost a
+// handful of queries per version plus a full question read per part.
+func (s *Service) ListCurrentExamVersions(ctx context.Context, userID uuid.UUID) ([]ExamVersionDTO, error) {
 	if s.repo == nil {
 		return nil, errors.New("repository not configured")
 	}
@@ -101,15 +150,45 @@ func (s *Service) ListCurrentExamVersions(ctx context.Context) ([]ExamVersionDTO
 	if err != nil {
 		return nil, fmt.Errorf("list current exam versions: %w", err)
 	}
+	versionIDs := make([]uuid.UUID, len(versions))
+	for i, v := range versions {
+		versionIDs[i] = v.ID
+	}
+	blueprints, err := s.repo.ListBlueprintsByVersionIDs(ctx, versionIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list blueprints: %w", err)
+	}
+	partsByVersion, err := s.repo.ListExamPartsByVersionIDs(ctx, versionIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list exam parts: %w", err)
+	}
+	var blueprintIDs []uuid.UUID
+	var allParts []*domain.ExamPart
+	for _, v := range versions {
+		for _, bp := range blueprints[v.ID] {
+			blueprintIDs = append(blueprintIDs, bp.ID)
+		}
+		allParts = append(allParts, partsByVersion[v.ID]...)
+	}
+	fixedCounts, err := s.repo.CountFixedMockTests(ctx, blueprintIDs)
+	if err != nil {
+		return nil, fmt.Errorf("count fixed tests: %w", err)
+	}
+	sizes := s.drawableSizes(ctx, allParts)
+	var best map[uuid.UUID]float64
+	if userID != uuid.Nil {
+		if best, err = s.repo.ListUserBestVersionScores(ctx, userID, versionIDs); err != nil {
+			return nil, fmt.Errorf("best scores: %w", err)
+		}
+	}
 
 	out := make([]ExamVersionDTO, 0, len(versions))
 	for _, v := range versions {
-		bps, err := s.repo.ListBlueprintsByVersionID(ctx, v.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list blueprints for version %s: %w", v.ID, err)
-		}
+		fixedTests := 0
+		bps := blueprints[v.ID]
 		bpDTOs := make([]BlueprintSummaryDTO, len(bps))
 		for i, bp := range bps {
+			fixedTests += fixedCounts[bp.ID]
 			bpDTOs[i] = BlueprintSummaryDTO{
 				ID:               bp.ID,
 				Name:             bp.Name,
@@ -118,7 +197,20 @@ func (s *Service) ListCurrentExamVersions(ctx context.Context) ([]ExamVersionDTO
 			}
 		}
 
-		out = append(out, ExamVersionDTO{
+		parts := partsByVersion[v.ID]
+		sortParts(parts)
+		partDTOs := make([]ExamVersionPartDTO, 0, len(parts))
+		for _, p := range parts {
+			partDTOs = append(partDTOs, ExamVersionPartDTO{
+				PartNumber:    p.PartNumber,
+				Section:       p.Section,
+				Kind:          p.Kind,
+				QuestionCount: p.QuestionCount,
+				GroupSize:     p.GroupSize,
+			})
+		}
+
+		dto := ExamVersionDTO{
 			ID:           v.ID,
 			ExamFamily:   v.ExamFamily,
 			Code:         v.Code,
@@ -130,9 +222,87 @@ func (s *Service) ListCurrentExamVersions(ctx context.Context) ([]ExamVersionDTO
 			IsCurrent:    v.IsCurrent,
 			Notes:        v.Notes,
 			Blueprints:   bpDTOs,
-		})
+			Parts:        partDTOs,
+			// The same number the admin coverage report shows, so the learner's
+			// test list and the operator's report cannot disagree.
+			DistinctTestsPossible: coverageForParts(v, parts, sizes).DistinctTestsPossible,
+			FixedTestCount:        fixedTests,
+		}
+		if score, ok := best[v.ID]; ok {
+			dto.BestScore = &score
+		}
+		out = append(out, dto)
 	}
 	return out, nil
+}
+
+// ListFixedTests returns a version's numbered fixed tests in order, with the
+// caller's latest attempt at each (WO 22 Stage J), read in one query.
+func (s *Service) ListFixedTests(
+	ctx context.Context, userID, versionID uuid.UUID,
+) (*FixedTestListResponseDTO, error) {
+	if s.repo == nil {
+		return nil, errors.New("repository not configured")
+	}
+	version, err := s.repo.GetExamVersionByID(ctx, versionID)
+	if err != nil || version == nil {
+		return nil, apperr.New(apperr.NotFound, "EXAM_VERSION_NOT_FOUND", "exam version not found")
+	}
+
+	blueprints, err := s.repo.ListBlueprintsByVersionID(ctx, versionID)
+	if err != nil {
+		return nil, fmt.Errorf("list blueprints for version %s: %w", versionID, err)
+	}
+	parts, err := s.repo.ListExamPartsByVersionID(ctx, versionID)
+	if err != nil {
+		return nil, fmt.Errorf("list parts for version %s: %w", versionID, err)
+	}
+	questionCount := 0
+	for _, p := range parts {
+		questionCount += p.QuestionCount
+	}
+
+	var numbered []*domain.MockTest
+	for _, bp := range blueprints {
+		tests, err := s.repo.ListFixedMockTests(ctx, bp.ID)
+		if err != nil {
+			return nil, fmt.Errorf("list fixed tests for blueprint %s: %w", bp.ID, err)
+		}
+		for _, mt := range tests {
+			if mt.Number != nil {
+				numbered = append(numbered, mt)
+			}
+		}
+	}
+	ids := make([]uuid.UUID, len(numbered))
+	for i, mt := range numbered {
+		ids[i] = mt.ID
+	}
+	latest, err := s.repo.ListLatestUserMockTestAttempts(ctx, userID, ids)
+	if err != nil {
+		return nil, fmt.Errorf("latest attempts for version %s: %w", versionID, err)
+	}
+
+	items := make([]FixedTestSummaryDTO, 0, len(numbered))
+	for _, mt := range numbered {
+		dto := FixedTestSummaryDTO{
+			ID:            mt.ID,
+			Number:        *mt.Number,
+			Title:         fmt.Sprintf("Đề %d", *mt.Number),
+			QuestionCount: questionCount,
+			Minutes:       version.TotalMinutes,
+		}
+		if attempt := latest[mt.ID]; attempt != nil {
+			dto.LatestAttempt = &FixedTestAttemptSummaryDTO{
+				AttemptID: attempt.ID,
+				Status:    attempt.Status,
+				Band:      attempt.Band,
+				Score:     attempt.Score,
+			}
+		}
+		items = append(items, dto)
+	}
+	return &FixedTestListResponseDTO{Items: items}, nil
 }
 
 // GetExamVersionCoverage calculates published item coverage and distinct tests possible.
@@ -145,12 +315,31 @@ func (s *Service) GetExamVersionCoverage(ctx context.Context, versionID uuid.UUI
 	if err != nil || version == nil {
 		return nil, apperr.New(apperr.NotFound, "EXAM_VERSION_NOT_FOUND", "exam version not found")
 	}
+	return s.coverageForVersion(ctx, version), nil
+}
 
-	parts, err := s.repo.ListExamPartsByVersionID(ctx, versionID)
+// coverageForVersion is the report for a version already in hand.
+func (s *Service) coverageForVersion(ctx context.Context, version *domain.ExamVersion) *ExamCoverageReportDTO {
+	parts, err := s.repo.ListExamPartsByVersionID(ctx, version.ID)
 	if err != nil {
-		return nil, fmt.Errorf("list exam parts: %w", err)
+		// A version whose parts cannot be read has no coverage; the list still
+		// renders, and the report route surfaces the error itself.
+		return &ExamCoverageReportDTO{
+			VersionID: version.ID,
+			ExamCode:  version.Code,
+			Title:     version.Title,
+			Parts:     []ExamPartCoverageDTO{},
+		}
 	}
+	return coverageForParts(version, parts, s.drawableSizes(ctx, parts))
+}
 
+// coverageForParts computes the report from parts already loaded. The exam
+// version list calls it per version, so a learner's list and the operator's
+// report are one computation rather than two that can disagree.
+func coverageForParts(
+	version *domain.ExamVersion, parts []*domain.ExamPart, sizes map[uuid.UUID]map[int]int,
+) *ExamCoverageReportDTO {
 	sortParts(parts)
 
 	partCoverages := make([]ExamPartCoverageDTO, 0, len(parts))
@@ -158,7 +347,7 @@ func (s *Service) GetExamVersionCoverage(ctx context.Context, versionID uuid.UUI
 	var bottleneckID *uuid.UUID
 
 	for _, p := range parts {
-		cov := s.computePartCoverage(ctx, p)
+		cov := computePartCoverage(p, sizes[p.ID])
 		if minTestsPossible == -1 || cov.TestsPossible < minTestsPossible {
 			minTestsPossible = cov.TestsPossible
 			partID := p.ID
@@ -179,30 +368,44 @@ func (s *Service) GetExamVersionCoverage(ctx context.Context, versionID uuid.UUI
 		DistinctTestsPossible: distinctTests,
 		BottleneckPartID:      bottleneckID,
 		Parts:                 partCoverages,
-	}, nil
+	}
 }
 
-func (s *Service) computePartCoverage(ctx context.Context, p *domain.ExamPart) ExamPartCoverageDTO {
+// drawableSizes reads the drawable counts of every part in one call. A failed
+// read reports no coverage, as a failed per-part read did.
+func (s *Service) drawableSizes(ctx context.Context, parts []*domain.ExamPart) map[uuid.UUID]map[int]int {
+	if s.questionbank == nil || len(parts) == 0 {
+		return nil
+	}
+	ids := make([]uuid.UUID, len(parts))
+	for i, p := range parts {
+		ids[i] = p.ID
+	}
+	sizes, err := s.questionbank.DrawableSizes(ctx, ids)
+	if err != nil {
+		slog.WarnContext(ctx, "could not count drawable questions", "parts", len(ids), "error", err)
+		return nil
+	}
+	return sizes
+}
+
+// computePartCoverage applies fitPart's rule to the counts: a part with a fixed
+// group size takes only items of exactly that size; a part seeded with group
+// size 1 takes any size and is measured in questions.
+func computePartCoverage(p *domain.ExamPart, sizes map[int]int) ExamPartCoverageDTO {
 	groupsNeeded := groupsPerTest(p)
 
-	testsPossible := 0
-	publishedAvailable := 0
-	if s.questionbank != nil {
-		candidates, err := s.questionbank.DrawableForPart(ctx, p.ID)
-		if err == nil {
-			usable := fitPart(p, candidates)
-			publishedAvailable = len(usable)
-			// A test needs part.QuestionCount questions; count what the usable
-			// groups hold, so a variable-size part (TOEIC Part 7) is measured in
-			// questions and a fixed-size one comes out as groups / groups needed.
-			held := 0
-			for _, q := range usable {
-				held += groupSize(q)
-			}
-			if p.QuestionCount > 0 {
-				testsPossible = held / p.QuestionCount
-			}
+	publishedAvailable, held := 0, 0
+	for size, items := range sizes {
+		if p.GroupSize > 1 && size != p.GroupSize {
+			continue
 		}
+		publishedAvailable += items
+		held += size * items
+	}
+	testsPossible := 0
+	if p.QuestionCount > 0 {
+		testsPossible = held / p.QuestionCount
 	}
 
 	return ExamPartCoverageDTO{
@@ -306,6 +509,16 @@ func (s *Service) resolveMockTestParts(
 func (s *Service) drawPartActivities(
 	ctx context.Context, part *domain.ExamPart, cefrMix map[string]float64, seed int64, userID *uuid.UUID,
 ) ([]uuid.UUID, error) {
+	return s.drawPartActivitiesExcluding(ctx, part, cefrMix, seed, userID, nil)
+}
+
+// drawPartActivitiesExcluding draws a part's activities, skipping any candidate
+// a caller has already used. A fixed test passes the activities of the earlier
+// tests of its blueprint, so the tests share no question (WO 22 Stage J).
+func (s *Service) drawPartActivitiesExcluding(
+	ctx context.Context, part *domain.ExamPart, cefrMix map[string]float64, seed int64,
+	userID *uuid.UUID, exclude map[uuid.UUID]struct{},
+) ([]uuid.UUID, error) {
 	var candidates []*questionbankcontract.Question
 	if s.questionbank != nil {
 		drawable, err := s.questionbank.DrawableForPart(ctx, part.ID)
@@ -313,6 +526,18 @@ func (s *Service) drawPartActivities(
 			return nil, fmt.Errorf("fetch drawable questions for part %s: %w", part.ID, err)
 		}
 		candidates = fitPart(part, drawable)
+	}
+	if len(exclude) > 0 {
+		kept := candidates[:0]
+		for _, q := range candidates {
+			if q.ActivityID != nil {
+				if _, used := exclude[*q.ActivityID]; used {
+					continue
+				}
+			}
+			kept = append(kept, q)
+		}
+		candidates = kept
 	}
 
 	ordered := s.orderByExposure(ctx, candidates, seed, int64(part.PartNumber), userID)
@@ -514,9 +739,14 @@ func (s *Service) ComposeMockTest(
 		return nil, domain.ErrInvalidMockMode
 	}
 
-	if mode == domain.MockModeFixed && len(req.Parts) > 0 {
-		return nil, apperr.New(apperr.Validation, "FIXED_TEST_HAS_NO_PART_SELECTION",
-			"A fixed test is the whole blueprint; choose custom to pick parts.")
+	if mode == domain.MockModeFixed {
+		if len(req.Parts) > 0 {
+			return nil, apperr.New(apperr.Validation, "FIXED_TEST_HAS_NO_PART_SELECTION",
+				"A fixed test is the whole blueprint; choose custom to pick parts.")
+		}
+		// Fixed tests are numbered and disjoint (Stage J); this path is Đề 1.
+		// A random or custom test is one learner's, drawn with their exposures.
+		return s.ComposeFixedTest(ctx, req.BlueprintID, 1)
 	}
 
 	blueprint, parts, err := s.resolveMockTestParts(ctx, req.BlueprintID, req.Parts)
@@ -524,24 +754,8 @@ func (s *Service) ComposeMockTest(
 		return nil, err
 	}
 
-	// A fixed test is one stored composition everyone shares (H.2). It is
-	// composed once, without anyone's exposures — otherwise the "same" test would
-	// differ by who asked first — and every later request returns that row.
-	var drawFor *uuid.UUID
-	var seed int64
-	if mode == domain.MockModeFixed {
-		existing, findErr := s.findFixedMockTest(ctx, blueprint.ID)
-		if findErr != nil {
-			return nil, findErr
-		}
-		if existing != nil {
-			return existing, nil
-		}
-		seed = hashUUID(blueprint.ID)
-	} else {
-		drawFor = userID
-		seed = time.Now().UnixNano()
-	}
+	drawFor := userID
+	seed := time.Now().UnixNano()
 
 	cefrMix := parseCEFRMix(blueprint.CefrDistribution)
 	compositions := make([]domain.MockTestPartComposition, 0, len(parts))
@@ -556,10 +770,7 @@ func (s *Service) ComposeMockTest(
 		})
 	}
 
-	var ownerID *uuid.UUID
-	if mode != domain.MockModeFixed {
-		ownerID = userID
-	}
+	ownerID := userID
 
 	mt := &domain.MockTest{
 		ID:          uuid.New(),
@@ -578,22 +789,142 @@ func (s *Service) ComposeMockTest(
 	return saved, nil
 }
 
-// findFixedMockTest returns the earliest fixed test composed for a blueprint.
-func (s *Service) findFixedMockTest(ctx context.Context, blueprintID uuid.UUID) (*domain.MockTest, error) {
-	public, err := s.repo.ListMockTestsByOwner(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("list public mock tests: %w", err)
+// ComposeFixedTest returns the blueprint's stored fixed Test `number`, or
+// composes it: each part draws only questions no earlier fixed test of the
+// blueprint uses, so the tests share no question (WO 22 Stage J).
+func (s *Service) ComposeFixedTest(
+	ctx context.Context, blueprintID uuid.UUID, number int,
+) (*domain.MockTest, error) {
+	if s.repo == nil {
+		return nil, errors.New("repository not configured")
 	}
-	var found *domain.MockTest
-	for _, mt := range public {
-		if mt.OwnerID != nil || mt.BlueprintID != blueprintID || mt.Mode != domain.MockModeFixed {
+	if blueprintID == uuid.Nil || number < 1 {
+		return nil, apperr.New(apperr.Validation, "INVALID_FIXED_TEST",
+			"A fixed test needs a blueprint and a positive number.")
+	}
+
+	stored, err := s.fixedTestByNumber(ctx, blueprintID, number)
+	if err != nil {
+		return nil, err
+	}
+	if stored != nil {
+		return stored, nil
+	}
+
+	blueprint, parts, err := s.resolveMockTestParts(ctx, blueprintID, nil)
+	if err != nil {
+		return nil, err
+	}
+	used, err := s.usedFixedTestActivities(ctx, blueprintID, number)
+	if err != nil {
+		return nil, err
+	}
+
+	seed := hashUUID(blueprint.ID) + int64(number)*7919
+	cefrMix := parseCEFRMix(blueprint.CefrDistribution)
+	compositions := make([]domain.MockTestPartComposition, 0, len(parts))
+	for _, part := range parts {
+		picked, drawErr := s.drawPartActivitiesExcluding(ctx, part, cefrMix, seed, nil, used)
+		if drawErr != nil {
+			return nil, drawErr
+		}
+		compositions = append(compositions, domain.MockTestPartComposition{
+			PartID:      part.ID,
+			ActivityIDs: picked,
+		})
+	}
+
+	n := number
+	mt := &domain.MockTest{
+		ID:          uuid.New(),
+		BlueprintID: blueprint.ID,
+		Mode:        domain.MockModeFixed,
+		Number:      &n,
+		Seed:        seed,
+		Composition: compositions,
+		CreatedAt:   s.clock.Now().UTC(),
+	}
+	saved, err := s.repo.CreateMockTest(ctx, mt)
+	if err != nil {
+		// A concurrent worker composed this number first: the unique index
+		// rejected one row, and the other is the test.
+		if existing, findErr := s.fixedTestByNumber(ctx, blueprintID, number); findErr == nil && existing != nil {
+			return existing, nil
+		}
+		return nil, fmt.Errorf("create fixed test %d: %w", number, err)
+	}
+	return saved, nil
+}
+
+// ComposeNextFixedTests composes max+1, max+2, … until one cannot be filled,
+// returning how many it composed.
+func (s *Service) ComposeNextFixedTests(ctx context.Context, blueprintID uuid.UUID) (int, error) {
+	tests, err := s.repo.ListFixedMockTests(ctx, blueprintID)
+	if err != nil {
+		return 0, err
+	}
+	highest := 0
+	for _, mt := range tests {
+		if mt.Number != nil && *mt.Number > highest {
+			highest = *mt.Number
+		}
+	}
+
+	composed := 0
+	for number := highest + 1; ; number++ {
+		if _, err := s.ComposeFixedTest(ctx, blueprintID, number); err != nil {
+			if isInsufficientItems(err) {
+				return composed, nil
+			}
+			return composed, err
+		}
+		composed++
+	}
+}
+
+// fixedTestByNumber returns the stored fixed test with this number, if any.
+func (s *Service) fixedTestByNumber(
+	ctx context.Context, blueprintID uuid.UUID, number int,
+) (*domain.MockTest, error) {
+	tests, err := s.repo.ListFixedMockTests(ctx, blueprintID)
+	if err != nil {
+		return nil, fmt.Errorf("list fixed tests: %w", err)
+	}
+	for _, mt := range tests {
+		if mt.Number != nil && *mt.Number == number {
+			return mt, nil
+		}
+	}
+	return nil, nil
+}
+
+// usedFixedTestActivities is every activity a fixed test numbered below `number`
+// already uses, so the next test excludes those groups.
+func (s *Service) usedFixedTestActivities(
+	ctx context.Context, blueprintID uuid.UUID, number int,
+) (map[uuid.UUID]struct{}, error) {
+	tests, err := s.repo.ListFixedMockTests(ctx, blueprintID)
+	if err != nil {
+		return nil, fmt.Errorf("list fixed tests: %w", err)
+	}
+	used := map[uuid.UUID]struct{}{}
+	for _, mt := range tests {
+		if mt.Number == nil || *mt.Number >= number {
 			continue
 		}
-		if found == nil || mt.CreatedAt.Before(found.CreatedAt) {
-			found = mt
+		for _, comp := range mt.Composition {
+			for _, id := range comp.ActivityIDs {
+				used[id] = struct{}{}
+			}
 		}
 	}
-	return found, nil
+	return used, nil
+}
+
+// isInsufficientItems reports the bank-short-for-a-part refusal.
+func isInsufficientItems(err error) bool {
+	var appErr *apperr.Error
+	return errors.As(err, &appErr) && appErr.Code == "INSUFFICIENT_ITEMS"
 }
 
 // compositionToSectionActivities converts a mock test composition into ordered SectionActivities.
@@ -608,6 +939,11 @@ func (s *Service) compositionToSectionActivities(
 	sectionGroups := make(map[int]*sectionGroup)
 
 	var allActivityIDs []uuid.UUID
+	for _, c := range comp {
+		allActivityIDs = append(allActivityIDs, c.ActivityIDs...)
+	}
+	resolved := s.resolveActivities(ctx, allActivityIDs)
+
 	for _, c := range comp {
 		part, ok := partMap[c.PartID]
 		skill := skillReading
@@ -629,18 +965,19 @@ func (s *Service) compositionToSectionActivities(
 		}
 
 		for _, actID := range c.ActivityIDs {
-			allActivityIDs = append(allActivityIDs, actID)
 			actDTO := SittingActivityDTO{
 				ID:     actID,
 				Kind:   kind,
 				Weight: 1,
 			}
-			if s.lesson != nil {
-				if h, err := s.lesson.ResolveActivity(ctx, actID); err == nil && h != nil {
-					actDTO.Kind = h.Kind
-					actDTO.ContentVersionID = h.ContentVersionID
-					actDTO.Config = h.Config
-				}
+			if h := resolved[actID]; h != nil {
+				actDTO.Kind = h.Kind
+				actDTO.ContentVersionID = h.ContentVersionID
+				// Redacted, exactly as the exam pool's draw redacts. The
+				// sitting is served from this stored copy, so a key that
+				// reaches here reaches the learner (WO 19 H.6 trap 1); the
+				// grader reads the content version, not this config.
+				actDTO.Config = contentcontract.RedactForLearner(h.Config)
 			}
 			group.acts = append(group.acts, actDTO)
 		}
@@ -715,9 +1052,11 @@ func (s *Service) validateMockTestAttempt(
 	return mockTest, version, partMap, nil
 }
 
-// StartMockTestAttempt starts or retakes a sitting for a composed mock test.
+// StartMockTestAttempt starts or retakes a sitting for a composed mock test,
+// in exam mode or practice mode, sharing StartSitting's duration and section
+// rules so the two paths cannot drift (WO 22 Stage K).
 func (s *Service) StartMockTestAttempt(
-	ctx context.Context, userID, mockTestID uuid.UUID,
+	ctx context.Context, userID, mockTestID uuid.UUID, req StartAttemptRequest,
 ) (*ExamAttemptDTO, error) {
 	if s.repo == nil {
 		return nil, errors.New("repository not configured")
@@ -728,12 +1067,22 @@ func (s *Service) StartMockTestAttempt(
 		return nil, err
 	}
 
+	var chosen map[int]bool
+	if req.Mode == domain.ModePractice {
+		if chosen, err = domain.ChosenSections(req.Sections); err != nil {
+			return nil, err
+		}
+	}
+
 	now := s.clock.Now().UTC()
 	if err := s.checkCanStart(ctx, userID, now); err != nil {
 		return nil, err
 	}
 
-	drawn, allActivityIDs := s.compositionToSectionActivities(ctx, mockTest.Composition, partMap)
+	drawn, _ := s.compositionToSectionActivities(ctx, mockTest.Composition, partMap)
+	// A practice sitting keeps only the sections chosen, before anything is
+	// marked seen: an item the learner never sits is not spent.
+	drawn = keepSections(drawn, chosen)
 	if len(drawn) == 0 {
 		return nil, domain.ErrInsufficientItems
 	}
@@ -743,14 +1092,20 @@ func (s *Service) StartMockTestAttempt(
 		return nil, fmt.Errorf("serialize section activities: %w", err)
 	}
 
+	// Only the kept sections' activities are exposed.
+	var activityIDsToExpose []uuid.UUID
+	for _, sec := range drawn {
+		for _, act := range sec.Activities {
+			activityIDsToExpose = append(activityIDsToExpose, act.ID)
+		}
+	}
+
 	attemptsCount, err := s.repo.CountUserMockTestAttempts(ctx, userID, mockTestID)
 	if err != nil {
 		return nil, fmt.Errorf("count user mock test attempts: %w", err)
 	}
-
-	var activityIDsToExpose []uuid.UUID
-	if attemptsCount == 0 {
-		activityIDsToExpose = allActivityIDs
+	if attemptsCount > 0 {
+		activityIDsToExpose = nil
 	}
 
 	exam, err := s.resolveExamForVersion(ctx, version.ID)
@@ -759,10 +1114,11 @@ func (s *Service) StartMockTestAttempt(
 	}
 	examID := exam.ID
 
-	duration := version.TotalMinutes
-	if duration <= 0 {
-		duration = domain.DefaultExamDurationMinutes
+	examMinutes := version.TotalMinutes
+	if examMinutes <= 0 {
+		examMinutes = domain.DefaultExamDurationMinutes
 	}
+	mode, duration := sittingDuration(req, examMinutes)
 	deadlineAt := now.Add(time.Duration(duration) * time.Minute)
 
 	params := sqlc.CreateMockTestAttemptParams{
@@ -770,7 +1126,7 @@ func (s *Service) StartMockTestAttempt(
 		UserID:                userID,
 		ExamID:                examID,
 		MockTestID:            &mockTestID,
-		Mode:                  domain.ModeExam,
+		Mode:                  mode,
 		ChosenDurationMinutes: clampInt32(duration),
 		StartedAt:             now,
 		DeadlineAt:            deadlineAt,
@@ -832,45 +1188,6 @@ func (s *Service) createMockSitting(
 		return nil, txErr
 	}
 	return attempt, nil
-}
-
-// BlueprintDrawer implements PoolDrawer for a specific blueprint and seed.
-type BlueprintDrawer struct {
-	svc       *Service
-	blueprint *domain.Blueprint
-	seed      int64
-}
-
-// NewBlueprintDrawer constructs a BlueprintDrawer.
-func NewBlueprintDrawer(svc *Service, blueprint *domain.Blueprint, seed int64) *BlueprintDrawer {
-	return &BlueprintDrawer{
-		svc:       svc,
-		blueprint: blueprint,
-		seed:      seed,
-	}
-}
-
-// DrawSitting implements PoolDrawer.
-func (d *BlueprintDrawer) DrawSitting(ctx context.Context, userID uuid.UUID, _ string) ([]SectionActivities, error) {
-	mt, err := d.svc.ComposeMockTest(ctx, &userID, ComposeMockTestRequest{
-		BlueprintID: d.blueprint.ID,
-		Mode:        domain.MockModeRandom,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	parts, err := d.svc.repo.ListExamPartsByVersionID(ctx, d.blueprint.VersionID)
-	if err != nil {
-		return nil, err
-	}
-	partMap := make(map[uuid.UUID]*domain.ExamPart, len(parts))
-	for _, p := range parts {
-		partMap[p.ID] = p
-	}
-
-	drawn, _ := d.svc.compositionToSectionActivities(ctx, mt.Composition, partMap)
-	return drawn, nil
 }
 
 func sortParts(parts []*domain.ExamPart) {

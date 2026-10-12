@@ -9,6 +9,7 @@ import (
 	grammarcontract "github.com/fluentra/fluentra/internal/modules/grammar/contract"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
 	"github.com/fluentra/fluentra/internal/modules/user/contract"
+	userdomain "github.com/fluentra/fluentra/internal/modules/user/domain"
 	vocabularycontract "github.com/fluentra/fluentra/internal/modules/vocabulary/contract"
 	writingcontract "github.com/fluentra/fluentra/internal/modules/writing/contract"
 )
@@ -32,15 +33,25 @@ func TestRun_RefusesProduction(t *testing.T) {
 	}
 }
 
+func TestRun_CoursesOnlyRefusesProduction(t *testing.T) {
+	foundationCoursesOnly = true
+	t.Cleanup(func() { foundationCoursesOnly = false })
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("DB_DSN", "postgres://nobody@127.0.0.1:1/nothing?sslmode=disable")
+	err := run(context.Background(), io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "production") {
+		t.Fatalf("curriculum-only repair must refuse production before connecting: %v", err)
+	}
+}
+
 // TestDemoAccounts_MatchTheGuide keeps the dataset and its documentation from
 // drifting. The addresses below are the ones
-// docs/development/getting-started.md §4 tells a new contributor to sign in
+// CONTRIBUTING.md tells a new contributor to sign in
 // with, and a rename here without a rename there is how a guide starts lying.
 func TestDemoAccounts_MatchTheGuide(t *testing.T) {
 	want := map[string]bool{
-		"learner@fluentra.dev":   false,
-		"admin@fluentra.dev":     true,
-		"moderator@fluentra.dev": false,
+		"learner@example.test": false,
+		"admin@example.test":   true,
 	}
 
 	if len(demoAccounts) != len(want) {
@@ -49,11 +60,21 @@ func TestDemoAccounts_MatchTheGuide(t *testing.T) {
 	for _, account := range demoAccounts {
 		admin, named := want[account.email]
 		if !named {
-			t.Errorf("%s is seeded but not named in getting-started.md", account.email)
+			t.Errorf("%s is seeded but not named in CONTRIBUTING.md", account.email)
 			continue
 		}
 		if account.admin != admin {
 			t.Errorf("%s admin = %v, want %v", account.email, account.admin, admin)
+		}
+	}
+}
+
+// TestDemoAccounts_DisplayNamesAreAllowed catches a demo name the user module
+// would refuse: "Demo Admin" did, and `make seed` failed on every fresh database.
+func TestDemoAccounts_DisplayNamesAreAllowed(t *testing.T) {
+	for _, account := range demoAccounts {
+		if err := userdomain.ValidateDisplayName(account.displayName); err != nil {
+			t.Errorf("%s display name %q is rejected: %v", account.email, account.displayName, err)
 		}
 	}
 }

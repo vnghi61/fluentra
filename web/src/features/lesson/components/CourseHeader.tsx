@@ -1,17 +1,21 @@
 import React from "react";
-import { BookMarked, Clock, GraduationCap } from "lucide-react";
+import {
+  BookMarked,
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  GraduationCap,
+  ShoppingBag,
+} from "lucide-react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { CheckCircle2, ShoppingBag } from "lucide-react";
+import { Card, CardHeader } from "@/components/ui/card";
 import type { CourseDetail } from "../api/lessonApi";
+import { courseDescription, courseTitle } from "../model/courseText";
+import { formatVnd } from "@/lib/currency";
 
 export interface CourseHeaderProps {
   course: CourseDetail;
@@ -20,6 +24,28 @@ export interface CourseHeaderProps {
   isOwned?: boolean | undefined;
   priceVnd?: number | undefined;
   onBuyOrClaim?: (() => void) | undefined;
+}
+
+export function formatDuration(t: TFunction, minutes: number): string {
+  if (minutes < 60) {
+    return t("learn.durationMinutes", {
+      count: minutes,
+      defaultValue: `${minutes} min`,
+    });
+  }
+  const hours = Math.floor(minutes / 60);
+  const remainingMins = minutes % 60;
+  if (remainingMins === 0) {
+    return t("learn.durationHours", {
+      count: hours,
+      defaultValue: `${hours}h`,
+    });
+  }
+  return t("learn.durationHoursMinutes", {
+    hours,
+    mins: remainingMins,
+    defaultValue: `${hours}h ${remainingMins}m`,
+  });
 }
 
 export const CourseHeader: React.FC<CourseHeaderProps> = ({
@@ -33,69 +59,126 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
   const { t } = useTranslation();
 
   // Price from prop or course object
-  const courseAny = course as unknown as { price_vnd?: number; origin?: string };
+  const courseAny = course as unknown as {
+    price_vnd?: number;
+    origin?: string;
+  };
   const effectivePrice = priceVnd ?? courseAny.price_vnd ?? 0;
   const isPaid = effectivePrice > 0;
   const isCommunity = courseAny.origin === "community";
 
-  return (
-    <Card className="border-primary/30 bg-gradient-to-r from-surface-card via-surface-card to-primary/5 shadow-sm">
-      <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-primary-accent">
-            <GraduationCap className="h-5 w-5" aria-hidden="true" />
-            <span className="text-xs font-bold uppercase tracking-wider">
-              {t("learn.courseBadge", "Course Syllabus")}
-            </span>
-          </div>
+  const totalDurationMinutes = React.useMemo(() => {
+    return (
+      course.units?.reduce(
+        (acc, unit) =>
+          acc +
+          (unit.lessons?.reduce(
+            (lAcc, l) => lAcc + (l.estimated_minutes || 0),
+            0,
+          ) ?? 0),
+        0,
+      ) ?? 0
+    );
+  }, [course.units]);
 
-          <div className="flex items-center gap-2">
-            <Badge variant="primary" className="font-mono text-xs">
-              {course.cefr_from} → {course.cefr_to}
-            </Badge>
-            {course.estimated_hours > 0 && (
-              <span className="inline-flex items-center gap-1 text-xs text-text-muted">
-                <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                {course.estimated_hours}h
-              </span>
+  const percent =
+    totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+  return (
+    <Card className="relative overflow-hidden border-primary/30 bg-gradient-to-r from-surface-card via-surface-card to-primary/5 shadow-sm">
+      <CardHeader className="space-y-4 p-6 md:p-8">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+          <div className="space-y-3 min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-primary-accent">
+                <GraduationCap className="h-5 w-5" aria-hidden="true" />
+                <span className="text-xs font-semibold uppercase tracking-wider">
+                  {t("learn.courseBadge", "Course Syllabus")}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {Boolean(course.cefr_from && course.cefr_to) && (
+                  <Badge variant="primary" className="font-mono text-xs">
+                    {course.cefr_from} → {course.cefr_to}
+                  </Badge>
+                )}
+                {totalDurationMinutes > 0 && (
+                  <span className="inline-flex items-center gap-1.5 text-sm text-text-muted">
+                    <Clock className="h-4 w-4" aria-hidden="true" />
+                    {formatDuration(t, totalDurationMinutes)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold leading-tight tracking-tight text-text break-words">
+                {courseTitle(t, course)}
+              </h1>
+              {course.description && (
+                <p className="mt-1 max-w-prose text-base leading-relaxed text-text-muted">
+                  {courseDescription(t, course)}
+                </p>
+              )}
+            </div>
+
+            {totalLessons > 0 && (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between gap-2 text-sm text-text-muted">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <BookMarked
+                      className="h-4 w-4 text-primary-accent shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span>
+                      {t("learn.syllabusProgress", {
+                        completed: completedLessons,
+                        total: totalLessons,
+                        defaultValue: `${completedLessons} of ${totalLessons} lessons completed`,
+                      })}
+                    </span>
+                  </div>
+                  <span className="shrink-0 font-semibold tabular-nums text-text">
+                    {percent}%
+                  </span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={percent}
+                  aria-label={t("learn.syllabusProgress", {
+                    completed: completedLessons,
+                    total: totalLessons,
+                    defaultValue: `${completedLessons} of ${totalLessons} lessons completed`,
+                  })}
+                  className="relative h-2.5 w-full overflow-hidden rounded-full bg-surface-muted border border-border-subtle"
+                >
+                  <div
+                    className="h-full bg-primary rounded-full transition-[width] duration-300 ease-in-out motion-reduce:transition-none"
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+              </div>
             )}
           </div>
-        </div>
 
-        <div>
-          <CardTitle className="text-2xl md:text-3xl font-extrabold text-text">
-            {course.title}
-          </CardTitle>
-          {course.description && (
-            <CardDescription className="mt-1 text-sm md:text-base">
-              {course.description}
-            </CardDescription>
-          )}
-        </div>
-
-        {totalLessons > 0 && (
-          <div className="flex items-center gap-2 text-xs text-text-muted pt-1">
-            <BookMarked
-              className="h-4 w-4 text-primary-accent"
-              aria-hidden="true"
-            />
-            <span>
-              {t("learn.syllabusProgress", {
-                completed: completedLessons,
-                total: totalLessons,
-                defaultValue: `${completedLessons} of ${totalLessons} lessons completed`,
-              })}
-            </span>
+          <div
+            className="hidden md:flex shrink-0 w-[140px] h-[140px] rounded-full bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 items-center justify-center border border-primary/20 shadow-inner self-center"
+            aria-hidden="true"
+          >
+            <BookOpen className="h-16 w-16 text-primary-accent/80" />
           </div>
-        )}
+        </div>
 
         {/* Purchase / Enrolment Bar for community or paid courses */}
         {(isPaid || isCommunity) && (
           <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border-subtle/60">
             <div className="flex items-center gap-2">
               {isPaid ? (
-                <span className="text-base font-extrabold text-primary-accent font-mono">
-                  ₫{effectivePrice.toLocaleString("vi-VN")}
+                <span className="text-base font-bold text-primary-accent font-mono">
+                  {formatVnd(effectivePrice)}
                 </span>
               ) : (
                 <Badge variant="outline" className="text-xs">
@@ -104,7 +187,7 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
               )}
               {isOwned && (
                 <Badge variant="success" className="gap-1 text-xs">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                   {t("learn.courseOwned", "Enrolled")}
                 </Badge>
               )}
@@ -115,19 +198,19 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
                 variant="primary"
                 size="sm"
                 onClick={onBuyOrClaim}
-                className="gap-1.5 text-xs font-bold"
+                className="gap-2"
               >
                 {isPaid ? (
                   <>
-                    <ShoppingBag className="h-3.5 w-3.5" />
+                    <ShoppingBag className="h-4 w-4" aria-hidden="true" />
                     {t("learn.buyCourseBtn", {
                       price: effectivePrice.toLocaleString("vi-VN"),
-                      defaultValue: `Buy Course • ₫${effectivePrice.toLocaleString("vi-VN")}`,
+                      defaultValue: `Buy Course • ${formatVnd(effectivePrice)}`,
                     })}
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                     {t("learn.claimCourseBtn", "Enroll for Free")}
                   </>
                 )}

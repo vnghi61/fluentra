@@ -13,6 +13,9 @@ allowBuilds:
   esbuild: true
   msw: true
   unrs-resolver: true
+  # Denied on purpose: core-js arrives as an optional dependency of jspdf (the
+  # account report PDF) and its postinstall only prints a funding banner.
+  core-js: false
 
 # Transitive advisories that the direct dependency has not picked up yet. Both
 # are patch-level bumps within the range the parent already asks for, so this
@@ -31,6 +34,36 @@ allowBuilds:
 #
 # Remove an entry once the parent ships a release that no longer resolves below
 # the floor; `pnpm audit` is what says whether it is still needed.
+#
+# Added 2026-10-12 for the security job's `pnpm audit --audit-level=high`, each
+# a patch-level floor inside the major its parent asks for:
+#
+#   undici           <8.10.2   (via jsdom, vitest)
+#   brace-expansion  1.x, 2.x and 5.x lines  (via eslint, openapi-typescript,
+#                    eslint-plugin-import / -boundaries)
+#   seroval          <1.6.3    (via @tanstack/react-router)
+#   source-map-js    <1.2.2    (via vite -> postcss, tailwind)
+#   handlebars       <4.7.10   critical; eslint-plugin-boundaries 7.2.0, the
+#                    latest, pins 4.7.9 exactly
 overrides:
   js-yaml@>=4.0.0 <4.3.2: '>=4.3.2 <5'
   nanoid@<3.3.18: '>=3.3.18 <4'
+  undici@>=8.0.0 <8.10.2: '>=8.10.2 <9'
+  brace-expansion@<1.1.20: '>=1.1.20 <2'
+  brace-expansion@>=2.0.0 <2.1.6: '>=2.1.6 <3'
+  brace-expansion@>=4.0.0 <5.0.11: '>=5.0.11 <6'
+  seroval@<1.6.3: '>=1.6.3 <2'
+  source-map-js@>=1.0.0 <1.2.2: '>=1.2.2 <2'
+  handlebars@>=4.0.0 <4.7.10: '>=4.7.10 <5'
+
+# Advisories with no fixed release to raise a floor to.
+#
+#   GHSA-vfj7-8cjw-p6xm  braces <=3.0.3, and 3.0.3 is the newest braces there
+#                        is. It arrives only through micromatch in
+#                        eslint-plugin-boundaries (devDependency, lint time),
+#                        whose patterns come from this repository's own
+#                        eslint config — never from a user. Drop this entry
+#                        once braces or micromatch ships a fix.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm

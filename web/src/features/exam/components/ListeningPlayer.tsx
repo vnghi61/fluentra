@@ -127,15 +127,15 @@ export const ListeningPlayer: React.FC<ListeningPlayerProps> = ({
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Headphones className="h-5 w-5" aria-hidden="true" />
           </div>
-          <div>
-            <h4 className="text-base font-semibold text-text">
+          <div className="min-w-0">
+            <h4 className="break-words text-base font-semibold leading-snug text-text">
               {title || t("exam.listening.audioClip")}
             </h4>
-            <p className="text-xs text-text-muted">
+            <p className="text-base leading-relaxed text-text-muted md:text-sm">
               {t("exam.listening.instructions")}
             </p>
           </div>
@@ -172,7 +172,7 @@ export const ListeningPlayer: React.FC<ListeningPlayerProps> = ({
               style={{ width: `${progress}%` }}
             />
           </div>
-          <div className="flex justify-between font-mono text-xs text-text-muted">
+          <div className="flex justify-between font-mono text-xs tabular-nums text-text-muted">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
@@ -182,7 +182,7 @@ export const ListeningPlayer: React.FC<ListeningPlayerProps> = ({
       {error && (
         <div
           role="alert"
-          className="flex items-center gap-2 rounded-lg bg-danger/10 p-2.5 text-xs text-danger"
+          className="flex items-center gap-2 rounded-lg bg-danger/10 p-2.5 text-sm text-danger-accent"
         >
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error}</span>

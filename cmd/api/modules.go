@@ -42,6 +42,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/reading"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
 	"github.com/fluentra/fluentra/internal/modules/resource"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/modules/speaking"
 	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
@@ -122,7 +123,7 @@ type identityDeps struct {
 	// Windows are the session lifetimes, from the SESSION_* keys.
 	Windows authdomain.WindowConfig
 
-	// RateLimit applies the classes in API_GUIDELINE.md §11. Nil disables it,
+	// RateLimit applies the classes in docs/CONVENTIONS.md#api §11. Nil disables it,
 	// which is the same direction the middleware takes when its store is
 	// unreachable: a missing limiter must not refuse everything.
 	RateLimit *httpx.RateLimiter
@@ -152,6 +153,10 @@ type identityDeps struct {
 
 	// AI is the provider client for AI tasks (explanations, etc.).
 	AI ai.Client
+
+	// AutoPublish publishes generated content an independent verifier confirms
+	// (WO 22 Stage A).
+	AutoPublish bool
 
 	// WorkerNudger signals a background worker to wake up after an upload is committed.
 	WorkerNudger vocabulary.WorkerNudger
@@ -256,6 +261,7 @@ func newIdentity(deps identityDeps) *identity {
 		Audit:          assembled.audit.Recorder(),
 		Guard:          lazyGuard{of: assembled},
 		AIUsage:        aiUsageReporter{of: ai.NewDBBudgetChecker(deps.Pool)},
+		Storage:        deps.Storage,
 	})
 
 	assembled.content = content.New(content.Deps{
@@ -365,15 +371,17 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.learning = learning.New(learning.Deps{
-		Pool:          deps.Pool,
-		Caches:        newLearningCaches(deps.Redis),
-		Guard:         lazyGuard{of: assembled},
-		Lesson:        assembled.lesson.Reader(),
-		LessonAuthor:  assembled.lesson.Author(),
-		Content:       assembled.content.Reader(),
-		ContentAuthor: assembled.content.Author(),
-		Taxonomies:    assembled.content.TaxonomyResolver(),
-		SRSDue:        assembled.srs.QueueReader(),
+		Pool:            deps.Pool,
+		Caches:          newLearningCaches(deps.Redis),
+		Guard:           lazyGuard{of: assembled},
+		Lesson:          assembled.lesson.Reader(),
+		LessonAuthor:    assembled.lesson.Author(),
+		Content:         assembled.content.Reader(),
+		ContentAuthor:   assembled.content.Author(),
+		ContentRecorder: assembled.content.VerificationRecorder(),
+		AutoPublish:     deps.AutoPublish,
+		Taxonomies:      assembled.content.TaxonomyResolver(),
+		SRSDue:          assembled.srs.QueueReader(),
 
 		SRSCards: assembled.srs.CardWriter(),
 		Graders: buildGraders(
@@ -387,6 +395,7 @@ func newIdentity(deps identityDeps) *identity {
 		Metrics:       deps.Instruments,
 		DeclaredKinds: buildDeclaredKinds(),
 		Audio:         media.NewCacheLocator(assembled.content.TTSCache()).WithVoice(deps.SpeechTTSVoice),
+		Charts:        media.ChartDataURI{},
 		Env:           deps.Env,
 		AI:            deps.AI,
 		User:          assembled.user.LearningProfileReader(),
@@ -394,6 +403,7 @@ func newIdentity(deps identityDeps) *identity {
 		Courses:       assembled.lesson.Catalog(),
 		SRSPace:       assembled.srs.ReviewPace(),
 		StudioAccess:  lazyStudioAccess{of: assembled},
+		Resource:      lazyResourceReader{of: assembled},
 	})
 
 	paymentMod, err := payment.NewModule(payment.Dependencies{
@@ -440,10 +450,25 @@ func newIdentity(deps identityDeps) *identity {
 		TagIndex:      assembled.content.TagIndex(),
 		LessonAuthor:  assembled.lesson.Author(),
 		Generator:     assembled.learning.Generator(),
+		ExamParts:     lazyExamPartSpec{of: assembled},
 		Events:        nil,
 	})
 
 	return assembled
+}
+
+// lazyExamPartSpec answers questionbank's exam-part lookup. Exam is assembled
+// after questionbank (exam depends on questionbank's reader), so the adapter
+// resolves it at call time rather than at construction.
+type lazyExamPartSpec struct{ of *identity }
+
+func (l lazyExamPartSpec) PartConstraints(
+	ctx context.Context, partID uuid.UUID,
+) (*learningcontract.ExamPartConstraints, error) {
+	if l.of.exam == nil {
+		return nil, fmt.Errorf("exam module is not assembled")
+	}
+	return l.of.exam.Service().PartConstraints(ctx, partID)
 }
 
 // buildDeclaredKinds returns all activity kinds declared across skill modules.
@@ -463,6 +488,9 @@ func buildDeclaredKinds() []string {
 	kinds = append(kinds, speakingcontract.GradedKinds()...)
 	kinds = append(kinds, "foundation_quiz", "foundation_review")
 	kinds = append(kinds, learningcontract.KindLessonMaterial)
+	// A foundation topic is a lesson step that teaches and is not graded
+	// (WO 22 Stage F).
+	kinds = append(kinds, learningcontract.KindFoundationTopic)
 	return kinds
 }
 
@@ -486,6 +514,9 @@ func buildGraders(
 	// A lesson_material is not a skill exercise: it is completed by marking it
 	// done, so its grader ships with the engine that dispatches it.
 	graders[learningcontract.KindLessonMaterial] = learningdomain.NewMaterialGrader()
+	// A foundation topic completes the same way: reading it is the whole task
+	// (WO 22 Stage F).
+	graders[learningcontract.KindFoundationTopic] = learningdomain.NewMaterialGrader()
 	return graders
 }
 
@@ -615,7 +646,7 @@ func (i *identity) Routes(api chi.Router) {
 		// After Authenticate and not before it. The class a request belongs to
 		// depends on whether there is an actor in the context: a signed-in
 		// caller charged against the 60/min anonymous budget would be cut off
-		// ten times sooner than API_GUIDELINE.md §11 promises, and — worse —
+		// ten times sooner than docs/CONVENTIONS.md#api §11 promises, and — worse —
 		// every learner behind one office NAT would share it.
 		//
 		// Inside this Group for the reason the Group exists at all: `/health`,
@@ -643,6 +674,9 @@ func (i *identity) Routes(api chi.Router) {
 		i.studio.ModerationRoutes(authenticated)
 		i.payment.AuthenticatedRoutes(authenticated)
 		i.resource.Routes(authenticated)
+		// The dashboard's announcement banners: any signed-in account reads
+		// them, so they sit outside the admin-only group below.
+		i.admin.LearnerRoutes(authenticated)
 		// Review is a moderator's job, not only an admin's: these check
 		// content.review / content.publish / questionbank.read per route.
 		i.content.ReviewRoutes(authenticated)
@@ -688,6 +722,21 @@ func (g lazyGuard) Require(ctx context.Context, permission string) error {
 func (g lazyGuard) authorizer() rbaccontract.Authorizer { return g.of.rbac.Authorizer() }
 
 // lazyStudioAccess adapts studio's AccessReader to lesson and learning's paywall check (BR-STUDIO-05).
+// lazyResourceReader adapts the resource module, assembled after learning, to
+// the reader learning needs for practice generated from a learner's upload.
+type lazyResourceReader struct{ of *identity }
+
+var _ resourcecontract.ResourceReader = lazyResourceReader{}
+
+func (r lazyResourceReader) GetResource(
+	ctx context.Context, id, userID uuid.UUID,
+) (*resourcecontract.Resource, error) {
+	if r.of.resource == nil {
+		return nil, errors.New("resource module is not assembled, so the resource cannot be read")
+	}
+	return r.of.resource.Reader().GetResource(ctx, id, userID)
+}
+
 type lazyStudioAccess struct{ of *identity }
 
 var _ studiocontract.AccessReader = lazyStudioAccess{}
@@ -975,6 +1024,15 @@ func (r lazyQuestionbankReader) DrawableForPart(
 		return nil, fmt.Errorf("questionbank module is not assembled")
 	}
 	return r.of.questionbank.Reader().DrawableForPart(ctx, examPartID)
+}
+
+func (r lazyQuestionbankReader) DrawableSizes(
+	ctx context.Context, examPartIDs []uuid.UUID,
+) (map[uuid.UUID]map[int]int, error) {
+	if r.of.questionbank == nil {
+		return nil, fmt.Errorf("questionbank module is not assembled")
+	}
+	return r.of.questionbank.Reader().DrawableSizes(ctx, examPartIDs)
 }
 
 func (r lazyQuestionbankReader) SampleQuestions(

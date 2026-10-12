@@ -1,9 +1,18 @@
 import { useCallback, useEffect } from "react";
 
-import { currentLocale, isLocale, setLocale, type Locale } from "@/i18n";
+import {
+  currentLocale,
+  isLocale,
+  setLocale,
+  switchLocale,
+  type Locale,
+} from "@/i18n";
+import { withPageTransition, type RevealOrigin } from "@/lib/view-transition";
 import {
   applyThemeChoice,
   currentChoice,
+  currentTheme,
+  systemTheme,
   watchSystemTheme,
   type ThemeChoice,
 } from "@/lib/theme";
@@ -20,7 +29,8 @@ function isThemeChoice(value: string | null | undefined): value is ThemeChoice {
 export interface PreferencesSync {
   themeChoice: ThemeChoice;
   locale: Locale;
-  setThemeChoice: (choice: ThemeChoice) => void;
+  /** `origin` is where the learner clicked; the new theme spreads from it. */
+  setThemeChoice: (choice: ThemeChoice, origin?: RevealOrigin) => void;
   setLocaleChoice: (locale: Locale) => void;
 }
 
@@ -89,9 +99,23 @@ export function usePreferencesSync(signedIn: boolean): PreferencesSync {
     [setStored],
   );
 
+  // Both repaint the whole page, so both animate rather than cut.
   const setThemeChoice = useCallback(
-    (choice: ThemeChoice) => {
-      applyThemeChoice(choice);
+    (choice: ThemeChoice, origin?: RevealOrigin) => {
+      const painted = choice === "system" ? systemTheme() : choice;
+      if (painted === currentTheme()) {
+        // Same palette (say, `system` while the OS is already on it): a
+        // reveal of identical pixels would only freeze the page for a moment.
+        applyThemeChoice(choice);
+      } else {
+        void withPageTransition(
+          "theme",
+          () => {
+            applyThemeChoice(choice);
+          },
+          { origin },
+        );
+      }
       persist({ theme: choice });
     },
     [persist],
@@ -99,7 +123,11 @@ export function usePreferencesSync(signedIn: boolean): PreferencesSync {
 
   const setLocaleChoice = useCallback(
     (locale: Locale) => {
-      setLocale(locale);
+      void switchLocale(locale, (change) =>
+        withPageTransition("locale", async () => {
+          await change();
+        }),
+      );
       persist({ locale });
     },
     [persist],

@@ -311,9 +311,9 @@ if (fs.existsSync(archPath) && fs.existsSync(indexPath)) {
   fail('dep-drift', 'missing .go-arch-lint.yml or MODULE_INDEX.md');
 }
 
-// --------------------------------------------- openapi.yaml vs module API.md
+// ------------------------------------------- openapi.yaml vs module AGENT.md
 
-console.log('==> 4. openapi.yaml paths vs the owning module API.md');
+console.log('==> 4. openapi.yaml paths vs the owning module AGENT.md');
 
 // Direction matters. Every path that is *in the spec* must be documented by its
 // owning module; a path documented as planned but not yet in the spec is fine,
@@ -345,7 +345,7 @@ if (fs.existsSync(specPath)) {
   for (const { path: apiPath, tag } of owned) {
     const documented = modules.get(tag);
     if (!documented) continue; // No module owns this tag; `system` has none.
-    const apiDoc = path.join(path.dirname(path.join(ROOT, documented.file)), 'API.md');
+    const apiDoc = path.join(path.dirname(path.join(ROOT, documented.file)), 'AGENT.md');
     if (!fs.existsSync(apiDoc)) {
       fail('api-drift', `${apiPath} is tagged "${tag}" but ${rel(apiDoc)} does not exist`);
       continue;

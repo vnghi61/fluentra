@@ -2,6 +2,7 @@ package content
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -13,9 +14,13 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/content/repository"
 	"github.com/fluentra/fluentra/internal/modules/content/service"
 	contenthttp "github.com/fluentra/fluentra/internal/modules/content/transport/http"
+	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
 )
+
+// sampleAutoPublishedLockID is from the WO 22 §4 reserved range.
+const sampleAutoPublishedLockID = 1_700_000_940
 
 // Guard is the authorization interface required by the module.
 type Guard = contenthttp.Guard
@@ -104,6 +109,20 @@ func (m *Module) Reader() contract.Reader {
 // It is not the review state machine, which models decisions a person makes.
 func (m *Module) Author() contract.Author { return m.service }
 
+// VerificationRecorder records an independent verifier's outcome on an
+// unpublished version (WO 22 Stage A).
+func (m *Module) VerificationRecorder() contract.VerificationRecorder { return m.service }
+
+// VerifiedBatchPublisher publishes a batch the verifier confirmed whole
+// (WO 22 D22-13).
+func (m *Module) VerifiedBatchPublisher() contract.VerifiedBatchPublisher { return m.service }
+
+// RecordedApprover replays a fixture's recorded human approval (seed only).
+func (m *Module) RecordedApprover() contract.RecordedApprover { return m.service }
+
+// ReviewBacklog reports unreviewed generation batches (WO 22 Stage O).
+func (m *Module) ReviewBacklog() contract.ReviewBacklog { return m.service }
+
 // TTSCache provides caching and retrieval of synthesised speech audio.
 func (m *Module) TTSCache() contract.TTSCache { return m.service }
 
@@ -116,6 +135,24 @@ func (m *Module) TagIndex() contract.TagIndex { return m.service }
 // Service returns the underlying service instance.
 func (m *Module) Service() *service.Service {
 	return m.service
+}
+
+// CronJobs returns the module's scheduled work: the daily sample of
+// auto-published items a person spot-checks (WO 22 Stage A.5).
+func (m *Module) CronJobs() []job.CronJob {
+	return []job.CronJob{{
+		Name:     "content.sample_auto_published",
+		LockID:   sampleAutoPublishedLockID,
+		Interval: 24 * time.Hour,
+		Task:     m.SampleAutoPublished,
+	}}
+}
+
+// SampleAutoPublished draws yesterday's sample of auto-published items.
+func (m *Module) SampleAutoPublished(ctx context.Context) error {
+	day := time.Now().UTC().AddDate(0, 0, -1).Truncate(24 * time.Hour)
+	_, err := m.service.SampleAutoPublished(ctx, day)
+	return err
 }
 
 // Routes mounts the learner-facing content routes on router.

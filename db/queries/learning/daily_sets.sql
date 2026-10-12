@@ -8,17 +8,17 @@
 -- name: GetDailySet :one
 SELECT id, user_id, local_date, activity_ids, created_at
 FROM learn.daily_sets
-WHERE user_id = $1 AND local_date = $2;
+WHERE user_id = $1 AND local_date = $2 AND cefr_level = $3;
 
 -- name: CreateDailySet :one
 -- DO NOTHING, not DO UPDATE. A request that loses the race for a learner's first
 -- open of the day gets no row back, and so knows not to record exposures for the
 -- items it drew: they were never shown.
 INSERT INTO learn.daily_sets (
-    user_id, local_date, activity_ids
+    user_id, local_date, activity_ids, cefr_level
 ) VALUES (
-    $1, $2, $3
-) ON CONFLICT (user_id, local_date) DO NOTHING
+    $1, $2, $3, $4
+) ON CONFLICT (user_id, local_date, cefr_level) DO NOTHING
 RETURNING id, user_id, local_date, activity_ids, created_at;
 
 -- name: RecordItemExposure :exec

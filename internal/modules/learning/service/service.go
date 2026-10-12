@@ -25,6 +25,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/repository"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
 	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
@@ -126,11 +127,11 @@ type Repository interface {
 		ctx context.Context, explanation repository.AnswerExplanationDTO,
 	) (*repository.AnswerExplanationDTO, error)
 	GetDailySet(
-		ctx context.Context, userID uuid.UUID, localDate time.Time,
+		ctx context.Context, userID uuid.UUID, localDate time.Time, level string,
 	) (*domain.DailySet, error)
 	// CreateDailySet returns nil when another request stored the day's set first.
 	CreateDailySet(
-		ctx context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
+		ctx context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID, level string,
 	) (*domain.DailySet, error)
 	RecordItemExposure(
 		ctx context.Context, userID uuid.UUID, activityID uuid.UUID,
@@ -242,16 +243,22 @@ type Deps struct {
 	LessonAuthor  lessoncontract.Author
 	Content       contentcontract.Reader
 	ContentAuthor contentcontract.Author
-	SRSDue        srscontract.QueueReader
-	SRSCards      srscontract.CardWriter
-	Graders       *domain.GraderRegistry
-	Events        EventWriter
-	Metrics       telemetry.Instruments
-	Clock         clock.Clock
-	NewID         func() (uuid.UUID, error)
-	Caches        LearningCaches
-	Env           string
-	AI            ai.Client
+	// ContentRecorder records an independent verifier's doubt on a draft.
+	ContentRecorder contentcontract.VerificationRecorder
+	// AutoPublish publishes a generated item the independent verifier confirms,
+	// without a person (WO 22 Stage A). Off unless configured on and at least
+	// two provider models differ.
+	AutoPublish bool
+	SRSDue      srscontract.QueueReader
+	SRSCards    srscontract.CardWriter
+	Graders     *domain.GraderRegistry
+	Events      EventWriter
+	Metrics     telemetry.Instruments
+	Clock       clock.Clock
+	NewID       func() (uuid.UUID, error)
+	Caches      LearningCaches
+	Env         string
+	AI          ai.Client
 	// GeneratorAuthorID owns the content the practice pool generates.
 	// content_items.owner_id is required, and without an owner the top-up stands
 	// down rather than generate items EnsurePublished would refuse.
@@ -260,6 +267,9 @@ type Deps struct {
 	AuthorResolver contract.AuthorResolver
 	// Synthesiser turns listening script text into pre-rendered audio.
 	Synthesiser AudioSynthesiser
+	// Charts draws the chart an IELTS Writing Task 1 describes. Nil refuses
+	// every task that needs one rather than publishing it without its visual.
+	Charts ChartRenderer
 	// Audio finds a listening item's rendered clip when its body carries no key.
 	Audio contract.AudioLocator
 	// AudioRender asks for newly published listening items to be rendered now.
@@ -277,6 +287,10 @@ type Deps struct {
 	StudioAccess studiocontract.AccessReader
 	// Taxonomies resolves spine taxonomy node codes and labels for item generation.
 	Taxonomies contentcontract.TaxonomyResolver
+	// Resource reads a learner's own upload, for practice generated from it.
+	Resource resourcecontract.ResourceReader
+	// ResourcePractice stores the private practice sets generated from uploads.
+	ResourcePractice ResourcePracticeStore
 }
 
 // AudioSynthesiser produces pre-rendered audio for listening exercises.
@@ -284,34 +298,48 @@ type AudioSynthesiser interface {
 	Synthesise(ctx context.Context, text, voice string) (string, error)
 }
 
+// ChartRenderer draws a task's chart from the data the model returned — chart
+// type, title and series — and returns the image a learner sees. It refuses
+// data that does not add up (WO 22 D22-22).
+type ChartRenderer interface {
+	RenderChart(spec json.RawMessage) (imageURL string, err error)
+}
+
 // Service coordinates attempt execution, grading, progress rollups, and event emission.
 type Service struct {
-	pool          *pgxpool.Pool
-	repo          Repository
-	lesson        lessoncontract.Reader
-	lessonAuthor  lessoncontract.Author
-	content       contentcontract.Reader
-	contentAuthor contentcontract.Author
-	srsDue        srscontract.QueueReader
-	srsCards      srscontract.CardWriter
-	graders       *domain.GraderRegistry
-	events        EventWriter
-	metrics       telemetry.Instruments
-	clock         clock.Clock
-	newID         func() (uuid.UUID, error)
-	caches        LearningCaches
-	env           string
-	ai            ai.Client
-	user          usercontract.LearningProfileReader
-	flags         admincontract.FlagReader
-	courses       lessoncontract.CourseCatalog
-	srsPace       srscontract.ReviewPaceReader
-	studioAccess  studiocontract.AccessReader
-	taxonomies    contentcontract.TaxonomyResolver
+	pool            *pgxpool.Pool
+	repo            Repository
+	lesson          lessoncontract.Reader
+	lessonAuthor    lessoncontract.Author
+	content         contentcontract.Reader
+	contentAuthor   contentcontract.Author
+	contentRecorder contentcontract.VerificationRecorder
+	autoPublish     bool
+	srsDue          srscontract.QueueReader
+	srsCards        srscontract.CardWriter
+	graders         *domain.GraderRegistry
+	events          EventWriter
+	metrics         telemetry.Instruments
+	clock           clock.Clock
+	newID           func() (uuid.UUID, error)
+	caches          LearningCaches
+	env             string
+	ai              ai.Client
+	user            usercontract.LearningProfileReader
+	flags           admincontract.FlagReader
+	courses         lessoncontract.CourseCatalog
+	srsPace         srscontract.ReviewPaceReader
+	studioAccess    studiocontract.AccessReader
+	taxonomies      contentcontract.TaxonomyResolver
+	resource        resourcecontract.ResourceReader
+	// resourcePractice is nil on deployments without resource intake, and the
+	// feature answers a clear "not configured" rather than panicking.
+	resourcePractice ResourcePracticeStore
 
 	generatorAuthor uuid.UUID
 	authorResolver  contract.AuthorResolver
 	synthesiser     AudioSynthesiser
+	charts          ChartRenderer
 	audio           contract.AudioLocator
 	audioRender     AudioRenderRequester
 
@@ -342,32 +370,37 @@ func New(deps Deps) *Service {
 		}
 	}
 	return &Service{
-		pool:          deps.Pool,
-		repo:          deps.Repo,
-		lesson:        deps.Lesson,
-		lessonAuthor:  deps.LessonAuthor,
-		content:       deps.Content,
-		contentAuthor: deps.ContentAuthor,
-		srsDue:        deps.SRSDue,
-		srsCards:      deps.SRSCards,
-		graders:       deps.Graders,
-		events:        deps.Events,
-		metrics:       deps.Metrics,
-		clock:         clk,
-		newID:         idGen,
-		caches:        deps.Caches,
-		env:           deps.Env,
-		ai:            deps.AI,
-		user:          deps.User,
-		flags:         deps.Flags,
-		courses:       deps.Courses,
-		srsPace:       deps.SRSPace,
-		studioAccess:  deps.StudioAccess,
-		taxonomies:    deps.Taxonomies,
+		pool:             deps.Pool,
+		repo:             deps.Repo,
+		lesson:           deps.Lesson,
+		lessonAuthor:     deps.LessonAuthor,
+		content:          deps.Content,
+		contentAuthor:    deps.ContentAuthor,
+		contentRecorder:  deps.ContentRecorder,
+		autoPublish:      deps.AutoPublish,
+		srsDue:           deps.SRSDue,
+		srsCards:         deps.SRSCards,
+		graders:          deps.Graders,
+		events:           deps.Events,
+		metrics:          deps.Metrics,
+		clock:            clk,
+		newID:            idGen,
+		caches:           deps.Caches,
+		env:              deps.Env,
+		ai:               deps.AI,
+		user:             deps.User,
+		flags:            deps.Flags,
+		courses:          deps.Courses,
+		srsPace:          deps.SRSPace,
+		studioAccess:     deps.StudioAccess,
+		taxonomies:       deps.Taxonomies,
+		resource:         deps.Resource,
+		resourcePractice: deps.ResourcePractice,
 
 		generatorAuthor: deps.GeneratorAuthorID,
 		authorResolver:  deps.AuthorResolver,
 		synthesiser:     deps.Synthesiser,
+		charts:          deps.Charts,
 		audio:           deps.Audio,
 		audioRender:     deps.AudioRender,
 	}
@@ -1149,7 +1182,16 @@ func (s *Service) executeRollupSteps(
 
 // DeleteUserData removes all learner data subject to user.deleted erasure (Stage I).
 func (s *Service) DeleteUserData(ctx context.Context, userID uuid.UUID) error {
-	return s.repo.DeleteNodeMasteryByUser(ctx, userID)
+	if err := s.repo.DeleteNodeMasteryByUser(ctx, userID); err != nil {
+		return err
+	}
+	// The private practice generated from a learner's own upload is theirs to
+	// erase too. The hidden course it points at is content, and the lesson
+	// contract has no delete; the set rows are what name the learner's files.
+	if s.resourcePractice != nil {
+		return s.resourcePractice.DeleteResourcePracticeSetsForUser(ctx, userID)
+	}
+	return nil
 }
 
 // updateNodeMastery folds one attempt score into the learner's estimate for every
@@ -1768,7 +1810,7 @@ func (s *Service) activeEnrollment(
 	if err != nil {
 		return nil, "", fmt.Errorf("list enrollments: %w", err)
 	}
-	enrollments = s.withoutPoolCourse(ctx, enrollments)
+	enrollments = s.withoutPoolCourse(ctx, userID, enrollments)
 	if len(enrollments) == 0 {
 		return nil, domain.StateNotStarted, nil
 	}
@@ -1782,40 +1824,28 @@ func (s *Service) activeEnrollment(
 
 // courseLessonsInOrder lists a course's lessons in unit-then-position order.
 //
-// One read per unit, not one per lesson: walking the course with NextLesson costs
-// a call for every lesson already finished, which is the N+1 the batched
-// UnlockChecker exists to avoid, on the same page. A course whose units cannot be
-// listed falls back to a single NextLesson call rather than to nothing.
+// One read for the whole course: walking it with NextLesson cost a call for
+// every finished lesson, and listing unit by unit a call for every unit. A
+// course with no lessons listed falls back to a single NextLesson call rather
+// than to nothing.
 func (s *Service) courseLessonsInOrder(
 	ctx context.Context, courseID uuid.UUID,
 ) ([]*lessoncontract.Lesson, error) {
-	units, err := s.lesson.ListUnitsByCourseID(ctx, courseID)
+	ordered, err := s.lesson.ListLessonsByCourseID(ctx, courseID)
 	if err != nil {
-		return nil, fmt.Errorf("list course units %s: %w", courseID, err)
+		return nil, fmt.Errorf("list lessons of course %s: %w", courseID, err)
 	}
-	if len(units) == 0 {
-		first, firstErr := s.lesson.NextLesson(ctx, courseID, nil)
-		if firstErr != nil {
-			return nil, fmt.Errorf("find first lesson of course %s: %w", courseID, firstErr)
-		}
-		if first == nil {
-			return nil, nil
-		}
-		return []*lessoncontract.Lesson{first}, nil
+	if len(ordered) > 0 {
+		return ordered, nil
 	}
-
-	var ordered []*lessoncontract.Lesson
-	for _, u := range units {
-		if u == nil {
-			continue
-		}
-		unitLessons, listErr := s.lesson.ListLessons(ctx, u.ID)
-		if listErr != nil {
-			return nil, fmt.Errorf("list lessons of unit %s: %w", u.ID, listErr)
-		}
-		ordered = append(ordered, unitLessons...)
+	first, err := s.lesson.NextLesson(ctx, courseID, nil)
+	if err != nil {
+		return nil, fmt.Errorf("find first lesson of course %s: %w", courseID, err)
 	}
-	return ordered, nil
+	if first == nil {
+		return nil, nil
+	}
+	return []*lessoncontract.Lesson{first}, nil
 }
 
 // completedScopeIDs reads the learner's completed rows for one progress scope.
@@ -2077,7 +2107,7 @@ func (s *Service) loadProgress(ctx context.Context, userID uuid.UUID) (*domain.P
 	if err != nil {
 		return nil, fmt.Errorf("list enrollments: %w", err)
 	}
-	enrollments = s.withoutPoolCourse(ctx, enrollments)
+	enrollments = s.withoutPoolCourse(ctx, userID, enrollments)
 
 	masteries, err := s.repo.ListSkillMasteryByUser(ctx, userID)
 	if err != nil {

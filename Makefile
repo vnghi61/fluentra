@@ -15,6 +15,11 @@ COMPOSE_PROD := -f $(COMPOSE_BASE) -f deploy/compose/compose.prod.yaml -f deploy
 # and the E2E job both use it, so the stack has one description rather than a
 # second one written out by hand in a workflow file.
 COMPOSE_INFRA := -f $(COMPOSE_BASE) -f deploy/compose/compose.dev.yaml
+# A machine that also runs Hilo sets SHARED_INFRA=1 (in its environment or in an
+# untracked local.mk): the infra targets then use Hilo's Redis/MinIO plus a
+# Fluentra-only Postgres 17 (see deploy/compose/compose.shared.yaml). CI never sets it.
+-include local.mk
+COMPOSE_SHARED := -f deploy/compose/compose.shared.yaml
 
 ## ----------------------------------------------------------------- help
 
@@ -27,8 +32,6 @@ help: ## Show this help
 setup: ## Install tool binaries, git hooks and frontend dependencies
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 	go install github.com/pressly/goose/v3/cmd/goose@latest
-	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
-	go install github.com/matryer/moq@latest
 	go install github.com/incu6us/goimports-reviser/v3@latest
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	go install github.com/fe3dback/go-arch-lint@latest
@@ -51,15 +54,32 @@ dev-infra: ## Start postgres, redis, minio and mailpit, with ports published
 	# host. Mailpit is here because an API with nowhere to deliver writes the OTP
 	# challenge and never produces a code, which fails as a timeout somewhere
 	# unrelated.
+ifeq ($(strip $(SHARED_INFRA)),1)
+	# Redis and MinIO (with the fluentra-* buckets) belong to Hilo's stack.
+	docker compose $(COMPOSE_SHARED) up -d --wait postgres mailpit
+	@echo "postgres 127.0.0.1:5434   redis 127.0.0.1:6379 (Hilo, db 1)   minio 127.0.0.1:9010 (Hilo)   mail 127.0.0.1:8025"
+else
 	docker compose $(COMPOSE_INFRA) up -d --wait postgres redis minio mailpit
 	# Buckets are provisioned by a one-shot rather than folded into `up`, so a
 	# failure to create them fails here instead of scrolling past in a detached
 	# container's log.
 	docker compose $(COMPOSE_INFRA) run --rm createbuckets
 	@echo "postgres 127.0.0.1:5432   redis 127.0.0.1:6379   minio 127.0.0.1:9000   mail 127.0.0.1:8025"
+endif
 
 dev-infra-down: ## Stop the data services only, leaving other projects alone
+ifeq ($(strip $(SHARED_INFRA)),1)
+	docker compose $(COMPOSE_SHARED) stop postgres mailpit media-renderer
+else
 	docker compose $(COMPOSE_INFRA) stop postgres redis minio mailpit
+endif
+
+dev-media: ## Start automatic local document/media processing (also for host-run API/worker)
+ifeq ($(strip $(SHARED_INFRA)),1)
+	docker compose $(COMPOSE_SHARED) up -d --build --no-deps media-renderer
+else
+	docker compose $(COMPOSE_INFRA) up -d --build --no-deps media-renderer
+endif
 
 dev-down: ## Stop the local stack (volumes preserved)
 	docker compose $(COMPOSE_DEV) down
@@ -86,26 +106,16 @@ web: ## Run the frontend dev server on the host
 
 gen: gen-backend gen-web ## Regenerate everything
 
-gen-backend: gen-sql gen-api gen-mocks ## Regenerate the Go side only (what backend CI checks)
+gen-backend: gen-sql ## Regenerate the Go side only (what backend CI checks)
 
 gen-sql: ## sqlc: SQL -> typed Go
 	sqlc generate
 
-gen-api: bundle-api ## oapi-codegen: OpenAPI -> server interfaces + client
-	oapi-codegen -config api/openapi/codegen-server.yaml api/openapi/openapi.bundle.yaml
-	oapi-codegen -config api/openapi/codegen-client.yaml api/openapi/openapi.bundle.yaml
-
-# The bundler version is pinned. Unpinned, `npx @redocly/cli` resolves to
-# whatever is current, two bundlers emit subtly different YAML, and that lands in
-# the base64 spec embedded in server.gen.go — so the staleness gate would fail on
-# pull requests that changed nothing. That is exactly what it was doing.
+# The bundler version is pinned: two bundler versions emit subtly different YAML.
 REDOCLY_VERSION ?= 2.46.0
 
-bundle-api: ## Bundle split OpenAPI components for code generators
+bundle-api: ## Bundle the split OpenAPI spec into one file for the contract tests
 	npx --yes @redocly/cli@$(REDOCLY_VERSION) bundle api/openapi/openapi.yaml -o api/openapi/openapi.bundle.yaml
-
-gen-mocks: ## moq: interfaces -> mocks
-	go generate ./...
 
 gen-web: ## openapi-typescript: OpenAPI -> TS types + MSW handlers
 	cd web && pnpm run gen:api
@@ -139,8 +149,15 @@ migrate-new: ## Create a migration: make migrate-new MODULE=auth NAME=add_mfa
 	@mkdir -p db/migrations/$(MODULE)
 	goose -dir db/migrations/$(MODULE) create $(NAME) sql
 
-seed: ## Load the development dataset
+seed: ## Load the development dataset (offline: the words, courses and tests come from db/fixtures)
 	go run ./cmd/seed
+
+# Recorded pronunciation is frozen into the word fixture by cmd/vocabgen (WO 22
+# D22-8), so `make seed` makes no dictionary call. This is the repair for words
+# that still have none: it looks each one up in somebody else's API, and is
+# idempotent, so a re-run only asks about words that still have no recording.
+seed-audio: ## Backfill recorded pronunciation onto seeded words that have none (network)
+	go run ./cmd/seed -audio
 
 audit-logs: ## Prove no OTP code or personal data reaches Loki (needs `make dev`)
 	python scripts/audit-log-privacy.py
@@ -169,6 +186,20 @@ db-reset-DANGEROUS: ## DESTROYS all local data. Requires confirmation.
 ## ----------------------------------------------------------------- quality
 
 check: fmt vet lint arch test ## Everything that must pass before you finish
+
+# Read-only review gate. goimports-reviser is excluded because its normal mode
+# writes files; arch is excluded because go-arch-lint differs on Windows and CI
+# runs `make arch` on Linux in ci-backend.
+check-ci: ## Non-writing review and verification gate
+	$(MAKE) fmt-check vet
+	golangci-lint run ./...
+	cd web && pnpm run lint
+	npx @stoplight/spectral-cli lint api/openapi/openapi.yaml
+	cd web && pnpm run format:check
+	cd web && pnpm run typecheck
+	$(MAKE) test-web
+	# No -race: it requires cgo and cannot run on the Windows development box.
+	go test -short ./...
 
 fmt: ## Format
 	gofmt -w .
@@ -212,7 +243,7 @@ test: ## Unit tests with the race detector
 test-int: ## Integration tests (testcontainers; Docker required)
 	go test -race -tags=integration ./... -timeout 10m
 
-test-contract: ## Handler <-> OpenAPI conformance
+test-contract: bundle-api ## Handler <-> OpenAPI conformance
 	go test -tags=contract ./internal/... -run TestContract
 
 test-web: ## Frontend unit tests
@@ -285,7 +316,7 @@ cover-gate: ## Fail if coverage.out is below COVERAGE_MIN
 # GENERATED_PATHS is everything `make gen-backend` writes. The check is scoped to
 # these rather than the whole tree so it reports codegen drift and not whatever
 # else the working copy happens to have in flight.
-GENERATED_PATHS := api/openapi/server.gen.go api/openapi/client.gen.go internal/generated
+GENERATED_PATHS := internal/generated
 
 # gen-check is the staleness gate. It uses `git status --porcelain` rather than
 # `git diff --exit-code` because codegen can create *new* files, and a new
@@ -343,8 +374,8 @@ security: ## Security scans
 	gitleaks detect --no-banner
 	cd web && pnpm audit --audit-level=high
 
-.PHONY: help setup dev dev-infra dev-infra-down dev-down logs prod-up api worker web gen gen-backend gen-sql gen-api gen-mocks gen-web \
-        gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed promote-admin due-reviews audit-logs \
-        db-reset-DANGEROUS check fmt fmt-check vet lint lint-int lint-go arch test test-int \
+.PHONY: help setup dev dev-infra dev-infra-down dev-down logs prod-up api worker web gen gen-backend gen-sql bundle-api gen-web \
+        gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed seed-audio promote-admin due-reviews audit-logs \
+        db-reset-DANGEROUS check check-ci fmt fmt-check vet lint lint-int lint-go arch test test-int \
         test-contract test-web test-e2e test-load test-eval cover cover-check cover-gate docs \
         docs-check ci ci-backend ci-frontend ci-fast security

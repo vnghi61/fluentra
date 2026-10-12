@@ -105,7 +105,7 @@ Migrations: `db/migrations/analytics/` · Queries: `db/queries/analytics/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `analytics`). See also [`API.md`](API.md).
+(tag: `analytics`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -184,7 +184,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -213,8 +213,6 @@ _No deviations from the global standard._
 
 ## 13. Testing
 
-See [`TESTING.md`](TESTING.md) for the full plan.
-
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
 
@@ -242,6 +240,171 @@ go test -tags=integration ./internal/modules/analytics/...  # integration (testc
 - Do not add a metric without a written definition.
 - Do not mutate a rollup in place — recompute the day.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/admin/analytics/kpis`
+
+Headline KPIs with period comparison
+
+| | |
+|---|---|
+| Permission | `analytics.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/analytics/funnel`
+
+Funnel conversion by cohort
+
+| | |
+|---|---|
+| Permission | `analytics.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/analytics/retention`
+
+Retention curve by cohort
+
+| | |
+|---|---|
+| Permission | `analytics.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/analytics/outcomes`
+
+Learning outcome metrics
+
+| | |
+|---|---|
+| Permission | `analytics.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/analytics/export`
+
+Async CSV export
+
+| | |
+|---|---|
+| Permission | `analytics.export` |
+| Success | 202 |
+| Errors | standard set |
+
+#### `GET /api/v1/me/insights`
+
+The learner's own progress insights
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `PERIOD_TOO_LARGE` | 422 | Requested range exceeds the query limit |
+| `ROLLUP_NOT_READY` | 409 | The requested day has not been rolled up yet |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Ingestion to dashboard
+
+```mermaid
+flowchart LR
+    A[Domain events via outbox] --> B[ingest job<br/>idempotent on event_id]
+    B --> C[(analytics_events<br/>partitioned, append-only)]
+    C --> D[nightly rollup job]
+    D --> E[(daily_rollups)]
+    E --> F[KPI / funnel / retention queries]
+    F --> G[cache 15 min]
+    G --> H[admin dashboard]
+    E --> I[learner insights]
+    E --> J[weekly progress email]
+    K[late or replayed event] --> L[mark the day dirty] --> D
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Same database or a separate analytical store? | Same, partitioned, for now | A second datastore adds a synchronisation problem and operational burden that our volume does not justify; the rollup design means moving later is a change of destination, not of pipeline |
+| Ingest content? | Never | Essay and transcript text would turn an analytics store into a second copy of the most sensitive data we hold, for no analytical benefit that aggregate metrics do not already provide |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 4
+
+- [ ] Event ingestion with idempotency and partitioning
+- [ ] Nightly rollup job with dirty-day recomputation
+- [ ] Funnel and retention computation
+- [ ] Learning outcome metrics
+- [ ] AI cost per active learner
+- [ ] Admin KPI dashboards
+- [ ] Learner insights endpoint
+- [ ] Weekly progress email payload
+- [ ] Metric definitions document
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Real-time streaming metrics
+- A dedicated analytical store
+- Experiment framework with proper statistics
+- Predictive churn scoring
+<!-- END GENERATED: todo-future -->
 
 ---
 

@@ -1,9 +1,9 @@
-// Command seed loads the development dataset the getting-started guide promises.
+// Command seed loads the catalogue (courses, words, mock tests) and, for local
+// development, two demo accounts.
 //
-// It was `func main() {}` — a documented step (`make seed`, and the two demo
-// accounts named in docs/development/getting-started.md §4) that did nothing at
-// all. A new contributor followed the guide, saw no error, and then could not
-// sign in with the credentials the guide had just given them.
+// `-reference` loads the catalogue only, attributed to the first admin, and is
+// the one mode allowed in production: register, promote the account with
+// db/seeds/rbac.sql, then seed. Demo accounts are never created there.
 //
 // It writes through the same paths the application uses: the user module's
 // Creator contract for the three-row account transaction, the auth domain's
@@ -18,6 +18,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -34,8 +35,8 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/config"
 )
 
-// demoPassword is the one the getting-started guide prints. It exists only
-// here; nothing else in this repository ships a default password.
+// demoPassword is the one CONTRIBUTING.md prints. It exists only here and is
+// refused in production; nothing else in this repository ships a password.
 const demoPassword = "Password123!demo"
 
 type seedConfig struct {
@@ -45,6 +46,9 @@ type seedConfig struct {
 	Database struct {
 		DSN string `koanf:"dsn"`
 	} `koanf:"db"`
+	Redis struct {
+		URL string `koanf:"url"`
+	} `koanf:"redis"`
 }
 
 type demoAccount struct {
@@ -54,15 +58,60 @@ type demoAccount struct {
 	role        string
 }
 
-// The accounts docs/development/getting-started.md §4 names. Changing one
-// here means changing it there.
+// The accounts CONTRIBUTING.md names. Changing one here means changing it
+// there. They use the reserved example.test domain, so no real inbox (and no
+// Google account) can ever claim them.
+//
+// The admin holds every permission (core.role_permissions grants it the whole
+// set), so one back-office account covers the review queue, the question bank
+// and content authoring. The learner is separate because the learner-facing
+// flows — uploading a resource, sitting a lesson, the daily set — have to be
+// exercised by an account that holds no permissions at all, or a paywall or a
+// redaction that only bites a learner would never be seen failing.
 var demoAccounts = []demoAccount{
-	{email: "learner@fluentra.dev", displayName: "Demo Learner"},
-	{email: "admin@fluentra.dev", displayName: "Demo Operator", admin: true},
-	{email: "moderator@fluentra.dev", displayName: "Demo Reviewer", role: "moderator"},
+	{email: "learner@example.test", displayName: "Demo Learner"},
+	// Not "Demo Admin": BR-USER-02 rejects any display name containing "admin".
+	{email: "admin@example.test", displayName: "Demo Editor", admin: true},
 }
 
+// includeFoundationFixtures is set from -foundation and read by run. Default
+// on: `make seed` is the one command that has to produce a complete catalogue
+// (WO 22 Stage G).
+var includeFoundationFixtures = true
+
+// includeExamFixtures is set from -exams and read by run. Default on: a
+// database with no exam content is a valid state the loader reports, not fails.
+var includeExamFixtures = true
+
+// foundationCoursesOnly repairs lesson bindings without refreshing demo accounts
+// or replaying content fixtures over already published content.
+var foundationCoursesOnly bool
+
+// referenceOnly is set from -reference: the catalogue without demo accounts.
+var referenceOnly bool
+
 func main() {
+	audio := flag.Bool("audio", false,
+		"backfill recorded pronunciation onto flashcards that have none, then exit")
+	foundation := flag.Bool("foundation", true,
+		"load the frozen Foundation fixtures from db/fixtures/foundation (no model call)")
+	exams := flag.Bool("exams", true,
+		"load the frozen exam fixtures from db/fixtures/exams (no model call)")
+
+	flag.BoolVar(&referenceOnly, "reference", false,
+		"load the catalogue only, owned by the first admin; no demo accounts (allowed in production)")
+	flag.BoolVar(&foundationCoursesOnly, "foundation-courses-only", false,
+		"sync Foundation lessons from existing published content, without changing accounts or fixtures")
+	flag.Parse()
+	includeFoundationFixtures = *foundation
+	includeExamFixtures = *exams
+	if *audio {
+		if err := runAudioBackfill(context.Background(), os.Stdout); err != nil {
+			log.Print(err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(context.Background(), os.Stdout); err != nil {
 		log.Print(err)
 		os.Exit(1)
@@ -127,10 +176,10 @@ func run(ctx context.Context, out io.Writer) error {
 	// dropped, `cfg.App.Environment` stays empty, and the production guard can
 	// never fire. TestRun_RefusesProduction is what caught that.
 	if err := config.Load(ctx, config.Options{
-		Defaults: map[string]any{"app.env": "local"},
+		Defaults: map[string]any{"app.env": "local", "redis.url": ""},
 		Required: []config.RequiredKey{{
 			Name:       "db.dsn",
-			DocSection: "docs/deployment/configuration.md#database",
+			DocSection: ".env.example",
 		}},
 	}, &cfg); err != nil {
 		return fmt.Errorf("load seed configuration: %w", err)
@@ -139,8 +188,8 @@ func run(ctx context.Context, out io.Writer) error {
 	// A guard, not a convention. Seeding writes accounts with a password that
 	// is printed in a public guide; the one environment where that must never
 	// happen is worth refusing by name rather than by care.
-	if cfg.App.Environment == "production" {
-		return errors.New("refusing to seed: APP_ENV is production")
+	if err := refuseProduction(cfg.App.Environment); err != nil {
+		return err
 	}
 
 	pool, err := pgxpool.New(ctx, cfg.Database.DSN)
@@ -154,15 +203,10 @@ func run(ctx context.Context, out io.Writer) error {
 	// the getting-started guide hands out is refused the very catalogue this
 	// seed then authors. user.New grants it as part of creating the account.
 	roles := rbac.New(rbac.Deps{Pool: pool})
-	module := user.New(user.Deps{Pool: pool, Roles: roles})
-	hasher := authdomain.NewHasher(authdomain.DefaultHashParams())
-
-	hash, err := hasher.Hash(demoPassword)
-	if err != nil {
-		return fmt.Errorf("hash demo password: %w", err)
+	if foundationCoursesOnly {
+		return seedConfiguredFoundationCourses(ctx, pool, uuid.Nil, cfg, out)
 	}
-
-	adminID, err := seedDemoAccounts(ctx, pool, module.Creator(), roles, hash, out)
+	adminID, err := contentOwner(ctx, pool, roles, out)
 	if err != nil {
 		return err
 	}
@@ -178,8 +222,66 @@ func run(ctx context.Context, out io.Writer) error {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(out, "\npassword for all: %s\n", demoPassword)
+	// The frozen Foundation content (WO 22 Stage G): loaded through content's
+	// own state machine, with the approval it already had.
+	if includeFoundationFixtures {
+		if err := seedFoundationFixtures(ctx, pool, adminID, defaultFoundationFixtureDir, out); err != nil {
+			return fmt.Errorf("seed foundation fixtures: %w", err)
+		}
+	}
+
+	// The thirteen Foundation courses (WO 22 Stage H), built from the course
+	// map through lesson's Author, after the fixtures: a lesson's activities are
+	// its node's published content, so building the courses first gave a fresh
+	// database thirteen courses of empty lessons. This also archives the five
+	// Phase 2 courses seedAuthoredContent authored, so the catalogue shows
+	// thirteen.
+	if err := seedConfiguredFoundationCourses(ctx, pool, adminID, cfg, out); err != nil {
+		return fmt.Errorf("seed Foundation courses: %w", err)
+	}
+
+	// The frozen exam content (WO 22 Stage N): loaded through content's own
+	// state machine, put in the bank, then composed into numbered fixed tests.
+	if includeExamFixtures {
+		if err := seedExamFixtures(ctx, pool, adminID, defaultExamFixtureDir, out); err != nil {
+			return fmt.Errorf("seed exam fixtures: %w", err)
+		}
+	}
+
+	if !referenceOnly {
+		_, _ = fmt.Fprintf(out, "\npassword for all: %s\n", demoPassword)
+	}
 	return nil
+}
+
+// refuseProduction allows only -reference in production: every other mode
+// writes the demo accounts or rebuilds courses around them.
+func refuseProduction(environment string) error {
+	if environment == "production" && (!referenceOnly || foundationCoursesOnly) {
+		return errors.New("refusing to seed demo accounts: APP_ENV is production (use -reference)")
+	}
+	return nil
+}
+
+// contentOwner returns the account the catalogue is attributed to: the demo
+// admin it seeds, or with -reference an admin that already exists.
+func contentOwner(ctx context.Context, pool *pgxpool.Pool, roles *rbac.Module, out io.Writer) (uuid.UUID, error) {
+	if referenceOnly {
+		id, err := roles.RoleMembers().FirstHolderOf(ctx, "admin")
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("find an admin to own the catalogue: %w", err)
+		}
+		if id == uuid.Nil {
+			return uuid.Nil, errors.New("no admin yet: register an account and promote it (db/seeds/rbac.sql) first")
+		}
+		return id, nil
+	}
+	module := user.New(user.Deps{Pool: pool, Roles: roles})
+	hash, err := authdomain.NewHasher(authdomain.DefaultHashParams()).Hash(demoPassword)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("hash demo password: %w", err)
+	}
+	return seedDemoAccounts(ctx, pool, module.Creator(), roles, hash, out)
 }
 
 // seedAuthoredContent writes everything that is authored rather than earned:

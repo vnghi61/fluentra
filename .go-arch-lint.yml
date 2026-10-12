@@ -59,16 +59,11 @@ commonComponents:
   - s_config
   - s_dbx
   - s_eventbus
-  - s_flags
   - s_httpx
-  - s_i18n
   - s_id
-  - s_idempotency
-  - s_money
   - s_outbox
   - s_pagination
   - s_secret
-  - s_validation
 
 exclude:
   - mocks
@@ -91,16 +86,11 @@ components:
   s_config:        { in: shared/config }
   s_dbx:           { in: shared/dbx }
   s_eventbus:      { in: shared/eventbus }
-  s_flags:         { in: shared/flags }
   s_httpx:         { in: shared/httpx }
-  s_i18n:          { in: shared/i18n }
   s_id:            { in: shared/id }
-  s_idempotency:   { in: shared/idempotency }
-  s_money:         { in: shared/money }
   s_outbox:        { in: shared/outbox }
   s_pagination:    { in: shared/pagination }
   s_secret:        { in: shared/secret }
-  s_validation:    { in: shared/validation }
 
   # These are exact paths, not `generated/**`. A `**` glob matches nothing at
   # all on Windows in go-arch-lint v1.17 while matching normally on Linux, so a
@@ -114,7 +104,6 @@ components:
   # this file exists to catch. One `generated: { in: generated/** }` component
   # would not catch it — granting a module its own queries would grant it
   # everybody's.
-  g_ops:         { in: generated/ops/sqlc }
   g_job:         { in: generated/job/sqlc }
   g_auth:        { in: generated/auth/sqlc }
   g_user:        { in: generated/user/sqlc }
@@ -328,20 +317,14 @@ deps:
   s_config:        { anyVendorDeps: true }
   s_dbx:           { anyVendorDeps: true }
   s_eventbus:      { anyVendorDeps: true }
-  s_flags:         { anyVendorDeps: true }
   s_httpx:         { anyVendorDeps: true }
-  s_i18n:          { anyVendorDeps: true }
   s_id:            { anyVendorDeps: true }
-  s_idempotency:   { anyVendorDeps: true }
-  s_money:         { anyVendorDeps: true }
   s_outbox:        { anyVendorDeps: true }
   s_pagination:    { anyVendorDeps: true }
   s_secret:        { anyVendorDeps: true }
-  s_validation:    { anyVendorDeps: true }
 
   # sqlc emits pgx types, so it needs the vendor allowance. It depends on nothing
   # of ours, which is what makes it safe for its owner to import.
-  g_ops:       { anyVendorDeps: true }
   g_job:       { anyVendorDeps: true }
   g_auth:      { anyVendorDeps: true }
   g_user:      { anyVendorDeps: true }
@@ -451,16 +434,16 @@ deps:
   m_audit:            { mayDependOn: [m_audit_domain, m_audit_repository, m_audit_service, m_audit_http, c_audit, p_job, p_telemetry] }
   m_admin_domain:     { mayDependOn: [c_admin] }
   m_admin_repository: { mayDependOn: [m_admin_domain, c_admin, g_admin] }
-  m_admin_service:    { mayDependOn: [m_admin_domain, c_admin, c_user, c_auth, c_audit, g_admin] }
+  m_admin_service:    { mayDependOn: [m_admin_domain, c_admin, c_user, c_auth, c_audit, g_admin, p_storage], canUse: [v_imaging, v_ximage] }
   m_admin_http:       { mayDependOn: [m_admin_domain, m_admin_service, c_admin, c_user] }
-  m_admin:            { mayDependOn: [m_admin_domain, m_admin_repository, m_admin_service, m_admin_http, c_admin, c_user, c_auth, c_audit, p_job] }
+  m_admin:            { mayDependOn: [m_admin_domain, m_admin_repository, m_admin_service, m_admin_http, c_admin, c_user, c_auth, c_audit, p_job, p_storage] }
   m_notification: { mayDependOn: [p_mailer, p_job, p_cache, p_telemetry, c_user] }
 
   # content, by layer
   m_content_repository: { mayDependOn: [m_content_domain, c_content, g_content] }
   m_content_service:    { mayDependOn: [m_content_domain, c_content] }
   m_content_http:       { mayDependOn: [m_content_domain, m_content_service, c_content] }
-  m_content:            { mayDependOn: [m_content_domain, m_content_repository, m_content_service, m_content_http, c_content] }
+  m_content:            { mayDependOn: [m_content_domain, m_content_repository, m_content_service, m_content_http, c_content, p_job] }
   # lesson, by layer
   m_lesson_repository: { mayDependOn: [m_lesson_domain, c_lesson, g_lesson] }
   m_lesson_service:    { mayDependOn: [m_lesson_domain, c_lesson, c_content, c_studio, p_cache, p_storage] }
@@ -473,10 +456,13 @@ deps:
   # mayDependOn. Every other module here with real code is split the same way.
   m_learning_domain:     { mayDependOn: [c_learning] }
   m_learning_repository: { mayDependOn: [m_learning_domain, c_learning, g_learning] }
-  m_learning_service:    { mayDependOn: [m_learning_domain, m_learning_repository, c_learning, c_lesson, c_content, c_srs, c_user, c_admin, c_studio, p_cache, p_job, p_telemetry, p_ai] }
+  m_learning_service:    { mayDependOn: [m_learning_domain, m_learning_repository, c_learning, c_lesson, c_content, c_srs, c_user, c_admin, c_studio, c_resource, p_cache, p_job, p_telemetry, p_ai] }
   m_learning_http:       { mayDependOn: [m_learning_domain, m_learning_service, c_learning, c_lesson] }
   m_learning_job:        { mayDependOn: [m_learning_domain, p_job, p_telemetry] }
-  m_learning:            { mayDependOn: [m_learning_domain, m_learning_repository, m_learning_service, m_learning_http, m_learning_job, c_learning, c_lesson, c_content, c_srs, c_user, c_admin, c_studio, g_learning, p_cache, p_job, p_telemetry, p_ai] }
+  m_learning:            { mayDependOn: [m_learning_domain, m_learning_repository, m_learning_service, m_learning_http, m_learning_job, c_learning, c_lesson, c_content, c_srs, c_user, c_admin, c_studio, c_resource, g_learning, p_cache, p_job, p_telemetry, p_ai] }
+  # The independent verifier returns a content verification, so the learning
+  # contract names content's Verification type (WO 22 Stage A).
+  c_learning:      { mayDependOn: [c_content] }
   c_srs:           { mayDependOn: [c_learning] }
   c_vocabulary:    { mayDependOn: [c_learning] }
   c_grammar:       { mayDependOn: [c_learning] }
@@ -534,10 +520,10 @@ deps:
   m_questionbank:            { mayDependOn: [m_questionbank_domain, m_questionbank_repository, m_questionbank_service, m_questionbank_http, c_questionbank, c_content, c_lesson, c_learning, c_rbac, g_questionbank, p_ai, p_search, p_telemetry] }
   m_exam_domain:     { mayDependOn: [c_exam] }
   m_exam_repository: { mayDependOn: [m_exam_domain, c_exam, g_exam] }
-  m_exam_service:    { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_job, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, c_questionbank, g_exam, p_job, p_telemetry], anyVendorDeps: true }
+  m_exam_service:    { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_job, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, c_questionbank, c_content, g_exam, p_job, p_telemetry], anyVendorDeps: true }
   m_exam_job:        { mayDependOn: [m_exam_service, c_exam, p_job, p_telemetry], anyVendorDeps: true }
   m_exam_http:       { mayDependOn: [m_exam_domain, m_exam_service, c_exam] }
-  m_exam:            { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_service, m_exam_job, m_exam_http, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, c_questionbank, g_exam, p_job, p_ai, p_telemetry] }
+  m_exam:            { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_service, m_exam_job, m_exam_http, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, c_questionbank, c_content, g_exam, p_job, p_ai, p_telemetry] }
   # c_user is on this list and is not in MODULE_INDEX's original arrow set. It
   # is there for one field: the learner's timezone. BR-GAMIFICATION-02 puts the
   # streak day boundary in the learner's own zone, and without reading it every

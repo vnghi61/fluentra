@@ -105,6 +105,74 @@ type Author interface {
 	// EnsureDraft creates or updates the item at this slug and returns the
 	// id of its draft version, without marking it published or approved.
 	EnsureDraft(ctx context.Context, spec AuthorSpec) (uuid.UUID, error)
+
+	// ApproveVerified publishes a draft that an independent verifier confirmed
+	// (WO 22 Stage A). It walks the draft in_review → approved → published in
+	// one transaction, emits content.published through the outbox like any
+	// other publish, and records a content_reviews row naming the verifier. A
+	// verification that is not confirmed is refused: this door publishes, it
+	// never judges.
+	ApproveVerified(ctx context.Context, versionID uuid.UUID, verification Verification) error
+}
+
+// VerificationRecorder records an independent verifier's outcome on a version
+// that is not yet published, so a doubt stays in its batch with its reason.
+//
+// Separate from Author because a doubt changes no state: it writes the marking
+// and leaves the version a draft for a person.
+type VerificationRecorder interface {
+	RecordVerification(ctx context.Context, versionID uuid.UUID, verification Verification) error
+}
+
+// VerifiedBatchPublisher publishes a generation batch the independent verifier
+// confirmed whole (WO 22 D22-13).
+//
+// A Foundation node is one batch: its topic, exercises, quiz and review. It
+// publishes only when every version in it was confirmed; one doubt leaves the
+// whole batch as drafts for a person, who approves it as a batch. Nothing is
+// published half-way, so a learner never meets a topic whose quiz is missing or
+// exercises whose topic was doubted.
+type VerifiedBatchPublisher interface {
+	// ApproveVerifiedBatch publishes every version of the batch in one
+	// transaction and returns how many it published. A batch holding a
+	// doubt, or refused by a publication gate, is left untouched and reported
+	// with a CONTENT_BATCH_ESCALATED error naming why.
+	ApproveVerifiedBatch(ctx context.Context, batch string) (int, error)
+}
+
+// RecordedApprover replays a person's approval that a frozen fixture recorded
+// (WO 22 D22-4: `make seed` "records the approval each item already had").
+//
+// Only the seed uses it. An item a person approved on the machine that
+// generated it is published on a fresh database with a review row saying so,
+// and without the verifier marking an auto-published item carries: it was not
+// auto-published, and the daily sample must not draw it as if it were.
+type RecordedApprover interface {
+	ApproveRecorded(ctx context.Context, versionID uuid.UUID, approvedAt time.Time) error
+}
+
+// ReviewBacklog says how far behind the people reviewing generated content are
+// (WO 22 Stage O): a job that generates faster than anyone reads the doubts only
+// grows a backlog.
+type ReviewBacklog interface {
+	// PendingBatchDays is how many distinct days' batches under the prefix
+	// still hold drafts nobody has reviewed.
+	PendingBatchDays(ctx context.Context, batchPrefix string) (int, error)
+}
+
+// Verification is the outcome of an independent check on a machine-authored
+// version (WO 22 Stage A).
+//
+// Confirmed means a model other than the one that wrote the version solved it,
+// found the key defensible and the explanation sound. Model and CheckedAt are
+// stored so a published item can always be traced to the verifier that let it
+// through. A verification that is not confirmed carries the reason a person
+// needs to look.
+type Verification struct {
+	Confirmed bool
+	Model     string
+	Reason    string
+	CheckedAt time.Time
 }
 
 // Published is emitted when a content version transitions to published.

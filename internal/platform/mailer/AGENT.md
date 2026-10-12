@@ -100,7 +100,7 @@ Migrations: `db/migrations/mailer/` · Queries: `db/queries/mailer/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `mailer`). See also [`API.md`](API.md).
+(tag: `mailer`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -178,7 +178,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -193,8 +193,6 @@ _No deviations from the global standard._
 | `TEMPLATE_NOT_FOUND` | 500 | Template missing for the requested locale |
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -222,6 +220,139 @@ go test -tags=integration ./internal/platform/mailer/...  # integration (testcon
 - Do not interpolate user input into HTML without escaping.
 - Do not send real email from development or CI.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/admin/emails`
+
+Delivery log search
+
+| | |
+|---|---|
+| Permission | `system.email` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/emails/{id}/resend`
+
+Resend a failed message
+
+| | |
+|---|---|
+| Permission | `system.email` |
+| Success | 202 |
+| Errors | standard set |
+
+#### `POST /api/v1/webhooks/email`
+
+Provider bounce and complaint webhook
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Signature-verified on the raw body |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `EMAIL_SUPPRESSED` | 409 | Address is on the suppression list |
+| `TEMPLATE_NOT_FOUND` | 500 | Template missing for the requested locale |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Send with retry and suppression
+
+```mermaid
+flowchart TD
+    A["Sender.Send(msg)"] --> B[enqueue email.send job]
+    B --> C{suppressed?}
+    C -->|yes, non-security| D[skip, log reason]
+    C -->|no| E[render template + locale]
+    E -->|template missing| F[fail loudly — this is a bug, not a runtime condition]
+    E --> G[provider send]
+    G -->|transient| H{attempts left?}
+    H -->|yes| G
+    H -->|no| I[log failed; alert if the category is critical]
+    G -->|hard bounce| J[suppress address; publish email.bounced]
+    G -->|accepted| K[log sent with provider message id]
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| SMTP or provider API? | One interface, both implementations | SMTP works everywhere including local development; a provider API gives better deliverability signals in production. The choice becomes configuration |
+| Template format? | MJML compiled at build time | Email HTML is a compatibility minefield; MJML solves it and the compile step keeps runtime rendering cheap |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 1
+
+- [ ] Sender interface with SMTP implementation and Mailpit in dev
+- [ ] MJML build step and the first templates: verification, reset, new device
+- [ ] English and Vietnamese locales
+- [ ] Delivery log and suppression list
+- [ ] Bounce webhook with signature verification
+- [ ] Async sending with retry classification
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Provider API implementation
+- Deliverability dashboard
+- Per-template engagement metrics
+<!-- END GENERATED: todo-future -->
 
 ---
 

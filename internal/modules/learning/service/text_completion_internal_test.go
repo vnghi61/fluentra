@@ -1,0 +1,82 @@
+package service
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
+
+func TestTextBlanksMatchTheirOptions(t *testing.T) {
+	t.Parallel()
+
+	words := []candOption{
+		{ID: "A", Text: "attend"}, {ID: "B", Text: "attending"},
+		{ID: "C", Text: "attended"}, {ID: "D", Text: "attendance"},
+	}
+	sentences := []candOption{
+		{ID: "A", Text: "Please send your comments by Friday."},
+		{ID: "B", Text: "The rent is higher than we expected."},
+		{ID: "C", Text: "We look forward to settling in soon."},
+		{ID: "D", Text: "The team visited twelve locations last month."},
+	}
+	body := func(passage string, opts ...[]candOption) json.RawMessage {
+		cand := readingComprehensionCand{Passage: passage}
+		for _, o := range opts {
+			cand.Questions = append(cand.Questions, candQuestion{Type: questionTypeChoice, Options: o, CorrectOptionID: "A"})
+		}
+		raw, _ := json.Marshal(cand)
+		return raw
+	}
+
+	cases := []struct {
+		name    string
+		body    json.RawMessage
+		wantErr string
+	}{
+		{
+			"word inside a sentence",
+			body("All staff must (1) ___ the meeting. The room is booked. (2) ___", words, sentences), "",
+		},
+		{
+			"word between sentences",
+			body("The room is booked. (1) ___ If you have questions, call me.", words), "stands between sentences",
+		},
+		{"sentence inside a sentence", body("All staff must (1) ___ the meeting.", sentences), "inside a sentence"},
+		{"word before a name", body("Dear all, we have news. (1) ___ Riverside Bank will open a branch.", words), ""},
+		{"sentence after a salutation", body("Dear customers, (1) ___ The shop opens at nine.", sentences), ""},
+		{
+			"sentence before an unusual opener",
+			body("Parking is behind the building. (1) ___ Interested firms may book a tour.", sentences), "",
+		},
+		{
+			"short sentences at the end",
+			body("Thank you for your help. (1) ___", []candOption{
+				{ID: "A", Text: "See you there!"}, {ID: "B", Text: "Call us today."},
+				{ID: "C", Text: "It rained."}, {ID: "D", Text: "We are closed."},
+			}), "",
+		},
+		{"linking word before a comma", body("The room is booked. (1) ___, the lift is closed.", words), ""},
+		{"sentence after a line break", body("Staff notice\n(1) ___ The lift is closed today.", sentences), ""},
+		{"blank count", body("All staff must (1) ___ the meeting.", words, words), "1 blanks for 2 questions"},
+		{
+			"one sentence blank of four",
+			body("Staff must (1) ___ the talk. It is (2) ___ at noon. (3) ___ Lunch is (4) ___.",
+				words, words, sentences, words), "",
+		},
+		{
+			"two sentence blanks of four",
+			body("Staff must (1) ___ the talk. (2) ___ It is (3) ___ at noon. (4) ___", words, sentences, words, sentences),
+			"2 blanks take a whole sentence",
+		},
+		{"four texts", body("Text 1: Staff must (1) ___ the talk. Text 2: (2) ___", words, sentences), "is one text"},
+	}
+	for _, tc := range cases {
+		err := checkTextBlanks(tc.body)
+		switch {
+		case tc.wantErr == "" && err != nil:
+			t.Errorf("%s: unexpected error %v", tc.name, err)
+		case tc.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tc.wantErr)):
+			t.Errorf("%s: error %v, want %q", tc.name, err, tc.wantErr)
+		}
+	}
+}

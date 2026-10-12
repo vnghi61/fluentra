@@ -359,6 +359,12 @@ type ContentContentVersion struct {
 	UpdatedAt   time.Time
 }
 
+type ContentFoundationCourseNode struct {
+	CourseSlug string
+	NodeID     uuid.UUID
+	Position   int32
+}
+
 type ContentItemReport struct {
 	ID               uuid.UUID
 	ContentVersionID uuid.UUID
@@ -379,6 +385,17 @@ type ContentMediaAsset struct {
 	MimeType   *string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+}
+
+type ContentReviewSample struct {
+	VersionID uuid.UUID
+	Batch     string
+	SampledOn pgtype.Date
+	Decision  *string
+	Note      *string
+	DecidedBy *uuid.UUID
+	DecidedAt *time.Time
+	CreatedAt time.Time
 }
 
 type ContentTaxonomy struct {
@@ -586,6 +603,7 @@ type LearnDailySet struct {
 	LocalDate   pgtype.Date
 	ActivityIds []uuid.UUID
 	CreatedAt   time.Time
+	CefrLevel   string
 }
 
 type LearnEnrollment struct {
@@ -707,6 +725,18 @@ type LearnQuest struct {
 	RewardXp    int32
 	Active      bool
 	CreatedAt   time.Time
+}
+
+type LearnResourcePracticeSet struct {
+	ResourceID    uuid.UUID
+	UserID        uuid.UUID
+	LessonID      *uuid.UUID
+	ActivityIds   []uuid.UUID
+	Status        string
+	FailureReason string
+	GeneratedOn   pgtype.Date
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 type LearnReviewCard struct {

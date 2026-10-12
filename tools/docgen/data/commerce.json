@@ -501,7 +501,7 @@
     },
     "dependedOnBy": ["admin", "lesson", "learning"],
     "rules": [
-      "BR-STUDIO-01: A price is a whole number of VND inside configured bounds (49,000 to 5,000,000).",
+      "BR-STUDIO-01: A price is a whole number of VND inside configured bounds (5,000 to 5,000,000).",
       "BR-STUDIO-02: Free -> paid requires a new review. Paid -> free does not.",
       "BR-STUDIO-03: A purchase records the price and the 70/30 creator/platform split in creator_ledger at purchase time.",
       "BR-STUDIO-04: Taking a course down never revokes a purchase.",

@@ -20,6 +20,9 @@ export interface ExerciseFlashcardProps {
   exampleSentences?: ExampleSentence[];
   /** A recorded pronunciation, when the activity config carries one. */
   audioUrl?: string | null | undefined;
+  /** The page crediting the recording; without it the recording does not play. */
+  audioAttribution?: string | null | undefined;
+  audioLicence?: string | null | undefined;
   isLoading?: boolean;
   isSubmitted: boolean;
   isCorrect?: boolean | null | undefined;
@@ -45,6 +48,8 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
   definitionVi,
   exampleSentences = [],
   audioUrl,
+  audioAttribution,
+  audioLicence,
   isLoading = false,
   isSubmitted,
   isCorrect,
@@ -85,7 +90,7 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
   return (
     <div className="space-y-8 max-w-xl mx-auto py-4">
       <div className="text-center space-y-1">
-        <h2 className="text-xl md:text-2xl font-bold text-text">
+        <h2 className="text-lg md:text-xl font-semibold leading-snug text-text">
           {prompt || t("runner.flipPrompt", "Study this key term")}
         </h2>
       </div>
@@ -99,7 +104,7 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
         front={
           <div className={cn(faceClass, "border-border bg-surface-card")}>
             <div className="space-y-4">
-              <h3 className="text-3xl md:text-4xl font-extrabold text-text tracking-tight">
+              <h3 className="text-3xl md:text-4xl font-bold text-text tracking-tight break-words">
                 {targetWord}
               </h3>
               {/*
@@ -114,10 +119,15 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
                     {ipa}
                   </p>
                 )}
-                <PronounceButton text={targetWord ?? ""} audioUrl={audioUrl} />
+                <PronounceButton
+                  text={targetWord ?? ""}
+                  audioUrl={audioUrl}
+                  audioAttribution={audioAttribution}
+                  audioLicence={audioLicence}
+                />
               </div>
-              <p className="text-xs text-text-muted mt-6 flex items-center justify-center gap-1.5 font-medium">
-                <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
+              <p className="text-sm text-text-muted mt-6 flex items-center justify-center gap-1.5 font-medium">
+                <RotateCw className="h-4 w-4" aria-hidden="true" />
                 {t("runner.flipPrompt", "Press Space or tap to flip card")}
               </p>
             </div>
@@ -161,7 +171,7 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
         <div
           role="status"
           className={cn(
-            "rounded-xl border p-4 text-sm font-medium",
+            "rounded-xl border p-4 text-base leading-relaxed font-medium",
             isCorrect
               ? "border-success bg-success/10 text-success-accent"
               : "border-border bg-surface-muted/40 text-text-muted",
@@ -184,7 +194,7 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
               size="lg"
               disabled={isLoading}
               onClick={() => setIsFlipped(true)}
-              className="w-full sm:w-auto min-w-[160px] min-h-[44px] font-bold gap-2"
+              className="w-full sm:w-auto min-w-[160px] gap-2"
             >
               {t("runner.flipCardBtn", "Flip Card")}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -196,7 +206,7 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
               size="lg"
               disabled={isLoading}
               onClick={onContinue}
-              className="w-full sm:w-auto min-w-[160px] min-h-[44px] font-bold gap-2"
+              className="w-full sm:w-auto min-w-[160px] gap-2"
             >
               {t("runner.continueBtn", "Continue")}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -204,7 +214,7 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-text-muted text-center font-medium">
+            <p className="text-base text-text-muted text-center font-medium">
               {t("runner.recallPrompt", "Did you recall this word?")}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
@@ -213,7 +223,7 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
                 variant="outline"
                 disabled={isLoading}
                 onClick={() => onSubmit(false)}
-                className="w-full sm:w-auto min-w-[160px] min-h-[44px] font-bold gap-2"
+                className="w-full sm:w-auto min-w-[160px] gap-2"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
                 {t("runner.notYetBtn", "Not yet")}
@@ -222,7 +232,7 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
                 size="lg"
                 disabled={isLoading}
                 onClick={() => onSubmit(true)}
-                className="w-full sm:w-auto min-w-[160px] min-h-[44px] font-bold gap-2"
+                className="w-full sm:w-auto min-w-[160px] gap-2"
               >
                 <Check className="h-4 w-4" aria-hidden="true" />
                 {t("runner.knewItBtn", "I knew it")}

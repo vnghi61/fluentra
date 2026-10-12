@@ -3,6 +3,7 @@ import { Check, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import { pickLocalized } from "@/lib/localized";
 import { cn } from "@/lib/utils";
 import type {
   AnswerExplanation,
@@ -130,24 +131,22 @@ export function reviewStates(item: ExamItemOutcome): ReviewState[] {
   return [item.score === item.max_score ? "correct" : "wrong"];
 }
 
-const Explanation: React.FC<{ explanation: AnswerExplanation }> = ({
+export const Explanation: React.FC<{ explanation: AnswerExplanation }> = ({
   explanation,
 }) => {
   const { t, i18n } = useTranslation();
-  const vi = i18n.language.startsWith("vi");
-  const lead = vi
-    ? explanation.text_vi || explanation.text
-    : explanation.text || explanation.text_vi;
-  const second = vi ? explanation.text : explanation.text_vi;
+  const text = pickLocalized(
+    explanation.text,
+    explanation.text_vi,
+    i18n.language,
+  );
+  if (!text) return null;
   return (
-    <div className="space-y-1 rounded-lg border border-border-subtle bg-surface-muted/60 p-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+    <div className="space-y-1 rounded-lg bg-surface-muted/60 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
         {t("exam.report.explanationLabel")}
       </p>
-      <p className="text-sm leading-relaxed text-text">{lead}</p>
-      {second && second !== lead && (
-        <p className="text-xs leading-relaxed text-text-muted">{second}</p>
-      )}
+      <p className="max-w-prose text-base leading-relaxed text-text">{text}</p>
     </div>
   );
 };
@@ -170,7 +169,7 @@ const Reveal: React.FC<{ label: string; children: React.ReactNode }> = ({
         {open ? t("exam.report.hideText") : label}
       </Button>
       {open && (
-        <div className="whitespace-pre-line rounded-lg border border-border-subtle bg-surface-muted/60 p-3 text-sm leading-relaxed text-text">
+        <div className="max-w-3xl whitespace-pre-line rounded-lg bg-surface-muted/60 p-3 text-base leading-relaxed text-text">
           {children}
         </div>
       )}
@@ -183,7 +182,7 @@ const StateBadge: React.FC<{ state: ReviewState }> = ({ state }) => {
   if (state === "correct") {
     return (
       <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-xs font-semibold text-success-accent">
-        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+        <Check className="h-4 w-4" aria-hidden="true" />
         {t("exam.report.legendCorrect")}
       </span>
     );
@@ -191,14 +190,14 @@ const StateBadge: React.FC<{ state: ReviewState }> = ({ state }) => {
   if (state === "wrong") {
     return (
       <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-danger/15 px-2 py-0.5 text-xs font-semibold text-danger-accent">
-        <X className="h-3.5 w-3.5" aria-hidden="true" />
+        <X className="h-4 w-4" aria-hidden="true" />
         {t("exam.report.legendWrong")}
       </span>
     );
   }
   return (
     <span className="inline-flex shrink-0 items-center rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-text-muted">
-      {t("exam.report.noAnswer")}
+      {t("exam.report.filter.other")}
     </span>
   );
 };
@@ -213,7 +212,8 @@ function optionLabel(options: ReviewOption[], id: string | undefined): string {
 const ComprehensionReview: React.FC<{
   item: ExamItemOutcome;
   firstNumber: number;
-}> = ({ item, firstNumber }) => {
+  questionIndex?: number | undefined;
+}> = ({ item, firstNumber, questionIndex }) => {
   const { t } = useTranslation();
   const questions = reviewQuestions(item);
   const answers = learnerAnswers(item);
@@ -236,108 +236,112 @@ const ComprehensionReview: React.FC<{
           {source}
         </Reveal>
       )}
-      {questions.map((question, index) => {
-        const number = firstNumber + index;
-        const chosen = answers[question.id] ?? "";
-        const verdict = results.find((result) => result.id === question.id);
-        const state = questionState(question, chosen, verdict);
-        const correctId = verdict?.correct_answer ?? question.correctAnswer;
-        const explanation =
-          question.explanation ?? verdict?.explanation ?? null;
-        return (
-          <div
-            key={question.id || index}
-            id={`review-q-${number}`}
-            className={cn(
-              "space-y-3 rounded-xl border p-4",
-              state === "correct" && "border-success/50 bg-success/5",
-              state === "wrong" && "border-danger/50 bg-danger/5",
-              state === "other" && "border-border-subtle",
-            )}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <p className="text-sm font-medium leading-relaxed text-text">
-                <span className="mr-2 font-mono text-primary-accent">
-                  {number}.
-                </span>
-                {question.prompt}
-              </p>
-              <StateBadge state={state} />
-            </div>
-            {question.options.length > 0 && (
-              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {question.options.map((option, optionIndex) => {
-                  const isCorrect = option.id === correctId;
-                  const isChosen = option.id === chosen;
-                  return (
-                    <li
-                      key={option.id || optionIndex}
-                      className={cn(
-                        "flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm",
-                        isCorrect &&
-                          "border-success bg-success/15 font-semibold text-text",
-                        isChosen &&
-                          !isCorrect &&
-                          "border-danger bg-danger/10 text-text",
-                        !isCorrect &&
-                          !isChosen &&
-                          "border-border-subtle text-text-muted",
-                      )}
-                    >
-                      <span>
-                        <span className="mr-2 font-mono text-xs">
-                          {String.fromCharCode(65 + optionIndex)}
-                        </span>
-                        {option.text}
-                      </span>
-                      {isCorrect && (
-                        <Check
-                          className="h-4 w-4 shrink-0 text-success-accent"
-                          aria-hidden="true"
-                        />
-                      )}
-                      {isChosen && !isCorrect && (
-                        <X
-                          className="h-4 w-4 shrink-0 text-danger-accent"
-                          aria-hidden="true"
-                        />
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            <dl className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
-              <div>
-                <dt className="inline text-text-muted">
-                  {t("exam.report.yourAnswer")}:{" "}
-                </dt>
-                <dd
-                  className={cn(
-                    "inline font-semibold",
-                    state === "wrong" ? "text-danger-accent" : "text-text",
-                  )}
-                >
-                  {chosen
-                    ? optionLabel(question.options, chosen)
-                    : t("exam.report.noAnswer")}
-                </dd>
+      {questions
+        .map((question, index) => ({ question, index }))
+        .filter(
+          ({ index }) => questionIndex === undefined || index === questionIndex,
+        )
+        .map(({ question, index }) => {
+          const number = firstNumber + index;
+          const chosen = answers[question.id] ?? "";
+          const verdict = results.find((result) => result.id === question.id);
+          const state = questionState(question, chosen, verdict);
+          const correctId = verdict?.correct_answer ?? question.correctAnswer;
+          const explanation =
+            question.explanation ?? verdict?.explanation ?? null;
+          return (
+            <div
+              key={question.id || index}
+              id={`review-q-${number}`}
+              className={cn(
+                "space-y-3 rounded-xl bg-surface-muted/30 p-4",
+                state === "correct" && "bg-success/5",
+                state === "wrong" && "bg-danger/5",
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 max-w-prose break-words text-base font-medium leading-relaxed text-text">
+                  <span className="mr-2 font-mono text-primary-accent">
+                    {number}.
+                  </span>
+                  {question.prompt}
+                </p>
+                <StateBadge state={state} />
               </div>
-              {correctId && (
+              {question.options.length > 0 && (
+                <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {question.options.map((option, optionIndex) => {
+                    const isCorrect = option.id === correctId;
+                    const isChosen = option.id === chosen;
+                    return (
+                      <li
+                        key={option.id || optionIndex}
+                        className={cn(
+                          "flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-base leading-relaxed",
+                          isCorrect &&
+                            "border-success bg-success/15 font-semibold text-text",
+                          isChosen &&
+                            !isCorrect &&
+                            "border-danger bg-danger/10 text-text",
+                          !isCorrect &&
+                            !isChosen &&
+                            "border-border-subtle text-text-muted",
+                        )}
+                      >
+                        <span className="min-w-0 break-words">
+                          <span className="mr-2 font-mono text-sm">
+                            {String.fromCharCode(65 + optionIndex)}
+                          </span>
+                          {option.text}
+                        </span>
+                        {isCorrect && (
+                          <Check
+                            className="h-4 w-4 shrink-0 text-success-accent"
+                            aria-hidden="true"
+                          />
+                        )}
+                        {isChosen && !isCorrect && (
+                          <X
+                            className="h-4 w-4 shrink-0 text-danger-accent"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <dl className="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">
                 <div>
                   <dt className="inline text-text-muted">
-                    {t("exam.report.correctAnswer")}:{" "}
+                    {t("exam.report.yourAnswer")}:{" "}
                   </dt>
-                  <dd className="inline font-semibold text-success-accent">
-                    {optionLabel(question.options, correctId)}
+                  <dd
+                    className={cn(
+                      "inline font-semibold",
+                      state === "wrong" ? "text-danger-accent" : "text-text",
+                    )}
+                  >
+                    {chosen
+                      ? optionLabel(question.options, chosen)
+                      : t("exam.report.noAnswer")}
                   </dd>
                 </div>
-              )}
-            </dl>
-            {explanation && <Explanation explanation={explanation} />}
-          </div>
-        );
-      })}
+                {correctId && (
+                  <div>
+                    <dt className="inline text-text-muted">
+                      {t("exam.report.correctAnswer")}:{" "}
+                    </dt>
+                    <dd className="inline font-semibold text-success-accent">
+                      {optionLabel(question.options, correctId)}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              {explanation && <Explanation explanation={explanation} />}
+            </div>
+          );
+        })}
     </div>
   );
 };
@@ -353,18 +357,18 @@ const RewriteReview: React.FC<{ item: ExamItemOutcome }> = ({ item }) => {
     : [];
   const explanation = readExplanation(item.content?.explanation);
   return (
-    <div className="space-y-2 text-sm">
+    <div className="max-w-3xl space-y-2 text-base">
       <p className="leading-relaxed text-text">
         {asString(item.content?.prompt)}
       </p>
-      <p className="text-xs">
+      <p className="text-sm">
         <span className="text-text-muted">{t("exam.report.yourText")}: </span>
         <span className="font-semibold text-text">
           {answer || t("exam.report.noAnswer")}
         </span>
       </p>
       {correct && (
-        <p className="text-xs">
+        <p className="text-sm">
           <span className="text-text-muted">
             {t("exam.report.correctAnswer")}:{" "}
           </span>
@@ -372,7 +376,7 @@ const RewriteReview: React.FC<{ item: ExamItemOutcome }> = ({ item }) => {
         </p>
       )}
       {accepted.length > 0 && (
-        <p className="text-xs text-text-muted">
+        <p className="text-sm text-text-muted">
           {t("exam.report.acceptedAnswers")}: {accepted.join(" / ")}
         </p>
       )}
@@ -386,13 +390,21 @@ const WritingReview: React.FC<{ item: ExamItemOutcome }> = ({ item }) => {
   const answer = asString(item.response?.text_answer);
   const words = answer.trim() ? answer.trim().split(/\s+/).length : 0;
   const sample = asString(item.content?.model_answer);
+  const chart = asString(item.content?.image_url);
   return (
-    <div className="space-y-2 text-sm">
+    <div className="max-w-3xl space-y-2 text-base">
       <p className="leading-relaxed text-text">
         {asString(item.content?.prompt)}
       </p>
-      <div className="space-y-1 rounded-lg border border-border-subtle p-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+      {chart && (
+        <img
+          src={chart}
+          alt={t("exam.writing.chart")}
+          className="w-full max-w-md rounded-lg border border-border-subtle bg-white"
+        />
+      )}
+      <div className="space-y-1 rounded-lg bg-surface-muted/60 p-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
           {t("exam.report.yourText")} ·{" "}
           {t("exam.report.wordCount", { count: words })}
         </p>
@@ -401,7 +413,7 @@ const WritingReview: React.FC<{ item: ExamItemOutcome }> = ({ item }) => {
         </p>
       </div>
       {item.feedback && (
-        <p className="text-xs leading-relaxed text-text-muted">
+        <p className="max-w-prose text-base leading-relaxed text-text-muted">
           {item.feedback}
         </p>
       )}
@@ -414,20 +426,20 @@ const SpeakingReview: React.FC<{ item: ExamItemOutcome }> = ({ item }) => {
   const { t } = useTranslation();
   const reference = asString(item.content?.reference_text);
   return (
-    <div className="space-y-2 text-sm">
+    <div className="max-w-3xl space-y-2 text-base">
       <p className="leading-relaxed text-text">
         {asString(item.content?.prompt)}
       </p>
       {reference && (
         <div className="space-y-1 rounded-lg border border-border-subtle p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
             {t("exam.report.readAloudText")}
           </p>
           <p className="leading-relaxed text-text">{reference}</p>
         </div>
       )}
       {item.feedback && (
-        <p className="text-xs leading-relaxed text-text-muted">
+        <p className="max-w-prose text-base leading-relaxed text-text-muted">
           {item.feedback}
         </p>
       )}
@@ -438,7 +450,8 @@ const SpeakingReview: React.FC<{ item: ExamItemOutcome }> = ({ item }) => {
 export const ExamItemReview: React.FC<{
   item: ExamItemOutcome;
   firstNumber: number;
-}> = ({ item, firstNumber }) => {
+  questionIndex?: number | undefined;
+}> = ({ item, firstNumber, questionIndex }) => {
   if (!item.content) return null;
   switch (item.kind) {
     case "listening_comprehension":
@@ -447,8 +460,15 @@ export const ExamItemReview: React.FC<{
     case "mcq_gap":
     case "photo_description":
     case "question_response":
-      return <ComprehensionReview item={item} firstNumber={firstNumber} />;
+      return (
+        <ComprehensionReview
+          item={item}
+          firstNumber={firstNumber}
+          questionIndex={questionIndex}
+        />
+      );
     case "grammar_sentence_transform":
+    case "typed_completion":
       return <RewriteReview item={item} />;
     case "writing_prompt":
       return <WritingReview item={item} />;

@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +16,7 @@ import (
 
 	"github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/content/domain"
+	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
 )
@@ -159,6 +162,19 @@ type Repository interface {
 
 	ListReviewQueue(ctx context.Context, filter domain.ReviewQueueFilter) ([]domain.ReviewQueueItem, error)
 	CountReviewQueue(ctx context.Context, filter domain.ReviewQueueFilter) (int64, error)
+	ListReviewBatches(ctx context.Context, limit, offset int) ([]domain.ReviewBatch, error)
+	CountReviewBatches(ctx context.Context) (int64, error)
+	ListReviewBatchVersionIDs(ctx context.Context, batch string) ([]uuid.UUID, error)
+	CountPendingBatchDays(ctx context.Context, prefix string) (int64, error)
+	CountAutoPublishedOn(ctx context.Context, day time.Time) (int64, error)
+	ListAutoPublishedOn(ctx context.Context, day time.Time, sampleSize int) ([]uuid.UUID, error)
+	InsertReviewSample(ctx context.Context, versionID uuid.UUID, batch string, sampledOn time.Time) error
+	ListOpenReviewSamples(ctx context.Context, limit, offset int) ([]domain.ReviewSample, error)
+	CountOpenReviewSamples(ctx context.Context) (int64, error)
+	DecideReviewSample(
+		ctx context.Context, versionID uuid.UUID, decision domain.SampleDecision, note *string, decidedBy uuid.UUID,
+	) error
+	IsAutoPublishedVersion(ctx context.Context, versionID uuid.UUID) (bool, error)
 
 	WithTx(tx pgx.Tx) Repository
 }
@@ -823,14 +839,20 @@ func (s *Service) Review(
 			return err
 		}
 
-		var nextStatus domain.AuthoringStatus
-		switch req.Decision {
-		case domain.ReviewDecisionApproved:
-			nextStatus = domain.StatusApproved
-		case domain.ReviewDecisionChangesRequested:
-			nextStatus = domain.StatusDraft
-		default:
-			return domain.ErrInvalidReviewDecision
+		// A machine-authored draft has no author to submit it. The generator
+		// wrote it and moved on, and the review queue is where a person reads
+		// it — so an approval walks draft → in_review → approved inside this
+		// transaction. A human's draft still needs its author to submit it.
+		if draftVersion.Status == domain.StatusDraft && domain.HasProvenance(draftVersion.Body) {
+			if err := submitMachineDraftForReview(ctx, txRepo, itemID, draftVersion); err != nil {
+				return err
+			}
+			draftVersion.Status = domain.StatusInReview
+		}
+
+		nextStatus, err := nextStatusForDecision(req.Decision)
+		if err != nil {
+			return err
 		}
 
 		if err := domain.ValidateTransition(draftVersion.Status, nextStatus); err != nil {
@@ -864,10 +886,8 @@ func (s *Service) Review(
 
 		// Stage D: Each node's cefr_level in content.taxonomies is set when its topic is approved,
 		// from the approved topic's level (BR-FOUNDATION-05, WO 16 §14).
-		if item.Kind == KindFoundationTopic && nextStatus == domain.StatusApproved {
-			if err := updateSpineNodeCEFRFromTopic(ctx, txRepo, itemID, draftVersion.CEFRLevel); err != nil {
-				return err
-			}
+		if err := maybeUpdateSpineNodeCEFR(ctx, txRepo, item.Kind, itemID, nextStatus, draftVersion.CEFRLevel); err != nil {
+			return err
 		}
 
 		return nil
@@ -878,6 +898,60 @@ func (s *Service) Review(
 	}
 
 	return version, nil
+}
+
+// nextStatusForDecision maps an editorial decision to the status it moves a
+// version to.
+func nextStatusForDecision(decision domain.ReviewDecision) (domain.AuthoringStatus, error) {
+	switch decision {
+	case domain.ReviewDecisionApproved:
+		return domain.StatusApproved, nil
+	case domain.ReviewDecisionChangesRequested:
+		return domain.StatusDraft, nil
+	default:
+		return "", domain.ErrInvalidReviewDecision
+	}
+}
+
+// submitMachineDraftForReview moves a generator's draft to in_review, the
+// state a reviewer's decision is taken from.
+func submitMachineDraftForReview(
+	ctx context.Context, txRepo Repository, itemID uuid.UUID, version domain.Version,
+) error {
+	if err := domain.ValidateTransition(version.Status, domain.StatusInReview); err != nil {
+		return err
+	}
+	if _, err := txRepo.UpdateVersionDraft(
+		ctx,
+		version.ID,
+		version.Kind,
+		[]byte(version.Body),
+		version.CEFRLevel,
+		version.MediaRefs,
+		domain.StatusInReview,
+	); err != nil {
+		return err
+	}
+	if _, err := txRepo.UpdateItemStatus(ctx, itemID, domain.StatusInReview); err != nil {
+		return err
+	}
+	return nil
+}
+
+// maybeUpdateSpineNodeCEFR writes an approved foundation topic's level onto the
+// spine node it is tagged with.
+func maybeUpdateSpineNodeCEFR(
+	ctx context.Context,
+	txRepo Repository,
+	itemKind string,
+	itemID uuid.UUID,
+	status domain.AuthoringStatus,
+	cefrLevel string,
+) error {
+	if itemKind != KindFoundationTopic || status != domain.StatusApproved {
+		return nil
+	}
+	return updateSpineNodeCEFRFromTopic(ctx, txRepo, itemID, cefrLevel)
 }
 
 func updateSpineNodeCEFRFromTopic(
@@ -1018,38 +1092,8 @@ func (s *Service) Publish(ctx context.Context, actorID, itemID uuid.UUID) (domai
 			return err
 		}
 
-		publishedVersion, err = txRepo.PublishVersion(ctx, draftVersion.ID)
-		if err != nil {
-			return err
-		}
-
-		_, err = txRepo.UpdateItemStatus(ctx, itemID, domain.StatusPublished)
-		if err != nil {
-			return err
-		}
-
-		_, err = txRepo.UpdateItemCurrentVersion(ctx, itemID, &draftVersion.ID)
-		if err != nil {
-			return err
-		}
-
-		// Outbox event: content.published
-		if s.events != nil {
-			now := s.clock.Now().UTC()
-			eventPayload := contract.Published{
-				ItemID:     item.ID,
-				VersionID:  draftVersion.ID,
-				Kind:       draftVersion.Kind,
-				CEFRLevel:  draftVersion.CEFRLevel,
-				OccurredAt: now,
-			}
-			_, err = s.events.Write(ctx, tx, contract.Aggregate, contract.EventContentPublished, eventPayload)
-			if err != nil {
-				return fmt.Errorf("write outbox event %s: %w", contract.EventContentPublished, err)
-			}
-		}
-
-		return nil
+		publishedVersion, err = s.finalizePublished(ctx, tx, txRepo, item, draftVersion)
+		return err
 	})
 
 	if err != nil {
@@ -1057,6 +1101,43 @@ func (s *Service) Publish(ctx context.Context, actorID, itemID uuid.UUID) (domai
 	}
 
 	return publishedVersion, nil
+}
+
+// finalizePublished writes a version to published, links it from its item, and
+// emits content.published through the outbox.
+//
+// Shared by Publish, where a person approved the version, and ApproveVerified,
+// where an independent verifier did. The two differ only in how the version
+// reached `approved`; from there the publish is identical, and duplicating it
+// would be two places to keep the outbox event in step.
+func (s *Service) finalizePublished(
+	ctx context.Context, tx pgx.Tx, txRepo Repository, item domain.Item, version domain.Version,
+) (domain.Version, error) {
+	published, err := txRepo.PublishVersion(ctx, version.ID)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	if _, err := txRepo.UpdateItemStatus(ctx, item.ID, domain.StatusPublished); err != nil {
+		return domain.Version{}, err
+	}
+	if _, err := txRepo.UpdateItemCurrentVersion(ctx, item.ID, &version.ID); err != nil {
+		return domain.Version{}, err
+	}
+
+	if s.events != nil {
+		now := s.clock.Now().UTC()
+		eventPayload := contract.Published{
+			ItemID:     item.ID,
+			VersionID:  version.ID,
+			Kind:       version.Kind,
+			CEFRLevel:  version.CEFRLevel,
+			OccurredAt: now,
+		}
+		if _, err := s.events.Write(ctx, tx, contract.Aggregate, contract.EventContentPublished, eventPayload); err != nil {
+			return domain.Version{}, fmt.Errorf("write outbox event %s: %w", contract.EventContentPublished, err)
+		}
+	}
+	return published, nil
 }
 
 // Archive archives a published content item.
@@ -1194,7 +1275,8 @@ func (s *Service) ReportItem(
 	}
 
 	// Verify the content version exists
-	if _, err := s.repo.GetVersionByID(ctx, versionID); err != nil {
+	version, err := s.repo.GetVersionByID(ctx, versionID)
+	if err != nil {
 		if errors.Is(err, domain.ErrVersionNotFound) {
 			return domain.ItemReport{}, domain.ErrVersionNotFound
 		}
@@ -1204,6 +1286,14 @@ func (s *Service) ReportItem(
 	report, err := s.repo.InsertItemReport(ctx, versionID, userID, reason, note)
 	if err != nil {
 		return domain.ItemReport{}, fmt.Errorf("record report: %w", err)
+	}
+
+	// A report on an auto-published item pulls it from future draws and queues
+	// it for a person. A failure here must not lose the report, so it is logged
+	// and the report still returns.
+	if err := s.pullAutoPublishedForReview(ctx, userID, version); err != nil {
+		slog.WarnContext(ctx, "content: could not pull a reported auto-published item",
+			"error", err, "version_id", versionID)
 	}
 	return report, nil
 }
@@ -1255,3 +1345,142 @@ func (s *Service) ReviewQueue(
 
 	return items, count, nil
 }
+
+// ReviewBatches lists the generation runs whose drafts await review, oldest
+// first (WO 22 Stage A.4).
+func (s *Service) ReviewBatches(
+	ctx context.Context, limit, offset int,
+) ([]domain.ReviewBatch, int64, error) {
+	batches, err := s.repo.ListReviewBatches(ctx, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	count, err := s.repo.CountReviewBatches(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	return batches, count, nil
+}
+
+// ApproveReviewBatch approves a generation run's doubts in one transaction
+// (BR-CONTENT-11, WO 22 Stage A.4).
+//
+// Every version in the batch except the rejected ones is walked to published
+// with the same gates and outbox event as an individual publish; a rejected
+// version is recorded as changes-requested and left for a person. One
+// transaction, so a batch is approved whole or not at all.
+func (s *Service) ApproveReviewBatch(
+	ctx context.Context,
+	reviewerID uuid.UUID,
+	batch string,
+	reject []uuid.UUID,
+	note *string,
+) (int, error) {
+	if strings.TrimSpace(batch) == "" {
+		return 0, apperr.New(apperr.Validation, "CONTENT_BATCH_REQUIRED", "A batch is required.")
+	}
+	if reviewerID == uuid.Nil {
+		return 0, apperr.New(apperr.Validation, "CONTENT_REVIEWER_REQUIRED", "A reviewer is required.")
+	}
+	rejected := make(map[uuid.UUID]struct{}, len(reject))
+	for _, id := range reject {
+		rejected[id] = struct{}{}
+	}
+
+	approved := 0
+	err := dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+		repo := s.repo.WithTx(tx)
+
+		versionIDs, err := repo.ListReviewBatchVersionIDs(txCtx, batch)
+		if err != nil {
+			return err
+		}
+		versionIDs, err = topicsLast(txCtx, repo, versionIDs)
+		if err != nil {
+			return err
+		}
+		for _, versionID := range versionIDs {
+			if _, skip := rejected[versionID]; skip {
+				if _, err := repo.CreateReview(
+					txCtx, s.newID(), versionID, reviewerID, domain.ReviewDecisionChangesRequested, note,
+				); err != nil {
+					return err
+				}
+				continue
+			}
+			published, err := s.approveBatchVersion(txCtx, tx, repo, reviewerID, versionID, note)
+			if err != nil {
+				return err
+			}
+			if published {
+				approved++
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return approved, nil
+}
+
+// topicsLast orders a batch so a Foundation topic is published after the
+// exercises, quiz and review of the same batch: its publication gate
+// (BR-FOUNDATION-05) needs them, and one topic ahead of them would fail the
+// whole batch's transaction. The order is otherwise kept.
+func topicsLast(ctx context.Context, repo Repository, versionIDs []uuid.UUID) ([]uuid.UUID, error) {
+	ordered := make([]uuid.UUID, 0, len(versionIDs))
+	var topics []uuid.UUID
+	for _, id := range versionIDs {
+		version, err := repo.GetVersionByID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if version.Kind == KindFoundationTopic {
+			topics = append(topics, id)
+			continue
+		}
+		ordered = append(ordered, id)
+	}
+	return append(ordered, topics...), nil
+}
+
+// approveBatchVersion publishes one version of a batch a person approved, with
+// the same gates and outbox event as an individual publish. A version already
+// published is left alone and reported as not published by this call.
+func (s *Service) approveBatchVersion(
+	ctx context.Context, tx pgx.Tx, repo Repository, reviewerID, versionID uuid.UUID, note *string,
+) (bool, error) {
+	version, err := repo.GetVersionByID(ctx, versionID)
+	if err != nil {
+		return false, err
+	}
+	if version.Status == domain.StatusPublished {
+		return false, nil
+	}
+	item, err := repo.GetItemByID(ctx, version.ItemID)
+	if err != nil {
+		return false, err
+	}
+	ready, err := s.advanceToApproved(ctx, repo, item, version)
+	if err != nil {
+		return false, err
+	}
+	if _, err := s.finalizePublished(ctx, tx, repo, item, ready); err != nil {
+		return false, err
+	}
+	if _, err := repo.CreateReview(
+		ctx, s.newID(), versionID, reviewerID, domain.ReviewDecisionApproved, note,
+	); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// PendingBatchDays implements contract.ReviewBacklog.
+func (s *Service) PendingBatchDays(ctx context.Context, batchPrefix string) (int, error) {
+	count, err := s.repo.CountPendingBatchDays(ctx, batchPrefix)
+	return int(count), err
+}
+
+var _ contract.ReviewBacklog = (*Service)(nil)

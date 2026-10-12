@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -484,5 +485,37 @@ func TestBrowseHandlerIgnoresUnparseablePaging(t *testing.T) {
 	}
 	if seen.limit != 0 || seen.offset != 0 {
 		t.Errorf("filter = limit %d offset %d, want both left at 0 for the service to default", seen.limit, seen.offset)
+	}
+}
+
+// A batch id holds colons ("foundation:NODE:stamp"), and the web client sends it
+// through encodeURIComponent. The handler must hand the service the decoded id;
+// the escaped one matches no drafts and approves nothing with a 200.
+func TestApproveBatchDecodesAnEscapedBatchID(t *testing.T) {
+	t.Parallel()
+
+	const batch = "foundation:PRESENT_PERFECT:20260923T101500"
+	var got string
+	svc := &mockContentService{
+		approveBatchFn: func(_ context.Context, _ uuid.UUID, b string, _ []uuid.UUID, _ *string) (int, error) {
+			got = b
+			return 3, nil
+		},
+	}
+	router := setupTestRouter(svc, &mockGuard{})
+
+	for _, target := range []string{
+		"/admin/review-queue/batches/" + url.PathEscape(batch) + "/approve",
+		"/admin/review-queue/batches/foundation%3APRESENT_PERFECT%3A20260923T101500/approve",
+		"/admin/review-queue/batches/" + batch + "/approve",
+	} {
+		got = ""
+		rec := do(router, adminRequest(http.MethodPost, target, map[string]any{}, uuid.New()))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s: expected 200, got %d: %s", target, rec.Code, rec.Body.String())
+		}
+		if got != batch {
+			t.Errorf("%s: service got batch %q, want %q", target, got, batch)
+		}
 	}
 }

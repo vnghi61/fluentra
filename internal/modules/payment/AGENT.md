@@ -104,7 +104,7 @@ Migrations: `db/migrations/payment/` · Queries: `db/queries/payment/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `payment`). See also [`API.md`](API.md).
+(tag: `payment`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -190,7 +190,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -217,8 +217,6 @@ _No deviations from the global standard._
 - Two reviewers are required for any change to this module (rule S11).
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **90% service (money-handling code carries the highest correctness bar in the repository)**
@@ -249,6 +247,227 @@ go test -tags=integration ./internal/modules/payment/...  # integration (testcon
 - Do not revoke access from this module — publish an event.
 - Do not auto-correct a reconciliation discrepancy; raise it.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `POST /api/v1/webhooks/payment/sepay`
+
+Ingest SePay incoming bank transfer webhook
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/me/orders/{id}`
+
+Poll order status
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/payments/unmatched`
+
+List unmatched incoming transactions for operator resolution
+
+| | |
+|---|---|
+| Permission | `billing.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/billing/refunds`
+
+Refunds owed to learners, which an admin pays by bank transfer
+
+| | |
+|---|---|
+| Permission | `billing.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/billing/refunds/{id}/sent`
+
+Record that a refund has been transferred
+
+| | |
+|---|---|
+| Permission | `billing.manage` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/billing/payouts`
+
+Payouts owed to creators; bank details are not in this response
+
+| | |
+|---|---|
+| Permission | `billing.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/billing/payouts/{id}`
+
+One payout with the creator bank account, so an admin can transfer it
+
+| | |
+|---|---|
+| Permission | `billing.manage` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/billing/payouts/{id}/fulfill`
+
+Record that a creator payout has been transferred
+
+| | |
+|---|---|
+| Permission | `billing.manage` |
+| Success | 200 |
+| Errors | standard set |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `ORDER_NOT_FOUND` | 404 | Order does not exist |
+| `ORDER_EXPIRED` | 409 | Order has expired |
+| `INVALID_WEBHOOK_KEY` | 401 | SePay API key invalid or unauthorized |
+| `RATE_LIMIT_EXCEEDED` | 429 | SePay API rate limit exceeded (3 req/s) |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Checkout and activation
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Learner
+    participant P as payment
+    participant G as Gateway
+    participant S as subscription
+    participant M as mailer
+
+    U->>P: POST /billing/checkout { plan } (Idempotency-Key)
+    P->>S: validate the plan is purchasable for this learner
+    P->>G: create hosted session
+    G-->>P: session id + redirect URL
+    P->>P: INSERT checkout_sessions
+    P-->>U: { redirect_url }
+    U->>G: completes payment on the gateway's page
+    G->>P: webhook payment.succeeded
+    P->>P: verify signature on the raw body
+    P->>P: store raw webhook; ack 200 immediately
+    P->>P: enqueue processing job
+    Note over P: processing is idempotent on provider_event_id
+    P->>P: INSERT payments, invoices; generate the PDF
+    P->>S: publish payment.succeeded
+    S->>S: activate the subscription; invalidate entitlements
+    P->>M: receipt email
+    U->>P: GET /billing/checkout/{id} → completed
+```
+
+### Failed renewal and dunning
+
+```mermaid
+flowchart TD
+    A[Renewal charge fails] --> B[publish payment.failed]
+    B --> C[subscription enters Grace, access continues]
+    C --> D[dunning day 1: email]
+    D --> E{recovered?}
+    E -->|yes| F[payment.succeeded → Active]
+    E -->|no| G[dunning day 3: email + in-app]
+    G --> H{recovered?}
+    H -->|yes| F
+    H -->|no| I[dunning day 5: final notice]
+    I --> J{recovered?}
+    J -->|yes| F
+    J -->|no| K[grace expires → Free<br/>no data deleted]
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Hosted checkout or our own card form? | Hosted | It keeps PCI scope to SAQ-A, removes an entire class of liability, and the conversion difference does not justify the risk |
+| Trust webhooks or poll? | Webhooks, reconciled daily | Webhooks are timely but can be missed or duplicated; daily reconciliation against the gateway catches both without polling constantly |
+| Store raw webhooks? | Yes | Replay after a bug fix is the difference between a five-minute recovery and asking a payment provider to resend a week of events |
+| Who decides access after a payment? | `subscription`, via an event | Keeping the money boundary separate from the access boundary means a gateway problem cannot silently change what learners can do |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+- Which gateway — VNPay/MoMo for Vietnam, Stripe for international, or both behind the adapter? (plan review Q1)
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 4
+
+- [ ] Gateway interface and the first adapter
+- [ ] Hosted checkout session creation with idempotency
+- [ ] Webhook endpoint with raw-body signature verification and fast acknowledgement
+- [ ] Idempotent webhook processing job
+- [ ] Payments, invoices and PDF generation
+- [ ] Refunds with window and permission enforcement
+- [ ] Daily reconciliation job with discrepancy alerts
+- [ ] Dunning schedule and communications
+- [ ] Admin replay and reconciliation screens
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Second gateway for redundancy
+- Tax calculation
+- Metered billing for AI top-ups
+- Localised invoices
+<!-- END GENERATED: todo-future -->
 
 ---
 

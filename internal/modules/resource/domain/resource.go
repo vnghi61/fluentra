@@ -44,16 +44,6 @@ func IsValidKind(kind string) bool {
 	return kind == KindFile || kind == KindURL
 }
 
-// IsValidStatus reports whether the status is a valid lifecycle state.
-func IsValidStatus(status string) bool {
-	switch status {
-	case StatusPending, StatusUploaded, StatusValidated, StatusRejected, StatusFailed:
-		return true
-	default:
-		return false
-	}
-}
-
 // CanTransition validates whether moving from 'from' to 'to' is allowed by the lifecycle state machine.
 func CanTransition(from, to string) bool {
 	switch from {

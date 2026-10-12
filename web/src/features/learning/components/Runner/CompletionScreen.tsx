@@ -10,7 +10,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 
 export interface CompletionScreenProps {
@@ -51,10 +50,10 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/15 text-success">
             <CheckCircle2 className="h-10 w-10" aria-hidden="true" />
           </div>
-          <CardTitle className="text-2xl md:text-3xl font-extrabold text-text">
+          <h1 className="text-2xl md:text-3xl font-bold leading-tight tracking-tight text-text">
             {t("runner.completedTitle", "Lesson Completed!")}
-          </CardTitle>
-          <CardDescription className="text-sm">
+          </h1>
+          <CardDescription className="text-base leading-relaxed">
             {t(
               "runner.completedDesc",
               "You've completed all activities in this lesson. Your mastery scores have been updated.",
@@ -66,17 +65,19 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
           {/* Summary Metrics Grid */}
           <div className="grid grid-cols-2 gap-3 pt-2">
             <div className="p-4 rounded-xl border border-border bg-surface-muted/50 text-center space-y-1">
-              <span className="text-xs text-text-muted font-medium">
+              <span className="text-sm text-text-muted font-medium">
                 {t("runner.accuracyLabel", "Accuracy")}
               </span>
-              <p className="text-2xl font-extrabold text-text">{accuracy}%</p>
+              <p className="text-2xl font-bold tabular-nums text-text">
+                {accuracy}%
+              </p>
             </div>
 
             <div className="p-4 rounded-xl border border-border bg-surface-muted/50 text-center space-y-1">
-              <span className="text-xs text-text-muted font-medium">
+              <span className="text-sm text-text-muted font-medium">
                 {t("runner.timeSpentLabel", "Time Spent")}
               </span>
-              <p className="text-2xl font-extrabold text-text">
+              <p className="text-2xl font-bold tabular-nums text-text">
                 {formattedTime}
               </p>
             </div>
@@ -97,27 +98,20 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
                 params={{ lessonId: nextLessonId }}
                 className="w-full"
               >
-                <Button
-                  size="lg"
-                  className="w-full font-bold gap-2 min-h-[48px]"
-                >
+                <Button size="lg" className="w-full gap-2">
                   {t("runner.nextLessonBtn", "Next lesson")}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </Link>
               <Link to="/learn" className="w-full">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="w-full gap-2 min-h-[44px]"
-                >
+                <Button variant="outline" size="lg" className="w-full gap-2">
                   {t("runner.backToCourseBtn", "Back to Syllabus")}
                 </Button>
               </Link>
             </>
           ) : (
             <Link to="/learn" className="w-full">
-              <Button size="lg" className="w-full font-bold gap-2 min-h-[48px]">
+              <Button size="lg" className="w-full gap-2">
                 {t("runner.backToCourseBtn", "Back to Syllabus")}
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Button>
@@ -128,7 +122,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
             <Button
               variant="outline"
               onClick={onRetryLesson}
-              className="w-full gap-2 min-h-[44px]"
+              className="w-full gap-2"
             >
               <RotateCcw className="h-4 w-4" aria-hidden="true" />
               {t("action.retry", "Practice Again")}

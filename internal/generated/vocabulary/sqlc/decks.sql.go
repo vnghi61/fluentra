@@ -48,6 +48,35 @@ func (q *Queries) GetDeckByID(ctx context.Context, id uuid.UUID) (SkillDeck, err
 	return i, err
 }
 
+const getOwnDeckBySlug = `-- name: GetOwnDeckBySlug :one
+SELECT id, owner_id, slug, name, description, is_public, created_at, updated_at FROM skill.decks
+WHERE owner_id = $1::uuid AND slug = $2
+`
+
+type GetOwnDeckBySlugParams struct {
+	OwnerID uuid.UUID
+	Slug    string
+}
+
+// One learner deck by slug, on uq_decks_owner_slug. The upload pipeline finds
+// the learner's "my-words" deck once per word, and listing every deck with its
+// item count to find one by name cost more than everything else a word does.
+func (q *Queries) GetOwnDeckBySlug(ctx context.Context, arg GetOwnDeckBySlugParams) (SkillDeck, error) {
+	row := q.db.QueryRow(ctx, getOwnDeckBySlug, arg.OwnerID, arg.Slug)
+	var i SkillDeck
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Slug,
+		&i.Name,
+		&i.Description,
+		&i.IsPublic,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const insertDeck = `-- name: InsertDeck :one
 INSERT INTO skill.decks (
     owner_id, slug, name, description, is_public, created_at, updated_at

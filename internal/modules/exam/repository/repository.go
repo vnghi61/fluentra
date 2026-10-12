@@ -515,10 +515,16 @@ func (r *Repository) CreateMockTest(ctx context.Context, mt *domain.MockTest) (*
 	if err != nil {
 		return nil, err
 	}
+	var number *int32
+	if mt.Number != nil {
+		n := int32(*mt.Number) //nolint:gosec // a test number is small
+		number = &n
+	}
 	row, err := r.queries.CreateMockTest(ctx, sqlc.CreateMockTestParams{
 		ID:          mt.ID,
 		BlueprintID: mt.BlueprintID,
 		Mode:        mt.Mode,
+		Number:      number,
 		Seed:        mt.Seed,
 		Composition: compBytes,
 		OwnerID:     mt.OwnerID,
@@ -562,6 +568,129 @@ func (r *Repository) ListMockTestsByOwner(ctx context.Context, ownerID *uuid.UUI
 	return res, nil
 }
 
+// ListFixedMockTests returns a blueprint's numbered fixed tests, in order.
+func (r *Repository) ListFixedMockTests(ctx context.Context, blueprintID uuid.UUID) ([]*domain.MockTest, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListFixedMockTests(ctx, blueprintID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*domain.MockTest, 0, len(rows))
+	for _, row := range rows {
+		item, err := toDomainMockTest(row)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, item)
+	}
+	return res, nil
+}
+
+// ListBlueprintsByVersionIDs returns the blueprints of many versions, by version.
+func (r *Repository) ListBlueprintsByVersionIDs(
+	ctx context.Context, versionIDs []uuid.UUID,
+) (map[uuid.UUID][]*domain.Blueprint, error) {
+	out := make(map[uuid.UUID][]*domain.Blueprint, len(versionIDs))
+	if r.queries == nil || len(versionIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.queries.ListBlueprintsByVersionIDs(ctx, versionIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		bp := toDomainBlueprint(row)
+		out[bp.VersionID] = append(out[bp.VersionID], bp)
+	}
+	return out, nil
+}
+
+// ListExamPartsByVersionIDs returns the parts of many versions, by version.
+func (r *Repository) ListExamPartsByVersionIDs(
+	ctx context.Context, versionIDs []uuid.UUID,
+) (map[uuid.UUID][]*domain.ExamPart, error) {
+	out := make(map[uuid.UUID][]*domain.ExamPart, len(versionIDs))
+	if r.queries == nil || len(versionIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.queries.ListExamPartsByVersionIDs(ctx, versionIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		part := toDomainExamPart(row)
+		out[part.VersionID] = append(out[part.VersionID], part)
+	}
+	return out, nil
+}
+
+// CountFixedMockTests counts the numbered fixed tests of each blueprint.
+func (r *Repository) CountFixedMockTests(ctx context.Context, blueprintIDs []uuid.UUID) (map[uuid.UUID]int, error) {
+	out := make(map[uuid.UUID]int, len(blueprintIDs))
+	if r.queries == nil || len(blueprintIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.queries.CountFixedMockTestsByBlueprint(ctx, blueprintIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		out[row.BlueprintID] = int(row.Tests)
+	}
+	return out, nil
+}
+
+// ListUserBestVersionScores returns the caller's best full exam-mode score on
+// each version; a version with none is absent.
+func (r *Repository) ListUserBestVersionScores(
+	ctx context.Context, userID uuid.UUID, versionIDs []uuid.UUID,
+) (map[uuid.UUID]float64, error) {
+	out := make(map[uuid.UUID]float64, len(versionIDs))
+	if r.queries == nil || len(versionIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.queries.ListUserBestVersionScores(ctx, sqlc.ListUserBestVersionScoresParams{
+		UserID: userID, VersionIds: versionIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		if value, err := row.BestScore.Float64Value(); err == nil && value.Valid {
+			out[row.VersionID] = value.Float64
+		}
+	}
+	return out, nil
+}
+
+// ListLatestUserMockTestAttempts returns the caller's most recent sitting of
+// each mock test with its score report; a test never sat is absent.
+func (r *Repository) ListLatestUserMockTestAttempts(
+	ctx context.Context, userID uuid.UUID, mockTestIDs []uuid.UUID,
+) (map[uuid.UUID]*domain.LatestAttempt, error) {
+	out := make(map[uuid.UUID]*domain.LatestAttempt, len(mockTestIDs))
+	if r.queries == nil || len(mockTestIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.queries.ListLatestUserMockTestAttempts(ctx, sqlc.ListLatestUserMockTestAttemptsParams{
+		UserID: userID, MockTestIds: mockTestIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		attempt := &domain.LatestAttempt{ID: row.ID, Status: row.Status, Band: row.OverallBand}
+		if value, err := row.OverallScore.Float64Value(); err == nil && value.Valid {
+			score := value.Float64
+			attempt.Score = &score
+		}
+		out[row.MockTestID] = attempt
+	}
+	return out, nil
+}
+
 // GetExamByVersionID finds an exam template linked to this version.
 func (r *Repository) GetExamByVersionID(ctx context.Context, versionID uuid.UUID) (*sqlc.AssessExam, error) {
 	if r.queries == nil {
@@ -581,10 +710,16 @@ func toDomainMockTest(row sqlc.AssessMockTest) (*domain.MockTest, error) {
 			return nil, err
 		}
 	}
+	var number *int
+	if row.Number != nil {
+		n := int(*row.Number)
+		number = &n
+	}
 	return &domain.MockTest{
 		ID:          row.ID,
 		BlueprintID: row.BlueprintID,
 		Mode:        row.Mode,
+		Number:      number,
 		Seed:        row.Seed,
 		Composition: comp,
 		OwnerID:     row.OwnerID,

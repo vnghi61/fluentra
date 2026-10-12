@@ -62,7 +62,7 @@ One `shared/apperr.Error` type with a kind, a stable machine `code`, a safe mess
 
 - Every error needs a code, which is a small ongoing discipline
 - Codes are public API and cannot be changed once released
-- The catalogue must be maintained in `ERROR_HANDLING.md`
+- The catalogue must be maintained in `docs/CONVENTIONS.md#error-handling`
 
 ## Compliance
 

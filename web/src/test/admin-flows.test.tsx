@@ -1,6 +1,6 @@
 import React from "react";
-import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -12,12 +12,17 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { server } from "./msw-server";
-import i18n, { initI18n } from "@/i18n";
+import i18n, { initI18n, loadLocale } from "@/i18n";
 import { AdminUserList } from "@/features/admin/components/AdminUserList";
+import {
+  adminApi,
+  type AdminUserPage,
+  type AdminUserSummary,
+} from "@/features/admin/api/adminApi";
 import { AdminFeatureFlags } from "@/features/admin/components/AdminFeatureFlags";
 import { AdminPage } from "@/pages/AdminPage";
 
-const sampleUser1 = {
+const sampleUser1: AdminUserSummary = {
   id: "11111111-1111-1111-1111-111111111111",
   email: "learner1@example.com",
   display_name: "Learner One",
@@ -26,7 +31,7 @@ const sampleUser1 = {
   created_at: "2026-08-01T10:00:00Z",
 };
 
-const sampleUser2 = {
+const sampleUser2: AdminUserSummary = {
   id: "22222222-2222-2222-2222-222222222222",
   email: "learner2@example.com",
   display_name: "Learner Two",
@@ -35,7 +40,7 @@ const sampleUser2 = {
   created_at: "2026-08-05T10:00:00Z",
 };
 
-const sampleUser3 = {
+const sampleUser3: AdminUserSummary = {
   id: "33333333-3333-3333-3333-333333333333",
   email: "learner3@example.com",
   display_name: "Learner Three",
@@ -96,9 +101,21 @@ async function renderAdminPage(
   return render(<RouterProvider router={router} />);
 }
 
+/** Opens the actions menu of one learner's row in the desktop table. */
+async function openRowMenu(
+  user: ReturnType<typeof userEvent.setup>,
+  name = "Learner One",
+) {
+  const table = await screen.findByTestId("learner-table");
+  await user.click(
+    within(table).getByRole("button", { name: `Actions for ${name}` }),
+  );
+}
+
 describe("Admin Shell & Operations", () => {
   beforeEach(async () => {
     await initI18n("en");
+    await loadLocale("en");
     await i18n.changeLanguage("en");
 
     // Default mock handlers for admin endpoints
@@ -129,12 +146,14 @@ describe("Admin Shell & Operations", () => {
         if (cursor === "cursor_page_2") {
           return HttpResponse.json({
             items: [sampleUser2],
+            total: 2,
             next_cursor: undefined, // End of pages
           });
         }
 
         return HttpResponse.json({
           items: [sampleUser1],
+          total: 2,
           next_cursor: "cursor_page_2",
         });
       }),
@@ -212,8 +231,6 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     await renderAdminPage();
 
-    expect(screen.getByText("Platform Administration")).toBeInTheDocument();
-
     // Awaited: the tabs are built from /me/permissions, so nothing
     // administrative renders until that read lands. Rendering the tabs first
     // and hiding them afterwards would flash actions the caller may not have.
@@ -221,11 +238,18 @@ describe("Admin Shell & Operations", () => {
       await screen.findByRole("button", { name: /Learner Management/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Feature Flags/i }),
+      screen.getByRole("heading", { name: "Learner Management" }),
     ).toBeInTheDocument();
-
-    // Switch to Feature Flags tab
-    await user.click(screen.getByRole("button", { name: /Feature Flags/i }));
+    // Below md the sections live behind the section picker; the desktop
+    // sidebar is drawn by the shell, which this page test does not mount.
+    await user.click(
+      screen.getByRole("button", { name: /Section:\s*Learner Management/i }),
+    );
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Feature Flags",
+      }),
+    );
     await waitFor(() => {
       expect(screen.getByText("Feature Flags & Rollouts")).toBeInTheDocument();
     });
@@ -236,10 +260,10 @@ describe("Admin Shell & Operations", () => {
     render(<AdminUserList />);
 
     // Initial page shows learner 1
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-      expect(screen.getByText("learner1@example.com")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
+    expect(screen.getAllByText("learner1@example.com").length).toBeGreaterThan(
+      0,
+    );
 
     const nextBtn = screen.getByRole("button", { name: /Next/i });
     const prevBtn = screen.getByRole("button", { name: /Previous/i });
@@ -250,10 +274,10 @@ describe("Admin Shell & Operations", () => {
     // Click Next -> loads page 2 with learner 2
     await user.click(nextBtn);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner Two")).toBeInTheDocument();
-      expect(screen.getByText("learner2@example.com")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner Two");
+    expect(screen.getAllByText("learner2@example.com").length).toBeGreaterThan(
+      0,
+    );
 
     // Next is now disabled because next_cursor is absent
     expect(nextBtn).toBeDisabled();
@@ -261,21 +285,311 @@ describe("Admin Shell & Operations", () => {
 
     // Click Previous -> loads back learner 1
     await user.click(prevBtn);
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
+    await screen.findAllByText("Learner One");
+  });
+
+  it("selects only writable accounts on the current page and clears them on navigation", async () => {
+    const pendingUser = { ...sampleUser3, status: "pending_deletion" };
+    server.use(
+      http.get("/api/v1/admin/users", ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get("cursor");
+        return HttpResponse.json(
+          cursor
+            ? { items: [sampleUser2], total: 4 }
+            : {
+                items: [sampleUser1, pendingUser],
+                total: 4,
+                next_cursor: "next",
+              },
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+    const table = await screen.findByTestId("learner-table");
+    expect(
+      within(table).getAllByRole("checkbox", { name: "Select this account" }),
+    ).toHaveLength(1);
+    await user.click(
+      within(table).getByRole("checkbox", {
+        name: "Select accounts on this page",
+      }),
+    );
+    expect(
+      within(table).getByRole("checkbox", { name: "Select this account" }),
+    ).toBeChecked();
+    expect(screen.getByText("Action for 1 selected")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Next/i }));
+    await screen.findAllByText("Learner Two");
+    expect(screen.queryByText("Action for 1 selected")).not.toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("learner-table")).getByRole("checkbox", {
+        name: "Select this account",
+      }),
+    ).not.toBeChecked();
+  });
+
+  it("marks partial selection and toggles the whole page without performing a mutation", async () => {
+    server.use(
+      http.get("/api/v1/admin/users", () =>
+        HttpResponse.json({ items: [sampleUser1, sampleUser3], total: 2 }),
+      ),
+    );
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+    const table = await screen.findByTestId("learner-table");
+    await user.click(
+      within(table).getAllByRole("checkbox", {
+        name: "Select this account",
+      })[0]!,
+    );
+    expect(
+      within(table).getByRole("checkbox", {
+        name: "Select accounts on this page",
+      }),
+    ).toBePartiallyChecked();
+    await user.click(
+      within(table).getByRole("checkbox", {
+        name: "Select accounts on this page",
+      }),
+    );
+    expect(screen.getByText("Action for 2 selected")).toBeInTheDocument();
+    await user.click(
+      within(table).getByRole("checkbox", {
+        name: "Select accounts on this page",
+      }),
+    );
+    expect(screen.queryByText("Action for 2 selected")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("does not offer bulk selection to a read-only administrator", async () => {
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({
+          roles: ["admin"],
+          permissions: ["user.list", "user.read"],
+        }),
+      ),
+    );
+    render(<AdminUserList />);
+    await screen.findAllByText("Learner One");
+    await openRowMenu(userEvent.setup());
+    expect(
+      screen.getByRole("menuitem", { name: /Inspect account/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("does not offer suspension when the selection includes an already suspended account", async () => {
+    server.use(
+      http.get("/api/v1/admin/users", () =>
+        HttpResponse.json({ items: [sampleUser1, sampleUser2], total: 2 }),
+      ),
+    );
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+    const table = await screen.findByTestId("learner-table");
+    await user.click(
+      within(table).getByRole("checkbox", {
+        name: "Select accounts on this page",
+      }),
+    );
+    const bulk = screen.getByRole("combobox", {
+      name: "Action for 2 selected",
     });
+    expect(
+      within(bulk).getByRole("option", { name: "Lock login for the selected" }),
+    ).toBeDisabled();
+    expect(
+      within(bulk).getByRole("option", { name: "Soft-delete the selected" }),
+    ).toBeEnabled();
+  });
+
+  it("resets an applied search with no status filter and restores the unfiltered query", async () => {
+    const searches: (string | null)[] = [];
+    server.use(
+      http.get("/api/v1/admin/users", ({ request }) => {
+        const name = new URL(request.url).searchParams.get("display_name");
+        searches.push(name);
+        return HttpResponse.json({
+          items: [sampleUser1],
+          total: name ? 1 : 1284,
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+    await screen.findAllByText("Learner One");
+    await user.type(screen.getByRole("searchbox"), "Learner");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("learner-total")).toHaveTextContent("1"),
+    );
+    await user.click(screen.getByRole("button", { name: "Reset filters" }));
+    await waitFor(() => expect(searches.at(-1)).toBeNull());
+    expect(screen.getByRole("searchbox")).toHaveValue("");
+    await waitFor(() =>
+      expect(screen.getByTestId("learner-total")).toHaveTextContent("1,284"),
+    );
+  });
+
+  it("keeps the latest search results when an older request finishes later", async () => {
+    let releaseOldRequest: (page: AdminUserPage) => void = () => {};
+    const oldResponse = new Promise<AdminUserPage>((resolve) => {
+      releaseOldRequest = resolve;
+    });
+    const searchUsers = vi
+      .spyOn(adminApi, "searchUsers")
+      .mockImplementation(async (params) =>
+        params?.display_name === "First"
+          ? oldResponse
+          : { items: [sampleUser2], total: 1 },
+      );
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+    await screen.findAllByText("Learner Two");
+    const search = screen.getByRole("searchbox");
+    await user.type(search, "First");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() =>
+      expect(searchUsers).toHaveBeenCalledWith(
+        expect.objectContaining({ display_name: "First" }),
+      ),
+    );
+    await user.clear(search);
+    await user.type(search, "Second");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    await screen.findAllByText("Learner Two");
+    await act(async () => {
+      releaseOldRequest({ items: [sampleUser1], total: 1 });
+      await oldResponse;
+    });
+    expect(screen.queryByText("Learner One")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Learner Two")).toHaveLength(2);
+    searchUsers.mockRestore();
+  });
+
+  it("renders the learner in both the table and the mobile cards, name before id", async () => {
+    render(<AdminUserList />);
+    await screen.findAllByText("Learner One");
+
+    const table = screen.getByTestId("learner-table");
+    const cards = screen.getByTestId("learner-cards");
+    expect(table).toHaveClass("hidden", "md:block");
+    expect(cards).toHaveClass("md:hidden");
+    expect(within(table).getByText("Learner One")).toBeInTheDocument();
+    expect(within(cards).getByText("Learner One")).toBeInTheDocument();
+    expect(within(cards).getByText("learner1@example.com")).toBeInTheDocument();
+    expect(
+      within(table).getByRole("table", { name: "User accounts" }),
+    ).toBeInTheDocument();
+
+    const card = within(cards).getAllByRole("listitem")[0]!;
+    const text = card.textContent ?? "";
+    expect(text.indexOf("Learner One")).toBeGreaterThanOrEqual(0);
+    expect(text.indexOf("Learner One")).toBeLessThan(text.indexOf("11111111…"));
+  });
+
+  it("opens mobile learner actions and applies the status filter sheet", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get("/api/v1/admin/users", ({ request }) => {
+        const status = new URL(request.url).searchParams.get("status");
+        return HttpResponse.json({
+          items: status === "suspended" ? [sampleUser2] : [sampleUser1],
+          total: 1,
+          next_cursor: undefined,
+        });
+      }),
+    );
+    render(<AdminUserList />);
+    await screen.findAllByText("Learner One");
+    const cards = screen.getByTestId("learner-cards");
+    await user.click(
+      within(cards).getByRole("button", { name: /Actions for Learner One/i }),
+    );
+    expect(
+      screen.getByRole("menuitem", { name: /Lock login/i }),
+    ).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: /Filter by status/i }),
+      "suspended",
+    );
+    expect(within(cards).getByText("Learner One")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    await screen.findAllByText("Learner Two");
+    expect(screen.queryByText("Learner One")).not.toBeInTheDocument();
+  });
+
+  it("offers no soft delete on the active row menu without user.delete, and keeps suspend", async () => {
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({
+          roles: ["admin"],
+          permissions: ["admin.dashboard", "user.list", "user.suspend"],
+        }),
+      ),
+    );
+    render(<AdminUserList />);
+    await openRowMenu(userEvent.setup());
+    expect(
+      screen.getByRole("menuitem", { name: /Lock login/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Soft-delete/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a skeleton, not a page spinner, while loading", async () => {
+    render(<AdminUserList />);
+    const skeleton = screen.getByTestId("learner-skeleton");
+    expect(skeleton).toHaveAttribute("aria-busy", "true");
+    expect(skeleton.querySelector(".animate-spin")).toBeNull();
+    await screen.findAllByText("Learner One");
+    expect(screen.queryByTestId("learner-skeleton")).toBeNull();
+  });
+
+  it("retries the learners request from the error state", async () => {
+    let calls = 0;
+    server.use(
+      http.get("/api/v1/admin/users", () => {
+        calls += 1;
+        if (calls === 1) {
+          return HttpResponse.json(
+            { code: "INTERNAL", message: "boom", status: 500 },
+            { status: 500 },
+          );
+        }
+        return HttpResponse.json({
+          items: [sampleUser1],
+          total: 1,
+          next_cursor: undefined,
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+
+    const alert = await screen.findByRole("alert");
+    await user.click(within(alert).getByRole("button", { name: /Try again/i }));
+
+    await screen.findAllByText("Learner One");
+    expect(calls).toBe(2);
   });
 
   it("inspects learner details with audit notice", async () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
+    await openRowMenu(user);
     await user.click(
-      screen.getAllByRole("button", { name: /Inspect account/i })[0]!,
+      screen.getByRole("menuitem", { name: /Inspect account/i }),
     );
 
     await waitFor(() => {
@@ -302,13 +616,10 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
-    await user.click(
-      screen.getAllByRole("button", { name: /Lock login/i })[0]!,
-    );
+    await openRowMenu(user);
+    await user.click(screen.getByRole("menuitem", { name: /Lock login/i }));
 
     // The reason is not optional decoration: the server refuses under ten
     // characters, so the row action has to collect one before it can fire.
@@ -344,12 +655,11 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
+    await openRowMenu(user);
     await user.click(
-      screen.getAllByRole("button", { name: /Soft-delete account/i })[0]!,
+      screen.getByRole("menuitem", { name: /Soft-delete account/i }),
     );
 
     // The administrator is told the two things that are easy to get wrong: the
@@ -411,15 +721,17 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
     // Re-queried each time: ticking a box re-renders the rows, so a node
     // captured before the first click is detached by the second.
-    expect(screen.getAllByLabelText(/Select this account/i)).toHaveLength(2);
+    const picks = () =>
+      within(screen.getByTestId("learner-table")).getAllByLabelText(
+        /Select this account/i,
+      );
+    expect(picks()).toHaveLength(2);
     for (let i = 0; i < 2; i++) {
-      await user.click(screen.getAllByLabelText(/Select this account/i)[i]!);
+      await user.click(picks()[i]!);
     }
 
     await user.selectOptions(
@@ -475,15 +787,17 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
     // Re-queried each time: ticking a box re-renders the rows, so a node
     // captured before the first click is detached by the second.
-    expect(screen.getAllByLabelText(/Select this account/i)).toHaveLength(2);
+    const picks = () =>
+      within(screen.getByTestId("learner-table")).getAllByLabelText(
+        /Select this account/i,
+      );
+    expect(picks()).toHaveLength(2);
     for (let i = 0; i < 2; i++) {
-      await user.click(screen.getAllByLabelText(/Select this account/i)[i]!);
+      await user.click(picks()[i]!);
     }
     await user.selectOptions(
       screen.getByLabelText(/Action for 2 selected/i),
@@ -526,19 +840,18 @@ describe("Admin Shell & Operations", () => {
 
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
     // Hiding it is half the control; the endpoint requires the permission too.
     // But a control that answers 403 is the fault this screen was written to
     // avoid, and soft deletion is the one where a 403 arrives after the
     // administrator has already typed a justification.
+    await openRowMenu(userEvent.setup());
     expect(
-      screen.queryByRole("button", { name: /Soft-delete account/i }),
+      screen.queryByRole("menuitem", { name: /Soft-delete account/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getAllByRole("button", { name: /Lock login/i }).length,
+      screen.getAllByRole("menuitem", { name: /Lock login/i }).length,
     ).toBeGreaterThan(0);
   });
 
@@ -547,23 +860,27 @@ describe("Admin Shell & Operations", () => {
     // second page. Serving it first keeps this about the row, not the paging.
     server.use(
       http.get("/api/v1/admin/users", () =>
-        HttpResponse.json({ items: [sampleUser2], next_cursor: undefined }),
+        HttpResponse.json({
+          items: [sampleUser2],
+          total: 1,
+          next_cursor: undefined,
+        }),
       ),
     );
 
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner Two")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner Two");
+
+    await openRowMenu(userEvent.setup(), "Learner Two");
 
     // Exact names, not substrings: "Unlock login (reinstate)" contains "Lock
     // login", so a loose matcher here would pass for the wrong reason.
     expect(
-      screen.getByRole("button", { name: "Unlock login (reinstate)" }),
+      screen.getByRole("menuitem", { name: "Unlock login (reinstate)" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Lock login (suspend)" }),
+      screen.queryByRole("menuitem", { name: "Lock login (suspend)" }),
     ).not.toBeInTheDocument();
   });
 
@@ -571,12 +888,11 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
+    await openRowMenu(user);
     await user.click(
-      screen.getAllByRole("button", { name: /Inspect account/i })[0]!,
+      screen.getByRole("menuitem", { name: /Inspect account/i }),
     );
 
     await waitFor(() => {
@@ -633,12 +949,11 @@ describe("Admin Shell & Operations", () => {
     const user = userEvent.setup();
     render(<AdminUserList />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Learner One")).toBeInTheDocument();
-    });
+    await screen.findAllByText("Learner One");
 
+    await openRowMenu(user);
     await user.click(
-      screen.getAllByRole("button", { name: /Inspect account/i })[0]!,
+      screen.getByRole("menuitem", { name: /Inspect account/i }),
     );
 
     await waitFor(() => {
@@ -669,10 +984,10 @@ describe("Admin Shell & Operations", () => {
     render(<AdminFeatureFlags />);
 
     await waitFor(() => {
-      expect(screen.getByText("streaks_v2")).toBeInTheDocument();
+      expect(screen.getAllByText("streaks_v2").length).toBeGreaterThan(0);
       expect(
-        screen.getByText("Second-generation streak calculation"),
-      ).toBeInTheDocument();
+        screen.getAllByText("Second-generation streak calculation").length,
+      ).toBeGreaterThan(0);
       expect(screen.getByText("25%")).toBeInTheDocument();
     });
 
@@ -688,7 +1003,7 @@ describe("Admin Shell & Operations", () => {
     await user.click(screen.getByRole("button", { name: "Save Feature Flag" }));
 
     await waitFor(() => {
-      expect(screen.getByText("audio_v2")).toBeInTheDocument();
+      expect(screen.getAllByText("audio_v2").length).toBeGreaterThan(0);
     });
   });
 });
@@ -796,8 +1111,12 @@ describe("Admin AI usage", () => {
 
     await renderAdmin();
 
-    expect(await screen.findByText(/openai_compatible/)).toBeInTheDocument();
-    expect(screen.getByText(/fallback_llm/)).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText(/openai_compatible/)).length,
+    ).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/fallback_llm/)).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("hides the section from an admin without admin.dashboard", async () => {
@@ -810,10 +1129,180 @@ describe("Admin AI usage", () => {
     await renderAdmin();
 
     expect(
-      await screen.findByRole("button", { name: /Learner Management/i }),
+      await screen.findByRole("button", { name: /Section:/i }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /AI Usage/i }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("Mobile admin section picker", () => {
+  it("renders a Section button that opens a BottomSheet with all permitted sections", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({
+          roles: ["admin"],
+          permissions: ["user.list", "system.flags", "questionbank.read"],
+        }),
+      ),
+    );
+
+    await renderAdminPage("/admin");
+
+    // Section picker button exists and has min height >= 44px
+    const pickerBtn = await screen.findByRole("button", {
+      name: /Section:\s*Learner Management/i,
+    });
+    expect(pickerBtn).toBeInTheDocument();
+    expect(pickerBtn).toHaveClass("min-h-[44px]");
+
+    // Open BottomSheet
+    await user.click(pickerBtn);
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText("Admin Sections")).toBeInTheDocument();
+
+    const dialogScope = within(dialog);
+
+    // Permitted sections appear with icon and label
+    const userItem = dialogScope.getByRole("button", {
+      name: "Learner Management",
+    });
+    const flagsItem = dialogScope.getByRole("button", {
+      name: "Feature Flags",
+    });
+    const questionsItem = dialogScope.getByRole("button", {
+      name: "Question Bank",
+    });
+
+    expect(userItem).toBeInTheDocument();
+    expect(flagsItem).toBeInTheDocument();
+    expect(questionsItem).toBeInTheDocument();
+
+    // Current section is marked with aria-current
+    expect(userItem).toHaveAttribute("aria-current", "page");
+    expect(flagsItem).not.toHaveAttribute("aria-current");
+    expect(questionsItem).not.toHaveAttribute("aria-current");
+
+    // Unpermitted sections do not appear
+    expect(
+      dialogScope.queryByRole("button", { name: "AI Usage" }),
+    ).not.toBeInTheDocument();
+    expect(
+      dialogScope.queryByRole("button", { name: "Review Queue" }),
+    ).not.toBeInTheDocument();
+    expect(
+      dialogScope.queryByRole("button", { name: "Creator Payouts" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("navigates on section selection and updates current section", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({
+          roles: ["admin"],
+          permissions: ["user.list", "system.flags"],
+        }),
+      ),
+      http.get("/api/v1/admin/users", () =>
+        HttpResponse.json({ items: [sampleUser1], total: 1 }),
+      ),
+      http.get("/api/v1/admin/flags", () =>
+        HttpResponse.json({ items: [sampleFlag] }),
+      ),
+    );
+
+    await renderAdminPage("/admin");
+
+    const pickerBtn = await screen.findByRole("button", {
+      name: /Section:\s*Learner Management/i,
+    });
+    await user.click(pickerBtn);
+
+    const dialog = screen.getByRole("dialog");
+    const flagsItem = within(dialog).getByRole("button", {
+      name: "Feature Flags",
+    });
+
+    // Choosing a section navigates to its path
+    await user.click(flagsItem);
+
+    // BottomSheet closes
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // Button label reflects new current section
+    expect(
+      await screen.findByRole("button", {
+        name: /Section:\s*Feature Flags/i,
+      }),
+    ).toBeInTheDocument();
+
+    // The destination section panel is loaded
+    expect((await screen.findAllByText("streaks_v2")).length).toBeGreaterThan(
+      0,
+    );
+
+    // Reopening the picker marks the new section with aria-current
+    await user.click(
+      screen.getByRole("button", { name: /Section:\s*Feature Flags/i }),
+    );
+    const reopenedDialog = screen.getByRole("dialog");
+    const reopenedScope = within(reopenedDialog);
+    expect(
+      reopenedScope.getByRole("button", { name: "Feature Flags" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      reopenedScope.getByRole("button", { name: "Learner Management" }),
+    ).not.toHaveAttribute("aria-current");
+  });
+
+  it("renders localized picker in Vietnamese", async () => {
+    await loadLocale("vi");
+    await i18n.changeLanguage("vi");
+
+    const user = userEvent.setup();
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({
+          roles: ["admin"],
+          permissions: ["user.list", "system.flags"],
+        }),
+      ),
+      http.get("/api/v1/admin/users", () =>
+        HttpResponse.json({ items: [sampleUser1], total: 1 }),
+      ),
+      http.get("/api/v1/admin/flags", () =>
+        HttpResponse.json({ items: [sampleFlag] }),
+      ),
+    );
+
+    await renderAdminPage("/admin");
+
+    const pickerBtn = await screen.findByRole("button", {
+      name: /Mục:\s*Quản lý người học/i,
+    });
+    expect(pickerBtn).toBeInTheDocument();
+
+    await user.click(pickerBtn);
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Các mục quản trị")).toBeInTheDocument();
+
+    const userItem = within(dialog).getByRole("button", {
+      name: "Quản lý người học",
+    });
+    expect(userItem).toHaveAttribute("aria-current", "page");
+
+    const flagsItem = within(dialog).getByRole("button", {
+      name: "Feature flag",
+    });
+    expect(flagsItem).toBeInTheDocument();
+    expect(flagsItem).not.toHaveAttribute("aria-current");
   });
 });

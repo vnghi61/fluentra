@@ -176,3 +176,35 @@ func (e *previewEnqueuer) EnqueueGradeSubmission(_ context.Context, _ uuid.UUID)
 	e.calls.Add(1)
 	return nil
 }
+
+// ResolveActivities resolves each id through ResolveActivity.
+func (m *mockLessonReader) ResolveActivities(
+	ctx context.Context, ids []uuid.UUID,
+) (map[uuid.UUID]*lessoncontract.ActivityHierarchy, error) {
+	out := make(map[uuid.UUID]*lessoncontract.ActivityHierarchy, len(ids))
+	for _, id := range ids {
+		if h, err := m.ResolveActivity(ctx, id); err == nil && h != nil {
+			out[id] = h
+		}
+	}
+	return out, nil
+}
+
+// ListLessonsByCourseID walks ListUnitsByCourseID and ListLessons.
+func (m *mockLessonReader) ListLessonsByCourseID(
+	ctx context.Context, courseID uuid.UUID,
+) ([]*lessoncontract.Lesson, error) {
+	units, err := m.ListUnitsByCourseID(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+	var out []*lessoncontract.Lesson
+	for _, u := range units {
+		lessons, err := m.ListLessons(ctx, u.ID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, lessons...)
+	}
+	return out, nil
+}

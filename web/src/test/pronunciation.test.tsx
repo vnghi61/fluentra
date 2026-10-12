@@ -34,6 +34,30 @@ class FakeUtterance {
   }
 }
 
+/**
+ * Stands in for <audio>. Every source that plays in these tests is a recording,
+ * and the assertions are about which one was chosen and whether it was allowed
+ * to play at all.
+ */
+class FakeAudio {
+  static instances: FakeAudio[] = [];
+  static fail = false;
+  src: string;
+  onplaying: (() => void) | null = null;
+  onended: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  constructor(src: string) {
+    this.src = src;
+    FakeAudio.instances.push(this);
+  }
+  play() {
+    return FakeAudio.fail
+      ? Promise.reject(new Error("unsupported"))
+      : Promise.resolve();
+  }
+  pause() {}
+}
+
 beforeEach(() => {
   speak.mockClear();
   cancel.mockClear();
@@ -117,7 +141,8 @@ describe("PronounceButton", () => {
     });
 
     it("retries without the pinned voice, then says what to check", () => {
-      render(<PronounceButton text="delicious" />);
+      // A phrase, so no recording is looked up and the hint is the last resort.
+      render(<PronounceButton text="a delicious meal" />);
       fireEvent.click(screen.getByRole("button"));
 
       expect(speak).toHaveBeenCalledTimes(1);
@@ -169,6 +194,165 @@ describe("PronounceButton", () => {
       });
       expect(speak).toHaveBeenCalledTimes(1);
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("when the card carries a recording", () => {
+    beforeEach(() => {
+      FakeAudio.instances = [];
+      FakeAudio.fail = false;
+      vi.stubGlobal("Audio", FakeAudio);
+    });
+
+    it("plays it and shows the credit the licence requires", async () => {
+      render(
+        <PronounceButton
+          text="eat"
+          audioUrl="https://cdn.example/eat-us.mp3"
+          audioAttribution="https://commons.wikimedia.org/wiki/File:En-us-eat.ogg"
+          audioLicence="BY-SA 3.0"
+        />,
+      );
+      await userEvent.click(screen.getByRole("button"));
+
+      expect(FakeAudio.instances[0]?.src).toBe(
+        "https://cdn.example/eat-us.mp3",
+      );
+      act(() => FakeAudio.instances[0]?.onplaying?.());
+
+      // The recording played, so synthesis was never asked.
+      expect(speak).not.toHaveBeenCalled();
+      const credit = screen.getByRole("link", { name: /Wikimedia Commons/ });
+      expect(credit).toHaveAttribute(
+        "href",
+        "https://commons.wikimedia.org/wiki/File:En-us-eat.ogg",
+      );
+      expect(credit).toHaveTextContent("BY-SA 3.0");
+    });
+
+    it("refuses a recording with no attribution and synthesises instead", async () => {
+      // CC BY-SA is not satisfied by playing the file. A card that cannot say
+      // where the audio came from must not play it.
+      render(
+        <PronounceButton
+          text="eat"
+          audioUrl="https://cdn.example/eat-us.mp3"
+        />,
+      );
+      await userEvent.click(screen.getByRole("button"));
+
+      expect(FakeAudio.instances).toHaveLength(0);
+      expect(speak).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("when the device cannot speak, a recording plays instead", () => {
+    const fetchMock = vi.fn();
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      FakeAudio.instances = [];
+      FakeAudio.fail = false;
+      fetchMock.mockReset();
+      vi.stubGlobal("Audio", FakeAudio);
+      vi.stubGlobal("fetch", fetchMock);
+      // A device whose engine takes every utterance and never speaks.
+      vi.stubGlobal("speechSynthesis", {
+        speak,
+        cancel,
+        resume: vi.fn(),
+        getVoices: () => [],
+        speaking: false,
+        pending: false,
+      });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const waitOutTheDevice = async () => {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(START_TIMEOUT_MS * 2);
+      });
+    };
+
+    it("plays the dictionary's US recording and credits it", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve([
+            {
+              phonetics: [
+                {
+                  audio: "https://api.example/eat-uk.mp3",
+                  sourceUrl: "https://commons.example/uk",
+                  license: { name: "BY 3.0 US" },
+                },
+                {
+                  audio: "https://api.example/eat-us.mp3",
+                  sourceUrl:
+                    "https://commons.wikimedia.org/wiki/File:En-us-eat.ogg",
+                  license: { name: "BY-SA 3.0" },
+                },
+              ],
+            },
+          ]),
+      });
+      render(<PronounceButton text="eat" />);
+      fireEvent.click(screen.getByRole("button"));
+      await waitOutTheDevice();
+
+      expect(FakeAudio.instances[0]?.src).toBe(
+        "https://api.example/eat-us.mp3",
+      );
+      act(() => FakeAudio.instances[0]?.onplaying?.());
+
+      const credit = screen.getByRole("link", { name: /Wikimedia Commons/ });
+      expect(credit).toHaveAttribute(
+        "href",
+        "https://commons.wikimedia.org/wiki/File:En-us-eat.ogg",
+      );
+      expect(credit).toHaveTextContent("BY-SA 3.0");
+      expect(screen.queryByText(/media volume/i)).not.toBeInTheDocument();
+    });
+
+    it("goes straight to Wikimedia Commons when the dictionary is down", async () => {
+      fetchMock.mockRejectedValue(new Error("522"));
+      render(<PronounceButton text="work" />);
+      fireEvent.click(screen.getByRole("button"));
+      await waitOutTheDevice();
+
+      expect(FakeAudio.instances[0]?.src).toContain(
+        "commons.wikimedia.org/wiki/Special:FilePath/En-us-work.ogg",
+      );
+    });
+
+    it("says what to check when no source plays", async () => {
+      fetchMock.mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve([]),
+      });
+      FakeAudio.fail = true;
+      render(<PronounceButton text="habit" />);
+      fireEvent.click(screen.getByRole("button"));
+      await waitOutTheDevice();
+
+      // Both Commons candidates were tried before giving up.
+      expect(FakeAudio.instances).toHaveLength(2);
+      expect(screen.getByRole("status")).toHaveTextContent(/media volume/i);
+      expect(screen.getByRole("button")).toBeEnabled();
+    });
+
+    it("does not look up a recording for a sentence", async () => {
+      render(<PronounceButton text="The soup smelled delicious." />);
+      fireEvent.click(screen.getByRole("button"));
+      await waitOutTheDevice();
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(FakeAudio.instances).toHaveLength(0);
+      expect(screen.getByRole("status")).toHaveTextContent(/media volume/i);
     });
   });
 

@@ -31,6 +31,10 @@ Resource:
     failure_reason:
       type: string
       example: ""
+    processing_status:
+      type: string
+      enum: [processing, ready, failed]
+      description: Derived rendition state, identical on list and detail responses; separate from file validation.
     original_filename:
       type: string
       example: Advanced Grammar Guide.pdf
@@ -248,6 +252,10 @@ ResourceClassification:
   nullable: true
   description: Grounded spine taxonomy classification and CEFR estimate.
   properties:
+    learning_suitable:
+      type: boolean
+      nullable: true
+      description: True only after the current content suitability check; null for older classifications that need revalidation.
     cefr_estimate:
       type: string
       nullable: true

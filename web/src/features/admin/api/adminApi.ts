@@ -24,11 +24,35 @@ export type AdminContentItemList =
 export type AdminContentItemDetail =
   components["schemas"]["AdminContentItemDetail"];
 export type ContentItem = components["schemas"]["ContentItem"];
+export type CreateContentItemRequest =
+  components["schemas"]["CreateContentItemRequest"];
 export type ContentVersion = components["schemas"]["ContentVersion"];
 export type AuthoringStatus = components["schemas"]["AuthoringStatus"];
 export type ReportedContentVersion =
   components["schemas"]["ReportedContentVersion"];
 export type ReportedContentList = components["schemas"]["ReportedContentList"];
+export type AdminReviewQueueResponse =
+  components["schemas"]["AdminReviewQueueResponse"];
+export type AdminReviewQueueItem =
+  components["schemas"]["AdminReviewQueueItem"];
+export type AdminReviewBatch = components["schemas"]["AdminReviewBatch"];
+export type AdminReviewBatchListResponse =
+  components["schemas"]["AdminReviewBatchListResponse"];
+export type AdminApproveBatchResponse =
+  components["schemas"]["AdminApproveBatchResponse"];
+export type AdminReviewSample = components["schemas"]["AdminReviewSample"];
+export type AdminReviewSampleListResponse =
+  components["schemas"]["AdminReviewSampleListResponse"];
+export type Question = components["schemas"]["Question"];
+export type QuestionPage = components["schemas"]["QuestionPage"];
+export type QuestionStats = components["schemas"]["QuestionStats"];
+export type GenerateQuestionsRequest =
+  components["schemas"]["GenerateQuestionsRequest"];
+export type GeneratedQuestionsResponse =
+  components["schemas"]["GeneratedQuestionsResponse"];
+export type ExamCoverageReport = components["schemas"]["ExamCoverageReport"];
+export type ExamVersionListResponse =
+  components["schemas"]["ExamVersionListResponse"];
 
 export type AdminWordList = components["schemas"]["AdminWordList"];
 export type AdminWordSummary = components["schemas"]["AdminWordSummary"];
@@ -198,9 +222,146 @@ export const adminApi = {
     );
   },
 
+  /** Create an unpublished draft; the server requires content.create. */
+  async createContent(body: CreateContentItemRequest): Promise<ContentItem> {
+    return apiFetch<ContentItem>("/api/v1/admin/content", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
   /** Get single content item detail with all versions */
   async getContent(id: string): Promise<AdminContentItemDetail> {
     return apiFetch<AdminContentItemDetail>(`/api/v1/admin/content/${id}`);
+  },
+
+  /**
+   * The machine-generated drafts awaiting review, oldest first.
+   *
+   * Approving and rejecting go through the same content review endpoints the
+   * authoring screen uses; there is no separate decision path.
+   */
+  async listReviewQueue(
+    params: ReviewQueueParams = {},
+  ): Promise<AdminReviewQueueResponse> {
+    const sp = new URLSearchParams();
+    if (params.purpose) sp.set("purpose", params.purpose);
+    if (params.kind) sp.set("kind", params.kind);
+    if (params.node) sp.set("node", params.node);
+    if (params.batch) sp.set("batch", params.batch);
+    if (params.cefr) sp.set("cefr", params.cefr);
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<AdminReviewQueueResponse>(
+      `/api/v1/admin/review-queue${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /**
+   * The generation runs whose drafts are still awaiting review (WO 22 Stage A).
+   *
+   * A run is approved as a batch: every item except the rejected ones publishes
+   * in one transaction, so a person reads the doubts together instead of one at
+   * a time.
+   */
+  async listReviewBatches(
+    params: { limit?: number; offset?: number } = {},
+  ): Promise<AdminReviewBatchListResponse> {
+    const sp = new URLSearchParams();
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<AdminReviewBatchListResponse>(
+      `/api/v1/admin/review-queue/batches${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /** Approve a batch, leaving the rejected version ids for a person. */
+  async approveReviewBatch(
+    batch: string,
+    reject: string[] = [],
+    note?: string,
+  ): Promise<AdminApproveBatchResponse> {
+    return apiFetch<AdminApproveBatchResponse>(
+      `/api/v1/admin/review-queue/batches/${encodeURIComponent(batch)}/approve`,
+      { method: "POST", body: JSON.stringify({ reject, note }) },
+    );
+  },
+
+  /**
+   * The daily sample of auto-published items a person spot-checks (WO 22
+   * Stage A.5). A rejection unpublishes the item.
+   */
+  async listReviewSamples(
+    params: { limit?: number; offset?: number } = {},
+  ): Promise<AdminReviewSampleListResponse> {
+    const sp = new URLSearchParams();
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<AdminReviewSampleListResponse>(
+      `/api/v1/admin/review-queue/samples${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /** Keep or reject a sampled item. */
+  async decideReviewSample(
+    versionId: string,
+    decision: "kept" | "rejected",
+    note?: string,
+  ): Promise<void> {
+    return apiFetch<void>(
+      `/api/v1/admin/review-queue/samples/${encodeURIComponent(versionId)}/decide`,
+      { method: "POST", body: JSON.stringify({ decision, note }) },
+    );
+  },
+
+  /** Search and filter the exam question bank (WO 21 Stage D). */
+  async listQuestions(params: QuestionFilter = {}): Promise<QuestionPage> {
+    const sp = new URLSearchParams();
+    if (params.exam_version) sp.set("exam_version", params.exam_version);
+    if (params.exam_part_id) sp.set("exam_part_id", params.exam_part_id);
+    if (params.kind) sp.set("kind", params.kind);
+    if (params.cefr_level) sp.set("cefr_level", params.cefr_level);
+    if (params.node_code) sp.set("node_code", params.node_code);
+    if (params.status) sp.set("status", params.status);
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<QuestionPage>(
+      `/api/v1/admin/questions${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /** Empirical difficulty and discrimination for one bank item. */
+  async getQuestionStats(id: string): Promise<QuestionStats> {
+    return apiFetch<QuestionStats>(`/api/v1/admin/questions/${id}/stats`);
+  },
+
+  /** Generate draft items for review; they land in the review queue. */
+  async generateQuestions(
+    req: GenerateQuestionsRequest,
+  ): Promise<GeneratedQuestionsResponse> {
+    return apiFetch<GeneratedQuestionsResponse>(
+      "/api/v1/admin/questions/generate",
+      { method: "POST", body: JSON.stringify(req) },
+    );
+  },
+
+  /** The current exam versions and their blueprints. */
+  async listExamVersions(): Promise<ExamVersionListResponse> {
+    return apiFetch<ExamVersionListResponse>("/api/v1/exam-versions");
+  },
+
+  /**
+   * How many distinct tests the published bank can compose for a version, and
+   * which part is the bottleneck.
+   */
+  async getExamVersionCoverage(versionId: string): Promise<ExamCoverageReport> {
+    return apiFetch<ExamCoverageReport>(
+      `/api/v1/admin/exams/versions/${versionId}/coverage`,
+    );
   },
 
   /** Update draft body and metadata */
@@ -389,6 +550,27 @@ export interface SearchContentParams {
   status?: string | undefined;
   kind?: string | undefined;
   q?: string | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+}
+
+export interface ReviewQueueParams {
+  purpose?: string | undefined;
+  kind?: string | undefined;
+  node?: string | undefined;
+  batch?: string | undefined;
+  cefr?: string | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+}
+
+export interface QuestionFilter {
+  exam_version?: string | undefined;
+  exam_part_id?: string | undefined;
+  kind?: string | undefined;
+  cefr_level?: string | undefined;
+  node_code?: string | undefined;
+  status?: string | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
 }

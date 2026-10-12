@@ -32,16 +32,6 @@ func (q *Queries) AddPrerequisite(ctx context.Context, arg AddPrerequisiteParams
 	return err
 }
 
-const deletePrerequisitesByLessonID = `-- name: DeletePrerequisitesByLessonID :exec
-DELETE FROM learn.lesson_prerequisites
-WHERE lesson_id = $1
-`
-
-func (q *Queries) DeletePrerequisitesByLessonID(ctx context.Context, lessonID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deletePrerequisitesByLessonID, lessonID)
-	return err
-}
-
 const listAllPrerequisitesInCourse = `-- name: ListAllPrerequisitesInCourse :many
 SELECT lp.lesson_id, lp.requires_lesson_id
 FROM learn.lesson_prerequisites lp

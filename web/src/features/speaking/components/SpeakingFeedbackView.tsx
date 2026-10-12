@@ -37,10 +37,11 @@ export interface SpeakingFeedbackViewProps {
 
 function getBandColor(band: number): string {
   if (band >= 7.0)
-    return "text-emerald-500 bg-emerald-500/10 border-emerald-500/30";
-  if (band >= 6.0) return "text-primary bg-primary/10 border-primary/30";
-  if (band >= 5.0) return "text-amber-500 bg-amber-500/10 border-amber-500/30";
-  return "text-rose-500 bg-rose-500/10 border-rose-500/30";
+    return "text-success-accent bg-emerald-500/10 border-emerald-500/30";
+  if (band >= 6.0) return "text-primary-accent bg-primary/10 border-primary/30";
+  if (band >= 5.0)
+    return "text-warning-accent bg-amber-500/10 border-amber-500/30";
+  return "text-danger-accent bg-rose-500/10 border-rose-500/30";
 }
 
 /**
@@ -133,7 +134,7 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
         <CardHeader className="p-5 sm:p-6 bg-surface-muted/30 border-b border-border">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary-accent">
                 <Sparkles className="h-4 w-4" aria-hidden="true" />
                 <span>
                   {isReadAloud
@@ -141,12 +142,12 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                     : t("speaking.assessmentTitle", "Speaking Evaluation")}
                 </span>
               </div>
-              <CardTitle className="text-xl sm:text-2xl font-bold text-text">
+              <CardTitle className="text-lg md:text-xl font-semibold leading-snug text-text">
                 {isReadAloud
                   ? t("speaking.readAloudTitle", "Read Aloud")
                   : t("speaking.respondTitle", "Spoken Response")}
               </CardTitle>
-              <CardDescription className="text-xs sm:text-sm text-text-muted">
+              <CardDescription className="text-sm text-text-muted">
                 {t(
                   "speaking.evaluationSubtitle",
                   "Automated speech recognition and language analysis",
@@ -161,7 +162,7 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                     <div className="text-xs text-text-muted font-medium">
                       {t("speaking.accuracy", "Accuracy")}
                     </div>
-                    <div className="text-xl sm:text-2xl font-mono font-extrabold text-primary">
+                    <div className="text-2xl font-mono font-bold tabular-nums text-primary-accent">
                       {Math.round(feedback.read_aloud_accuracy)}%
                     </div>
                   </div>
@@ -174,11 +175,11 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
           {/* Summary feedback message */}
           {summary && (
             <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary">
-                <Mic className="h-3.5 w-3.5" aria-hidden="true" />
+              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary-accent">
+                <Mic className="h-4 w-4" aria-hidden="true" />
                 <span>{t("speaking.overallFeedback", "Overall Feedback")}</span>
               </div>
-              <p className="text-sm text-text leading-relaxed whitespace-pre-line">
+              <p className="text-base text-text leading-relaxed whitespace-pre-line">
                 {summary}
               </p>
             </div>
@@ -199,7 +200,7 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
             </div>
 
             {isPurged ? (
-              <p className="text-xs text-text-muted leading-relaxed italic">
+              <p className="text-base md:text-sm text-text-muted leading-relaxed italic">
                 {t(
                   "speaking.audioPurgedNotice",
                   "Audio recording was removed per 90-day privacy retention policy. Your evaluation metrics and transcript are permanent.",
@@ -221,7 +222,7 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                 </audio>
               </div>
             ) : (
-              <p className="text-xs text-text-muted leading-relaxed">
+              <p className="text-base md:text-sm text-text-muted leading-relaxed">
                 {t(
                   "speaking.audioPreserved",
                   "Audio playback available for 90 days after submission.",
@@ -243,11 +244,19 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
           {feedback.asr_model === "mock" && (
             <div
               role="status"
-              className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-text"
+              className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-base leading-relaxed text-text md:text-sm"
             >
-              <p className="font-semibold">{t("speaking.mockAsrTitle")}</p>
+              <p className="font-semibold">
+                {t(
+                  "speaking.mockAsrTitle",
+                  "This was not a real transcription",
+                )}
+              </p>
               <p className="mt-1 text-text-muted">
-                {t("speaking.mockAsrBody")}
+                {t(
+                  "speaking.mockAsrBody",
+                  "No speech-to-text service is configured, so the server returned a fixed sample sentence instead of what you said. The alignment and score below are not an assessment of your speaking. Set SPEECH_ASR_BASE_URL to enable real transcription.",
+                )}
               </p>
             </div>
           )}
@@ -264,7 +273,7 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                   : t("speaking.transcriptTitle", "Speech Transcript")}
               </h3>
               {isReadAloud && referenceText && (
-                <div className="flex items-center gap-2 text-xs text-text-muted">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-muted">
                   <span className="inline-flex items-center gap-1">
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
                     <span>{t("speaking.legendMatched", "Matched")}</span>
@@ -282,14 +291,14 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                     <span>{t("speaking.legendSwapped")}</span>
                   </span>
                   <span className="inline-flex items-center gap-1 text-text-muted">
-                    <Volume2 className="h-3 w-3" aria-hidden="true" />
+                    <Volume2 className="h-4 w-4" aria-hidden="true" />
                     <span>{t("speaking.legendTapToHear")}</span>
                   </span>
                 </div>
               )}
             </div>
 
-            <div className="p-4 rounded-xl border border-border bg-surface-muted/40 text-sm leading-loose">
+            <div className="p-4 rounded-xl border border-border bg-surface-muted/40 text-base leading-loose">
               {isReadAloud && diffTokens.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
                   {diffTokens.map((token, idx) => {
@@ -312,11 +321,11 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                           aria-label={t("speaking.missedWordAria", {
                             word: token.text,
                           })}
-                          className="inline-flex min-h-11 items-center gap-1 rounded bg-rose-500/10 px-1.5 py-0.5 font-medium text-rose-500 underline decoration-dotted underline-offset-4"
+                          className="inline-flex min-h-11 items-center gap-1 rounded bg-rose-500/10 px-1.5 py-0.5 font-medium text-danger-accent underline decoration-dotted underline-offset-4"
                         >
                           <span className="line-through">{token.text}</span>
                           <Volume2
-                            className="h-3 w-3 shrink-0"
+                            className="h-4 w-4 shrink-0"
                             aria-hidden="true"
                           />
                         </button>
@@ -330,7 +339,7 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                           aria-label={t("speaking.addedWordAria", {
                             word: token.text,
                           })}
-                          className="rounded bg-amber-500/10 px-1 py-0.5 font-medium text-amber-500 underline decoration-amber-500/50"
+                          className="rounded bg-amber-500/10 px-1 py-0.5 font-medium text-warning-accent underline decoration-amber-500/50"
                         >
                           {token.text}
                         </span>
@@ -349,20 +358,20 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                             expected: token.expected,
                             received: token.received,
                           })}
-                          className="inline-flex min-h-11 items-center gap-1 rounded border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-xs"
+                          className="inline-flex min-h-11 items-center gap-1 rounded border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-sm"
                         >
-                          <span className="font-semibold text-primary">
+                          <span className="font-semibold text-primary-accent">
                             {token.expected}
                           </span>
                           <ArrowRight
-                            className="h-3 w-3 shrink-0 text-text-muted"
+                            className="h-4 w-4 shrink-0 text-text-muted"
                             aria-hidden="true"
                           />
                           <span className="text-text-muted line-through">
                             {token.received}
                           </span>
                           <Volume2
-                            className="h-3 w-3 shrink-0 text-primary"
+                            className="h-4 w-4 shrink-0 text-primary"
                             aria-hidden="true"
                           />
                         </button>
@@ -391,9 +400,12 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Words Per Minute */}
               <div className="p-4 rounded-xl border border-border bg-surface-card space-y-1.5">
-                <div className="flex items-center justify-between text-xs text-text-muted">
-                  <span className="flex items-center gap-1 font-medium">
-                    <Clock className="h-3.5 w-3.5 text-primary" />
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-text-muted">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <Clock
+                      className="h-4 w-4 shrink-0 text-primary"
+                      aria-hidden="true"
+                    />
                     {t("speaking.speakingRate", "Speaking Rate")}
                   </span>
                   <Badge variant="secondary" className="font-mono text-xs">
@@ -401,7 +413,7 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                     {t("speaking.wpmUnit", "WPM")}
                   </Badge>
                 </div>
-                <p className="text-xs text-text-muted leading-relaxed">
+                <p className="text-sm text-text-muted leading-relaxed">
                   {t(
                     "speaking.wpmGuidance",
                     "A comfortable natural English speaking pace is typically 110–150 words per minute.",
@@ -413,19 +425,22 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
               {feedback.read_aloud_accuracy !== null &&
                 feedback.read_aloud_accuracy !== undefined && (
                   <div className="p-4 rounded-xl border border-border bg-surface-card space-y-1.5">
-                    <div className="flex items-center justify-between text-xs text-text-muted">
-                      <span className="flex items-center gap-1 font-medium">
-                        <Activity className="h-3.5 w-3.5 text-emerald-500" />
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-text-muted">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <Activity
+                          className="h-4 w-4 shrink-0 text-emerald-500"
+                          aria-hidden="true"
+                        />
                         {t("speaking.accuracyMetric", "Text Fidelity")}
                       </span>
                       <Badge
                         variant="outline"
-                        className="font-mono text-xs text-emerald-500 border-emerald-500/30"
+                        className="font-mono text-xs text-success-accent border-emerald-500/30"
                       >
                         {Math.round(feedback.read_aloud_accuracy)}%
                       </Badge>
                     </div>
-                    <p className="text-xs text-text-muted leading-relaxed">
+                    <p className="text-sm text-text-muted leading-relaxed">
                       {t(
                         "speaking.accuracyGuidance",
                         "Percentage of reference words recognized by automatic transcription.",
@@ -442,18 +457,25 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowCriteriaDetail((prev) => !prev)}
-                className="flex items-center justify-between w-full text-left text-sm font-semibold uppercase tracking-wider text-text-muted hover:text-text transition-colors"
+                aria-expanded={showCriteriaDetail}
+                className="flex min-h-11 items-center justify-between gap-2 w-full text-left text-sm font-semibold uppercase tracking-wider text-text-muted hover:text-text transition-colors"
               >
-                <div className="flex items-center gap-1.5">
-                  <Award className="h-4 w-4 text-primary" />
+                <div className="flex items-center gap-2">
+                  <Award
+                    className="h-4 w-4 shrink-0 text-primary"
+                    aria-hidden="true"
+                  />
                   <span>
                     {t("speaking.criteriaBandsTitle", "Criteria Assessment")}
                   </span>
                 </div>
                 {showCriteriaDetail ? (
-                  <ChevronUp className="h-4 w-4" />
+                  <ChevronUp className="h-4 w-4 shrink-0" aria-hidden="true" />
                 ) : (
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown
+                    className="h-4 w-4 shrink-0"
+                    aria-hidden="true"
+                  />
                 )}
               </button>
 
@@ -469,7 +491,7 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                         className="p-4 rounded-xl border border-border bg-surface-card space-y-2"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-semibold text-text">
+                          <span className="min-w-0 text-sm font-semibold text-text">
                             {t(
                               getCriterionTitleKey(crit.name),
                               getCriterionFallback(crit.name),
@@ -487,7 +509,7 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                           </span>
                         </div>
                         {comment && (
-                          <p className="text-xs sm:text-sm text-text-muted leading-relaxed">
+                          <p className="text-base text-text-muted leading-relaxed">
                             {comment}
                           </p>
                         )}
@@ -502,10 +524,10 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
           {/* Block 4: Plain statement that pronunciation was not assessed (BR-SPEAKING-09) */}
           <div className="p-4 rounded-xl border border-border/80 bg-surface-muted/60 space-y-1.5 flex items-start gap-3">
             <Info
-              className="h-4 w-4 text-text-muted shrink-0 mt-0.5"
+              className="h-5 w-5 text-text-muted shrink-0 mt-0.5"
               aria-hidden="true"
             />
-            <div className="space-y-1 text-xs text-text-muted leading-relaxed">
+            <div className="space-y-1 text-base md:text-sm text-text-muted leading-relaxed">
               <p className="font-semibold text-text">
                 {t(
                   "speaking.pronunciationDisclaimerTitle",

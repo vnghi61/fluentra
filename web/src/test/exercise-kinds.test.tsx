@@ -1,6 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -8,6 +16,8 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
+
+import i18n, { initI18n, loadLocale } from "@/i18n";
 
 import {
   ExerciseContextChoice,
@@ -107,7 +117,7 @@ describe("ExerciseMatch", () => {
     const check = screen.getByRole("button", { name: /check/i });
     expect(check).toBeDisabled();
 
-    await userEvent.click(screen.getByRole("button", { name: /^1\s*habit$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^—\s*habit$/ }));
     await userEvent.click(
       screen.getByRole("button", { name: /A regular tendency/ }),
     );
@@ -119,11 +129,11 @@ describe("ExerciseMatch", () => {
     const onSubmit = vi.fn();
     render(<ExerciseMatch {...props} onSubmit={onSubmit} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /^1\s*habit$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^—\s*habit$/ }));
     await userEvent.click(
       screen.getByRole("button", { name: /A regular tendency/ }),
     );
-    await userEvent.click(screen.getByRole("button", { name: /^2\s*afford$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^—\s*afford$/ }));
     await userEvent.click(
       screen.getByRole("button", { name: /Have enough money/ }),
     );
@@ -138,7 +148,7 @@ describe("ExerciseMatch", () => {
   it("lets a pair be undone", async () => {
     render(<ExerciseMatch {...props} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /^1\s*habit$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^—\s*habit$/ }));
     await userEvent.click(
       screen.getByRole("button", { name: /A regular tendency/ }),
     );
@@ -255,7 +265,19 @@ describe("ExerciseContextChoice", () => {
 });
 
 describe("ExerciseFeedback with Answer Explanation", () => {
-  it("renders bilingual explanation with EN and VI tags when explanation is present", () => {
+  beforeAll(async () => {
+    await initI18n("en");
+  });
+
+  beforeEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("shows only explanation.text in English, hiding text_vi and EN/VI badges", () => {
     render(
       <ExerciseFeedback
         isCorrect={false}
@@ -273,12 +295,75 @@ describe("ExerciseFeedback with Answer Explanation", () => {
       ),
     ).toBeInTheDocument();
     expect(
+      screen.queryByText(
+        "Bởi vì 'option_b' phù hợp với ngữ cảnh thời gian rảnh.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("EN")).not.toBeInTheDocument();
+    expect(screen.queryByText("VI")).not.toBeInTheDocument();
+  });
+
+  it("shows only explanation.text_vi in Vietnamese, hiding explanation.text and EN/VI badges", async () => {
+    await loadLocale("vi");
+    await i18n.changeLanguage("vi");
+
+    render(
+      <ExerciseFeedback
+        isCorrect={false}
+        expectedAnswer="option_b"
+        explanation={{
+          text: "Because 'option_b' accurately fits the context of free time.",
+          text_vi: "Bởi vì 'option_b' phù hợp với ngữ cảnh thời gian rảnh.",
+        }}
+      />,
+    );
+
+    expect(
       screen.getByText(
         "Bởi vì 'option_b' phù hợp với ngữ cảnh thời gian rảnh.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("EN")).toBeInTheDocument();
-    expect(screen.getByText("VI")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Because 'option_b' accurately fits the context of free time.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("EN")).not.toBeInTheDocument();
+    expect(screen.queryByText("VI")).not.toBeInTheDocument();
+  });
+
+  it("shows 'Correct! Well done.' exactly once in English when feedback duplicates verdict", () => {
+    render(
+      <ExerciseFeedback isCorrect={true} feedback="Correct! Well done." />,
+    );
+
+    expect(screen.getAllByText("Correct! Well done.")).toHaveLength(1);
+  });
+
+  it("shows no 'Correct! Well done.' in Vietnamese when feedback is English canned text", async () => {
+    await loadLocale("vi");
+    await i18n.changeLanguage("vi");
+
+    render(
+      <ExerciseFeedback isCorrect={true} feedback="Correct! Well done." />,
+    );
+
+    expect(screen.queryByText("Correct! Well done.")).not.toBeInTheDocument();
+    expect(screen.getByText("Chính xác! Làm rất tốt.")).toBeInTheDocument();
+  });
+
+  it("still shows non-duplicate feedback in English", () => {
+    render(
+      <ExerciseFeedback
+        isCorrect={false}
+        score={67}
+        feedback="You got 2 out of 3 questions right."
+      />,
+    );
+
+    expect(
+      screen.getByText("You got 2 out of 3 questions right."),
+    ).toBeInTheDocument();
   });
 
   it("gracefully falls back when explanation is null without errors", () => {
@@ -286,6 +371,7 @@ describe("ExerciseFeedback with Answer Explanation", () => {
 
     expect(screen.queryByText("EN")).not.toBeInTheDocument();
     expect(screen.queryByText("VI")).not.toBeInTheDocument();
+    expect(screen.queryByText("Explanation")).not.toBeInTheDocument();
   });
 });
 
@@ -378,7 +464,7 @@ describe("ExerciseWriting", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Write at least 10 words/)).toBeInTheDocument();
-    expect(screen.getByText(/0 \/ 10 words minimum/)).toBeInTheDocument();
+    expect(screen.getByText(/0 words · minimum 10 words/)).toBeInTheDocument();
   });
 
   it("disables check button when textarea is empty", () => {
@@ -397,7 +483,7 @@ describe("ExerciseWriting", () => {
       "I love reading classic novels because they transport me to different eras.",
     );
 
-    expect(screen.getByText(/12 \/ 10 words minimum/)).toBeInTheDocument();
+    expect(screen.getByText(/12 words · minimum 10 words/)).toBeInTheDocument();
 
     const check = screen.getByRole("button", { name: /check/i });
     expect(check).not.toBeDisabled();

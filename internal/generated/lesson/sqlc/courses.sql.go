@@ -269,59 +269,6 @@ func (q *Queries) ListPublishedCourses(ctx context.Context, arg ListPublishedCou
 	return items, nil
 }
 
-const updateCourse = `-- name: UpdateCourse :one
-UPDATE learn.courses
-SET title = $2,
-    description = $3,
-    cefr_from = $4,
-    cefr_to = $5,
-    status = $6,
-    estimated_hours = $7,
-    updated_at = now()
-WHERE id = $1
-RETURNING id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin, owner_id, visibility, topic_taxonomy_id
-`
-
-type UpdateCourseParams struct {
-	ID             uuid.UUID
-	Title          string
-	Description    string
-	CefrFrom       string
-	CefrTo         string
-	Status         string
-	EstimatedHours int32
-}
-
-func (q *Queries) UpdateCourse(ctx context.Context, arg UpdateCourseParams) (LearnCourse, error) {
-	row := q.db.QueryRow(ctx, updateCourse,
-		arg.ID,
-		arg.Title,
-		arg.Description,
-		arg.CefrFrom,
-		arg.CefrTo,
-		arg.Status,
-		arg.EstimatedHours,
-	)
-	var i LearnCourse
-	err := row.Scan(
-		&i.ID,
-		&i.Slug,
-		&i.Title,
-		&i.Description,
-		&i.CefrFrom,
-		&i.CefrTo,
-		&i.Status,
-		&i.EstimatedHours,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Origin,
-		&i.OwnerID,
-		&i.Visibility,
-		&i.TopicTaxonomyID,
-	)
-	return i, err
-}
-
 const upsertCourse = `-- name: UpsertCourse :one
 INSERT INTO learn.courses (
     slug,

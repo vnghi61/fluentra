@@ -7,15 +7,27 @@ import { I18nextProvider } from "react-i18next";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
+
+import {
   BadgesWidget,
   GamificationSummarySection,
   LeaderboardWidget,
   QuestsWidget,
   StreakWidget,
+  TodayProgressCard,
   XPProgressBar,
 } from "@/features/gamification";
-import type { GamificationSummary } from "@/features/gamification";
-import i18n, { initI18n } from "@/i18n";
+import type {
+  GamificationSummary,
+  LeaderboardResponse,
+} from "@/features/gamification";
+import i18n, { initI18n, loadLocale } from "@/i18n";
 import { server } from "./msw-server";
 
 function renderWithProviders(ui: React.ReactElement) {
@@ -29,9 +41,32 @@ function renderWithProviders(ui: React.ReactElement) {
   );
 }
 
+async function renderWithRouter(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const rootRoute = createRootRoute();
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => (
+      <I18nextProvider i18n={i18n}>
+        <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+      </I18nextProvider>
+    ),
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  await router.load();
+  return render(<RouterProvider router={router} />);
+}
+
 describe("Gamification Feature Slice (WP14)", () => {
   beforeEach(async () => {
     await initI18n("en");
+    await loadLocale("en");
     await i18n.changeLanguage("en");
   });
 
@@ -211,6 +246,82 @@ describe("Gamification Feature Slice (WP14)", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows all returned standings rather than truncating at five learners", async () => {
+    const board: LeaderboardResponse = {
+      opted_in: true,
+      entries: Array.from({ length: 6 }, (_, index) => ({
+        rank: index + 1,
+        user_id: `0199a1c2-3d4e-7f80-9abc-def01234560${index}`,
+        display_name: `Learner ${index + 1}`,
+        xp: 600 - index * 10,
+        is_self: index === 5,
+      })),
+    };
+    server.use(http.get("/api/v1/leaderboard", () => HttpResponse.json(board)));
+    renderWithProviders(<LeaderboardWidget />);
+    expect(await screen.findByText("Learner 6")).toBeInTheDocument();
+    expect(screen.getByText("550 XP")).toBeInTheDocument();
+  });
+
+  it("shows a retryable load error instead of pretending the board is empty", async () => {
+    let requests = 0;
+    server.use(
+      http.get("/api/v1/leaderboard", () => {
+        requests++;
+        return requests === 1
+          ? HttpResponse.json(
+              { title: "Forbidden", status: 403 },
+              { status: 403 },
+            )
+          : HttpResponse.json({
+              opted_in: false,
+              entries: [],
+            } satisfies LeaderboardResponse);
+      }),
+    );
+    renderWithProviders(<LeaderboardWidget />);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Unable to load the leaderboard",
+    );
+    expect(
+      screen.queryByText("No standings available yet for this week."),
+    ).toBeNull();
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Try again" }));
+    expect(
+      await screen.findByText("No standings available yet for this week."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows an error when joining fails and keeps the standings visible", async () => {
+    server.use(
+      http.get("/api/v1/leaderboard", () =>
+        HttpResponse.json({
+          opted_in: false,
+          entries: [],
+        } satisfies LeaderboardResponse),
+      ),
+      http.put("/api/v1/me/leaderboard-opt-in", () =>
+        HttpResponse.json(
+          { title: "Unable to join", status: 422 },
+          { status: 422 },
+        ),
+      ),
+    );
+    renderWithProviders(<LeaderboardWidget />);
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: "Join League" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Unable to join the league",
+    );
+    expect(
+      screen.getByText("No standings available yet for this week."),
+    ).toBeInTheDocument();
+  });
+
   it("BadgesWidget renders unlocked badges and tier styling", () => {
     const badges = [
       {
@@ -262,7 +373,17 @@ describe("Gamification Feature Slice (WP14)", () => {
     expect(screen.getByText("2 / 3")).toBeInTheDocument();
   });
 
-  it("GamificationSummarySection composites all widgets", () => {
+  it("QuestsWidget renders one compact line of text without card header or badge when empty", () => {
+    renderWithProviders(<QuestsWidget quests={[]} />);
+
+    expect(
+      screen.getByText("No active quests right now. Check back tomorrow!"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Active Quests")).not.toBeInTheDocument();
+    expect(screen.queryByText(/active$/)).not.toBeInTheDocument();
+  });
+
+  it("GamificationSummarySection keeps truthful stats and the freeze action without duplicated widgets", async () => {
     const summary: GamificationSummary = {
       total_xp: 50,
       level: 1,
@@ -283,8 +404,207 @@ describe("Gamification Feature Slice (WP14)", () => {
 
     renderWithProviders(<GamificationSummarySection summary={summary} />);
 
-    expect(screen.getAllByText("Level 1").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("50 XP")).toBeInTheDocument();
+    // 1. Daily goal stat
+    expect(screen.getByText("Daily Goal")).toBeInTheDocument();
+    expect(screen.getByText("10 / 50 XP")).toBeInTheDocument();
+
+    // 2. Day streak stat
     expect(screen.getByText("Day Streak")).toBeInTheDocument();
+    expect(screen.getAllByText("Day Streak")).toHaveLength(1);
+    expect(screen.getByText("1 days")).toBeInTheDocument();
+
+    // 3. Level & XP stat
+    expect(screen.getAllByText("Level 1").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("50 / 100 XP")).toBeInTheDocument();
+    expect(
+      screen.getByRole("progressbar", { name: "Progress towards Level 2" }),
+    ).toHaveAttribute("aria-valuenow", "50");
+    expect(screen.getByText("50 XP to Level 2")).toBeInTheDocument();
+
+    // Exactly one league mention (inside LeaderboardWidget, separate stat card removed)
+    expect(screen.getAllByText(/bronze/i)).toHaveLength(1);
+
+    // Empty quest state rendered as one compact line, no Card header
+    expect(
+      screen.getByText("No active quests right now. Check back tomorrow!"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Active Quests")).not.toBeInTheDocument();
+
+    let freezeCalls = 0;
+    server.use(
+      http.post("/api/v1/me/streak/freeze", () => {
+        freezeCalls++;
+        return HttpResponse.json({ ...summary.streak, freezes_available: 1 });
+      }),
+    );
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Use a streak freeze" }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Your streak is protected today.",
+    );
+    expect(freezeCalls).toBe(1);
+  });
+
+  it("GamificationSummarySection still renders standings toggle and omits league name when summary.league is absent", () => {
+    // The contract requires league; an old or partial payload may still omit it.
+    const summaryWithoutLeague: Omit<GamificationSummary, "league"> = {
+      total_xp: 50,
+      level: 1,
+      level_start_xp: 0,
+      next_level_xp: 100,
+      xp_today: 10,
+      daily_goal_xp: 50,
+      streak: {
+        current: 1,
+        longest: 1,
+        freezes_available: 0,
+        hours_remaining: 12,
+      },
+      badges: [],
+      quests: [],
+    };
+
+    renderWithProviders(
+      <GamificationSummarySection
+        summary={summaryWithoutLeague as GamificationSummary}
+      />,
+    );
+
+    // Standings toggle remains reachable whether or not league is set
+    expect(
+      screen.getByText("Standings and league participation"),
+    ).toBeInTheDocument();
+
+    // No 'Bronze' fallback or fabricated league name
+    expect(screen.queryByText(/bronze/i)).not.toBeInTheDocument();
+  });
+
+  it("LeaderboardWidget renders without default league and allows opt-in when currentLeague is undefined", async () => {
+    server.use(
+      http.get("/api/v1/leaderboard", () =>
+        HttpResponse.json({
+          opted_in: false,
+          entries: [],
+        }),
+      ),
+    );
+
+    renderWithProviders(<LeaderboardWidget />);
+
+    expect(
+      await screen.findByRole("button", { name: /^Join League$/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/bronze/i)).not.toBeInTheDocument();
+  });
+
+  it("TodayProgressCard renders daily XP, streak, level, and leaderboard link", async () => {
+    const summary: GamificationSummary = {
+      total_xp: 50,
+      level: 1,
+      level_start_xp: 0,
+      next_level_xp: 100,
+      xp_today: 10,
+      daily_goal_xp: 50,
+      streak: {
+        current: 1,
+        longest: 1,
+        freezes_available: 2,
+        hours_remaining: 12,
+      },
+      badges: [],
+      quests: [],
+      league: "bronze",
+    };
+
+    await renderWithRouter(<TodayProgressCard summary={summary} />);
+
+    expect(screen.getByText("10 / 50 XP")).toBeInTheDocument();
+    expect(
+      screen.getByRole("progressbar", { name: "Daily XP Goal" }),
+    ).toHaveAttribute("aria-valuenow", "20");
+    expect(screen.getByText("20%")).toBeInTheDocument();
+    expect(screen.getByText("1 days")).toBeInTheDocument();
+    expect(screen.getByText("Level 1")).toBeInTheDocument();
+    expect(screen.getByText("50 XP to next")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Leaderboard →" })).toHaveAttribute(
+      "href",
+      "/leaderboard",
+    );
+  });
+
+  it("TodayProgressCard shows start-streak text when streak.current is 0", async () => {
+    const summary: GamificationSummary = {
+      total_xp: 50,
+      level: 1,
+      level_start_xp: 0,
+      next_level_xp: 100,
+      xp_today: 10,
+      daily_goal_xp: 50,
+      streak: {
+        current: 0,
+        longest: 1,
+        freezes_available: 0,
+        hours_remaining: 0,
+      },
+      badges: [],
+      quests: [],
+      league: "bronze",
+    };
+
+    await renderWithRouter(<TodayProgressCard summary={summary} />);
+
+    expect(screen.getByText("Start your streak today")).toBeInTheDocument();
+  });
+
+  it("TodayProgressCard renders quests count when quests are present", async () => {
+    const summaryWithQuests: GamificationSummary = {
+      total_xp: 120,
+      level: 2,
+      level_start_xp: 100,
+      next_level_xp: 200,
+      xp_today: 30,
+      daily_goal_xp: 50,
+      streak: {
+        current: 3,
+        longest: 5,
+        freezes_available: 1,
+        hours_remaining: 10,
+      },
+      badges: [],
+      quests: [
+        {
+          code: "daily_practice",
+          name: "Daily Practice",
+          description: "Complete three activities today.",
+          progress: { complete_activities: 3 },
+          steps: { complete_activities: 3 },
+          reward_xp: 30,
+          expires_on: "2026-03-02",
+        },
+        {
+          code: "review_cards",
+          name: "Review Cards",
+          description: "Review ten words.",
+          progress: { reviews: 5 },
+          steps: { reviews: 10 },
+          reward_xp: 20,
+          expires_on: "2026-03-02",
+        },
+      ],
+      league: "silver",
+    };
+
+    await renderWithRouter(<TodayProgressCard summary={summaryWithQuests} />);
+
+    expect(screen.getByText("30 / 50 XP")).toBeInTheDocument();
+    expect(
+      screen.getByRole("progressbar", { name: "Daily XP Goal" }),
+    ).toHaveAttribute("aria-valuenow", "60");
+    expect(screen.getByText("3 days")).toBeInTheDocument();
+    expect(screen.getByText("Level 2")).toBeInTheDocument();
+    expect(screen.getByText("80 XP to next")).toBeInTheDocument();
+    expect(screen.getByText("Quests")).toBeInTheDocument();
+    expect(screen.getByText("1 / 2")).toBeInTheDocument();
   });
 });

@@ -20,7 +20,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
-  # Published so the WP0 gate in docs/development/getting-started.md §5 can be
+  # Published so the WP0 gate (one request, three correlated signals) can be
   # run with curl rather than by clicking around Grafana.
   tempo:
     ports: ["127.0.0.1:3200:3200"]

@@ -12,11 +12,12 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 
-import i18n, { initI18n } from "@/i18n";
+import i18n, { initI18n, loadLocale } from "@/i18n";
 import { useAuthStore } from "@/stores/authStore";
 import { PlacementInviteCard } from "@/features/learning/components/Dashboard/PlacementInviteCard";
 import { WeeklyPlanCard } from "@/features/learning/components/Dashboard/WeeklyPlanCard";
 import { LearningProfileSettings } from "@/features/account/components/LearningProfileSettings";
+import { PlacementIntro } from "@/features/learning/components/Placement/PlacementIntro";
 import { WelcomePage } from "@/pages/WelcomePage";
 import { PlacementPage } from "@/routes/PlacementPage";
 import { server } from "./msw-server";
@@ -100,6 +101,7 @@ const completedSession = {
 describe("work order 13 screens", () => {
   beforeEach(async () => {
     await initI18n("en");
+    await loadLocale("en");
     await i18n.changeLanguage("en");
     useAuthStore.setState({
       status: "authenticated",
@@ -164,10 +166,19 @@ describe("work order 13 screens", () => {
       );
       renderWithProviders(<WeeklyPlanCard />);
 
-      expect(await screen.findByText("This week's plan")).toBeInTheDocument();
       expect(
-        screen.getByRole("link", { name: "Making plans" }),
+        await screen.findByRole("heading", { name: "This week's plan" }),
       ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Making plans, Done" }),
+      ).toHaveAttribute(
+        "href",
+        "/learn/lesson/0199a1c2-3d4e-7f80-9abc-def01234567a",
+      );
+      expect(screen.getByRole("link", { name: "Reviews" })).toHaveAttribute(
+        "href",
+        "/practice/review",
+      );
       expect(screen.getByText("25 of 90 minutes")).toBeInTheDocument();
       expect(screen.getByText("15 reviews")).toBeInTheDocument();
       expect(screen.getByText("Focus")).toBeInTheDocument();
@@ -293,6 +304,79 @@ describe("work order 13 screens", () => {
         activity_id: ACTIVITY_ID,
         response: { selected_option_id: "B" },
       });
+    });
+  });
+
+  describe("PlacementIntro", () => {
+    it("renders summary preceding the start button with duration, item count and post-test outcome when provided", async () => {
+      renderWithProviders(
+        <PlacementIntro
+          durationMinutes={15}
+          itemCount={25}
+          onStarted={() => {}}
+          onConflict={() => {}}
+        />,
+      );
+
+      const summary = await screen.findByTestId("placement-summary");
+      expect(summary).toBeInTheDocument();
+      expect(summary).toHaveTextContent(/15 minutes/i);
+      expect(summary).toHaveTextContent(/25 questions/i);
+      expect(summary).toHaveTextContent(/Places you between A1 and C1/i);
+      expect(summary).toHaveTextContent(
+        /One item at a time\. An answer cannot be changed once it is sent\./i,
+      );
+
+      // noGoingBack appears only once on the page (not duplicated in details)
+      expect(screen.getAllByText(/One item at a time/i)).toHaveLength(1);
+
+      const startBtn = screen.getByRole("button", {
+        name: /Start the test/i,
+      });
+      expect(startBtn).toBeInTheDocument();
+
+      // Summary precedes the start button in the DOM
+      expect(
+        Boolean(
+          summary.compareDocumentPosition(startBtn) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ).toBe(true);
+
+      // Detail section is present with collapsible facts
+      expect(screen.getByText("Test details")).toBeInTheDocument();
+      expect(
+        screen.getByText(/About 15 minutes, 20 at most/i),
+      ).toBeInTheDocument();
+    });
+
+    it("omits duration and item count lines when not present in data or props", async () => {
+      renderWithProviders(
+        <PlacementIntro onStarted={() => {}} onConflict={() => {}} />,
+      );
+
+      const summary = await screen.findByTestId("placement-summary");
+      expect(summary).toBeInTheDocument();
+
+      // Does not invent duration or item count
+      expect(summary).not.toHaveTextContent(/minutes/i);
+      expect(summary).not.toHaveTextContent(/questions/i);
+
+      // What happens after and noGoingBack are still present
+      expect(summary).toHaveTextContent(/Places you between A1 and C1/i);
+      expect(summary).toHaveTextContent(/One item at a time/i);
+      expect(screen.getAllByText(/One item at a time/i)).toHaveLength(1);
+
+      const startBtn = screen.getByRole("button", {
+        name: /Start the test/i,
+      });
+      expect(startBtn).toBeInTheDocument();
+      expect(
+        Boolean(
+          summary.compareDocumentPosition(startBtn) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ).toBe(true);
     });
   });
 });

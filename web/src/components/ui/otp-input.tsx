@@ -1,4 +1,6 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export interface OtpInputProps {
@@ -24,6 +26,7 @@ export const OtpInput = React.forwardRef<HTMLDivElement, OtpInputProps>(
     },
     ref,
   ) => {
+    const { t } = useTranslation();
     const inputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
 
     const digits = React.useMemo(() => {
@@ -95,14 +98,14 @@ export const OtpInput = React.forwardRef<HTMLDivElement, OtpInputProps>(
       <div
         ref={ref}
         role="group"
-        aria-label="One-Time Password"
+        aria-label={t("auth.oneTimePassword", "One-Time Password")}
         className={cn(
           "flex items-center justify-center gap-2 sm:gap-3",
           className,
         )}
       >
         {digits.map((digit, index) => (
-          <input
+          <Input
             key={index}
             ref={(el) => {
               inputRefs.current[index] = el;

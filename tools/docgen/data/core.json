@@ -238,7 +238,7 @@
           "Change `ACCESS_TTL` / `REFRESH_TTL` in config — never hard-code a duration.",
           "Check the frontend's silent-refresh margin still fits (it refreshes at 80 % of the access TTL).",
           "Update the denylist TTL, which must be ≥ the access TTL.",
-          "Update `docs/deployment/configuration.md` and this file §9."
+          "Update `.env.example` and this file §9."
         ]
       },
       {
@@ -909,6 +909,7 @@
       "User management screens (list, search, inspect, suspend, reinstate, impersonate)",
       "Moderation queues (flagged content, reported names, flagged submissions)",
       "Feature flag management",
+      "Dashboard banners of two kinds: announcements shown once as a dialog, and image-only promo slides in a carousel (create, schedule, switch on/off, delete)",
       "Operational actions: retry a job, replay a webhook, invalidate a cache key",
       "System health summary for non-engineers"
     ],
@@ -921,7 +922,8 @@
       { "name": "admin_actions", "purpose": "Audit log of admin operations on accounts", "notes": "`actor_id`, `target_id`, `action` (suspend/reinstate/revoke_sessions), `reason`, `occurred_at`. CHECK actor_id != target_id" },
       { "name": "feature_flags", "purpose": "Runtime feature toggles", "notes": "`key`, `enabled`, `rollout_percent`, `owner`, `expires_on`. Cached 30 s in-process." },
       { "name": "admin_notes", "purpose": "Free-text notes attached to a user or content item", "notes": "Visible to admins only; audited on create" },
-      { "name": "moderation_items", "purpose": "The moderation queue", "notes": "`kind`, `target_type`, `target_id`, `reason`, `status`, `assignee_id`" }
+      { "name": "moderation_items", "purpose": "The moderation queue", "notes": "`kind`, `target_type`, `target_id`, `reason`, `status`, `assignee_id`" },
+      { "name": "banners", "purpose": "Announcement banners shown on the learner dashboard", "notes": "`title`, `body`, `cta_label`/`cta_url`, `tone`, `is_active`, `priority`, `dismissible`, `starts_at`/`ends_at`, `created_by`. CHECKs repeat the service rules (lengths, tone, safe link, window order). `kind` is `announcement` or `slide` (migration 953; a slide needs an image and has no body, button text or dismissal). Partial index on active rows. Optional image: `image_key` (a processed JPEG under `banners/images/` in fluentra-media), `image_alt`, `image_width`/`image_height`, all-or-none by CHECK and unique per banner (migration 952). Active list cached 30 s in-process, image URLs signed when it fills." }
     ],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/admin/users", "permission": "user.list", "purpose": "Search accounts, cursor-paginated", "success": "200", "notes": "The search itself is not audited; opening one result is" },
@@ -935,6 +937,13 @@
       { "method": "POST", "path": "/api/v1/admin/flags", "permission": "system.flags", "purpose": "Create a feature flag", "success": "201", "notes": "`owner` and a future `expires_on` are required" },
       { "method": "PUT", "path": "/api/v1/admin/flags/{key}", "permission": "system.flags", "purpose": "Update a feature flag", "success": "200", "notes": "Visible within one 30 s cache generation" },
       { "method": "DELETE", "path": "/api/v1/admin/flags/{key}", "permission": "system.flags", "purpose": "Delete a feature flag", "success": "204", "notes": "Evaluations of the key then return false" },
+      { "method": "GET", "path": "/api/v1/banners/active", "permission": "self", "purpose": "The dashboard banners showing now (at most 3 announcements and 6 slides)", "success": "200", "notes": "Any signed-in account; no admin fields; cached 30 s" },
+      { "method": "GET", "path": "/api/v1/admin/banners", "permission": "system.flags", "purpose": "List every banner", "success": "200", "notes": "Unpaginated, capped at 200" },
+      { "method": "POST", "path": "/api/v1/admin/banners", "permission": "system.flags", "purpose": "Create a banner", "success": "201", "notes": "Audited as `admin.banner_created`" },
+      { "method": "PUT", "path": "/api/v1/admin/banners/{id}", "permission": "system.flags", "purpose": "Replace a banner", "success": "200", "notes": "Audited as `admin.banner_updated`; invalidates the active cache" },
+      { "method": "DELETE", "path": "/api/v1/admin/banners/{id}", "permission": "system.flags", "purpose": "Delete a banner", "success": "204", "notes": "Audited as `admin.banner_deleted`; deletes its image" },
+      { "method": "POST", "path": "/api/v1/admin/banners/image-upload-intent", "permission": "system.flags", "purpose": "Presigned upload for a banner image", "success": "200", "notes": "JPEG, PNG or WebP, at most 5 MB, ten minutes; key scoped to the admin" },
+      { "method": "POST", "path": "/api/v1/admin/banners/images", "permission": "system.flags", "purpose": "Check and publish an uploaded banner image", "success": "201", "notes": "Sniffs the bytes, refuses over 40 MP, fits 1600x900, re-encodes JPEG without metadata, deletes the raw upload" },
       { "method": "GET", "path": "/api/v1/admin/dashboard", "permission": "admin.dashboard", "purpose": "Composed KPI summary", "success": "200" },
       { "method": "GET", "path": "/api/v1/admin/moderation", "permission": "moderation.read", "purpose": "Moderation queue", "success": "200" },
       { "method": "POST", "path": "/api/v1/admin/moderation/{id}/resolve", "permission": "moderation.act", "purpose": "Resolve a queue item", "success": "200" },
@@ -959,7 +968,10 @@
       "Impersonation is time-boxed to 30 minutes, produces a visually distinct session, is fully audited, and is blocked for payment and deletion actions.",
       "A feature flag defaults to disabled and carries an owner and an expiry date; expired flags are reported weekly.",
       "Operational actions are idempotent — retrying a retry must not double-execute.",
-      "An admin cannot act on their own account through admin screens (suspension, role change) — that path goes through another admin."
+      "An admin cannot act on their own account through admin screens (suspension, role change) — that path goes through another admin.",
+      "A banner shows only while `is_active` is true and now is inside its optional `starts_at`..`ends_at` window; the dashboard gets at most three announcements and six slides, each kind highest priority first, then newest. An announcement opens as a dialog once per visit; a slide is always shown while live and cannot be dismissed.",
+      "Banner text is plain text, never HTML. A banner link is an internal path starting with `/` (not `//`) or an `https://` URL; `javascript:`, `data:` and protocol-relative links are refused by the service and by a CHECK.",
+      "A banner image is only ever one the admin module processed itself: the browser uploads to a holding key, the server re-encodes it, and a banner may name only a `banners/images/` key that exists. Replacing, clearing or deleting a banner's image deletes the object."
     ],
     "errors": [
       { "code": "IMPERSONATION_FORBIDDEN_ACTION", "status": "403", "meaning": "The attempted action is not permitted while impersonating" },
@@ -967,7 +979,11 @@
       { "code": "REASON_REQUIRED", "status": "422", "meaning": "A state-changing admin action was sent without a reason of at least 10 characters" },
       { "code": "USER_NOT_FOUND", "status": "404", "meaning": "The target user account does not exist" },
       { "code": "FEATURE_FLAG_NOT_FOUND", "status": "404", "meaning": "The requested feature flag does not exist" },
-      { "code": "FEATURE_FLAG_ALREADY_EXISTS", "status": "409", "meaning": "A feature flag with that key already exists" }
+      { "code": "FEATURE_FLAG_ALREADY_EXISTS", "status": "409", "meaning": "A feature flag with that key already exists" },
+      { "code": "BANNER_INVALID", "status": "422", "meaning": "A banner field failed validation; `errors[]` names each field" },
+      { "code": "BANNER_NOT_FOUND", "status": "404", "meaning": "No banner has that id" },
+      { "code": "BANNER_IMAGE_INVALID", "status": "422", "meaning": "The image type is not JPEG, PNG or WebP, or the upload is not a usable image" },
+      { "code": "BANNER_IMAGES_UNAVAILABLE", "status": "503", "meaning": "Storage is not configured or not reachable" }
     ],
     "security": [
       "All `/admin/*` routes require the `admin` role at the route group and a specific permission at the service.",
@@ -1001,7 +1017,8 @@
       "Impersonation cannot perform forbidden actions and expires on time",
       "Self-administration is refused",
       "Every write produces an audit entry with the correct actor",
-      "Flag changes propagate within the cache TTL"
+      "Flag changes propagate within the cache TTL",
+      "Banner links refuse `javascript:`, `data:` and protocol-relative values; the active list honours the window, the order and the limit of three"
     ],
     "decisions": [
       { "question": "Separate admin service or the same binary?", "choice": "Same binary, separate route group", "why": "A separate service would duplicate every contract call over the network for a handful of screens; the route group plus per-operation permissions gives the isolation that matters" },

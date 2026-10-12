@@ -73,6 +73,12 @@ FROM resource.renditions
 WHERE resource_id = $1
 ORDER BY kind ASC;
 
+-- name: ListRenditionsByResourceIDs :many
+SELECT id, resource_id, kind, status, object_key, mime_type, width, height, duration_ms, byte_size, tool_version, attempts, failure_reason, created_at, updated_at
+FROM resource.renditions
+WHERE resource_id = ANY($1::uuid[])
+ORDER BY resource_id, kind;
+
 -- name: ListRenditionKeysByUserID :many
 SELECT r.object_key
 FROM resource.renditions r

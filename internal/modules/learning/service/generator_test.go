@@ -26,12 +26,14 @@ const (
 	testLabelPresentPerfect    = "Present Perfect"
 	testKindTenseChoice        = "grammar_tense_choice"
 	testPurposeFoundation      = "foundation"
+	testPurposeBank            = "bank"
 )
 
 type generatorTestAuthor struct {
 	mu        sync.Mutex
 	drafts    []contentcontract.AuthorSpec
 	published []contentcontract.AuthorSpec
+	approved  []uuid.UUID
 }
 
 func (a *generatorTestAuthor) EnsurePublished(_ context.Context, spec contentcontract.AuthorSpec) (uuid.UUID, error) {
@@ -58,6 +60,15 @@ func (a *generatorTestAuthor) EnsureDraft(_ context.Context, spec contentcontrac
 	defer a.mu.Unlock()
 	a.drafts = append(a.drafts, spec)
 	return uuid.New(), nil
+}
+
+func (a *generatorTestAuthor) ApproveVerified(
+	_ context.Context, versionID uuid.UUID, _ contentcontract.Verification,
+) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.approved = append(a.approved, versionID)
+	return nil
 }
 
 type generatorTestTaxonomies struct {
@@ -292,7 +303,7 @@ func TestGenerator_FoundationContentKinds(t *testing.T) {
 			if kind == learningcontract.KindFoundationTopic {
 				assert.Equal(t, "foundation_topic_generate.v1", item.PromptVersion)
 			} else {
-				assert.Equal(t, "item_generate.v1", item.PromptVersion)
+				assert.Equal(t, "item_generate.v2", item.PromptVersion)
 			}
 
 			// Verify provenance
@@ -308,6 +319,189 @@ func TestGenerator_FoundationContentKinds(t *testing.T) {
 
 	// All 3 items must have landed as drafts
 	assert.Len(t, author.drafts, 3)
+}
+
+// autoPublishAI delegates generation and level judging to a real mock provider
+// and answers the independent verifier itself, so a test can force a
+// confirmation or a doubt.
+type autoPublishAI struct {
+	inner   ai.Client
+	solve   string
+	verdict string
+}
+
+func (a *autoPublishAI) Complete(ctx context.Context, req ai.Request) (ai.Response, error) {
+	switch req.Task {
+	case ai.TaskItemSolve:
+		return ai.Response{
+			Text:  fmt.Sprintf(`{"selected_option_id": %q}`, a.solve),
+			Model: testVerifierModel,
+		}, nil
+	case ai.TaskItemVerify:
+		return ai.Response{
+			Text:  fmt.Sprintf(`{"verdict": %q, "reason": ""}`, a.verdict),
+			Model: testVerifierModel,
+		}, nil
+	default:
+		return a.inner.Complete(ctx, req)
+	}
+}
+
+// fakeVerificationRecorder records the doubts a run leaves on its drafts.
+type fakeVerificationRecorder struct {
+	received []contentcontract.Verification
+}
+
+func (f *fakeVerificationRecorder) RecordVerification(
+	_ context.Context, _ uuid.UUID, v contentcontract.Verification,
+) error {
+	f.received = append(f.received, v)
+	return nil
+}
+
+// TestGenerate_AutoPublishPublishesWhatTheVerifierConfirms is the WO 22 Stage A
+// gate: with an independent model confirming, a generated item publishes with
+// no person.
+func TestGenerate_AutoPublishPublishesWhatTheVerifierConfirms(t *testing.T) {
+	author := &generatorTestAuthor{}
+	recorder := &fakeVerificationRecorder{}
+	svc := service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     author,
+		ContentRecorder:   recorder,
+		AutoPublish:       true,
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           passingGraders(),
+		AI:                &autoPublishAI{inner: ai.NewMockProvider(nil), solve: "A", verdict: "confirmed"},
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+		Synthesiser:       &fakeAudioSynthesiser{},
+	})
+
+	items, err := svc.Generate(context.Background(), learningcontract.GenerateRequest{
+		Kind:      testKindTenseChoice,
+		CEFRLevel: "B1",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   testPurposeBank,
+	})
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Len(t, author.approved, 1, "a confirmed item publishes through ApproveVerified")
+	assert.Empty(t, recorder.received, "a confirmed item leaves no doubt")
+}
+
+// TestGenerate_AFoundationItemWaitsForItsNode is D22-13: a confirmed Foundation
+// item is not published on its own. The verdict is recorded, and the node's
+// batch is published whole once its topic and every item are confirmed.
+func TestGenerate_AFoundationItemWaitsForItsNode(t *testing.T) {
+	author := &generatorTestAuthor{}
+	recorder := &fakeVerificationRecorder{}
+	svc := service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     author,
+		ContentRecorder:   recorder,
+		AutoPublish:       true,
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           passingGraders(),
+		AI:                &autoPublishAI{inner: ai.NewMockProvider(nil), solve: "A", verdict: "confirmed"},
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+		Synthesiser:       &fakeAudioSynthesiser{},
+	})
+
+	_, err := svc.Generate(context.Background(), learningcontract.GenerateRequest{
+		Kind:      testKindTenseChoice,
+		CEFRLevel: "B1",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   testPurposeFoundation,
+	})
+	require.NoError(t, err)
+	assert.Empty(t, author.approved, "a Foundation item publishes with its node, not alone")
+	require.Len(t, recorder.received, 1, "the verdict is recorded for the node's batch")
+	assert.True(t, recorder.received[0].Confirmed)
+}
+
+// TestGenerate_AutoPublishLeavesADoubtForAPerson. A verifier that does not
+// confirm records the doubt on the draft instead of publishing it (D22-2).
+func TestGenerate_AutoPublishLeavesADoubtForAPerson(t *testing.T) {
+	author := &generatorTestAuthor{}
+	recorder := &fakeVerificationRecorder{}
+	svc := service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     author,
+		ContentRecorder:   recorder,
+		AutoPublish:       true,
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           passingGraders(),
+		AI:                &autoPublishAI{inner: ai.NewMockProvider(nil), solve: "A", verdict: "doubt"},
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+		Synthesiser:       &fakeAudioSynthesiser{},
+	})
+
+	_, err := svc.Generate(context.Background(), learningcontract.GenerateRequest{
+		Kind:      testKindTenseChoice,
+		CEFRLevel: "B1",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   testPurposeFoundation,
+	})
+	require.NoError(t, err)
+	assert.Empty(t, author.approved, "a doubted item does not publish")
+	require.Len(t, recorder.received, 1, "the doubt is recorded on the draft")
+	assert.False(t, recorder.received[0].Confirmed)
+}
+
+// TestGenerate_AppliesTheExamPartConstraints is the WO 22 Stage I enforcement
+// at the generator: an exam part's option count reaches the structure check, so
+// a four-option item cannot be generated for a three-option part.
+func TestGenerate_AppliesTheExamPartConstraints(t *testing.T) {
+	svc := service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     &generatorTestAuthor{},
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           passingGraders(),
+		AI:                ai.NewMockProvider(nil),
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+		Synthesiser:       &fakeAudioSynthesiser{},
+	})
+
+	_, err := svc.Generate(context.Background(), learningcontract.GenerateRequest{
+		Kind:      testKindTenseChoice,
+		CEFRLevel: "B1",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   testPurposeFoundation,
+		// The mock writes four options; TOEIC Part 2 has three.
+		ExamConstraints: &learningcontract.ExamPartConstraints{OptionCount: 3},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exam structure")
+}
+
+// generatorTestTaxonomySet is the one-node taxonomy the auto-publish tests use.
+func generatorTestTaxonomySet() *generatorTestTaxonomies {
+	return &generatorTestTaxonomies{
+		nodes: map[string]*contentcontract.TaxonomyNode{
+			testNodeCodePresentPerfect: {
+				ID:        uuid.New(),
+				Namespace: testSkillGrammar,
+				Code:      testNodeCodePresentPerfect,
+				Label:     testLabelPresentPerfect,
+			},
+		},
+	}
 }
 
 // The count sizes an allocation and a loop of model calls, and it arrives from a
@@ -333,4 +527,152 @@ func TestGenerator_RefusesACountPastTheMaximum(t *testing.T) {
 	var appErr *apperr.Error
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, "GENERATOR_COUNT_TOO_LARGE", appErr.Code)
+}
+
+// TestGenerate_AOneQuestionRecordingForVSTEPPart1: VSTEP Listening Part 1 is
+// eight announcements of one question each. The candidate check demanded four
+// questions a recording and refused every Part 1 item; the part's own count
+// now sets the floor.
+func TestGenerate_AOneQuestionRecordingForVSTEPPart1(t *testing.T) {
+	svc := service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     &generatorTestAuthor{},
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           passingGraders(),
+		AI:                ai.NewMockProvider(nil),
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+	})
+
+	items, err := svc.Generate(context.Background(), learningcontract.GenerateRequest{
+		Kind:      "listening_comprehension",
+		CEFRLevel: "B1",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   testPurposeBank,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			OptionCount: 4, QuestionsPerGroup: 1, AudioRequired: true,
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	var body struct {
+		Questions []json.RawMessage `json:"questions"`
+	}
+	require.NoError(t, json.Unmarshal(items[0].Body, &body))
+	assert.Len(t, body.Questions, 1, "one question per announcement, as the part states")
+}
+
+// TestGenerate_APart1ItemCarriesItsPhotograph is D22-21: the model writes from
+// the description and never sees the image, so the item's photograph, credit
+// page and licence come from the request, whatever the model wrote there.
+func TestGenerate_APart1ItemCarriesItsPhotograph(t *testing.T) {
+	graders := passingGraders()
+	require.NoError(t, graders.Register("photo_description", &testPracticeGrader{shouldPass: true}))
+	svc := service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     &generatorTestAuthor{},
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           graders,
+		AI:                ai.NewMockProvider(nil),
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+		Synthesiser:       &fakeAudioSynthesiser{},
+	})
+
+	items, err := svc.Generate(context.Background(), learningcontract.GenerateRequest{
+		Kind:      "photo_description",
+		CEFRLevel: "B1",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   testPurposeBank,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			OptionCount: 4, QuestionsPerGroup: 1, AudioRequired: true,
+		},
+		Photo: &learningcontract.PhotoRef{ //nolint:gosec // a photograph's credit page, not a credential
+			URL:         "https://upload.wikimedia.org/photo.jpg",
+			CreditPage:  "https://commons.wikimedia.org/wiki/File:Photo.jpg",
+			Licence:     "CC BY 4.0",
+			Description: "A man carries a box up a flight of stairs.",
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	var body struct {
+		ImageURL     string `json:"image_url"`
+		ImageCredit  string `json:"image_credit"`
+		ImageLicence string `json:"image_licence"`
+	}
+	require.NoError(t, json.Unmarshal(items[0].Body, &body))
+	assert.Equal(t, "https://upload.wikimedia.org/photo.jpg", body.ImageURL)
+	assert.Equal(t, "https://commons.wikimedia.org/wiki/File:Photo.jpg", body.ImageCredit)
+	assert.Equal(t, "CC BY 4.0", body.ImageLicence)
+}
+
+// fakeCharts records the chart data it was asked to draw.
+type fakeCharts struct{ drawn []json.RawMessage }
+
+func (f *fakeCharts) RenderChart(spec json.RawMessage) (string, error) {
+	f.drawn = append(f.drawn, spec)
+	return "data:image/svg+xml;base64,PHN2Zy8+", nil
+}
+
+// task1Request is an IELTS Writing Task 1 request: a task about a chart.
+func task1Request() learningcontract.GenerateRequest {
+	return learningcontract.GenerateRequest{
+		Kind:      examKindWritingPrompt,
+		CEFRLevel: "B2",
+		NodeCodes: []string{testNodeCodePresentPerfect},
+		Count:     1,
+		Purpose:   testPurposeBank,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			QuestionsPerGroup: 1, MinWords: 150, VisualRequired: true,
+			AllowedTypes: []string{examKindWritingPrompt},
+		},
+	}
+}
+
+func task1Service(charts service.ChartRenderer) *service.Service {
+	return service.New(service.Deps{
+		Lesson:            newFakePoolLessons(),
+		LessonAuthor:      newFakePoolLessons(),
+		Content:           newFakeContentReader(),
+		ContentAuthor:     &generatorTestAuthor{},
+		Taxonomies:        generatorTestTaxonomySet(),
+		Graders:           passingGraders(),
+		AI:                ai.NewMockProvider(nil),
+		Clock:             clock.NewFake(time.Now()),
+		GeneratorAuthorID: uuid.New(),
+		Charts:            charts,
+	})
+}
+
+// TestGenerate_ATask1CarriesTheChartItDescribes is D22-22: the model returns
+// the chart's data, our renderer draws it, and the body keeps both.
+func TestGenerate_ATask1CarriesTheChartItDescribes(t *testing.T) {
+	charts := &fakeCharts{}
+	items, err := task1Service(charts).Generate(context.Background(), task1Request())
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.Len(t, charts.drawn, 1, "the chart is drawn from the model's data")
+
+	var body struct {
+		ImageURL string          `json:"image_url"`
+		Chart    json.RawMessage `json:"chart"`
+	}
+	require.NoError(t, json.Unmarshal(items[0].Body, &body))
+	assert.Equal(t, "data:image/svg+xml;base64,PHN2Zy8+", body.ImageURL)
+	assert.JSONEq(t, string(charts.drawn[0]), string(body.Chart), "the body keeps the numbers the learner describes")
+}
+
+// TestGenerate_ATask1WithoutARendererIsRefused: a task about a chart nobody can
+// draw is not published without its visual.
+func TestGenerate_ATask1WithoutARendererIsRefused(t *testing.T) {
+	_, err := task1Service(nil).Generate(context.Background(), task1Request())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "chart")
 }

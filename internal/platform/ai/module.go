@@ -178,10 +178,11 @@ func New(config Config) (Client, error) {
 	}
 
 	return NewRouter(RouterOptions{
-		Prompts:   registry,
-		Providers: providerReg,
-		Cache:     cache,
-		Usage:     usage,
-		Budget:    budget,
+		Prompts:          registry,
+		Providers:        providerReg,
+		Cache:            cache,
+		Usage:            usage,
+		Budget:           budget,
+		BalanceProviders: true,
 	}), nil
 }

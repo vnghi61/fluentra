@@ -19,6 +19,15 @@ import { Link, useNavigate } from "@tanstack/react-router";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
   examApi,
@@ -100,6 +109,7 @@ export const ExamList: React.FC<ExamListProps> = ({
   const [practiceExam, setPracticeExam] = useState<ExamTemplate | null>(null);
   const [minutes, setMinutes] = useState(PRACTICE_DEFAULT_MINUTES);
   const [unlimited, setUnlimited] = useState(false);
+  const [customDuration, setCustomDuration] = useState(false);
   const [chosenSections, setChosenSections] = useState<number[]>([]);
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
@@ -124,6 +134,7 @@ export const ExamList: React.FC<ExamListProps> = ({
   const openPractice = (exam: ExamTemplate) => {
     setMinutes(PRACTICE_DEFAULT_MINUTES);
     setUnlimited(false);
+    setCustomDuration(false);
     setChosenSections(sectionsOf(exam).map((section) => section.position));
     setPracticeExam(exam);
   };
@@ -191,18 +202,13 @@ export const ExamList: React.FC<ExamListProps> = ({
     );
 
   return (
-    <div
-      className={cn(
-        "mx-auto max-w-5xl space-y-10 p-4 sm:p-6 md:p-8",
-        className,
-      )}
-    >
+    <div className={cn("mx-auto w-full min-w-0 space-y-10", className)}>
       <div className="flex flex-col gap-6 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-text sm:text-4xl">
+          <h1 className="text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
             {t("exam.hub.title")}
           </h1>
-          <p className="max-w-xl text-xs leading-relaxed text-text-muted sm:text-sm">
+          <p className="max-w-xl text-base leading-relaxed text-text-muted">
             {t("exam.hub.subtitle")}
           </p>
         </div>
@@ -222,7 +228,7 @@ export const ExamList: React.FC<ExamListProps> = ({
       {startError && (
         <div
           role="alert"
-          className="flex items-center gap-2 rounded-xl border border-danger/20 bg-danger/10 p-4 text-xs text-danger-accent sm:text-sm"
+          className="flex items-center gap-2 rounded-xl border border-danger/20 bg-danger/10 p-4 text-sm text-danger-accent"
         >
           <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{startError}</span>
@@ -231,11 +237,11 @@ export const ExamList: React.FC<ExamListProps> = ({
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-bold text-text sm:text-lg">
+          <h2 className="text-lg font-semibold leading-snug text-text md:text-xl">
             {t("exam.hub.chooseLevel")}
           </h2>
           {userPracticeLevel && (
-            <span className="text-xs text-text-muted">
+            <span className="text-sm text-text-muted">
               {t("exam.hub.practiceLevel", { level: userPracticeLevel })}
             </span>
           )}
@@ -259,7 +265,7 @@ export const ExamList: React.FC<ExamListProps> = ({
               )}
             >
               <span>{lvl}</span>
-              <span className="text-[11px] font-normal">{levelNames[lvl]}</span>
+              <span className="text-xs font-normal">{levelNames[lvl]}</span>
             </button>
           ))}
         </div>
@@ -283,10 +289,10 @@ export const ExamList: React.FC<ExamListProps> = ({
               className="mx-auto h-6 w-6 text-text-muted"
               aria-hidden="true"
             />
-            <h2 className="text-base font-bold text-text">
+            <h2 className="text-lg font-semibold leading-snug text-text">
               {t("exam.hub.notAvailableTitle")}
             </h2>
-            <p className="mx-auto max-w-md text-xs text-text-muted">
+            <p className="mx-auto max-w-md text-base leading-relaxed text-text-muted">
               {t("exam.hub.notAvailableBody")}
             </p>
           </div>
@@ -305,15 +311,15 @@ export const ExamList: React.FC<ExamListProps> = ({
       </section>
 
       <section className="space-y-4 pt-4">
-        <h2 className="text-base font-bold text-text sm:text-lg">
+        <h2 className="text-lg font-semibold leading-snug text-text md:text-xl">
           {t("exam.hub.history")}
         </h2>
         {attempts.isLoading ? (
-          <p className="rounded-xl border border-border bg-surface-card p-6 text-center text-xs text-text-muted">
+          <p className="rounded-xl border border-border bg-surface-card p-6 text-center text-sm text-text-muted">
             {t("exam.hub.loading")}
           </p>
         ) : (attempts.data?.items ?? []).length === 0 ? (
-          <p className="rounded-xl border border-border-subtle bg-surface-muted/30 p-8 text-center text-xs text-text-muted">
+          <p className="rounded-xl border border-border-subtle bg-surface-muted/30 p-8 text-center text-base leading-relaxed text-text-muted">
             {t("exam.hub.noHistory")}
           </p>
         ) : (
@@ -323,9 +329,9 @@ export const ExamList: React.FC<ExamListProps> = ({
                 key={att.id}
                 className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5"
               >
-                <div className="space-y-1">
+                <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold text-text">
+                    <span className="min-w-0 break-words text-base font-semibold leading-snug text-text">
                       {att.exam_title || t("exam.title")}
                     </span>
                     <Badge variant="outline">
@@ -334,8 +340,8 @@ export const ExamList: React.FC<ExamListProps> = ({
                         : t("exam.mode.practice")}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-text-muted">
-                    <Calendar className="h-3 w-3" aria-hidden="true" />
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
+                    <Calendar className="h-4 w-4" aria-hidden="true" />
                     <span>
                       {new Date(att.started_at).toLocaleDateString(
                         i18n.language,
@@ -349,7 +355,7 @@ export const ExamList: React.FC<ExamListProps> = ({
                   <Link
                     to="/exams/$attemptId"
                     params={{ attemptId: att.id }}
-                    className="inline-flex min-h-[44px] items-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-fg"
+                    className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-fg"
                   >
                     {t("exam.hub.resume")}
                   </Link>
@@ -357,7 +363,7 @@ export const ExamList: React.FC<ExamListProps> = ({
                   <Link
                     to="/exams/$attemptId/report"
                     params={{ attemptId: att.id }}
-                    className="inline-flex min-h-[44px] items-center rounded-lg border border-border px-4 text-xs font-semibold text-text"
+                    className="inline-flex min-h-11 items-center rounded-lg border border-border px-4 text-sm font-semibold text-text"
                   >
                     {t("exam.hub.viewReport")}
                   </Link>
@@ -369,131 +375,146 @@ export const ExamList: React.FC<ExamListProps> = ({
       </section>
 
       {practiceExam && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="practice-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 pb-20 md:pb-4"
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open && !isStarting) setPracticeExam(null);
+          }}
         >
-          <div className="max-h-[calc(90vh-5rem)] w-full max-w-lg space-y-5 overflow-y-auto rounded-2xl border border-border bg-surface-card p-5 shadow-2xl sm:p-6 md:max-h-[90vh]">
-            <div className="space-y-1.5">
-              <h3 id="practice-title" className="text-lg font-bold text-text">
-                {t("exam.hub.practiceTitle")}
-              </h3>
-              <p className="text-xs leading-relaxed text-text-muted">
+          <DialogContent className="max-w-lg">
+            <DialogHeader className="space-y-1.5">
+              <DialogTitle>{t("exam.hub.practiceTitle")}</DialogTitle>
+              <DialogDescription>
                 {t("exam.hub.practiceBody")}
-              </p>
-            </div>
+              </DialogDescription>
+            </DialogHeader>
 
-            <fieldset className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <legend className="text-sm font-semibold text-text">
-                  {t("exam.parts.chooseSections")}
-                </legend>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() =>
-                    setChosenSections(
-                      sectionsOf(practiceExam).map((s) => s.position),
-                    )
-                  }
-                >
-                  {t("exam.parts.selectAll")}
-                </Button>
-              </div>
-              <ul className="space-y-2">
-                {sectionsOf(practiceExam).map((section) => {
-                  const checked = chosenSections.includes(section.position);
-                  return (
-                    <li key={section.position}>
-                      <button
-                        type="button"
-                        role="checkbox"
-                        aria-checked={checked}
-                        onClick={() => toggleSection(section.position)}
-                        className={cn(
-                          "flex min-h-[44px] w-full items-start gap-3 rounded-xl border p-3 text-left",
-                          checked
-                            ? "border-primary bg-primary/10"
-                            : "border-border-subtle bg-surface-muted/40 hover:bg-surface-muted",
-                        )}
-                      >
-                        <span
+            <DialogBody className="space-y-5">
+              <fieldset className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <legend className="text-sm font-semibold text-text">
+                    {t("exam.parts.chooseSections")}
+                  </legend>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setChosenSections(
+                        sectionsOf(practiceExam).map((s) => s.position),
+                      )
+                    }
+                  >
+                    {t("exam.parts.selectAll")}
+                  </Button>
+                </div>
+                <ul className="space-y-2">
+                  {sectionsOf(practiceExam).map((section) => {
+                    const checked = chosenSections.includes(section.position);
+                    return (
+                      <li key={section.position}>
+                        <button
+                          type="button"
+                          role="checkbox"
+                          aria-checked={checked}
+                          onClick={() => toggleSection(section.position)}
                           className={cn(
-                            "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border",
+                            "flex min-h-[44px] w-full items-start gap-3 rounded-xl border p-3 text-left",
                             checked
-                              ? "border-primary bg-primary text-primary-fg"
-                              : "border-border bg-surface-card",
+                              ? "border-primary bg-primary/10"
+                              : "border-border-subtle bg-surface-muted/40 hover:bg-surface-muted",
                           )}
-                          aria-hidden="true"
                         >
-                          {checked && <Check className="h-3.5 w-3.5" />}
-                        </span>
-                        <SectionParts section={section} />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-              {chosenSections.length === 0 && (
-                <p className="text-xs font-medium text-warning-accent">
-                  {t("exam.parts.noneSelected")}
-                </p>
-              )}
-            </fieldset>
-
-            <div className="space-y-3 rounded-xl border border-border-subtle bg-surface-muted/50 p-4">
-              <label
-                htmlFor="practice-minutes"
-                className="flex items-center justify-between text-sm font-semibold text-text"
-              >
-                <span>{t("exam.hub.practiceDuration")}</span>
-                <span className="font-mono text-primary-accent">
-                  {unlimited
-                    ? t("exam.hub.practiceUnlimited")
-                    : t("exam.hub.minutes", { count: minutes })}
-                </span>
-              </label>
-              <input
-                id="practice-minutes"
-                type="range"
-                min={10}
-                max={180}
-                step={5}
-                value={minutes}
-                disabled={unlimited}
-                onChange={(e) => setMinutes(Number(e.target.value))}
-                className={cn(
-                  "h-11 w-full cursor-pointer accent-primary",
-                  unlimited && "cursor-not-allowed opacity-40",
+                          <span
+                            className={cn(
+                              "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border",
+                              checked
+                                ? "border-primary bg-primary text-primary-fg"
+                                : "border-border bg-surface-card",
+                            )}
+                            aria-hidden="true"
+                          >
+                            {checked && <Check className="h-3.5 w-3.5" />}
+                          </span>
+                          <SectionParts section={section} />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {chosenSections.length === 0 && (
+                  <p className="text-sm font-medium text-warning-accent">
+                    {t("exam.parts.noneSelected")}
+                  </p>
                 )}
-              />
-              <button
-                type="button"
-                role="checkbox"
-                aria-checked={unlimited}
-                onClick={() => setUnlimited((v) => !v)}
-                className="flex min-h-[44px] w-full items-center gap-3 rounded-lg border border-border-subtle bg-surface-card px-3 text-left"
-              >
-                <span
-                  className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded border",
-                    unlimited
-                      ? "border-primary bg-primary text-primary-fg"
-                      : "border-border bg-surface-card",
-                  )}
-                  aria-hidden="true"
-                >
-                  {unlimited && <Check className="h-3.5 w-3.5" />}
-                </span>
-                <span className="text-sm text-text">
-                  {t("exam.hub.practiceUnlimited")}
-                </span>
-              </button>
-            </div>
-            <div className="flex justify-end gap-3">
+              </fieldset>
+
+              <fieldset className="space-y-3 rounded-2xl border border-border-subtle bg-surface-muted/50 p-4">
+                <legend className="text-sm font-semibold text-text">
+                  {t("exam.hub.duration")}
+                </legend>
+                <div className="flex flex-wrap gap-2">
+                  {[30, 60, 90, 120].map((value) => (
+                    <Button
+                      key={value}
+                      type="button"
+                      variant={
+                        !unlimited && !customDuration && minutes === value
+                          ? "primary"
+                          : "outline"
+                      }
+                      aria-pressed={
+                        !unlimited && !customDuration && minutes === value
+                      }
+                      onClick={() => {
+                        setMinutes(value);
+                        setUnlimited(false);
+                        setCustomDuration(false);
+                      }}
+                    >
+                      {value} {t("exam.hub.minutesUnit")}
+                    </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    variant={unlimited ? "primary" : "outline"}
+                    aria-pressed={unlimited}
+                    onClick={() => {
+                      setUnlimited(true);
+                      setCustomDuration(false);
+                    }}
+                  >
+                    {t("exam.hub.noLimit")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={customDuration ? "primary" : "outline"}
+                    aria-pressed={customDuration}
+                    onClick={() => {
+                      setUnlimited(false);
+                      setCustomDuration(true);
+                    }}
+                  >
+                    {t("exam.hub.customDuration")}
+                  </Button>
+                </div>
+                {customDuration && (
+                  <label className="flex items-center gap-3 text-sm text-text">
+                    {t("exam.hub.durationMinutes")}
+                    <input
+                      aria-label={t("exam.hub.durationMinutes")}
+                      type="number"
+                      min={10}
+                      max={180}
+                      value={minutes}
+                      onChange={(e) => setMinutes(Number(e.target.value))}
+                      className="h-11 w-24 rounded-lg border border-input bg-background px-3 text-base md:text-sm"
+                    />
+                  </label>
+                )}
+              </fieldset>
+            </DialogBody>
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -510,9 +531,9 @@ export const ExamList: React.FC<ExamListProps> = ({
                 <Play className="h-4 w-4" aria-hidden="true" />
                 <span>{t("exam.hub.practiceStart")}</span>
               </Button>
-            </div>
-          </div>
-        </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
@@ -538,18 +559,20 @@ const ExamCard: React.FC<{
           <div className="flex flex-wrap items-center gap-2.5">
             <Badge variant="outline">{exam.level}</Badge>
           </div>
-          <h3 className="text-xl font-bold text-text sm:text-2xl">{title}</h3>
-          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted sm:text-sm">
+          <h3 className="text-lg font-semibold leading-snug text-text">
+            {title}
+          </h3>
+          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text-muted">
             <li className="flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+              <Clock className="h-4 w-4" aria-hidden="true" />
               {t("exam.hub.minutes", { count: exam.total_minutes })}
             </li>
             <li className="flex items-center gap-1.5">
-              <Layers className="h-3.5 w-3.5" aria-hidden="true" />
+              <Layers className="h-4 w-4" aria-hidden="true" />
               {t("exam.parts.summarySections", { count: sections.length })}
             </li>
             <li className="flex items-center gap-1.5">
-              <ListChecks className="h-3.5 w-3.5" aria-hidden="true" />
+              <ListChecks className="h-4 w-4" aria-hidden="true" />
               {t("exam.parts.summaryItems", { count: items })}
             </li>
           </ul>
@@ -636,7 +659,7 @@ const SectionParts: React.FC<{ section: SectionSummary }> = ({ section }) => {
 const PartLine: React.FC<{ part: ExamPart }> = ({ part }) => {
   const { t } = useTranslation();
   return (
-    <li className="space-y-1 text-xs">
+    <li className="space-y-1 text-sm">
       <p className="text-text">
         <span className="font-medium">{t(`exam.parts.${part.key}`)}</span>
         <span className="text-text-muted">
@@ -652,7 +675,7 @@ const PartLine: React.FC<{ part: ExamPart }> = ({ part }) => {
         {part.tags.map((tag) => (
           <span
             key={tag}
-            className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary-accent"
+            className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary-accent"
           >
             #{t(`exam.parts.${tag}`)}
           </span>

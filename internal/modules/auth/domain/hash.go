@@ -7,10 +7,9 @@ import (
 	"github.com/alexedwards/argon2id"
 )
 
-// HashParams are the Argon2id cost parameters. They mirror the ARGON2_* keys in
-// `.env.example`; the defaults below are those values, so a caller that has no
-// configuration yet still hashes at the documented strength rather than at the
-// library's own defaults, which are weaker (t=1, p=NumCPU).
+// HashParams are the Argon2id cost parameters. They are fixed in code (see
+// DefaultHashParams) rather than read from configuration, so every binary hashes
+// at the documented strength and not the library's weaker defaults.
 type HashParams struct {
 	MemoryKiB   uint32
 	Iterations  uint32

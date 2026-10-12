@@ -1,0 +1,114 @@
+# Local stack that shares Hilo's Redis and MinIO instead of running its own.
+#
+#   docker compose -f deploy/compose/compose.shared.yaml up -d
+#
+# Only Postgres runs here: Fluentra is pinned to 17 (CI too) and Hilo runs 16,
+# so the data directory cannot be shared. It mounts the existing fluentra_pgdata
+# volume, so earlier data comes back as-is. Memory is tuned for a dev box.
+#
+# Shared with Hilo (C:\Users\HP\Downloads\code\Hilo):
+#   Redis : localhost:6379, password changeme, DB 1 (Hilo uses DB 0)
+#   MinIO : localhost:9010 (console 9011), buckets fluentra-*
+name: fluentra-shared
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: fluentra-postgres
+    restart: unless-stopped
+    command:
+      - postgres
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - effective_cache_size=192MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - max_connections=60
+      - -c
+      - wal_buffers=4MB
+      - -c
+      - min_wal_size=64MB
+      - -c
+      - max_wal_size=256MB
+      - -c
+      - max_worker_processes=4
+      - -c
+      - max_parallel_workers=2
+      - -c
+      - max_parallel_workers_per_gather=1
+      - -c
+      - jit=off
+    environment:
+      POSTGRES_DB: fluentra
+      POSTGRES_USER: fluentra
+      POSTGRES_PASSWORD: fluentra
+    # 5434 because Hilo's postgres holds 5432 and Hilo's audit-db holds 5433.
+    ports: ["127.0.0.1:5434:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    # Joined to Hilo's network so containers there can reach it as fluentra-postgres.
+    networks: [hilo]
+    mem_limit: 256m
+    shm_size: 128m
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U fluentra -d fluentra]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+
+  # OTP mail sink, as in compose.dev.yaml: 8025 is the HTTP API, 1025 is SMTP.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: fluentra-mailpit
+    restart: unless-stopped
+    ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
+    networks: [hilo]
+    mem_limit: 64m
+    healthcheck:
+      test: [CMD, wget, -qO-, http://localhost:8025/livez]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Same service as in compose.dev.yaml, pointed at the shared data services:
+  # fluentra-postgres here and Hilo's MinIO (container "minio" on hilo_backend).
+  media-renderer:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.media
+    image: fluentra-media-renderer
+    container_name: fluentra-media-renderer
+    restart: unless-stopped
+    environment:
+      - APP_ENV=local
+      - DB_DSN=postgres://fluentra:fluentra@fluentra-postgres:5432/fluentra?sslmode=disable
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+      - S3_USE_SSL=false
+    networks: [hilo]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:size=536870912,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
+    stop_grace_period: 180s
+
+volumes:
+  pgdata:
+    external: true
+    name: fluentra_pgdata
+
+networks:
+  hilo:
+    external: true
+    name: hilo_backend

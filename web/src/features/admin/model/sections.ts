@@ -2,10 +2,13 @@ import {
   AlertTriangle,
   BookA,
   BookOpen,
+  ClipboardCheck,
   DollarSign,
   FileCheck,
   Flag,
   Gauge,
+  ListChecks,
+  Megaphone,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -26,9 +29,12 @@ import { PERMISSIONS, usePermissions } from "./permissions";
 export type AdminSectionKey =
   | "users"
   | "content"
+  | "review"
+  | "questions"
   | "reports"
   | "vocabulary"
   | "flags"
+  | "banners"
   | "ai"
   | "moderation"
   | "payouts";
@@ -73,6 +79,22 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     ],
   },
   {
+    key: "review",
+    path: "/admin/review",
+    labelKey: "page.reviewQueue",
+    labelFallback: "Review Queue",
+    Icon: ClipboardCheck,
+    anyOf: [PERMISSIONS.contentReview, PERMISSIONS.contentPublish],
+  },
+  {
+    key: "questions",
+    path: "/admin/questions",
+    labelKey: "page.questionBank",
+    labelFallback: "Question Bank",
+    Icon: ListChecks,
+    anyOf: [PERMISSIONS.questionbankRead, PERMISSIONS.questionbankCreate],
+  },
+  {
     key: "reports",
     path: "/admin/reports",
     labelKey: "adminReports.tabLabel",
@@ -94,6 +116,17 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
     labelKey: "page.featureFlags",
     labelFallback: "Feature Flags",
     Icon: Flag,
+    anyOf: [PERMISSIONS.systemFlags],
+  },
+  {
+    // Announcement banners on the learner dashboard. Same permission as the
+    // flags: both are the platform's own switches (see /admin/banners in
+    // api/openapi/openapi.yaml).
+    key: "banners",
+    path: "/admin/banners",
+    labelKey: "adminBanners.tabLabel",
+    labelFallback: "Banners",
+    Icon: Megaphone,
     anyOf: [PERMISSIONS.systemFlags],
   },
   {

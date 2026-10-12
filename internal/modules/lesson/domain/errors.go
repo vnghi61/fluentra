@@ -4,7 +4,7 @@ package domain
 
 import "github.com/fluentra/fluentra/internal/shared/apperr"
 
-// Error codes owned by the lesson module, per AGENT.md §12, ERROR_HANDLING.md, and P7.4 brief.
+// Error codes owned by the lesson module, per AGENT.md §12, docs/CONVENTIONS.md#error-handling, and P7.4 brief.
 var (
 	// ErrCourseNotFound is returned when a course does not exist.
 	ErrCourseNotFound = apperr.New(apperr.NotFound, "COURSE_NOT_FOUND", "The course was not found.")

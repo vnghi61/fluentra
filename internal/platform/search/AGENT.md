@@ -93,7 +93,7 @@ This module owns no tables.
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `search`). See also [`API.md`](API.md).
+(tag: `search`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 _None yet._
@@ -165,7 +165,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -173,8 +173,6 @@ _No deviations from the global standard._
 <!-- END GENERATED: conventions -->
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -201,6 +199,104 @@ go test -tags=integration ./internal/platform/search/...  # integration (testcon
 - Do not run an unbounded search query.
 - Do not expose draft content to learners through search.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+_This module exposes no HTTP endpoints. It is consumed through its `contract` package._
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+_None yet._
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Index maintenance
+
+```mermaid
+flowchart LR
+    A[content.published] --> B[search job]
+    B --> C[build tsvector from title, body, tags]
+    C --> D[UPSERT into the module's search table]
+    D --> E[GIN index]
+    F[Learner query] --> G[normalise + tokenise]
+    G --> H["websearch_to_tsquery + ts_rank"]
+    H --> I[filter by level, skill, status]
+    I --> J[highlight + paginate]
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Postgres FTS or a search engine? | Postgres FTS | Our corpus is small, our relevance needs are simple, and avoiding a second datastore avoids a synchronisation problem. The interface keeps the door open — and the p95 metric is the objective trigger to walk through it |
+| Who owns the index? | The module that owns the data | A central index would need to know every module's schema — precisely the coupling the architecture forbids |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 4
+
+- [ ] Indexer and Searcher interfaces
+- [ ] tsvector generated columns and GIN indexes for content, vocabulary and question bank
+- [ ] Query builder with ranking, highlighting and filters
+- [ ] Reindex jobs
+- [ ] Degraded fallback path
+- [ ] Latency metrics with the 300 ms p95 trigger alert
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Trigram fuzzy matching for misspelled words
+- Synonym dictionary for vocabulary search
+- Semantic search over lessons via pgvector
+- A dedicated engine if the latency trigger fires
+<!-- END GENERATED: todo-future -->
 
 ---
 

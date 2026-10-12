@@ -94,3 +94,12 @@ func TestQuestion_Validate(t *testing.T) {
 		})
 	}
 }
+
+// TestQuestionCountFromBody: a group counts its questions, so the composer can
+// fill a part of threes with Part 3 conversations.
+func TestQuestionCountFromBody(t *testing.T) {
+	part3 := []byte(`{"script":"...","questions":[{"id":"q1"},{"id":"q2"},{"id":"q3"}]}`)
+	assert.Equal(t, 3, domain.QuestionCountFromBody("listening_comprehension", part3))
+	assert.Equal(t, 4, domain.QuestionCountFromBody("text_completion", []byte(`{"passage":"..."}`)))
+	assert.Equal(t, 1, domain.QuestionCountFromBody("question_response", []byte(`{"prompt":"..."}`)))
+}

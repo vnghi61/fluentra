@@ -39,14 +39,6 @@ var (
 	ErrItemNotFound = apperr.New(apperr.NotFound, "ITEM_NOT_FOUND", "listening item not found")
 )
 
-// MaxPlays returns the maximum number of audio plays allowed for a given context type.
-func MaxPlays(contextType string) int {
-	if contextType == ContextTypeExam {
-		return MaxExamPlays
-	}
-	return MaxAttemptPlays
-}
-
 // PlayRecord records a single audio playback event.
 type PlayRecord struct {
 	ID               uuid.UUID

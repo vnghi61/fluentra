@@ -240,7 +240,7 @@ func (c *RedisCache[T]) GetOrLoad(
 }
 
 // recordUnavailable reports the degradation without the cache key: a key
-// embeds the entity id it caches, and LOGGING_GUIDELINE.md §4 asks for
+// embeds the entity id it caches, and docs/CONVENTIONS.md#logging §4 asks for
 // `module` and `op` here, not the identifier.
 func (c *RedisCache[T]) recordUnavailable(ctx context.Context, op string, err error) {
 	slog.WarnContext(ctx, "redis unavailable, degrading operation",

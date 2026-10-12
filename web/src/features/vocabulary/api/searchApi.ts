@@ -61,7 +61,7 @@ export const searchApi = {
 const SEARCH_DEBOUNCE_MS = 250;
 
 /** Holds a value still until it has stopped changing for `delayMs`. */
-function useDebouncedValue<T>(value: T, delayMs: number): T {
+export function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [settled, setSettled] = useState(value);
 
   useEffect(() => {

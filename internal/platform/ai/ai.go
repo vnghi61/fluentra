@@ -65,6 +65,21 @@ const (
 	TaskItemLevel Task = "item_level"
 	// TaskFoundationTopicGenerate generates comprehensive foundation topic bodies.
 	TaskFoundationTopicGenerate Task = "foundation_topic_generate"
+	// TaskItemVerify independently verifies a machine-authored item against its
+	// answer key and explanation. It is the second, independent pass a generated
+	// item goes through before publication (WO 22 Stage A), and it must not be
+	// answered by the model that wrote the item.
+	TaskItemVerify Task = "item_verify"
+	// TaskChooseVocabularySense asks which of a word's stored senses a learner
+	// means, or whether the meaning is new (WO 22 Stage B). It is how an added
+	// word reuses an existing sense instead of duplicating it when the model
+	// would otherwise word the definition differently.
+	TaskChooseVocabularySense Task = "vocab_choose_sense"
+	// TaskVocabMeanings writes a frequency list's meanings: part of speech, CEFR,
+	// an English definition, the Vietnamese meaning and two examples, fifty
+	// lemmas per call (WO 22 D22-7). The build tool freezes the reply into the
+	// vocabulary fixture.
+	TaskVocabMeanings Task = "vocab_word_meanings"
 )
 
 // Request is one unit of work.
@@ -74,6 +89,11 @@ type Request struct {
 	// is ignored; one it uses and Vars does not carry renders empty, which the
 	// templates are written to tolerate.
 	Vars map[string]any
+	// ExcludeModel names a model the router must not answer with. It is how an
+	// independent verifier avoids grading the writer's work: the writer's model
+	// is read from `_provenance.model` and passed here, and the router skips any
+	// provider configured with that model. Empty means no exclusion.
+	ExcludeModel string
 }
 
 // Response is what a provider returned.

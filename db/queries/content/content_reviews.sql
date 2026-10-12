@@ -8,8 +8,3 @@ SELECT id, version_id, reviewer_id, decision, comments, created_at
 FROM content.content_reviews
 WHERE version_id = $1
 ORDER BY created_at DESC;
-
--- name: GetContentReviewByID :one
-SELECT id, version_id, reviewer_id, decision, comments, created_at
-FROM content.content_reviews
-WHERE id = $1;

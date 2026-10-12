@@ -696,18 +696,17 @@ func parseReadingWithMinMax(raw []byte, minQ, maxQ int) error {
 		return fmt.Errorf("expected %d-%d questions, got %d", minQ, maxQ, len(body.Questions))
 	}
 	for i, q := range body.Questions {
-		correctOpt := q.CorrectOptionID
-		if correctOpt == "" {
-			correctOpt = q.Key
+		if strings.TrimSpace(q.Prompt) == "" {
+			return fmt.Errorf("question %d: prompt is empty", i)
 		}
-		if err := parseChoice(q.Prompt, q.Options, correctOpt); err != nil {
+		if err := checkGroupQuestion(q, 4); err != nil {
 			return fmt.Errorf("question %d: %w", i, err)
 		}
 	}
 	return nil
 }
 
-func parseToeicChoice(_ string, raw []byte) error {
+func parseToeicChoice(kind string, raw []byte) error {
 	var body toeicChoiceCand
 	if err := json.Unmarshal(raw, &body); err != nil {
 		return err
@@ -741,7 +740,13 @@ func parseToeicChoice(_ string, raw []byte) error {
 			opts[i].Text = opts[i].ID
 		}
 	}
-	return parseChoice(prompt, opts, key)
+	// TOEIC Part 2 is a question and three spoken responses; every other
+	// choice kind has four options. Requiring four refused every Part 2 item.
+	want := 4
+	if kind == kindQuestionResponse {
+		want = 3
+	}
+	return parseChoiceN(prompt, opts, key, want)
 }
 
 func (s *Service) checkReadingCandidateWithMin(
@@ -795,11 +800,16 @@ func (s *Service) checkReadingCandidateWithMin(
 }
 
 func parseChoice(prompt string, options []candOption, correctOptionID string) error {
+	return parseChoiceN(prompt, options, correctOptionID, 4)
+}
+
+// parseChoiceN is parseChoice for a kind with want options.
+func parseChoiceN(prompt string, options []candOption, correctOptionID string, want int) error {
 	if strings.TrimSpace(prompt) == "" {
 		return errors.New("prompt is empty")
 	}
-	if len(options) != 4 {
-		return fmt.Errorf("expected 4 options, got %d", len(options))
+	if len(options) != want {
+		return fmt.Errorf("expected %d options, got %d", want, len(options))
 	}
 	if strings.TrimSpace(correctOptionID) == "" {
 		return errors.New("correct_option_id is empty")
@@ -817,7 +827,7 @@ func buildOwnAnswerPayload(kind string, raw []byte) (json.RawMessage, error) {
 		}
 		answers := make(map[string]string, len(body.Questions))
 		for _, q := range body.Questions {
-			answers[q.ID] = q.CorrectOptionID
+			answers[q.ID] = questionKey(q)
 		}
 		return json.Marshal(map[string]any{keyAnswers: answers})
 	case kindTextCompletion:
@@ -867,7 +877,8 @@ func buildOwnAnswerPayload(kind string, raw []byte) (json.RawMessage, error) {
 			return nil, err
 		}
 		return json.Marshal(map[string]any{keySelectedOptionID: body.CorrectOptionID})
-	case kindVocabGapFill, kindVocabFlashcard, kindVocabListenType, kindVocabReorder:
+	case kindVocabGapFill, kindVocabFlashcard, kindVocabListenType, kindVocabReorder,
+		kindTypedCompletion:
 		var body struct {
 			CorrectAnswer string `json:"correct_answer"`
 		}
@@ -900,7 +911,7 @@ func validateStructure(kind string, raw []byte) error {
 			if q.Explanation.Vi() == "" {
 				return fmt.Errorf("question %d explanation_vi is empty", i)
 			}
-			if err := checkOptions(q.Options, q.CorrectOptionID); err != nil {
+			if err := checkGroupQuestion(q, 0); err != nil {
 				return fmt.Errorf("question %d: %w", i, err)
 			}
 		}
@@ -965,11 +976,47 @@ func validateStructure(kind string, raw []byte) error {
 			return err
 		}
 		return checkOptions(body.Options, body.CorrectOptionID)
+	case kindTypedCompletion:
+		return structureTypedCompletion(raw)
 	case kindVocabGapFill, kindVocabFlashcard, kindVocabListenType, kindVocabReorder, kindVocabMatch:
 		return nil
 	default:
 		return fmt.Errorf("unsupported kind: %s", kind)
 	}
+}
+
+// structureTypedCompletion requires a typed completion to carry its prompt and
+// its answer, and refuses a key or a variant the item's own word limit would
+// mark wrong (WO 22 D22-25).
+func structureTypedCompletion(raw []byte) error {
+	var body struct {
+		Prompt        string   `json:"prompt"`
+		Sentence      string   `json:"sentence"`
+		CorrectAnswer string   `json:"correct_answer"`
+		Acceptable    []string `json:"acceptable"`
+		MaxWords      int      `json:"max_words"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return err
+	}
+	if strings.TrimSpace(body.Prompt) == "" && strings.TrimSpace(body.Sentence) == "" {
+		return errors.New("completion needs a prompt or a sentence")
+	}
+	if strings.TrimSpace(body.CorrectAnswer) == "" {
+		return errors.New("completion needs a correct_answer")
+	}
+	overLimit := func(answer string) bool {
+		return body.MaxWords > 0 && len(strings.Fields(answer)) > body.MaxWords
+	}
+	if overLimit(body.CorrectAnswer) {
+		return fmt.Errorf("correct_answer %q exceeds the %d-word limit", body.CorrectAnswer, body.MaxWords)
+	}
+	for _, variant := range body.Acceptable {
+		if overLimit(variant) {
+			return fmt.Errorf("accepted variant %q exceeds the %d-word limit", variant, body.MaxWords)
+		}
+	}
+	return nil
 }
 
 func structureSentenceTransform(raw []byte) error {
@@ -1010,7 +1057,7 @@ func checkOptions(options []candOption, correctOptionID string) error {
 
 func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 	switch kind {
-	case kindReadingComprehension, kindTextCompletion:
+	case kindReadingComprehension, kindListeningComprehension, kindTextCompletion:
 		var resp struct {
 			Answers map[string]string `json:"answers"`
 		}
@@ -1022,7 +1069,8 @@ func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 		}
 		return json.Marshal(map[string]any{keyAnswers: resp.Answers})
 	case kindGrammarTenseChoice, kindFoundationQuiz, kindFoundationReview,
-		kindPhotoDescription, kindQuestionResponse, kindMcqGap:
+		kindPhotoDescription, kindQuestionResponse, kindMcqGap,
+		kindVocabMultipleChoice, kindVocabContextChoice:
 		var resp struct {
 			SelectedOptionID string `json:"selected_option_id"`
 			Answer           string `json:"answer"`
@@ -1038,7 +1086,7 @@ func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 			return nil, errors.New("empty blind solve option ID")
 		}
 		return json.Marshal(map[string]any{keySelectedOptionID: answer})
-	case kindGrammarSentenceTransform:
+	case kindGrammarSentenceTransform, kindTypedCompletion:
 		var resp struct {
 			Answer string `json:"answer"`
 		}
@@ -1140,12 +1188,12 @@ func (s *Service) GetDailySet(
 	}
 	s.ensurePoolEnrollment(ctx, userID, layout.courseID)
 
-	existing, err := s.repo.GetDailySet(ctx, userID, localDate)
+	existing, err := s.repo.GetDailySet(ctx, userID, localDate, level)
 	if err != nil {
 		return nil, fmt.Errorf("check existing daily set: %w", err)
 	}
 	if existing != nil {
-		return s.assembleDailySetDTO(ctx, existing.ID, localDate, level, existing.ActivityIDs)
+		return s.assembleDailySetDTO(ctx, userID, existing.ID, localDate, level, existing.ActivityIDs)
 	}
 
 	chosen, err := s.drawDailySet(ctx, userID, level, layout)
@@ -1156,11 +1204,11 @@ func (s *Service) GetDailySet(
 		return nil, apperr.New(apperr.NotFound, "PRACTICE_POOL_EMPTY", "Practice pool contains no activities.")
 	}
 
-	stored, err := s.saveDailySet(ctx, userID, localDate, chosen)
+	stored, err := s.saveDailySet(ctx, userID, localDate, chosen, level)
 	if err != nil {
 		return nil, err
 	}
-	return s.assembleDailySetDTO(ctx, stored.ID, localDate, level, stored.ActivityIDs)
+	return s.assembleDailySetDTO(ctx, userID, stored.ID, localDate, level, stored.ActivityIDs)
 }
 
 func (s *Service) drawDailySet(
@@ -1239,8 +1287,9 @@ func (s *Service) resolveWeakNodeActivity(
 		return uuid.Nil, nil, nil
 	}
 
+	gate := s.newPrereqGate(userID)
 	for _, w := range weakNodes {
-		if !s.isNodePrerequisitesMet(ctx, userID, w.NodeID) {
+		if !gate.nodeMet(ctx, w.NodeID) {
 			continue
 		}
 
@@ -1264,44 +1313,6 @@ func (s *Service) resolveWeakNodeActivity(
 	return uuid.Nil, nil, nil
 }
 
-// isNodePrerequisitesMet checks if all prerequisites of a taxonomy node have been met by the learner.
-func (s *Service) isNodePrerequisitesMet(ctx context.Context, userID, nodeID uuid.UUID) bool {
-	if s.taxonomies == nil || s.repo == nil {
-		return true
-	}
-	prereqs, err := s.taxonomies.ListPrerequisites(ctx, nodeID)
-	if err != nil || len(prereqs) == 0 {
-		return true
-	}
-	for _, p := range prereqs {
-		pm, err := s.repo.GetNodeMastery(ctx, userID, p.ID)
-		if err != nil || pm == nil || !pm.IsNodePrerequisiteMet() {
-			return false
-		}
-	}
-	return true
-}
-
-// isActivityPrerequisitesMet checks if an activity's tagged taxonomy nodes have their prerequisites met.
-func (s *Service) isActivityPrerequisitesMet(
-	ctx context.Context, userID uuid.UUID, tags []string,
-) bool {
-	for _, tag := range tags {
-		code := tag
-		if idx := strings.LastIndex(tag, "."); idx >= 0 {
-			code = tag[idx+1:]
-		}
-		node, err := s.taxonomies.GetTaxonomyByCode(ctx, code)
-		if err != nil || node == nil {
-			continue
-		}
-		if !s.isNodePrerequisitesMet(ctx, userID, node.ID) {
-			return false
-		}
-	}
-	return true
-}
-
 // filterActivitiesWithMetPrerequisites filters candidate activities so that any activity
 // tagged with a node whose prerequisites have not been met is excluded.
 func (s *Service) filterActivitiesWithMetPrerequisites(
@@ -1316,6 +1327,7 @@ func (s *Service) filterActivitiesWithMetPrerequisites(
 	}
 	versions := s.loadVersions(ctx, versionIDs)
 
+	gate := s.newPrereqGate(userID)
 	eligible := make([]lessoncontract.Activity, 0, len(activities))
 	for _, a := range activities {
 		ver, ok := versions[a.ContentVersionID]
@@ -1323,7 +1335,7 @@ func (s *Service) filterActivitiesWithMetPrerequisites(
 			eligible = append(eligible, a)
 			continue
 		}
-		if s.isActivityPrerequisitesMet(ctx, userID, ver.Tags) {
+		if gate.activityMet(ctx, ver.Tags) {
 			eligible = append(eligible, a)
 		}
 	}
@@ -1386,8 +1398,9 @@ func (s *Service) collectWeakNodeNeeds(
 		if err != nil {
 			continue
 		}
+		gate := s.newPrereqGate(u)
 		for _, w := range weak {
-			if s.isNodePrerequisitesMet(ctx, u, w.NodeID) {
+			if gate.nodeMet(ctx, w.NodeID) {
 				needed[weakNodeNeed{nodeID: w.NodeID, cefrLevel: defaultPracticeLevel}] = struct{}{}
 			}
 		}
@@ -1501,10 +1514,10 @@ func (s *Service) drawFromSlot(
 // marked its own randomly drawn items as seen — items the learner was never shown
 // — and answered with a set different from the one stored.
 func (s *Service) saveDailySet(
-	ctx context.Context, userID uuid.UUID, localDate time.Time, chosen []uuid.UUID,
+	ctx context.Context, userID uuid.UUID, localDate time.Time, chosen []uuid.UUID, level string,
 ) (*domain.DailySet, error) {
 	write := func(ctx context.Context, repo Repository) (*domain.DailySet, error) {
-		created, err := repo.CreateDailySet(ctx, userID, localDate, chosen)
+		created, err := repo.CreateDailySet(ctx, userID, localDate, chosen, level)
 		if err != nil || created == nil {
 			return created, err
 		}
@@ -1534,7 +1547,7 @@ func (s *Service) saveDailySet(
 		return stored, nil
 	}
 
-	winner, err := s.repo.GetDailySet(ctx, userID, localDate)
+	winner, err := s.repo.GetDailySet(ctx, userID, localDate, level)
 	if err != nil {
 		return nil, fmt.Errorf("read the day's set after a concurrent save: %w", err)
 	}
@@ -1545,16 +1558,106 @@ func (s *Service) saveDailySet(
 }
 
 func (s *Service) assembleDailySetDTO(
-	ctx context.Context, setID uuid.UUID, localDate time.Time, level string, activityIDs []uuid.UUID,
+	ctx context.Context, userID, setID uuid.UUID, localDate time.Time, level string, activityIDs []uuid.UUID,
 ) (*domain.DailySetDTO, error) {
+	dtos, versions, err := s.resolveActivityDTOs(ctx, activityIDs)
+	if err != nil {
+		return nil, err
+	}
+	// The item drawn for a weak node says so. Recomputed at read time rather
+	// than stored: the label is "what the learner should revisit today", and a
+	// stored label would go stale the moment their weak node changed.
+	s.labelWeakNode(ctx, userID, dtos, versions)
+	return &domain.DailySetDTO{
+		ID:         setID,
+		LocalDate:  localDate,
+		Level:      level,
+		Activities: dtos,
+	}, nil
+}
+
+// weakNodeFor is the learner's lowest-scoring node with enough attempts whose
+// prerequisites they have met, or nil.
+func (s *Service) weakNodeFor(ctx context.Context, userID uuid.UUID) *domain.WeakNodeLabel {
+	if s.repo == nil || s.taxonomies == nil {
+		return nil
+	}
+	weakNodes, err := s.repo.ListWeakNodesByUser(ctx, userID, domain.MinAttemptsForWeakNode)
+	if err != nil || len(weakNodes) == 0 {
+		return nil
+	}
+	gate := s.newPrereqGate(userID)
+	for _, w := range weakNodes {
+		if !gate.nodeMet(ctx, w.NodeID) {
+			continue
+		}
+		node, err := s.taxonomies.GetTaxonomyByID(ctx, w.NodeID)
+		if err != nil || node == nil {
+			continue
+		}
+		return &domain.WeakNodeLabel{Code: node.Code, Label: node.Label}
+	}
+	return nil
+}
+
+// labelWeakNode marks the first item whose content version is tagged with the
+// learner's weak node. The daily set draws exactly one such item (Stage I).
+func (s *Service) labelWeakNode(
+	ctx context.Context,
+	userID uuid.UUID,
+	dtos []domain.DailySetActivityDTO,
+	versions map[uuid.UUID]*contentcontract.Version,
+) {
+	weak := s.weakNodeFor(ctx, userID)
+	if weak == nil {
+		return
+	}
+	for i := range dtos {
+		version := versions[dtos[i].ContentVersionID]
+		if version == nil {
+			continue
+		}
+		if weakNodeMatches(version.Tags, weak) {
+			dtos[i].WeakNode = weak
+			return
+		}
+	}
+}
+
+// weakNodeMatches reports whether a content version's spine tags include the
+// node an item was drawn to revisit.
+func weakNodeMatches(tags []string, weak *domain.WeakNodeLabel) bool {
+	for _, tag := range tags {
+		if tag == weak.Code {
+			return true
+		}
+	}
+	return false
+}
+
+// resolveActivityDTOs renders a list of activity ids for the runner, redacted.
+// Shared by the daily set and the private resource practice set, because both
+// are "a list of activities the learner sits today" and a second assembly
+// would drift from the first. The versions are returned so a caller can read
+// the tags the redaction keeps.
+func (s *Service) resolveActivityDTOs(
+	ctx context.Context, activityIDs []uuid.UUID,
+) ([]domain.DailySetActivityDTO, map[uuid.UUID]*contentcontract.Version, error) {
+	var found map[uuid.UUID]*lessoncontract.ActivityHierarchy
+	if len(activityIDs) > 0 {
+		var err error
+		if found, err = s.lesson.ResolveActivities(ctx, activityIDs); err != nil {
+			slog.WarnContext(ctx, "practice set activities could not be resolved", "count", len(activityIDs), "error", err)
+		}
+	}
 	resolved := make([]*lessoncontract.ActivityHierarchy, 0, len(activityIDs))
 	versionIDs := make([]uuid.UUID, 0, len(activityIDs))
 	for _, id := range activityIDs {
-		activity, err := s.lesson.ResolveActivity(ctx, id)
-		if err != nil || activity == nil {
+		activity := found[id]
+		if activity == nil {
 			// An item that can no longer be resolved is left out rather than
-			// failing the whole day's set.
-			slog.WarnContext(ctx, "daily set activity could not be resolved", "activity_id", id, "error", err)
+			// failing the whole set.
+			slog.WarnContext(ctx, "practice set activity could not be resolved", "activity_id", id)
 			continue
 		}
 		resolved = append(resolved, activity)
@@ -1575,13 +1678,7 @@ func (s *Service) assembleDailySetDTO(
 			Weight:           activity.Weight,
 		})
 	}
-
-	return &domain.DailySetDTO{
-		ID:         setID,
-		LocalDate:  localDate,
-		Level:      level,
-		Activities: dtos,
-	}, nil
+	return dtos, versions, nil
 }
 
 func (s *Service) loadVersions(ctx context.Context, ids []uuid.UUID) map[uuid.UUID]*contentcontract.Version {
@@ -1611,25 +1708,58 @@ func (s *Service) ensurePoolEnrollment(ctx context.Context, userID, courseID uui
 	}
 }
 
-// withoutPoolCourse drops the practice pool's enrolment. The dashboard continues
-// the newest active enrolment, so without this, opening today's practice turned
-// "continue learning" into a machine-made drill and put "Practice Pool" among the
-// learner's courses.
-func (s *Service) withoutPoolCourse(ctx context.Context, enrollments []domain.Enrollment) []domain.Enrollment {
-	if s.lessonAuthor == nil {
+// withoutPoolCourse drops the enrolments in courses the learner never chose.
+//
+// Two of them now. The dashboard continues the newest active enrolment, so
+// without this, opening today's practice turned "continue learning" into a
+// machine-made drill and put "Practice Pool" among the learner's courses —
+// and generating practice from an upload would do the same with
+// "Practice from my files", which is the same kind of course by the same
+// author for the same reason.
+func (s *Service) withoutPoolCourse(
+	ctx context.Context, userID uuid.UUID, enrollments []domain.Enrollment,
+) []domain.Enrollment {
+	hidden := map[uuid.UUID]struct{}{}
+	if s.lessonAuthor != nil {
+		if layout, err := s.practicePool(ctx); err == nil {
+			hidden[layout.courseID] = struct{}{}
+		}
+	}
+	if courseID := s.resourcePracticeCourse(ctx, userID); courseID != uuid.Nil {
+		hidden[courseID] = struct{}{}
+	}
+	if len(hidden) == 0 {
 		return enrollments
 	}
-	layout, err := s.practicePool(ctx)
-	if err != nil {
-		return enrollments
-	}
+
 	kept := make([]domain.Enrollment, 0, len(enrollments))
 	for _, enrollment := range enrollments {
-		if enrollment.CourseID != layout.courseID {
+		if _, isHidden := hidden[enrollment.CourseID]; !isHidden {
 			kept = append(kept, enrollment)
 		}
 	}
 	return kept
+}
+
+// resourcePracticeCourse is the hidden course a learner's resource practice
+// lives in, or uuid.Nil when they have generated none.
+//
+// Nothing stores the course id: the row holds activities, and an activity
+// resolves to its course. One read answers for a learner with forty files,
+// because every set of theirs shares the one course.
+func (s *Service) resourcePracticeCourse(ctx context.Context, userID uuid.UUID) uuid.UUID {
+	if s.resourcePractice == nil || s.lesson == nil {
+		return uuid.Nil
+	}
+	activityID, err := s.resourcePractice.ResourcePracticeCourseAnchor(ctx, userID)
+	if err != nil || activityID == uuid.Nil {
+		return uuid.Nil
+	}
+	activity, err := s.lesson.ResolveActivity(ctx, activityID)
+	if err != nil || activity == nil {
+		return uuid.Nil
+	}
+	return activity.CourseID
 }
 
 // --------------------------------------------------------------------------

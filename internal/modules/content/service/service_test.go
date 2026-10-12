@@ -40,14 +40,16 @@ const (
 
 // fakeRepo is an in-memory mock repository implementing service.Repository.
 type fakeRepo struct {
-	items       map[uuid.UUID]domain.Item
-	versions    map[uuid.UUID]domain.Version
-	mediaAssets map[string]domain.MediaAsset
-	reviews     map[uuid.UUID]domain.Review
-	tags        map[uuid.UUID][]domain.TaxonomyTag
-	reports     []domain.ItemReport
-	ttsCache    map[string]string
-	queriesRun  int
+	items map[uuid.UUID]domain.Item
+	// pendingBatchDays is what CountPendingBatchDays answers.
+	pendingBatchDays int64
+	versions         map[uuid.UUID]domain.Version
+	mediaAssets      map[string]domain.MediaAsset
+	reviews          map[uuid.UUID]domain.Review
+	tags             map[uuid.UUID][]domain.TaxonomyTag
+	reports          []domain.ItemReport
+	ttsCache         map[string]string
+	queriesRun       int
 
 	// what the last ListContentItemsFiltered call was given. The window is
 	// narrowed from int to int32 on the way to the driver, and an unbounded
@@ -746,6 +748,52 @@ func (f *fakeRepo) ListReviewQueue(_ context.Context, _ domain.ReviewQueueFilter
 
 func (f *fakeRepo) CountReviewQueue(_ context.Context, _ domain.ReviewQueueFilter) (int64, error) {
 	return 0, nil
+}
+
+func (f *fakeRepo) ListReviewBatches(_ context.Context, _, _ int) ([]domain.ReviewBatch, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) CountReviewBatches(_ context.Context) (int64, error) {
+	return 0, nil
+}
+
+func (f *fakeRepo) ListReviewBatchVersionIDs(_ context.Context, _ string) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) CountPendingBatchDays(_ context.Context, _ string) (int64, error) {
+	return f.pendingBatchDays, nil
+}
+
+func (f *fakeRepo) CountAutoPublishedOn(_ context.Context, _ time.Time) (int64, error) {
+	return 0, nil
+}
+
+func (f *fakeRepo) ListAutoPublishedOn(_ context.Context, _ time.Time, _ int) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) InsertReviewSample(_ context.Context, _ uuid.UUID, _ string, _ time.Time) error {
+	return nil
+}
+
+func (f *fakeRepo) ListOpenReviewSamples(_ context.Context, _, _ int) ([]domain.ReviewSample, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) CountOpenReviewSamples(_ context.Context) (int64, error) {
+	return 0, nil
+}
+
+func (f *fakeRepo) DecideReviewSample(
+	_ context.Context, _ uuid.UUID, _ domain.SampleDecision, _ *string, _ uuid.UUID,
+) error {
+	return nil
+}
+
+func (f *fakeRepo) IsAutoPublishedVersion(_ context.Context, _ uuid.UUID) (bool, error) {
+	return false, nil
 }
 
 type fakeEvents struct {

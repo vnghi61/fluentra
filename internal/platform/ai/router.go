@@ -2,34 +2,45 @@ package ai
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
 // Router handles task routing, caching, resilience, and fallback chains.
 type Router struct {
-	prompts   *Registry
-	providers *ProviderRegistry
-	cache     ResponseCache
-	cacheTTL  time.Duration
-	usage     UsageRecorder
-	budget    BudgetChecker
+	prompts          *Registry
+	providers        *ProviderRegistry
+	cache            ResponseCache
+	cacheTTL         time.Duration
+	usage            UsageRecorder
+	budget           BudgetChecker
+	balanceProviders bool
+	nextProvider     atomic.Uint64
+	attemptTimeout   time.Duration
 }
 
 // RouterOptions configures router behavior.
 type RouterOptions struct {
-	Prompts   *Registry
-	Providers *ProviderRegistry
-	Cache     ResponseCache
-	CacheTTL  time.Duration
-	Usage     UsageRecorder
-	Budget    BudgetChecker
+	Prompts          *Registry
+	Providers        *ProviderRegistry
+	Cache            ResponseCache
+	CacheTTL         time.Duration
+	Usage            UsageRecorder
+	Budget           BudgetChecker
+	BalanceProviders bool
+	AttemptTimeout   time.Duration
 }
 
 // NewRouter creates a new AI task router.
 func NewRouter(opts RouterOptions) *Router {
+	attemptTimeout := opts.AttemptTimeout
+	if attemptTimeout <= 0 {
+		attemptTimeout = 45 * time.Second
+	}
 	cache := opts.Cache
 	if cache == nil {
 		cache = NewMemoryCache()
@@ -47,12 +58,14 @@ func NewRouter(opts RouterOptions) *Router {
 		budget = NoopBudgetChecker{}
 	}
 	return &Router{
-		prompts:   opts.Prompts,
-		providers: opts.Providers,
-		cache:     cache,
-		cacheTTL:  cacheTTL,
-		usage:     usage,
-		budget:    budget,
+		prompts:          opts.Prompts,
+		providers:        opts.Providers,
+		cache:            cache,
+		cacheTTL:         cacheTTL,
+		usage:            usage,
+		budget:           budget,
+		balanceProviders: opts.BalanceProviders,
+		attemptTimeout:   attemptTimeout,
 	}
 }
 
@@ -72,7 +85,7 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 	// is neither read nor written.
 	cacheKey := ""
 	if tmpl.Cache {
-		cacheKey = ComputeCacheKey(req.Task, tmpl.Version, req.Vars)
+		cacheKey = ComputeCacheKey(req.Task, tmpl.Version, cacheVars(req))
 	}
 	if cached, found := r.cacheGet(ctx, cacheKey); found {
 		r.record(ctx, RequestLog{
@@ -90,10 +103,17 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 		return Response{}, ErrDisabled
 	}
 
-	primary, err := r.providers.Primary()
-	if err != nil {
-		return Response{}, err
+	// The exclusion drops the writer's model before anything is called, so an
+	// independent verifier is never answered by the model it is checking.
+	chain := r.providers.Chain(req.ExcludeModel)
+	if len(chain) == 0 {
+		return Response{}, ErrDisabled
 	}
+	if r.balanceProviders && len(chain) > 1 {
+		start := (r.nextProvider.Add(1) - 1) % uint64(len(chain))
+		chain = append(chain[start:], chain[:start]...)
+	}
+	primary := chain[0]
 
 	// 2. Try primary provider if budget allows
 	primaryAllowed, primaryBudgetErr := r.budget.CheckQuota(ctx, primary.Name(), req.Task)
@@ -124,7 +144,33 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 		primaryExecErr = err
 	}
 
-	return r.executeFallback(ctx, req, cacheKey, primary, primaryExecErr, primaryVerdict, start)
+	if ctx.Err() != nil {
+		return Response{}, ctx.Err()
+	}
+	res, err := r.executeFallback(ctx, req, cacheKey, primary, chain[1:], primaryExecErr, primaryVerdict, start)
+	if ctx.Err() != nil {
+		return Response{}, ctx.Err()
+	}
+	return res, err
+}
+
+// cacheVars is what the cache key is computed over. An excluded model is part of
+// it: the generator's own blind solve and the independent verifier's send the
+// same task with the same inputs, and without the exclusion in the key the
+// verifier would be handed the writer's cached answer — self-review again.
+func cacheVars(req Request) map[string]any {
+	exclude := strings.ToLower(strings.TrimSpace(req.ExcludeModel))
+	if exclude == "" {
+		return req.Vars
+	}
+	// No +1 for the exclusion: the map grows, and a sized sum is what CodeQL
+	// flags as an allocation that may overflow.
+	vars := make(map[string]any, len(req.Vars))
+	for k, v := range req.Vars {
+		vars[k] = v
+	}
+	vars["_exclude_model"] = exclude
+	return vars
 }
 
 // cacheGet reads a cached reply; an empty key is a task that is never cached.
@@ -181,11 +227,11 @@ func (r *Router) executeFallback(
 	req Request,
 	cacheKey string,
 	primary Provider,
+	fallbacks []Provider,
 	primaryErr error,
 	primaryVerdict quotaVerdict,
 	start time.Time,
 ) (Response, error) {
-	fallbacks := r.providers.Fallbacks()
 	if len(fallbacks) == 0 {
 		if primaryVerdict == quotaExhausted {
 			r.record(ctx, RequestLog{
@@ -313,6 +359,9 @@ func (r *Router) executeWithRetry(
 	backoff := 100 * time.Millisecond
 
 	for attempt := 0; attempt < 3; attempt++ {
+		if ctx.Err() != nil {
+			return Response{}, ctx.Err()
+		}
 		if attempt > 0 {
 			select {
 			case <-ctx.Done():
@@ -322,7 +371,9 @@ func (r *Router) executeWithRetry(
 			}
 		}
 
-		res, err := p.Complete(ctx, req)
+		callCtx, cancel := context.WithTimeout(ctx, r.attemptTimeout)
+		res, err := p.Complete(callCtx, req)
+		cancel()
 		if err == nil {
 			return res, nil
 		}
@@ -331,6 +382,15 @@ func (r *Router) executeWithRetry(
 		// Do not retry context cancellation
 		if ctx.Err() != nil {
 			return Response{}, ctx.Err()
+		}
+		// A stalled provider should not occupy this worker three times before
+		// another configured provider gets a turn. Do not retry permanent 4xx.
+		if errors.Is(err, context.DeadlineExceeded) {
+			return Response{}, err
+		}
+		var status *ProviderStatusError
+		if errors.As(err, &status) && status.Status >= 400 && status.Status < 500 {
+			return Response{}, err
 		}
 	}
 	return Response{}, lastErr

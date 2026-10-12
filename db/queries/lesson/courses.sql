@@ -77,18 +77,6 @@ INSERT INTO learn.courses (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 ) RETURNING *;
 
--- name: UpdateCourse :one
-UPDATE learn.courses
-SET title = $2,
-    description = $3,
-    cefr_from = $4,
-    cefr_to = $5,
-    status = $6,
-    estimated_hours = $7,
-    updated_at = now()
-WHERE id = $1
-RETURNING *;
-
 -- name: UpsertCourse :one
 -- The generator's or creator's course. Keyed on the slug, which is what makes
 -- re-running the job or publishing idempotent.

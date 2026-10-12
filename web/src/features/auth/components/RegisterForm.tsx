@@ -87,10 +87,10 @@ export function RegisterForm({
   return (
     <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-border-subtle bg-surface-card/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-text">
+        <h1 className="text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
           {t("auth.createAccountTitle", "Create your account")}
         </h1>
-        <p className="text-sm text-text-muted">
+        <p className="text-base leading-relaxed text-text-muted">
           Start mastering all 6 English competencies today
         </p>
       </div>
@@ -104,7 +104,7 @@ export function RegisterForm({
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-border-subtle" />
         </div>
-        <span className="relative bg-surface-card px-3 text-xs uppercase tracking-wider text-text-muted">
+        <span className="relative bg-surface-card px-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
           {t("auth.orRegisterEmail", "Or register with email")}
         </span>
       </div>
@@ -206,7 +206,7 @@ export function RegisterForm({
       </Form>
 
       <p className="text-center text-sm text-text-muted">
-        Already have an account?{" "}
+        {t("auth.alreadyHaveAccount", "Already have an account?")}{" "}
         <Link
           to="/login"
           className="font-medium text-primary-accent hover:text-primary-accent hover:underline"

@@ -694,6 +694,36 @@ func (r *Repository) ResolveActivity(
 	}, nil
 }
 
+// ResolveActivities resolves many activities in one query. An id that does not
+// exist is absent from the map rather than an error.
+func (r *Repository) ResolveActivities(
+	ctx context.Context, activityIDs []uuid.UUID,
+) (map[uuid.UUID]*contract.ActivityHierarchy, error) {
+	out := make(map[uuid.UUID]*contract.ActivityHierarchy, len(activityIDs))
+	if r.queries == nil || len(activityIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.queries.ResolveActivityHierarchies(ctx, activityIDs)
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	for _, row := range rows {
+		out[row.ActivityID] = &contract.ActivityHierarchy{
+			ActivityID:       row.ActivityID,
+			LessonID:         row.LessonID,
+			UnitID:           row.UnitID,
+			CourseID:         row.CourseID,
+			CourseSlug:       row.CourseSlug,
+			Kind:             row.ActivityKind,
+			ContentVersionID: row.ContentVersionID,
+			Config:           row.ActivityConfig,
+			Weight:           int(row.ActivityWeight),
+			LessonSkillFocus: row.LessonSkillFocus,
+		}
+	}
+	return out, nil
+}
+
 // ListCourseActivityIDs retrieves all activity IDs for the given courses, mapped by course ID.
 func (r *Repository) ListCourseActivityIDs(
 	ctx context.Context, courseIDs []uuid.UUID,

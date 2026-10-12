@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -131,6 +132,351 @@ func (s *Service) EnsureDraft(ctx context.Context, spec contract.AuthorSpec) (uu
 		return uuid.Nil, err
 	}
 	return versionID, nil
+}
+
+// ApproveVerified implements contract.Author.
+//
+// The door WO 22 Stage A opens: a draft an independent verifier confirmed is
+// published without a person. It walks the version draft → in_review → approved
+// → published with the same state machine and events as the human path, and
+// records a content_reviews row whose reviewer is the item's owner — the admin
+// the generator authored under. There is no anonymous approval: reviewer_id is
+// NOT NULL and references core.users.
+//
+// A verification that is not confirmed is refused here rather than published;
+// it stays in the review queue for a person. Publishing, not judging, is this
+// door's job.
+func (s *Service) ApproveVerified(
+	ctx context.Context, versionID uuid.UUID, verification contract.Verification,
+) error {
+	if versionID == uuid.Nil {
+		return apperr.New(apperr.Validation, "CONTENT_VERSION_REQUIRED", "A content version is required.")
+	}
+	if !verification.Confirmed {
+		return apperr.New(apperr.Conflict, "CONTENT_VERIFICATION_NOT_CONFIRMED",
+			"The independent verifier did not confirm this version; it stays for a person.")
+	}
+
+	return dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+		repo := s.repo.WithTx(tx)
+
+		version, err := repo.GetVersionByID(txCtx, versionID)
+		if err != nil {
+			return err
+		}
+		item, err := repo.GetItemByID(txCtx, version.ItemID)
+		if err != nil {
+			return err
+		}
+		// Idempotent: a verifier that runs twice publishes once.
+		if version.Status == domain.StatusPublished {
+			return nil
+		}
+
+		version, err = markVersionVerified(txCtx, repo, version, verification)
+		if err != nil {
+			return err
+		}
+
+		approved, err := s.advanceToApproved(txCtx, repo, item, version)
+		if err != nil {
+			return err
+		}
+		if _, err := s.finalizePublished(txCtx, tx, repo, item, approved); err != nil {
+			return err
+		}
+
+		comment := fmt.Sprintf("Approved by independent verifier %s at %s.",
+			verifierName(verification.Model), verification.CheckedAt.UTC().Format(time.RFC3339))
+		if _, err := repo.CreateReview(
+			txCtx, s.newID(), version.ID, item.OwnerID, domain.ReviewDecisionApproved, &comment,
+		); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+// ErrBatchEscalated reports a batch the verifier did not confirm whole, or that
+// a publication gate refused: it stays as drafts for a person.
+var ErrBatchEscalated = apperr.New(apperr.Conflict, "CONTENT_BATCH_ESCALATED",
+	"The batch was not confirmed whole; it stays for a person to review.")
+
+// ApproveVerifiedBatch implements contract.VerifiedBatchPublisher (D22-13).
+//
+// Every draft of the batch must carry a confirmed verification; then all of
+// them are published in one transaction, topics after the items their gate
+// needs, each with a content_reviews row naming the verifier. Otherwise nothing
+// changes and the error says which version held the batch back.
+func (s *Service) ApproveVerifiedBatch(ctx context.Context, batch string) (int, error) {
+	if strings.TrimSpace(batch) == "" {
+		return 0, apperr.New(apperr.Validation, "CONTENT_BATCH_REQUIRED", "A batch is required.")
+	}
+	published := 0
+	err := dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+		repo := s.repo.WithTx(tx)
+		ids, err := repo.ListReviewBatchVersionIDs(txCtx, batch)
+		if err != nil {
+			return err
+		}
+		ids, err = topicsLast(txCtx, repo, ids)
+		if err != nil {
+			return err
+		}
+		versions := make([]domain.Version, 0, len(ids))
+		for _, id := range ids {
+			version, err := repo.GetVersionByID(txCtx, id)
+			if err != nil {
+				return err
+			}
+			if verification, ok := recordedVerification(version.Body); !ok || !verification.Confirmed {
+				return ErrBatchEscalated.WithInternal(fmt.Sprintf("version %s is not confirmed", id))
+			}
+			versions = append(versions, version)
+		}
+		for _, version := range versions {
+			if err := s.publishVerifiedVersion(txCtx, tx, repo, version); err != nil {
+				return err
+			}
+			published++
+		}
+		return nil
+	})
+	if err != nil {
+		published = 0
+		if isPublicationGate(err) {
+			return 0, ErrBatchEscalated.WithInternal(err.Error())
+		}
+		return 0, err
+	}
+	return published, nil
+}
+
+// publishVerifiedVersion walks one confirmed draft to published and records the
+// verifier's approval, reviewer the item's owner.
+func (s *Service) publishVerifiedVersion(
+	ctx context.Context, tx pgx.Tx, repo Repository, version domain.Version,
+) error {
+	item, err := repo.GetItemByID(ctx, version.ItemID)
+	if err != nil {
+		return err
+	}
+	approved, err := s.advanceToApproved(ctx, repo, item, version)
+	if err != nil {
+		return err
+	}
+	if _, err := s.finalizePublished(ctx, tx, repo, item, approved); err != nil {
+		return err
+	}
+	verification, _ := recordedVerification(version.Body)
+	comment := fmt.Sprintf("Approved by independent verifier %s at %s, with its whole batch.",
+		verifierName(verification.Model), verification.CheckedAt.UTC().Format(time.RFC3339))
+	_, err = repo.CreateReview(ctx, s.newID(), version.ID, item.OwnerID, domain.ReviewDecisionApproved, &comment)
+	return err
+}
+
+// recordedVerification reads `_provenance.verification` back from a body.
+func recordedVerification(body json.RawMessage) (contract.Verification, bool) {
+	var decoded struct {
+		Provenance struct {
+			Verification *struct {
+				Model     string `json:"model"`
+				Verdict   string `json:"verdict"`
+				Reason    string `json:"reason"`
+				CheckedAt string `json:"checked_at"`
+			} `json:"verification"`
+		} `json:"_provenance"`
+	}
+	if err := json.Unmarshal(body, &decoded); err != nil || decoded.Provenance.Verification == nil {
+		return contract.Verification{}, false
+	}
+	mark := decoded.Provenance.Verification
+	checkedAt, _ := time.Parse(time.RFC3339, mark.CheckedAt)
+	return contract.Verification{
+		Confirmed: mark.Verdict == "confirmed",
+		Model:     mark.Model,
+		Reason:    mark.Reason,
+		CheckedAt: checkedAt,
+	}, true
+}
+
+// isPublicationGate reports a refusal by a publication gate rather than a fault.
+func isPublicationGate(err error) bool {
+	var appErr *apperr.Error
+	if !errors.As(err, &appErr) {
+		return false
+	}
+	return appErr.Code == domain.ErrFoundationIncomplete.Code || appErr.Code == domain.ErrMediaNotReady.Code ||
+		appErr.Code == ErrBatchEscalated.Code
+}
+
+// ApproveRecorded implements contract.RecordedApprover: a draft a person
+// approved on the machine that generated it is published, with a review row by
+// the item's owner saying the approval was recorded in the fixture.
+func (s *Service) ApproveRecorded(ctx context.Context, versionID uuid.UUID, approvedAt time.Time) error {
+	if versionID == uuid.Nil {
+		return apperr.New(apperr.Validation, "CONTENT_VERSION_REQUIRED", "A content version is required.")
+	}
+	return dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+		repo := s.repo.WithTx(tx)
+		version, err := repo.GetVersionByID(txCtx, versionID)
+		if err != nil {
+			return err
+		}
+		if version.Status == domain.StatusPublished {
+			return nil
+		}
+		item, err := repo.GetItemByID(txCtx, version.ItemID)
+		if err != nil {
+			return err
+		}
+		approved, err := s.advanceToApproved(txCtx, repo, item, version)
+		if err != nil {
+			return err
+		}
+		if _, err := s.finalizePublished(txCtx, tx, repo, item, approved); err != nil {
+			return err
+		}
+		comment := "Approved by a person"
+		if !approvedAt.IsZero() {
+			comment += " on " + approvedAt.UTC().Format("2006-01-02")
+		}
+		comment += "; loaded from the frozen fixture."
+		_, err = repo.CreateReview(txCtx, s.newID(), version.ID, item.OwnerID, domain.ReviewDecisionApproved, &comment)
+		return err
+	})
+}
+
+// RecordVerification implements contract.VerificationRecorder.
+//
+// It writes the verifier's outcome into a version that is still a draft, so a
+// doubt waits in its batch with its reason. A published version is immutable and
+// is refused rather than silently ignored.
+func (s *Service) RecordVerification(
+	ctx context.Context, versionID uuid.UUID, verification contract.Verification,
+) error {
+	if versionID == uuid.Nil {
+		return apperr.New(apperr.Validation, "CONTENT_VERSION_REQUIRED", "A content version is required.")
+	}
+	version, err := s.repo.GetVersionByID(ctx, versionID)
+	if err != nil {
+		return err
+	}
+	if version.Status == domain.StatusPublished {
+		return apperr.New(apperr.Conflict, "CONTENT_VERSION_PUBLISHED",
+			"A published version is immutable; its verification cannot be rewritten.")
+	}
+	_, err = markVersionVerified(ctx, s.repo, version, verification)
+	return err
+}
+
+// markVersionVerified merges the verifier's marking into a version's body and
+// writes it back with its status unchanged.
+func markVersionVerified(
+	ctx context.Context, repo Repository, version domain.Version, verification contract.Verification,
+) (domain.Version, error) {
+	body, err := mergeVerification(version.Body, verification)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	return repo.UpdateVersionDraft(
+		ctx, version.ID, version.Kind, body, version.CEFRLevel, version.MediaRefs, version.Status,
+	)
+}
+
+// mergeVerification writes `_provenance.verification` into a body.
+func mergeVerification(body json.RawMessage, verification contract.Verification) (json.RawMessage, error) {
+	var decoded map[string]any
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		return nil, fmt.Errorf("decode body for verification marking: %w", err)
+	}
+	prov, _ := decoded["_provenance"].(map[string]any)
+	if prov == nil {
+		prov = map[string]any{}
+	}
+	mark := map[string]any{
+		"model":      verifierName(verification.Model),
+		"verdict":    verdictString(verification.Confirmed),
+		"checked_at": verification.CheckedAt.UTC().Format(time.RFC3339),
+	}
+	if strings.TrimSpace(verification.Reason) != "" {
+		mark["reason"] = verification.Reason
+	}
+	prov["verification"] = mark
+	decoded["_provenance"] = prov
+	return json.Marshal(decoded)
+}
+
+// verdictString is the marking's verdict for a verification.
+func verdictString(confirmed bool) string {
+	if confirmed {
+		return "confirmed"
+	}
+	return "doubt"
+}
+
+// advanceToApproved moves a draft or in-review version to approved, running the
+// same publication gates a person's publish would.
+func (s *Service) advanceToApproved(
+	ctx context.Context, repo Repository, item domain.Item, version domain.Version,
+) (domain.Version, error) {
+	if err := s.verifyMediaAssetsReady(ctx, repo, version.MediaRefs); err != nil {
+		return domain.Version{}, err
+	}
+	if err := verifyFoundationComplete(ctx, repo, item.Kind, item.ID); err != nil {
+		return domain.Version{}, err
+	}
+
+	steps, err := stepsToApproved(version.Status)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	current := version
+	for _, next := range steps {
+		if err := domain.ValidateTransition(current.Status, next); err != nil {
+			return domain.Version{}, err
+		}
+		updated, err := repo.UpdateVersionDraft(
+			ctx, current.ID, current.Kind, []byte(current.Body), current.CEFRLevel, current.MediaRefs, next,
+		)
+		if err != nil {
+			return domain.Version{}, err
+		}
+		current = updated
+	}
+	if _, err := repo.UpdateItemStatus(ctx, item.ID, domain.StatusApproved); err != nil {
+		return domain.Version{}, err
+	}
+	if err := domain.ValidateTransition(current.Status, domain.StatusPublished); err != nil {
+		return domain.Version{}, err
+	}
+	return current, nil
+}
+
+// stepsToApproved is the remaining transitions from a version's status to
+// approved. A version already approved needs none.
+func stepsToApproved(from domain.AuthoringStatus) ([]domain.AuthoringStatus, error) {
+	switch from {
+	case domain.StatusDraft:
+		return []domain.AuthoringStatus{domain.StatusInReview, domain.StatusApproved}, nil
+	case domain.StatusInReview:
+		return []domain.AuthoringStatus{domain.StatusApproved}, nil
+	case domain.StatusApproved:
+		return nil, nil
+	default:
+		return nil, domain.ErrInvalidStateTransition.WithInternal(
+			fmt.Sprintf("cannot approve version in status %q", from),
+		)
+	}
+}
+
+// verifierName is the model recorded on the approval, or a placeholder when the
+// caller did not name one.
+func verifierName(model string) string {
+	if trimmed := strings.TrimSpace(model); trimmed != "" {
+		return trimmed
+	}
+	return "unknown"
 }
 
 // authorFirstVersion creates the item and its published version 1.
@@ -302,3 +648,6 @@ func validateAuthorSpec(spec contract.AuthorSpec) error {
 }
 
 var _ contract.Author = (*Service)(nil)
+var _ contract.VerificationRecorder = (*Service)(nil)
+var _ contract.VerifiedBatchPublisher = (*Service)(nil)
+var _ contract.RecordedApprover = (*Service)(nil)

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"io"
 	"net/http"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/modules/resource/domain"
@@ -21,12 +21,15 @@ import (
 )
 
 type mockRepo struct {
-	resources       map[uuid.UUID]*contract.Resource
-	renditions      map[uuid.UUID]*contract.Rendition
-	extractions     map[uuid.UUID]*contract.Extraction
-	classifications map[uuid.UUID]*contract.Classification
-	usageCount      int64
-	usageBytes      int64
+	resources             map[uuid.UUID]*contract.Resource
+	renditions            map[uuid.UUID]*contract.Rendition
+	extractions           map[uuid.UUID]*contract.Extraction
+	classifications       map[uuid.UUID]*contract.Classification
+	renditionBatchReads   int
+	renditionSingleReads  int
+	classificationDeletes int
+	usageCount            int64
+	usageBytes            int64
 	// staleExpired, when set, is what ListExpiredPendingResources returns: the
 	// snapshot a sweeper read before the learner confirmed.
 	staleExpired []contract.Resource
@@ -338,10 +341,28 @@ func (m *mockRepo) ListReadyRenditionsByResourceID(
 func (m *mockRepo) ListRenditionsByResourceID(
 	_ context.Context, resourceID uuid.UUID,
 ) ([]contract.Rendition, error) {
+	m.renditionSingleReads++
 	var list []contract.Rendition
 	for _, r := range m.renditions {
 		if r.ResourceID == resourceID {
 			list = append(list, *r)
+		}
+	}
+	return list, nil
+}
+
+func (m *mockRepo) ListRenditionsByResourceIDs(
+	_ context.Context, resourceIDs []uuid.UUID,
+) ([]contract.Rendition, error) {
+	m.renditionBatchReads++
+	ids := make(map[uuid.UUID]bool, len(resourceIDs))
+	for _, id := range resourceIDs {
+		ids[id] = true
+	}
+	var list []contract.Rendition
+	for _, rendition := range m.renditions {
+		if ids[rendition.ResourceID] {
+			list = append(list, *rendition)
 		}
 	}
 	return list, nil
@@ -437,6 +458,12 @@ func (m *mockRepo) GetClassificationByResourceID(
 		return nil, nil
 	}
 	return c, nil
+}
+
+func (m *mockRepo) DeleteClassificationTx(_ context.Context, _ pgx.Tx, resourceID uuid.UUID) error {
+	m.classificationDeletes++
+	delete(m.classifications, resourceID)
+	return nil
 }
 
 type mockStorage struct {

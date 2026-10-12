@@ -30,6 +30,24 @@ var (
 		"Creator profile not found",
 	)
 
+	// ErrDraftSlugConflict means a creator already has a draft with this slug.
+	// Draft creation and rename both answer it as a 409 instead of letting a
+	// database unique-violation surface as an internal error.
+	ErrDraftSlugConflict = apperr.New(
+		apperr.Conflict,
+		"DRAFT_SLUG_EXISTS",
+		"You already have a course draft with this slug",
+	)
+
+	// ErrPayoutAccountNotFound means the creator has no payout account to read,
+	// or the account they have is not marked default. It is a 404, not a nil
+	// dereference or a 500.
+	ErrPayoutAccountNotFound = apperr.New(
+		apperr.NotFound,
+		"PAYOUT_ACCOUNT_NOT_FOUND",
+		"Payout account not found",
+	)
+
 	// ErrSelfReviewForbidden enforces BR-STUDIO-06 / BR-CONTENT-03:
 	// A reviewer may not review or decide their own submission.
 	ErrSelfReviewForbidden = apperr.New(

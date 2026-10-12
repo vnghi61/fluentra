@@ -3,17 +3,17 @@ import { z } from "zod";
 export const profileFormSchema = z.object({
   display_name: z
     .string()
-    .min(1, "Display name cannot be empty")
-    .max(100, "Display name is too long"),
+    .min(1, "validation.displayNameRequired")
+    .max(100, "validation.displayNameTooLong"),
   country: z
     .string()
-    .max(2, "Country must be a 2-letter ISO code")
+    .max(2, "validation.countryCodeLength")
     .optional()
     .or(z.literal("")),
-  timezone: z.string().min(1, "Timezone is required"),
+  timezone: z.string().min(1, "validation.timezoneRequired"),
   date_of_birth: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Format must be YYYY-MM-DD")
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "validation.dateFormat")
     .optional()
     .or(z.literal("")),
 });
@@ -21,37 +21,52 @@ export const profileFormSchema = z.object({
 export type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 export const preferencesFormSchema = z.object({
-  locale: z.string().min(2, "Locale is required"),
+  locale: z.string().min(2, "validation.localeRequired"),
   theme: z.enum(["light", "dark", "system"]),
   daily_goal_minutes: z
     .number()
-    .min(5, "Daily goal must be at least 5 minutes")
-    .max(180, "Daily goal cannot exceed 180 minutes"),
-  notification_channels: z
-    .array(z.enum(["in_app", "email", "push"]))
-    .default([]),
-  quiet_hours_enabled: z.boolean().default(false),
-  quiet_hours_start: z.string().default("22:00"),
-  quiet_hours_end: z.string().default("07:00"),
-  ai_processing_opt_out: z.boolean().default(false),
+    .min(5, "validation.dailyGoalMin")
+    .max(180, "validation.dailyGoalMax"),
 });
+
+// Notification channels, quiet hours and the AI-processing opt-out are no
+// longer edited in the interface (AI grading is always on). They are not on the
+// form, and a save sends back whatever the server stored — see `replacementFor`.
 
 export type PreferencesFormValues = z.infer<typeof preferencesFormSchema>;
 
+/** The "Learning preferences" card: daily goal and daily practice level. */
+export const learningPreferencesSchema = z.object({
+  daily_goal_minutes: z
+    .number()
+    .min(5, "validation.dailyGoalMin")
+    .max(180, "validation.dailyGoalMax"),
+  // "" is "not chosen yet", sent as null.
+  practice_level: z.enum(["", "A2", "B1", "B2"]),
+});
+
+export type LearningPreferencesValues = z.infer<
+  typeof learningPreferencesSchema
+>;
+
+/** The "Appearance" card: display mode and interface language. */
+export const appearanceSchema = preferencesFormSchema.pick({
+  locale: true,
+  theme: true,
+});
+
+export type AppearanceValues = z.infer<typeof appearanceSchema>;
+
 export const changePasswordSchema = z
   .object({
-    current_password: z
-      .string()
-      .min(8, "Current password must be at least 8 characters"),
-    new_password: z
-      .string()
-      .min(8, "New password must be at least 8 characters"),
+    current_password: z.string().min(8, "validation.currentPasswordMinLength"),
+    new_password: z.string().min(8, "validation.newPasswordMin8"),
     confirm_new_password: z
       .string()
-      .min(8, "Confirmation must be at least 8 characters"),
+      .min(8, "validation.confirmPasswordMinLength"),
   })
   .refine((data) => data.new_password === data.confirm_new_password, {
-    message: "Passwords do not match",
+    message: "validation.passwordsDoNotMatch",
     path: ["confirm_new_password"],
   });
 

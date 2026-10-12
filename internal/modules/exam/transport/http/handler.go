@@ -36,12 +36,15 @@ type ExamService interface {
 	GetScoreReport(ctx context.Context, userID, attemptID uuid.UUID) (*service.ScoreReportDTO, error)
 	ListUserAttempts(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]service.ExamAttemptDTO, int64, error)
 	SittingsToday(ctx context.Context, userID uuid.UUID) (service.SittingsToday, error)
-	ListCurrentExamVersions(ctx context.Context) ([]service.ExamVersionDTO, error)
+	ListCurrentExamVersions(ctx context.Context, userID uuid.UUID) ([]service.ExamVersionDTO, error)
+	ListFixedTests(
+		ctx context.Context, userID, versionID uuid.UUID,
+	) (*service.FixedTestListResponseDTO, error)
 	ComposeMockTest(
 		ctx context.Context, userID *uuid.UUID, req service.ComposeMockTestRequest,
 	) (*domain.MockTest, error)
 	StartMockTestAttempt(
-		ctx context.Context, userID, mockTestID uuid.UUID,
+		ctx context.Context, userID, mockTestID uuid.UUID, req service.StartAttemptRequest,
 	) (*service.ExamAttemptDTO, error)
 	GetExamVersionCoverage(ctx context.Context, versionID uuid.UUID) (*service.ExamCoverageReportDTO, error)
 }
@@ -73,6 +76,7 @@ func (h *Handler) Routes(r chi.Router) {
 
 	// Mock tests and exam versions
 	r.Get("/exam-versions", h.listExamVersions)
+	r.Get("/exam-versions/{id}/tests", h.listFixedTests)
 	r.Post("/mock-tests", h.composeMockTest)
 	r.Post("/mock-tests/{id}/attempts", h.startMockTestAttempt)
 }
@@ -308,7 +312,12 @@ func (h *Handler) getReport(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) listExamVersions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	versions, err := h.service.ListCurrentExamVersions(ctx)
+	// The caller's best score rides on each card when there is a caller.
+	var userID uuid.UUID
+	if actor, ok := httpx.ActorFrom(ctx); ok {
+		userID = actor.UserID
+	}
+	versions, err := h.service.ListCurrentExamVersions(ctx, userID)
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
@@ -317,6 +326,33 @@ func (h *Handler) listExamVersions(w http.ResponseWriter, r *http.Request) {
 		versions = []service.ExamVersionDTO{}
 	}
 	httpx.WriteJSON(w, r, http.StatusOK, service.ExamVersionListResponseDTO{Items: versions})
+}
+
+func (h *Handler) listFixedTests(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	versionID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.BadRequest, "INVALID_EXAM_VERSION_ID", "Invalid exam version ID"))
+		return
+	}
+
+	// The list itself is public to signed-in learners; the caller's attempts
+	// are attached only when there is a caller.
+	var userID uuid.UUID
+	if actor, ok := httpx.ActorFrom(ctx); ok {
+		userID = actor.UserID
+	}
+
+	tests, err := h.service.ListFixedTests(ctx, userID, versionID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	if tests == nil {
+		tests = &service.FixedTestListResponseDTO{Items: []service.FixedTestSummaryDTO{}}
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, tests)
 }
 
 func (h *Handler) composeMockTest(w http.ResponseWriter, r *http.Request) {
@@ -357,7 +393,15 @@ func (h *Handler) startMockTestAttempt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	attempt, err := h.service.StartMockTestAttempt(ctx, actor.UserID, mockTestID)
+	var req service.StartAttemptRequest
+	if r.Body != nil {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+			httpx.WriteProblem(w, r, apperr.New(apperr.BadRequest, "INVALID_REQUEST_BODY", "failed to parse request body"))
+			return
+		}
+	}
+
+	attempt, err := h.service.StartMockTestAttempt(ctx, actor.UserID, mockTestID, req)
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return

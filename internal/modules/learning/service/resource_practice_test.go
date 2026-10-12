@@ -1,0 +1,438 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/fluentra/fluentra/internal/modules/learning/domain"
+	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
+	"github.com/fluentra/fluentra/internal/shared/apperr"
+	"github.com/fluentra/fluentra/internal/shared/clock"
+)
+
+// testWeakNodeCode is the spine node the fixtures classify against.
+const testWeakNodeCode = "PRESENT_PERFECT"
+
+// ---------------------------------------------------------------- fixtures
+
+type stubResourceReader struct {
+	resource *resourcecontract.Resource
+	err      error
+}
+
+func (s stubResourceReader) GetResource(
+	context.Context, uuid.UUID, uuid.UUID,
+) (*resourcecontract.Resource, error) {
+	return s.resource, s.err
+}
+
+type stubPracticeStore struct {
+	set     *domain.ResourcePracticeSet
+	upserts int
+	claimed []domain.ResourcePracticeSet
+	ready   int
+	failed  int
+	deleted int
+}
+
+func (s *stubPracticeStore) UpsertResourcePracticeSet(
+	_ context.Context, resourceID, userID uuid.UUID,
+) (*domain.ResourcePracticeSet, error) {
+	s.upserts++
+	s.set = &domain.ResourcePracticeSet{
+		ResourceID:  resourceID,
+		UserID:      userID,
+		Status:      domain.ResourcePracticeGenerating,
+		GeneratedOn: time.Now(),
+	}
+	return s.set, nil
+}
+
+func (s *stubPracticeStore) GetResourcePracticeSet(
+	context.Context, uuid.UUID, uuid.UUID,
+) (*domain.ResourcePracticeSet, error) {
+	return s.set, nil
+}
+
+func (s *stubPracticeStore) MarkResourcePracticeSetReady(
+	_ context.Context, resourceID, userID, lessonID uuid.UUID, activityIDs []uuid.UUID,
+) (*domain.ResourcePracticeSet, error) {
+	s.ready++
+	s.set = &domain.ResourcePracticeSet{
+		ResourceID: resourceID, UserID: userID, LessonID: &lessonID,
+		ActivityIDs: activityIDs, Status: domain.ResourcePracticeReady,
+	}
+	return s.set, nil
+}
+
+func (s *stubPracticeStore) MarkResourcePracticeSetFailed(
+	_ context.Context, resourceID, userID uuid.UUID, reason string,
+) (*domain.ResourcePracticeSet, error) {
+	s.failed++
+	s.set = &domain.ResourcePracticeSet{
+		ResourceID: resourceID, UserID: userID,
+		Status: domain.ResourcePracticeFailed, FailureReason: reason,
+	}
+	return s.set, nil
+}
+
+func (s *stubPracticeStore) ClaimGeneratingResourcePracticeSets(
+	context.Context, int32,
+) ([]domain.ResourcePracticeSet, error) {
+	return s.claimed, nil
+}
+
+func (s *stubPracticeStore) DeleteResourcePracticeSetsForUser(context.Context, uuid.UUID) error {
+	s.deleted++
+	return nil
+}
+
+func (s *stubPracticeStore) ResourcePracticeCourseAnchor(
+	context.Context, uuid.UUID,
+) (uuid.UUID, error) {
+	if s.set == nil || len(s.set.ActivityIDs) == 0 {
+		return uuid.Nil, nil
+	}
+	return s.set.ActivityIDs[0], nil
+}
+
+func resourcePracticeService(
+	t *testing.T, resource *resourcecontract.Resource, store *stubPracticeStore,
+) *Service {
+	t.Helper()
+	return New(Deps{
+		Clock:            clock.NewFake(time.Date(2026, 9, 22, 8, 0, 0, 0, time.UTC)),
+		Resource:         stubResourceReader{resource: resource},
+		ResourcePractice: store,
+	})
+}
+
+func classifiedResource() *resourcecontract.Resource {
+	level := "B1"
+	skill := domain.SkillGrammar
+	return &resourcecontract.Resource{
+		ID:     uuid.New(),
+		UserID: uuid.New(),
+		Status: resourcecontract.MaterialValidated,
+		Extraction: &resourcecontract.Extraction{
+			Text:      "Present perfect: she has lived here for three years.",
+			CharCount: 50,
+		},
+		Classification: &resourcecontract.Classification{
+			PromptVersion: "resource_classify.v2",
+			CEFREstimate:  &level,
+			Skill:         &skill,
+			NodeCodes:     []string{testWeakNodeCode},
+		},
+	}
+}
+
+// ------------------------------------------------------------------- tests
+
+func TestRequestResourcePractice_QueuesWhenNothingExistsYet(t *testing.T) {
+	store := &stubPracticeStore{}
+	resource := classifiedResource()
+	svc := resourcePracticeService(t, resource, store)
+
+	set, err := svc.RequestResourcePractice(context.Background(), resource.UserID, resource.ID)
+	if err != nil {
+		t.Fatalf("RequestResourcePractice: %v", err)
+	}
+	if set.Status != domain.ResourcePracticeGenerating {
+		t.Errorf("status = %q, want generating", set.Status)
+	}
+	if store.upserts != 1 {
+		t.Errorf("upserted %d times, want 1", store.upserts)
+	}
+}
+
+func TestRequestResourcePractice_ReusesTodaysReadySet(t *testing.T) {
+	resource := classifiedResource()
+	store := &stubPracticeStore{set: &domain.ResourcePracticeSet{
+		ResourceID:  resource.ID,
+		UserID:      resource.UserID,
+		Status:      domain.ResourcePracticeReady,
+		GeneratedOn: time.Date(2026, 9, 22, 6, 0, 0, 0, time.UTC),
+	}}
+	svc := resourcePracticeService(t, resource, store)
+
+	set, err := svc.RequestResourcePractice(context.Background(), resource.UserID, resource.ID)
+	if err != nil {
+		t.Fatalf("RequestResourcePractice: %v", err)
+	}
+	if set.Status != domain.ResourcePracticeReady {
+		t.Errorf("status = %q, want ready", set.Status)
+	}
+	if store.upserts != 0 {
+		t.Errorf("regenerated %d times inside one day, want 0", store.upserts)
+	}
+}
+
+func TestRequestResourcePractice_RegeneratesTheNextDay(t *testing.T) {
+	resource := classifiedResource()
+	store := &stubPracticeStore{set: &domain.ResourcePracticeSet{
+		ResourceID:  resource.ID,
+		UserID:      resource.UserID,
+		Status:      domain.ResourcePracticeReady,
+		GeneratedOn: time.Date(2026, 9, 21, 6, 0, 0, 0, time.UTC),
+	}}
+	svc := resourcePracticeService(t, resource, store)
+
+	if _, err := svc.RequestResourcePractice(context.Background(), resource.UserID, resource.ID); err != nil {
+		t.Fatalf("RequestResourcePractice: %v", err)
+	}
+	if store.upserts != 1 {
+		t.Errorf("upserted %d times, want 1 on a new day", store.upserts)
+	}
+}
+
+func TestRequestResourcePractice_RefusesAFileWithNoText(t *testing.T) {
+	resource := classifiedResource()
+	resource.Extraction = nil
+	store := &stubPracticeStore{}
+	svc := resourcePracticeService(t, resource, store)
+
+	_, err := svc.RequestResourcePractice(context.Background(), resource.UserID, resource.ID)
+	if !apperr.Is(err, apperr.Validation) || !strings.Contains(err.Error(), "no text") {
+		t.Fatalf("error = %v, want a validation error about missing text", err)
+	}
+	if store.upserts != 0 {
+		t.Error("a file with no text was queued for generation")
+	}
+}
+
+func TestRequestResourcePractice_RefusesAnUnclassifiedFile(t *testing.T) {
+	resource := classifiedResource()
+	resource.Classification = nil
+	svc := resourcePracticeService(t, resource, &stubPracticeStore{})
+
+	_, err := svc.RequestResourcePractice(context.Background(), resource.UserID, resource.ID)
+	var appErr *apperr.Error
+	if !errors.As(err, &appErr) || appErr.Kind != apperr.Validation || appErr.Code != "RESOURCE_PRACTICE_UNCLASSIFIED" {
+		t.Fatalf("error = %v, want a validation error about classification", err)
+	}
+}
+
+func TestRequestResourcePractice_RejectsUnsuitableAndOldMetadataEvenWithExistingSets(t *testing.T) {
+	for _, metadata := range []struct {
+		name   string
+		change func(*resourcecontract.Classification)
+		code   string
+	}{
+		{"unsuitable", func(c *resourcecontract.Classification) {
+			c.CEFREstimate, c.Skill, c.NodeCodes = nil, nil, nil
+		}, "RESOURCE_NOT_LEARNING_MATERIAL"},
+		{"old prompt", func(c *resourcecontract.Classification) {
+			c.PromptVersion = "resource_classify.v1"
+		}, "RESOURCE_PRACTICE_UNCLASSIFIED"},
+	} {
+		for _, status := range []string{"absent", domain.ResourcePracticeReady, domain.ResourcePracticeGenerating} {
+			t.Run(metadata.name+"/"+status, func(t *testing.T) {
+				resource := classifiedResource()
+				metadata.change(resource.Classification)
+				store := &stubPracticeStore{}
+				if status != "absent" {
+					store.set = &domain.ResourcePracticeSet{
+						ResourceID: resource.ID, UserID: resource.UserID, Status: status,
+						GeneratedOn: time.Date(2026, 9, 22, 6, 0, 0, 0, time.UTC),
+					}
+				}
+				svc := resourcePracticeService(t, resource, store)
+
+				set, err := svc.RequestResourcePractice(context.Background(), resource.UserID, resource.ID)
+				var appErr *apperr.Error
+				if !errors.As(err, &appErr) || appErr.Kind != apperr.Validation || appErr.Code != metadata.code {
+					t.Fatalf("error = %v, want validation code %s", err, metadata.code)
+				}
+				if set != nil || store.upserts != 0 {
+					t.Fatalf("rejected metadata returned or queued practice: set=%+v, upserts=%d", set, store.upserts)
+				}
+			})
+		}
+	}
+}
+
+func TestRequestResourcePractice_AForeignResourceIsNotFound(t *testing.T) {
+	store := &stubPracticeStore{}
+	svc := New(Deps{
+		Clock:            clock.NewFake(time.Now()),
+		Resource:         stubResourceReader{err: errors.New("no rows")},
+		ResourcePractice: store,
+	})
+
+	_, err := svc.RequestResourcePractice(context.Background(), uuid.New(), uuid.New())
+	if !apperr.Is(err, apperr.NotFound) {
+		t.Fatalf("error = %v, want not found", err)
+	}
+	if store.upserts != 0 {
+		t.Error("a foreign resource was queued for generation")
+	}
+}
+
+func TestResourcePracticeKind_UsesTheGradedChoiceKinds(t *testing.T) {
+	if got := resourcePracticeKind(domain.SkillGrammar); got != kindGrammarTenseChoice {
+		t.Errorf("grammar file → %q, want %q", got, kindGrammarTenseChoice)
+	}
+	if got := resourcePracticeKind(domain.SkillVocabulary); got != kindVocabMultipleChoice {
+		t.Errorf("vocabulary file → %q, want %q", got, kindVocabMultipleChoice)
+	}
+}
+
+func TestResourcePracticeSource_TruncatesToTheModelsWindow(t *testing.T) {
+	resource := classifiedResource()
+	resource.Extraction.Text = strings.Repeat("a", resourcePracticeSourceChars+500)
+
+	if got := len([]rune(resourcePracticeSource(resource))); got != resourcePracticeSourceChars {
+		t.Errorf("source length = %d, want %d", got, resourcePracticeSourceChars)
+	}
+}
+
+func TestWeakNodeMatches_FindsTheNodeInTheVersionsTags(t *testing.T) {
+	weak := &domain.WeakNodeLabel{Code: testWeakNodeCode, Label: "Present Perfect"}
+
+	if !weakNodeMatches([]string{"SENTENCE_STRUCTURE", testWeakNodeCode}, weak) {
+		t.Error("the weak node is in the tags but was not matched")
+	}
+	if weakNodeMatches([]string{"SENTENCE_STRUCTURE"}, weak) {
+		t.Error("a version without the weak node was matched")
+	}
+}
+
+// stubActivityResolver answers ResolveActivity and nothing else. The rest of
+// lesson's Reader is unused by the course filter, so it stays unimplemented
+// rather than faked into looking meaningful.
+type stubActivityResolver struct {
+	courseID uuid.UUID
+}
+
+func (stubActivityResolver) GetLesson(
+	context.Context, uuid.UUID,
+) (*lessoncontract.Lesson, error) {
+	return nil, errors.New("not used")
+}
+
+func (stubActivityResolver) ListLessons(
+	context.Context, uuid.UUID,
+) ([]*lessoncontract.Lesson, error) {
+	return nil, errors.New("not used")
+}
+
+func (stubActivityResolver) ListUnitsByCourseID(
+	context.Context, uuid.UUID,
+) ([]*lessoncontract.Unit, error) {
+	return nil, errors.New("not used")
+}
+
+func (stubActivityResolver) ListPrerequisitesForLessons(
+	context.Context, []uuid.UUID,
+) ([]lessoncontract.PrerequisiteItem, error) {
+	return nil, errors.New("not used")
+}
+
+func (stubActivityResolver) ListActivitiesByCourseIDs(
+	context.Context, []uuid.UUID,
+) (map[uuid.UUID][]uuid.UUID, error) {
+	return nil, errors.New("not used")
+}
+
+func (stubActivityResolver) NextLesson(
+	context.Context, uuid.UUID, *uuid.UUID,
+) (*lessoncontract.Lesson, error) {
+	return nil, errors.New("not used")
+}
+
+func (s stubActivityResolver) ResolveActivity(
+	_ context.Context, id uuid.UUID,
+) (*lessoncontract.ActivityHierarchy, error) {
+	return &lessoncontract.ActivityHierarchy{ActivityID: id, CourseID: s.courseID}, nil
+}
+
+// The hidden course a learner's resource practice lives in must not reach the
+// dashboard or the progress page. It is a course they never chose — the
+// generator made it to hold their private set — and the dashboard continues
+// the newest active enrolment, so leaving it in would turn "continue learning"
+// into a drill built from their own upload and list "Practice from my files"
+// among their courses. This is the guard the practice pool already has.
+func TestWithoutPoolCourse_DropsTheResourcePracticeCourse(t *testing.T) {
+	hiddenCourse := uuid.New()
+	chosenCourse := uuid.New()
+	activityID := uuid.New()
+
+	svc := New(Deps{
+		Clock:  clock.NewFake(time.Date(2026, 9, 22, 8, 0, 0, 0, time.UTC)),
+		Lesson: stubActivityResolver{courseID: hiddenCourse},
+		ResourcePractice: &stubPracticeStore{
+			set: &domain.ResourcePracticeSet{ActivityIDs: []uuid.UUID{activityID}},
+		},
+	})
+
+	kept := svc.withoutPoolCourse(context.Background(), uuid.New(), []domain.Enrollment{
+		{CourseID: chosenCourse},
+		{CourseID: hiddenCourse},
+	})
+
+	if len(kept) != 1 {
+		t.Fatalf("expected one enrolment to survive, got %d", len(kept))
+	}
+	if kept[0].CourseID != chosenCourse {
+		t.Errorf("the wrong course survived: want %s, got %s", chosenCourse, kept[0].CourseID)
+	}
+}
+
+// A learner who has generated nothing has no hidden course, and their real
+// enrolments must survive untouched.
+func TestWithoutPoolCourse_KeepsEverythingWithoutResourcePractice(t *testing.T) {
+	chosenCourse := uuid.New()
+
+	svc := New(Deps{
+		Clock:            clock.NewFake(time.Date(2026, 9, 22, 8, 0, 0, 0, time.UTC)),
+		Lesson:           stubActivityResolver{courseID: uuid.New()},
+		ResourcePractice: &stubPracticeStore{},
+	})
+
+	kept := svc.withoutPoolCourse(context.Background(), uuid.New(), []domain.Enrollment{
+		{CourseID: chosenCourse},
+	})
+
+	if len(kept) != 1 || kept[0].CourseID != chosenCourse {
+		t.Fatalf("a learner with no generated practice lost an enrolment: %+v", kept)
+	}
+}
+
+// ResolveActivities resolves each id through ResolveActivity.
+func (s stubActivityResolver) ResolveActivities(
+	ctx context.Context, ids []uuid.UUID,
+) (map[uuid.UUID]*lessoncontract.ActivityHierarchy, error) {
+	out := make(map[uuid.UUID]*lessoncontract.ActivityHierarchy, len(ids))
+	for _, id := range ids {
+		if h, err := s.ResolveActivity(ctx, id); err == nil && h != nil {
+			out[id] = h
+		}
+	}
+	return out, nil
+}
+
+// ListLessonsByCourseID walks ListUnitsByCourseID and ListLessons.
+func (s stubActivityResolver) ListLessonsByCourseID(
+	ctx context.Context, courseID uuid.UUID,
+) ([]*lessoncontract.Lesson, error) {
+	units, err := s.ListUnitsByCourseID(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+	var out []*lessoncontract.Lesson
+	for _, u := range units {
+		lessons, err := s.ListLessons(ctx, u.ID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, lessons...)
+	}
+	return out, nil
+}

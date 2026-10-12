@@ -91,8 +91,12 @@ LessonActivity:
         Activity-specific configuration. A `lesson_material` activity carries the
         material's object keys and, issued at read time after the paywall, a
         `sources` object: `{poster_url?, video: [{url, height}],
-        document: {url, preview_url?, page_count?}}`. The URLs expire and are
-        never stored in the lesson cache.
+        document: {url, preview_url?, page_count?}, image: {url}}`. A material's
+        `material_kind` is `document` (PDF, Word, Excel, PowerPoint), `image`
+        (PNG, JPEG, WebP; served as a re-encoded copy) or `video`. The URLs expire and are
+        never stored in the lesson cache. A `foundation_topic` activity carries
+        the topic's published body: `{objective, explanation: {en, vi},
+        examples, common_mistakes}`.
     weight:
       type: integer
       example: 10

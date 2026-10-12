@@ -142,8 +142,7 @@ time. Standard-library gravity wins.
 
 | Library | Verdict | Notes |
 |---|---|---|
-| **`go-playground/validator` v10** ✅ | **Chosen** | De-facto standard, struct tags, custom rules, translations |
-| `ozzo-validation` | Rejected | Programmatic API is nicer for complex rules but far less common; agents know validator |
+| **Hand-written checks in each module's `domain`** ✅ | **Chosen** | Validation rules are business rules; a struct-tag library was tried and nothing imported it |
 | Hand-written | Used **in `domain/`** | Invariants belong in the domain, not in tags |
 
 Two-layer approach: struct tags validate *shape* at the transport edge; the domain validates
@@ -153,8 +152,8 @@ Two-layer approach: struct tags validate *shape* at the transport edge; the doma
 
 | Library | Verdict | Notes |
 |---|---|---|
-| **`oapi-codegen` v2** ✅ | **Chosen** | Spec-first: generates chi server interfaces, typed clients, request validation middleware |
-| **`getkin/kin-openapi`** ✅ | **Chosen** | OpenAPI 3.0/3.1 model and validator in Go, dependency of oapi-codegen generated server |
+| `oapi-codegen` v2 | Removed (v1) | Generated a server and client nothing imported; handlers are hand-written and the contract tests check them against the spec |
+| **`getkin/kin-openapi`** ✅ | **Chosen** | OpenAPI 3.0/3.1 model and validator in Go, used by the contract tests to check handlers against the spec |
 | `danielgtaylor/huma` v2 | Strong alternative | Code-first, generates the spec — rejected because we want the spec reviewable *before* implementation, and shared with the frontend team |
 | `ogen` | Considered | Very fast generated code, stricter spec support; smaller community |
 | `swaggo/swag` | Rejected | Comment-driven, OpenAPI 2/3.0 only, drifts easily |
@@ -191,7 +190,7 @@ lands with the first provider client that needs local throttling.
 **A contradiction to settle, not to inherit:** the row above chose `redis_rate`,
 but `internal/platform/cache/limiter.go` already implements distributed rate
 limiting over Redis with a Lua script and a deliberate fail-open policy
-(API_GUIDELINE.md §11). GCRA is the better algorithm; replacing a tested,
+(docs/CONVENTIONS.md#api §11). GCRA is the better algorithm; replacing a tested,
 running component to get it is a decision someone should take on purpose.
 
 ### 1.11 Infrastructure clients
@@ -239,7 +238,7 @@ and no vendor lock. Add an SDK when a provider-specific capability needs it
 |---|---|---|---|
 | Assertions | `stretchr/testify` | `is`, `gotest.tools`, stdlib | Ubiquitous; every model knows it |
 | Containers | `testcontainers-go` | `ory/dockertest`, docker-compose in CI | Programmatic, waits for readiness, auto-cleanup, works locally and in CI identically |
-| Mocks | `matryer/moq` | `mockery`, `gomock` | Generates plain readable Go; diffs are reviewable; no DSL for agents to get wrong |
+| Mocks | Hand-written fakes | `moq`, `mockery`, `gomock` | Each fake implements the module's own small interface; nothing to generate |
 | Golden files | `sebdah/goldie` v2 | hand-rolled | `-update` flag, good diffs |
 | Property-based | `pgregory.net/rapid` | `gopter`, stdlib fuzz | Used for FSRS scheduling and scoring invariants |
 | HTTP assertions | stdlib `httptest` | `gavv/httpexpect` | Keep it boring |
@@ -257,6 +256,7 @@ and no vendor lock. Add an SDK when a provider-specific capability needs it
 | `air` | Hot reload in dev |
 | `goimports-reviser` | Import ordering |
 | `dbmate`/`pgtyped` | *not used* — sqlc covers it |
+| `wordfreq` 3.1.1, `lemminflect` 0.2.3, `eng-to-ipa` 0.0.2 (Python, dev only) | `scripts/vocab-source-list.py` builds the lemmatised frequency list and cleans the word fixture offline (WO 22 Stage C). Never imported by the product; wordfreq's data is CC BY-SA 4.0 and credited in every fixture header. Alternatives: a Go lemmatiser (none maintained), asking the model to lemmatise (a model call per word for a rule a lexicon answers) |
 
 ### 1.16 Image processing
 
@@ -287,8 +287,11 @@ and no vendor lock. Add an SDK when a provider-specific capability needs it
 | Component variants | `class-variance-authority` | hand-rolled maps, `tailwind-variants` | Type-safe variant/size props; shadcn's generated components already use it, so not adopting it would mean editing every one on the way in | One more tiny dependency |
 | UI components | shadcn/ui + Radix + Tailwind 4 | MUI, Mantine, Chakra, Ant | **Components live in our repo** — agents can read and modify them; Radix gives real a11y | We own the maintenance |
 | Forms | React Hook Form + Zod | Formik, TanStack Form | Uncontrolled = fast; Zod schemas shared with API types | — |
-| Tables | TanStack Table v8 | AG Grid, MRT | Headless; styled by our own design system | More assembly |
-| Animation | `motion` 13 | `react-spring`, GSAP, CSS only | Installed ahead of the gamification work that chose it (XP, streaks, badges), where orchestrated and interruptible sequences are the point. Today only `useReducedMotion` is used — the flashcard flip is a plain CSS transform, because `motion.div` with `animate={{ rotateY: 180 }}` took ownership of the element and resolved it to `transform: none`, measured in a browser | +3.4 kB gzipped on the initial download for a hook, until the gamification work earns the rest. Every animation added must keep the `prefers-reduced-motion` guard |
+| Tables | Plain `<table>` + mobile card lists | TanStack Table v8, AG Grid, MRT | No screen sorts, filters or virtualises client-side: lists are paged by the API. TanStack Table was installed and never imported, so it was removed (2026-10-08) | Re-add a headless table when a screen needs client-side column logic |
+| Immutable updates | `immer` 10 | hand-written spreads, `useReducer`, Zustand + immer middleware | The course editor edits a three-level tree (chapter → lesson → activity); immer's `produce` keeps untouched branches referentially equal, which lets each activity row be memoised, and replaced copy-then-mutate code that mutated React state | ~5 kB gzipped, only in the lazy Studio editor chunk |
+| Animation | CSS (`tw-animate-css`, Tailwind transitions, `motion-reduce:`) | `motion`, `react-spring`, GSAP | `motion` was removed (2026-10-08): it powered one bottom-nav indicator (28 kB gzipped `domMax` on every shell page) and `useReducedMotion`, both now CSS. Re-adopt a library only for orchestrated, interruptible sequences that CSS cannot express | No spring physics or shared-layout transitions |
+| Spreadsheet export | `write-excel-file` 4 (`/browser`) | SheetJS `xlsx`, ExcelJS, CSV only | The account report's `.xlsx`: typed cells (numbers, dates), bold headers, column widths, frozen header rows and several sheets, from plain arrays. Its lazy chunk (writer + `fflate`) is 15.6 kB gzipped; SheetJS is several times larger and its npm releases stopped at a version with open advisories, ExcelJS is ~250 kB. CSV cannot hold several sheets or formatting | Write-only; loaded with `import()` on click, never in the settings chunk |
+| PDF export | `jspdf` 4 + `jspdf-autotable` 5 | pdfmake, `@react-pdf/renderer`, `window.print()` | The account report's PDF with summary and paged tables. Smallest maintained client-side writer with a table plugin; pdfmake bundles ~1 MB of fonts, react-pdf ships a layout engine. Vietnamese needs an embedded Unicode font: static Inter Regular/Bold cut from our own `inter-var.woff2` and subset to Latin + Vietnamese (`public/fonts/report/`, ~80 kB each, fetched only when a PDF is made) | 136 kB gzipped (418 kB raw, over Vite's 400 kB warning), only in the lazy `reportPdf` chunk fetched on click; the initial download is unaffected. Its optional `canvg`/`html2canvas`/`dompurify` are dynamic imports we never trigger; `core-js` (optional, via jspdf) is installed with its postinstall denied in `pnpm-workspace.yaml` |
 | Charts | Recharts | Chart.js, visx, ECharts | Declarative React API; sufficient for progress/skill charts | Less powerful than ECharts |
 | Dates | `date-fns` v4 + `@date-fns/tz` | Day.js, Luxon, Temporal polyfill | Tree-shakeable, immutable, good TZ story | — |
 | API client | `openapi-typescript` + `openapi-fetch` | Orval, axios + hand types, tRPC | Types generated from the same spec the server implements; 6 KB runtime | Codegen step |
@@ -335,6 +338,7 @@ code is churn.
 | Object storage | MinIO | latest | SeaweedFS, Garage, S3 | S3 API compatibility means production can move to real S3 with no code change |
 | Reverse proxy | Nginx | 1.27 | Caddy, Traefik | Boring, documented, battle-tested. Caddy's automatic TLS is tempting — noted as an option |
 | Container runtime | Docker + Compose v2 | — | Podman, K8s | Simplicity; K8s is a Phase-5 decision, not a v1 one |
+| Local resource conversion | LibreOffice Writer/Impress, Poppler, ffmpeg | Debian bookworm packages | Host-installed tools, GitHub Actions dispatch | Existing `cmd/media` tools, packaged in a dedicated non-root dev container; no Windows installation or GitHub token required |
 | Metrics | Prometheus | 3.x | VictoriaMetrics, Mimir | Standard; VictoriaMetrics if cardinality/retention becomes painful |
 | Logs | Loki | 3.x | Elasticsearch, OpenSearch | Index-free = cheap; joins to traces by `trace_id` |
 | Traces | Tempo | 2.x | Jaeger, Zipkin | Object-storage backed (uses our MinIO); native Grafana integration |
@@ -392,3 +396,95 @@ code is churn.
 | Unmaintained dependency (> 12 months, open CVEs) | Triggers a replacement ADR |
 
 This document is reviewed every quarter. Last full review: **2026-08-06**.
+
+## Third-party notices
+
+External **services** we integrate with (as opposed to libraries — those are in
+[DEPENDENCIES.md](DEPENDENCIES.md)). Every entry records what data leaves our system, what
+happens when the service fails, and how we would replace it.
+
+---
+
+### 1. Register
+
+| Service | Purpose | Data sent | Criticality | Replaceable in | Contract |
+|---|---|---|---|---|---|
+| Anthropic API | Essay grading, grammar explanation, feedback | Learner-written text (PII-redacted), rubric, locale | High | days (adapter) | Commercial, no training on API data |
+| OpenAI API | Fallback grading, embeddings, TTS, Whisper ASR | Same as above; audio for ASR | High | days | Commercial, no training on API data |
+| Google Gemini API | High-volume, low-cost tasks | Content text | Medium | days | Commercial |
+| OpenRouter | Model experimentation | Content text | Low | immediately | Pass-through — **not used for learner PII** |
+| Speech provider (TBD: Azure Speech / self-hosted Whisper) | ASR + pronunciation assessment | Learner voice recordings | High (speaking only) | weeks | Pending — see plan review Q2 |
+| Payment gateway (TBD: VNPay / MoMo / Stripe) | Subscriptions | Name, email, billing country. **No card data touches us** | High (Phase 4) | weeks | Pending — see plan review Q1 |
+| Email provider (SMTP or API) | Verification, reminders, reports | Email address, name, learning summary | Medium | days | Standard DPA |
+| Web push (VAPID / FCM) | Streak reminders | Device token | Low | days | — |
+| Breached-password service (HIBP range API) | Password policy | First 5 chars of a SHA-1 hash — **never the password** | Low | immediately | Free, k-anonymity |
+| GitHub | Source, CI, registry | Source code, build metadata | High (dev only) | weeks | Commercial |
+| Error/uptime monitoring (optional) | External availability check | URL probes only | Low | immediately | — |
+
+### 2. Data classification sent externally
+
+| Class | Examples | Where it may go |
+|---|---|---|
+| **Public** | Published lesson content | Any provider |
+| **Internal** | Aggregate statistics | Any provider under contract |
+| **Personal** | Email, name, locale | Email provider, payment gateway only |
+| **Sensitive personal** | Essay text, voice recordings, learning weaknesses | LLM/speech providers with no-training terms only; redacted where possible |
+| **Secret** | Passwords, tokens, keys | **Never leaves the system** |
+
+`OpenRouter` is explicitly restricted to non-personal content because it is a pass-through to
+third parties whose terms we do not individually negotiate.
+
+### 3. Failure handling per service
+
+| Service down | User-visible behaviour | Internal behaviour |
+|---|---|---|
+| Primary LLM | None immediately — grading continues via fallback | `ai_fallback_total` increments; warn log |
+| All LLMs | "We're still grading this — check back shortly" | Jobs retry with backoff; page after 5 min of total failure |
+| Speech provider | Speaking submissions queue; recording still saved | Circuit breaker open; other skills unaffected |
+| Payment gateway | Checkout unavailable; existing subscriptions unaffected | Webhooks replayed when it returns |
+| Email provider | Signup verification delayed | Queued; support can resend manually |
+| Push | Silent | Best-effort, no retry |
+| GitHub | No deploys | Local development unaffected |
+
+Every one of these is exercised by a chaos test in staging at least once per quarter.
+
+### 4. Cost exposure
+
+| Service | Cost driver | Control |
+|---|---|---|
+| LLM APIs | Tokens × model tier | Task routing, caching, per-user quota, global daily budget, 80 % alert |
+| Speech | Audio minutes | Max recording length, per-user daily limit |
+| Email | Messages sent | Digest batching, preference-respecting sends |
+| Object storage egress | Media delivery | CDN in front, long cache TTLs on immutable assets |
+| CI minutes | Pipeline duration | Path filters, caching, nightly scheduling of expensive suites |
+
+The AI line is expected to dominate. It is metered per task, per provider, per user, and shown
+on a dashboard — see `docs/CONVENTIONS.md#observability` §4.2.
+
+### 5. Adding a third-party service
+
+Required before the first call in production:
+
+- [ ] An ADR justifying the choice, with at least two alternatives
+- [ ] An adapter behind an interface in `internal/platform/` — SDK types never leak
+- [ ] Timeout, retry bounds, and a circuit breaker
+- [ ] A `mock` implementation for tests
+- [ ] Failure behaviour defined and user-facing copy written
+- [ ] Data classification recorded in §2
+- [ ] Contract review: data processing terms, training on data, retention, sub-processors, region
+- [ ] Cost model and a budget alert
+- [ ] Secrets stored properly with a rotation procedure
+- [ ] A row in this table and in `DEPENDENCIES.md` if an SDK was added
+- [ ] Privacy notice updated if personal data is involved
+
+### 6. Licence posture (libraries)
+
+| Licence | Policy |
+|---|---|
+| MIT, BSD, Apache-2.0, ISC | ✅ Allowed |
+| MPL-2.0, LGPL | ⚠️ Allowed only as an unmodified dynamic dependency; reviewed case by case |
+| GPL, AGPL | ❌ Not in anything we distribute or run as a service, without legal sign-off |
+| Unlicensed / unclear | ❌ Not used |
+
+`go-licenses` and `license-checker` run in CI and fail on a policy violation.
+An SBOM (CycloneDX) is generated per release and attached to the GitHub Release.

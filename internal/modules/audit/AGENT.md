@@ -184,7 +184,7 @@ regex-matches those and would demand every partition name in the `tables:` front
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `audit`). See also [`API.md`](API.md).
+(tag: `audit`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -199,7 +199,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 specified above and is deliberately absent from `openapi.yaml` and from the router: an
 asynchronous export has to put the artefact somewhere and hand back a signed URL, which needs
 `platform/storage`, and this module depends only on `job`. Adding that arrow is a boundary
-change, so it is a card of its own — see [`TODO.md`](TODO.md).
+change, so it is a card of its own — see [`TODO.md`](#18-backlog).
 
 Two things about the three that do exist:
 
@@ -283,7 +283,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -297,8 +297,6 @@ _No deviations from the global standard._
 - IP addresses are stored hashed with a rotating salt; the raw value is never persisted.
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -326,6 +324,236 @@ go test -tags=integration ./internal/modules/audit/...  # integration (testconta
 - Do not store raw IP addresses or full user agents.
 - Do not grant UPDATE or DELETE on `audit_logs` to the application role, for any reason.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/admin/audit-logs`
+
+Search the audit trail
+
+| | |
+|---|---|
+| Permission | `audit.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/audit-logs/export`
+
+Async CSV export
+
+| | |
+|---|---|
+| Permission | `audit.export` |
+| Success | 202 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/security-events`
+
+Security event feed
+
+| | |
+|---|---|
+| Permission | `audit.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/security-events/{id}/resolve`
+
+Mark an event triaged
+
+| | |
+|---|---|
+| Permission | `audit.manage` |
+| Success | 200 |
+| Errors | standard set |
+
+<!-- END GENERATED: api-detail -->
+
+### What is actually served (P1.4)
+
+Three of the four above are in `openapi.yaml` and mounted. `GET /admin/audit-logs/export` is
+not: an async export needs `platform/storage` for the signed URL, which is not a dependency of
+this module. See [`TODO.md`](#18-backlog).
+
+#### Search parameters
+
+`GET /admin/audit-logs` and `GET /admin/security-events` share the window, cursor and limit
+parameters and differ only in what they filter on.
+
+| Parameter | Both | `audit-logs` | `security-events` |
+|---|---|---|---|
+| `from`, `to` | RFC 3339. `to` defaults to now, `from` to 90 days before it | | |
+| `cursor` | Opaque, from the previous page's `next_cursor` | | |
+| `limit` | 1–100, default 20 | | |
+| filters | | `actor_id`, `action`, `target_type`, `target_id` | `kind`, `severity`, `resolved`, `user_id` |
+
+**The window is the important one.** Both tables are partitioned monthly on `created_at`. A
+query with no bound on it reads every partition ever created, so the server supplies a default
+rather than letting a caller omit one, and trims any span over 400 days from the far end. A
+client that wants everything gets the most recent 400 days of it.
+
+Ordering is `created_at DESC, id DESC` — the primary key of both tables — so the keyset cursor
+pages deep at the same cost as shallow. `next_cursor` is present only when another page exists.
+
+#### Two things the responses do not carry
+
+- **`ip_hash`.** The column exists; no response exposes it. It is a pseudonymous identifier that
+  correlates one person's activity across sessions, and reading the trail does not need it.
+- **Values, usually.** `changed_fields` names what moved; `before`/`after` are null unless the
+  emitting module sent values, and anything on the PII deny-list is `[redacted]` when it did
+  (BR-AUDIT-04). An audit log holding every old display name would be a second store of personal
+  data with a longer retention period than the first.
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+_None yet._
+<!-- END GENERATED: api-errors -->
+
+| Code | Status | When |
+|---|---|---|
+| `UNAUTHENTICATED` | 401 | No actor on the request |
+| `PERMISSION_DENIED` | 403 | The caller lacks `audit.read` or `audit.manage` |
+| `NOT_FOUND` | 404 | No such security event — also returned for a malformed id, so probing the surface reveals nothing about its shape |
+| `SECURITY_EVENT_ALREADY_RESOLVED` | 409 | A second resolution. The first administrator's explanation describes what was investigated; the second would replace it with a guess |
+| `BAD_REQUEST` | 400 | The cursor did not decode. It is a token the server issued, not a field a person typed |
+| `VALIDATION_FAILED` | 422 | A malformed filter, an out-of-range `limit`, `from` after `to`, or a missing/blank/overlong `note` |
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Recording an admin action
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant AD as admin handler
+    participant SV as content.Service
+    participant DB as PostgreSQL
+    participant OB as outbox publisher
+    participant AU as audit
+
+    AD->>SV: PublishContent(ctx, id)
+    SV->>DB: BEGIN
+    SV->>DB: UPDATE content_versions SET status='published'
+    SV->>DB: INSERT outbox(content.published, before, after)
+    SV->>DB: COMMIT
+    OB->>AU: deliver event
+    AU->>DB: INSERT audit.audit_logs (actor, action, diff, trace_id)
+    Note over AU,DB: at-least-once; the handler dedupes on event_id
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Postgres or a log stream for audit? | Postgres | Audit is queryable business record with retention and access-control requirements; Loki is optimised for cheap, short-lived telemetry and is not a system of record |
+| Synchronous or asynchronous recording? | Both, by criticality | Permission and money changes go through the outbox so they cannot be lost; reads are best-effort so an audit outage cannot break browsing |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 1
+
+- [ ] `audit_logs` and `security_events` with monthly partitions
+- [ ] `audit.Recorder` contract and outbox consumer
+- [ ] Append-only enforcement via database grants, proven by a test
+- [ ] Admin search UI endpoints with filters
+- [ ] Retention and partition-rotation jobs
+- [ ] PII redaction in diffs
+<!-- END GENERATED: todo -->
+
+### Progress
+
+The list above is generated from `tools/docgen/data/core.json`, so its checkboxes cannot be
+ticked by hand. Completed work is recorded here instead.
+
+| Task | Done | What landed |
+|---|---|---|
+| P1.4 | 2026-08-10 | `audit_logs` and `security_events` partitioned monthly with the current month plus three created ahead; the `Recorder` and `SecurityRecorder` contracts; the outbox consumer, idempotent on `event_id`; append-only enforced by `REVOKE` and proven against the real role on the parent and on every partition; PII redaction in diffs; the two admin search operations and the resolve operation; the partition-rotation and retention cron jobs |
+
+### Open after P1.4
+
+- [x] **Wire the module in (P1.5).** Done 2026-08-10. `cmd/api` constructs it and adapts
+      `rbac.Authorizer` to `audit.Deps.Guard`; `cmd/worker` calls `Subscribe(bus)` and registers
+      `CronJobs()`. Proven by `cmd/api/wiring_integration_test.go`.
+- [x] **Carry the request's trace into the entry.** Done 2026-08-10. `ops.outbox_events` now
+      holds the producing transaction's `traceparent`, and the publisher restores it into the
+      context it dispatches with — so BR-AUDIT-07 is kept in full: the id in the row is the one
+      an operator pastes into Tempo to see the request. This module did not change; it already
+      read the trace from the context it was handed. `TestTheTrailRecordsTheRequestsTraceID`
+      in `cmd/api` is the end-to-end proof, and it drains in a deliberately different trace so
+      it cannot pass by coincidence.
+- [ ] **`GET /admin/audit-logs/export`.** Specified in AGENT.md §6, absent from `openapi.yaml`.
+      An async export needs `platform/storage` for the signed URL and `audit` depends only on
+      `job`, so it needs the dependency arrow added to `MODULE_INDEX.md` §3 and
+      `.go-arch-lint.yml` — a card of its own, not a follow-up commit. Done when an admin can
+      request an export and receive a short-lived link, and the artefact expires.
+- [ ] **Archive detached partitions.** `audit.detach_expired_partitions` takes a partition out of
+      the tree and removes its grants; nothing yet copies it to object storage and drops it, so
+      expired partitions accumulate as detached relations. Same `storage` dependency as the
+      export. Done when a detached partition is archived, verified, and then dropped.
+- [ ] **Supply a real `IPHashKey`.** The module hashes the client address with an HMAC and
+      records nothing when the key is empty, which is the current state — no address flows in
+      before the auth middleware exists (P2.4) anyway. Done when the key is a documented entry in
+      `.env.example` and `.env.example`, read by `cmd/api`, and rotatable.
+- [ ] **A counter for dropped entries.** `Recorder.Record` swallows a write failure by design
+      (BR-AUDIT-02) and logs at `error`; the consumer path is already visible through
+      `outbox_lag_seconds` and `ops.job_failures`, but the best-effort path has no metric.
+      `platform/telemetry.Instruments` has no module-level counter to hang it on, and adding one
+      is a platform change. Done when a dropped entry increments something Prometheus scrapes.
+- [ ] **Record the user agent.** §2 lists it among what an entry carries and no column holds one.
+      Storing it needs a parsed family rather than the raw string (§14). Done when the family is
+      stored and the raw header provably is not.
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Hash-chained entries for tamper evidence
+- Anomaly detection over the security event stream
+- Per-record access history shown to the user
+<!-- END GENERATED: todo-future -->
 
 ---
 

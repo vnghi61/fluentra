@@ -9,6 +9,19 @@ import { defineConfig } from 'vitest/config';
 const apiProxy: ProxyOptions = {
   target: process.env.VITE_API_TARGET || 'http://localhost:8080',
   changeOrigin: true,
+  // Vite answers a refused connection with a bare 500, which the client reads
+  // as "the server answered with an error" and never treats as a cold start.
+  // A stopped API is a gateway failure: say 503, as Render's proxy does, so
+  // src/api/wake.ts shows the waking and unreachable states. Registered here,
+  // before Vite's own handler, which skips a response already sent.
+  configure: (proxy) => {
+    proxy.on('error', (_err, _req, res) => {
+      if ('writeHead' in res && !res.headersSent && !res.writableEnded) {
+        res.writeHead(503, { 'Content-Type': 'text/plain' });
+        res.end('API unavailable');
+      }
+    });
+  },
 };
 
 /**
@@ -108,10 +121,19 @@ export default defineConfig({
     chunkSizeWarningLimit: INITIAL_CHUNK_BUDGET_KB,
     rollupOptions: {
       output: {
-        manualChunks: {
-          // React and the router change rarely and are cached across deploys;
-          // splitting them keeps a content change from invalidating them.
-          react: ['react', 'react-dom'],
+        // React and the TanStack libraries change rarely and stay cached across
+        // deploys; splitting them keeps a content change from invalidating
+        // them. A function, not a name list: `react-dom` as a name matched only
+        // its index, so `react-dom/client` and `scheduler` (most of React DOM)
+        // landed in the entry chunk instead.
+        manualChunks(id) {
+          if (/\/node_modules\/(?:react|react-dom|scheduler)\//.test(id)) {
+            return 'react';
+          }
+          if (id.includes('/node_modules/@tanstack/')) {
+            return 'tanstack';
+          }
+          return undefined;
         },
       },
     },

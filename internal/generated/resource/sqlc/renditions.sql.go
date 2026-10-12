@@ -227,6 +227,49 @@ func (q *Queries) ListRenditionsByResourceID(ctx context.Context, resourceID uui
 	return items, nil
 }
 
+const listRenditionsByResourceIDs = `-- name: ListRenditionsByResourceIDs :many
+SELECT id, resource_id, kind, status, object_key, mime_type, width, height, duration_ms, byte_size, tool_version, attempts, failure_reason, created_at, updated_at
+FROM resource.renditions
+WHERE resource_id = ANY($1::uuid[])
+ORDER BY resource_id, kind
+`
+
+func (q *Queries) ListRenditionsByResourceIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]ResourceRendition, error) {
+	rows, err := q.db.Query(ctx, listRenditionsByResourceIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ResourceRendition
+	for rows.Next() {
+		var i ResourceRendition
+		if err := rows.Scan(
+			&i.ID,
+			&i.ResourceID,
+			&i.Kind,
+			&i.Status,
+			&i.ObjectKey,
+			&i.MimeType,
+			&i.Width,
+			&i.Height,
+			&i.DurationMs,
+			&i.ByteSize,
+			&i.ToolVersion,
+			&i.Attempts,
+			&i.FailureReason,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listValidatedFileResourcesForRenditions = `-- name: ListValidatedFileResourcesForRenditions :many
 SELECT id, user_id, kind, title, object_key, original_filename, declared_mime, detected_mime,
     byte_size, checksum, source_url, status, failure_reason, created_at, updated_at, validated_at

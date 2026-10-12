@@ -8,6 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 )
 
 // Aggregate is the outbox aggregate name every event below is written under.
@@ -340,6 +342,36 @@ type ItemVerifier interface {
 	VerifyItem(ctx context.Context, req VerifyItemRequest) error
 }
 
+// IndependentVerifier is the second, independent check a machine-authored item
+// passes before publication (WO 22 Stage A).
+//
+// It is deliberately separate from ItemVerifier. That one runs inside the
+// generator, answered by the same provider chain that wrote the item — a model
+// grading its own work. This one is answered by a model other than the writer's,
+// read from the item's `_provenance.model`, so a confirmation means a second
+// opinion rather than self-review.
+type IndependentVerifier interface {
+	// VerifyIndependently returns a confirmed verification when an independent
+	// model solves the item and finds its key and explanation sound. Anything it
+	// doubts — including having no independent provider to ask — comes back
+	// unconfirmed with the reason, never as an error: a doubt is a person's
+	// work, not a failure.
+	VerifyIndependently(
+		ctx context.Context, req IndependentVerifyRequest,
+	) (contentcontract.Verification, error)
+}
+
+// IndependentVerifyRequest specifies an item for independent verification.
+type IndependentVerifyRequest struct {
+	Kind      string
+	TaskType  string
+	CEFRLevel string
+	Body      json.RawMessage
+	// OfficialSpec is the exam part's published format, empty for Foundation.
+	// The verifier checks the item against it when it is set.
+	OfficialSpec string
+}
+
 // ExamPartConstraints defines structural constraints for an exam part item (Stage E/G).
 type ExamPartConstraints struct {
 	OptionCount       int  `json:"option_count,omitempty"`
@@ -347,6 +379,41 @@ type ExamPartConstraints struct {
 	MinWords          int  `json:"min_words,omitempty"`
 	MaxWords          int  `json:"max_words,omitempty"`
 	AudioRequired     bool `json:"audio_required,omitempty"`
+	// AllowedTypes is the question types this part may draw ("multiple_choice",
+	// "completion", "true_false_not_given", "matching", …). Empty means the part
+	// does not constrain them. TypeMix is the share each type should hold.
+	AllowedTypes []string           `json:"allowed_types,omitempty"`
+	TypeMix      map[string]float64 `json:"type_mix,omitempty"`
+	// Plays is how many times a recording may be played; 0 means not stated.
+	Plays int `json:"plays,omitempty"`
+	// VisualRequired is a task written about a chart the learner sees (IELTS
+	// Writing Task 1, WO 22 D22-22): the model returns the chart's data, our
+	// code draws it, and an item without one is refused.
+	VisualRequired bool `json:"visual_required,omitempty"`
+	// Recording is the part's audio as the published format states it. Without
+	// it the prompt cannot tell a monologue part from a dialogue part, and IELTS
+	// Listening Part 2 came back as interviews.
+	Recording *ExamRecording `json:"recording,omitempty"`
+	// Source names the part as the published format does ("IELTS Academic test
+	// format; Speaking Part 2, one minute to prepare"). SpeakingSeconds and
+	// PreparationSeconds are a speaking part's timings. Without them every
+	// IELTS speaking part came back as the same 45-second opinion question.
+	Source             string `json:"source,omitempty"`
+	SpeakingSeconds    int    `json:"speaking_seconds,omitempty"`
+	PreparationSeconds int    `json:"preparation_seconds,omitempty"`
+	// PassageMinWords is a reading part's passage length. Without it IELTS
+	// and VSTEP passages came back at about 190 words.
+	PassageMinWords int `json:"passage_min_words,omitempty"`
+	// ScriptMinWords is a listening part's recording length, in words of
+	// script. IELTS scripts came back at about 150 words.
+	ScriptMinWords int `json:"script_min_words,omitempty"`
+}
+
+// ExamRecording is a listening part's recording: its genre ("social_monologue",
+// "academic_lecture", …) and how many voices it has.
+type ExamRecording struct {
+	Genre    string `json:"genre,omitempty"`
+	Speakers int    `json:"speakers,omitempty"`
 }
 
 // VerifyItemRequest specifies an item to verify through ItemVerifier.
@@ -372,6 +439,10 @@ const (
 	// KindLessonMaterial is a non-graded course material — a document or video
 	// a learner opens and marks as done (WO 20).
 	KindLessonMaterial = "lesson_material"
+	// KindTypedCompletion is a completion question with a typed answer and a
+	// word limit — form, note, sentence and summary completion, which IELTS
+	// listening and reading are mostly made of (WO 22 D22-25).
+	KindTypedCompletion = "typed_completion"
 )
 
 // GenerateRequest specifies parameters for the unified item generator.
@@ -384,6 +455,28 @@ type GenerateRequest struct {
 	OwnerID    *uuid.UUID // set only for Purpose "resource": private to that learner
 	SourceText string     // Purpose "resource" only: the extraction to generate from
 	SlugPrefix string     // optional deterministic slug prefix for idempotent generation
+	// Batch groups the drafts of one generation run so a person reviews the
+	// doubts together (WO 22 Stage A). Stored under `_provenance.batch`; empty
+	// means the item is not part of a batch.
+	Batch string
+	// ExamConstraints is the exam part's published format, when the item
+	// belongs to one (WO 22 Stage I). The generator puts it on the structure
+	// check, so a "TOEIC Part 3" item cannot be composed with the wrong
+	// question count or option count.
+	ExamConstraints *ExamPartConstraints
+	// Photo is the photograph a TOEIC Part 1 item is written from (WO 22
+	// D22-21). The model is given its human-written description, never the
+	// image, and the item carries the photograph's link and credit.
+	Photo *PhotoRef
+}
+
+// PhotoRef is one openly licensed photograph and the person-written
+// description a Part 1 item is written from.
+type PhotoRef struct {
+	URL         string
+	CreditPage  string
+	Licence     string
+	Description string
 }
 
 // GeneratedItem represents a single authored and verified item.

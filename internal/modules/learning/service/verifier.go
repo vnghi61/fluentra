@@ -75,14 +75,15 @@ func (s *Service) dispatchItemVerification(
 		}
 		_, err := s.verifyListeningCandidateWithMin(ctx, req.CEFRLevel, req.Body, existing, req.BlindSolve, minQ)
 		return err
-	case kindReadingComprehension:
-		minQ := 4
+	case kindReadingComprehension, kindTextCompletion:
+		// An exam part names an exact questions-per-group; without one the
+		// default 4-6 range applies, because a generated passage with five
+		// questions is a valid item (found in the live run).
+		minQ := 0
 		if req.ExamConstraints != nil && req.ExamConstraints.QuestionsPerGroup > 0 {
 			minQ = req.ExamConstraints.QuestionsPerGroup
 		}
 		return s.checkReadingCandidateWithMin(ctx, req.CEFRLevel, req.Body, existing, req.BlindSolve, minQ)
-	case kindTextCompletion:
-		return s.checkReadingCandidateWithMin(ctx, req.CEFRLevel, req.Body, existing, req.BlindSolve, 4)
 	case kindPhotoDescription, kindQuestionResponse, kindMcqGap,
 		kindGrammarTenseChoice, kindGrammarSentenceTransform, kindFoundationQuiz, kindFoundationReview:
 		return s.checkCandidateWithBlindSolve(ctx, req.CEFRLevel, req.Kind, req.Body, existing, req.BlindSolve)
@@ -149,14 +150,13 @@ func validateListeningExamStructure(raw json.RawMessage, c *learningcontract.Exa
 	if c.AudioRequired && strings.TrimSpace(cand.Script) == "" {
 		return errors.New("check (exam structure) failed: audio script is required")
 	}
-	wc := len(strings.Fields(cand.Script))
-	if c.MinWords > 0 && wc < c.MinWords {
-		return fmt.Errorf("check (exam structure) failed: script has %d words, want at least %d", wc, c.MinWords)
+	// A listening part's word limit is its answers' ("NO MORE THAN TWO WORDS"),
+	// not the script's length: read as the script's, it refused every IELTS
+	// recording longer than two words.
+	if err := checkTypedAnswerLimit(cand.Questions, c.MaxWords); err != nil {
+		return err
 	}
-	if c.MaxWords > 0 && wc > c.MaxWords {
-		return fmt.Errorf("check (exam structure) failed: script has %d words, want at most %d", wc, c.MaxWords)
-	}
-	return nil
+	return checkAllowedQuestionTypes(cand.Questions, c)
 }
 
 func validateReadingExamStructure(raw json.RawMessage, c *learningcontract.ExamPartConstraints) error {
@@ -176,12 +176,60 @@ func validateReadingExamStructure(raw json.RawMessage, c *learningcontract.ExamP
 			}
 		}
 	}
-	wc := len(strings.Fields(cand.Passage))
-	if c.MinWords > 0 && wc < c.MinWords {
-		return fmt.Errorf("check (exam structure) failed: passage has %d words, want at least %d", wc, c.MinWords)
+	// As for listening, the part's word limit is its answers', not the passage's.
+	if err := checkTypedAnswerLimit(cand.Questions, c.MaxWords); err != nil {
+		return err
 	}
-	if c.MaxWords > 0 && wc > c.MaxWords {
-		return fmt.Errorf("check (exam structure) failed: passage has %d words, want at most %d", wc, c.MaxWords)
+	return checkAllowedQuestionTypes(cand.Questions, c)
+}
+
+// checkAllowedQuestionTypes enforces a part's allowed question types (Stage I):
+// an item whose type the part does not permit is refused before it is stored, so
+// an IELTS Reading part cannot arrive full of multiple choice.
+func checkAllowedQuestionTypes(questions []candQuestion, c *learningcontract.ExamPartConstraints) error {
+	if len(c.AllowedTypes) == 0 {
+		return nil
+	}
+	allowed := make(map[string]bool, len(c.AllowedTypes))
+	for _, t := range c.AllowedTypes {
+		allowed[t] = true
+	}
+	for i, q := range questions {
+		if q.Type == "" {
+			continue
+		}
+		if !allowed[q.Type] {
+			return fmt.Errorf("check (exam structure) failed: question %d type %q is not allowed by this part",
+				i+1, q.Type)
+		}
+	}
+	return checkQuestionTypeMix(questions, c)
+}
+
+// mixFloor is the smallest share that must appear at least once. A type the part
+// only touches lightly may be absent from one group without the item being
+// wrong; a type a fifth of the group should be cannot be missing.
+const mixFloor = 0.15
+
+// checkQuestionTypeMix requires every type the part expects in a real share to
+// be present at least once (WO 22 Stage I.3.4). The exact proportion is the
+// generator's, guided by the prompt; this catches a group that ignored the mix
+// entirely and returned one type.
+func checkQuestionTypeMix(questions []candQuestion, c *learningcontract.ExamPartConstraints) error {
+	if len(c.TypeMix) == 0 {
+		return nil
+	}
+	present := map[string]bool{}
+	for _, q := range questions {
+		if q.Type != "" {
+			present[q.Type] = true
+		}
+	}
+	for typ, share := range c.TypeMix {
+		if share >= mixFloor && !present[typ] {
+			return fmt.Errorf("check (exam structure) failed: type %q should be about %d%% of the group but is missing",
+				typ, int(share*100+0.5))
+		}
 	}
 	return nil
 }
@@ -209,9 +257,52 @@ func validateExamStructure(kind string, raw json.RawMessage, c *learningcontract
 		return validateReadingExamStructure(raw, c)
 	case kindGrammarTenseChoice:
 		return validateGrammarExamStructure(raw, c)
+	case kindTypedCompletion:
+		return validateTypedCompletionExamStructure(raw, c)
+	case kindWritingPrompt:
+		return validateWritingExamStructure(raw, c)
 	default:
 		return nil
 	}
+}
+
+// validateWritingExamStructure checks a writing task against its part: a task
+// written about a chart carries the chart's data and its drawing (D22-22).
+func validateWritingExamStructure(raw json.RawMessage, c *learningcontract.ExamPartConstraints) error {
+	if !c.VisualRequired {
+		return nil
+	}
+	var cand struct {
+		Chart    json.RawMessage `json:"chart"`
+		ImageURL string          `json:"image_url"`
+	}
+	if err := json.Unmarshal(raw, &cand); err != nil {
+		return fmt.Errorf("check (exam structure) failed: %w", err)
+	}
+	if len(cand.Chart) == 0 || string(cand.Chart) == "null" || strings.TrimSpace(cand.ImageURL) == "" {
+		return errors.New("check (exam structure) failed: the task describes a chart and carries none")
+	}
+	return nil
+}
+
+// validateTypedCompletionExamStructure checks a completion item against its
+// part: no options, and a word limit within the part's (WO 22 D22-25).
+func validateTypedCompletionExamStructure(raw json.RawMessage, c *learningcontract.ExamPartConstraints) error {
+	var cand struct {
+		MaxWords int `json:"max_words"`
+	}
+	if err := json.Unmarshal(raw, &cand); err != nil {
+		return fmt.Errorf("check (exam structure) failed: %w", err)
+	}
+	if c.OptionCount > 0 {
+		return fmt.Errorf("check (exam structure) failed: a typed completion has no options, want %d",
+			c.OptionCount)
+	}
+	if c.MaxWords > 0 && (cand.MaxWords <= 0 || cand.MaxWords > c.MaxWords) {
+		return fmt.Errorf("check (exam structure) failed: completion word limit is %d, want at most %d",
+			cand.MaxWords, c.MaxWords)
+	}
+	return nil
 }
 
 func (s *Service) validateCEFRLevel(ctx context.Context, kind, requestedLevel string, raw json.RawMessage) error {

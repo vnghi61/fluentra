@@ -106,6 +106,9 @@ SELECT
 FROM content.content_versions v
 JOIN content.content_items i ON i.id = v.item_id
 WHERE v.status IN ('draft', 'in_review')
+  -- Purpose `resource` is a learner's private practice generated from their
+  -- own upload: it never enters the review queue (WO 21 D21-3, BR-RESOURCE-12).
+  AND COALESCE(v.body->'_provenance'->>'purpose', '') <> 'resource'
   AND (sqlc.narg('purpose')::text IS NULL OR (v.body->'_provenance'->>'purpose' = sqlc.narg('purpose') OR i.slug ILIKE sqlc.narg('purpose') || '-%'))
   AND (sqlc.narg('kind')::text IS NULL OR v.kind = sqlc.narg('kind'))
   AND (sqlc.narg('cefr_level')::text IS NULL OR v.cefr_level = sqlc.narg('cefr_level'))
@@ -115,6 +118,7 @@ WHERE v.status IN ('draft', 'in_review')
       JOIN content.taxonomies t ON t.id = ct.taxonomy_id
       WHERE ct.item_id = v.item_id AND t.code = sqlc.narg('node_code')
   ))
+  AND (sqlc.narg('batch')::text IS NULL OR v.body->'_provenance'->>'batch' = sqlc.narg('batch'))
 ORDER BY v.created_at ASC, v.id ASC
 LIMIT @result_limit OFFSET @result_offset;
 
@@ -123,6 +127,9 @@ SELECT COUNT(*)::bigint
 FROM content.content_versions v
 JOIN content.content_items i ON i.id = v.item_id
 WHERE v.status IN ('draft', 'in_review')
+  -- Purpose `resource` is a learner's private practice generated from their
+  -- own upload: it never enters the review queue (WO 21 D21-3, BR-RESOURCE-12).
+  AND COALESCE(v.body->'_provenance'->>'purpose', '') <> 'resource'
   AND (sqlc.narg('purpose')::text IS NULL OR (v.body->'_provenance'->>'purpose' = sqlc.narg('purpose') OR i.slug ILIKE sqlc.narg('purpose') || '-%'))
   AND (sqlc.narg('kind')::text IS NULL OR v.kind = sqlc.narg('kind'))
   AND (sqlc.narg('cefr_level')::text IS NULL OR v.cefr_level = sqlc.narg('cefr_level'))
@@ -131,6 +138,54 @@ WHERE v.status IN ('draft', 'in_review')
       FROM content.content_tags ct
       JOIN content.taxonomies t ON t.id = ct.taxonomy_id
       WHERE ct.item_id = v.item_id AND t.code = sqlc.narg('node_code')
-  ));
+  ))
+  AND (sqlc.narg('batch')::text IS NULL OR v.body->'_provenance'->>'batch' = sqlc.narg('batch'));
 
+-- name: ListReviewBatches :many
+-- One row per generation run whose drafts are still awaiting review, so a person
+-- can approve a whole batch at once (WO 22 Stage A.4).
+SELECT
+    (v.body->'_provenance'->>'batch')::text AS batch,
+    COUNT(*)::bigint AS item_count,
+    MIN(v.created_at)::timestamptz AS created_at,
+    COALESCE(array_agg(DISTINCT v.kind ORDER BY v.kind), '{}'::text[])::text[] AS kinds
+FROM content.content_versions v
+WHERE v.status IN ('draft', 'in_review')
+  AND COALESCE(v.body->'_provenance'->>'purpose', '') <> 'resource'
+  AND COALESCE(v.body->'_provenance'->>'batch', '') <> ''
+GROUP BY v.body->'_provenance'->>'batch'
+ORDER BY MIN(v.created_at) ASC, batch ASC
+LIMIT @result_limit OFFSET @result_offset;
 
+-- name: ListReviewBatchVersionIDs :many
+-- Every draft of one batch, unbounded: approving a batch must publish all of it
+-- or none, and the queue's page ceiling would silently approve only the first
+-- hundred (WO 22 Stage A.4).
+SELECT v.id
+FROM content.content_versions v
+WHERE v.status IN ('draft', 'in_review')
+  AND COALESCE(v.body->'_provenance'->>'purpose', '') <> 'resource'
+  AND v.body->'_provenance'->>'batch' = sqlc.arg('batch')::text
+ORDER BY v.created_at ASC, v.id ASC;
+
+-- name: CountReviewBatches :one
+SELECT COUNT(*)::bigint FROM (
+    SELECT 1
+    FROM content.content_versions v
+    WHERE v.status IN ('draft', 'in_review')
+      AND COALESCE(v.body->'_provenance'->>'purpose', '') <> 'resource'
+      AND COALESCE(v.body->'_provenance'->>'batch', '') <> ''
+    GROUP BY v.body->'_provenance'->>'batch'
+) batches;
+
+-- name: CountPendingBatchDays :one
+-- How many distinct days a family of generation batches (one exam's, by batch
+-- prefix) left doubts nobody has reviewed yet. The daily exam job skips an
+-- exam whose doubts from two earlier days still wait (WO 22 Stage O trap 1).
+SELECT COUNT(DISTINCT batch_day)::bigint FROM (
+    SELECT (MIN(v.created_at) AT TIME ZONE 'UTC')::date AS batch_day
+    FROM content.content_versions v
+    WHERE v.status IN ('draft', 'in_review')
+      AND starts_with(v.body->'_provenance'->>'batch', sqlc.arg('prefix')::text)
+    GROUP BY v.body->'_provenance'->>'batch'
+) batches;

@@ -5,12 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { useAuthStore } from "@/stores/authStore";
 
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription, CardHeader } from "@/components/ui/card";
 import {
   CourseHeader,
   LearnError,
@@ -21,6 +16,7 @@ import {
 } from "@/features/lesson";
 import { GuestNotice, learningApi } from "@/features/learning";
 import { CheckoutModal, useUserPurchases } from "@/features/studio";
+import { courseTitle } from "@/features/lesson/model/courseText";
 
 export function LearnPage(): React.JSX.Element {
   const { t } = useTranslation();
@@ -69,9 +65,9 @@ export function LearnPage(): React.JSX.Element {
 
   const isCourseOwned = Boolean(
     activeCourse &&
-      purchasesData?.items?.some(
-        (p) => p.course_id === activeCourse.id && !p.revoked_at,
-      ),
+    purchasesData?.items?.some(
+      (p) => p.course_id === activeCourse.id && !p.revoked_at,
+    ),
   );
 
   // Enrolment is the learner's half of `StartAttempt`'s precondition, and this
@@ -130,10 +126,10 @@ export function LearnPage(): React.JSX.Element {
                 aria-hidden="true"
               />
             </div>
-            <CardTitle className="text-xl font-bold">
+            <h1 className="text-2xl md:text-3xl font-bold leading-tight tracking-tight text-text">
               {t("learn.emptyTitle", "No Courses Available Yet")}
-            </CardTitle>
-            <CardDescription className="mt-2">
+            </h1>
+            <CardDescription className="mt-2 text-base leading-relaxed">
               {t(
                 "learn.emptyDesc",
                 "Curriculum content is currently being prepared and published. Please check back shortly.",
@@ -167,34 +163,25 @@ export function LearnPage(): React.JSX.Element {
     0,
   );
 
+  // Calculate completed lessons across units
+  const completedLessons = activeCourse.units.reduce(
+    (acc, unit) => acc + (unit.lessons?.filter((l) => l.completed).length ?? 0),
+    0,
+  );
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-200">
-      {/*
-        The page's own heading, which it did not have.
-
-        The course title is rendered by CourseHeader through CardTitle, and
-        CardTitle is an <h3>. So this page opened at h3, put the unit names at
-        h2 *below* it, and had no h1 anywhere — a broken outline that mattered
-        little while /learn sat behind a login form and matters a lot now that
-        it is the first screen every visitor sees.
-
-        Visually quiet on purpose: the course title is still the thing being
-        looked at. This is the page's name, in the shape the other four routes
-        already use.
-      */}
-      <h1 className="text-sm font-semibold uppercase tracking-wider text-text-muted">
-        {t("learn.pageTitle", "Course catalogue")}
-      </h1>
-
+    <div className="mx-auto w-full min-w-0 space-y-4 md:space-y-5 animate-in fade-in duration-200">
       {!signedIn && <GuestNotice />}
 
       {/* Course Header & Info */}
       <CourseHeader
         course={activeCourse}
         totalLessons={totalLessons}
-        completedLessons={0}
+        completedLessons={completedLessons}
         isOwned={isCourseOwned}
-        priceVnd={(activeCourse as unknown as { price_vnd?: number })?.price_vnd}
+        priceVnd={
+          (activeCourse as unknown as { price_vnd?: number })?.price_vnd
+        }
         onBuyOrClaim={() => {
           if (!signedIn) {
             void navigate({ to: "/login" });
@@ -205,13 +192,17 @@ export function LearnPage(): React.JSX.Element {
       />
 
       {/* Syllabus Unit & Lesson List */}
-      <UnitList units={activeCourse.units} onStartLesson={startLesson} />
+      <UnitList
+        key={activeCourse.id}
+        units={activeCourse.units}
+        onStartLesson={startLesson}
+      />
 
       {/* Course Checkout / Claim Modal */}
       {activeCourse && (
         <CheckoutModal
           courseId={activeCourse.id}
-          courseTitle={activeCourse.title}
+          courseTitle={courseTitle(t, activeCourse)}
           priceVnd={
             (activeCourse as unknown as { price_vnd?: number })?.price_vnd ?? 0
           }

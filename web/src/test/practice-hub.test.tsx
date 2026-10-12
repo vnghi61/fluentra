@@ -11,7 +11,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 
-import i18n, { initI18n } from "@/i18n";
+import i18n, { initI18n, loadLocale } from "@/i18n";
 import { PracticePage } from "@/routes/PracticePage";
 import { useAuthStore } from "@/stores/authStore";
 import {
@@ -107,6 +107,8 @@ describe("PracticePage hub", () => {
     signIn();
     usePreferencesStore.getState().clear();
     await initI18n("en");
+    await loadLocale("en");
+    await i18n.changeLanguage("en");
   });
 
   /**
@@ -129,7 +131,10 @@ describe("PracticePage hub", () => {
     await renderPractice();
 
     expect(await screen.findByText("12")).toBeInTheDocument();
-    const start = screen.getByRole("link", { name: /Start review/i });
+    expect(
+      screen.getByRole("heading", { name: "Practice types" }),
+    ).toBeInTheDocument();
+    const start = screen.getByRole("link", { name: /Review now/i });
     expect(start).toHaveAttribute("href", "/practice/review");
   });
 
@@ -143,14 +148,12 @@ describe("PracticePage hub", () => {
 
     await renderPractice();
 
-    expect(
-      await screen.findByText("Nothing due right now"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("No cards due today.")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Go to a lesson/i }),
     ).toHaveAttribute("href", "/learn");
     expect(
-      screen.queryByRole("link", { name: /Start review/i }),
+      screen.queryByRole("link", { name: /Review now/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -186,7 +189,7 @@ describe("PracticePage hub", () => {
     await renderPractice();
 
     expect(
-      await screen.findByRole("link", { name: /Start review/i }),
+      await screen.findByRole("link", { name: /Review now/i }),
     ).toBeInTheDocument();
     expect(screen.queryByText("The week ahead")).not.toBeInTheDocument();
   });
@@ -206,13 +209,13 @@ describe("PracticePage hub", () => {
     });
     expect(readingLink).toHaveAttribute(
       "href",
-      "/learn?course=reading-practice",
+      "/learn?course=reading-foundations",
     );
 
     const writingLink = screen.getByRole("link", { name: /Start writing/i });
     expect(writingLink).toHaveAttribute(
       "href",
-      "/learn?course=writing-practice",
+      "/learn?course=writing-foundations",
     );
 
     // Speaking was the skill the hub did not offer, while its grading pipeline
@@ -220,7 +223,7 @@ describe("PracticePage hub", () => {
     const speakingLink = screen.getByRole("link", { name: /Start speaking/i });
     expect(speakingLink).toHaveAttribute(
       "href",
-      "/learn?course=speaking-practice",
+      "/learn?course=speaking-foundations",
     );
   });
 
@@ -237,7 +240,7 @@ describe("PracticePage hub", () => {
 
     await renderPractice();
 
-    expect(await screen.findByText("Today's Practice Set")).toBeInTheDocument();
+    expect(await screen.findByText("Today's exercises")).toBeInTheDocument();
     // The badge row is the set's composition. It covers all five skills now,
     // and a stale badge here is how the card went on advertising a reading and
     // grammar set after the draw had stopped being one.
@@ -253,7 +256,7 @@ describe("PracticePage hub", () => {
     }
 
     const startDailyLink = screen.getByRole("link", {
-      name: /Start Today's Set/i,
+      name: /Start practising/i,
     });
     expect(startDailyLink).toHaveAttribute(
       "href",
@@ -263,10 +266,9 @@ describe("PracticePage hub", () => {
       "href",
       expect.stringContaining("level=B2"),
     );
-    expect(screen.getByRole("button", { name: "Level B2" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(
+      screen.getByRole("combobox", { name: "Practice level" }),
+    ).toHaveValue("B2");
   });
 
   /**
@@ -297,13 +299,14 @@ describe("PracticePage hub", () => {
       await screen.findByText(/Choose your level to start/i),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("link", { name: /Start Today's Set/i }),
+      screen.queryByRole("link", { name: /Start practising/i }),
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Level A2" }));
+    const select = screen.getByRole("combobox", { name: "Practice level" });
+    fireEvent.change(select, { target: { value: "A2" } });
 
     const start = await screen.findByRole("link", {
-      name: /Start Today's Set/i,
+      name: /Start practising/i,
     });
     expect(start).toHaveAttribute("href", expect.stringContaining("level=A2"));
     await waitFor(() =>

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { pickLocalized } from "@/lib/localized";
 import { cn } from "@/lib/utils";
 
 import { type AnswerExplanation } from "./ExerciseShell";
@@ -47,20 +48,18 @@ export const ItemExplanation: React.FC<{ explanation: AnswerExplanation }> = ({
   explanation,
 }) => {
   const { t, i18n } = useTranslation();
-  const vi = i18n.language.startsWith("vi");
-  const lead = vi
-    ? explanation.text_vi || explanation.text
-    : explanation.text || explanation.text_vi;
-  const second = vi ? explanation.text : explanation.text_vi;
+  const text = pickLocalized(
+    explanation.text,
+    explanation.text_vi,
+    i18n.language,
+  );
+  if (!text) return null;
   return (
     <div className="mt-3 space-y-1 rounded-md border border-border/40 bg-surface/60 p-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+      <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
         {t("runner.explanationLabel", "Explanation")}
       </p>
-      <p className="text-sm leading-relaxed text-text">{lead}</p>
-      {second && second !== lead && (
-        <p className="text-xs leading-relaxed text-text-muted">{second}</p>
-      )}
+      <p className="text-base leading-relaxed text-text">{text}</p>
     </div>
   );
 };
@@ -91,10 +90,10 @@ export const QuestionList: React.FC<QuestionListProps> = ({
 
   return (
     <div className="space-y-6 pt-2">
-      <div className="flex items-center justify-between border-b border-border pb-2">
-        <h4 className="text-sm font-bold uppercase tracking-wider text-text">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
+        <h2 className="min-w-0 text-sm font-semibold uppercase tracking-wider text-text">
           {heading ?? t("runner.questionsLabel", "Comprehension Questions")}
-        </h4>
+        </h2>
         <Badge variant="secondary" className="text-xs">
           {t("runner.questionCount", {
             count: questions.length,
@@ -124,22 +123,24 @@ export const QuestionList: React.FC<QuestionListProps> = ({
               )}
             >
               <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="space-y-1">
-                  <span className="text-xs font-semibold text-primary uppercase tracking-wider">
+                <div className="min-w-0 space-y-1">
+                  <span className="text-xs font-semibold text-primary-accent uppercase tracking-wider">
                     {t("runner.questionNum", { num: qIndex + 1 })}
                   </span>
-                  <p className="text-base font-medium text-text">{q.prompt}</p>
+                  <p className="break-words text-base font-medium leading-relaxed text-text">
+                    {q.prompt}
+                  </p>
                 </div>
                 {hasItemVerdict && (
                   <div className="shrink-0 mt-1">
                     {isItemCorrect ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-success bg-success/15 px-2 py-1 rounded-full">
-                        <Check className="h-3.5 w-3.5" />
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-success-accent bg-success/15 px-2 py-1 rounded-full">
+                        <Check className="h-4 w-4" aria-hidden="true" />
                         {t("runner.markCorrect", "Correct")}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-danger-accent bg-danger/15 px-2 py-1 rounded-full">
-                        <X className="h-3.5 w-3.5" />
+                        <X className="h-4 w-4" aria-hidden="true" />
                         {t("runner.markIncorrect", "Incorrect")}
                       </span>
                     )}
@@ -185,19 +186,24 @@ export const QuestionList: React.FC<QuestionListProps> = ({
                         disabled={isSubmitted || isLoading}
                         onClick={() => onAnswerChange(q.id, opt.id)}
                         className={cn(
-                          "text-left p-3 rounded-lg border text-sm transition-all flex items-center justify-between min-h-[44px] cursor-pointer",
+                          "text-left p-3 rounded-lg border text-base leading-snug transition-all flex items-center justify-between gap-2 min-h-[44px] cursor-pointer",
                           optClass,
                           isSubmitted && "cursor-default",
                         )}
                       >
-                        <span className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-md text-xs font-bold flex items-center justify-center border border-border/70 bg-surface">
+                        <span className="min-w-0 flex items-center gap-2">
+                          <span className="w-5 h-5 shrink-0 rounded-md text-xs font-bold flex items-center justify-center border border-border/70 bg-surface">
                             {String.fromCharCode(65 + optIndex)}
                           </span>
-                          <span>{opt.text}</span>
+                          <span className="min-w-0 break-words">
+                            {opt.text}
+                          </span>
                         </span>
                         {hasItemVerdict && isCorrectAnswer && (
-                          <Check className="h-4 w-4 text-success shrink-0" />
+                          <Check
+                            className="h-4 w-4 text-success shrink-0"
+                            aria-hidden="true"
+                          />
                         )}
                       </button>
                     );
@@ -251,7 +257,7 @@ export const QuestionList: React.FC<QuestionListProps> = ({
                         disabled={isSubmitted || isLoading}
                         onClick={() => onAnswerChange(q.id, tf.val)}
                         className={cn(
-                          "flex-1 min-w-[100px] text-center py-2.5 px-3 rounded-lg border text-sm transition-all min-h-[44px] cursor-pointer font-medium",
+                          "flex-1 min-w-[100px] text-center py-2.5 px-3 rounded-lg border text-base transition-all min-h-[44px] cursor-pointer font-medium",
                           tfClass,
                           isSubmitted && "cursor-default",
                         )}
@@ -293,11 +299,11 @@ export const QuestionList: React.FC<QuestionListProps> = ({
               {hasItemVerdict &&
                 !isItemCorrect &&
                 itemResult?.correct_answer && (
-                  <div className="mt-3 text-xs text-text-muted flex items-center gap-1.5 bg-surface/60 p-2 rounded-md border border-border/40">
+                  <div className="mt-3 text-base leading-relaxed text-text-muted flex flex-wrap items-baseline gap-x-1.5 bg-surface/60 p-3 rounded-md border border-border/40">
                     <span className="font-semibold text-text">
                       {t("runner.correctAnswerLabel", "Correct answer")}:
                     </span>
-                    <span className="text-success-accent font-bold">
+                    <span className="min-w-0 break-words text-success-accent font-bold">
                       {answerLabel(q.options, itemResult.correct_answer)}
                     </span>
                   </div>

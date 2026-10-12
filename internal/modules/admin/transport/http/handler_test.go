@@ -84,6 +84,9 @@ type fakeAdminService struct {
 
 	aiUsageResp []adminsvc.AIUsageStatus
 	aiUsageErr  error
+
+	// banner state and methods live in banner_handler_test.go.
+	banner fakeBannerState
 }
 
 func (f *fakeAdminService) SearchUsers(
@@ -183,6 +186,7 @@ func newServer(svc adminhttp.AdminService, guard adminhttp.Guard) http.Handler {
 	handler := adminhttp.NewHandler(svc, guard)
 	router := chi.NewRouter()
 	handler.Routes(router)
+	handler.LearnerRoutes(router)
 	return router
 }
 

@@ -114,6 +114,7 @@ type Repository interface {
 	ListAllPrerequisitesInCourse(ctx context.Context, courseID uuid.UUID) ([]domain.PrerequisiteEdge, error)
 	AddPrerequisite(ctx context.Context, lessonID, requiresID uuid.UUID, minScore int32) error
 	ResolveActivity(ctx context.Context, activityID uuid.UUID) (*contract.ActivityHierarchy, error)
+	ResolveActivities(ctx context.Context, activityIDs []uuid.UUID) (map[uuid.UUID]*contract.ActivityHierarchy, error)
 	ListCourseActivityIDs(ctx context.Context, courseIDs []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error)
 	WithTx(tx pgx.Tx) Repository
 }
@@ -983,6 +984,9 @@ func (s *Service) materialSources(ctx context.Context, raw json.RawMessage) (jso
 	if document, ok := s.documentSource(ctx, config, objects); ok {
 		sources["document"] = document
 	}
+	if image, ok := s.imageSource(ctx, config, objects); ok {
+		sources["image"] = image
+	}
 
 	if len(sources) == 0 {
 		return raw, false
@@ -1008,7 +1012,7 @@ func (s *Service) videoSources(ctx context.Context, objects map[string]any) []ma
 			continue
 		}
 		if url, err := s.storage.PresignGet(ctx, storage.BucketMedia, key, materialSourceTTL); err == nil {
-			video = append(video, map[string]any{"url": url, "height": candidate.height})
+			video = append(video, map[string]any{sourceURLKey: url, "height": candidate.height})
 		}
 	}
 	return video
@@ -1036,7 +1040,7 @@ func (s *Service) documentSource(
 	if err != nil {
 		return nil, false
 	}
-	document := map[string]any{"url": url}
+	document := map[string]any{sourceURLKey: url}
 	if preview := objectKey(objects, "preview"); preview != "" {
 		if previewURL, pErr := s.storage.PresignGet(
 			ctx, storage.BucketMedia, preview, materialSourceTTL,
@@ -1048,6 +1052,31 @@ func (s *Service) documentSource(
 		document["page_count"] = pageCount
 	}
 	return document, true
+}
+
+// sourceURLKey names the signed URL in every material source.
+const sourceURLKey = "url"
+
+// imageSource signs an image material's re-encoded copy. The original is never
+// offered: the display rendition has its metadata stripped and its size bounded.
+func (s *Service) imageSource(
+	ctx context.Context, config, objects map[string]any,
+) (map[string]any, bool) {
+	if kind, _ := config["material_kind"].(string); kind != "image" {
+		return nil, false
+	}
+	key := objectKey(objects, "display")
+	if key == "" {
+		key = objectKey(objects, "thumbnail")
+	}
+	if key == "" {
+		return nil, false
+	}
+	url, err := s.storage.PresignGet(ctx, storage.BucketMedia, key, materialSourceTTL)
+	if err != nil {
+		return nil, false
+	}
+	return map[string]any{sourceURLKey: url}, true
 }
 
 // objectKey reads a non-empty object key out of a material's objects map.
@@ -1488,6 +1517,18 @@ func (s *Service) ResolveActivity(
 	ctx context.Context, activityID uuid.UUID,
 ) (*contract.ActivityHierarchy, error) {
 	return s.repo.ResolveActivity(ctx, activityID)
+}
+
+// ResolveActivities implements contract.Reader.
+func (s *Service) ResolveActivities(
+	ctx context.Context, activityIDs []uuid.UUID,
+) (map[uuid.UUID]*contract.ActivityHierarchy, error) {
+	return s.repo.ResolveActivities(ctx, activityIDs)
+}
+
+// ListLessonsByCourseID implements contract.Reader.
+func (s *Service) ListLessonsByCourseID(ctx context.Context, courseID uuid.UUID) ([]*contract.Lesson, error) {
+	return s.repo.ListLessonsByCourseID(ctx, courseID)
 }
 
 // ListPrerequisitesForLessons implements contract.Reader.

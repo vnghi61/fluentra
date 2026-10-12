@@ -314,3 +314,39 @@ func TestVocabularyGrader_ResolvesTheLemmaCaseInsensitively(t *testing.T) {
 	require.Len(t, result.ReviewItems, 1)
 	assert.Equal(t, senseVersion, result.ReviewItems[0].ContentVersionID)
 }
+
+// TestVocabularyGrader_GradesMultipleChoiceByOptionID. Generated multiple-choice
+// items key on the option id, not on a typed answer, and the grader has to score
+// them: without this, every generated vocab_multiple_choice was ungradable (WO
+// 22: found while running the real foundation generation).
+func TestVocabularyGrader_GradesMultipleChoiceByOptionID(t *testing.T) {
+	contentID := uuid.New()
+	bodyJSON, _ := json.Marshal(map[string]any{
+		"prompt": "Choose the word that means showing great attention to detail.",
+		"options": []map[string]string{
+			{"id": "A", "text": "careless"},
+			{"id": "B", "text": wordMeticulous},
+		},
+		"correct_option_id": "B",
+	})
+	grader := service.NewGrader(&fakeContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			contentID: {ID: contentID, Body: bodyJSON},
+		},
+	}, nil)
+
+	res, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
+		ContentVersionID: contentID,
+		Response:         json.RawMessage(`{"selected_option_id": "B"}`),
+	})
+	require.NoError(t, err)
+	assert.True(t, res.Correct)
+	assert.Equal(t, 100, res.Score)
+
+	res, err = grader.Grade(context.Background(), learningcontract.GradeRequest{
+		ContentVersionID: contentID,
+		Response:         json.RawMessage(`{"selected_option_id": "A"}`),
+	})
+	require.NoError(t, err)
+	assert.False(t, res.Correct)
+}

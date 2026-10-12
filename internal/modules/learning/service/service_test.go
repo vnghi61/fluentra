@@ -637,12 +637,14 @@ func (f *fakeLearningRepo) WithTx(_ pgx.Tx) service.Repository {
 	return f
 }
 
-func (f *fakeLearningRepo) GetDailySet(_ context.Context, _ uuid.UUID, _ time.Time) (*domain.DailySet, error) {
+func (f *fakeLearningRepo) GetDailySet(
+	_ context.Context, _ uuid.UUID, _ time.Time, _ string,
+) (*domain.DailySet, error) {
 	return nil, nil
 }
 
 func (f *fakeLearningRepo) CreateDailySet(
-	_ context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
+	_ context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID, _ string,
 ) (*domain.DailySet, error) {
 	return &domain.DailySet{
 		ID:          uuid.New(),
@@ -2168,4 +2170,36 @@ func TestGradePreview_RefusesMeteredGrader(t *testing.T) {
 	if calls := metered.calls.Load(); calls != 1 {
 		t.Fatalf("expected 1 call after direct grade, got %d", calls)
 	}
+}
+
+// ResolveActivities resolves each id through ResolveActivity.
+func (r *fakeLessonReader) ResolveActivities(
+	ctx context.Context, ids []uuid.UUID,
+) (map[uuid.UUID]*lessoncontract.ActivityHierarchy, error) {
+	out := make(map[uuid.UUID]*lessoncontract.ActivityHierarchy, len(ids))
+	for _, id := range ids {
+		if h, err := r.ResolveActivity(ctx, id); err == nil && h != nil {
+			out[id] = h
+		}
+	}
+	return out, nil
+}
+
+// ListLessonsByCourseID walks ListUnitsByCourseID and ListLessons.
+func (r *fakeLessonReader) ListLessonsByCourseID(
+	ctx context.Context, courseID uuid.UUID,
+) ([]*lessoncontract.Lesson, error) {
+	units, err := r.ListUnitsByCourseID(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+	var out []*lessoncontract.Lesson
+	for _, u := range units {
+		lessons, err := r.ListLessons(ctx, u.ID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, lessons...)
+	}
+	return out, nil
 }

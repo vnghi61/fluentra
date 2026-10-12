@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PenLine } from "lucide-react";
 
-import { Input } from "@/components/ui/input";
 import { PronounceButton } from "@/components/ui/pronounce-button";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ import {
   ExerciseFeedback,
   ExercisePrompt,
 } from "./ExerciseShell";
+import { Textarea } from "@/components/ui/textarea";
 
 export interface ExerciseSentenceTransformProps {
   prompt: string;
@@ -45,7 +46,7 @@ export const ExerciseSentenceTransform: React.FC<
 }) => {
   const { t } = useTranslation();
   const [answer, setAnswer] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!isSubmitted && inputRef.current) {
@@ -61,7 +62,7 @@ export const ExerciseSentenceTransform: React.FC<
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
@@ -69,9 +70,13 @@ export const ExerciseSentenceTransform: React.FC<
   };
 
   return (
-    <div className="space-y-8 max-w-2xl mx-auto py-4">
+    <div className="w-full min-w-0 space-y-6 max-w-4xl mx-auto">
       {/* Prompt Heading */}
       <div className="space-y-3">
+        <span className="inline-flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2 text-sm font-semibold text-primary-accent">
+          <PenLine className="h-4 w-4" aria-hidden="true" />
+          {t("runner.sentenceTransformKind", "Rewrite the sentence")}
+        </span>
         <div className="flex items-start justify-between gap-4">
           <ExercisePrompt>{prompt}</ExercisePrompt>
           <div className="shrink-0 mt-1">
@@ -84,17 +89,17 @@ export const ExerciseSentenceTransform: React.FC<
       </div>
 
       {/* Sentence Transformation Input Card */}
-      <div className="p-6 rounded-2xl border border-border bg-surface-card shadow-sm space-y-4">
+      <div className="p-4 sm:p-6 rounded-2xl border border-border-subtle bg-surface-card shadow-sm space-y-3">
         <label
           htmlFor="sentence-transform-input"
           className="text-xs font-semibold text-text-muted uppercase tracking-wider block"
         >
           {t("runner.sentenceTransformLabel", "Your rewritten sentence")}
         </label>
-        <Input
+        <Textarea
           id="sentence-transform-input"
           ref={inputRef}
-          type="text"
+          rows={3}
           value={answer}
           disabled={isSubmitted || isLoading}
           onChange={(e) => setAnswer(e.target.value)}
@@ -108,7 +113,7 @@ export const ExerciseSentenceTransform: React.FC<
             "Type the rewritten sentence...",
           )}
           className={cn(
-            "w-full min-h-[48px] px-4 text-base md:text-lg font-medium border-2 focus-visible:ring-primary rounded-xl",
+            "min-h-[104px] resize-y rounded-xl bg-surface-card p-4 font-medium md:text-lg disabled:opacity-70",
             isSubmitted &&
               isCorrect &&
               "border-success bg-success/10 text-success-accent",
@@ -117,6 +122,9 @@ export const ExerciseSentenceTransform: React.FC<
               "border-danger bg-danger/10 text-danger-accent",
           )}
         />
+        <p className="text-right text-xs text-text-muted">
+          {t("runner.answerCharacters", { count: answer.length })}
+        </p>
       </div>
 
       {/* Evaluation Feedback */}

@@ -1,0 +1,11 @@
+**
+!go.mod
+!go.sum
+!cmd/
+!cmd/media/
+!cmd/media/**
+!internal/
+!internal/**
+!deploy/
+!deploy/docker/
+!deploy/docker/media-loop.sh

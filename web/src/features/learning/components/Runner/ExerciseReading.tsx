@@ -187,20 +187,20 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
       {/* Passage Card */}
       <div className="rounded-2xl border border-border bg-surface-card shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-border/60 bg-surface/40 flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
+          <div className="min-w-0 flex items-center gap-2">
             <BookOpen
               className="h-4 w-4 text-primary shrink-0"
               aria-hidden="true"
             />
-            <h3 className="text-sm font-semibold text-text uppercase tracking-wider">
+            <h2 className="min-w-0 break-words text-sm font-semibold text-text uppercase tracking-wider">
               {passageTitle || t("runner.readingPassage", "Reading Passage")}
-            </h3>
+            </h2>
           </div>
           <div className="flex items-center gap-3 text-xs text-text-muted">
             <span>{t("runner.wordCount", { count: wordCount })}</span>
             {readingMs !== null && (
               <span className="flex items-center gap-1 font-mono">
-                <Clock className="h-3 w-3" />
+                <Clock className="h-4 w-4" aria-hidden="true" />
                 {Math.round(readingMs / 1000)}s
               </span>
             )}
@@ -216,7 +216,7 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
       {/* Phase 1: Reading Mode Call to Action */}
       {!hasFinishedReading && (
         <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 text-center space-y-4">
-          <p className="text-sm text-text-muted max-w-md mx-auto">
+          <p className="text-base leading-relaxed text-text-muted max-w-md mx-auto">
             {t(
               "runner.finishReadingPrompt",
               "Read the passage at your normal pace, then proceed to the questions.",
@@ -225,12 +225,12 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
           <Button
             size="lg"
             onClick={handleFinishReading}
-            className="gap-2 min-h-[44px] px-6 text-base font-semibold shadow-sm"
+            className="gap-2 px-6 shadow-sm"
           >
             <span>
               {t("runner.finishedReading", "I have finished reading")}
             </span>
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       )}
@@ -290,7 +290,7 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
                     isSubmitted && "cursor-default",
                   )}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="min-w-0 flex items-center gap-3">
                     <span
                       className={cn(
                         "flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold border transition-colors shrink-0",
@@ -307,7 +307,9 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
                     >
                       {index + 1}
                     </span>
-                    <span className="leading-snug">{option.text}</span>
+                    <span className="min-w-0 break-words leading-snug">
+                      {option.text}
+                    </span>
                   </div>
 
                   {isSubmitted && (isSelectedCorrect || isAnswer) && (

@@ -58,7 +58,7 @@ func NewRedisLimiter(client redis.Cmdable) *RedisLimiter {
 // Degradation is the point: when Redis is unreachable the limiter allows the
 // request and warns. A limiter that denies when its backing store is down
 // turns a cache outage into a total outage, and the rate limit protects far
-// less than availability costs (API_GUIDELINE.md §11).
+// less than availability costs (docs/CONVENTIONS.md#api §11).
 func (l *RedisLimiter) Allow(ctx context.Context, key string, limit int, window time.Duration) (LimitResult, error) {
 	if l.client == nil {
 		return l.degrade(ctx, limit, errors.New("redis client not configured")), nil

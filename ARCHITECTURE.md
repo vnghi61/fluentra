@@ -323,15 +323,7 @@ Full table with owners, status and dependencies: [MODULE_INDEX.md](MODULE_INDEX.
 
 ```
 internal/modules/vocabulary/
-├── AGENT.md            # AI entry point for this module
-├── README.md           # human overview
-├── API.md              # endpoint reference (links to openapi.yaml)
-├── FLOW.md             # sequence + state diagrams
-├── TESTING.md          # what to test and how
-├── DECISIONS.md        # module-local decisions
-├── PROMPTS.md          # prompts used by/for this module
-├── TODO.md             # backlog
-├── README_AI.md        # pointer to AGENT.md
+├── AGENT.md            # the module's only doc: contract, schema, API, flows, decisions, backlog
 ├── contract/           # ← the ONLY package other modules may import
 │   ├── service.go      #   interfaces this module offers
 │   ├── dto.go          #   data shapes crossing the boundary
@@ -635,7 +627,7 @@ Content-Type: application/problem+json
 }
 ```
 
-Complete code catalogue in [ERROR_HANDLING.md](ERROR_HANDLING.md).
+Complete code catalogue in [docs/CONVENTIONS.md#error-handling](docs/CONVENTIONS.md#error-handling).
 
 ### 9.3 API surface by module (v1)
 
@@ -725,7 +717,7 @@ an eval run, never a code change.
 
 | Aspect | Rule |
 |---|---|
-| Location | `docs/prompts/runtime/<task>/v<N>.md` with YAML front-matter |
+| Location | `internal/platform/ai/prompts/<task>.v<N>.md`, embedded with `//go:embed` |
 | Front-matter | `task`, `version`, `model_tier`, `input_schema`, `output_schema`, `max_tokens`, `temperature`, `eval_suite` |
 | Versioning | Immutable. A change = a new `vN+1` file. Config pins the active version. |
 | Rollout | Shadow → 10 % → 100 %, comparing eval scores and cost |
@@ -748,7 +740,7 @@ an eval run, never a code change.
 | Quality | `docs/ai/evals/` golden sets per task; CI runs them against `mock`, nightly against real providers; regression blocks a prompt promotion |
 | Determinism in tests | `mock` provider returns fixtures keyed by prompt hash; no network in unit/integration tests |
 
-Detail: [docs/ai/README.md](docs/ai/README.md), [internal/platform/ai/AGENT.md](internal/platform/ai/AGENT.md).
+Detail: [docs/AI.md](docs/AI.md), [internal/platform/ai/AGENT.md](internal/platform/ai/AGENT.md).
 
 ---
 
@@ -1121,7 +1113,7 @@ template-database clone — never against shared mutable state.
 
 ### 16.4 AI-assisted test generation
 
-Prompts in `docs/prompts/testing/`. The rule: **AI generates tests from the spec and the
+The rule: **AI generates tests from the spec and the
 `AGENT.md`, never from the implementation**, so a test cannot inherit the implementation's
 bug. Generated tests are reviewed like any other code, and mutation testing (`go-mutesting`,
 quarterly) checks that they actually assert something.
@@ -1195,7 +1187,7 @@ flowchart LR
 Semantic Versioning + Conventional Commits. `main` is always releasable. Release = tag.
 Migrations must be **backward compatible for one version** (expand → migrate → contract), so
 a rollback never needs a destructive down-migration. Feature flags gate anything risky.
-Details in [RELEASE_GUIDE.md](RELEASE_GUIDE.md).
+Details in [docs/OPERATIONS.md#releases](docs/OPERATIONS.md#releases).
 
 ---
 
@@ -1384,7 +1376,7 @@ stateDiagram-v2
 
 | Concern | Owner | Rule |
 |---|---|---|
-| Configuration | `shared/config` | Env only. Every key documented in `docs/deployment/configuration.md`. Fail fast at startup on a missing required key. |
+| Configuration | `shared/config` | Env only. Every key documented in `.env.example`. Fail fast at startup on a missing required key. |
 | Feature flags | `shared/flags` | DB-backed, cached 30 s. Every risky feature ships behind a flag. |
 | IDs | `shared/id` | UUIDv7 for entities (time-ordered, index-friendly); ULID for request IDs |
 | Time | `shared/clock` | Injected `Clock` interface everywhere — never `time.Now()` in a service |
@@ -1516,3 +1508,335 @@ Detail and per-module extraction notes: `docs/architecture/microservice-migratio
 | [0022](docs/adr/ADR-0022-persistent-sessions.md) | Persistent sign-in: sliding window with an absolute cap | Accepted |
 | [0023](docs/adr/ADR-0023-google-oauth-linking.md) | Google OAuth and the account-linking policy | Accepted |
 | [0024](docs/adr/ADR-0024-mobile-first-responsive.md) | Mobile-first responsive UI as a baseline requirement | Accepted |
+
+## Appendix: project structure
+
+Every folder in this repository, what it is for, and what an AI agent should do with it.
+
+---
+
+### 1. Top level
+
+```
+fluentra/
+├── AGENT.md                  # AI entry point — read first
+├── CLAUDE.md                 # → AGENT.md
+├── AGENTS.md                 # → AGENT.md (Codex/OpenAI convention)
+├── GEMINI.md                 # → AGENT.md
+├── README.md                 # human entry point
+├── ARCHITECTURE.md           # the SAD
+├── ARCHITECTURE.md#appendix-project-structure      # this file
+├── MODULE_INDEX.md           # module map
+├── *_GUIDELINE.md            # conventions (see §8)
+├── Makefile                  # every command an agent may run
+├── go.mod / go.sum
+├── .go-arch-lint.yml         # module boundary enforcement
+├── .golangci.yml             # Go linters
+├── sqlc.yaml                 # query codegen config
+├── .env.example              # every config key, documented
+│
+├── .github/                  # CI/CD, issue and PR templates
+├── .claude/                  # Claude Code project config: commands, settings
+├── api/                      # API + event contracts (source of truth)
+├── cmd/                      # binaries
+├── internal/                 # all Go code
+├── db/                       # migrations, queries, seeds
+├── web/                      # React SPA
+├── deploy/                   # Docker Compose + infra configs
+├── docs/                     # the knowledge base
+├── scripts/                  # dev/ops shell scripts
+├── test/                     # cross-module tests and fixtures
+└── tools/                    # repo tooling (docgen, lint helpers)
+```
+
+---
+
+### 2. `cmd/` — binaries
+
+| Path | Binary | Purpose | Agent note |
+|---|---|---|---|
+| `cmd/api` | `api` | HTTP server. Composition root: config → telemetry → pools → modules → router. | The **only** place concrete implementations are wired. Adding a module means adding a line here. |
+| `cmd/worker` | `worker` | River worker + cron scheduler. | Register new job kinds here. |
+| `cmd/migrate` | `migrate` | Runs goose migrations, then exits. | Never called from `api`. |
+| `cmd/seed` | `seed` | Loads reference content (courses, words, mock tests) and, outside production, demo accounts. | `-reference` is the production-safe mode. |
+
+---
+
+### 3. `internal/` — application code
+
+```
+internal/
+├── shared/          # cross-cutting primitives, no business meaning
+│   ├── apperr/          typed errors + Problem Details rendering
+│   ├── config/          koanf loading, validation, defaults
+│   ├── id/              UUIDv7 / ULID generation
+│   ├── clock/           injectable time
+│   ├── pagination/      cursor encode/decode
+│   ├── eventbus/        publish/subscribe interface + in-process impl
+│   ├── outbox/          transactional outbox writer + publisher
+│   ├── idempotency/     idempotency-key store and replay
+│   ├── httpx/           middleware, response writers, decoders
+│   ├── dbx/             pgx pool, tx helper, Querier interface
+│   └── i18n/            message catalogue
+│
+├── platform/        # technical capabilities (see MODULE_INDEX §2.1)
+│   ├── telemetry/  cache/  storage/  job/  mailer/  ai/  media/  search/
+│
+└── modules/         # business modules (see MODULE_INDEX §2.2–2.4)
+    ├── auth/  user/  rbac/  audit/  admin/  notification/
+    ├── content/  lesson/  learning/  srs/
+    ├── vocabulary/  grammar/  reading/  listening/  speaking/  writing/
+    ├── questionbank/  exam/  gamification/
+    └── analytics/  subscription/  payment/
+```
+
+#### 3.1 Inside a module
+
+| Subfolder | Contains | May be imported by other modules? |
+|---|---|---|
+| `contract/` | Interfaces, DTOs, event types — the module's public API | ✅ **Only this one** |
+| `domain/` | Entities, value objects, invariants, domain errors. Pure Go. | ❌ |
+| `service/` | Use cases, orchestration, transactions, event publishing | ❌ |
+| `repository/` | sqlc-generated code + mappers | ❌ |
+| `transport/http/` | Handlers, request/response DTOs, route registration | ❌ |
+| `job/` | Background job handlers owned by the module | ❌ |
+| `module.go` | `New(deps) (*Module, error)` — wiring | ✅ (by `cmd/` only) |
+
+---
+
+### 4. `api/` — contracts
+
+| Path | Contains | Rule |
+|---|---|---|
+| `api/openapi/openapi.yaml` | The full OpenAPI 3.1 spec | **Single source of truth for the HTTP API.** Edit before writing a handler. |
+| `api/openapi/components/` | Reusable schemas, parameters, responses split by module | Keeps the root file readable |
+| `api/events/*.json` | JSON Schema for every domain event | Versioned; breaking change = new file |
+| `api/proto/` | Reserved for gRPC when a module is extracted | Empty in v1 — do not add files without an ADR |
+
+Generated from these: Go server stubs + client (`oapi-codegen`), TypeScript types
+(`openapi-typescript`), MSW handlers, and the docs site.
+
+---
+
+### 5. `db/`
+
+| Path | Contains | Rule |
+|---|---|---|
+| `db/migrations/<module>/` | goose SQL migrations, `NNNN_description.sql` | One folder per module (rule L3). Always reversible. |
+| `db/queries/<module>/` | `.sql` files annotated for sqlc | The only place SQL is written |
+| `db/seeds/` | Reference data (roles, permissions, CEFR levels, taxonomies) | Idempotent, safe to re-run |
+| `db/fixtures/` | Test data sets for integration tests | Never loaded in production |
+
+---
+
+### 6. `web/` — React SPA
+
+```
+web/
+├── AGENT.md               # frontend AI entry point
+├── src/                   # see ARCHITECTURE.md §7.1
+├── e2e/                   # Playwright specs + page objects
+├── public/
+├── vite.config.ts
+├── tsconfig.json
+├── eslint.config.js       # includes boundary rules between feature slices
+└── package.json
+```
+
+---
+
+### 7. `deploy/`
+
+| Path | Contains |
+|---|---|
+| `deploy/compose/` | `compose.yaml` + `compose.{dev,prod,observability}.yaml` overlays |
+| `deploy/otel/` | Collector pipelines (receivers → processors → exporters) |
+| `deploy/prometheus/` | scrape config, recording rules, alert rules |
+| `deploy/grafana/` | provisioning, datasources, dashboards-as-JSON |
+| `deploy/loki/`, `deploy/tempo/` | storage + retention config |
+| `deploy/nginx/` | TLS, gzip/brotli, SPA fallback, security headers, rate limits |
+| `deploy/minio/` | bucket creation, policies, lifecycle rules |
+
+---
+
+### 8. `docs/` — the AI knowledge base
+
+| Folder | Purpose | Contents | How AI agents use it |
+|---|---|---|---|
+| `docs/CONVENTIONS.md` | Repository rules | Coding, API, database, errors, logging, observability, security, testing | Read before writing code in an unfamiliar area |
+| `docs/OPERATIONS.md` | Running the system | Free-tier deployment, Docker, CI, releases, runbooks | Read for env, deploy and incident questions |
+| `docs/AI.md` | AI engineering | Context strategy, prompt library, how the product calls LLMs | Read before any LLM work |
+| `docs/adr/` | Decisions | Numbered ADRs, immutable once accepted | **Read before proposing an alternative approach** — it may already be rejected |
+| `docs/knowledge/` | Domain knowledge | FSRS | Read before designing learning logic |
+| `docs/templates/adr.md` | Template | The ADR template | Use verbatim, fill placeholders |
+
+---
+
+### 9. `test/` and `tools/`
+
+| Path | Purpose |
+|---|---|
+| `test/integration/` | Cross-module integration tests (a single module's live in the module) |
+| `test/e2e/` | API-level end-to-end tests (browser E2E lives in `web/e2e/`) |
+| `test/load/` | k6 scenarios and thresholds |
+| `test/fixtures/` | Shared builders, golden files, mock AI fixtures |
+| `tools/docgen/` | Templates and manifest schema for the doc generator |
+
+---
+
+### 10. Naming conventions (repo-wide)
+
+| Thing | Convention | Example |
+|---|---|---|
+| Go package | short, lowercase, no underscores | `vocabulary`, `apperr` |
+| Go file | `snake_case.go` | `add_word.go` |
+| Go interface | noun or `-er` | `Grader`, `WordRepository` |
+| Go test | `TestXxx_Scenario_Expected` | `TestAddWord_DuplicateLemma_ReturnsConflict` |
+| SQL table | plural `snake_case`, in the owning schema | `skill.word_senses` |
+| SQL column | `snake_case`; FKs `<singular>_id` | `deck_id` |
+| Migration | `NNNN_verb_object.sql` | `0007_add_word_family_index.sql` |
+| API path | kebab-case plural | `/api/v1/writing/submissions` |
+| JSON field | `snake_case` | `next_due_at` |
+| Event | `<module>.<aggregate>_<past_verb>` | `writing.submission_created` |
+| Metric | `<domain>_<unit>_<suffix>` | `ai_request_duration_seconds` |
+| Cache key | `fluentra:{env}:{module}:{entity}:{id}:v{n}` | see ARCHITECTURE §12.2 |
+| React component | `PascalCase.tsx` | `ReviewCard.tsx` |
+| React hook | `useCamelCase.ts` | `useDueReviews.ts` |
+| Feature slice | lowercase noun | `web/src/features/vocabulary/` |
+| Branch | `type/scope-short-desc` | `feat/srs-fsrs-scheduler` |
+| Commit | Conventional Commits | `feat(srs): add FSRS scheduler` |
+
+## Appendix: glossary
+
+**Read this before naming anything.** One concept, one word, everywhere — in code, in the
+database, in the API, and in the UI. Synonyms in a codebase are a permanent tax.
+
+---
+
+### 1. Learning domain
+
+| Term | Definition | Also called (do **not** use) |
+|---|---|---|
+| **Learner** | A person with the `user` role who studies on the platform | student, member, customer |
+| **Administrator** | A person with the `admin` role | moderator, staff, editor |
+| **Course** | The largest learning container; has a CEFR level range and a goal | program, track |
+| **Unit** | A group of lessons inside a course | chapter, section, module (never "module" — that means a code module here) |
+| **Lesson** | The smallest schedulable learning unit; contains activities | class, session |
+| **Activity** | One thing a learner does inside a lesson (read a passage, drill 10 words, record a response) | exercise, task (both mean something else — see below) |
+| **Exercise** | The generic mechanism: prompt + expected response + grader | — |
+| **Item** | One question or prompt inside an exercise | question (reserve "question" for the question bank) |
+| **Task** | ① A writing/speaking prompt (e.g. "IELTS Task 2"), ② an AI task name. Always qualify: "writing task", "AI task" | — |
+| **Attempt** | One recorded try at an activity or exam, with a score and a timestamp | try, submission (submission is narrower) |
+| **Submission** | An attempt that produces a persisted artefact to be graded (essay, recording) | — |
+| **Grader** | The component that scores a response. Deterministic or AI-backed | scorer, evaluator |
+| **Rubric** | The criteria and band descriptors used to score productive skills | — |
+| **Skill** | One of: vocabulary, grammar, reading, listening, speaking, writing | competency, area |
+| **CEFR level** | A1, A2, B1, B2, C1, C2 | difficulty, grade, level (unqualified) |
+| **Placement** | The initial assessment that assigns a starting level | onboarding test |
+| **Learning path** | The ordered sequence of lessons generated for a learner | curriculum, plan, journey |
+| **Progress** | A learner's completion and mastery state for a lesson or skill | — |
+| **Enrollment** | The link between a learner and a course | registration (reserve for account creation) |
+
+### 2. Spaced repetition
+
+| Term | Definition |
+|---|---|
+| **Review card** | The scheduling record for one learnable item for one learner |
+| **Review** | One answered card |
+| **Grade** | The learner's self-rated recall on a review: `again`, `hard`, `good`, `easy` |
+| **Due** | A card whose `due_at` has passed |
+| **Interval** | Days until the next review |
+| **Stability** | FSRS memory-strength parameter — how slowly the memory decays |
+| **Difficulty** | FSRS item-difficulty parameter (0–10) |
+| **Retrievability** | Estimated probability of successful recall right now |
+| **Lapse** | A review graded `again` after the card had graduated |
+| **Retention target** | The desired recall probability (default 0.90) that drives scheduling |
+| **FSRS** | Free Spaced Repetition Scheduler — the algorithm we use (ADR-0016) |
+
+### 3. Content
+
+| Term | Definition |
+|---|---|
+| **Content item** | The canonical unit of learning material (word, grammar point, passage, audio, prompt) |
+| **Content version** | An immutable snapshot of a content item; published lessons reference a version |
+| **Taxonomy** | A controlled vocabulary used to tag content (topic, CEFR level, skill, exam type) |
+| **Media asset** | A file in object storage plus its metadata (audio, image, derived waveform) |
+| **Authoring workflow** | draft → in_review → approved → published → archived |
+| **Publish** | Making a content version visible to learners; triggers cache invalidation, TTS, reindex |
+
+### 4. Assessment
+
+| Term | Definition |
+|---|---|
+| **Question** | An item in the question bank, reusable across exams and exercises |
+| **Question set** | An ordered, reusable group of questions |
+| **Exam** | A timed, structured assessment with sections (e.g. an IELTS mock) |
+| **Exam attempt** | One learner's run through an exam |
+| **Section** | A timed part of an exam, bound to one skill |
+| **Score report** | The learner-facing result: band scores, sub-scores, feedback, comparison |
+| **Band** | A score on an exam's scale (IELTS 0–9); distinct from CEFR level |
+| **Item difficulty** | A statistical estimate derived from attempt data |
+
+### 5. Platform / architecture
+
+| Term | Definition |
+|---|---|
+| **Module** | A bounded context in `internal/modules/` or a capability in `internal/platform/`. **Never** used for learning content |
+| **Contract** | A module's public interface package — the only thing other modules may import |
+| **Platform module** | A technical capability with no business rules |
+| **Shared kernel** | `internal/shared/` — primitives with no business meaning |
+| **Outbox** | The table that makes event publishing transactional |
+| **Event** | A past-tense fact published by a module (`writing.graded`) |
+| **Job** | A unit of background work executed by the worker |
+| **Queue** | A named lane of jobs (`ai`, `media`, `notify`, `batch`, `default`) |
+| **Composition root** | `cmd/api/main.go` — the only place concrete types are wired |
+| **Problem Details** | The RFC 9457 error response format |
+| **Cursor** | The opaque pagination token |
+
+### 6. AI
+
+| Term | Definition |
+|---|---|
+| **AI task** | A named capability (`writing.grade_essay`) that business code requests. **Never a model name** |
+| **Provider** | A vendor adapter (`anthropic`, `openai`, `gemini`, `openrouter`, `local`, `mock`) |
+| **Model tier** | `small`, `mid`, `frontier` — the routing abstraction over actual model IDs |
+| **Prompt template** | A versioned Markdown file with typed input and output schemas |
+| **Prompt version** | An immutable `vN`; config pins which version is active |
+| **Fallback chain** | The ordered list of providers tried for a task |
+| **Eval suite** | Golden examples plus scorers and thresholds that gate a prompt change |
+| **Golden set** | Human-labelled examples used as the evaluation oracle |
+| **Semantic cache** | Cache keyed by embedding similarity rather than exact input |
+| **Budget** | The global daily spend cap |
+| **Quota** | A per-user limit on AI usage |
+
+### 7. Gamification
+
+| Term | Definition |
+|---|---|
+| **XP** | Experience points awarded for completed learning actions |
+| **Streak** | Consecutive days meeting the daily goal |
+| **Freeze** | A consumable that preserves a streak for one missed day |
+| **Badge** | A one-off achievement |
+| **Quest** | A time-boxed multi-step goal |
+| **Daily goal** | The learner's chosen XP target per day |
+
+### 8. Commerce
+
+| Term | Definition |
+|---|---|
+| **Plan** | A purchasable tier with entitlements |
+| **Entitlement** | A capability a plan grants (AI grading quota, exam count, deck limit) |
+| **Subscription** | A learner's active plan with a period and status |
+| **Invoice** | A billing document |
+| **Payment** | A gateway transaction |
+| **Grace period** | Time after a failed renewal during which access continues |
+
+### 9. Naming rules
+
+| Rule | Example |
+|---|---|
+| Use the glossary term exactly, in every layer | `review_cards`, `ReviewCard`, `/reviews`, "Review" in the UI |
+| Never introduce a synonym for an existing term | Not `flashcard` if `review card` exists |
+| Never overload a term across domains | "module" is code-only; use "unit" for content |
+| Abbreviations only when they are the domain's own | `CEFR`, `FSRS`, `XP`, `ASR`, `TTS`, `SRS` are fine; `sub` for submission is not |
+| A new concept needs an entry here **before** it appears in code | Add it in the same PR |

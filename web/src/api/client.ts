@@ -21,11 +21,24 @@ export interface RequestOptions extends Omit<RequestInit, "headers"> {
   _wakeRetried?: boolean | undefined;
 }
 
+/**
+ * What a learner reads when the server failed (5xx). The raw title is
+ * "Internal Server Error" or worse, and most screens print `error.message`
+ * verbatim. Injected from app/bootstrap because `api` may not import i18n;
+ * the problem itself is kept intact for the request id and telemetry.
+ */
+let serverErrorMessage: () => string = () =>
+  "The server ran into a problem handling the request. Please try again later.";
+
+export function configureServerErrorMessage(message: () => string): void {
+  serverErrorMessage = message;
+}
+
 export class ApiError extends Error {
   readonly problem: ProblemDetails;
 
   constructor(problem: ProblemDetails) {
-    super(problem.title);
+    super(problem.status >= 500 ? serverErrorMessage() : problem.title);
     this.name = "ApiError";
     this.problem = problem;
   }

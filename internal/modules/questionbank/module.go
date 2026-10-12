@@ -27,7 +27,10 @@ type Deps struct {
 	TagIndex      contentcontract.TagIndex
 	LessonAuthor  lessoncontract.Author
 	Generator     learningcontract.Generator
-	Events        eventbus.EventBus
+	// ExamParts reads an exam part's published format for the generator's
+	// structural check (WO 22 Stage I). The exam module implements it.
+	ExamParts service.ExamPartSpecReader
+	Events    eventbus.EventBus
 }
 
 // Module wires questionbank domain, repository, service, and HTTP transport.
@@ -47,6 +50,7 @@ func New(deps Deps) *Module {
 		TagIndex:      deps.TagIndex,
 		LessonAuthor:  deps.LessonAuthor,
 		Generator:     deps.Generator,
+		ExamParts:     deps.ExamParts,
 		Events:        deps.Events,
 	})
 	handler := questionbankhttp.NewHandler(svc)
@@ -90,7 +94,20 @@ func (m *Module) Subscribe(bus eventbus.EventBus) error {
 	if err := bus.Subscribe(contentcontract.EventContentPublished, m.handleContentPublished); err != nil {
 		return fmt.Errorf("subscribe questionbank consumer to %s: %w", contentcontract.EventContentPublished, err)
 	}
+	// An archived content item stops being drawn: a sample a person rejected,
+	// or an item a learner reported (WO 22 Stage A.5).
+	if err := bus.Subscribe(contentcontract.EventContentArchived, m.handleContentArchived); err != nil {
+		return fmt.Errorf("subscribe questionbank consumer to %s: %w", contentcontract.EventContentArchived, err)
+	}
 	return nil
+}
+
+func (m *Module) handleContentArchived(ctx context.Context, msg eventbus.Message) error {
+	var payload contentcontract.Archived
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+		return fmt.Errorf("decode %s payload: %w", contentcontract.EventContentArchived, err)
+	}
+	return m.service.HandleContentArchived(ctx, payload)
 }
 
 func (m *Module) handleContentPublished(ctx context.Context, msg eventbus.Message) error {

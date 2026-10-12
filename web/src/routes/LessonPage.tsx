@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { AlertCircle, Flag, RotateCcw } from "lucide-react";
+import { AlertCircle, Loader2, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useAuthStore } from "@/stores/authStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 
@@ -35,6 +36,9 @@ import {
   ExerciseSpeaking,
   ExerciseSentenceTransform,
   ExerciseMaterial,
+  type MaterialKind,
+  type MaterialSources,
+  ExerciseTopic,
   ActivityUnavailable,
   ExitDialog,
   ReportDialog,
@@ -43,7 +47,9 @@ import {
   useDailyPracticeSet,
   RunnerHeader,
 } from "@/features/learning";
+import { type FoundationTopicBodyShape } from "@/features/learning/components/Foundation/FoundationTopicBody";
 import { useLesson } from "@/features/lesson";
+import { useResourcePractice } from "@/features/resource";
 import {
   clearWritingDraft,
   type WritingFeedback,
@@ -51,6 +57,15 @@ import {
 } from "@/features/writing";
 import { type SpeakingFeedback, speakingApi } from "@/features/speaking";
 import { readExampleSentences } from "@/lib/examples";
+import { pickLocalized } from "@/lib/localized";
+import type { components } from "@/types/api";
+
+/**
+ * The activity shape the runner renders. A daily-set item can carry `weak_node`
+ * (why it is in today's list); a lesson's items cannot, so the union is the
+ * daily type with that field optional.
+ */
+type DailyPracticeActivity = components["schemas"]["DailyPracticeActivity"];
 
 // The activity `config` is a free-form object in the spec, because its shape
 // belongs to whichever skill module authored the activity and the OpenAPI
@@ -118,6 +133,9 @@ interface FlashcardConfig {
   example_sentence?: string;
   example_sentences?: string[];
   audio_url?: string;
+  /** The page crediting the recording; without it the recording does not play. */
+  audio_attribution?: string;
+  audio_licence?: string;
 }
 
 // The listening body the browser receives. `script` is absent by design: the
@@ -153,14 +171,10 @@ interface SpeakingConfig {
 // A non-graded material. `sources` is issued at read time, after the paywall,
 // and expires; the keys it was built from are never URLs.
 interface MaterialConfig {
-  material_kind?: "document" | "video";
+  material_kind?: MaterialKind;
   title?: string;
   description?: string;
-  sources?: {
-    poster_url?: string;
-    video?: { url: string; height: number }[];
-    document?: { url: string; preview_url?: string; page_count?: number };
-  };
+  sources?: MaterialSources;
 }
 
 /**
@@ -191,7 +205,7 @@ interface Verdict {
 }
 
 export function LessonPage(): React.JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const params: Record<string, string | undefined> = useParams({
@@ -208,6 +222,14 @@ export function LessonPage(): React.JSX.Element {
     lessonId === "daily" ||
     (typeof window !== "undefined" &&
       window.location.pathname.includes("/practice/daily"));
+
+  // Private practice generated from one of the learner's own uploads. It is a
+  // list of activities like the daily set, so it runs through the same runner;
+  // only where it comes from and where it exits to differ.
+  const isResourcePractice =
+    typeof window !== "undefined" &&
+    window.location.pathname.includes("/practice/resource/");
+  const resourceId = params["resourceId"] ?? "";
 
   const [practiceLevel] = useState<string>(() => {
     if (typeof window !== "undefined") {
@@ -230,20 +252,46 @@ export function LessonPage(): React.JSX.Element {
   } = useDailyPracticeSet(practiceLevel, isDaily);
 
   const {
+    data: resourcePractice,
+    isLoading: resourcePracticeLoading,
+    isError: isResourcePracticeError,
+    error: resourcePracticeError,
+    refetch: refetchResourcePractice,
+  } = useResourcePractice(resourceId, isResourcePractice);
+
+  const {
     data: lesson,
     isLoading: lessonLoading,
     isError: isLessonError,
     error: lessonError,
     refetch: refetchLesson,
-  } = useLesson(isDaily ? undefined : lessonId);
+  } = useLesson(isDaily || isResourcePractice ? undefined : lessonId);
 
-  const activities = isDaily
+  const activities: DailyPracticeActivity[] = isDaily
     ? (dailySet?.activities ?? [])
-    : (lesson?.activities ?? []);
-  const isLoading = isDaily ? dailyLoading : lessonLoading;
-  const isError = isDaily ? isDailyError : isLessonError;
-  const error = isDaily ? dailyError : lessonError;
-  const refetch = isDaily ? refetchDaily : refetchLesson;
+    : isResourcePractice
+      ? (resourcePractice?.activities ?? [])
+      : (lesson?.activities ?? []);
+  const isLoading = isDaily
+    ? dailyLoading
+    : isResourcePractice
+      ? resourcePracticeLoading
+      : lessonLoading;
+  const isError = isDaily
+    ? isDailyError
+    : isResourcePractice
+      ? isResourcePracticeError
+      : isLessonError;
+  const error = isDaily
+    ? dailyError
+    : isResourcePractice
+      ? resourcePracticeError
+      : lessonError;
+  const refetch = isDaily
+    ? refetchDaily
+    : isResourcePractice
+      ? refetchResourcePractice
+      : refetchLesson;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null);
@@ -281,6 +329,10 @@ export function LessonPage(): React.JSX.Element {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const currentActivity = activities[currentIndex];
+
+  // A session under way asks before it is left by any route out: the sidebar,
+  // the tab bar, Back, or a reload (which gets the browser's own prompt).
+  const leaveGuard = useLeaveGuard(!isCompleted && activities.length > 0);
 
   /**
    * True while a signed-in learner has no attempt to submit against yet.
@@ -615,6 +667,15 @@ export function LessonPage(): React.JSX.Element {
 
   const handleConfirmExit = () => {
     setIsExitDialogOpen(false);
+    // The learner already said yes in our own dialog; do not ask twice.
+    leaveGuard.allowNext();
+    if (isResourcePractice && resourceId) {
+      void navigate({
+        to: "/my-resources/$resourceId",
+        params: { resourceId },
+      });
+      return;
+    }
     void navigate({ to: isDaily ? "/practice" : "/learn" });
   };
 
@@ -626,41 +687,174 @@ export function LessonPage(): React.JSX.Element {
     );
   }
 
-  if (isError || (isDaily ? !dailySet : !lesson)) {
+  if (
+    isError ||
+    (isDaily ? !dailySet : isResourcePractice ? !resourcePractice : !lesson)
+  ) {
     return (
       <div className="py-12 max-w-lg mx-auto">
         <Card className="border-danger/30 text-center p-6">
           <CardHeader>
             <div className="flex justify-center mb-2">
-              <AlertCircle className="h-10 w-10 text-danger-accent" />
+              <AlertCircle
+                className="h-10 w-10 text-danger-accent"
+                aria-hidden="true"
+              />
             </div>
             <CardTitle>
               {isDaily
                 ? t("practice.daily.errorTitle", "Unable to Load Practice Set")
-                : t("learn.errorTitle", "Unable to Load Lesson")}
+                : isResourcePractice
+                  ? t("resources.practiceErrorTitle", "Unable to Load Practice")
+                  : t("learn.errorTitle", "Unable to Load Lesson")}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-base leading-relaxed">
               {error?.message ||
                 (isDaily
                   ? t(
                       "practice.daily.errorDesc",
                       "Could not load today's practice activities.",
                     )
-                  : t("learn.errorDesc", "Could not load lesson activities."))}
+                  : isResourcePractice
+                    ? t(
+                        "resources.practiceErrorDesc",
+                        "Practice from this file could not be loaded.",
+                      )
+                    : t(
+                        "learn.errorDesc",
+                        "Could not load lesson activities.",
+                      ))}
             </CardDescription>
           </CardHeader>
-          <CardFooter className="justify-center gap-3">
+          <CardFooter className="flex-wrap justify-center gap-3">
             <Button variant="outline" onClick={() => void refetch()}>
               {t("action.retry", "Try again")}
             </Button>
             <Button
-              onClick={() =>
-                void navigate({ to: isDaily ? "/practice" : "/learn" })
-              }
+              onClick={() => {
+                if (isResourcePractice && resourceId) {
+                  void navigate({
+                    to: "/my-resources/$resourceId",
+                    params: { resourceId },
+                  });
+                  return;
+                }
+                void navigate({ to: isDaily ? "/practice" : "/learn" });
+              }}
             >
               {isDaily
                 ? t("practice.daily.backBtn", "Back to Practice")
-                : t("runner.backToCourseBtn", "Back to Syllabus")}
+                : isResourcePractice
+                  ? t("resources.backToList", "All resources")
+                  : t("runner.backToCourseBtn", "Back to Syllabus")}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  // A set arrives `generating` with no activities: the request only queues it
+  // and a sweep turns it into ten items. Without this the runner would render
+  // its header over an empty canvas, which reads as a broken screen rather
+  // than as work in progress — and a set that failed would stay blank for good
+  // while `failure_reason` went unread.
+  if (isResourcePractice && resourcePractice?.status !== "ready") {
+    const buildFailed = resourcePractice?.status === "failed";
+    return (
+      <div className="py-12 max-w-lg mx-auto">
+        <Card
+          className={`text-center p-6 ${buildFailed ? "border-danger/30" : ""}`}
+        >
+          <CardHeader>
+            <div className="flex justify-center mb-2">
+              {buildFailed ? (
+                <AlertCircle
+                  className="h-10 w-10 text-danger-accent"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Loader2
+                  className="h-10 w-10 animate-spin text-primary"
+                  aria-hidden="true"
+                />
+              )}
+            </div>
+            <CardTitle>
+              {buildFailed
+                ? t(
+                    "resources.practiceFailedTitle",
+                    "Practice could not be built",
+                  )
+                : t(
+                    "resources.practiceBuildingTitle",
+                    "Building your practice",
+                  )}
+            </CardTitle>
+            <CardDescription
+              role="status"
+              className="text-base leading-relaxed"
+            >
+              {buildFailed
+                ? resourcePractice?.failure_reason ||
+                  t(
+                    "resources.practiceFailedDesc",
+                    "We could not build practice from this file. Try again later.",
+                  )
+                : t(
+                    "resources.practiceBuildingDesc",
+                    "We are writing ten exercises from this file. This takes a minute; the page opens on its own when they are ready.",
+                  )}
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="justify-center">
+            <Button
+              variant={buildFailed ? "primary" : "outline"}
+              onClick={() =>
+                void navigate({
+                  to: "/my-resources/$resourceId",
+                  params: { resourceId },
+                })
+              }
+            >
+              {t("resources.backToFile", "Back to the file")}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  if (activities.length === 0) {
+    return (
+      <div className="py-12 max-w-lg mx-auto">
+        <Card className="text-center p-6">
+          <CardHeader>
+            <CardTitle>{t("runner.emptyTitle")}</CardTitle>
+            <CardDescription
+              role="status"
+              className="text-base leading-relaxed"
+            >
+              {t("runner.emptyDesc")}
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="flex-wrap justify-center gap-3">
+            <Button variant="outline" onClick={() => void refetch()}>
+              {t("action.retry", "Try again")}
+            </Button>
+            <Button
+              onClick={() => {
+                if (isResourcePractice && resourceId) {
+                  void navigate({
+                    to: "/my-resources/$resourceId",
+                    params: { resourceId },
+                  });
+                } else {
+                  void navigate({ to: isDaily ? "/practice" : "/learn" });
+                }
+              }}
+            >
+              {t("runner.backToCourseBtn", "Back to Syllabus")}
             </Button>
           </CardFooter>
         </Card>
@@ -724,6 +918,14 @@ export function LessonPage(): React.JSX.Element {
   const writingConfig = rawConfig as WritingConfig;
   const speakingConfig = rawConfig as SpeakingConfig;
   const materialConfig = rawConfig as MaterialConfig;
+  const topicConfig = rawConfig as FoundationTopicBodyShape & {
+    title?: string;
+  };
+  const typedConfig = rawConfig as {
+    prompt?: string;
+    sentence?: string;
+    max_words?: number;
+  };
 
   // An exercise is renderable only when its config carries the fields it needs.
   // Everything else is ActivityUnavailable — there is no default question,
@@ -825,15 +1027,49 @@ export function LessonPage(): React.JSX.Element {
     kind === "lesson_material" &&
     ((Array.isArray(materialConfig.sources?.video) &&
       materialConfig.sources.video.length > 0) ||
-      Boolean(materialConfig.sources?.document?.url));
+      Boolean(materialConfig.sources?.document?.url) ||
+      Boolean(materialConfig.sources?.image?.url));
+
+  // A topic teaches: objective and explanation are what make it renderable.
+  const canRenderTopic =
+    kind === "foundation_topic" &&
+    (typeof topicConfig.objective === "string" ||
+      typeof topicConfig.explanation === "object" ||
+      Array.isArray(topicConfig.examples));
+
+  // A typed completion is a gap fill with a typed answer and a word limit
+  // (WO 22 D22-25); it renders with the same component.
+  const typedBlankParts =
+    typeof typedConfig.sentence === "string"
+      ? typedConfig.sentence.split("___")
+      : [];
+  const canRenderTypedCompletion =
+    kind === "typed_completion" &&
+    (typeof typedConfig.prompt === "string" || typedBlankParts.length === 2);
 
   const selectedOptId =
     typeof lastSubmittedPayload?.selected_option_id === "string"
       ? lastSubmittedPayload.selected_option_id
       : undefined;
 
+  const writingFeedbackText = writingFeedback
+    ? pickLocalized(
+        writingFeedback.feedback_en,
+        writingFeedback.feedback_vi,
+        i18n.language,
+      ) || submissionResult?.feedback
+    : submissionResult?.feedback;
+
+  const speakingFeedbackText = speakingFeedback
+    ? pickLocalized(
+        speakingFeedback.feedback_en,
+        speakingFeedback.feedback_vi,
+        i18n.language,
+      ) || submissionResult?.feedback
+    : submissionResult?.feedback;
+
   return (
-    <div className="min-h-full bg-surface flex flex-col justify-between">
+    <div className="min-h-full min-w-0 rounded-2xl border border-border-subtle bg-surface-card shadow-xs flex flex-col justify-between">
       {/* Runner Header */}
       <RunnerHeader
         lessonTitle={
@@ -845,19 +1081,48 @@ export function LessonPage(): React.JSX.Element {
                   level: dailySet?.level || practiceLevel,
                 },
               )
-            : (lesson?.title ?? "")
+            : isResourcePractice
+              ? t("resources.practiceRunnerTitle", "Practice from your file")
+              : (lesson?.title ?? "")
         }
         currentStep={currentIndex + 1}
         totalSteps={activities.length}
         onExit={() => setIsExitDialogOpen(true)}
+        onReport={
+          signedIn && currentActivity?.content_version_id
+            ? () => {
+                setReportInitialNote("");
+                setIsReportOpen(true);
+              }
+            : undefined
+        }
       />
 
       {/* Main Exercise Canvas */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col justify-center">
+      <main className="flex-1 max-w-4xl min-w-0 w-full mx-auto px-4 py-6 sm:px-6 md:py-8 flex flex-col">
+        {/*
+          The daily set draws one item to revisit the learner's weakest spine
+          node. It says so, because an exercise that looks like every other
+          one reads as a mistake rather than as a plan (WO 21 Stage F).
+        */}
+        {currentActivity?.weak_node && (
+          <div
+            role="status"
+            className="mx-auto mb-4 flex w-full max-w-2xl items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-primary-accent"
+          >
+            <RotateCcw className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>
+              {t("practice.daily.weakNode", {
+                label: currentActivity.weak_node.label,
+                defaultValue: `Review: ${currentActivity.weak_node.label}`,
+              })}
+            </span>
+          </div>
+        )}
         {submissionError && (
-          <div className="mb-6 p-4 rounded-xl border border-danger/40 bg-danger/10 max-w-2xl mx-auto w-full flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-danger-accent text-sm font-medium">
-              <AlertCircle className="h-5 w-5 shrink-0" />
+          <div className="mb-6 p-4 rounded-xl border border-danger/40 bg-danger/10 max-w-2xl mx-auto w-full flex flex-wrap items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-2 text-danger-accent text-base leading-relaxed font-medium">
+              <AlertCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span>{submissionError}</span>
             </div>
             <Button
@@ -865,9 +1130,9 @@ export function LessonPage(): React.JSX.Element {
               variant="outline"
               onClick={handleRetrySubmit}
               isLoading={isSubmitting}
-              className="shrink-0 gap-1.5"
+              className="shrink-0 gap-2"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
               {t("runner.retryBtn", "Retry")}
             </Button>
           </div>
@@ -877,7 +1142,9 @@ export function LessonPage(): React.JSX.Element {
           <Card className="max-w-2xl mx-auto w-full text-center p-6 border-danger/30">
             <CardHeader>
               <CardTitle>{t("runner.attemptFailedTitle")}</CardTitle>
-              <CardDescription>{t("runner.attemptFailedDesc")}</CardDescription>
+              <CardDescription className="text-base leading-relaxed">
+                {t("runner.attemptFailedDesc")}
+              </CardDescription>
             </CardHeader>
             <CardFooter className="justify-center">
               <Button onClick={() => setCurrentIndex((prev) => prev)}>
@@ -900,7 +1167,9 @@ export function LessonPage(): React.JSX.Element {
           !canRenderListening &&
           !canRenderWriting &&
           !canRenderSpeaking &&
-          !canRenderMaterial && (
+          !canRenderMaterial &&
+          !canRenderTopic &&
+          !canRenderTypedCompletion && (
             <ActivityUnavailable
               {...(kind !== undefined && { kind })}
               onSkip={handleContinue}
@@ -950,6 +1219,24 @@ export function LessonPage(): React.JSX.Element {
           />
         )}
 
+        {canRenderTypedCompletion && (
+          <ExerciseGapFill
+            prompt={typedConfig.prompt ?? ""}
+            sentenceBeforeBlank={typedBlankParts[0]?.trim() ?? ""}
+            sentenceAfterBlank={typedBlankParts[1]?.trim() ?? ""}
+            expectedAnswer={submissionResult?.correct_answer}
+            feedback={submissionResult?.feedback}
+            explanation={submissionResult?.explanation}
+            isSubmitted={isSubmitted}
+            isCorrect={submissionResult?.correct}
+            isLoading={isSubmitting || isAttemptPending}
+            onSubmit={(answerText) =>
+              void handleSubmit({ text_answer: answerText })
+            }
+            onContinue={handleContinue}
+          />
+        )}
+
         {canRenderSentenceTransform && (
           <ExerciseSentenceTransform
             prompt={transformConfig.prompt ?? ""}
@@ -978,9 +1265,14 @@ export function LessonPage(): React.JSX.Element {
             exampleSentences={readExampleSentences(
               fcConfig as unknown as Record<string, unknown>,
             )}
-            {...(fcConfig.audio_url !== undefined && {
-              audioUrl: fcConfig.audio_url,
-            })}
+            {...(fcConfig.audio_url !== undefined &&
+              fcConfig.audio_attribution !== undefined && {
+                audioUrl: fcConfig.audio_url,
+                audioAttribution: fcConfig.audio_attribution,
+                ...(fcConfig.audio_licence !== undefined && {
+                  audioLicence: fcConfig.audio_licence,
+                }),
+              })}
             isLoading={isSubmitting || isAttemptPending}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
@@ -1162,7 +1454,7 @@ export function LessonPage(): React.JSX.Element {
             rubric={writingConfig.rubric}
             minWords={writingConfig.min_words}
             sampleAnswer={writingConfig.sample_answer}
-            feedback={submissionResult?.feedback}
+            feedback={writingFeedbackText}
             score={
               typeof submissionResult?.score === "number"
                 ? submissionResult.score
@@ -1200,7 +1492,7 @@ export function LessonPage(): React.JSX.Element {
             referenceText={speakingConfig.reference_text}
             taskType={speakingConfig.task_type}
             speakingTimeSeconds={speakingConfig.speaking_time_seconds}
-            feedback={submissionResult?.feedback}
+            feedback={speakingFeedbackText}
             score={
               typeof submissionResult?.score === "number"
                 ? submissionResult.score
@@ -1241,34 +1533,35 @@ export function LessonPage(): React.JSX.Element {
           />
         )}
 
-        {isSubmitted && signedIn && currentActivity?.content_version_id && (
-          <div className="mt-4 max-w-2xl mx-auto w-full flex justify-start animate-in fade-in duration-200">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setReportInitialNote("");
-                setIsReportOpen(true);
-              }}
-              className="text-xs text-text-muted hover:text-danger gap-1.5 min-h-[44px]"
-              title={t("report.reportBtn", "Report issue")}
-            >
-              <Flag className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>{t("report.reportBtn", "Report issue")}</span>
-            </Button>
-          </div>
+        {canRenderTopic && (
+          <ExerciseTopic
+            key={currentActivity?.id}
+            title={topicConfig.title}
+            body={topicConfig}
+            isSubmitted={isSubmitted}
+            isLoading={isSubmitting || isAttemptPending}
+            onSubmit={() => void handleSubmit({ done: true })}
+            onContinue={handleContinue}
+          />
         )}
       </main>
 
       {/* Exit Confirmation Dialog */}
       <ExitDialog
-        isOpen={isExitDialogOpen}
-        onCancel={() => setIsExitDialogOpen(false)}
-        onConfirm={handleConfirmExit}
+        isOpen={isExitDialogOpen || leaveGuard.blocked}
+        onCancel={() => {
+          if (leaveGuard.blocked) leaveGuard.stay();
+          setIsExitDialogOpen(false);
+        }}
+        onConfirm={() => {
+          if (leaveGuard.blocked) leaveGuard.proceed();
+          else handleConfirmExit();
+        }}
       />
 
       {/* Report Bad Item / Content Dialog */}
       <ReportDialog
+        key={`${currentActivity?.content_version_id ?? ""}:${reportInitialNote}`}
         isOpen={isReportOpen}
         contentVersionId={currentActivity?.content_version_id ?? null}
         initialNote={reportInitialNote}

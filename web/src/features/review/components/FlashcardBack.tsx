@@ -1,9 +1,10 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+import { Badge } from "@/components/ui/badge";
 import { ExampleSentences } from "@/components/ui/example-sentences";
-import { shuffleExamplesForReview, type ExampleSentence } from "@/lib/examples";
 import { PronounceButton } from "@/components/ui/pronounce-button";
+import { shuffleExamplesForReview, type ExampleSentence } from "@/lib/examples";
 
 export interface FlashcardBackProps {
   word: string;
@@ -12,8 +13,16 @@ export interface FlashcardBackProps {
   definitionVi?: string;
   exampleSentences?: ExampleSentence[];
   audioUrl?: string | null | undefined;
+  /** The page crediting the recording; without it the recording does not play. */
+  audioAttribution?: string | null | undefined;
+  audioLicence?: string | null | undefined;
   partOfSpeech?: string;
   onReportSentence?: ((sentenceText: string) => void) | undefined;
+  /**
+   * The answer's heading. The session moves focus here on reveal: the reveal
+   * button has just turned away, and focus left on a hidden face reads nothing.
+   */
+  answerRef?: React.Ref<HTMLHeadingElement> | undefined;
 }
 
 export const FlashcardBack: React.FC<FlashcardBackProps> = ({
@@ -23,8 +32,11 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
   definitionVi,
   exampleSentences = [],
   audioUrl,
+  audioAttribution,
+  audioLicence,
   partOfSpeech,
   onReportSentence,
+  answerRef,
 }) => {
   const { t, i18n } = useTranslation();
 
@@ -39,18 +51,18 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
 
   const meaningBlock = gloss && (
     <div className="space-y-1">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+      <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
         {t("review.meaningVi")}
       </p>
-      <p className="text-xl md:text-2xl font-bold text-text">{gloss}</p>
+      <p className="text-xl font-bold text-text md:text-2xl">{gloss}</p>
     </div>
   );
   const definitionBlock = (
     <div className="space-y-1">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+      <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
         {t("review.definitionEn")}
       </p>
-      <p className="text-base md:text-lg text-text/90 leading-relaxed">
+      <p className="text-base leading-relaxed text-text md:text-lg">
         {definition}
       </p>
     </div>
@@ -67,49 +79,57 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
   );
 
   return (
-    <div className="w-full min-h-[300px] p-8 rounded-3xl border-2 border-primary/40 bg-gradient-to-br from-surface-card to-primary/5 transition-all flex flex-col items-center justify-center text-center shadow-lg">
-      <div className="space-y-4 max-w-lg mx-auto w-full">
-        {/* Header word + pos */}
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <h2 className="text-3xl font-extrabold text-text tracking-tight">
+    <div className="flex h-full min-h-[300px] w-full flex-col gap-5 rounded-[var(--radius-card)] border border-primary/30 bg-surface-card p-5 shadow-[var(--shadow-card)] sm:min-h-[340px] sm:p-8">
+      <div className="flex flex-col items-center gap-2 border-b border-border-subtle pb-4 text-center">
+        <div className="flex max-w-full flex-wrap items-center justify-center gap-2">
+          <h2
+            ref={answerRef}
+            tabIndex={-1}
+            className="max-w-full break-words text-3xl font-bold tracking-tight text-text focus:outline-none"
+          >
             {word}
           </h2>
           {partOfSpeech && (
-            <span className="italic text-xs text-text-muted font-medium bg-surface-muted px-2 py-0.5 rounded-md">
+            <Badge variant="secondary" className="italic">
               {partOfSpeech}
-            </span>
+            </Badge>
           )}
         </div>
 
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           {ipa && (
             <p className="font-mono text-sm text-primary-accent">{ipa}</p>
           )}
-          <PronounceButton text={word} audioUrl={audioUrl} />
+          <PronounceButton
+            text={word}
+            audioUrl={audioUrl}
+            audioAttribution={audioAttribution}
+            audioLicence={audioLicence}
+          />
         </div>
-
-        {/* The meaning in the language the learner is reading in comes first. */}
-        <div className="space-y-4 pt-1">
-          {prefersVietnamese ? (
-            <>
-              {meaningBlock}
-              {definitionBlock}
-            </>
-          ) : (
-            <>
-              {definitionBlock}
-              {meaningBlock}
-            </>
-          )}
-        </div>
-
-        {/* Three of however many the word has, shuffled per card. */}
-        <ExampleSentences
-          sentences={displayedExamples}
-          highlight={word}
-          onReportSentence={onReportSentence}
-        />
       </div>
+
+      {/* The meaning in the language the learner is reading in comes first. */}
+      <div className="space-y-4">
+        {prefersVietnamese ? (
+          <>
+            {meaningBlock}
+            {definitionBlock}
+          </>
+        ) : (
+          <>
+            {definitionBlock}
+            {meaningBlock}
+          </>
+        )}
+      </div>
+
+      {/* Three of however many the word has, shuffled per card. */}
+      <ExampleSentences
+        sentences={displayedExamples}
+        highlight={word}
+        onReportSentence={onReportSentence}
+      />
     </div>
   );
 };

@@ -34,6 +34,8 @@
       { "name": "content_tags", "purpose": "Item ↔ taxonomy mapping", "notes": "Composite PK; indexed for filtered browsing" },
       { "name": "content_reviews", "purpose": "Review workflow record", "notes": "`version_id`, `reviewer_id`, `decision`, `comments`" },
       { "name": "item_reports", "purpose": "Learner issue reports on content versions", "notes": "`content_version_id`, `user_id`, `reason`, `note`. Unique on (content_version_id, user_id)." },
+      { "name": "review_samples", "purpose": "Auto-published versions drawn for a person to spot-check (WO 22 Stage A.5)", "notes": "`version_id` PK, `batch` (sample/report), `sampled_on`, `decision` (kept/rejected), `decided_by`, `decided_at`" },
+      { "name": "foundation_course_nodes", "purpose": "The Foundation course map: every spine node in exactly one of the thirteen courses (WO 22 Stage E)", "notes": "PK (`course_slug`, `node_id`), `position`. Unique on `node_id`." },
       { "name": "tts_cache", "purpose": "Pre-generated synthesised speech audio keyed by text hash and voice", "notes": "`text_hash`, `voice`, `engine`, `engine_version`, `object_key`, `created_at`" },
       { "name": "taxonomy_prerequisites", "purpose": "Prerequisite DAG edges between taxonomy nodes in the same strand", "notes": "`node_id`, `requires_node_id`, `created_at`. Unique on (node_id, requires_node_id)." }
     ],
@@ -59,7 +61,11 @@
       { "method": "POST", "path": "/api/v1/admin/foundation/topics", "permission": "content.create", "purpose": "Create a new foundation taxonomy topic", "success": "201", "errors": ["TAXONOMY_CODE_IMMUTABLE", "VALIDATION_FAILED"] },
       { "method": "PATCH", "path": "/api/v1/admin/foundation/topics/{code}", "permission": "content.edit", "purpose": "Update foundation topic metadata", "success": "200", "errors": ["TAXONOMY_CODE_IMMUTABLE", "NOT_FOUND"] },
       { "method": "PUT", "path": "/api/v1/admin/foundation/topics/{code}/prerequisites", "permission": "content.edit", "purpose": "Replace prerequisites for a foundation topic", "success": "200", "errors": ["TAXONOMY_CYCLE", "CROSS_NAMESPACE_PREREQUISITE"] },
-      { "method": "GET", "path": "/api/v1/admin/review-queue", "permission": "content.review", "purpose": "List machine-generated drafts awaiting review", "success": "200" }
+      { "method": "GET", "path": "/api/v1/admin/review-queue", "permission": "content.review", "purpose": "List machine-generated drafts awaiting review", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/review-queue/batches", "permission": "content.review", "purpose": "List generation runs awaiting review", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/review-queue/batches/{id}/approve", "permission": "content.review", "purpose": "Approve a generation run's doubts in one transaction", "success": "200", "errors": ["CONTENT_BATCH_REQUIRED", "CONTENT_REVIEWER_REQUIRED"] },
+      { "method": "GET", "path": "/api/v1/admin/review-queue/samples", "permission": "content.review", "purpose": "List auto-published items drawn for spot-check", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/review-queue/samples/{id}/decide", "permission": "content.review", "purpose": "Keep or reject an auto-published sample", "success": "204", "errors": ["INVALID_SAMPLE_DECISION"] }
     ],
     "contract": [
       { "kind": "interface", "name": "content.Reader", "purpose": "`GetVersion`, `GetManyVersions`, `Browse` — batched to avoid N+1 from lesson rendering" },
@@ -92,7 +98,8 @@
       "`body` is validated against a JSON schema chosen by `kind`, so a skill module's payload cannot be malformed.",
       "Publishing invalidates the content cache, enqueues TTS generation, and triggers reindexing — all through the outbox so a failure in one does not roll back the publish.",
       "Slugs are immutable after first publication; a changed slug would break external links and bookmarks.",
-      "Machine-authored exam and curriculum content enters as a draft (`Author.EnsureDraft`); only practice content may be published without review (`EnsurePublished`)."
+      "Machine-authored exam and curriculum content enters as a draft, and is published by a person or by `ApproveVerified`; practice content may be published directly (`EnsurePublished`).",
+      "A machine-authored draft (a body carrying `_provenance`) may be approved directly: the review queue walks it draft → in_review → approved in one transaction, because a generator cannot submit its own output. A human draft still needs its author to submit it. Drafts whose provenance purpose is `resource` never enter the queue: they are a learner's private practice."
     ],
     "cache": [
       { "key": "fluentra:{env}:content:version:{version_id}:v1", "ttl": "24 h", "invalidation": "`content.published` / `content.archived`" },
@@ -225,7 +232,7 @@
       { "method": "POST", "path": "/api/v1/admin/lessons/{id}/publish", "permission": "content.publish", "purpose": "Publish an approved lesson", "success": "200", "errors": ["ACTIVITY_CONTENT_UNPUBLISHED", "EMPTY_ACTIVITIES"] }
     ],
     "contract": [
-      { "kind": "interface", "name": "lesson.Reader", "purpose": "`GetLesson`, `ListLessons`, `NextLesson`, `ResolveActivity`, `ListActivitiesByCourseIDs` — used heavily by `learning`" },
+      { "kind": "interface", "name": "lesson.Reader", "purpose": "`GetLesson`, `ListLessons`, `ListLessonsByCourseID`, `NextLesson`, `ResolveActivity`, `ResolveActivities` (batch), `ListActivitiesByCourseIDs` — used heavily by `learning` and `exam`" },
       { "kind": "struct", "name": "lesson.Activity", "purpose": "`{ID, Kind, ContentVersionID, Config, Weight}`" },
       { "kind": "struct", "name": "lesson.ActivityHierarchy", "purpose": "`{ActivityID, LessonID, UnitID, CourseID, Kind, ContentVersionID, Config, Weight, LessonSkillFocus}` — single-call structural resolution for activity attempts (P8.3 Trap 1)" }
     ],
@@ -348,7 +355,8 @@
       { "name": "daily_sets", "purpose": "Daily practice set cache", "notes": "`user_id`, `local_date`, `activity_ids`. Unique on (user_id, local_date)." },
       { "name": "placement_sessions", "purpose": "One adaptive placement test", "notes": "`user_id`, `status`, `stage`, `started_at`, `deadline_at`, `estimate` jsonb, `items` jsonb (served items with their attempts), `version`, `productive_status`, `productive_deadline_at`, `result_id`, `completed_at`" },
       { "name": "weekly_plans", "purpose": "A learner's plan for one week", "notes": "`user_id`, `week_start` (Monday, Asia/Ho_Chi_Minh), `minutes_goal`, `items` jsonb. Primary key (user_id, week_start); progress is read, not stored" },
-      { "name": "node_mastery", "purpose": "Per-node spine taxonomy mastery estimate", "notes": "`user_id`, `node_id`, `attempts`, `correct`, `score`, `last_seen_at`. Primary key (user_id, node_id)." }
+      { "name": "node_mastery", "purpose": "Per-node spine taxonomy mastery estimate", "notes": "`user_id`, `node_id`, `attempts`, `correct`, `score`, `last_seen_at`. Primary key (user_id, node_id)." },
+      { "name": "resource_practice_sets", "purpose": "Private practice generated from a learner's own upload (WO 21 Stage B)", "notes": "`resource_id` PK, `user_id`, `lesson_id`, `activity_ids`, `status` (generating/ready/failed), `failure_reason`, `generated_on`. Regenerable once a day; never part of the shared bank." }
     ],
     "indexes": [
       "`uq_progress_user_scope` — the read path for every dashboard",
@@ -378,7 +386,9 @@
       { "method": "GET", "path": "/api/v1/me/path", "permission": "self", "purpose": "Recommended courses for the learner's level and the lesson to start at in each", "success": "200" },
       { "method": "GET", "path": "/api/v1/me/weekly-plan", "permission": "self", "purpose": "This week's plan, built on the first request of the week, with progress read now", "success": "200" },
       { "method": "GET", "path": "/api/v1/me/foundation/path", "permission": "self", "purpose": "Learning path to a target foundation topic with user mastery", "success": "200", "errors": ["NOT_FOUND", "VALIDATION_FAILED"] },
-      { "method": "GET", "path": "/api/v1/me/foundation/next", "permission": "self", "purpose": "Next foundation topic to learn across strands", "success": "200", "errors": ["NOT_FOUND"] }
+      { "method": "GET", "path": "/api/v1/me/foundation/next", "permission": "self", "purpose": "Next foundation topic to learn across strands", "success": "200", "errors": ["NOT_FOUND"] },
+      { "method": "POST", "path": "/api/v1/me/resources/{id}/practice", "permission": "self", "purpose": "Generate one private set of ten practice items from the caller's own resource (WO 21 Stage B); regenerable once a day", "success": "202", "errors": ["RESOURCE_NOT_FOUND", "RESOURCE_PRACTICE_NO_TEXT", "RESOURCE_PRACTICE_UNCLASSIFIED"] },
+      { "method": "GET", "path": "/api/v1/me/resources/{id}/practice", "permission": "self", "purpose": "The private practice set generated from one of the caller's resources, with its activities once ready", "success": "200", "errors": ["RESOURCE_NOT_FOUND", "RESOURCE_PRACTICE_NOT_FOUND"] }
     ],
 
     "contract": [
@@ -404,11 +414,12 @@
         { "name": "user.deleted", "reason": "Anonymise progress and attempts" }
       ]
     },
-    "dependsOn": ["lesson", "content", "srs", "user", "admin", "cache", "job"],
+    "dependsOn": ["lesson", "content", "srs", "resource", "user", "admin", "cache", "job"],
     "dependsWhy": {
       "lesson": "Structure, activities, unlocking rules, the curriculum catalogue for the starting path",
       "content": "Rendering activity content",
       "srs": "Push review items produced by a graded attempt; due reviews and review pace for the weekly plan",
+      "resource": "The learner's own upload: its extracted text and classification are the source for private practice (WO 21 Stage B)",
       "user": "The learning profile: declared level, target level, weekly minutes",
       "admin": "The `placement.invite` flag",
       "cache": "Dashboard and progress reads",
@@ -427,7 +438,8 @@
       "Skill mastery is an exponentially weighted estimate over recent attempts, not a raw average — recent performance must dominate.",
       "The placement test adapts: item difficulty follows the running estimate, and it stops when the confidence interval is narrow enough or the item budget is exhausted.",
       "Placement completes nothing: no progress row, no `activity.completed`, no review card. A placement opens lessons below the placed level; a declared level opens nothing.",
-      "A node is weak only after three attempts, and mastered only after five (score >= 0.8)."
+      "A node is weak only after three attempts, and mastered only after five (score >= 0.8).",
+      "The daily set labels the one item drawn for the learner's weakest node, so why it is in today's list is visible; the label is recomputed at read time, not stored."
     ],
 
     "cache": [
@@ -783,8 +795,9 @@
       { "method": "POST", "path": "/api/v1/vocabulary/decks/{id}/words", "permission": "self", "purpose": "Add a word sense to a deck", "success": "201", "errors": ["WORD_ALREADY_IN_DECK"] },
       { "method": "DELETE", "path": "/api/v1/vocabulary/decks/{id}/words/{sense_id}", "permission": "self", "purpose": "Remove", "success": "204" },
       { "method": "POST", "path": "/api/v1/vocabulary/words/{sense_id}/state", "permission": "self", "purpose": "Mark known or ignored", "success": "200" },
-      { "method": "POST", "path": "/api/v1/me/vocabulary/uploads", "permission": "self", "purpose": "Submit your own vocabulary to be checked", "success": "202", "notes": "Accepted, not applied: checking runs as a job so a learner never waits on a provider." },
-      { "method": "GET", "path": "/api/v1/me/vocabulary/uploads", "permission": "self", "purpose": "Your uploads, newest first", "success": "200" },
+      { "method": "POST", "path": "/api/v1/me/vocabulary/uploads", "permission": "self", "purpose": "Submit your own vocabulary to be checked", "success": "202", "notes": "Known words are added before the response, within a 3-second budget; new words are checked by a job that starts at once, one model call per term across learners." },
+      { "method": "GET", "path": "/api/v1/me/vocabulary/uploads", "permission": "self", "purpose": "Your uploads, newest first", "success": "200", "notes": "Cursor-paginated; carries failed_count." },
+      { "method": "GET", "path": "/api/v1/me/vocabulary/upload-items", "permission": "self", "purpose": "Your pasted words, searchable and a page at a time", "success": "200", "notes": "Filters: q (substring), status (comma list), upload_id. Cursor-paginated." },
       { "method": "GET", "path": "/api/v1/me/vocabulary/uploads/{id}", "permission": "self", "purpose": "One upload, with every word and what became of it", "success": "200" },
       { "method": "GET", "path": "/api/v1/admin/vocabulary/words", "permission": "content.edit", "purpose": "List vocabulary words with source filter", "success": "200" },
       { "method": "POST", "path": "/api/v1/admin/vocabulary/words", "permission": "content.create", "purpose": "Create a word entry", "success": "201" },
@@ -1490,7 +1503,7 @@
       {
         "kind": "interface",
         "name": "questionbank.Reader",
-        "purpose": "`ListQuestions` (permission-checked) and `DrawableForPart` (system read for `exam`: published questions with an activity, stable order)"
+        "purpose": "`ListQuestions` (permission-checked), `DrawableForPart` (system read for `exam`: published questions with an activity, stable order) and `DrawableSizes` (the same set counted per part and group size, for coverage)"
       },
       {
         "kind": "interface",
@@ -1525,7 +1538,7 @@
       "A bank question's body is a content version and it is drawn as an activity. There is no second copy of its answer (no `question_options`).",
       "The fingerprint is unique; a duplicate is refused by the database.",
       "Every bank question carries provenance; an item without it is refused.",
-      "A question enters the bank only after its content version is published through the review queue. `PublishQuestion` on unreviewed content fails with `QUESTION_NOT_REVIEWED`.",
+      "A question enters the bank only after its content version is approved, by a person or by an independent verifier that confirmed it. `PublishQuestion` on unreviewed content fails with `QUESTION_NOT_REVIEWED`.",
       "Spine tags are `content.content_tags` on the question's content item, resolved through `content.TagIndex` — never joined from this module's SQL.",
       "The correct answer never reaches a learner: sittings are served through the existing redaction."
     ],
@@ -1644,7 +1657,7 @@
       { "name": "exam_versions", "purpose": "Verified exam versions", "notes": "`exam_family`, `code`, `title`, `total_minutes`, `scoring`, `source_url`, `verified_at`, `is_current`" },
       { "name": "exam_parts", "purpose": "Exam parts per version", "notes": "`version_id`, `section`, `part_number`, `kind`, `question_count`, `group_size`" },
       { "name": "blueprints", "purpose": "Mock test blueprints", "notes": "`version_id`, `name`, `cefr_distribution`, `node_distribution`" },
-      { "name": "mock_tests", "purpose": "Composed mock tests", "notes": "`blueprint_id`, `mode`, `seed`, `composition`, `owner_id`" }
+      { "name": "mock_tests", "purpose": "Composed mock tests", "notes": "`blueprint_id`, `mode`, `number` (fixed only), `seed`, `composition`, `owner_id`" }
     ],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/exams", "permission": "content.read.published", "purpose": "Available mock exams", "success": "200" },
@@ -1656,6 +1669,7 @@
       { "method": "POST", "path": "/api/v1/exam-attempts/{id}/submit", "permission": "self", "purpose": "Submit the whole exam", "success": "202", "notes": "202 because writing and speaking sections grade asynchronously" },
       { "method": "GET", "path": "/api/v1/exam-attempts/{id}/report", "permission": "self", "purpose": "Score report when ready", "success": "200" },
       { "method": "GET", "path": "/api/v1/exam-versions", "permission": "content.read.published", "purpose": "Current verified exam versions and their blueprints", "success": "200" },
+      { "method": "GET", "path": "/api/v1/exam-versions/{id}/tests", "permission": "content.read.published", "purpose": "The numbered fixed tests of one exam version", "success": "200" },
       { "method": "POST", "path": "/api/v1/mock-tests", "permission": "self", "purpose": "Compose a mock test", "success": "201" },
       { "method": "POST", "path": "/api/v1/mock-tests/{id}/attempts", "permission": "self", "purpose": "Start or retake a mock test attempt", "success": "201" },
       { "method": "GET", "path": "/api/v1/admin/exams/versions/{id}/coverage", "permission": "questionbank.read", "purpose": "Exam version coverage report", "success": "200" }
@@ -1683,9 +1697,10 @@
       "The score report is generated once and stored — it must not change if the scoring table is later revised.",
       "Exam structures are seeded data with an `https` source and a verification date.",
       "A retake replays its composition; only a new test draws again.",
-      "A fixed test is one stored composition shared by everyone, composed without anyone's exposures.",
+      "A fixed test is a numbered, stored composition shared by everyone; the fixed tests of one blueprint share no question.",
       "A part is filled with exactly its question count, in whole groups; a part the bank cannot fill is refused with the part named.",
       "The number of distinct tests shown is the coverage report's number.",
+      "A mock test's composition is stored on the attempt and served from there, so its activity configs are redacted at composition time: a key that reaches the composition reaches the learner.",
       "A practice sitting may opt out of a visible time limit; the server still applies a generous backstop deadline so an abandoned sitting cannot block a future attempt indefinitely."
     ],
     "errors": [
@@ -1911,7 +1926,7 @@
       "Upload intents: a presigned POST policy into fluentra-uploads that pins the content type and a 1 B to 50 MB size range, valid 5 minutes",
       "Confirming an upload and submitting a URL, each writing its row and enqueuing resource.validate in one transaction",
       "Lifecycle pending, uploaded, then validated, rejected or failed",
-      "File validation by magic bytes against an allow-list: PDF, DOC, DOCX, PPT, PPTX, PNG, JPEG, WebP, MP3, WAV, M4A, MP4, WebM",
+      "File validation by magic bytes against an allow-list: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, PNG, JPEG, WebP, MP3, WAV, M4A, MP4, WebM",
       "URL validation that stores the page title and never the body, through a client whose dialer refuses non-public addresses",
       "Per-user quotas: 50 resources and 250 MB, counting everything not rejected or failed",
       "Presigned GET for a validated file its owner requests",

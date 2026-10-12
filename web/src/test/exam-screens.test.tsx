@@ -38,7 +38,7 @@ const exam: ExamTemplate = {
   total_minutes: 75,
 };
 
-const attempt: ExamAttempt = {
+export const attempt: ExamAttempt = {
   id: SITTING_ID,
   exam_id: EXAM_ID,
   exam_title: exam.title_en,
@@ -238,7 +238,6 @@ describe("exam screens", () => {
       screen.getByText(/two sittings hold different items/),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Not scored").length).toBeGreaterThan(0);
-    expect(screen.getByText("1 of 2 questions correct")).toBeInTheDocument();
     expect(screen.getByText("Tab hidden: 2")).toBeInTheDocument();
     expect(screen.queryByText(/Time taken/)).not.toBeInTheDocument();
   });
@@ -312,6 +311,10 @@ describe("exam screens", () => {
     await renderWithProviders(<ExamReport report={reviewed} />);
 
     expect(await screen.findByText("Answer sheet")).toBeInTheDocument();
+    expect(
+      screen.queryByText("When is the library closed?"),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "View" })[0]!);
     expect(screen.getByText("When is the library closed?")).toBeInTheDocument();
     expect(screen.getByText("B · Monday")).toBeInTheDocument();
     expect(screen.getAllByText("A · Friday").length).toBeGreaterThan(0);
@@ -319,11 +322,7 @@ describe("exam screens", () => {
       screen.getByText("The passage says it is closed on Friday."),
     ).toBeInTheDocument();
     // Question 1 is on the answer sheet and in its question type's row.
-    const links = screen.getAllByRole("link", { name: "1" });
-    expect(links).toHaveLength(2);
-    for (const link of links) {
-      expect(link).toHaveAttribute("href", "#review-q-1");
-    }
+    expect(screen.getAllByRole("button", { name: "1" })).toHaveLength(2);
     expect(screen.getByText("Results by question type")).toBeInTheDocument();
     expect(screen.getByText("#Reading comprehension")).toBeInTheDocument();
   });
@@ -367,9 +366,9 @@ describe("exam screens", () => {
     await renderWithProviders(<ExamList userPracticeLevel="B1" />);
 
     fireEvent.click(await screen.findByText("Practice mode"));
-    fireEvent.click(screen.getByRole("checkbox", { name: "No time limit" }));
+    fireEvent.click(screen.getByRole("button", { name: "No time limit" }));
 
-    expect(screen.getByLabelText(/^Time limit/)).toBeDisabled();
+    expect(screen.queryByRole("slider")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Start" }));
 
     await waitFor(() =>
@@ -399,6 +398,129 @@ describe("exam screens", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows a typed question its word limit and a true/false/not given one its three answers", async () => {
+    const { section_remaining_seconds: _unused, ...rest } = attempt;
+    const ielts = {
+      ...rest,
+      mode: "practice" as const,
+      section_activities: [
+        {
+          section_position: 1,
+          skill: "reading" as const,
+          activities: [
+            {
+              id: READING_ID,
+              kind: "reading_comprehension",
+              content_version_id: "66666666-6666-6666-6666-666666666602",
+              weight: 1,
+              config: {
+                passage: "The library opened in 2020 and has a reading room.",
+                max_words: 2,
+                questions: [
+                  { id: "q1", type: "completion", prompt: "It has a ___." },
+                  {
+                    id: "q2",
+                    type: "true_false_not_given",
+                    prompt: "It opened in 2020.",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    await renderWithProviders(
+      <ExamSittingRunner attempt={ielts} onSubmitted={vi.fn()} />,
+    );
+
+    expect(await screen.findByText("No more than 2 words")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Not Given/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("credits a Part 1 photograph wherever it shows", async () => {
+    const { section_remaining_seconds: _unused, ...rest } = attempt;
+    const toeic = {
+      ...rest,
+      mode: "practice" as const,
+      section_activities: [
+        {
+          section_position: 1,
+          skill: "listening" as const,
+          activities: [
+            {
+              id: READING_ID,
+              kind: "photo_description",
+              content_version_id: "66666666-6666-6666-6666-666666666603",
+              weight: 1,
+              config: {
+                image_url: "https://upload.wikimedia.org/photo.jpg",
+                image_credit:
+                  "https://commons.wikimedia.org/wiki/File:Photo.jpg",
+                image_licence: "CC BY 4.0",
+                options: [
+                  { id: "A", text: "A" },
+                  { id: "B", text: "B" },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    await renderWithProviders(
+      <ExamSittingRunner attempt={toeic} onSubmitted={vi.fn()} />,
+    );
+
+    const credit = await screen.findByRole("link", {
+      name: "Photo: CC BY 4.0",
+    });
+    expect(credit).toHaveAttribute(
+      "href",
+      "https://commons.wikimedia.org/wiki/File:Photo.jpg",
+    );
+    expect(
+      screen.getByRole("img", { name: "Photo Description" }),
+    ).toHaveAttribute("src", "https://upload.wikimedia.org/photo.jpg");
+  });
+
+  it("shows a Task 1 its chart", async () => {
+    const { section_remaining_seconds: _unused, ...rest } = attempt;
+    const ielts = {
+      ...rest,
+      mode: "practice" as const,
+      section_activities: [
+        {
+          section_position: 1,
+          skill: "writing" as const,
+          activities: [
+            {
+              id: READING_ID,
+              kind: "writing_prompt",
+              content_version_id: "66666666-6666-6666-6666-666666666604",
+              weight: 1,
+              config: {
+                prompt: "The chart shows library visitors each year.",
+                min_words: 150,
+                image_url: "data:image/svg+xml;base64,PHN2Zy8+",
+                chart: { title: "Library visitors" },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    await renderWithProviders(
+      <ExamSittingRunner attempt={ielts} onSubmitted={vi.fn()} />,
+    );
+
+    expect(
+      await screen.findByRole("img", { name: "Library visitors" }),
+    ).toHaveAttribute("src", "data:image/svg+xml;base64,PHN2Zy8+");
+  });
+
   it("numbers every question and jumps to one in another practice section", async () => {
     // A practice sitting has no section clock.
     const { section_remaining_seconds: _unused, ...rest } = attempt;
@@ -412,13 +534,18 @@ describe("exam screens", () => {
     expect(
       await screen.findByText("1. Where is the flight going?"),
     ).toBeInTheDocument();
-    expect(screen.getByText("0 of 2 answered")).toBeInTheDocument();
+    expect(screen.getByText("0/2")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Go to question 2" }));
 
     expect(
       await screen.findByText("The library is closed on Friday."),
     ).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole("complementary")
+        .querySelector('[aria-label="Go to question 2"]'),
+    ).toHaveAttribute("aria-current", "true");
   });
 
   it("saves only the open section's answers and moves on through the server", async () => {

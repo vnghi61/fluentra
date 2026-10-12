@@ -39,6 +39,18 @@ type fakeExamService struct {
 	listAttemptsFn func(
 		ctx context.Context, userID uuid.UUID, limit, offset int32,
 	) ([]service.ExamAttemptDTO, int64, error)
+	listFixedTestsFn func(
+		ctx context.Context, userID, versionID uuid.UUID,
+	) (*service.FixedTestListResponseDTO, error)
+}
+
+func (f *fakeExamService) ListFixedTests(
+	ctx context.Context, userID, versionID uuid.UUID,
+) (*service.FixedTestListResponseDTO, error) {
+	if f.listFixedTestsFn != nil {
+		return f.listFixedTestsFn(ctx, userID, versionID)
+	}
+	return nil, nil
 }
 
 func (f *fakeExamService) ListExams(ctx context.Context) ([]service.ExamDTO, error) {
@@ -115,7 +127,9 @@ func (f *fakeExamService) SittingsToday(_ context.Context, _ uuid.UUID) (service
 	return service.SittingsToday{Used: 1, Limit: 5}, nil
 }
 
-func (f *fakeExamService) ListCurrentExamVersions(_ context.Context) ([]service.ExamVersionDTO, error) {
+func (f *fakeExamService) ListCurrentExamVersions(
+	_ context.Context, _ uuid.UUID,
+) ([]service.ExamVersionDTO, error) {
 	return nil, nil
 }
 
@@ -126,7 +140,7 @@ func (f *fakeExamService) ComposeMockTest(
 }
 
 func (f *fakeExamService) StartMockTestAttempt(
-	_ context.Context, _, _ uuid.UUID,
+	_ context.Context, _, _ uuid.UUID, _ service.StartAttemptRequest,
 ) (*service.ExamAttemptDTO, error) {
 	return nil, nil
 }
@@ -177,6 +191,43 @@ func TestListExams(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &exams))
 	assert.Len(t, exams, 1)
 	assert.Equal(t, "b1-full", exams[0].Slug)
+}
+
+func TestListFixedTests(t *testing.T) {
+	versionID := uuid.New()
+	svc := &fakeExamService{
+		listFixedTestsFn: func(
+			_ context.Context, _, vID uuid.UUID,
+		) (*service.FixedTestListResponseDTO, error) {
+			assert.Equal(t, versionID, vID)
+			return &service.FixedTestListResponseDTO{
+				Items: []service.FixedTestSummaryDTO{
+					{ID: uuid.New(), Number: 1, Title: "Đề 1", QuestionCount: 200, Minutes: 120},
+				},
+			}, nil
+		},
+	}
+
+	router := setupExamRouter(svc)
+	req := httptest.NewRequest(http.MethodGet, "/exam-versions/"+versionID.String()+"/tests", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var body service.FixedTestListResponseDTO
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	require.Len(t, body.Items, 1)
+	assert.Equal(t, 1, body.Items[0].Number)
+	assert.Equal(t, "Đề 1", body.Items[0].Title)
+}
+
+func TestListFixedTests_InvalidID(t *testing.T) {
+	router := setupExamRouter(&fakeExamService{})
+	req := httptest.NewRequest(http.MethodGet, "/exam-versions/not-a-uuid/tests", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
 func TestStartSitting_RequiresAuth(t *testing.T) {

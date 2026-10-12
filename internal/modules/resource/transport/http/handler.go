@@ -26,6 +26,7 @@ type ResourceService interface {
 	) (*contract.ResourceList, error)
 	GetResource(ctx context.Context, id, userID uuid.UUID) (*contract.Resource, error)
 	DeleteResource(ctx context.Context, id, userID uuid.UUID) error
+	RevalidateResource(ctx context.Context, userID, resourceID uuid.UUID) error
 }
 
 // Handler handles HTTP requests for resource intake and management.
@@ -45,6 +46,25 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/me/resources", h.list)
 	r.Get("/me/resources/{id}", h.get)
 	r.Delete("/me/resources/{id}", h.delete)
+	r.Post("/me/resources/{id}/revalidate", h.revalidate)
+}
+
+func (h *Handler) revalidate(w http.ResponseWriter, r *http.Request) {
+	actor, ok := httpx.ActorFrom(r.Context())
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.BadRequest, "INVALID_RESOURCE_ID", "Invalid resource ID format"))
+		return
+	}
+	if err := h.service.RevalidateResource(r.Context(), actor.UserID, id); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, r, http.StatusAccepted, map[string]string{"status": processingStateProcessing})
 }
 
 func (h *Handler) uploadIntent(w http.ResponseWriter, r *http.Request) {
@@ -127,11 +147,11 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 	page := 1
-	if p, err := strconv.Atoi(query.Get("page")); err == nil && p > 0 {
+	if p, err := atoi32(query.Get("page")); err == nil && p > 0 {
 		page = p
 	}
 	pageSize := 20
-	if ps, err := strconv.Atoi(query.Get("page_size")); err == nil && ps > 0 {
+	if ps, err := atoi32(query.Get("page_size")); err == nil && ps > 0 {
 		pageSize = ps
 	}
 
@@ -198,4 +218,12 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// atoi32 parses a query integer no wider than int32, the width the paging
+// queries take: a value strconv.Atoi accepts on a 64-bit build would otherwise
+// wrap when narrowed, and a huge page or offset would turn negative.
+func atoi32(s string) (int, error) {
+	n, err := strconv.ParseInt(s, 10, 32)
+	return int(n), err
 }

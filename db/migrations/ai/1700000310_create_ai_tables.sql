@@ -75,5 +75,6 @@ DROP TABLE IF EXISTS ai.ai_budgets;
 DROP TABLE IF EXISTS ai.ai_cache_entries;
 DROP TABLE IF EXISTS ai.ai_usage;
 DROP TABLE IF EXISTS ai.ai_requests;
-DROP SCHEMA IF EXISTS ai CASCADE;
+-- The ai schema belongs to the bootstrap migration, with its grants; dropping it
+-- here would leave a re-applied Up with a bare schema fluentra_app cannot use.
 -- +goose StatementEnd

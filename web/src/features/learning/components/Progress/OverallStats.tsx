@@ -1,45 +1,91 @@
 import React from "react";
-import { CheckCircle2 } from "lucide-react";
+import { BookOpen, CheckCircle2, Clock, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { Card } from "@/components/ui/card";
+import { StatTile } from "@/components/ui/stat-tile";
+import { cn } from "@/lib/utils";
 
 export interface OverallStatsProps {
   totalActivitiesCompleted: number;
+  coursesInProgress: number;
+  coursesCompleted: number;
+  /**
+   * Minutes from learning sessions this week and the weekly goal, from
+   * GET /me/weekly-plan (`progress.minutes`, `minutes_goal`). Omitted while
+   * that loads or when it fails: the tile is left out, not zeroed.
+   */
+  studyThisWeek?: { minutes: number; goal: number } | undefined;
 }
 
 /**
- * The headline figures for the progress screen.
+ * The headline figures for the progress screen, each one measured:
+ * completed activities, courses in progress and courses completed from
+ * GET /me/progress, and this week's study minutes from GET /me/weekly-plan.
  *
- * There is one, because GET /me/progress returns one. This card previously sat
- * beside "Total Study Time" and "Words Mastered", both computed from this same
- * number by multiplying it — three minutes and four words per activity — and both
- * rendered in the same weight as the real figure, which is what made them read as
- * measurements. Bring either back when the endpoint returns it.
+ * Nothing is derived. Total all-time study time, words mastered and the
+ * "vs last week" deltas in the design have no API behind them (see
+ * the P10 learner-web card) and are not drawn.
  */
 export const OverallStats: React.FC<OverallStatsProps> = ({
   totalActivitiesCompleted,
+  coursesInProgress,
+  coursesCompleted,
+  studyThisWeek,
 }) => {
   const { t } = useTranslation();
 
+  const duration = (minutes: number) => {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0
+      ? t("overview.progress.hoursMinutes", { h, m })
+      : t("overview.progress.minutesOnly", { m });
+  };
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <Card className="p-5 flex items-center gap-4 border-border-subtle bg-surface-card">
-        <div className="h-12 w-12 rounded-2xl bg-warning/10 text-warning-accent flex items-center justify-center shrink-0">
-          <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
-        </div>
-        <div>
-          <p className="text-xs text-text-muted font-medium">
-            {t("progress.activitiesDone")}
-          </p>
-          <p
-            className="text-2xl font-extrabold text-text mt-0.5"
-            data-testid="activities-completed"
-          >
-            {totalActivitiesCompleted}
-          </p>
-        </div>
-      </Card>
+    <div
+      className={cn(
+        "grid grid-cols-2 gap-3 md:gap-4",
+        studyThisWeek ? "lg:grid-cols-4" : "md:grid-cols-3",
+      )}
+    >
+      <StatTile
+        icon={CheckCircle2}
+        iconClassName="bg-warning/10 text-warning-accent"
+        label={t("progress.kpi.activitiesDone")}
+        value={totalActivitiesCompleted}
+        valueTestId="activities-completed"
+        labelFirst
+        className={cn(!studyThisWeek && "col-span-2 md:col-span-1")}
+      />
+      <StatTile
+        icon={BookOpen}
+        label={t("progress.kpi.coursesInProgress")}
+        value={coursesInProgress}
+        valueTestId="courses-in-progress"
+        labelFirst
+      />
+      <StatTile
+        icon={Trophy}
+        iconClassName="bg-success/10 text-success-accent"
+        label={t("progress.kpi.coursesCompleted")}
+        value={coursesCompleted}
+        valueTestId="courses-completed"
+        labelFirst
+      />
+      {studyThisWeek && (
+        <StatTile
+          icon={Clock}
+          iconClassName="bg-violet-500/10 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300"
+          label={t("overview.progress.studyThisWeek")}
+          value={duration(studyThisWeek.minutes)}
+          hint={t("overview.progress.weeklyGoal", {
+            goal: duration(studyThisWeek.goal),
+          })}
+          valueTestId="study-this-week"
+          labelFirst
+        />
+      )}
     </div>
   );
 };

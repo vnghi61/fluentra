@@ -286,6 +286,65 @@ type ReportScore struct {
 	Band    string
 }
 
+// PublishedScore is the sitting's score on the exam's own scale.
+type PublishedScore struct {
+	Value float64
+	Scale string
+	// Estimate is true where the exam owner does not publish a raw-to-score
+	// conversion, so the number is ours and must be labelled so (D22-26).
+	Estimate bool
+}
+
+// ScaleScore maps a 0–100 overall onto the version's published scale. It reports
+// false when the version states no scale we can read.
+func ScaleScore(scoring json.RawMessage, overall float64) (PublishedScore, bool) {
+	if len(scoring) == 0 {
+		return PublishedScore{}, false
+	}
+	var s struct {
+		Type  string    `json:"type"`
+		Scale []float64 `json:"scale"`
+		Step  float64   `json:"step"`
+	}
+	if err := json.Unmarshal(scoring, &s); err != nil {
+		return PublishedScore{}, false
+	}
+
+	var lo, hi, step float64
+	switch s.Type {
+	case "band":
+		lo, hi, step = 0, 9, 0.5
+	case "raw_with_estimate":
+		lo, hi, step = 10, 990, 5
+	case "vstep":
+		lo, hi, step = 0, 10, 0.5
+	default:
+		if len(s.Scale) != 2 {
+			return PublishedScore{}, false
+		}
+	}
+	if len(s.Scale) == 2 {
+		lo, hi = s.Scale[0], s.Scale[1]
+	}
+	if s.Step > 0 {
+		step = s.Step
+	}
+	if step <= 0 {
+		step = 0.5
+	}
+	if hi <= lo {
+		return PublishedScore{}, false
+	}
+
+	// A linear map from 0–100 onto the scale. That is not the owner's own
+	// conversion, so the result is an estimate whatever the version row says
+	// (D22-26); a published raw-to-score table, when one is applied here, is
+	// what may clear the label.
+	value := lo + (overall/100)*(hi-lo)
+	value = math.Round(value/step) * step
+	return PublishedScore{Value: value, Scale: s.Type, Estimate: true}, true
+}
+
 // ScoreSection sets a section's status and 0–100 score from its items.
 //
 // An item still grading leaves the section pending. An item whose grading

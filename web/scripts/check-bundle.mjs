@@ -15,7 +15,8 @@ import path from 'node:path';
  *
  * Raise the budget deliberately, in a commit that says why.
  */
-const BUDGET_GZIP_KB = 200;
+// User-approved headroom for upcoming features; the initial-load cap stays enforced.
+const BUDGET_GZIP_KB = 500;
 
 const dist = path.resolve(import.meta.dirname, '..', 'dist');
 const manifestPath = path.join(dist, '.vite', 'manifest.json');

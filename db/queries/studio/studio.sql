@@ -25,9 +25,43 @@ WHERE creator_id = $1 AND is_default = true
 ORDER BY updated_at DESC
 LIMIT 1;
 
--- name: UpsertPayoutAccount :one
+-- EnsureCreatorProfile creates the creator profile a first payout save needs,
+-- without touching anything a profile that already exists carries. A creator
+-- configuring a bank account is a creator, and the payout_accounts foreign key
+-- says so; making them open the studio first is a second step nobody asked for.
+-- DO UPDATE (rather than DO NOTHING) also locks the row, which serializes two
+-- concurrent saves for the same creator.
+-- name: EnsureCreatorProfile :one
+INSERT INTO studio.creator_profiles (user_id, payout_eligible, updated_at)
+VALUES ($1, false, now())
+ON CONFLICT (user_id) DO UPDATE
+SET updated_at = creator_profiles.updated_at
+RETURNING user_id, bio, headline, payout_eligible, created_at, updated_at, trusted_at, approved_course_count, upheld_report_count, suspended_at, suspended_reason;
+
+-- GetPayoutAccountForUpdate reads the creator's current payout account and
+-- locks it, so a repeated save updates that row instead of appending a second
+-- default. The default account wins when more than one row somehow exists.
+-- name: GetPayoutAccountForUpdate :one
+SELECT id, creator_id, bank_code, account_number, account_holder_name, is_default, created_at, updated_at
+FROM studio.payout_accounts
+WHERE creator_id = $1
+ORDER BY is_default DESC, updated_at DESC
+LIMIT 1
+FOR UPDATE;
+
+-- name: InsertPayoutAccount :one
 INSERT INTO studio.payout_accounts (creator_id, bank_code, account_number, account_holder_name, is_default, updated_at)
 VALUES ($1, $2, $3, $4, $5, now())
+RETURNING id, creator_id, bank_code, account_number, account_holder_name, is_default, created_at, updated_at;
+
+-- name: UpdatePayoutAccount :one
+UPDATE studio.payout_accounts
+SET bank_code = $2,
+    account_number = $3,
+    account_holder_name = $4,
+    is_default = $5,
+    updated_at = now()
+WHERE id = $1
 RETURNING id, creator_id, bank_code, account_number, account_holder_name, is_default, created_at, updated_at;
 
 -- name: CreateCourseDraft :one
@@ -81,6 +115,22 @@ INSERT INTO studio.submissions (
     draft_id, version, status, submitted_by, gate2_required, gate2_reason, submitted_at, updated_at
 ) VALUES ($1, $2, $3, $4, $5, $6, now(), now())
 RETURNING id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason;
+
+-- GetCourseDraftForUpdate locks a draft row so version allocation, insertion
+-- and the draft status move happen against one snapshot: two concurrent
+-- submissions cannot both read "draft" and both insert a new active version.
+-- name: GetCourseDraftForUpdate :one
+SELECT id, owner_id, title, slug, description, cefr_level, topic_taxonomy_id, price_vnd, status, structure, created_at, updated_at
+FROM studio.course_drafts
+WHERE id = $1
+FOR UPDATE;
+
+-- GetNextSubmissionVersion is the next version for a draft, allocated inside
+-- the submission transaction rather than read separately by the caller.
+-- name: GetNextSubmissionVersion :one
+SELECT (COALESCE(MAX(version), 0) + 1)::integer AS next_version
+FROM studio.submissions
+WHERE draft_id = $1;
 
 -- name: GetSubmissionByID :one
 SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at, gate2_required, gate2_reason

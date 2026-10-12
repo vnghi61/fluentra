@@ -59,12 +59,14 @@ function signIn() {
 
 describe("MyWordsPage", () => {
   let submitted: string[] = [];
+  let itemQueries: URLSearchParams[] = [];
 
   beforeEach(async () => {
     signIn();
     await initI18n("en");
     await i18n.changeLanguage("en");
     submitted = [];
+    itemQueries = [];
 
     server.use(
       http.get("/api/v1/vocabulary/decks", () =>
@@ -87,31 +89,40 @@ describe("MyWordsPage", () => {
           ],
         }),
       ),
-      http.get("/api/v1/me/vocabulary/uploads/:id", () =>
-        HttpResponse.json({
-          id: "0199a1c2-3d4e-7f80-9abc-def0123456aa",
-          status: "completed",
-          item_count: 3,
-          verified_count: 2,
-          rejected_count: 1,
-          pending_count: 0,
-          created_at: "2026-08-30T09:00:00Z",
-          items: [
-            {
-              term: "leisure",
-              provided_meaning: "thời gian rảnh",
-              status: "verified",
-              reason: "",
-            },
-            {
-              term: "asdfgh",
-              provided_meaning: "",
-              status: "rejected",
-              reason: 'We could not find "asdfgh" as an English word.',
-            },
-          ],
-        }),
-      ),
+      http.get("/api/v1/me/vocabulary/upload-items", ({ request }) => {
+        const url = new URL(request.url);
+        itemQueries.push(url.searchParams);
+        const statuses = url.searchParams.get("status")?.split(",");
+        const q = url.searchParams.get("q") ?? "";
+        const items = [
+          {
+            id: "0199a1c2-3d4e-7f80-9abc-def0123456c1",
+            upload_id: "0199a1c2-3d4e-7f80-9abc-def0123456aa",
+            created_at: "2026-08-30T09:00:00Z",
+            term: "leisure",
+            provided_meaning: "thời gian rảnh",
+            status: "verified",
+            reason: "",
+          },
+          {
+            id: "0199a1c2-3d4e-7f80-9abc-def0123456c2",
+            upload_id: "0199a1c2-3d4e-7f80-9abc-def0123456aa",
+            created_at: "2026-08-30T09:00:00Z",
+            term: "asdfgh",
+            provided_meaning: "",
+            status: "rejected",
+            reason: 'We could not find "asdfgh" as an English word.',
+          },
+        ].filter(
+          (item) =>
+            (!statuses || statuses.includes(item.status)) &&
+            item.term.includes(q),
+        );
+        return HttpResponse.json({
+          items,
+          page: { has_more: false, limit: 20 },
+        });
+      }),
       http.post("/api/v1/me/vocabulary/uploads", async ({ request }) => {
         const body = (await request.json()) as { text: string };
         submitted.push(body.text);
@@ -178,7 +189,7 @@ describe("MyWordsPage", () => {
     expect(screen.getByText(/1 not found/i)).toBeInTheDocument();
   });
 
-  it("loads the words themselves only once a row is opened", async () => {
+  it("opens a row on the words that need a look, then shows the rest", async () => {
     const user = userEvent.setup();
     await renderPage();
 
@@ -186,11 +197,46 @@ describe("MyWordsPage", () => {
 
     await user.click(await screen.findByRole("button", { name: /3 words/i }));
 
-    expect(await screen.findByText("leisure")).toBeInTheDocument();
     // The rejection reason is written for the learner, so it is shown rather
-    // than reduced to a status chip.
+    // than reduced to a status chip — and it is what a learner opens a row for.
     expect(
-      screen.getByText(/could not find "asdfgh" as an English word/i),
+      await screen.findByText(/could not find "asdfgh" as an English word/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("leisure")).not.toBeInTheDocument();
+    expect(itemQueries.at(-1)?.get("status")).toBe("rejected,failed");
+
+    await user.click(screen.getByRole("button", { name: /all \(3\)/i }));
+    expect(await screen.findByText("leisure")).toBeInTheDocument();
+  });
+
+  it("finds a word across every upload", async () => {
+    const user = userEvent.setup();
+    await renderPage();
+
+    await user.type(
+      await screen.findByLabelText(/search the words you have added/i),
+      "leis",
+    );
+
+    expect(await screen.findByText("leisure")).toBeInTheDocument();
+    const last = itemQueries.at(-1);
+    expect(last?.get("q")).toBe("leis");
+    expect(last?.get("upload_id")).toBeNull();
+  });
+
+  it("says what became of the paste right where it was sent", async () => {
+    const user = userEvent.setup();
+    await renderPage();
+
+    const box = await screen.findByLabelText(/paste your words/i);
+    await user.type(box, "leisure{Enter}habit");
+    await user.click(screen.getByRole("button", { name: /add these words/i }));
+
+    expect(
+      await screen.findByText(/2 new words being checked/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("progressbar", { name: /0\/2 words processed/i }),
     ).toBeInTheDocument();
   });
 });

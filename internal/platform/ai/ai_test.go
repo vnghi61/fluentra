@@ -123,6 +123,29 @@ func TestRegistry_RendersTheCallersVariables(t *testing.T) {
 	assert.NotContains(t, rendered, "task: vocab_verify", "front matter is configuration, not prompt text")
 }
 
+// TestRegistry_ItemGenerateWritesPart1FromTheDescription is D22-21: the model
+// gets a person's description of the photograph, never the image, and the
+// section is absent for every other item.
+func TestRegistry_ItemGenerateWritesPart1FromTheDescription(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+	tmpl, err := registry.Get(ai.TaskItemGenerate)
+	require.NoError(t, err)
+	assert.Equal(t, 2, tmpl.Version)
+
+	vars := map[string]any{"CEFRLevel": "B1", "Count": 1}
+	plain, err := tmpl.Render(vars)
+	require.NoError(t, err)
+	assert.NotContains(t, plain, "The photograph (TOEIC Part 1)")
+
+	vars["PhotoDescription"] = "A man carries a box up a flight of stairs."
+	withPhoto, err := tmpl.Render(vars)
+	require.NoError(t, err)
+	assert.Contains(t, withPhoto, "The photograph (TOEIC Part 1)")
+	assert.Contains(t, withPhoto, "A man carries a box up a flight of stairs.")
+	assert.NotContains(t, withPhoto, "{{")
+}
+
 func TestRegistry_RefusesAnUnknownTask(t *testing.T) {
 	registry, err := ai.NewRegistry()
 	require.NoError(t, err)
@@ -548,12 +571,14 @@ func (m *mockBudgetChecker) CheckQuota(_ context.Context, provider string, _ ai.
 }
 
 type namedProvider struct {
-	name string
-	res  ai.Response
-	err  error
+	name  string
+	model string
+	res   ai.Response
+	err   error
 }
 
-func (p *namedProvider) Name() string { return p.name }
+func (p *namedProvider) Name() string  { return p.name }
+func (p *namedProvider) Model() string { return p.model }
 func (p *namedProvider) Complete(_ context.Context, _ ai.Request) (ai.Response, error) {
 	return p.res, p.err
 }
@@ -853,6 +878,118 @@ func TestRouter_EveryProviderGenuinelyOutOfQuotaStillReportsExhausted(t *testing
 	})
 
 	assert.ErrorIs(t, err, ai.ErrQuotaExhausted)
+}
+
+// TestRouter_ExcludesTheWritersModel. An independent verifier must not be
+// answered by the model that wrote the item: ExcludeModel drops every provider
+// configured with that model, and the next one answers instead.
+func TestRouter_ExcludesTheWritersModel(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	writer := &namedProvider{
+		name: testWriterName, model: testWriterModel,
+		res: ai.Response{Text: testConfirmedVerdict, Model: testWriterModel},
+	}
+	other := &namedProvider{
+		name: "other", model: testOtherModel,
+		res: ai.Response{Text: testConfirmedVerdict, Model: testOtherModel},
+	}
+
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts:   registry,
+		Providers: ai.NewProviderRegistry(writer, other),
+		Cache:     ai.NewMemoryCache(),
+		Usage:     ai.NoopUsageRecorder{},
+	})
+
+	res, err := router.Complete(context.Background(), ai.Request{
+		Task:         ai.TaskItemVerify,
+		Vars:         itemVerifyVars(),
+		ExcludeModel: testWriterModel,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, testOtherModel, res.Model, "the excluded writer model must not answer")
+}
+
+// TestRouter_ExclusionIsNotAnsweredFromTheWritersCache. The generator's own
+// blind solve and the independent verifier's send the same task with the same
+// inputs; a cached reply from the writer's call must not answer the verifier's.
+func TestRouter_ExclusionIsNotAnsweredFromTheWritersCache(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	writer := &namedProvider{
+		name: testWriterName, model: testWriterModel,
+		res: ai.Response{Text: testConfirmedVerdict, Model: testWriterModel},
+	}
+	other := &namedProvider{
+		name: "other", model: testOtherModel,
+		res: ai.Response{Text: testConfirmedVerdict, Model: testOtherModel},
+	}
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts:   registry,
+		Providers: ai.NewProviderRegistry(writer, other),
+		Cache:     ai.NewMemoryCache(),
+		Usage:     ai.NoopUsageRecorder{},
+	})
+
+	first, err := router.Complete(context.Background(), ai.Request{
+		Task: ai.TaskItemVerify, Vars: itemVerifyVars(),
+	})
+	require.NoError(t, err)
+	require.Equal(t, testWriterModel, first.Model)
+
+	res, err := router.Complete(context.Background(), ai.Request{
+		Task:         ai.TaskItemVerify,
+		Vars:         itemVerifyVars(),
+		ExcludeModel: testWriterModel,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, testOtherModel, res.Model, "the writer's cached reply must not answer an excluding call")
+}
+
+// TestRouter_ExcludingTheOnlyModelIsDisabled. With one provider configured and
+// its model excluded there is nothing independent to ask, so the call fails as
+// if no provider were configured and the caller escalates (D22-2).
+func TestRouter_ExcludingTheOnlyModelIsDisabled(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	writer := &namedProvider{
+		name: testWriterName, model: testWriterModel,
+		res: ai.Response{Text: testConfirmedVerdict, Model: testWriterModel},
+	}
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts:   registry,
+		Providers: ai.NewProviderRegistry(writer),
+		Cache:     ai.NewMemoryCache(),
+		Usage:     ai.NoopUsageRecorder{},
+	})
+
+	_, err = router.Complete(context.Background(), ai.Request{
+		Task:         ai.TaskItemVerify,
+		Vars:         itemVerifyVars(),
+		ExcludeModel: testWriterModel,
+	})
+	assert.ErrorIs(t, err, ai.ErrDisabled)
+}
+
+// The writer and verifier models the exclusion tests compare, and the reply the
+// mock item_verify returns when it confirms.
+const (
+	testWriterName       = "writer"
+	testWriterModel      = "model-w"
+	testOtherModel       = "model-o"
+	testConfirmedVerdict = `{"verdict":"confirmed"}`
+)
+
+// itemVerifyVars is the smallest set item_verify.v1.md renders without complaint.
+func itemVerifyVars() map[string]any {
+	return map[string]any{
+		"Kind": "grammar_tense_choice", "TargetLevel": "B1",
+		"RedactedBody": "{}", "AnswerKey": "{}", "OfficialSpec": "",
+	}
 }
 
 // verifyVars is the smallest set vocab_verify.v1.md renders without complaint.

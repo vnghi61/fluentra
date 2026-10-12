@@ -27,8 +27,14 @@ import (
 // ---------------------------------------------------------------------------
 
 type mockExamRepo struct {
+	// bestScore is what GetUserBestVersionScore answers.
+	bestScore  *float64
 	mu         sync.Mutex
 	exams      []sqlc.AssessExam
+	mockTests  []*domain.MockTest
+	blueprint  *domain.Blueprint
+	parts      []*domain.ExamPart
+	version    *domain.ExamVersion
 	attempts   map[uuid.UUID]sqlc.AssessExamAttempt
 	reports    map[uuid.UUID]sqlc.AssessScoreReport
 	events     []sqlc.RecordIntegrityEventParams
@@ -309,19 +315,22 @@ func (m *mockExamRepo) ListIntegrityEvents(
 }
 
 func (m *mockExamRepo) ListCurrentExamVersions(_ context.Context) ([]*domain.ExamVersion, error) {
-	return nil, nil
+	if m.version == nil {
+		return nil, nil
+	}
+	return []*domain.ExamVersion{m.version}, nil
 }
 
 func (m *mockExamRepo) GetExamVersionByID(_ context.Context, _ uuid.UUID) (*domain.ExamVersion, error) {
-	return nil, nil
+	return m.version, nil
 }
 
 func (m *mockExamRepo) GetExamVersionByCode(_ context.Context, _ string) (*domain.ExamVersion, error) {
-	return nil, nil
+	return m.version, nil
 }
 
 func (m *mockExamRepo) ListExamPartsByVersionID(_ context.Context, _ uuid.UUID) ([]*domain.ExamPart, error) {
-	return nil, nil
+	return m.parts, nil
 }
 
 func (m *mockExamRepo) GetExamPartByID(_ context.Context, _ uuid.UUID) (*domain.ExamPart, error) {
@@ -329,11 +338,14 @@ func (m *mockExamRepo) GetExamPartByID(_ context.Context, _ uuid.UUID) (*domain.
 }
 
 func (m *mockExamRepo) ListBlueprintsByVersionID(_ context.Context, _ uuid.UUID) ([]*domain.Blueprint, error) {
-	return nil, nil
+	if m.blueprint == nil {
+		return nil, nil
+	}
+	return []*domain.Blueprint{m.blueprint}, nil
 }
 
 func (m *mockExamRepo) GetBlueprintByID(_ context.Context, _ uuid.UUID) (*domain.Blueprint, error) {
-	return nil, nil
+	return m.blueprint, nil
 }
 
 func (m *mockExamRepo) GetBlueprintByName(_ context.Context, _ uuid.UUID, _ string) (*domain.Blueprint, error) {
@@ -341,6 +353,9 @@ func (m *mockExamRepo) GetBlueprintByName(_ context.Context, _ uuid.UUID, _ stri
 }
 
 func (m *mockExamRepo) CreateMockTest(_ context.Context, mt *domain.MockTest) (*domain.MockTest, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.mockTests = append(m.mockTests, mt)
 	return mt, nil
 }
 
@@ -349,7 +364,11 @@ func (m *mockExamRepo) GetMockTestByID(_ context.Context, _ uuid.UUID) (*domain.
 }
 
 func (m *mockExamRepo) ListMockTestsByOwner(_ context.Context, _ *uuid.UUID) ([]*domain.MockTest, error) {
-	return nil, nil
+	return m.mockTests, nil
+}
+
+func (m *mockExamRepo) ListFixedMockTests(_ context.Context, _ uuid.UUID) ([]*domain.MockTest, error) {
+	return m.mockTests, nil
 }
 
 func (m *mockExamRepo) GetExamByVersionID(_ context.Context, _ uuid.UUID) (*sqlc.AssessExam, error) {
@@ -500,7 +519,7 @@ func newFixture(t *testing.T) *fixture {
 		skill string
 		kind  string
 	}{
-		{"listening", "listening_comprehension"},
+		{testSkillListening, "listening_comprehension"},
 		{"reading", "reading_comprehension"},
 		{"writing", "writing_prompt"},
 		{"speaking", "speaking_task"},
@@ -919,4 +938,90 @@ func TestListeningPlayPolicy(t *testing.T) {
 	plays, err = f.svc.ListeningPlayPolicy(context.Background(), userID, practice.ID, listening.ContentVersionID)
 	require.NoError(t, err)
 	assert.Equal(t, 3, plays)
+}
+
+// TestListeningPlayPolicy_CoversTOEICPartsOneAndTwo. A photograph with spoken
+// statements and a question with spoken responses are heard, not read, and
+// carry the same one-play rule as a comprehension clip (WO 22 I.3.5).
+func TestListeningPlayPolicy_CoversTOEICPartsOneAndTwo(t *testing.T) {
+	for _, kind := range []string{"photo_description", "question_response"} {
+		t.Run(kind, func(t *testing.T) {
+			f := newFixture(t)
+			act := f.sections[0].Activities[0]
+			act.Kind = kind
+			f.learning.kinds[act.ID] = kind
+			f.sections[0].Activities[0] = act
+
+			userID := uuid.New()
+			exam := f.start(t, userID, domain.ModeExam)
+			plays, err := f.svc.ListeningPlayPolicy(
+				context.Background(), userID, exam.ID, act.ContentVersionID)
+			require.NoError(t, err)
+			assert.Equal(t, 1, plays, "TOEIC %s is one play in exam mode", kind)
+
+			_, err = f.svc.ListeningPlayPolicy(
+				context.Background(), uuid.New(), exam.ID, act.ContentVersionID)
+			require.ErrorIs(t, err, domain.ErrPlayNotAllowed, "another learner's sitting")
+		})
+	}
+}
+
+func (m *mockExamRepo) ListBlueprintsByVersionIDs(
+	ctx context.Context, versionIDs []uuid.UUID,
+) (map[uuid.UUID][]*domain.Blueprint, error) {
+	out := map[uuid.UUID][]*domain.Blueprint{}
+	for _, id := range versionIDs {
+		bps, err := m.ListBlueprintsByVersionID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = bps
+	}
+	return out, nil
+}
+
+func (m *mockExamRepo) ListExamPartsByVersionIDs(
+	ctx context.Context, versionIDs []uuid.UUID,
+) (map[uuid.UUID][]*domain.ExamPart, error) {
+	out := map[uuid.UUID][]*domain.ExamPart{}
+	for _, id := range versionIDs {
+		parts, err := m.ListExamPartsByVersionID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = parts
+	}
+	return out, nil
+}
+
+func (m *mockExamRepo) CountFixedMockTests(
+	ctx context.Context, blueprintIDs []uuid.UUID,
+) (map[uuid.UUID]int, error) {
+	out := map[uuid.UUID]int{}
+	for _, id := range blueprintIDs {
+		tests, err := m.ListFixedMockTests(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = len(tests)
+	}
+	return out, nil
+}
+
+func (m *mockExamRepo) ListLatestUserMockTestAttempts(
+	_ context.Context, _ uuid.UUID, _ []uuid.UUID,
+) (map[uuid.UUID]*domain.LatestAttempt, error) {
+	return map[uuid.UUID]*domain.LatestAttempt{}, nil
+}
+
+func (m *mockExamRepo) ListUserBestVersionScores(
+	_ context.Context, _ uuid.UUID, versionIDs []uuid.UUID,
+) (map[uuid.UUID]float64, error) {
+	out := map[uuid.UUID]float64{}
+	if m.bestScore != nil {
+		for _, id := range versionIDs {
+			out[id] = *m.bestScore
+		}
+	}
+	return out, nil
 }

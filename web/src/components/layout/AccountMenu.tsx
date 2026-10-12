@@ -6,6 +6,7 @@ import {
   PenTool,
   Settings,
   ShieldCheck,
+  Sparkles,
   UserRound,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -23,9 +24,12 @@ export interface AccountMenuProps {
   role: string;
   /** The learner's own name, when the profile has loaded. */
   displayName?: string | undefined;
+  /** The account email, shown under the name. */
+  email?: string | undefined;
   /** The learner's uploaded avatar, when there is one. */
   avatarUrl?: string | undefined;
   onLogout?: (() => void) | undefined;
+  canAccessStudio?: boolean | undefined;
 }
 
 /**
@@ -41,8 +45,10 @@ export interface AccountMenuProps {
 export default function AccountMenu({
   role,
   displayName,
+  email,
   avatarUrl,
   onLogout,
+  canAccessStudio = false,
 }: AccountMenuProps): React.JSX.Element {
   const { t } = useTranslation();
 
@@ -95,23 +101,34 @@ export default function AccountMenu({
           real distinction and a reminder of which account they are in.
         */}
         <DropdownMenuLabel>
-          <span className="text-text-muted font-normal">
-            {t("nav.greeting", "Hello")}
-          </span>{" "}
           <span className="font-semibold text-text">
             {displayName?.trim() || t("nav.greetingFallback", "there")}
           </span>
           {role === "admin" && (
-            <span className="ml-2 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-primary-accent">
+            <span className="ml-2 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-bold uppercase text-primary-accent">
               {role}
             </span>
           )}
+          {email ? (
+            <span
+              title={email}
+              className="block max-w-[220px] truncate text-sm font-normal text-text-muted"
+            >
+              {email}
+            </span>
+          ) : null}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link to="/settings">
             <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
             {t("nav.settings", "Settings")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/settings" search={{ section: "profile" }}>
+            <UserRound className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {t("nav.profile", "Profile")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
@@ -126,7 +143,15 @@ export default function AccountMenu({
             {t("nav.mySpeaking", "My Speaking")}
           </Link>
         </DropdownMenuItem>
-        {role === "admin" && (
+        {canAccessStudio && (
+          <DropdownMenuItem asChild>
+            <Link to="/studio">
+              <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {t("nav.studio", "Studio")}
+            </Link>
+          </DropdownMenuItem>
+        )}
+        {(role === "admin" || role === "moderator") && (
           <DropdownMenuItem asChild>
             <Link to="/admin">
               <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />

@@ -1,81 +1,44 @@
 # Fluentra
 
-> **AI-first English Learning Platform.** A Go modular monolith + React SPA that teaches
+> **AI-first English learning platform.** A Go modular monolith and a React SPA that teach
 > vocabulary, grammar, reading, listening, speaking and writing through adaptive lessons,
-> spaced repetition, and AI-graded practice.
+> spaced repetition, mock exams (IELTS, TOEIC, VSTEP) and AI-graded practice.
 
-[![status](https://img.shields.io/badge/status-architecture--phase-blue)](docs/development/phase-1-plan.md)
 [![go](https://img.shields.io/badge/go-1.25-00ADD8)](go.mod)
 [![react](https://img.shields.io/badge/react-19-61DAFB)](web/package.json)
 [![license](https://img.shields.io/badge/license-proprietary-lightgrey)](DEPENDENCIES.md)
 
----
+**AI assistants:** read [`AGENT.md`](AGENT.md) first, then [`MODULE_INDEX.md`](MODULE_INDEX.md).
 
-## 🤖 If you are an AI assistant
+## Quick start
 
-**Read [`AGENT.md`](AGENT.md) first, then [`MODULE_INDEX.md`](MODULE_INDEX.md).**
-Do not scan the repository. Everything you need is indexed.
+```bash
+make dev-infra     # postgres, redis, minio, mailpit
+make migrate-up
+make seed          # demo accounts, courses, 10k words, mock tests (about 20 min)
+make api           # :8080
+make worker        # :8081
+make web           # :5173
+```
 
-## 👤 If you are a human
+Copy `.env.example` to `.env` first. It is the full configuration reference: a key that
+is not in it is not read.
 
-Start with [`docs/development/getting-started.md`](docs/development/getting-started.md).
-
----
-
-## What this repository currently contains
-
-This repository is at the **architecture & blueprint stage**. It contains:
-
-- ✅ The complete Software Architecture Document (`docs/architecture/`)
-- ✅ 30 module specifications with AI-agent documentation (`internal/*/*/`)
-- ✅ Architecture Decision Records (`docs/adr/`)
-- ✅ The AI knowledge base and prompt library (`docs/ai/`, `docs/prompts/`)
-- ✅ Repository conventions and guidelines (root `*_GUIDELINE.md`)
-- ✅ Development roadmap (`ROADMAP.md`)
-- ⬜ Implementation code — **not yet written, by design**
-
-## Table of contents
+## Documentation
 
 | Document | What it answers |
 |---|---|
-| [AGENT.md](AGENT.md) | How AI assistants should work in this repo |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | How the system is built and why |
-| [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) | What every folder is for |
-| [MODULE_INDEX.md](MODULE_INDEX.md) | All 30 modules, owners, status, dependencies |
-| [ROADMAP.md](ROADMAP.md) | What gets built, in what order |
-| [DEPENDENCIES.md](DEPENDENCIES.md) | Every library, why it was chosen, alternatives |
-| [DECISIONS.md](DECISIONS.md) | Index of all ADRs |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute (human or agent) |
-| [GLOSSARY.md](GLOSSARY.md) | Domain vocabulary — read before naming anything |
-| [FAQ.md](FAQ.md) | Frequently asked architecture questions |
-
-### Guidelines
-
-[CODING_STANDARD.md](CODING_STANDARD.md) ·
-[API_GUIDELINE.md](API_GUIDELINE.md) ·
-[DATABASE_GUIDELINE.md](DATABASE_GUIDELINE.md) ·
-[ERROR_HANDLING.md](ERROR_HANDLING.md) ·
-[LOGGING_GUIDELINE.md](LOGGING_GUIDELINE.md) ·
-[TESTING_GUIDELINE.md](TESTING_GUIDELINE.md) ·
-[SECURITY_GUIDELINE.md](SECURITY_GUIDELINE.md) ·
-[OBSERVABILITY_GUIDELINE.md](OBSERVABILITY_GUIDELINE.md)
-
-### Operations
-
-[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) ·
-[DOCKER_GUIDE.md](DOCKER_GUIDE.md) ·
-[GITHUB_ACTIONS.md](GITHUB_ACTIONS.md) ·
-[RELEASE_GUIDE.md](RELEASE_GUIDE.md) ·
-[CHANGELOG.md](CHANGELOG.md)
-
-### AI
-
-[AI_GUIDE.md](AI_GUIDE.md) ·
-[AI_CONTEXT.md](AI_CONTEXT.md) ·
-[PROMPTS.md](PROMPTS.md) ·
-[PROMPT_LIBRARY.md](PROMPT_LIBRARY.md)
-
----
+| [ARCHITECTURE.md](ARCHITECTURE.md) | How the system is built and why; project layout; glossary |
+| [MODULE_INDEX.md](MODULE_INDEX.md) | Every module, its owner and its allowed dependencies |
+| `internal/<group>/<module>/AGENT.md` | One module: contract, schema, endpoints, flows, decisions, backlog |
+| [docs/CONVENTIONS.md](docs/CONVENTIONS.md) | Coding, API, database, errors, logging, security and testing rules |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Deploying on the free tier (Vercel, Render, Supabase, Upstash, R2), CI, releases, runbooks |
+| [docs/AI.md](docs/AI.md) | Working with AI assistants and the product's LLM calls |
+| [DECISIONS.md](DECISIONS.md) | Index of the ADRs in `docs/adr/` |
+| [DEPENDENCIES.md](DEPENDENCIES.md) | Every library, why it was chosen, third-party notices |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute, including the add-a-module and add-an-endpoint guides |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
+| [web/AGENT.md](web/AGENT.md) | The frontend |
 
 ## Architecture at a glance
 
@@ -128,13 +91,9 @@ graph TB
     WRK -.OTLP.-> OC
 ```
 
-## Quick start (once implementation begins)
+## Local services
 
-```bash
-make dev
-```
-
-Then open:
+`make dev` runs everything in containers instead. Then open:
 
 | Service | URL |
 |---|---|

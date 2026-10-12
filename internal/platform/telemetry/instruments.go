@@ -31,7 +31,7 @@ type Instruments struct {
 	AuthLockout       metric.Int64Counter
 	AuthRefreshReuse  metric.Int64Counter
 
-	// LearningFunnel and LearningCohort are what make ROADMAP.md's Phase 2 exit
+	// LearningFunnel and LearningCohort are what make the Phase 2 exit
 	// criterion — "D1 retention measurable" — a number a person reads rather than
 	// one someone could derive. The events behind the funnel are already in the
 	// outbox; a counter beside each write is what puts them on a dashboard.

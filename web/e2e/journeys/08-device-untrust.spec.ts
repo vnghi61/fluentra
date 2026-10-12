@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import { newLearner, registerAndVerify, signIn, signOut } from "../helpers/auth";
+import {
+  newLearner,
+  registerAndVerify,
+  signIn,
+  signOut,
+} from "../helpers/auth";
 
 /**
  * Journey 8 runs against the real API. The previous version mocked
@@ -27,9 +32,19 @@ test.describe("Journey 8: device list → untrust the current device", () => {
     // The server marks the caller's own device `current`; that flag is what the
     // warning branch keys off, so asserting it here is asserting the thing the
     // warning depends on.
-    await expect(page.getByText("This device")).toBeVisible({ timeout: 15_000 });
+    //
+    // Exact and inside the device list: the page also says "Only this device is
+    // signed in", which a substring match picks up too.
+    await expect(
+      page.getByTestId("device-row").getByText("This device", { exact: true }),
+    ).toBeVisible({ timeout: 15_000 });
 
-    await page.getByRole("button", { name: /Untrust device/i }).first().click();
+    // Stop trusting lives in each device card's "more actions" menu.
+    await page
+      .getByRole("button", { name: /More actions for/i })
+      .first()
+      .click();
+    await page.getByRole("menuitem", { name: /Stop trusting/i }).click();
 
     await expect(
       page.getByRole("heading", { name: /Stop trusting this device\?/i }),

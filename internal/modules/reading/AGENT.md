@@ -95,7 +95,7 @@ _None yet._
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `reading`). See also [`API.md`](API.md).
+(tag: `reading`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -169,7 +169,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -184,8 +184,6 @@ _No deviations from the global standard._
 | `QUESTIONS_LOCKED` | 403 | Questions requested before reading was marked complete |
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -212,6 +210,156 @@ go test -tags=integration ./internal/modules/reading/...  # integration (testcon
 - Do not include question-answering time in reading speed.
 - Do not publish a passage without attribution.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/reading/passages/{id}`
+
+Passage with glossing hints
+
+| | |
+|---|---|
+| Permission | `content.read.published` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/reading/attempts`
+
+Start a timed reading attempt
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 201 |
+| Errors | standard set |
+
+#### `POST /api/v1/reading/attempts/{id}/submit`
+
+Submit answers
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `ATTEMPT_EXPIRED` |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `PASSAGE_NOT_FOUND` | 404 | Unknown or unpublished passage |
+| `QUESTIONS_LOCKED` | 403 | Questions requested before reading was marked complete |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Timed reading attempt
+
+```mermaid
+flowchart LR
+    A[Start attempt] --> B[render passage, start timer]
+    B --> C{learner taps a word}
+    C -->|yes| D[gloss via vocabulary<br/>record the lookup]
+    D --> B
+    C -->|no| E[learner marks reading complete]
+    E --> F[stop timer → wpm]
+    F --> G[reveal questions]
+    G --> H[submit answers]
+    H --> I[grade per question type]
+    I --> J[comprehension score + wpm → progress]
+    J --> K[looked-up words suggested for the deck]
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Where do reading questions live? | In content version bodies | Passage and questions are bundled directly into self-contained `content.versions` rows, avoiding separate tables; revisit when `exam` is built |
+| Measure reading speed how? | First render to reading-complete | Including question time would conflate reading with reasoning and make the metric useless for progress |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 3
+
+- [ ] Passages with difficulty metadata and attribution
+- [ ] Question set binding to `questionbank`
+- [ ] Timed attempt with WPM measurement
+- [ ] Graders for MCQ, T/F/NG, matching, gap-fill and span
+- [ ] Inline glossing with lookup recording
+- [ ] Reading player in the web app
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Adaptive passage selection
+- Extensive-reading mode with a library
+- Automatic question generation reviewed by an admin
+<!-- END GENERATED: todo-future -->
+
+### Shipped in work orders 10 & 11
+
+The boxes above are unticked because docgen renders every generated item that
+way. What exists in code today:
+
+- [x] `reading.Grader` implements `learning.ExerciseGrader` for
+      `reading_comprehension`, registered through `cmd/api/modules.go` and
+      rendered by `ExerciseReading.tsx`.
+- [x] Passages and question sets are authored and generated as self-contained `content.versions` bodies.
+- [x] Practice pool generation and daily practice set integration (§3.11).
+
+#### Schema rationalisation (tables retired)
+
+- `passages` and `passage_questions`: retired because reading passages and question sets are stored directly in `content.versions` (kind `reading_comprehension`), eliminating separate passage tables.
+- `reading_attempts`: retired per ADR-0015; all attempt lifecycles are centralized in `learn.attempts`.
+
+The module `reading` owns 0 database tables (`tables: []`).
 
 ---
 

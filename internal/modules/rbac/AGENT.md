@@ -149,7 +149,7 @@ itself, so this module does not know `user` exists and the composition root is w
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `rbac`). See also [`API.md`](API.md).
+(tag: `rbac`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -164,7 +164,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 
 All four. Two things to know before adding a fifth:
 
-- **The `/admin` group has a middleware *and* every handler calls `Require`.** The middleware says
+- **The `/admin` group has a middleware _and_ every handler calls `Require`.** The middleware says
   "you are staff"; the guard says "you may do this particular thing". Neither replaces the other,
   and an operation reached by a job or an event consumer has no middleware at all.
 - **A malformed user id in the path is a 404, not a 400.** Telling an unauthorised caller that
@@ -244,7 +244,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -274,8 +274,6 @@ for this module:
 
 ## 13. Testing
 
-See [`TESTING.md`](TESTING.md) for the full plan.
-
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
 
@@ -302,7 +300,175 @@ go test -tags=integration ./internal/modules/rbac/...  # integration (testcontai
 - Do not implement ownership checks here; they belong in the owning module's query.
 <!-- END GENERATED: donot -->
 
+## 15. API detail
+
+### What is live
+
+All four operations exist as of **P1.3**. `GET /api/v1/me/permissions` needs only a caller;
+the three `/admin` operations require the `admin` role _and_ the permission named below.
+
+The permission list is advisory (BR-RBAC-08). It exists so the interface can hide actions that
+would fail — every server call re-checks, and a client holding the list is no closer to using a
+permission it was not granted.
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/me/permissions`
+
+The caller's effective permissions — the frontend uses this to hide unavailable actions
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Hiding a control is UX, not security; the server still enforces every call |
+
+#### `GET /api/v1/admin/roles`
+
+List roles and their permissions
+
+| | |
+|---|---|
+| Permission | `rbac.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/users/{id}/roles`
+
+Grant a role
+
+| | |
+|---|---|
+| Permission | `rbac.assign` |
+| Success | 200 |
+| Errors | `PERMISSION_DENIED`, `SELF_ELEVATION_FORBIDDEN` |
+
+#### `DELETE /api/v1/admin/users/{id}/roles/{role}`
+
+Revoke a role
+
+| | |
+|---|---|
+| Permission | `rbac.assign` |
+| Success | 204 |
+| Errors | `LAST_ADMIN_PROTECTED` |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `PERMISSION_DENIED` | 403 | Authenticated but lacking the required permission |
+| `SELF_ELEVATION_FORBIDDEN` | 403 | An actor tried to grant themselves a role |
+| `LAST_ADMIN_PROTECTED` | 409 | Would leave the system with no administrator |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Three-layer authorization
+
+Each layer catches a different mistake. Middleware catches a route wired to the wrong group; the guard catches a service method called from an unexpected path; the ownership filter catches the IDOR that the other two cannot see.
+
+```mermaid
+flowchart TD
+    A[Request] --> B[auth middleware<br/>validates token → Actor in ctx]
+    B --> C{Route group}
+    C -->|/admin/*| D[require role=admin]
+    C -->|/api/v1/*| E[authenticated]
+    D --> F[Handler]
+    E --> F
+    F --> G[Service method]
+    G --> H["rbac.Require(ctx, 'content.publish')"]
+    H -->|denied| X[403 PERMISSION_DENIED<br/>+ audit event]
+    H -->|allowed| I[Repository query]
+    I --> J["WHERE user_id = actor.UserID<br/>(ownership — the real IDOR defence)"]
+    J --> K[Result]
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Casbin, OPA, or a table? | A table plus a guard function | Two roles and ~40 permissions do not justify a policy engine, a policy language, and its evaluation semantics. Casbin becomes worth it at resource-scoped or hierarchical policies — recorded in ADR-0008 so the option is not forgotten |
+| Roles in the JWT or looked up per request? | Role in the token, permissions resolved from cache | The role is stable and small; permissions can change without reissuing tokens, and a 5-minute cache bounds staleness |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+- [ADR-0008](../../../docs/adr/ADR-0008-rbac-simple-policy.md) — Table-driven permissions, no Casbin/OPA
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 1
+
+- [ ] Roles, permissions, mappings seeded via migration
+- [ ] `Require`/`Can` guard with cached resolution
+- [ ] `/admin/*` route-group middleware
+- [ ] `GET /me/permissions`
+- [ ] Self-elevation and last-admin protections
+- [ ] A CI check that every non-public OpenAPI operation declares `x-permission`
+<!-- END GENERATED: todo -->
+
+### Progress
+
+The list above is generated from `tools/docgen/data/core.json`, so its checkboxes cannot be ticked
+by hand. Completed work is recorded here instead.
+
+| Task | Done | What landed |
+|---|---|---|
+| P1.3 | 2026-08-10 | Four tables, the seeded role and permission catalogue, `Authorizer.Require`/`Can` with cached resolution and eager invalidation, the `/admin/*` middleware, `GET /me/permissions`, the role catalogue and grant/revoke operations, self-elevation and last-admin protections |
+| — | 2026-08-27 | `GrantBaselineRole`: the system grant of `user` at account creation. `AssignRole` needs an actor holding `rbac.assign` and is only reachable from the admin handler, so no account created by registration or by `make seed` ever held a role — invisible until P7.1 gave `user` its first permission, and every learner's catalogue a 403 from that commit on. Wired into `user` through a one-method interface the composition root satisfies. |
+
+Still open in Phase 1: MFA enrolment on an `admin` grant (BR-RBAC-06, needs WP2), and publishing
+`rbac.access_denied` to the audit trail (BR-RBAC-07, needs P1.4).
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Resource-scoped permissions if content ownership becomes a requirement
+- Temporary elevated access with automatic expiry
+<!-- END GENERATED: todo-future -->
+
 ---
 
-*Generated by `tools/docgen` from `tools/docgen/data/`. Hand-written text outside the
-GENERATED markers is preserved. Update the manifest, then run `make docs`.*
+_Generated by `tools/docgen` from `tools/docgen/data/`. Hand-written text outside the
+GENERATED markers is preserved. Update the manifest, then run `make docs`._

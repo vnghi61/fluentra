@@ -55,14 +55,22 @@ export interface SittingActivityConfig {
   prompt?: string;
   topic?: string;
   min_words?: number;
+  max_words?: number;
   task_type?: "read_aloud" | "respond";
   reference_text?: string;
   speaking_time_seconds?: number;
+  preparation_seconds?: number;
   options?: ChoiceOption[];
   statements?: ChoiceOption[];
   responses?: ChoiceOption[];
   sentence?: string;
   image_url?: string;
+  // A Part 1 photograph's credit page and licence (WO 22 D22-21): the credit
+  // shows wherever the photo does.
+  image_credit?: string;
+  image_licence?: string;
+  // An IELTS Writing Task 1's chart data (WO 22 D22-22); image_url is its drawing.
+  chart?: { title?: string };
 }
 
 export interface SittingActivity {
@@ -102,7 +110,6 @@ export type SittingAnswer =
   | RewriteAnswer
   | RecordingAnswer;
 export type DraftAnswers = Record<string, SittingAnswer>;
-
 
 export interface ExamAttempt {
   id: string;
@@ -229,6 +236,10 @@ export interface ScoreReport {
   status: ReportStatus;
   overall_score: number;
   overall_band?: string;
+  /** The overall on the exam's own scale, when the version states one. */
+  published_score?: number | null;
+  published_scale?: string;
+  score_is_estimate?: boolean;
   per_section: ExamSectionOutcome[];
   integrity_signals: IntegritySignal[];
   disclaimer: string;

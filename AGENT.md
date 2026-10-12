@@ -95,14 +95,20 @@ is in that module's `AGENT.md`. If it is not, the `AGENT.md` is wrong — fix it
 | Any task | This file + `MODULE_INDEX.md` | Anything else, yet |
 | Working on module X | `internal/*/X/AGENT.md` | Other modules' internals |
 | Need X's public API | `internal/*/X/contract/` + `X/API.md` | X's `service/`, `repository/` |
-| Adding an endpoint | `api/openapi/openapi.yaml`, `API_GUIDELINE.md` | Handlers of unrelated modules |
-| Adding a table | `DATABASE_GUIDELINE.md`, `db/migrations/X/` | Other modules' migrations |
+| Adding an endpoint | `api/openapi/openapi.yaml`, `docs/CONVENTIONS.md#api` | Handlers of unrelated modules |
+| Adding a table | `docs/CONVENTIONS.md#database`, `db/migrations/X/` | Other modules' migrations |
 | Frontend feature | `web/AGENT.md`, `docs/frontend/` | Go code (use the generated client) |
-| Writing tests | `TESTING_GUIDELINE.md`, `X/TESTING.md` | — |
+| Writing tests | `docs/CONVENTIONS.md#testing`, `X/TESTING.md` | — |
 | AI/LLM feature | `internal/platform/ai/AGENT.md`, `docs/ai/` | Provider SDK internals |
 
 **Hard limit: if you have read more than 6 files and still do not know what to do, stop and
 ask the human.** Do not keep scanning.
+
+**Code-intelligence tools save reads.** `.mcp.json` (Claude Code/Cursor) and `opencode.jsonc`
+(OpenCode) register the `gopls` MCP server via `tools/agentlsp` (needs only Go; see its README):
+`go_search` / `go_package_api` instead of reading files; `go_symbol_references` before
+changing a Go symbol; `go_diagnostics` after editing. Frontend (`web/`): no MCP server — use
+ripgrep, then `pnpm -C web typecheck`, `pnpm -C web lint`, `pnpm -C web test`.
 
 ---
 
@@ -122,7 +128,7 @@ These are enforced by CI. Violating them fails the build.
 | **L8** | No secrets in code, tests, fixtures, or docs. Config comes from env only. |
 | **L9** | SQL is written in `db/queries/<module>/*.sql` and compiled by `sqlc`. No string-concatenated SQL. |
 | **L10** | Public API changes require editing `api/openapi/openapi.yaml` in the same commit. |
-| **L11** | Every prompt sent to an LLM lives in `docs/prompts/` as a versioned template. No inline prompt strings. |
+| **L11** | Every prompt sent to an LLM lives in `internal/platform/ai/prompts/` as a versioned template. No inline prompt strings. |
 | **L12** | New dependency ⇒ add a row to `DEPENDENCIES.md` with rationale + alternatives considered. |
 
 ---
@@ -148,30 +154,19 @@ Dependency direction is always **inward**: transport → service → repository 
 
 ---
 
-## 7. The Knowledge Base — `docs/`
+## 7. The Knowledge Base
 
-| Folder | Use it when you need to… |
+| File | Use it when you need to… |
 |---|---|
-| `docs/architecture/` | Understand system-wide structure, boundaries, migration strategy |
-| `docs/backend/` | Learn Go conventions, layering, concurrency, transactions |
-| `docs/frontend/` | Learn React structure, state, routing, forms, data fetching |
-| `docs/database/` | Learn schema conventions, indexing, migrations, ER diagrams |
-| `docs/api/` | Learn REST standards, versioning, pagination, errors, auth |
-| `docs/deployment/` | Run it locally, or deploy it |
-| `docs/security/` | Threat model, authn/authz, data protection, OWASP mapping |
-| `docs/testing/` | Test pyramid, fixtures, testcontainers, coverage targets |
-| `docs/modules/` | The module manifest + per-module deep dives |
-| `docs/prompts/` | The versioned prompt library (for generating code AND for runtime LLM calls) |
-| `docs/adr/` | Why a decision was made. Read before proposing a different approach. |
-| `docs/development/` | Local setup, workflows, code review, docs-as-code |
-| `docs/guides/` | Task-oriented how-tos ("add a new module", "add an endpoint") |
-| `docs/knowledge/` | Domain knowledge: CEFR, SRS/FSRS, pronunciation scoring, IELTS/TOEIC formats |
-| `docs/ai/` | AI context engineering, agent playbooks, eval harness |
-| `docs/examples/` | Canonical reference implementations to copy patterns from |
-| `docs/diagrams/` | C4, sequence, ER, state diagrams (Mermaid source) |
-| `docs/templates/` | Templates for new modules, ADRs, PRs, docs |
-| `docs/operations/` | Runbooks, SLOs, incident response, on-call |
-| `docs/product/` | Personas, user journeys, feature specs, glossary of business terms |
+| `ARCHITECTURE.md` | Understand system-wide structure, boundaries, project layout, glossary |
+| `MODULE_INDEX.md` | Find which module owns what, and which contracts it may call |
+| `docs/CONVENTIONS.md` | Coding, API, database, errors, logging, observability, security and testing rules |
+| `docs/AI.md` | Context engineering, prompt library, how the product calls LLMs |
+| `docs/OPERATIONS.md` | Deploy (free-tier stack), Docker, CI, releases, runbooks |
+| `DECISIONS.md`, `docs/adr/` | Why a decision was made. Read before proposing a different approach. |
+| `docs/knowledge/` | Domain knowledge (FSRS) |
+| `internal/<group>/<module>/AGENT.md` | Everything about one module, including its API detail, flows, decisions and backlog |
+| `internal/platform/ai/prompts/` | The versioned runtime prompt templates (embedded into the binary) |
 
 ---
 
@@ -179,17 +174,13 @@ Dependency direction is always **inward**: transport → service → repository 
 
 | Task | Playbook |
 |---|---|
-| **Implement the current phase** | **`docs/development/phase-1-plan.md` — find your task ID, then follow its card** |
-| Add a new business module | `docs/guides/add-a-module.md` |
-| Add an API endpoint | `docs/guides/add-an-endpoint.md` |
-| Add a database table | `docs/guides/add-a-table.md` |
-| Add a background job | `docs/guides/add-a-job.md` |
-| Add an AI-powered feature | `docs/guides/add-an-ai-feature.md` |
-| Add a React page | `docs/guides/add-a-page.md` |
-| Write an integration test | `docs/guides/write-an-integration-test.md` |
-| Add a metric / span / log field | `OBSERVABILITY_GUIDELINE.md` |
-| Debug a failing CI job | `GITHUB_ACTIONS.md` |
-| Cut a release | `RELEASE_GUIDE.md` |
+| Add a new business module | `CONTRIBUTING.md#guide-add-a-module` |
+| Add an API endpoint | `CONTRIBUTING.md#guide-add-an-endpoint` |
+| Add a database table | `docs/CONVENTIONS.md#database` |
+| Write an integration test | `docs/CONVENTIONS.md#testing` |
+| Add a metric / span / log field | `docs/CONVENTIONS.md#observability` |
+| Debug a failing CI job | `docs/OPERATIONS.md#github-actions` |
+| Cut a release | `docs/OPERATIONS.md#releases` |
 
 ---
 
@@ -199,6 +190,7 @@ Dependency direction is always **inward**: transport → service → repository 
 make help          # list everything
 make dev           # docker compose up (full stack + observability)
 make check         # fmt + vet + lint + arch-lint + unit tests  ← run before finishing
+make check-ci      # non-writing review and verification gate
 make test          # unit tests
 make test-int      # integration tests (testcontainers)
 make test-e2e      # Playwright
@@ -211,6 +203,11 @@ make audit-logs    # prove no OTP code or personal data is searchable in Loki
 make docs          # regenerate module doc scaffolding
 make docs-check    # docs lint + drift check
 ```
+
+Use `make check-ci` for review and verify: it never writes files. `make check` still formats
+files. `check-ci` leaves out `arch` because go-arch-lint differs on Windows; CI runs `make arch`
+on Linux in `ci-backend`. It also leaves out goimports-reviser because its normal mode writes
+files.
 
 **Never** run `docker compose down -v`, `make db-reset`, or anything that deletes volumes
 without explicit human approval — it destroys local learning data.
@@ -307,12 +304,12 @@ cd web && pnpm exec playwright test
 
 - ❌ Do not add multi-tenancy, organizations, workspaces, or roles beyond `admin`/`user`.
 - ❌ Do not introduce a new framework, ORM, or state-management library without an ADR.
-- ❌ Do not extract a module into a separate service. Read `docs/architecture/microservice-migration.md` first — the trigger conditions are explicit and none are met yet.
+- ❌ Do not extract a module into a separate service. See ARCHITECTURE.md for the trigger conditions; none are met yet.
 - ❌ Do not write business logic in HTTP handlers or React components.
 - ❌ Do not call an LLM provider SDK directly. Go through `internal/platform/ai`.
 - ❌ Do not commit generated files that `make gen` produces, unless the repo already tracks them (check `.gitignore` first).
 - ❌ Do not "fix" a failing test by weakening the assertion.
-- ❌ Do not invent API endpoints, table names, or config keys. If it is not in `openapi.yaml`, a migration, or `docs/deployment/configuration.md`, it does not exist — add it deliberately.
+- ❌ Do not invent API endpoints, table names, or config keys. If it is not in `openapi.yaml`, a migration, or `.env.example`, it does not exist — add it deliberately.
 
 ---
 
@@ -320,7 +317,7 @@ cd web && pnpm exec playwright test
 
 A change is done when **all** of these are true:
 
-- [ ] Code compiles; `make check` is green
+- [ ] Code compiles; `make check` is green; use non-writing `make check-ci` for review and verify
 - [ ] Unit tests cover the new branches; integration test if it touches DB/cache/storage
 - [ ] `api/openapi/openapi.yaml` updated if the HTTP surface changed
 - [ ] Migration added if the schema changed, and it is reversible

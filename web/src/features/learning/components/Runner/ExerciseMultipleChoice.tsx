@@ -2,10 +2,10 @@ import React, { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { Button } from "@/components/ui/button";
+import { pickLocalized, prefersVietnamese } from "@/lib/localized";
 import { cn } from "@/lib/utils";
 
-import { type AnswerExplanation } from "./ExerciseShell";
+import { type AnswerExplanation, ExerciseActions } from "./ExerciseShell";
 
 export interface OptionItem {
   id: string;
@@ -37,8 +37,21 @@ export const ExerciseMultipleChoice: React.FC<ExerciseMultipleChoiceProps> = ({
   onSubmit,
   onContinue,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const verdict = isCorrect
+    ? t("runner.correct", "Correct! Well done.")
+    : t("runner.incorrect", "Not quite. Review the correct option above.");
+
+  const showFeedback =
+    Boolean(feedback?.trim()) &&
+    !prefersVietnamese(i18n.language) &&
+    feedback!.trim().toLowerCase() !== verdict.trim().toLowerCase();
+
+  const explanationText = explanation
+    ? pickLocalized(explanation.text, explanation.text_vi, i18n.language)
+    : "";
 
   // Keyboard shortcut listener for options 1-4 and Enter to submit/continue
   useEffect(() => {
@@ -71,10 +84,10 @@ export const ExerciseMultipleChoice: React.FC<ExerciseMultipleChoiceProps> = ({
   }, [options, selectedId, isSubmitted, isLoading, onSubmit, onContinue]);
 
   return (
-    <div className="space-y-8 max-w-2xl mx-auto py-4">
+    <div className="w-full min-w-0 space-y-6 max-w-4xl mx-auto">
       {/* Question Prompt */}
       <div className="space-y-2">
-        <h2 className="text-xl md:text-2xl font-bold text-text leading-snug">
+        <h2 className="text-lg md:text-xl font-semibold text-text leading-snug">
           {prompt}
         </h2>
       </div>
@@ -88,7 +101,7 @@ export const ExerciseMultipleChoice: React.FC<ExerciseMultipleChoiceProps> = ({
           const isSelectedCorrect = isSubmitted && isSelected && isCorrect;
 
           let optionStyle =
-            "border-border bg-surface-card hover:border-primary/50 text-text";
+            "border-border-subtle bg-surface-card hover:border-primary/40 hover:bg-primary/5 text-text";
           if (isSubmitted) {
             if (isSelectedCorrect || isAnswer) {
               optionStyle =
@@ -113,15 +126,24 @@ export const ExerciseMultipleChoice: React.FC<ExerciseMultipleChoiceProps> = ({
               disabled={isSubmitted || isLoading}
               onClick={() => setSelectedId(option.id)}
               className={cn(
-                "w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left min-h-[56px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer disabled:cursor-default",
+                "w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition-colors text-left min-h-[56px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer disabled:cursor-default motion-reduce:transition-none",
                 optionStyle,
               )}
             >
-              <div className="flex items-center gap-3">
-                <span className="flex items-center justify-center h-7 w-7 rounded-lg border border-border bg-surface-muted text-xs font-bold text-text-muted shrink-0">
+              <div className="min-w-0 flex items-center gap-3">
+                <span
+                  className={cn(
+                    "flex items-center justify-center h-8 w-8 rounded-full text-sm font-semibold shrink-0",
+                    isSelectedCorrect || (isSubmitted && isAnswer)
+                      ? "bg-success/15 text-success-accent"
+                      : "bg-surface-muted text-text-muted",
+                  )}
+                >
                   {index + 1}
                 </span>
-                <span className="text-base">{option.text}</span>
+                <span className="min-w-0 break-words text-base">
+                  {option.text}
+                </span>
               </div>
 
               {isSubmitted && (
@@ -157,70 +179,40 @@ export const ExerciseMultipleChoice: React.FC<ExerciseMultipleChoiceProps> = ({
         >
           <div className="flex items-center gap-2 font-bold text-base">
             {isCorrect ? (
-              <>
-                <Check className="h-5 w-5" aria-hidden="true" />
-                <span>{t("runner.correct", "Correct! Well done.")}</span>
-              </>
+              <Check className="h-5 w-5" aria-hidden="true" />
             ) : (
-              <>
-                <X className="h-5 w-5" aria-hidden="true" />
-                <span>
-                  {t(
-                    "runner.incorrect",
-                    "Not quite. Review the correct option above.",
-                  )}
-                </span>
-              </>
+              <X className="h-5 w-5" aria-hidden="true" />
             )}
+            <span>{verdict}</span>
           </div>
-          {feedback && (
-            <p className="mt-1 text-sm text-text font-normal">{feedback}</p>
+          {showFeedback && (
+            <p className="mt-1 text-base leading-relaxed text-text font-normal">
+              {feedback}
+            </p>
           )}
-          {explanation && (
-            <div className="mt-3 pt-3 border-t border-border/40 space-y-2 text-sm">
-              <div className="flex items-start gap-2">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary shrink-0 mt-0.5">
-                  EN
-                </span>
-                <p className="text-text/90 font-medium leading-relaxed">
-                  {explanation.text}
-                </p>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-accent/20 text-accent shrink-0 mt-0.5">
-                  VI
-                </span>
-                <p className="text-text-muted leading-relaxed">
-                  {explanation.text_vi}
-                </p>
-              </div>
+          {explanationText ? (
+            <div className="mt-3 pt-3 border-t border-border/40 space-y-1 text-base">
+              <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                {t("runner.explanationLabel", "Explanation")}
+              </span>
+              <p className="text-text/90 font-medium leading-relaxed">
+                {explanationText}
+              </p>
             </div>
-          )}
+          ) : null}
         </div>
       )}
 
       {/* Action CTA Bar */}
-      <div className="pt-4 flex justify-end">
-        {!isSubmitted ? (
-          <Button
-            size="lg"
-            disabled={!selectedId || isLoading}
-            isLoading={isLoading}
-            onClick={() => selectedId && onSubmit(selectedId)}
-            className="w-full sm:w-auto min-w-[160px] font-bold"
-          >
-            {t("runner.checkBtn", "Check Answer")}
-          </Button>
-        ) : (
-          <Button
-            size="lg"
-            onClick={onContinue}
-            className="w-full sm:w-auto min-w-[160px] font-bold"
-          >
-            {t("runner.continueBtn", "Continue")}
-          </Button>
-        )}
-      </div>
+      <ExerciseActions
+        isSubmitted={isSubmitted}
+        canSubmit={Boolean(selectedId)}
+        isLoading={isLoading}
+        onSubmit={() => {
+          if (selectedId) onSubmit(selectedId);
+        }}
+        onContinue={onContinue}
+      />
     </div>
   );
 };

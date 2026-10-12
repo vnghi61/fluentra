@@ -1,14 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
   ExerciseReading,
+  ItemExplanation,
   type ExerciseReadingProps,
   type ItemResult,
   type ReadingQuestionItem,
   type ReadingSubmissionPayload,
 } from "@/features/learning";
+import i18n, { initI18n, loadLocale } from "@/i18n";
 
 const sampleQuestions: ReadingQuestionItem[] = [
   {
@@ -157,5 +159,40 @@ describe("ExerciseReading Two-Phase Runner", () => {
 
     // Revealed correct answer for q2
     expect(screen.getByText("not_given")).toBeInTheDocument();
+  });
+});
+
+describe("ItemExplanation", () => {
+  beforeAll(async () => {
+    await initI18n("en");
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("renders English explanation when locale is English", () => {
+    render(
+      <ItemExplanation
+        explanation={{ text: "EN why", text_vi: "VI tại sao" }}
+      />,
+    );
+
+    expect(screen.getByText("EN why")).toBeInTheDocument();
+    expect(screen.queryByText("VI tại sao")).not.toBeInTheDocument();
+  });
+
+  it("renders Vietnamese explanation when locale is Vietnamese", async () => {
+    await loadLocale("vi");
+    await i18n.changeLanguage("vi");
+
+    render(
+      <ItemExplanation
+        explanation={{ text: "EN why", text_vi: "VI tại sao" }}
+      />,
+    );
+
+    expect(screen.getByText("VI tại sao")).toBeInTheDocument();
+    expect(screen.queryByText("EN why")).not.toBeInTheDocument();
   });
 });

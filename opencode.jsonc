@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // Go code intelligence for AI agents (go_search, go_symbol_references, go_package_api,
+  // go_diagnostics...). Needs only Go: tools/agentlsp installs a pinned gopls into the user
+  // cache on first start. Frontend (web/): use `pnpm -C web typecheck|lint|test` + ripgrep.
+  "mcp": {
+    "servers": {
+      "gopls": {
+        "type": "local",
+        "command": ["go", "-C", "tools/agentlsp", "run", ".", "gopls"],
+        "codemode": false,
+        "timeout": { "startup": 300000 }
+      }
+    }
+  }
+}

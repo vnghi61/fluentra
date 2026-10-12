@@ -1,14 +1,17 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { BookOpen, Check, Loader2, Plus, Search, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useSearchVocabulary } from "../api/searchApi";
 import type { WordSummary } from "../api/searchApi";
 
 export interface WordAutocompleteProps {
+  /** The input's id, so a `<label htmlFor>` outside names the field. */
+  id?: string | undefined;
   onSelectWord?: (word: WordSummary) => void;
   onCustomSubmit?: (term: string) => void;
   placeholder?: string;
@@ -16,6 +19,7 @@ export interface WordAutocompleteProps {
 }
 
 export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
+  id,
   onSelectWord,
   onCustomSubmit,
   placeholder,
@@ -27,6 +31,7 @@ export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [selectedWord, setSelectedWord] = useState<WordSummary | null>(null);
 
+  const listId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -107,15 +112,17 @@ export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
           <Search className="h-4 w-4" aria-hidden="true" />
         </div>
 
-        <input
+        <Input
           ref={inputRef}
+          id={id}
           type="text"
           role="combobox"
+          autoComplete="off"
           aria-expanded={isOpen}
           aria-autocomplete="list"
-          aria-controls="word-autocomplete-list"
+          aria-controls={listId}
           aria-activedescendant={
-            activeIndex >= 0 ? `word-option-${activeIndex}` : undefined
+            activeIndex >= 0 ? `${listId}-option-${activeIndex}` : undefined
           }
           value={query}
           onChange={handleInputChange}
@@ -130,14 +137,10 @@ export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
               "Search dictionary or type a word...",
             )
           }
-          className={cn(
-            "w-full rounded-xl border border-border bg-surface-card py-2.5 pl-10 pr-10",
-            "text-base md:text-sm text-text placeholder:text-text-muted",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-xs transition-colors",
-          )}
+          className="pl-10 pr-20"
         />
 
-        <div className="absolute inset-y-0 right-0 flex items-center pr-2.5 gap-1">
+        <div className="absolute inset-y-0 right-0 flex items-center gap-1">
           {isLoading && (
             <Loader2
               className="h-4 w-4 animate-spin text-primary"
@@ -148,10 +151,10 @@ export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
             <button
               type="button"
               onClick={handleClear}
-              className="rounded-md p-1 text-text-muted hover:bg-surface-raised hover:text-text transition-colors"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-text-muted transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
               aria-label={t("common.clear", "Clear search")}
             >
-              <X className="h-3.5 w-3.5" aria-hidden="true" />
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
         </div>
@@ -159,17 +162,19 @@ export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
 
       {/* Selected word confirmation badge */}
       {selectedWord && (
-        <div className="mt-2 flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 px-3 py-1.5 text-xs text-success-accent">
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success-accent">
           <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className="font-semibold">{selectedWord.lemma}</span>
+          <span className="min-w-0 break-words font-semibold">
+            {selectedWord.lemma}
+          </span>
           {selectedWord.ipa && (
-            <span className="font-mono text-text-muted">
+            <span className="min-w-0 break-all font-mono text-text-muted">
               {selectedWord.ipa}
             </span>
           )}
           <Badge
             variant="outline"
-            className="text-[10px] uppercase font-bold ml-auto border-success/40"
+            className="text-xs uppercase font-bold ml-auto border-success/40"
           >
             {selectedWord.cefr_level}
           </Badge>
@@ -179,7 +184,7 @@ export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
       {/* Autocomplete Dropdown List */}
       {isOpen && (
         <div
-          id="word-autocomplete-list"
+          id={listId}
           role="listbox"
           className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-border bg-surface-card p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100"
         >
@@ -189,7 +194,7 @@ export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
               return (
                 <div
                   key={word.id}
-                  id={`word-option-${idx}`}
+                  id={`${listId}-option-${idx}`}
                   role="option"
                   aria-selected={isSelected}
                   onMouseDown={(e) => {
@@ -198,17 +203,17 @@ export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
                   }}
                   onMouseEnter={() => setActiveIndex(idx)}
                   className={cn(
-                    "flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-xs transition-colors",
+                    "flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
                     isSelected
-                      ? "bg-primary text-primary-contrast"
+                      ? "bg-primary text-primary-fg"
                       : "text-text hover:bg-surface-raised",
                   )}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <BookOpen
                       className={cn(
-                        "h-3.5 w-3.5 shrink-0",
-                        isSelected ? "text-primary-contrast" : "text-primary",
+                        "h-4 w-4 shrink-0",
+                        isSelected ? "text-primary-fg" : "text-primary-accent",
                       )}
                       aria-hidden="true"
                     />
@@ -216,10 +221,8 @@ export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
                     {word.ipa && (
                       <span
                         className={cn(
-                          "font-mono text-[11px] truncate",
-                          isSelected
-                            ? "text-primary-contrast/80"
-                            : "text-text-muted",
+                          "font-mono text-xs truncate",
+                          isSelected ? "text-primary-fg/80" : "text-text-muted",
                         )}
                       >
                         {word.ipa}
@@ -228,10 +231,8 @@ export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
                     {word.pos && (
                       <span
                         className={cn(
-                          "italic text-[11px]",
-                          isSelected
-                            ? "text-primary-contrast/80"
-                            : "text-text-muted",
+                          "italic text-xs",
+                          isSelected ? "text-primary-fg/80" : "text-text-muted",
                         )}
                       >
                         ({word.pos})
@@ -242,9 +243,9 @@ export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
                   <Badge
                     variant="outline"
                     className={cn(
-                      "text-[10px] font-bold uppercase shrink-0",
+                      "text-xs font-bold uppercase shrink-0",
                       isSelected
-                        ? "border-primary-contrast/40 text-primary-contrast"
+                        ? "border-primary-fg/40 text-primary-fg"
                         : "border-border",
                     )}
                   >
@@ -255,7 +256,7 @@ export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
             })
           ) : !isLoading && query.trim().length > 0 ? (
             <div className="p-3 text-center">
-              <p className="text-xs text-text-muted mb-2">
+              <p className="mb-2 text-sm text-text-muted">
                 {t(
                   "vocabulary.notFoundInDict",
                   '"{{query}}" is not in the dictionary yet.',
@@ -264,17 +265,18 @@ export const WordAutocomplete: React.FC<WordAutocompleteProps> = ({
               </p>
               {onCustomSubmit && (
                 <Button
-                  size="sm"
                   variant="outline"
-                  className="w-full gap-1.5 text-xs font-semibold"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
+                  className="w-full font-semibold"
+                  // Mousedown keeps focus in the field; the action is on click
+                  // so Enter and Space on the focused button work too.
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
                     setIsOpen(false);
                     onCustomSubmit(query.trim());
                   }}
                 >
                   <Plus
-                    className="h-3.5 w-3.5 text-primary"
+                    className="h-4 w-4 text-primary-accent"
                     aria-hidden="true"
                   />
                   {t("vocabulary.addCustomWord", "Add as new custom word")}

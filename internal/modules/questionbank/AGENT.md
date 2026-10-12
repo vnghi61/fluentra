@@ -74,7 +74,7 @@ Other modules may import **only** `internal/modules/questionbank/contract`.
 <!-- BEGIN GENERATED: contract -->
 | Kind | Name | Purpose |
 |---|---|---|
-| interface | `questionbank.Reader` | `ListQuestions` (permission-checked) and `DrawableForPart` (system read for `exam`: published questions with an activity, stable order) |
+| interface | `questionbank.Reader` | `ListQuestions` (permission-checked), `DrawableForPart` (system read for `exam`: published questions with an activity, stable order) and `DrawableSizes` (the same set counted per part and group size, for coverage) |
 | interface | `questionbank.Author` | `GenerateQuestions`, `PublishQuestion` (refuses unreviewed content), `RetireQuestion` |
 | struct | `questionbank.Question` | Bank metadata only; the body is the content version it points at |
 
@@ -101,7 +101,7 @@ Migrations: `db/migrations/questionbank/` · Queries: `db/queries/questionbank/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `questionbank`). See also [`API.md`](API.md).
+(tag: `questionbank`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -146,7 +146,7 @@ and fails `go-arch-lint` in CI.
 1. **BR-QUESTIONBANK-01** — A bank question's body is a content version and it is drawn as an activity. There is no second copy of its answer (no `question_options`).
 2. **BR-QUESTIONBANK-02** — The fingerprint is unique; a duplicate is refused by the database.
 3. **BR-QUESTIONBANK-03** — Every bank question carries provenance; an item without it is refused.
-4. **BR-QUESTIONBANK-04** — A question enters the bank only after its content version is published through the review queue. `PublishQuestion` on unreviewed content fails with `QUESTION_NOT_REVIEWED`.
+4. **BR-QUESTIONBANK-04** — A question enters the bank only after its content version is approved, by a person or by an independent verifier that confirmed it. `PublishQuestion` on unreviewed content fails with `QUESTION_NOT_REVIEWED`.
 5. **BR-QUESTIONBANK-05** — Spine tags are `content.content_tags` on the question's content item, resolved through `content.TagIndex` — never joined from this module's SQL.
 6. **BR-QUESTIONBANK-06** — The correct answer never reaches a learner: sittings are served through the existing redaction.
 <!-- END GENERATED: rules -->
@@ -172,7 +172,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -192,8 +192,6 @@ _No deviations from the global standard._
 - Correct answers are excluded at the DTO level, not filtered at the handler — a leak must be structurally impossible, not merely unlikely.
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -220,6 +218,140 @@ go test -tags=integration ./internal/modules/questionbank/...  # integration (te
 - Do not carry statistics across a content edit.
 - Do not sample from unapproved items.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/admin/questions`
+
+Filter by exam part, kind, CEFR, spine node, status. Reachable by moderators
+
+| | |
+|---|---|
+| Permission | `questionbank.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/questions/generate`
+
+Generate draft questions for a part and nodes; they wait in the review queue
+
+| | |
+|---|---|
+| Permission | `questionbank.create` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/questions/{id}/stats`
+
+Empirical difficulty and discrimination. Reachable by moderators
+
+| | |
+|---|---|
+| Permission | `questionbank.read` |
+| Success | 200 |
+| Errors | standard set |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `QUESTION_NOT_FOUND` | 404 | No such question |
+| `QUESTION_NOT_REVIEWED` | 409 | Its content version is not published yet; approve it in the review queue |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### AI-assisted authoring
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor AD as Admin
+    participant Q as questionbank
+    participant AI as platform/ai
+    participant R as Reviewer
+
+    AD->>Q: POST /admin/questions/generate { topic, level, type, count }
+    Q->>Q: check quota + budget
+    Q->>AI: Run(questionbank.generate_items)
+    AI-->>Q: structured draft items
+    Q->>Q: validate schema; reject malformed; dedupe against existing stems
+    Q->>Q: INSERT as drafts, marked ai_generated
+    Q-->>AD: 202 → drafts appear in the review queue
+    R->>Q: review, edit, approve or reject
+    Note over R,Q: nothing AI-generated reaches a learner unreviewed
+    Q->>Q: publish approved items; statistics begin accumulating
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+_This module has no explicit state machine._
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Classical statistics or IRT? | Classical for now | IRT needs far more data per item and a calibration process we cannot staff yet; the interface leaves room to upgrade |
+| Allow AI-generated items to auto-publish? | Only for generated practice pool | By the owner's decision on 2026-09-11, generated practice pool items auto-publish with 6-stage verification (including blind solve model agreement) and the learner report queue as compensating controls; exam and authored curriculum items still require human review |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Open
+
+- [ ] A job computing `question_stats` from real attempts (the table exists; nothing writes it)
+- [ ] Bank course layout per exam part: lessons are per kind today, not per part as WO 19 F.2 describes
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Item response theory calibration
+- Automatic distractor quality analysis
+- Near-duplicate detection by embedding
+- Item retirement policy from statistics
+<!-- END GENERATED: todo-future -->
 
 ---
 

@@ -119,7 +119,7 @@ func send(
 // A limiter that denies when its backing store is down converts a Redis outage
 // into a total outage of the whole API — every caller, every endpoint, refused.
 // The rate limit protects far less than availability costs, so the failure
-// direction is to allow and warn (API_GUIDELINE.md §11). The headers are
+// direction is to allow and warn (docs/CONVENTIONS.md#api §11). The headers are
 // deliberately absent in that case: a `RateLimit-Remaining: 59` derived from a
 // budget nobody checked is a lie a client would then pace itself against.
 func TestRateLimit_AnUnreachableStoreAllowsTheRequest(t *testing.T) {

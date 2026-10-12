@@ -54,7 +54,9 @@ type QuestionStats struct {
 	PValue         *float64  `json:"p_value,omitempty"`
 	Discrimination *float64  `json:"discrimination,omitempty"`
 	AvgTimeMs      int       `json:"avg_time_ms"`
-	LastComputedAt time.Time `json:"last_computed_at"`
+	// LastComputedAt is nil until statistics have been computed for the
+	// question; Attempts is then zero and the indices nil.
+	LastComputedAt *time.Time `json:"last_computed_at"`
 }
 
 // Filter defines search criteria for listing questions.
@@ -88,6 +90,18 @@ type GenerateRequest struct {
 	CEFRLevel   string     `json:"cefr_level"`
 	NodeCodes   []string   `json:"node_codes,omitempty"`
 	Count       int        `json:"count"`
+	// Photo is the photograph a TOEIC Part 1 question is written from
+	// (D22-21); each request with one generates one question.
+	Photo *Photo `json:"photo,omitempty"`
+}
+
+// Photo is an openly licensed photograph with its credit and a person's
+// description of it.
+type Photo struct {
+	URL         string `json:"url"`
+	CreditPage  string `json:"credit_page"`
+	Licence     string `json:"licence"`
+	Description string `json:"description"`
 }
 
 // Reader provides read-only access to question bank items.
@@ -101,6 +115,10 @@ type Reader interface {
 	// no permission check — a learner composing a mock test holds no
 	// questionbank permission, and nothing unpublished can come back.
 	DrawableForPart(ctx context.Context, examPartID uuid.UUID) ([]*Question, error)
+	// DrawableSizes counts the same drawable set for many parts in one read:
+	// part -> group size (questions one item holds, at least 1) -> items. A
+	// coverage report needs only these counts.
+	DrawableSizes(ctx context.Context, examPartIDs []uuid.UUID) (map[uuid.UUID]map[int]int, error)
 }
 
 // Author provides question bank modification and generation operations.
@@ -108,5 +126,14 @@ type Author interface {
 	CreateQuestion(ctx context.Context, q *Question) (*Question, error)
 	GenerateQuestions(ctx context.Context, req GenerateRequest) ([]*Question, error)
 	PublishQuestion(ctx context.Context, id uuid.UUID) (*Question, error)
-	RetireQuestion(ctx context.Context, id uuid.UUID) (*Question, error)
+}
+
+// BatchPrefix is the start of every generation batch id for one exam version:
+// the review queue groups a run's doubts by batch, and the daily job reads how
+// many of an exam's batches wait for a person by this prefix (WO 22 Stage O).
+func BatchPrefix(examVersion string) string {
+	if examVersion == "" {
+		examVersion = "any"
+	}
+	return "bank:" + examVersion + ":"
 }

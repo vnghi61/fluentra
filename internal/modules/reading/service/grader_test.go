@@ -276,3 +276,42 @@ func TestReadingGrader_ReadingSpeedWPM(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotContains(t, resTooLong.Feedback, "Reading speed:")
 }
+
+// TestReadingGrader_TypedCompletionEnforcesTheWordLimit is WO 22 D22-25: a
+// typed completion is graded by normalised exact match with accepted variants,
+// and an answer over the word limit is wrong even when it matches.
+func TestReadingGrader_TypedCompletionEnforcesTheWordLimit(t *testing.T) {
+	versionID := uuid.New()
+	body, err := json.Marshal(readingQuizBody{
+		Prompt:        "Complete the note: the tour begins at ___.",
+		Sentence:      "The tour begins at ___.",
+		CorrectAnswer: "9 a.m.",
+		Acceptable:    []string{"9am", "nine a.m."},
+		MaxWords:      2,
+	})
+	require.NoError(t, err)
+
+	grader := NewGrader(&mockContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			versionID: {ID: versionID, Body: body},
+		},
+	})
+
+	// The key, and an accepted variant, grade correct.
+	for _, answer := range []string{"9 a.m.", "9am", "nine a.m."} {
+		res, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
+			ContentVersionID: versionID,
+			Response:         json.RawMessage(`{"text_answer": "` + answer + `"}`),
+		})
+		require.NoError(t, err)
+		assert.True(t, res.Correct, "%q should grade correct", answer)
+	}
+
+	// A correct opening time written in four words breaks the limit.
+	res, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
+		ContentVersionID: versionID,
+		Response:         json.RawMessage(`{"text_answer": "nine o clock in the morning"}`),
+	})
+	require.NoError(t, err)
+	assert.False(t, res.Correct, "an answer over the word limit must be wrong")
+}

@@ -21,6 +21,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/learning/service"
 	learninghttp "github.com/fluentra/fluentra/internal/modules/learning/transport/http"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
 	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
@@ -44,14 +45,18 @@ type Guard = learninghttp.Guard
 
 // Deps defines dependencies supplied by the composition root.
 type Deps struct {
-	Pool          *pgxpool.Pool
-	Clock         clock.Clock
-	Guard         Guard
-	Lesson        lessoncontract.Reader
-	LessonAuthor  lessoncontract.Author
-	Content       contentcontract.Reader
-	ContentAuthor contentcontract.Author
-	Taxonomies    contentcontract.TaxonomyResolver
+	Pool            *pgxpool.Pool
+	Clock           clock.Clock
+	Guard           Guard
+	Lesson          lessoncontract.Reader
+	LessonAuthor    lessoncontract.Author
+	Content         contentcontract.Reader
+	ContentAuthor   contentcontract.Author
+	ContentRecorder contentcontract.VerificationRecorder
+	Taxonomies      contentcontract.TaxonomyResolver
+	// AutoPublish publishes generated content an independent verifier confirms
+	// (WO 22 Stage A).
+	AutoPublish   bool
 	SRSDue        srscontract.QueueReader
 	SRSCards      srscontract.CardWriter
 	SRSPace       srscontract.ReviewPaceReader
@@ -72,10 +77,14 @@ type Deps struct {
 	AuthorResolver contract.AuthorResolver
 	// Synthesiser turns listening scripts into pre-rendered audio.
 	Synthesiser service.AudioSynthesiser
+	// Charts draws an IELTS Writing Task 1 chart (WO 22 D22-22).
+	Charts service.ChartRenderer
 	// Audio finds a listening item's rendered clip in the TTS cache.
 	Audio contract.AudioLocator
 	// AudioRender asks for newly published listening items to be rendered now.
 	AudioRender service.AudioRenderRequester
+	// Resource reads a learner's own upload, for practice generated from it.
+	Resource resourcecontract.ResourceReader
 }
 
 // Module represents the learning module, assembled.
@@ -97,9 +106,12 @@ func New(deps Deps) *Module {
 
 	var queries *sqlc.Queries
 	var repo service.Repository
+	var resourcePractice service.ResourcePracticeStore
 	if deps.Pool != nil {
 		queries = sqlc.New(deps.Pool)
-		repo = repositoryAdapter{Repository: repository.New(deps.Pool)}
+		adapter := repositoryAdapter{Repository: repository.New(deps.Pool)}
+		repo = adapter
+		resourcePractice = adapter
 	}
 
 	// The registry holds exactly what the composition root hands over. It does
@@ -133,25 +145,28 @@ func New(deps Deps) *Module {
 	events := outboxWriter{Writer: outbox.NewWriter()}
 
 	svc := service.New(service.Deps{
-		Pool:          deps.Pool,
-		Repo:          repo,
-		Lesson:        deps.Lesson,
-		LessonAuthor:  deps.LessonAuthor,
-		Content:       deps.Content,
-		ContentAuthor: deps.ContentAuthor,
-		SRSDue:        deps.SRSDue,
-		SRSCards:      deps.SRSCards,
-		Graders:       registry,
-		Events:        events,
-		Metrics:       deps.Metrics,
-		Clock:         timekeeper,
-		Caches:        deps.Caches,
-		Env:           deps.Env,
-		AI:            deps.AI,
+		Pool:            deps.Pool,
+		Repo:            repo,
+		Lesson:          deps.Lesson,
+		LessonAuthor:    deps.LessonAuthor,
+		Content:         deps.Content,
+		ContentAuthor:   deps.ContentAuthor,
+		ContentRecorder: deps.ContentRecorder,
+		AutoPublish:     deps.AutoPublish,
+		SRSDue:          deps.SRSDue,
+		SRSCards:        deps.SRSCards,
+		Graders:         registry,
+		Events:          events,
+		Metrics:         deps.Metrics,
+		Clock:           timekeeper,
+		Caches:          deps.Caches,
+		Env:             deps.Env,
+		AI:              deps.AI,
 
 		GeneratorAuthorID: deps.GeneratorAuthorID,
 		AuthorResolver:    deps.AuthorResolver,
 		Synthesiser:       deps.Synthesiser,
+		Charts:            deps.Charts,
 		Audio:             deps.Audio,
 		AudioRender:       deps.AudioRender,
 		User:              deps.User,
@@ -160,6 +175,8 @@ func New(deps Deps) *Module {
 		SRSPace:           deps.SRSPace,
 		StudioAccess:      deps.StudioAccess,
 		Taxonomies:        deps.Taxonomies,
+		Resource:          deps.Resource,
+		ResourcePractice:  resourcePractice,
 	})
 
 	var handler *learninghttp.Handler
@@ -238,6 +255,12 @@ func (m *Module) Generator() contract.Generator {
 	return m.service
 }
 
+// IndependentVerifier returns the public IndependentVerifier contract
+// implementation (WO 22 Stage A).
+func (m *Module) IndependentVerifier() contract.IndependentVerifier {
+	return m.service
+}
+
 // Routes mounts learner-facing attempt endpoints under the authenticated router.
 func (m *Module) Routes(router chi.Router) {
 	if m.handler != nil {
@@ -266,6 +289,14 @@ const sweepPlacementInterval = time.Minute
 
 // Advisory lock id for daily generation job (migration 1700000880).
 const dailyGenerationLockID int64 = 1_700_000_880
+
+// Advisory lock id for the resource practice generation sweep (migration
+// 1700000920). 920 is the migration's number.
+const resourcePracticeLockID int64 = 1_700_000_920
+
+// resourcePracticeInterval is how often the sweep looks for queued sets. Short,
+// because a learner is waiting on the answer.
+const resourcePracticeInterval = 30 * time.Second
 
 // CronJobs returns the scheduled partition maintenance, grading sweep, and pool jobs.
 func (m *Module) CronJobs() []job.CronJob {
@@ -312,7 +343,21 @@ func (m *Module) CronJobs() []job.CronJob {
 			Interval: 24 * time.Hour,
 			Task:     m.DailyGeneration,
 		},
+		{
+			// Resource practice generation (WO 21 Stage B). Frequent, because a
+			// learner is waiting: the request only queues the set, and this is
+			// what turns it into activities.
+			Name:     "learning.generate_resource_practice",
+			LockID:   resourcePracticeLockID,
+			Interval: resourcePracticeInterval,
+			Task:     m.GenerateResourcePractice,
+		},
 	}
+}
+
+// GenerateResourcePractice builds the private practice sets learners asked for.
+func (m *Module) GenerateResourcePractice(ctx context.Context) error {
+	return m.service.GeneratePendingResourcePractice(ctx)
 }
 
 // DailyGeneration generates practice pool items for weak nodes of recently active learners (Stage I).

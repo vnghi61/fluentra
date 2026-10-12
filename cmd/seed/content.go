@@ -63,12 +63,22 @@ func seedContentAndCurriculum(ctx context.Context, pool *pgxpool.Pool, adminID u
 	_, _ = fmt.Fprintf(out, "  ✓ Course: %s (6 lessons, %d units) — run `make tts` to render the audio\n",
 		listeningCourseSeedData.Title, len(listeningCourseSeedData.Units))
 
-	// 2. Seed 200 Word Senses and Public Deck
-	count, err := seedVocabularyWords(ctx, pool, adminID, wordSenseSeedData)
+	// 2. Seed vocabulary: the frozen 10,000-word fixture when it is there, the
+	// curated 200 when it is not.
+	count, fromFixture, err := seedVocabularyFromFixture(
+		ctx, pool, adminID, defaultVocabularyFixtureDir, out)
 	if err != nil {
-		return fmt.Errorf("seed vocabulary words: %w", err)
+		return fmt.Errorf("seed vocabulary fixtures: %w", err)
 	}
-	_, _ = fmt.Fprintf(out, "  ✓ Vocabulary: %d word senses seeded & linked into curated deck\n", count)
+	if fromFixture {
+		_, _ = fmt.Fprintf(out, "  ✓ Vocabulary: %d words loaded from the frozen fixture\n", count)
+	} else {
+		count, err = seedVocabularyWords(ctx, pool, adminID, wordSenseSeedData, curatedDeckFor)
+		if err != nil {
+			return fmt.Errorf("seed vocabulary words: %w", err)
+		}
+		_, _ = fmt.Fprintf(out, "  ✓ Vocabulary: %d word senses seeded & linked into curated deck\n", count)
+	}
 
 	return nil
 }
@@ -308,35 +318,59 @@ func withLearnerGloss(config map[string]any) map[string]any {
 	return config
 }
 
+// vocabSlug is the content slug for a word sense: lower-case, with every
+// character a slug cannot hold folded to a hyphen. A lemma the model wrote with
+// a capital ("November") or a space would otherwise fail the slug check and
+// stop the whole seed.
+func vocabSlug(lemma, pos string) string {
+	return "vocab-" + slugPart(lemma) + "-" + slugPart(pos)
+}
+
+func slugPart(s string) string {
+	var b strings.Builder
+	lastHyphen := true
+	for _, r := range strings.ToLower(s) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			lastHyphen = false
+		default:
+			if !lastHyphen {
+				b.WriteByte('-')
+				lastHyphen = true
+			}
+		}
+	}
+	return strings.Trim(b.String(), "-")
+}
+
+// seedDeck is a public deck a seeded word is linked into.
+type seedDeck struct {
+	Slug        string
+	Name        string
+	Description string
+}
+
+// curatedDeck is the hand-written 200's deck.
+var curatedDeck = seedDeck{
+	Slug:        "a2-b1-essentials",
+	Name:        "A2–B1 Essential Vocabulary",
+	Description: "Curated core 200 vocabulary words for intermediate fluency.",
+}
+
+// curatedDeckFor puts every hand-written word in the curated deck.
+func curatedDeckFor(seedWordSense) []seedDeck { return []seedDeck{curatedDeck} }
+
 func seedVocabularyWords(
 	ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, senses []seedWordSense,
+	decksFor func(seedWordSense) []seedDeck,
 ) (int, error) {
-	// The curated deck has no owner.
-	//
-	// ListDecksByUser shows a learner `owner_id = $1 OR (owner_id IS NULL AND
-	// is_public)`, so a "curated" deck owned by the admin account is visible to
-	// exactly one person — the admin. NULL is what makes it everyone's. The
-	// unique constraint is NULLS NOT DISTINCT, so the upsert still matches on
-	// re-run.
-	var deckID uuid.UUID
-	const upsertDeck = `
-		INSERT INTO skill.decks (owner_id, slug, name, description, is_public, updated_at)
-		VALUES (NULL, 'a2-b1-essentials', 'A2–B1 Essential Vocabulary',
-		        'Curated core 200 vocabulary words for intermediate fluency.', true, now())
-		ON CONFLICT (owner_id, slug) DO UPDATE
-		SET name = EXCLUDED.name,
-		    description = EXCLUDED.description,
-		    is_public = true,
-		    updated_at = now()
-		RETURNING id`
-	if err := pool.QueryRow(ctx, upsertDeck).Scan(&deckID); err != nil {
-		return 0, fmt.Errorf("upsert curated deck: %w", err)
-	}
+	decks := &deckCache{pool: pool, ids: map[string]uuid.UUID{}, linked: map[uuid.UUID][]uuid.UUID{}}
 
 	seededCount := 0
 	for i, s := range senses {
 		// 1. Ensure content version for sense
-		slug := fmt.Sprintf("vocab-%s-%s", s.Lemma, s.POS)
+		slug := vocabSlug(s.Lemma, s.POS)
 		// The dictionary entry, not just the answer key. All of this is already
 		// on seedWordSense; it simply never reached the body, so the review
 		// screen had a word to schedule and nothing to show for it.
@@ -359,6 +393,11 @@ func seedVocabularyWords(
 			body[bodyKeyExampleSentence] = s.Examples[0].Sentence
 			body[bodyKeyExampleSentences] = s.Examples
 		}
+		if s.AudioURL != "" {
+			body["audio_url"] = s.AudioURL
+			body["audio_attribution"] = s.AudioAttribution
+			body["audio_licence"] = s.AudioLicence
+		}
 		versionID, err := ensureContentItemAndVersion(ctx, pool, adminID, slug, "vocabulary_quiz", s.CEFRLevel, body)
 		if err != nil {
 			return seededCount, fmt.Errorf("ensure vocab content for %s: %w", s.Lemma, err)
@@ -366,7 +405,7 @@ func seedVocabularyWords(
 
 		// 2. Upsert word
 		var wordID uuid.UUID
-		rank := i + 1
+		rank := seedRank(s, i)
 		const upsertWord = `
 			INSERT INTO skill.words (lemma, pos, cefr_level, frequency_rank, ipa, updated_at)
 			VALUES ($1, $2, $3, $4, $5, now())
@@ -417,19 +456,99 @@ func seedVocabularyWords(
 			}
 		}
 
-		// 4. Add to public deck
-		const insertDeckItem = `
-			INSERT INTO skill.deck_items (deck_id, word_sense_id)
-			VALUES ($1, $2)
-			ON CONFLICT (deck_id, word_sense_id) DO NOTHING`
-		if _, err := pool.Exec(ctx, insertDeckItem, deckID, senseID); err != nil {
-			return seededCount, fmt.Errorf("link deck item for %s: %w", s.Lemma, err)
+		// 4. Add to its public decks
+		if err := linkDecks(ctx, pool, decksFor(s), decks, senseID); err != nil {
+			return seededCount, fmt.Errorf("link decks for %s: %w", s.Lemma, err)
 		}
 
 		seededCount++
 	}
 
+	if err := decks.prune(ctx); err != nil {
+		return seededCount, err
+	}
 	return seededCount, nil
+}
+
+// seedRank is a word's frequency rank: the fixture's when it carries one,
+// otherwise its position in the list.
+func seedRank(sense seedWordSense, index int) int {
+	if sense.Rank > 0 {
+		return sense.Rank
+	}
+	return index + 1
+}
+
+// deckCache upserts each public deck once per seed run.
+type deckCache struct {
+	pool *pgxpool.Pool
+	ids  map[string]uuid.UUID
+	// linked is every sense this run put in each deck, by deck id.
+	linked map[uuid.UUID][]uuid.UUID
+}
+
+// prune removes from each deck this run seeded the senses it did not link, so
+// a deck holds exactly the list it was built from: a word the fixture dropped
+// ("went", "london") leaves the deck on the next seed, not only on a fresh
+// database. A learner's own progress on the word is untouched.
+func (c *deckCache) prune(ctx context.Context) error {
+	for deckID, senses := range c.linked {
+		if _, err := c.pool.Exec(ctx,
+			`DELETE FROM skill.deck_items WHERE deck_id = $1 AND NOT (word_sense_id = ANY($2))`,
+			deckID, senses); err != nil {
+			return fmt.Errorf("prune deck %s: %w", deckID, err)
+		}
+	}
+	return nil
+}
+
+// id returns the deck's id, creating or refreshing it on first use.
+//
+// A seeded deck has no owner. ListDecksByUser shows a learner `owner_id = $1 OR
+// (owner_id IS NULL AND is_public)`, so a "curated" deck owned by the admin
+// account is visible to exactly one person — the admin. NULL is what makes it
+// everyone's. The unique constraint is NULLS NOT DISTINCT, so the upsert still
+// matches on re-run.
+func (c *deckCache) id(ctx context.Context, deck seedDeck) (uuid.UUID, error) {
+	if id, ok := c.ids[deck.Slug]; ok {
+		return id, nil
+	}
+	const upsertDeck = `
+		INSERT INTO skill.decks (owner_id, slug, name, description, is_public, updated_at)
+		VALUES (NULL, $1, $2, $3, true, now())
+		ON CONFLICT (owner_id, slug) DO UPDATE
+		SET name = EXCLUDED.name,
+		    description = EXCLUDED.description,
+		    is_public = true,
+		    updated_at = now()
+		RETURNING id`
+	var id uuid.UUID
+	if err := c.pool.QueryRow(ctx, upsertDeck, deck.Slug, deck.Name, deck.Description).Scan(&id); err != nil {
+		return uuid.Nil, fmt.Errorf("upsert deck %s: %w", deck.Slug, err)
+	}
+	c.ids[deck.Slug] = id
+	return id, nil
+}
+
+// linkDecks adds a sense to each of its decks, idempotently.
+func linkDecks(
+	ctx context.Context, pool *pgxpool.Pool, decks []seedDeck, cache *deckCache, senseID uuid.UUID,
+) error {
+	const insertDeckItem = `
+		INSERT INTO skill.deck_items (deck_id, word_sense_id)
+		VALUES ($1, $2)
+		ON CONFLICT (deck_id, word_sense_id) DO NOTHING`
+	for _, deck := range decks {
+		id, err := cache.id(ctx, deck)
+		if err != nil {
+			return err
+		}
+		if _, err := pool.Exec(ctx, insertDeckItem, id, senseID); err != nil {
+			return err
+		}
+		cache.linked[id] = append(cache.linked[id], senseID)
+	}
+	return nil
 }
 
 func pgxIsNoRows(err error) bool {

@@ -15,6 +15,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/modules/resource/domain"
 	resourcehttp "github.com/fluentra/fluentra/internal/modules/resource/transport/http"
+	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
@@ -27,8 +28,9 @@ type mockResourceService struct {
 	listFn      func(ctx context.Context, userID uuid.UUID, status, kind *string, page, pageSize int) (
 		*contract.ResourceList, error,
 	)
-	getFn    func(ctx context.Context, id, userID uuid.UUID) (*contract.Resource, error)
-	deleteFn func(ctx context.Context, id, userID uuid.UUID) error
+	getFn        func(ctx context.Context, id, userID uuid.UUID) (*contract.Resource, error)
+	deleteFn     func(ctx context.Context, id, userID uuid.UUID) error
+	revalidateFn func(ctx context.Context, userID, resourceID uuid.UUID) error
 }
 
 func (m *mockResourceService) CreateUploadIntent(
@@ -77,6 +79,13 @@ func (m *mockResourceService) GetResource(ctx context.Context, id, userID uuid.U
 func (m *mockResourceService) DeleteResource(ctx context.Context, id, userID uuid.UUID) error {
 	if m.deleteFn != nil {
 		return m.deleteFn(ctx, id, userID)
+	}
+	return nil
+}
+
+func (m *mockResourceService) RevalidateResource(ctx context.Context, userID, resourceID uuid.UUID) error {
+	if m.revalidateFn != nil {
+		return m.revalidateFn(ctx, userID, resourceID)
 	}
 	return nil
 }
@@ -201,5 +210,148 @@ func TestHandler_Delete_UnownedReturns404(t *testing.T) {
 
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected status 404 for delete unowned resource, got %d", w.Code)
+	}
+}
+
+func TestHandler_ListAndDetailAgreeOnProcessingStatus(t *testing.T) {
+	t.Parallel()
+	const (
+		processing = "processing"
+		ready      = "ready"
+		failed     = "failed"
+	)
+	for _, tc := range []struct {
+		name     string
+		statuses []string
+		want     string
+	}{
+		{"no renditions", nil, processing},
+		{"pending", []string{domain.RenditionStatusPending}, processing},
+		{"ready before pending", []string{domain.RenditionStatusReady, domain.RenditionStatusPending}, processing},
+		{"pending before ready", []string{domain.RenditionStatusPending, domain.RenditionStatusReady}, processing},
+		{"completed preview", []string{domain.RenditionStatusReady}, ready},
+		{"ready with skipped", []string{domain.RenditionStatusReady, domain.RenditionStatusSkipped}, ready},
+		{"ready with failed", []string{domain.RenditionStatusFailed, domain.RenditionStatusReady}, ready},
+		{"all failed", []string{domain.RenditionStatusFailed}, failed},
+		{"all skipped", []string{domain.RenditionStatusSkipped}, failed},
+		{"failed and skipped", []string{domain.RenditionStatusFailed, domain.RenditionStatusSkipped}, failed},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			userID, resourceID := uuid.New(), uuid.New()
+			resource := contract.Resource{ID: resourceID, UserID: userID, Kind: domain.KindFile, Status: domain.StatusValidated}
+			for _, status := range tc.statuses {
+				resource.Renditions = append(resource.Renditions, contract.Rendition{
+					ResourceID: resourceID, Status: status, Kind: domain.RenditionKindPreview,
+				})
+			}
+			readyCount := readyRenditionCount(resource.Renditions)
+			svc := &mockResourceService{
+				listFn: func(_ context.Context, id uuid.UUID, _, _ *string, _, _ int) (*contract.ResourceList, error) {
+					if id != userID {
+						t.Fatal("list lost the authenticated user")
+					}
+					return &contract.ResourceList{Items: []contract.Resource{resource}, Total: 1, Page: 1, PageSize: 20}, nil
+				},
+				getFn: func(_ context.Context, id, owner uuid.UUID) (*contract.Resource, error) {
+					if id != resourceID || owner != userID {
+						t.Fatal("detail lost the authenticated user or resource ID")
+					}
+					return &resource, nil
+				},
+			}
+			router := setupTestRouter(svc)
+			type resourceStatus struct {
+				ID               uuid.UUID         `json:"id"`
+				ProcessingStatus string            `json:"processing_status"`
+				Renditions       []json.RawMessage `json:"renditions"`
+			}
+			for _, path := range []string{"/me/resources", "/me/resources/" + resourceID.String()} {
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, withActor(httptest.NewRequest(http.MethodGet, path, nil), userID))
+				if w.Code != http.StatusOK {
+					t.Fatalf("GET %s: status=%d, body=%s", path, w.Code, w.Body.String())
+				}
+				var got resourceStatus
+				if path == "/me/resources" {
+					var list struct {
+						Items []resourceStatus `json:"items"`
+					}
+					if err := json.Unmarshal(w.Body.Bytes(), &list); err != nil {
+						t.Fatal(err)
+					}
+					if len(list.Items) != 1 {
+						t.Fatalf("list returned %d resources, want 1", len(list.Items))
+					}
+					got = list.Items[0]
+				} else if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+					t.Fatal(err)
+				}
+				if got.ID != resourceID || got.ProcessingStatus != tc.want || len(got.Renditions) != readyCount {
+					t.Errorf("GET %s: got %+v, want status=%s and %d ready renditions", path, got, tc.want, readyCount)
+				}
+			}
+		})
+	}
+}
+
+func readyRenditionCount(renditions []contract.Rendition) int {
+	count := 0
+	for _, rendition := range renditions {
+		if rendition.Status == domain.RenditionStatusReady {
+			count++
+		}
+	}
+	return count
+}
+
+func TestHandler_RevalidateAuthenticatesAndScopesTheRequest(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name          string
+		authenticated bool
+		validID       bool
+		serviceErr    error
+		wantStatus    int
+		wantCode      string
+		wantCalls     int
+	}{
+		{"owner accepted", true, true, nil, http.StatusAccepted, "", 1},
+		{"foreign owner", true, true, domain.ErrResourceNotFound, http.StatusNotFound, "RESOURCE_NOT_FOUND", 1},
+		{"no authentication", false, true, nil, http.StatusUnauthorized, "UNAUTHORIZED", 0},
+		{"invalid resource ID", true, false, nil, http.StatusBadRequest, "INVALID_RESOURCE_ID", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			userID, resourceID := uuid.New(), uuid.New()
+			calls := 0
+			svc := &mockResourceService{revalidateFn: func(_ context.Context, owner, id uuid.UUID) error {
+				calls++
+				if owner != userID || id != resourceID {
+					t.Fatalf("revalidation IDs = %s/%s, want %s/%s", owner, id, userID, resourceID)
+				}
+				return tc.serviceErr
+			}}
+			id := resourceID.String()
+			if !tc.validID {
+				id = "invalid"
+			}
+			req := httptest.NewRequest(http.MethodPost, "/me/resources/"+id+"/revalidate", nil)
+			if tc.authenticated {
+				req = withActor(req, userID)
+			}
+			w := httptest.NewRecorder()
+			setupTestRouter(svc).ServeHTTP(w, req)
+			if w.Code != tc.wantStatus || calls != tc.wantCalls {
+				t.Fatalf("status=%d, calls=%d; want %d/%d: %s", w.Code, calls, tc.wantStatus, tc.wantCalls, w.Body.String())
+			}
+			if tc.wantCode != "" {
+				var problem apperr.Problem
+				if err := json.Unmarshal(w.Body.Bytes(), &problem); err != nil {
+					t.Fatal(err)
+				}
+				if problem.Code != tc.wantCode || problem.Status != tc.wantStatus {
+					t.Errorf("problem = %+v, want code %s", problem, tc.wantCode)
+				}
+			}
+		})
 	}
 }

@@ -84,7 +84,13 @@ test("the studio editor's activity-kind select stays inside the viewport", async
   await stubAccountApi(page);
 
   await page.goto("/studio/courses/new");
-  const kindSelect = page.locator("select").nth(1);
+  // A new course starts with an empty lesson: the select belongs to an
+  // exercise, so add one. It opens expanded.
+  await page
+    .getByRole("button", { name: "Add exercise", exact: true })
+    .click({ timeout: 15_000 });
+  await page.getByRole("menuitem").first().click();
+  const kindSelect = page.getByRole("combobox", { name: "Activity type" });
   await expect(kindSelect).toBeVisible({ timeout: 15_000 });
   await kindSelect.scrollIntoViewIfNeeded();
 

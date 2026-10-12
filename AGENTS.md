@@ -11,5 +11,5 @@ Do not duplicate content here.
 2. Start at `AGENT.md`, then `MODULE_INDEX.md`, then the one module's `AGENT.md`. Do not scan the repo.
 3. A module may import only another module's `contract/` package. Never its internals, never its tables.
 4. API changes start in `api/openapi/openapi.yaml`. Schema changes start in `db/migrations/<module>/`.
-5. Errors use `shared/apperr`; SQL lives in `db/queries/`; prompts live in `docs/prompts/`.
-6. Run `make check` before you finish, and update the module's `AGENT.md` and `TODO.md`.
+5. Errors use `shared/apperr`; SQL lives in `db/queries/`; prompts live in `internal/platform/ai/prompts/`.
+6. Run `make check` before you finish, and update the module's `AGENT.md` (its §18 is the backlog).

@@ -39,7 +39,6 @@ services:
       # five attempts — the stack looks healthy and no code ever arrives.
       - SMTP_USERNAME=
       - SMTP_PASSWORD=
-      - SMTP_TLS=false
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - CORS_ALLOWED_ORIGINS=http://localhost:5173
       # The E2E suite is ten journeys across four device projects, and every one
@@ -94,7 +93,6 @@ services:
       # five attempts — the stack looks healthy and no code ever arrives.
       - SMTP_USERNAME=
       - SMTP_PASSWORD=
-      - SMTP_TLS=false
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTP_HMAC_KEY=change-me-32-bytes-minimum-for-otp-hmac
       - JWT_SIGNING_KEY=change-me-at-least-32-bytes-long-secret
@@ -132,6 +130,35 @@ services:
       api:
         condition: service_started
 
+  # Heavy conversions stay outside the API/worker, including on host-run setups.
+  media-renderer:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.media
+    restart: unless-stopped
+    environment:
+      - APP_ENV=local
+      - DB_DSN=postgres://fluentra:fluentra@postgres:5432/fluentra?sslmode=disable
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+      - S3_USE_SSL=false
+    networks: [backend]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:size=536870912,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
+    stop_grace_period: 180s
+
   postgres:
     ports: ["127.0.0.1:5432:5432"]
   redis:
@@ -160,14 +187,16 @@ services:
   # finding. One-shot: it exits 0 once the five buckets are there, and `--ignore-existing`
   # makes a second `up` a no-op rather than an error.
   createbuckets:
-    # MinIO no longer publishes to Docker Hub (minio/minio is gone); quay.io is its official registry.
-    image: quay.io/minio/mc:latest
+    # The server image, not a client one: MinIO's own mc image is gone with its
+    # server image, and Chainguard's minio-client has no shell for this loop.
+    # The server image carries mc and bash.
+    image: cgr.dev/chainguard/minio:latest
     networks: [backend]
     depends_on:
       minio:
         condition: service_healthy
     entrypoint:
-      - /bin/sh
+      - bash
       - -c
       - |
         mc alias set local http://minio:9000 minioadmin minioadmin

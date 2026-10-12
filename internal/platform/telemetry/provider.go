@@ -31,7 +31,9 @@ type Config struct {
 	Version     string
 	Environment string
 	CommitSHA   string
-	Endpoint    string
+	// Endpoint is the OTLP collector. Empty exports nothing: logs still go to
+	// stdout, and traces and metrics stay in-process (free-tier hosting).
+	Endpoint string
 }
 
 // Provider owns global OpenTelemetry providers and their shutdown lifecycle.
@@ -40,6 +42,7 @@ type Provider struct {
 	meterProvider  *metric.MeterProvider
 	loggerProvider *log.LoggerProvider
 	instruments    Instruments
+	exporting      bool
 }
 
 var defaultInstruments struct {
@@ -59,25 +62,32 @@ func NewProvider(ctx context.Context, config Config) (*Provider, error) {
 		return nil, fmt.Errorf("create telemetry resource: %w", err)
 	}
 
-	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithEndpoint(config.Endpoint), otlptracegrpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("create OTLP trace exporter: %w", err)
-	}
-	metricExporter, err := otlpmetricgrpc.New(
-		ctx, otlpmetricgrpc.WithEndpoint(config.Endpoint), otlpmetricgrpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("create OTLP metric exporter: %w", err)
-	}
-	logExporter, err := otlploggrpc.New(ctx, otlploggrpc.WithEndpoint(config.Endpoint), otlploggrpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("create OTLP log exporter: %w", err)
+	traceOptions := []trace.TracerProviderOption{trace.WithResource(resources)}
+	meterOptions := []metric.Option{metric.WithResource(resources)}
+	logOptions := []log.LoggerProviderOption{log.WithResource(resources)}
+	if config.Endpoint != "" {
+		traceExporter, err := otlptracegrpc.New(
+			ctx, otlptracegrpc.WithEndpoint(config.Endpoint), otlptracegrpc.WithInsecure())
+		if err != nil {
+			return nil, fmt.Errorf("create OTLP trace exporter: %w", err)
+		}
+		metricExporter, err := otlpmetricgrpc.New(
+			ctx, otlpmetricgrpc.WithEndpoint(config.Endpoint), otlpmetricgrpc.WithInsecure())
+		if err != nil {
+			return nil, fmt.Errorf("create OTLP metric exporter: %w", err)
+		}
+		logExporter, err := otlploggrpc.New(ctx, otlploggrpc.WithEndpoint(config.Endpoint), otlploggrpc.WithInsecure())
+		if err != nil {
+			return nil, fmt.Errorf("create OTLP log exporter: %w", err)
+		}
+		traceOptions = append(traceOptions, trace.WithBatcher(traceExporter))
+		meterOptions = append(meterOptions, metric.WithReader(metric.NewPeriodicReader(metricExporter)))
+		logOptions = append(logOptions, log.WithProcessor(log.NewBatchProcessor(logExporter)))
 	}
 
-	tracerProvider := trace.NewTracerProvider(trace.WithBatcher(traceExporter), trace.WithResource(resources))
-	meterProvider := metric.NewMeterProvider(
-		metric.WithReader(metric.NewPeriodicReader(metricExporter)), metric.WithResource(resources))
-	loggerProvider := log.NewLoggerProvider(
-		log.WithProcessor(log.NewBatchProcessor(logExporter)), log.WithResource(resources))
+	tracerProvider := trace.NewTracerProvider(traceOptions...)
+	meterProvider := metric.NewMeterProvider(meterOptions...)
+	loggerProvider := log.NewLoggerProvider(logOptions...)
 	instruments, err := NewInstruments(meterProvider.Meter("fluentra"))
 	if err != nil {
 		// Nothing has been recorded yet, so this only needs to close the freshly
@@ -98,6 +108,7 @@ func NewProvider(ctx context.Context, config Config) (*Provider, error) {
 		meterProvider:  meterProvider,
 		loggerProvider: loggerProvider,
 		instruments:    instruments,
+		exporting:      config.Endpoint != "",
 	}
 	otel.SetTracerProvider(tracerProvider)
 	otel.SetMeterProvider(meterProvider)

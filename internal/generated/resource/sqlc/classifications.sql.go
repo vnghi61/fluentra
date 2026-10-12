@@ -11,6 +11,15 @@ import (
 	"github.com/google/uuid"
 )
 
+const deleteClassificationByResourceID = `-- name: DeleteClassificationByResourceID :exec
+DELETE FROM resource.classifications WHERE resource_id = $1
+`
+
+func (q *Queries) DeleteClassificationByResourceID(ctx context.Context, resourceID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteClassificationByResourceID, resourceID)
+	return err
+}
+
 const getClassificationByResourceID = `-- name: GetClassificationByResourceID :one
 SELECT resource_id, cefr_estimate, skill, node_codes, prompt_version, model, ai_request_id, created_at
 FROM resource.classifications

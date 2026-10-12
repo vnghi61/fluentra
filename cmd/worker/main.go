@@ -45,6 +45,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/reading"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
 	"github.com/fluentra/fluentra/internal/modules/resource"
+	resourcecontract "github.com/fluentra/fluentra/internal/modules/resource/contract"
 	"github.com/fluentra/fluentra/internal/modules/speaking"
 	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
@@ -146,7 +147,8 @@ type workerConfig struct {
 		Provider4APIKey  string        `koanf:"provider_4_api_key"`
 		Provider4Timeout time.Duration `koanf:"provider_4_timeout"`
 
-		WritingDailyLimit int `koanf:"writing_daily_limit"`
+		WritingDailyLimit int  `koanf:"writing_daily_limit"`
+		AutoPublish       bool `koanf:"auto_publish"`
 	} `koanf:"ai"`
 	OTP struct {
 		HMACKey string `koanf:"hmac_key"`
@@ -187,7 +189,10 @@ type workerConfig struct {
 		TTSDispatchToken      string `koanf:"tts_dispatch_token"`
 	} `koanf:"speech"`
 	Exam struct {
-		DailySittingsLimit int `koanf:"daily_sittings_limit"`
+		DailySittingsLimit int  `koanf:"daily_sittings_limit"`
+		DailyGeneration    bool `koanf:"daily_generation"`
+		// DailyGenerationCap bounds the items one daily run asks for.
+		DailyGenerationCap int `koanf:"daily_generation_cap"`
 	} `koanf:"exam"`
 	SePay struct {
 		WebhookAPIKey string        `koanf:"webhook_api_key"`
@@ -297,8 +302,10 @@ func configOptions() config.Options {
 			"ai.provider_4_api_key":          "",
 			"ai.provider_4_timeout":          defaultAITimeout,
 			"ai.writing_daily_limit":         10,
+			"ai.auto_publish":                false,
 			"speech.tts_engine":              "offline",
 			"speech.tts_voice":               "en_US-lessac-medium",
+			"speech.tts_voice_b":             "",
 			"speech.asr_base_url":            "",
 			"speech.asr_model":               "whisper-large-v3",
 			"speech.asr_api_key":             "",
@@ -309,6 +316,8 @@ func configOptions() config.Options {
 			"speech.tts_dispatch_ref":        "main",
 			"speech.tts_dispatch_token":      "",
 			"exam.daily_sittings_limit":      5,
+			"exam.daily_generation":          false,
+			"exam.daily_generation_cap":      300,
 			"sepay.webhook_api_key":          "",
 			"sepay.api_token":                "",
 			"sepay.account_number":           "",
@@ -316,7 +325,7 @@ func configOptions() config.Options {
 			"sepay.account_holder":           "",
 			"sepay.allowed_ips":              "",
 			"sepay.order_ttl":                "24h",
-			"studio.min_price_vnd":           int64(49000),
+			"studio.min_price_vnd":           int64(5000),
 			"studio.max_price_vnd":           int64(5000000),
 			"studio.revenue_share_bps":       7000,
 			"media.dispatch_workflow":        "media-render.yml",
@@ -324,10 +333,10 @@ func configOptions() config.Options {
 		},
 		EnvSections: []string{"SPEECH", "EXAM", "SEPAY", "STUDIO", "MEDIA"},
 		Required: []config.RequiredKey{
-			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
-			{Name: "redis.url", DocSection: "docs/deployment/configuration.md#redis"},
-			{Name: "otp.hmac_key", DocSection: "docs/deployment/configuration.md#auth"},
-			{Name: "jwt.signing_key", DocSection: "docs/deployment/configuration.md#auth"},
+			{Name: "db.dsn", DocSection: configDoc},
+			{Name: "redis.url", DocSection: configDoc},
+			{Name: "otp.hmac_key", DocSection: configDoc},
+			{Name: "jwt.signing_key", DocSection: configDoc},
 		},
 	}
 }
@@ -339,33 +348,32 @@ func loadConfig(ctx context.Context) (workerConfig, error) {
 	}
 	trimmed := strings.TrimPrefix(strings.TrimPrefix(target.Telemetry.Endpoint, "https://"), "http://")
 	target.Telemetry.Endpoint = strings.TrimSuffix(trimmed, "/")
-	const jobsDoc = "docs/deployment/configuration.md#jobs"
 	if target.Worker.ShutdownGrace <= 0 {
 		return target, fmt.Errorf(
-			"config key worker.shutdown_grace must be a positive duration; see %s", jobsDoc)
+			"config key worker.shutdown_grace must be a positive duration; see %s", configDoc)
 	}
 	if target.Outbox.PollInterval <= 0 {
 		return target, fmt.Errorf(
-			"config key outbox.poll_interval must be a positive duration; see %s", jobsDoc)
+			"config key outbox.poll_interval must be a positive duration; see %s", configDoc)
 	}
 	if target.Outbox.BatchSize <= 0 {
 		return target, fmt.Errorf(
-			"config key outbox.batch_size must be a positive integer; see %s", jobsDoc)
+			"config key outbox.batch_size must be a positive integer; see %s", configDoc)
 	}
 	if target.Outbox.PublishedRetentionDays <= 0 {
 		return target, fmt.Errorf(
-			"config key outbox.published_retention_days must be a positive integer; see %s", jobsDoc)
+			"config key outbox.published_retention_days must be a positive integer; see %s", configDoc)
 	}
 	if target.Job.Timeout <= 0 {
 		return target, fmt.Errorf(
-			"config key job.timeout must be a positive duration; see %s", jobsDoc)
+			"config key job.timeout must be a positive duration; see %s", configDoc)
 	}
 	// Queue concurrency is configuration. Parsing it here means a malformed
 	// WORKER_QUEUES fails the boot rather than silently falling back to a
 	// hardcoded default that nobody notices is in use.
 	queues, err := job.ParseQueues(target.Worker.Queues)
 	if err != nil {
-		return target, fmt.Errorf("%w; see %s", err, jobsDoc)
+		return target, fmt.Errorf("%w; see %s", err, configDoc)
 	}
 	target.Queues = queues
 	return target, nil
@@ -528,7 +536,7 @@ func (r roleAuthorResolver) FirstHolderOf(ctx context.Context, role string) (uui
 }
 
 // startLearning wires the learning module's scheduled work: the attempt-table
-// partition rotation, and the retention refresh that makes ROADMAP.md's Phase 2
+// partition rotation, and the retention refresh that makes the Phase 2
 // exit criterion a number rather than a query someone could write.
 func startLearning(
 	ctx context.Context, pool *pgxpool.Pool, cron *job.CronScheduler,
@@ -539,6 +547,7 @@ func startLearning(
 	rbacModule *rbac.Module,
 	cfg workerConfig, storageStore storage.Store,
 	skillGraders map[string]learningcontract.ExerciseGrader,
+	resourceReader resourcecontract.ResourceReader,
 ) (*learning.Module, error) {
 	graders := make(map[string]learningcontract.ExerciseGrader)
 	if readingModule != nil {
@@ -566,8 +575,10 @@ func startLearning(
 		graders[kind] = grader
 	}
 	// A lesson_material completes by being marked done; its grader ships with
-	// the engine (WO 20).
+	// the engine (WO 20). A foundation topic completes the same way (WO 22
+	// Stage F).
 	graders[learningcontract.KindLessonMaterial] = learningdomain.NewMaterialGrader()
+	graders[learningcontract.KindFoundationTopic] = learningdomain.NewMaterialGrader()
 
 	// The owner of generated practice content, resolved the way the vocabulary
 	// generator resolves it. On a database with no administrator yet it is zero,
@@ -590,25 +601,33 @@ func startLearning(
 	}
 
 	learningModule := learning.New(learning.Deps{
-		Pool:          pool,
-		Lesson:        lessonModule.Reader(),
-		LessonAuthor:  lessonModule.Author(),
-		Content:       contentModule.Reader(),
-		ContentAuthor: contentModule.Author(),
-		Taxonomies:    contentModule.TaxonomyResolver(),
-		Graders:       graders,
-		AI:            aiClient,
+		Pool:            pool,
+		Lesson:          lessonModule.Reader(),
+		LessonAuthor:    lessonModule.Author(),
+		Content:         contentModule.Reader(),
+		ContentAuthor:   contentModule.Author(),
+		ContentRecorder: contentModule.VerificationRecorder(),
+		AutoPublish:     cfg.AI.AutoPublish,
+		Taxonomies:      contentModule.TaxonomyResolver(),
+		Graders:         graders,
+		AI:              aiClient,
 
 		GeneratorAuthorID: generatorAuthor,
 		AuthorResolver:    roleAuthorResolver{members: rbacModule.RoleMembers()},
 		Synthesiser:       mediaSynthesiser,
+		Charts:            media.ChartDataURI{},
 		Audio:             media.NewCacheLocator(contentModule.TTSCache()).WithVoice(cfg.Speech.TTSVoice),
 		AudioRender:       newRenderDispatcher(ctx, cfg),
+		Resource:          resourceReader,
 	})
 
 	for _, scheduled := range learningModule.CronJobs() {
 		cron.Register(scheduled)
 	}
+
+	// The daily sample of auto-published items a person spot-checks (WO 22
+	// Stage A.5).
+	registerCronJobs(cron, contentModule.CronJobs())
 
 	if err := learningModule.RotatePartitions(ctx); err != nil {
 		slog.ErrorContext(ctx, "could not rotate learning partitions at start-up; the scheduled job will retry",
@@ -699,10 +718,16 @@ func startModules(
 
 	aiClient := newWorkerAIClient(ctx, cfg, pool)
 
+	// The resource module is assembled below, after learning; learning reads a
+	// learner's upload through this holder, and studio's Gate 1 material check
+	// copies through the same one. Reading before assembly is an error, never
+	// an empty answer.
+	resourceHolder := &lateResource{}
 	if err := startGrading(ctx, gradingDeps{
 		pool: pool, bus: bus, cron: cron, workers: workers, instruments: instruments, cfg: cfg,
 		storage: storageStore, ai: aiClient, lesson: lessonModule, content: contentModule,
 		reading: readingModule, grammar: grammarModule, listening: listeningModule, rbac: rbacModule,
+		resource: resourceHolder, resourcePublisher: resourceHolder,
 	}); err != nil {
 		return err
 	}
@@ -787,6 +812,7 @@ func startModules(
 		Transcriber: newWorkerTranscriber(cfg),
 		AIClient:    aiClient,
 	})
+	resourceHolder.module = resourceModule
 	if err := startResource(resourceModule, bus, cron, workers); err != nil {
 		return err
 	}
@@ -1039,20 +1065,63 @@ func startPracticeGenerator(
 }
 
 type gradingDeps struct {
-	pool        *pgxpool.Pool
-	bus         *eventbus.InProcessBus
-	cron        *job.CronScheduler
-	workers     *river.Workers
-	instruments telemetry.Instruments
-	cfg         workerConfig
-	storage     storage.Store
-	ai          ai.Client
-	lesson      *lesson.Module
-	content     *content.Module
-	reading     *reading.Module
-	grammar     *grammar.Module
-	listening   *listening.Module
-	rbac        *rbac.Module
+	pool              *pgxpool.Pool
+	bus               *eventbus.InProcessBus
+	cron              *job.CronScheduler
+	workers           *river.Workers
+	instruments       telemetry.Instruments
+	cfg               workerConfig
+	storage           storage.Store
+	ai                ai.Client
+	lesson            *lesson.Module
+	content           *content.Module
+	reading           *reading.Module
+	grammar           *grammar.Module
+	listening         *listening.Module
+	rbac              *rbac.Module
+	resource          resourcecontract.ResourceReader
+	resourcePublisher resourcecontract.MaterialPublisher
+}
+
+// lateResource carries the resource module to learning and to studio, both of
+// which are assembled first. Reading before assembly is an error, never an
+// empty answer.
+type lateResource struct{ module *resource.Module }
+
+var _ resourcecontract.ResourceReader = (*lateResource)(nil)
+
+var _ resourcecontract.MaterialPublisher = (*lateResource)(nil)
+
+func (r *lateResource) GetResource(
+	ctx context.Context, id, userID uuid.UUID,
+) (*resourcecontract.Resource, error) {
+	if r.module == nil {
+		return nil, errors.New("resource module is not assembled, so the resource cannot be read")
+	}
+	return r.module.Reader().GetResource(ctx, id, userID)
+}
+
+// MaterialForOwner forwards to the resource read-and-copy surface once the
+// module is assembled. Before that the error is explicit, so Gate 1 fails
+// closed instead of treating a missing dependency as a validated material.
+func (r *lateResource) MaterialForOwner(
+	ctx context.Context, ownerID, resourceID uuid.UUID,
+) (*resourcecontract.Material, error) {
+	if r.module == nil {
+		return nil, errors.New("resource module is not assembled, so the material cannot be read")
+	}
+	return r.module.MaterialPublisher().MaterialForOwner(ctx, ownerID, resourceID)
+}
+
+// CopyForPublication forwards to the resource read-and-copy surface once the
+// module is assembled.
+func (r *lateResource) CopyForPublication(
+	ctx context.Context, resourceID uuid.UUID, destPrefix string,
+) (*resourcecontract.PublishedObjects, error) {
+	if r.module == nil {
+		return nil, errors.New("resource module is not assembled, so the material cannot be copied")
+	}
+	return r.module.MaterialPublisher().CopyForPublication(ctx, resourceID, destPrefix)
 }
 
 // startGrading builds learning with every grader the worker needs, and the skill
@@ -1092,6 +1161,7 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 	learningModule, err := startLearning(
 		ctx, d.pool, d.cron, d.instruments, d.lesson, d.content, d.ai, d.reading, d.grammar,
 		d.listening, d.rbac, d.cfg, d.storage, skillGraders(writingModule, speakingModule),
+		d.resource,
 	)
 	if err != nil {
 		return err
@@ -1102,7 +1172,8 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 	}
 
 	if err := startSkills(
-		d.pool, d.bus, d.cron, d.workers, d.lesson, learningModule, writingModule, speakingModule,
+		d.pool, d.bus, d.cron, d.workers, d.content, d.lesson, learningModule,
+		writingModule, speakingModule, d.cfg.Exam.DailyGeneration, d.cfg.Exam.DailyGenerationCap,
 	); err != nil {
 		return err
 	}
@@ -1128,15 +1199,16 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 	}
 
 	studioModule, err := studio.NewModule(studio.Dependencies{
-		Pool:            d.pool,
-		ItemVerifier:    learningModule.ItemVerifier(),
-		LessonAuthor:    d.lesson.Author(),
-		ContentAuthor:   d.content.Author(),
-		OrderCreator:    paymentModule.OrderCreator(),
-		ProgressReader:  learningModule.ProgressReader(),
-		MinPriceVND:     d.cfg.Studio.MinPriceVND,
-		MaxPriceVND:     d.cfg.Studio.MaxPriceVND,
-		RevenueShareBPS: d.cfg.Studio.RevenueShareBps,
+		Pool:              d.pool,
+		ItemVerifier:      learningModule.ItemVerifier(),
+		LessonAuthor:      d.lesson.Author(),
+		ContentAuthor:     d.content.Author(),
+		OrderCreator:      paymentModule.OrderCreator(),
+		ProgressReader:    learningModule.ProgressReader(),
+		MaterialPublisher: d.resourcePublisher,
+		MinPriceVND:       d.cfg.Studio.MinPriceVND,
+		MaxPriceVND:       d.cfg.Studio.MaxPriceVND,
+		RevenueShareBPS:   d.cfg.Studio.RevenueShareBps,
 	})
 	if err != nil {
 		return fmt.Errorf("assemble studio module: %w", err)
@@ -1227,8 +1299,8 @@ func newWorkerTranscriber(cfg workerConfig) media.Transcriber {
 // consumer, and the exam's expiry job and sweep.
 func startSkills(
 	pool *pgxpool.Pool, bus *eventbus.InProcessBus, cron *job.CronScheduler, workers *river.Workers,
-	lessonModule *lesson.Module, learningModule *learning.Module,
-	writingModule *writing.Module, speakingModule *speaking.Module,
+	contentModule *content.Module, lessonModule *lesson.Module, learningModule *learning.Module,
+	writingModule *writing.Module, speakingModule *speaking.Module, dailyGeneration bool, dailyCap int,
 ) error {
 	river.AddWorker(workers, writingModule.GradeSubmissionWorker())
 	river.AddWorker(workers, speakingModule.GradeRecordingWorker())
@@ -1237,16 +1309,51 @@ func startSkills(
 		return err
 	}
 
-	examModule := exam.New(exam.Deps{
+	// Questionbank is built first, so the exam module can generate through it;
+	// the lazy adapter closes the loop back to the exam part spec (WO 22 Stage O).
+	var examModule *exam.Module
+	questionbankModule := questionbank.New(questionbank.Deps{
+		Pool:          pool,
+		ContentReader: contentModule.Reader(),
+		LessonAuthor:  lessonModule.Author(),
+		Generator:     learningModule.Generator(),
+		ExamParts:     lazyExamParts{of: &examModule},
+	})
+	examModule = exam.New(exam.Deps{
 		Pool:      pool,
 		Learning:  learningModule.SittingAnswerSubmitter(),
 		Attempts:  learningModule.AttemptOutcomeReader(),
 		Exposures: learningModule.ItemExposureRecorder(),
 		Lesson:    lessonModule.Reader(),
+		// The bank the composer draws fixed tests from. Without it every part
+		// read as empty, and neither the daily job nor the sweep below could
+		// ever compose a test.
+		Questionbank:       questionbankModule.Reader(),
+		BankAuthor:         questionbankModule.Author(),
+		ReviewBacklog:      contentModule.ReviewBacklog(),
+		DailyGenerationCap: dailyCap,
 	})
 	river.AddWorker(workers, examModule.ExpireAttemptWorker())
 	cron.Register(examModule.SweepJob())
+	cron.Register(examModule.ComposeFixedTestsJob())
+	if dailyGeneration {
+		cron.Register(examModule.DailyGenerationJob())
+	}
 	return nil
+}
+
+// lazyExamParts answers questionbank's exam-part lookup after the exam module is
+// assembled: questionbank is built first so the exam module can generate through
+// it, and this closes the loop (WO 22 Stage O).
+type lazyExamParts struct{ of **exam.Module }
+
+func (l lazyExamParts) PartConstraints(
+	ctx context.Context, partID uuid.UUID,
+) (*learningcontract.ExamPartConstraints, error) {
+	if l.of == nil || *l.of == nil {
+		return nil, nil
+	}
+	return (*l.of).Service().PartConstraints(ctx, partID)
 }
 
 // mockName selects the offline AI provider, TTS engine or transcriber.
@@ -1267,3 +1374,6 @@ func newLessonCaches(client redis.Cmdable) lessonservice.LessonCaches {
 		Gen:       cache.NewRedisCache[int64](client),
 	}
 }
+
+// configDoc is where a missing or invalid config key points the operator.
+const configDoc = ".env.example"

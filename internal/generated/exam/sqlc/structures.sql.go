@@ -12,16 +12,50 @@ import (
 	"github.com/google/uuid"
 )
 
+const countFixedMockTestsByBlueprint = `-- name: CountFixedMockTestsByBlueprint :many
+SELECT blueprint_id::uuid AS blueprint_id, count(*)::int AS tests
+FROM assess.mock_tests
+WHERE blueprint_id = ANY($1::uuid[]) AND mode = 'fixed'
+GROUP BY blueprint_id
+`
+
+type CountFixedMockTestsByBlueprintRow struct {
+	BlueprintID uuid.UUID
+	Tests       int32
+}
+
+// How many numbered fixed tests each blueprint has, without reading their compositions.
+func (q *Queries) CountFixedMockTestsByBlueprint(ctx context.Context, blueprintIds []uuid.UUID) ([]CountFixedMockTestsByBlueprintRow, error) {
+	rows, err := q.db.Query(ctx, countFixedMockTestsByBlueprint, blueprintIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountFixedMockTestsByBlueprintRow
+	for rows.Next() {
+		var i CountFixedMockTestsByBlueprintRow
+		if err := rows.Scan(&i.BlueprintID, &i.Tests); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createMockTest = `-- name: CreateMockTest :one
-INSERT INTO assess.mock_tests (id, blueprint_id, mode, seed, composition, owner_id, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, blueprint_id, mode, seed, composition, owner_id, created_at
+INSERT INTO assess.mock_tests (id, blueprint_id, mode, number, seed, composition, owner_id, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, blueprint_id, mode, seed, composition, owner_id, created_at, number
 `
 
 type CreateMockTestParams struct {
 	ID          uuid.UUID
 	BlueprintID uuid.UUID
 	Mode        string
+	Number      *int32
 	Seed        int64
 	Composition []byte
 	OwnerID     *uuid.UUID
@@ -33,6 +67,7 @@ func (q *Queries) CreateMockTest(ctx context.Context, arg CreateMockTestParams) 
 		arg.ID,
 		arg.BlueprintID,
 		arg.Mode,
+		arg.Number,
 		arg.Seed,
 		arg.Composition,
 		arg.OwnerID,
@@ -47,6 +82,7 @@ func (q *Queries) CreateMockTest(ctx context.Context, arg CreateMockTestParams) 
 		&i.Composition,
 		&i.OwnerID,
 		&i.CreatedAt,
+		&i.Number,
 	)
 	return i, err
 }
@@ -93,7 +129,7 @@ func (q *Queries) GetBlueprintByName(ctx context.Context, arg GetBlueprintByName
 }
 
 const getExamByVersionID = `-- name: GetExamByVersionID :one
-SELECT id, slug, title_en, title_vi, description_en, description_vi, level, format, total_minutes, created_at, updated_at, version_id FROM assess.exams
+SELECT id, slug, title_en, title_vi, description_en, description_vi, level, format, total_minutes, created_at, updated_at, version_id, listed FROM assess.exams
 WHERE version_id = $1
 LIMIT 1
 `
@@ -114,6 +150,7 @@ func (q *Queries) GetExamByVersionID(ctx context.Context, versionID *uuid.UUID) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VersionID,
+		&i.Listed,
 	)
 	return i, err
 }
@@ -141,7 +178,7 @@ func (q *Queries) GetExamPartByID(ctx context.Context, id uuid.UUID) (AssessExam
 }
 
 const getExamVersionByCode = `-- name: GetExamVersionByCode :one
-SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes FROM assess.exam_versions
+SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, listed FROM assess.exam_versions
 WHERE code = $1
 `
 
@@ -159,12 +196,13 @@ func (q *Queries) GetExamVersionByCode(ctx context.Context, code string) (Assess
 		&i.VerifiedAt,
 		&i.IsCurrent,
 		&i.Notes,
+		&i.Listed,
 	)
 	return i, err
 }
 
 const getExamVersionByID = `-- name: GetExamVersionByID :one
-SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes FROM assess.exam_versions
+SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, listed FROM assess.exam_versions
 WHERE id = $1
 `
 
@@ -182,12 +220,13 @@ func (q *Queries) GetExamVersionByID(ctx context.Context, id uuid.UUID) (AssessE
 		&i.VerifiedAt,
 		&i.IsCurrent,
 		&i.Notes,
+		&i.Listed,
 	)
 	return i, err
 }
 
 const getMockTestByID = `-- name: GetMockTestByID :one
-SELECT id, blueprint_id, mode, seed, composition, owner_id, created_at FROM assess.mock_tests
+SELECT id, blueprint_id, mode, seed, composition, owner_id, created_at, number FROM assess.mock_tests
 WHERE id = $1
 `
 
@@ -202,6 +241,7 @@ func (q *Queries) GetMockTestByID(ctx context.Context, id uuid.UUID) (AssessMock
 		&i.Composition,
 		&i.OwnerID,
 		&i.CreatedAt,
+		&i.Number,
 	)
 	return i, err
 }
@@ -238,12 +278,47 @@ func (q *Queries) ListBlueprintsByVersionID(ctx context.Context, versionID uuid.
 	return items, nil
 }
 
+const listBlueprintsByVersionIDs = `-- name: ListBlueprintsByVersionIDs :many
+SELECT id, version_id, name, cefr_distribution, node_distribution FROM assess.blueprints
+WHERE version_id = ANY($1::uuid[])
+ORDER BY name ASC
+`
+
+// ListBlueprintsByVersionID for every version on the learner's exam list at once.
+func (q *Queries) ListBlueprintsByVersionIDs(ctx context.Context, versionIds []uuid.UUID) ([]AssessBlueprint, error) {
+	rows, err := q.db.Query(ctx, listBlueprintsByVersionIDs, versionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AssessBlueprint
+	for rows.Next() {
+		var i AssessBlueprint
+		if err := rows.Scan(
+			&i.ID,
+			&i.VersionID,
+			&i.Name,
+			&i.CefrDistribution,
+			&i.NodeDistribution,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCurrentExamVersions = `-- name: ListCurrentExamVersions :many
-SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes FROM assess.exam_versions
-WHERE is_current = true
+SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, listed FROM assess.exam_versions
+WHERE is_current = true AND listed = true
 ORDER BY code ASC
 `
 
+// What a learner chooses from: current and listed (WO 22 D22-16). A version
+// kept only for the attempts that point at it is current or not, but unlisted.
 func (q *Queries) ListCurrentExamVersions(ctx context.Context) ([]AssessExamVersion, error) {
 	rows, err := q.db.Query(ctx, listCurrentExamVersions)
 	if err != nil {
@@ -264,6 +339,7 @@ func (q *Queries) ListCurrentExamVersions(ctx context.Context) ([]AssessExamVers
 			&i.VerifiedAt,
 			&i.IsCurrent,
 			&i.Notes,
+			&i.Listed,
 		); err != nil {
 			return nil, err
 		}
@@ -311,8 +387,44 @@ func (q *Queries) ListExamPartsByVersionID(ctx context.Context, versionID uuid.U
 	return items, nil
 }
 
+const listExamPartsByVersionIDs = `-- name: ListExamPartsByVersionIDs :many
+SELECT id, version_id, section, part_number, kind, question_count, group_size, duration_minutes, constraints FROM assess.exam_parts
+WHERE version_id = ANY($1::uuid[])
+ORDER BY section ASC, part_number ASC
+`
+
+func (q *Queries) ListExamPartsByVersionIDs(ctx context.Context, versionIds []uuid.UUID) ([]AssessExamPart, error) {
+	rows, err := q.db.Query(ctx, listExamPartsByVersionIDs, versionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AssessExamPart
+	for rows.Next() {
+		var i AssessExamPart
+		if err := rows.Scan(
+			&i.ID,
+			&i.VersionID,
+			&i.Section,
+			&i.PartNumber,
+			&i.Kind,
+			&i.QuestionCount,
+			&i.GroupSize,
+			&i.DurationMinutes,
+			&i.Constraints,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listExamVersions = `-- name: ListExamVersions :many
-SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes FROM assess.exam_versions
+SELECT id, exam_family, code, title, total_minutes, scoring, source_url, verified_at, is_current, notes, listed FROM assess.exam_versions
 ORDER BY is_current DESC, code ASC
 `
 
@@ -336,6 +448,43 @@ func (q *Queries) ListExamVersions(ctx context.Context) ([]AssessExamVersion, er
 			&i.VerifiedAt,
 			&i.IsCurrent,
 			&i.Notes,
+			&i.Listed,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFixedMockTests = `-- name: ListFixedMockTests :many
+SELECT id, blueprint_id, mode, seed, composition, owner_id, created_at, number FROM assess.mock_tests
+WHERE blueprint_id = $1 AND mode = 'fixed'
+ORDER BY number
+`
+
+// The numbered fixed tests of one blueprint, in order (WO 22 Stage J).
+func (q *Queries) ListFixedMockTests(ctx context.Context, blueprintID uuid.UUID) ([]AssessMockTest, error) {
+	rows, err := q.db.Query(ctx, listFixedMockTests, blueprintID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AssessMockTest
+	for rows.Next() {
+		var i AssessMockTest
+		if err := rows.Scan(
+			&i.ID,
+			&i.BlueprintID,
+			&i.Mode,
+			&i.Seed,
+			&i.Composition,
+			&i.OwnerID,
+			&i.CreatedAt,
+			&i.Number,
 		); err != nil {
 			return nil, err
 		}
@@ -348,7 +497,7 @@ func (q *Queries) ListExamVersions(ctx context.Context) ([]AssessExamVersion, er
 }
 
 const listMockTestsByOwner = `-- name: ListMockTestsByOwner :many
-SELECT id, blueprint_id, mode, seed, composition, owner_id, created_at FROM assess.mock_tests
+SELECT id, blueprint_id, mode, seed, composition, owner_id, created_at, number FROM assess.mock_tests
 WHERE owner_id = $1 OR owner_id IS NULL
 ORDER BY created_at DESC
 `
@@ -370,6 +519,7 @@ func (q *Queries) ListMockTestsByOwner(ctx context.Context, ownerID *uuid.UUID) 
 			&i.Composition,
 			&i.OwnerID,
 			&i.CreatedAt,
+			&i.Number,
 		); err != nil {
 			return nil, err
 		}

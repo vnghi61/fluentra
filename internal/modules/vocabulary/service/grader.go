@@ -249,11 +249,14 @@ func (g *Grader) loadBody(ctx context.Context, versionID uuid.UUID) (vocabularyQ
 		return vocabularyQuizBody{}, notGradable("content version " + versionID.String() + " body is not a vocabulary quiz")
 	}
 	// A matching exercise has no single correct answer, and demanding one is
-	// what would make every `vocab_match` activity ungradable. Either key will
-	// do; neither is still an authoring fault.
-	if strings.TrimSpace(body.CorrectAnswer) == "" && len(body.CorrectPairs) == 0 {
+	// what would make every `vocab_match` activity ungradable. A multiple-choice
+	// kind keys on the option id instead. Any of the three will do; none is
+	// still an authoring fault.
+	if strings.TrimSpace(body.CorrectAnswer) == "" && len(body.CorrectPairs) == 0 &&
+		strings.TrimSpace(body.CorrectOptionID) == "" {
 		return vocabularyQuizBody{}, notGradable(
-			"content version " + versionID.String() + " declares neither correct_answer nor correct_pairs")
+			"content version " + versionID.String() +
+				" declares none of correct_answer, correct_pairs or correct_option_id")
 	}
 	return body, nil
 }
@@ -284,7 +287,10 @@ func matches(answer string, body vocabularyQuizBody) bool {
 	if answer == "" {
 		return false
 	}
-	for _, candidate := range append([]string{body.CorrectAnswer}, body.Acceptable...) {
+	// A multiple-choice kind's key is the option id, and the learner submits
+	// exactly that id, so it is compared like any other key.
+	keys := append([]string{body.CorrectAnswer, body.CorrectOptionID}, body.Acceptable...)
+	for _, candidate := range keys {
 		if answer == normalise(candidate) {
 			return true
 		}

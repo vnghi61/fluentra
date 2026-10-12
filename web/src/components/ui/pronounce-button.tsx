@@ -4,6 +4,13 @@ import { Volume2, VolumeX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import {
+  creditLabel,
+  findRecordings,
+  isSingleWord,
+  playFirstRecording,
+  type Recording,
+} from "@/lib/recorded-pronunciation";
 import { cancelSpeech, speakText } from "@/lib/speech";
 import { reachableStorageUrl } from "@/lib/storage-url";
 import { cn } from "@/lib/utils";
@@ -34,6 +41,14 @@ export interface PronounceButtonProps {
   text: string;
   /** A recorded pronunciation, preferred over synthesis when it plays. */
   audioUrl?: string | null | undefined;
+  /**
+   * The page crediting the recording. A recording whose licence requires
+   * attribution must not play without it, so an `audioUrl` with no attribution
+   * is treated as no recording at all.
+   */
+  audioAttribution?: string | null | undefined;
+  /** The licence's short name, shown beside the credit. */
+  audioLicence?: string | null | undefined;
   /** BCP-47 tag handed to the synthesiser. The material is English. */
   lang?: string;
   size?: "sm" | "md";
@@ -45,6 +60,8 @@ export interface PronounceButtonProps {
 export const PronounceButton: React.FC<PronounceButtonProps> = ({
   text,
   audioUrl,
+  audioAttribution,
+  audioLicence,
   lang = "en-US",
   size = "sm",
   className,
@@ -52,32 +69,89 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [failed, setFailed] = useState(false);
-  // The engine took the utterance and never spoke. The button stays usable —
-  // this is usually the phone's media volume or TTS voice, fixable by the user.
-  const [silent, setSilent] = useState(false);
+  // The failure, silence and credit are all "for a word": storing the word
+  // they belong to means a new card never inherits the previous one's state,
+  // without an effect that resets three pieces of state on every card change.
+  const [failedFor, setFailedFor] = useState<string | null>(null);
+  const [silentFor, setSilentFor] = useState<string | null>(null);
+  const [creditFor, setCreditFor] = useState<{
+    text: string;
+    recording: Recording;
+  } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const stopRecordingRef = useRef<(() => void) | null>(null);
+  // Bumped by every tap and every card change, so a recording looked up for an
+  // earlier tap or an earlier card never starts playing late.
+  const requestRef = useRef(0);
+
+  const failed = failedFor === text;
+  const silent = silentFor === text;
+  const credit = creditFor?.text === text ? creditFor.recording : null;
+
+  const stopRecording = () => {
+    stopRecordingRef.current?.();
+    stopRecordingRef.current = null;
+  };
+
+  // A recording whose licence requires attribution is not playable without it:
+  // playing the file would breach CC BY-SA. The card model drops such a URL
+  // before it gets here; this is the second lock on the same door.
+  const playableAudioUrl =
+    audioUrl && audioAttribution?.trim() ? audioUrl : null;
 
   // A card can be advanced mid-utterance. Without this, the previous word keeps
   // talking over the next one, which is worse than silence.
   useEffect(() => {
+    const requests = requestRef;
     return () => {
+      requests.current++;
       audioRef.current?.pause();
       audioRef.current = null;
+      stopRecordingRef.current?.();
+      stopRecordingRef.current = null;
       cancelSpeech();
     };
   }, [text, audioUrl]);
 
+  /**
+   * The device could not speak: play a human recording of the word instead.
+   * Only then, so a third party is asked only once the device has failed.
+   */
+  const playRecording = useCallback(
+    (reason: "silent" | "failed") => {
+      const request = requestRef.current;
+      const giveUp = () => {
+        setIsPlaying(false);
+        if (reason === "failed") setFailedFor(text);
+        else setSilentFor(text);
+      };
+      if (!isSingleWord(text)) {
+        giveUp();
+        return;
+      }
+      setIsPlaying(true);
+      void findRecordings(text).then((recordings) => {
+        if (request !== requestRef.current) return;
+        stopRecordingRef.current?.();
+        stopRecordingRef.current = playFirstRecording(recordings, {
+          onPlaying: (recording) => setCreditFor({ text, recording }),
+          onEnded: () => setIsPlaying(false),
+          onExhausted: giveUp,
+        });
+      });
+    },
+    [text],
+  );
+
   const speak = useCallback(() => {
-    setSilent(false);
     speakText(text, {
       lang,
       onStart: () => setIsPlaying(true),
       onEnd: () => setIsPlaying(false),
-      onFailure: () => setFailed(true),
-      onSilent: () => setSilent(true),
+      onFailure: () => playRecording("failed"),
+      onSilent: () => playRecording("silent"),
     });
-  }, [text, lang]);
+  }, [text, lang, playRecording]);
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -88,14 +162,31 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
 
       if (!text.trim()) return;
 
-      if (!audioUrl) {
+      requestRef.current++;
+      stopRecording();
+      setSilentFor(null);
+      setCreditFor(null);
+
+      if (!playableAudioUrl) {
         speak();
         return;
       }
 
       try {
-        const audio = new Audio(reachableStorageUrl(audioUrl));
+        const audio = new Audio(reachableStorageUrl(playableAudioUrl));
         audioRef.current = audio;
+        // The credit appears only once the recording actually plays, so a dead
+        // link shows synthesis and no licence line it does not owe.
+        audio.onplaying = () => {
+          setCreditFor({
+            text,
+            recording: {
+              url: playableAudioUrl,
+              creditUrl: audioAttribution ?? "",
+              licence: audioLicence?.trim() ? audioLicence : undefined,
+            },
+          });
+        };
         audio.onended = () => setIsPlaying(false);
         // A broken or missing asset falls through to synthesis rather than
         // reporting failure: the learner wanted to hear the word, and the
@@ -107,14 +198,20 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
         speak();
       }
     },
-    [audioUrl, speak, text],
+    [audioAttribution, audioLicence, playableAudioUrl, speak, text],
   );
 
   useEffect(() => {
     if (!silent) return undefined;
-    const hide = setTimeout(() => setSilent(false), 6000);
+    const hide = setTimeout(() => setSilentFor(null), 6000);
     return () => clearTimeout(hide);
   }, [silent]);
+
+  useEffect(() => {
+    if (!credit) return undefined;
+    const hide = setTimeout(() => setCreditFor(null), 8000);
+    return () => clearTimeout(hide);
+  }, [credit]);
 
   const unavailable = failed || !text.trim();
   const title =
@@ -140,11 +237,11 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
         )}
       >
         {unavailable ? (
-          <VolumeX className="h-4 w-4 text-text-muted" aria-hidden="true" />
+          <VolumeX className="h-5 w-5 text-text-muted" aria-hidden="true" />
         ) : (
           <Volume2
             className={cn(
-              "h-4 w-4 text-primary-accent",
+              "h-5 w-5 text-primary-accent",
               isPlaying && "animate-pulse",
             )}
             aria-hidden="true"
@@ -164,6 +261,26 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
               "pronounce.silent",
               "No sound? Turn up your phone's media volume, or install an English voice in its text-to-speech settings.",
             )}
+          </span>,
+          document.body,
+        )}
+      {credit &&
+        createPortal(
+          <span
+            role="status"
+            className="fixed inset-x-4 bottom-24 z-50 mx-auto max-w-sm rounded-lg border border-border-subtle bg-surface-card px-3 py-2 text-left text-sm text-text-muted shadow-lg"
+          >
+            {t("pronounce.recordingCredit", "Audio")}
+            {": "}
+            <a
+              href={credit.creditUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[44px] items-center font-medium text-primary-accent underline"
+            >
+              {creditLabel(credit)}
+              {credit.licence ? ` · ${credit.licence}` : ""}
+            </a>
           </span>,
           document.body,
         )}

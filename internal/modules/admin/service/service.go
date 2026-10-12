@@ -1,6 +1,6 @@
-// Package service orchestrates the admin module's use cases: user management
-// and feature-flag administration, both over contracts so no write here spans
-// another module's transaction.
+// Package service orchestrates the admin module's use cases: user management,
+// feature-flag administration and announcement banners, over contracts so no
+// write here spans another module's transaction.
 package service
 
 import (
@@ -72,6 +72,9 @@ type Service struct {
 	audit          auditcontract.Recorder
 	clock          clock.Clock
 	aiUsage        AIUsageReporter
+	banners        BannerRepository
+	bannerCache    *activeBannerCache
+	images         BannerImageStore
 }
 
 // Deps are the service collaborators.
@@ -84,6 +87,12 @@ type Deps struct {
 	Audit          auditcontract.Recorder
 	Clock          clock.Clock
 	AIUsage        AIUsageReporter
+	// Banners persists core.banners. Optional: without it the active list is
+	// empty and the admin banner operations answer 503.
+	Banners BannerRepository
+	// Images stores banner images in the media bucket. Optional: without it
+	// banners stay text-only and the image operations answer 503.
+	Images BannerImageStore
 }
 
 // New creates a new admin service.
@@ -101,6 +110,9 @@ func New(deps Deps) *Service {
 		audit:          deps.Audit,
 		clock:          timekeeper,
 		aiUsage:        deps.AIUsage,
+		banners:        deps.Banners,
+		bannerCache:    &activeBannerCache{},
+		images:         deps.Images,
 	}
 }
 

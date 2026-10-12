@@ -165,7 +165,7 @@ const (
 
 // Price defaults and bounds (BR-STUDIO-01).
 const (
-	DefaultMinPriceVND     int64 = 49_000
+	DefaultMinPriceVND     int64 = 5_000
 	DefaultMaxPriceVND     int64 = 5_000_000
 	DefaultRevenueShareBPS int   = 7000
 )
@@ -208,23 +208,6 @@ type CreatorLedgerEntry struct {
 	PayoutID       *uuid.UUID
 	Note           string
 	CreatedAt      time.Time
-}
-
-// ValidatePrice validates pricing bounds according to BR-STUDIO-01.
-func ValidatePrice(pricingModel string, priceVND, minVND, maxVND int64) error {
-	if pricingModel == PricingModelFree {
-		if priceVND != 0 {
-			return ErrPriceOutOfBounds
-		}
-		return nil
-	}
-	if pricingModel == PricingModelOneTime {
-		if priceVND < minVND || priceVND > maxVND {
-			return ErrPriceOutOfBounds
-		}
-		return nil
-	}
-	return ErrPriceOutOfBounds
 }
 
 // DefaultPayoutThresholdVND is the minimum balance required before a creator can request a payout.

@@ -15,6 +15,12 @@ type DailySet struct {
 	CreatedAt   time.Time   `json:"created_at"`
 }
 
+// WeakNodeLabel names a spine node an item was drawn to revisit.
+type WeakNodeLabel struct {
+	Code  string `json:"code"`
+	Label string `json:"label"`
+}
+
 // DailySetActivityDTO models an activity within a daily practice set with redacted content.
 type DailySetActivityDTO struct {
 	ID               uuid.UUID              `json:"id"`
@@ -25,6 +31,9 @@ type DailySetActivityDTO struct {
 	Config           map[string]interface{} `json:"config,omitempty"`
 	Content          map[string]interface{} `json:"content,omitempty"`
 	Weight           int                    `json:"weight"`
+	// WeakNode is set on the item drawn to revisit the learner's weakest spine
+	// node, so the runner can say why it is there (WO 21 Stage F).
+	WeakNode *WeakNodeLabel `json:"weak_node,omitempty"`
 }
 
 // DailySetDTO models the learner-facing daily practice set for today.

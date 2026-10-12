@@ -347,10 +347,13 @@ type jobEnqueuerAdapter struct {
 	enqueuer job.Enqueuer
 }
 
-func (a jobEnqueuerAdapter) EnqueueVerifyUploadTx(ctx context.Context, tx pgx.Tx, uploadID uuid.UUID) error {
+func (a jobEnqueuerAdapter) EnqueueVerifyUploadTx(
+	ctx context.Context, tx pgx.Tx, uploadID uuid.UUID, itemIDs []uuid.UUID, runAt time.Time,
+) error {
 	args := vocabjob.VerifyUploadArgs{
 		UploadID: uploadID,
+		ItemIDs:  itemIDs,
 	}
-	_, err := a.enqueuer.EnqueueTx(ctx, tx, args, nil)
+	_, err := a.enqueuer.EnqueueTx(ctx, tx, args, vocabjob.InsertOptsAt(runAt))
 	return err
 }

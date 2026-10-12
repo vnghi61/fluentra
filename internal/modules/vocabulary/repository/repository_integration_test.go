@@ -490,3 +490,35 @@ func TestRepository_UserWordState(t *testing.T) {
 		t.Errorf("a sense the learner never met returned %v, want pgx.ErrNoRows", err)
 	}
 }
+
+// TestRepository_MarkUploadItemVerifiedAcceptsEveryNoteCode pins the service's
+// note codes to ck_vocab_upload_items_note_code. 'known_word' was missing from
+// the constraint, and the fake repository the service tests use cannot see a
+// CHECK: every word already in the database failed verification three times
+// and reached the learner as "the dictionary did not respond".
+func TestRepository_MarkUploadItemVerifiedAcceptsEveryNoteCode(t *testing.T) {
+	ctx := context.Background()
+	repo, userID := newRepo(ctx, t)
+
+	codes := []string{
+		"known_word", "already_in_your_words", "meaning_mismatch",
+		"spelling_corrected", "meaning_corrected",
+	}
+	upload, err := repo.InsertUpload(ctx, sqlc.InsertUploadParams{
+		UserID: userID, RawText: "note codes", ItemCount: int32(len(codes)), //nolint:gosec // five codes
+	})
+	if err != nil {
+		t.Fatalf("insert upload: %v", err)
+	}
+	for _, code := range codes {
+		item, err := repo.InsertUploadItem(ctx, sqlc.InsertUploadItemParams{
+			UploadID: upload.ID, UserID: userID, Term: uniqueLemma(code + "-"),
+		})
+		if err != nil {
+			t.Fatalf("insert item for %s: %v", code, err)
+		}
+		if _, err := repo.MarkUploadItemVerified(ctx, item.ID, nil, "database", "", nil, &code); err != nil {
+			t.Errorf("mark verified with note_code %s: %v", code, err)
+		}
+	}
+}

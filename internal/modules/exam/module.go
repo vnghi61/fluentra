@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	examcontract "github.com/fluentra/fluentra/internal/modules/exam/contract"
 	examjob "github.com/fluentra/fluentra/internal/modules/exam/job"
 	examrepo "github.com/fluentra/fluentra/internal/modules/exam/repository"
@@ -22,6 +23,9 @@ type WorkerNudger = service.WorkerNudger
 
 // PoolDrawer draws items for an exam sitting across the 4 sections.
 type PoolDrawer = service.PoolDrawer
+
+// PhotoSource hands out TOEIC Part 1 photographs, each once.
+type PhotoSource = service.PhotoSource
 
 // SectionActivities represents drawn activities for a section.
 type SectionActivities = service.SectionActivities
@@ -42,6 +46,16 @@ type Deps struct {
 	WorkerNudger WorkerNudger
 	Clock        clock.Clock
 	DailyLimit   int
+	// BankAuthor generates the daily job's questions (WO 22 Stage O). Nil
+	// leaves the daily generation job a no-op.
+	BankAuthor questionbankcontract.Author
+	// ReviewBacklog lets the daily job skip an exam whose doubts wait for a
+	// person (WO 22 Stage O). DailyGenerationCap bounds one run.
+	ReviewBacklog      contentcontract.ReviewBacklog
+	DailyGenerationCap int
+	// Photos supplies TOEIC Part 1 photographs (WO 22 D22-21). Nil leaves
+	// photo parts ungenerated.
+	Photos PhotoSource
 }
 
 // Module represents the wired exam module.
@@ -55,18 +69,22 @@ func New(deps Deps) *Module {
 	repo := examrepo.New(deps.Pool)
 
 	svc := service.New(service.Deps{
-		Pool:         deps.Pool,
-		Repo:         repo,
-		Learning:     deps.Learning,
-		Attempts:     deps.Attempts,
-		Exposures:    deps.Exposures,
-		Lesson:       deps.Lesson,
-		Questionbank: deps.Questionbank,
-		Drawer:       deps.Drawer,
-		Clock:        deps.Clock,
-		DailyLimit:   deps.DailyLimit,
-		Enqueuer:     deps.Enqueuer,
-		Nudger:       deps.WorkerNudger,
+		Pool:               deps.Pool,
+		Repo:               repo,
+		Learning:           deps.Learning,
+		Attempts:           deps.Attempts,
+		Exposures:          deps.Exposures,
+		Lesson:             deps.Lesson,
+		Questionbank:       deps.Questionbank,
+		Drawer:             deps.Drawer,
+		Clock:              deps.Clock,
+		DailyLimit:         deps.DailyLimit,
+		Enqueuer:           deps.Enqueuer,
+		Nudger:             deps.WorkerNudger,
+		BankAuthor:         deps.BankAuthor,
+		ReviewBacklog:      deps.ReviewBacklog,
+		DailyGenerationCap: deps.DailyGenerationCap,
+		Photos:             deps.Photos,
 	})
 
 	handler := examhttp.NewHandler(svc)
@@ -109,4 +127,14 @@ func (m *Module) ExpireAttemptWorker() *examjob.ExpireAttemptWorker {
 // SweepJob returns the scheduled 1-minute sweep cron job.
 func (m *Module) SweepJob() platformjob.CronJob {
 	return examjob.SweepExpiredJob(m.service)
+}
+
+// ComposeFixedTestsJob returns the hourly fixed-test sweep (WO 22 Stage O).
+func (m *Module) ComposeFixedTestsJob() platformjob.CronJob {
+	return examjob.ComposeFixedTestsJob(m.service)
+}
+
+// DailyGenerationJob returns the daily generation cron job (WO 22 Stage O).
+func (m *Module) DailyGenerationJob() platformjob.CronJob {
+	return examjob.DailyGenerationJob(m.service)
 }

@@ -1,0 +1,376 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { I18nextProvider } from "react-i18next";
+import { beforeEach, describe, expect, it } from "vitest";
+
+import i18n, { initI18n } from "@/i18n";
+import { ResourceDetailPage } from "@/routes/ResourceDetailPage";
+import { LessonPage } from "@/routes/LessonPage";
+import { MyResourcesPage } from "@/routes/MyResourcesPage";
+import { useAuthStore } from "@/stores/authStore";
+
+import { server } from "./msw-server";
+
+const validatedResource = {
+  id: "0199a1c2-3d4e-7f80-9abc-def0123456a1",
+  kind: "file",
+  title: "grammar-notes.pdf",
+  status: "validated",
+  failure_reason: "",
+  original_filename: "grammar-notes.pdf",
+  declared_mime: "application/pdf",
+  detected_mime: "application/pdf",
+  byte_size: 2458120,
+  checksum: null,
+  source_url: null,
+  download_url: "https://storage.example/download",
+  created_at: "2026-09-21T00:00:00Z",
+  updated_at: "2026-09-21T00:01:00Z",
+  validated_at: "2026-09-21T00:01:00Z",
+  renditions: [],
+  extraction: {
+    source: "pdf_text",
+    char_count: 1540,
+    truncated: false,
+    excerpt:
+      "Unit 1: Present Perfect Tense. She has lived here for three years.",
+  },
+  classification: {
+    learning_suitable: true,
+    cefr_estimate: "B1",
+    skill: "grammar",
+    nodes: [{ code: "PRESENT_PERFECT", label: "Present Perfect" }],
+  },
+};
+
+const rejectedResource = {
+  ...validatedResource,
+  id: "0199a1c2-3d4e-7f80-9abc-def0123456a2",
+  title: "scan.png",
+  status: "rejected",
+  failure_reason:
+    "We could not read this file. Its contents did not match its type.",
+  detected_mime: "image/png",
+  renditions: [],
+  extraction: undefined,
+  classification: undefined,
+};
+
+function resourcesPage(initialEntry = "/my-resources") {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const rootRoute = createRootRoute();
+  const listRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/my-resources",
+    component: () => (
+      <I18nextProvider i18n={i18n}>
+        <QueryClientProvider client={client}>
+          <MyResourcesPage />
+        </QueryClientProvider>
+      </I18nextProvider>
+    ),
+  });
+  const detailRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/my-resources/$resourceId",
+    component: () => (
+      <I18nextProvider i18n={i18n}>
+        <QueryClientProvider client={client}>
+          <ResourceDetailPage />
+        </QueryClientProvider>
+      </I18nextProvider>
+    ),
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      listRoute,
+      detailRoute,
+      createRoute({
+        getParentRoute: () => rootRoute,
+        path: "/practice/resource/$resourceId",
+        component: () => <p>Resource practice opened</p>,
+      }),
+    ]),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
+  });
+  return { client, router };
+}
+
+async function renderPage(initialEntry = "/my-resources") {
+  const { router } = resourcesPage(initialEntry);
+  await router.load();
+  return render(<RouterProvider router={router} />);
+}
+
+describe("MyResourcesPage", () => {
+  beforeEach(async () => {
+    useAuthStore.getState().setAuthSession({
+      access_token: "valid-test-token",
+      token_type: "Bearer",
+      expires_in: 900,
+      user_id: "user-123",
+      role: "user",
+    });
+    await initI18n("en");
+    await i18n.changeLanguage("en");
+
+    server.use(
+      http.get("/api/v1/me/resources", () =>
+        HttpResponse.json({
+          items: [validatedResource, rejectedResource],
+          total: 2,
+          page: 1,
+          page_size: 100,
+        }),
+      ),
+    );
+  });
+
+  it("lists the learner's resources with their state and the quota", async () => {
+    await renderPage();
+
+    expect(await screen.findByText("grammar-notes.pdf")).toBeInTheDocument();
+    expect(screen.getByText("scan.png")).toBeInTheDocument();
+    // A validated file with no renditions yet is still being processed, and a
+    // rejection says why rather than showing a bare status.
+    expect(screen.getAllByText("Processing").length).toBeGreaterThan(0);
+    expect(screen.getByText(/did not match its type/i)).toBeInTheDocument();
+    expect(screen.getByText(/of 50 files/)).toBeInTheDocument();
+  });
+
+  it("refuses an oversized file before uploading it", async () => {
+    const { container } = await renderPage();
+    await screen.findByText("grammar-notes.pdf");
+
+    const input = container.querySelector('input[type="file"]');
+    expect(input).not.toBeNull();
+    const file = new File([new Uint8Array(10)], "huge.pdf", {
+      type: "application/pdf",
+    });
+    Object.defineProperty(file, "size", { value: 51 * 1024 * 1024 });
+    fireEvent.change(input as HTMLInputElement, { target: { files: [file] } });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /50 MB or smaller/,
+    );
+  });
+
+  it("uses the server processing state on the list even without signed previews", async () => {
+    server.use(
+      http.get("/api/v1/me/resources", () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...validatedResource,
+              processing_status: "ready",
+              renditions: [],
+            },
+          ],
+          total: 1,
+          page: 1,
+          page_size: 100,
+        }),
+      ),
+    );
+    await renderPage();
+    expect(await screen.findByText("Ready")).toBeInTheDocument();
+    expect(screen.queryByText("Processing")).not.toBeInTheDocument();
+  });
+});
+
+describe("ResourceDetailPage", () => {
+  beforeEach(async () => {
+    useAuthStore.getState().setAuthSession({
+      access_token: "valid-test-token",
+      token_type: "Bearer",
+      expires_in: 900,
+      user_id: "user-123",
+      role: "user",
+    });
+    await initI18n("en");
+    await i18n.changeLanguage("en");
+
+    server.use(
+      http.get(
+        "/api/v1/me/resources/:id/practice",
+        () => new HttpResponse(null, { status: 404 }),
+      ),
+      http.get("/api/v1/me/resources/:id", () =>
+        HttpResponse.json(validatedResource),
+      ),
+    );
+  });
+
+  it("shows the extraction, the estimate and the processing note", async () => {
+    await renderPage(`/my-resources/${validatedResource.id}`);
+
+    // Twice: once as the excerpt's text and once as the spine node's label.
+    expect(
+      (await screen.findAllByText(/present perfect/i)).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText(/Around B1/)).toBeInTheDocument();
+    expect(screen.getByText(/1540 characters/)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /preparing this file/i,
+    );
+  });
+
+  it("opens ready exercises without posting another generation request", async () => {
+    let generations = 0;
+    server.use(
+      http.get("/api/v1/me/resources/:id", () =>
+        HttpResponse.json({ ...validatedResource, processing_status: "ready" }),
+      ),
+      http.get("/api/v1/me/resources/:id/practice", () =>
+        HttpResponse.json({
+          resource_id: validatedResource.id,
+          status: "ready",
+          generated_on: "2026-09-30",
+          activities: [],
+        }),
+      ),
+      http.post("/api/v1/me/resources/:id/practice", () => {
+        generations++;
+        return HttpResponse.json({});
+      }),
+    );
+    await renderPage(`/my-resources/${validatedResource.id}`);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Practise exercises" }),
+    );
+    expect(
+      await screen.findByText("Resource practice opened"),
+    ).toBeInTheDocument();
+    expect(generations).toBe(0);
+  });
+
+  it("blocks unsuitable content and offers an owner content recheck", async () => {
+    let rechecks = 0;
+    server.use(
+      http.get("/api/v1/me/resources/:id", () =>
+        HttpResponse.json({
+          ...validatedResource,
+          processing_status: "ready",
+          classification:
+            rechecks > 0 ? undefined : { learning_suitable: false, nodes: [] },
+        }),
+      ),
+      http.post("/api/v1/me/resources/:id/revalidate", () => {
+        rechecks++;
+        return HttpResponse.json({ status: "processing" }, { status: 202 });
+      }),
+    );
+    await renderPage(`/my-resources/${validatedResource.id}`);
+    expect(
+      await screen.findByText(/not suitable for English practice/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create practice" }),
+    ).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Check document again" }),
+    );
+    expect(await screen.findByText(/Content check queued/)).toBeInTheDocument();
+    expect(rechecks).toBe(1);
+  });
+});
+
+/**
+ * The runner a resource practice set opens in.
+ *
+ * Generation is queued, not immediate: the POST answers with a `generating`
+ * set that carries no activities, and a sweep fills it in. The runner has to
+ * say so — rendering its header over an empty canvas looks like a screen that
+ * broke, and a set that failed would otherwise stay blank for good with its
+ * reason unread.
+ */
+describe("resource practice runner", () => {
+  beforeEach(async () => {
+    useAuthStore.getState().setAuthSession({
+      access_token: "valid-test-token",
+      token_type: "Bearer",
+      expires_in: 900,
+      user_id: "user-123",
+      role: "user",
+    });
+    await initI18n("en");
+    await i18n.changeLanguage("en");
+  });
+
+  async function renderRunner(set: Record<string, unknown>) {
+    server.use(
+      http.get("/api/v1/me/resources/:id/practice", () =>
+        HttpResponse.json(set),
+      ),
+    );
+    // LessonPage reads the real pathname to tell its three sources apart.
+    window.history.pushState(
+      {},
+      "",
+      `/practice/resource/${validatedResource.id}`,
+    );
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const rootRoute = createRootRoute();
+    const runnerRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/practice/resource/$resourceId",
+      component: () => (
+        <I18nextProvider i18n={i18n}>
+          <QueryClientProvider client={client}>
+            <LessonPage />
+          </QueryClientProvider>
+        </I18nextProvider>
+      ),
+    });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([runnerRoute]),
+      history: createMemoryHistory({
+        initialEntries: [`/practice/resource/${validatedResource.id}`],
+      }),
+    });
+    await router.load();
+    return render(<RouterProvider router={router} />);
+  }
+
+  it("says the set is still being built instead of showing an empty exercise", async () => {
+    await renderRunner({
+      resource_id: validatedResource.id,
+      status: "generating",
+      generated_on: "2026-09-23",
+      activities: [],
+    });
+
+    expect(
+      await screen.findByText(/Building your practice/i),
+    ).toBeInTheDocument();
+    // The runner's own chrome must not be there: there is nothing to answer.
+    expect(screen.queryByText(/Step 1/i)).not.toBeInTheDocument();
+  });
+
+  it("gives the reason when generation failed", async () => {
+    await renderRunner({
+      resource_id: validatedResource.id,
+      status: "failed",
+      failure_reason: "There is no text to build practice from yet.",
+      generated_on: "2026-09-23",
+      activities: [],
+    });
+
+    expect(
+      await screen.findByText(/no text to build practice from/i),
+    ).toBeInTheDocument();
+  });
+});

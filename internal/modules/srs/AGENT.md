@@ -112,7 +112,7 @@ Migrations: `db/migrations/srs/` · Queries: `db/queries/srs/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `srs`). See also [`API.md`](API.md).
+(tag: `srs`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -206,7 +206,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -230,8 +230,6 @@ for this module:
 | `DAILY_LIMIT_REACHED` | 409 | New-card limit reached for today |
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **95% domain (the scheduler is pure and must be provably correct), 85% service**
@@ -264,7 +262,240 @@ go test -tags=integration ./internal/modules/srs/...  # integration (testcontain
 - Do not prune review logs before the retention window — they are the training data for future tuning.
 <!-- END GENERATED: donot -->
 
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/reviews/session`
+
+Build a review session from due cards
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/reviews/due-count`
+
+Badge count
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/reviews/{card_id}/answer`
+
+Record a grade and reschedule
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `REVIEW_CARD_SUSPENDED`, `REVIEW_NOT_DUE` |
+
+#### `POST /api/v1/reviews/session/complete`
+
+Close the session
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/reviews/{card_id}/suspend`
+
+Stop scheduling this card
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/reviews/{card_id}/reset`
+
+Treat as new again
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/reviews/forecast`
+
+Projected workload for the next 30 days
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `REVIEW_CARD_SUSPENDED` | 409 | Card is suspended |
+| `REVIEW_NOT_DUE` | 409 | Answered a card outside the session, before it was due |
+| `DAILY_LIMIT_REACHED` | 409 | New-card limit reached for today |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Review session
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Learner
+    participant S as srs
+    participant C as Redis
+    participant DB as PostgreSQL
+    participant CO as content
+
+    U->>S: GET /reviews/session?limit=20
+    S->>DB: SELECT due cards ORDER BY due_at, id LIMIT 20
+    S->>S: apply daily limits, interleave skills, avoid family clustering
+    S->>CO: GetManyVersions (batched)
+    S-->>U: cards with content and prefetch hints
+
+    loop each card
+        U->>S: POST /reviews/{card}/answer { grade, elapsed_ms }
+        S->>S: FSRS: update stability, difficulty, next due
+        S->>DB: BEGIN; UPDATE review_cards; INSERT review_logs
+        S->>DB: INSERT outbox(review.card_answered); COMMIT
+        S->>C: DEL due_count
+        S-->>U: { next_due_at, interval_days }
+    end
+
+    U->>S: POST /reviews/session/complete
+    S->>DB: INSERT outbox(review.session_completed)
+    Note over DB: gamification awards XP and updates the streak
+    S-->>U: { reviewed, accuracy, next_session_at }
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+### State machine
+
+FSRS card states. `Relearning` is the path back after a lapse — it is not the same as `Learning`, because prior stability is partially retained.
+
+```mermaid
+stateDiagram-v2
+    [*] --> New: card created by a grader
+    New --> Learning: first answer
+    Learning --> Review: graduates
+    Learning --> Learning: again/hard within the learning steps
+    Review --> Review: good/easy → longer interval
+    Review --> Relearning: again (lapse)
+    Relearning --> Review: graduates again
+    Review --> Suspended: learner suspends
+    Relearning --> Suspended: learner suspends
+    Suspended --> Review: unsuspend
+    Review --> New: reset
+```
+
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| FSRS or SM-2? | FSRS | Explicit stability and difficulty modelling, published parameters, and materially fewer reviews for the same retention. SM-2 is simpler but leaves measurable learning value on the table (ADR-0016) |
+| Four grades or six? | Four | The algorithm is defined for four; more options increase learner hesitation without improving scheduling accuracy |
+| Cards reference versions or items? | Versions | A card must test what the learner actually learned; if the content is revised, a new card is correct |
+| How does the dashboard learn the due count? | learning injects srs.QueueReader | Keeps dashboard assembly consolidated inside learning while honoring architecture boundaries (P9.1 Decision 7.1) |
+| Who writes review cards, and in which transaction? | Post-commit via contract call with outbox backstop | Avoids cross-module transaction coupling; activity.completed in outbox serves as replayable backstop (P9.1 Decision 7.2) |
+| Does answering a review immediately invalidate the dashboard cache? | No, accept 2-minute staleness for alpha | Dashboard has 2-minute TTL; cross-module invalidation deferred to Phase 3 (P9.1 Decision 7.3) |
+| One ReviewItem struct or two? | One struct owned by learning/contract | Used by all skill graders implementing ExerciseGrader without requiring c_srs dependencies across 6 skill modules (P9.1 Decision 7.4 / Trap 1) |
+| Is GET /reviews/forecast implemented in Phase 2? | Implemented | P9.1 Decision 7.5 deferred it, and the deferral produced a handler answering 200 with an empty day list — a specced endpoint telling every learner they have nothing due. The grouped query is smaller than the workaround, buckets by the learner local day like the due queue, and no screen depends on it either way |
+| How does another module stop scheduling content a learner already knows? | srs.CardWriter.SetCardsSuspended, through the contract | learn.review_cards belongs to srs. vocabulary marking a word known has to reach the due queue, and the alternative — a second suspension flag in skill.user_word_state that the due query would have to join — is the table duplication ADR-0015 exists to prevent |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+- [ADR-0016](../../../docs/adr/ADR-0016-srs-fsrs.md) — FSRS instead of SM-2
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 2
+
+- [ ] FSRS implementation in `domain/` with property-based tests
+- [ ] Cards, logs and daily stats tables with partitioning
+- [ ] Session building with limits and interleaving
+- [ ] Answer endpoint with rescheduling and event emission
+- [ ] Due-count caching with correct invalidation
+- [ ] Suspend, bury and reset
+- [ ] `GET /reviews/forecast`, bucketed by the learner local day
+- [ ] Review player in the web app
+
+### Phase 3
+
+- [ ] Workload load-balancing across days
+- [ ] Heat map
+- [ ] `review.due_soon` reminder job
+
+### Phase 5
+
+- [ ] Per-learner parameter optimisation from review logs
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Per-learner FSRS optimisation
+- Load balancing to smooth daily workload
+- Cross-skill interference modelling
+- Offline review queue
+<!-- END GENERATED: todo-future -->
+
+### Done in work order 8
+
+- [x] **Deck-by-deck review sessions.** `ListDueCardsByDeck` joins `review_cards` through
+      `word_senses` and `deck_items`, so no column was added to `learn.review_cards`. The deck
+      is optional and absent still means every due card — the dashboard's "Reviews Due" count
+      answers that question and must not be narrowed silently.
+
 ---
 
-*Generated by `tools/docgen` from `tools/docgen/data/`. Hand-written text outside the
-GENERATED markers is preserved. Update the manifest, then run `make docs`.*
+_Generated by `tools/docgen` from `tools/docgen/data/`. Hand-written text outside the
+GENERATED markers is preserved. Update the manifest, then run `make docs`._

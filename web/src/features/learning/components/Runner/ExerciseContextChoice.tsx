@@ -50,7 +50,7 @@ function highlight(sentence: string, word?: string): React.ReactNode {
   return sentence.split(pattern).map((part, index) =>
     // `split` with a capturing group puts the matches at the odd indices.
     index % 2 === 1 ? (
-      <strong key={index} className="font-extrabold text-primary-accent">
+      <strong key={index} className="font-bold text-primary-accent">
         {part}
       </strong>
     ) : (
@@ -81,7 +81,7 @@ export const ExerciseContextChoice: React.FC<ExerciseContextChoiceProps> = ({
       <ExercisePrompt>{prompt}</ExercisePrompt>
 
       <div className="p-5 rounded-2xl border border-border bg-surface-card shadow-sm flex items-start justify-between gap-3">
-        <p className="text-lg md:text-xl leading-relaxed text-text italic">
+        <p className="min-w-0 break-words text-lg md:text-xl leading-relaxed text-text italic">
           &ldquo;{highlight(sentence, targetWord)}&rdquo;
         </p>
         {/*
@@ -124,11 +124,13 @@ export const ExerciseContextChoice: React.FC<ExerciseContextChoiceProps> = ({
                 style,
               )}
             >
-              <div className="flex items-center gap-3">
+              <div className="min-w-0 flex items-center gap-3">
                 <span className="flex items-center justify-center h-7 w-7 shrink-0 rounded-lg border border-border bg-surface-muted text-xs font-bold text-text-muted">
                   {index + 1}
                 </span>
-                <span className="text-base">{option.text}</span>
+                <span className="min-w-0 break-words text-base">
+                  {option.text}
+                </span>
               </div>
               {isSubmitted && isAnswer && (
                 <Check

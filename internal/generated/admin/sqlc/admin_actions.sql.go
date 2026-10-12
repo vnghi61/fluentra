@@ -11,47 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const listAdminActionsByTarget = `-- name: ListAdminActionsByTarget :many
-SELECT id, actor_id, target_id, action, reason, occurred_at
-FROM core.admin_actions
-WHERE target_id = $1
-ORDER BY occurred_at DESC
-LIMIT $2 OFFSET $3
-`
-
-type ListAdminActionsByTargetParams struct {
-	TargetID uuid.UUID
-	Limit    int32
-	Offset   int32
-}
-
-func (q *Queries) ListAdminActionsByTarget(ctx context.Context, arg ListAdminActionsByTargetParams) ([]CoreAdminAction, error) {
-	rows, err := q.db.Query(ctx, listAdminActionsByTarget, arg.TargetID, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []CoreAdminAction
-	for rows.Next() {
-		var i CoreAdminAction
-		if err := rows.Scan(
-			&i.ID,
-			&i.ActorID,
-			&i.TargetID,
-			&i.Action,
-			&i.Reason,
-			&i.OccurredAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const logAdminAction = `-- name: LogAdminAction :one
 INSERT INTO core.admin_actions (
     actor_id,

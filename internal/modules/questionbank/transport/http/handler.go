@@ -75,13 +75,13 @@ func (h *Handler) listQuestions(w http.ResponseWriter, r *http.Request) {
 
 	limit := 20
 	if l := q.Get("limit"); l != "" {
-		if n, err := strconv.Atoi(l); err == nil && n > 0 {
+		if n, err := atoi32(l); err == nil && n > 0 {
 			limit = n
 		}
 	}
 	offset := 0
 	if o := q.Get("offset"); o != "" {
-		if n, err := strconv.Atoi(o); err == nil && n >= 0 {
+		if n, err := atoi32(o); err == nil && n >= 0 {
 			offset = n
 		}
 	}
@@ -168,4 +168,12 @@ func (h *Handler) getQuestionStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, r, http.StatusOK, stats)
+}
+
+// atoi32 parses a query integer no wider than int32, the width the paging
+// queries take: a value strconv.Atoi accepts on a 64-bit build would otherwise
+// wrap when narrowed, and a huge page or offset would turn negative.
+func atoi32(s string) (int, error) {
+	n, err := strconv.ParseInt(s, 10, 32)
+	return int(n), err
 }

@@ -77,7 +77,7 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
         delete next[wordId];
         return next;
       });
-      setActiveWord(wordId);
+      setActiveWord(null);
       return;
     }
     setActiveWord((current) => (current === wordId ? null : wordId));
@@ -92,6 +92,7 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
         delete next[owner];
         return next;
       });
+      setActiveWord(null);
       return;
     }
     if (!activeWord) return;
@@ -100,8 +101,11 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
   };
 
   /** The number a paired row shows, so the two columns read as pairs. */
-  const badgeFor = (wordId: string | undefined) =>
-    wordId ? words.findIndex((w) => w.id === wordId) + 1 : 0;
+  const badgeFor = (wordId: string | undefined) => {
+    if (!wordId || !pairs[wordId]) return 0;
+    const idx = words.findIndex((w) => w.id === wordId);
+    return idx >= 0 ? idx + 1 : 0;
+  };
 
   const verdictOf = (wordId: string): "right" | "wrong" | null => {
     if (!isSubmitted || !correctPairs) return null;
@@ -111,7 +115,14 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
   const complete = Object.keys(pairs).length === words.length;
 
   return (
-    <div className="space-y-8 max-w-3xl mx-auto py-4">
+    <div
+      className="space-y-8 max-w-3xl mx-auto py-4"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          setActiveWord(null);
+        }
+      }}
+    >
       <ExercisePrompt>{prompt}</ExercisePrompt>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -121,17 +132,23 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
           role="group"
           aria-label={t("runner.matchWords", "Words")}
         >
-          {words.map((word, index) => {
+          {words.map((word) => {
             const paired = definitionOf(word.id);
             const verdict = verdictOf(word.id);
             const active = activeWord === word.id;
+            const badge = badgeFor(word.id);
 
             return (
-              <div key={word.id} className="flex items-center gap-1">
+              <div key={word.id} className="flex items-center gap-2">
                 <button
                   type="button"
                   disabled={isLoading || isSubmitted}
-                  aria-pressed={active || Boolean(paired)}
+                  aria-pressed={active}
+                  aria-label={
+                    paired
+                      ? `${word.text}, ${t("runner.matchPair", { num: badge, defaultValue: `pair ${badge}` })}`
+                      : undefined
+                  }
                   onClick={() => handleWord(word.id)}
                   className={cn(
                     "flex-1 flex items-center gap-3 p-3 rounded-xl border text-left min-h-[56px] transition-all cursor-pointer disabled:cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
@@ -150,12 +167,24 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
                       "border-border bg-surface-card hover:border-primary/50",
                   )}
                 >
-                  <span className="flex items-center justify-center h-7 w-7 shrink-0 rounded-lg border border-border bg-surface-muted text-xs font-bold text-text-muted">
-                    {index + 1}
+                  <span
+                    className={cn(
+                      "flex items-center justify-center h-7 w-7 shrink-0 rounded-lg border text-xs font-bold",
+                      paired
+                        ? "border-primary bg-primary text-primary-fg"
+                        : "border-border bg-surface-muted text-text-muted",
+                    )}
+                  >
+                    {paired ? badge : "—"}
                   </span>
-                  <span className="text-base font-semibold text-text">
+                  <span className="min-w-0 break-words text-base font-semibold text-text">
                     {word.text}
                   </span>
+                  {active && (
+                    <span className="ml-auto shrink-0 text-xs font-semibold text-primary-accent bg-primary/10 px-2 py-0.5 rounded-md">
+                      {t("runner.matchSelected", "Selected")}
+                    </span>
+                  )}
                   {verdict === "right" && (
                     <Check
                       className="ml-auto h-5 w-5 text-success"
@@ -189,7 +218,12 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
               <button
                 key={definition.id}
                 type="button"
-                disabled={isLoading || isSubmitted || (!activeWord && !owner)}
+                disabled={isLoading || isSubmitted}
+                aria-label={
+                  owner
+                    ? `${definition.text}, ${t("runner.matchPair", { num: badge, defaultValue: `pair ${badge}` })}`
+                    : undefined
+                }
                 onClick={() => handleDefinition(definition.id)}
                 className={cn(
                   "w-full flex items-center gap-3 p-3 rounded-xl border text-left min-h-[56px] transition-all cursor-pointer disabled:cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
@@ -210,7 +244,9 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
                 >
                   {badge || "?"}
                 </span>
-                <span className="text-sm text-text">{definition.text}</span>
+                <span className="min-w-0 break-words text-base leading-relaxed text-text">
+                  {definition.text}
+                </span>
               </button>
             );
           })}
@@ -218,8 +254,8 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
       </div>
 
       {!isSubmitted && (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-text-muted">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-base text-text-muted">
             {activeWord
               ? t("runner.matchPickMeaning", "Now pick its meaning")
               : t("runner.matchPickWord", "Pick a word to start")}{" "}

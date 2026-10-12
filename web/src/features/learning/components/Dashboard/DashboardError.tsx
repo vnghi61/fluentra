@@ -14,11 +14,13 @@ import {
 export interface DashboardErrorProps {
   onRetry: () => void;
   error?: Error | null;
+  title?: string;
 }
 
 export const DashboardError: React.FC<DashboardErrorProps> = ({
   onRetry,
   error,
+  title,
 }) => {
   const { t } = useTranslation();
 
@@ -29,7 +31,7 @@ export const DashboardError: React.FC<DashboardErrorProps> = ({
           <div className="flex items-center gap-2 text-danger-accent mb-2">
             <AlertCircle className="h-6 w-6 shrink-0" aria-hidden="true" />
             <CardTitle className="text-lg font-bold">
-              {t("dashboard.error.title", "Unable to Load Dashboard")}
+              {title || t("dashboard.error.title", "Unable to Load Dashboard")}
             </CardTitle>
           </div>
           <CardDescription>
@@ -44,7 +46,7 @@ export const DashboardError: React.FC<DashboardErrorProps> = ({
           <Button
             variant="outline"
             onClick={onRetry}
-            className="gap-2 min-h-[44px]"
+            className="gap-2 min-h-[44px] min-w-[44px]"
           >
             <RotateCcw className="h-4 w-4" aria-hidden="true" />
             {t("action.retry", "Try again")}

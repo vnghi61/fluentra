@@ -16,6 +16,11 @@ type Repository interface {
 	GetWordByLemmaAndPOS(ctx context.Context, lemma, pos string) (sqlc.SkillWord, error)
 	GetWordByID(ctx context.Context, id uuid.UUID) (sqlc.SkillWord, error)
 	ListWordsByLemma(ctx context.Context, lemma string) ([]sqlc.SkillWord, error)
+	// ListWordsWithSensesByLemmas is the database-first check of WO 22 Stage B:
+	// every word and sense whose lemma is in the set, in one query.
+	ListWordsWithSensesByLemmas(
+		ctx context.Context, lemmas []string,
+	) ([]sqlc.ListWordsWithSensesByLemmasRow, error)
 	SearchWords(ctx context.Context, lemma string, limit, offset int32) ([]sqlc.SkillWord, error)
 	CountSearchWords(ctx context.Context, lemma string) (int64, error)
 	InsertWordSense(ctx context.Context, arg sqlc.InsertWordSenseParams) (sqlc.SkillWordSense, error)
@@ -29,6 +34,8 @@ type Repository interface {
 	GetUserWordState(ctx context.Context, userID, wordSenseID uuid.UUID) (sqlc.SkillUserWordState, error)
 	InsertDeck(ctx context.Context, arg sqlc.InsertDeckParams) (sqlc.SkillDeck, error)
 	GetDeckByID(ctx context.Context, id uuid.UUID) (sqlc.SkillDeck, error)
+	// GetOwnDeckBySlug returns one of the learner's decks, or pgx.ErrNoRows.
+	GetOwnDeckBySlug(ctx context.Context, ownerID uuid.UUID, slug string) (sqlc.SkillDeck, error)
 	ListDecksByUser(ctx context.Context, userID *uuid.UUID) ([]sqlc.ListDecksByUserRow, error)
 	InsertDeckItem(ctx context.Context, arg sqlc.InsertDeckItemParams) (sqlc.SkillDeckItem, error)
 	DeleteDeckItem(ctx context.Context, deckID, wordSenseID uuid.UUID) error
@@ -45,12 +52,23 @@ type Repository interface {
 	InsertUpload(ctx context.Context, arg sqlc.InsertUploadParams) (sqlc.SkillVocabUpload, error)
 	InsertUploadItem(ctx context.Context, arg sqlc.InsertUploadItemParams) (sqlc.SkillVocabUploadItem, error)
 	GetUpload(ctx context.Context, id, userID uuid.UUID) (sqlc.SkillVocabUpload, error)
-	ListUploadsByUser(ctx context.Context, userID uuid.UUID, limit int32) ([]sqlc.ListUploadsByUserRow, error)
+	ListUploadsByUser(ctx context.Context, arg sqlc.ListUploadsByUserParams) ([]sqlc.ListUploadsByUserRow, error)
 	ListUploadItems(ctx context.Context, uploadID, userID uuid.UUID) ([]sqlc.ListUploadItemsRow, error)
+	SearchUserUploadItems(
+		ctx context.Context, arg sqlc.SearchUserUploadItemsParams,
+	) ([]sqlc.SearchUserUploadItemsRow, error)
 	ClaimPendingUploadItems(ctx context.Context, maxAttempts, limit int32) ([]sqlc.SkillVocabUploadItem, error)
+	// ClaimPendingUploadItemsByUploadID claims one upload's pending words; a
+	// non-nil itemIDs narrows it to those words.
 	ClaimPendingUploadItemsByUploadID(
-		ctx context.Context, uploadID uuid.UUID, maxAttempts, limit int32,
+		ctx context.Context, uploadID uuid.UUID, itemIDs []uuid.UUID, maxAttempts, limit int32,
 	) ([]sqlc.SkillVocabUploadItem, error)
+	// LockUploadTerm holds a transaction-scoped advisory lock on a normalised
+	// term, so two learners pasting the same new word cost one model call.
+	LockUploadTerm(ctx context.Context, term string) error
+	// FindRecentTermRejection returns another learner's recent verdict on the
+	// word itself, or pgx.ErrNoRows.
+	FindRecentTermRejection(ctx context.Context, term string) (sqlc.FindRecentTermRejectionRow, error)
 	MarkUploadItemVerified(
 		ctx context.Context, id uuid.UUID, senseID *uuid.UUID, model, reason string,
 		correctedTerm, noteCode *string,
@@ -59,7 +77,13 @@ type Repository interface {
 		ctx context.Context, id uuid.UUID, reason string,
 		suggestedTerm, noteCode *string,
 	) (sqlc.SkillVocabUploadItem, error)
-	RecordUploadItemAttempt(ctx context.Context, id uuid.UUID, reason string) error
+	// RecordUploadItemAttempt counts a transient failure; the attempt that
+	// reaches maxAttempts retires the item as failed with exhaustedReason.
+	RecordUploadItemAttempt(
+		ctx context.Context, id uuid.UUID, maxAttempts int32, exhaustedReason string,
+	) error
+	// FailExhaustedUploadItems retires pending items left with every attempt used.
+	FailExhaustedUploadItems(ctx context.Context, maxAttempts int32, reason string) (int64, error)
 	SetUploadDeck(ctx context.Context, uploadID, deckID uuid.UUID) error
 	UpdateWordSenseEnrichment(
 		ctx context.Context, arg sqlc.UpdateWordSenseEnrichmentParams,
@@ -140,6 +164,12 @@ func (r *pgxRepository) ListWordsByLemma(ctx context.Context, lemma string) ([]s
 	return r.q.ListWordsByLemma(ctx, lemma)
 }
 
+func (r *pgxRepository) ListWordsWithSensesByLemmas(
+	ctx context.Context, lemmas []string,
+) ([]sqlc.ListWordsWithSensesByLemmasRow, error) {
+	return r.q.ListWordsWithSensesByLemmas(ctx, lemmas)
+}
+
 func (r *pgxRepository) SearchWords(ctx context.Context, lemma string, limit, offset int32) ([]sqlc.SkillWord, error) {
 	return r.q.SearchWords(ctx, sqlc.SearchWordsParams{
 		Column1: &lemma,
@@ -207,6 +237,12 @@ func (r *pgxRepository) InsertDeck(ctx context.Context, arg sqlc.InsertDeckParam
 	return r.q.InsertDeck(ctx, arg)
 }
 
+func (r *pgxRepository) GetOwnDeckBySlug(
+	ctx context.Context, ownerID uuid.UUID, slug string,
+) (sqlc.SkillDeck, error) {
+	return r.q.GetOwnDeckBySlug(ctx, sqlc.GetOwnDeckBySlugParams{OwnerID: ownerID, Slug: slug})
+}
+
 func (r *pgxRepository) GetDeckByID(ctx context.Context, id uuid.UUID) (sqlc.SkillDeck, error) {
 	return r.q.GetDeckByID(ctx, id)
 }
@@ -267,9 +303,25 @@ func (r *pgxRepository) GetUpload(
 }
 
 func (r *pgxRepository) ListUploadsByUser(
-	ctx context.Context, userID uuid.UUID, limit int32,
+	ctx context.Context, arg sqlc.ListUploadsByUserParams,
 ) ([]sqlc.ListUploadsByUserRow, error) {
-	return r.q.ListUploadsByUser(ctx, sqlc.ListUploadsByUserParams{UserID: userID, Limit: limit})
+	return r.q.ListUploadsByUser(ctx, arg)
+}
+
+func (r *pgxRepository) SearchUserUploadItems(
+	ctx context.Context, arg sqlc.SearchUserUploadItemsParams,
+) ([]sqlc.SearchUserUploadItemsRow, error) {
+	return r.q.SearchUserUploadItems(ctx, arg)
+}
+
+func (r *pgxRepository) LockUploadTerm(ctx context.Context, term string) error {
+	return r.q.LockUploadTerm(ctx, term)
+}
+
+func (r *pgxRepository) FindRecentTermRejection(
+	ctx context.Context, term string,
+) (sqlc.FindRecentTermRejectionRow, error) {
+	return r.q.FindRecentTermRejection(ctx, term)
 }
 
 func (r *pgxRepository) ListUploadItems(
@@ -287,12 +339,13 @@ func (r *pgxRepository) ClaimPendingUploadItems(
 }
 
 func (r *pgxRepository) ClaimPendingUploadItemsByUploadID(
-	ctx context.Context, uploadID uuid.UUID, maxAttempts, limit int32,
+	ctx context.Context, uploadID uuid.UUID, itemIDs []uuid.UUID, maxAttempts, limit int32,
 ) ([]sqlc.SkillVocabUploadItem, error) {
 	return r.q.ClaimPendingUploadItemsByUploadID(ctx, sqlc.ClaimPendingUploadItemsByUploadIDParams{
-		UploadID: uploadID,
-		Attempts: maxAttempts,
-		Limit:    limit,
+		UploadID:    uploadID,
+		MaxAttempts: maxAttempts,
+		ItemIds:     itemIDs,
+		RowLimit:    limit,
 	})
 }
 
@@ -323,9 +376,19 @@ func (r *pgxRepository) MarkUploadItemRejected(
 }
 
 func (r *pgxRepository) RecordUploadItemAttempt(
-	ctx context.Context, id uuid.UUID, reason string,
+	ctx context.Context, id uuid.UUID, maxAttempts int32, exhaustedReason string,
 ) error {
-	return r.q.RecordUploadItemAttempt(ctx, sqlc.RecordUploadItemAttemptParams{ID: id, Reason: reason})
+	return r.q.RecordUploadItemAttempt(ctx, sqlc.RecordUploadItemAttemptParams{
+		ID: id, MaxAttempts: maxAttempts, ExhaustedReason: exhaustedReason,
+	})
+}
+
+func (r *pgxRepository) FailExhaustedUploadItems(
+	ctx context.Context, maxAttempts int32, reason string,
+) (int64, error) {
+	return r.q.FailExhaustedUploadItems(ctx, sqlc.FailExhaustedUploadItemsParams{
+		MaxAttempts: maxAttempts, Reason: reason,
+	})
 }
 
 func (r *pgxRepository) SetUploadDeck(ctx context.Context, uploadID, deckID uuid.UUID) error {

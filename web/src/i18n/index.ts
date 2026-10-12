@@ -86,12 +86,39 @@ export function setLocale(locale: Locale): void {
   }
 }
 
+/**
+ * `setLocale` for a switch the learner makes and watches: the bundle is fetched
+ * first, outside any page transition, and the returned promise settles once
+ * i18next has switched, so a caller can wrap only the switch in a cross-fade.
+ */
+export async function switchLocale(
+  locale: Locale,
+  apply: (change: () => Promise<unknown>) => Promise<void> = async (change) => {
+    await change();
+  },
+): Promise<void> {
+  try {
+    localStorage.setItem(STORAGE_KEY, locale);
+  } catch {
+    // Not being able to remember the choice is not a reason to refuse it.
+  }
+  if (!i18n.isInitialized) return;
+  await loadLocale(locale);
+  await apply(() => i18n.changeLanguage(locale));
+}
+
 export async function initI18n(
   locale: Locale = detectLocale(),
 ): Promise<typeof i18n> {
   if (!i18n.isInitialized) {
     const module = await bundles[locale]();
     loaded.add(locale);
+    // <html lang> follows the interface, so screen readers pronounce it in
+    // the right language and the browser offers the right translation.
+    document.documentElement.lang = locale;
+    i18n.on("languageChanged", (lng) => {
+      document.documentElement.lang = lng;
+    });
     void i18n.use(initReactI18next).init({
       resources: {
         [locale]: { translation: module.default },

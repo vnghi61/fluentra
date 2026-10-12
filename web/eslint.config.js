@@ -121,7 +121,7 @@ export default tseslint.config(
   // Build tooling runs in Node and is outside the app's tsconfig, so the
   // type-aware rules have no program to consult.
   {
-    files: ['vite.config.ts', 'eslint.config.js', 'playwright.config.ts', 'scripts/**/*.mjs', 'e2e/**/*.ts', 'eslint-local-rules/**/*.js'],
+    files: ['vite.config.ts', 'eslint.config.js', 'playwright.config.ts', 'playwright.*.config.ts', 'scripts/**/*.mjs', 'e2e/**/*.ts', 'eslint-local-rules/**/*.js'],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: { globals: { ...globals.node } },
   },

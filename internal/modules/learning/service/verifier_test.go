@@ -15,6 +15,13 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
+// Question-type names the exam structure tests use.
+const (
+	typeCompletion     = "completion"
+	typeMultipleChoice = "multiple_choice"
+	typeTrueFalse      = "true_false_not_given"
+)
+
 type customCEFRAI struct {
 	judgedLevel string
 	reasoning   string
@@ -222,6 +229,124 @@ func TestVerifyItem_WorkOrder19StageEGate_ExamStructureCheck(t *testing.T) {
 	require.NoError(t, err, "TOEIC Part 3 with 3 questions must pass")
 }
 
+// TestVerifyItem_ExamStructure_QuestionTypesMustBeAllowed is Stage I: an item
+// whose question type the part does not permit is refused.
+func TestVerifyItem_ExamStructure_QuestionTypesMustBeAllowed(t *testing.T) {
+	ctx := context.Background()
+
+	svc := service.New(service.Deps{
+		Lesson:       newFakePoolLessons(),
+		LessonAuthor: newFakePoolLessons(),
+		Graders:      passingGraders(),
+		Clock:        clock.NewFake(time.Now()),
+	})
+
+	passage := "The city opened a new library in 2020. It holds ten thousand books and a reading room."
+	question := func(id string) string {
+		return `{
+			"id": "` + id + `",
+			"type": "multiple_choice",
+			"prompt": "When did the library open?",
+			"options": [
+				{"id": "A", "text": "2020"},
+				{"id": "B", "text": "2019"},
+				{"id": "C", "text": "2021"},
+				{"id": "D", "text": "2018"}
+			],
+			"correct_option_id": "A",
+			"explanation": {"explanation_en": "It opened in 2020.", "explanation_vi": "Mở năm 2020."}
+		}`
+	}
+	body := json.RawMessage(`{
+		"passage": "` + passage + `",
+		"questions": [` + question("q1") + `,` + question("q2") + `,` + question("q3") + `,` + question("q4") + `]
+	}`)
+
+	// A part that allows only completion and true/false/not given refuses it.
+	err := svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:      kindReading,
+		CEFRLevel: "B1",
+		Body:      body,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			QuestionsPerGroup: 4,
+			AllowedTypes:      []string{typeCompletion, typeTrueFalse},
+		},
+	})
+	require.Error(t, err, "a disallowed question type must be refused")
+	assert.Contains(t, err.Error(), "is not allowed by this part")
+
+	// Allowing multiple choice lets the same item through.
+	err = svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:      kindReading,
+		CEFRLevel: "B1",
+		Body:      body,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			QuestionsPerGroup: 4,
+			AllowedTypes:      []string{typeMultipleChoice},
+		},
+	})
+	require.NoError(t, err, "an allowed question type must pass")
+}
+
+// TestVerifyItem_ExamStructure_QuestionTypeMixIsRequired is Stage I.3.4: a group
+// that ignores the part's type mix and returns one type is refused.
+func TestVerifyItem_ExamStructure_QuestionTypeMixIsRequired(t *testing.T) {
+	ctx := context.Background()
+
+	svc := service.New(service.Deps{
+		Lesson:       newFakePoolLessons(),
+		LessonAuthor: newFakePoolLessons(),
+		Graders:      passingGraders(),
+		Clock:        clock.NewFake(time.Now()),
+	})
+
+	passage := "The city opened a new library in 2020. It holds ten thousand books and a reading room."
+	question := func(id string) string {
+		return `{
+			"id": "` + id + `",
+			"type": "multiple_choice",
+			"prompt": "When did the library open?",
+			"options": [
+				{"id": "A", "text": "2020"},
+				{"id": "B", "text": "2019"},
+				{"id": "C", "text": "2021"},
+				{"id": "D", "text": "2018"}
+			],
+			"correct_option_id": "A",
+			"explanation": {"explanation_en": "It opened in 2020.", "explanation_vi": "Mở năm 2020."}
+		}`
+	}
+	body := json.RawMessage(`{
+		"passage": "` + passage + `",
+		"questions": [` + question("q1") + `,` + question("q2") + `,` + question("q3") + `,` + question("q4") + `]
+	}`)
+
+	err := svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:      kindReading,
+		CEFRLevel: "B1",
+		Body:      body,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			QuestionsPerGroup: 4,
+			AllowedTypes:      []string{typeMultipleChoice, typeCompletion},
+			TypeMix:           map[string]float64{typeMultipleChoice: 0.5, typeCompletion: 0.5},
+		},
+	})
+	require.Error(t, err, "a group missing half its types must be refused")
+	assert.Contains(t, err.Error(), `type "completion" should be about 50%`)
+
+	err = svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind:      kindReading,
+		CEFRLevel: "B1",
+		Body:      body,
+		ExamConstraints: &learningcontract.ExamPartConstraints{
+			QuestionsPerGroup: 4,
+			AllowedTypes:      []string{typeMultipleChoice},
+			TypeMix:           map[string]float64{typeMultipleChoice: 1.0},
+		},
+	})
+	require.NoError(t, err, "a group of the only expected type must pass")
+}
+
 func TestVerifyItem_ProvenanceCheck(t *testing.T) {
 	ctx := context.Background()
 
@@ -278,4 +403,98 @@ func TestVerifyItem_ProvenanceCheck(t *testing.T) {
 		CheckProvenance: true,
 	})
 	require.NoError(t, err)
+}
+
+// TestVerifyItem_ExamStructure_IELTSGroupWithTypedAnswers is D22-25 end to end
+// at the verifier: a passage whose questions mix completion, true/false/not
+// given and multiple choice passes an IELTS part whose word limit is its
+// answers', and a completion key over that limit is refused.
+func TestVerifyItem_ExamStructure_IELTSGroupWithTypedAnswers(t *testing.T) {
+	ctx := context.Background()
+
+	svc := service.New(service.Deps{
+		Lesson:       newFakePoolLessons(),
+		LessonAuthor: newFakePoolLessons(),
+		Graders:      passingGraders(),
+		Clock:        clock.NewFake(time.Now()),
+	})
+
+	explanation := `"explanation": {"explanation_en": "See the passage.", "explanation_vi": "Xem đoạn văn."}`
+	body := func(completionKey string) json.RawMessage {
+		return json.RawMessage(`{
+			"passage": "The city opened a new library in 2020. It holds ten thousand books and a reading room.",
+			"questions": [
+				{"id": "q1", "type": "completion", "prompt": "The library holds ten thousand ___.",
+				 "key": "` + completionKey + `", ` + explanation + `},
+				{"id": "q2", "type": "completion", "prompt": "It also has a ___ room.",
+				 "key": "reading", ` + explanation + `},
+				{"id": "q3", "type": "true_false_not_given", "prompt": "The library opened in 2020.",
+				 "key": "True", ` + explanation + `},
+				{"id": "q4", "type": "multiple_choice", "prompt": "When did the library open?",
+				 "options": [{"id": "A", "text": "2020"}, {"id": "B", "text": "2019"},
+				             {"id": "C", "text": "2021"}, {"id": "D", "text": "2018"}],
+				 "correct_option_id": "A", ` + explanation + `}
+			]
+		}`)
+	}
+	constraints := &learningcontract.ExamPartConstraints{
+		QuestionsPerGroup: 4,
+		MaxWords:          2,
+		AllowedTypes:      []string{typeCompletion, typeTrueFalse, typeMultipleChoice},
+	}
+
+	err := svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind: kindReading, CEFRLevel: "B2", Body: body("books"), ExamConstraints: constraints,
+	})
+	require.NoError(t, err, "typed and true/false/not given questions are valid in an IELTS group")
+
+	err = svc.VerifyItem(ctx, learningcontract.VerifyItemRequest{
+		Kind: kindReading, CEFRLevel: "B2", Body: body("very many printed books"), ExamConstraints: constraints,
+	})
+	require.Error(t, err, "a completion key over the word limit must be refused")
+	assert.Contains(t, err.Error(), "the limit is 2")
+}
+
+// TestVerifyItem_TOEICPart2HasThreeResponses: a question-response item is a
+// question and three spoken responses, as the published format has it; the
+// structure check used to demand four and refused every Part 2 item.
+func TestVerifyItem_TOEICPart2HasThreeResponses(t *testing.T) {
+	graders := passingGraders()
+	require.NoError(t, graders.Register("question_response", &testPracticeGrader{shouldPass: true}))
+	svc := service.New(service.Deps{
+		Lesson:       newFakePoolLessons(),
+		LessonAuthor: newFakePoolLessons(),
+		Graders:      graders,
+		Clock:        clock.NewFake(time.Now()),
+	})
+	body := json.RawMessage(`{
+		"prompt": "When does the meeting start?",
+		"responses": [{"id": "A", "text": "At ten o'clock."}, {"id": "B", "text": "In room four."},
+		              {"id": "C", "text": "Yes, I did."}],
+		"correct_option_id": "A",
+		"explanation": {"explanation_en": "It asks for a time.", "explanation_vi": "Câu hỏi về thời gian."}
+	}`)
+	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
+		Kind: "question_response", CEFRLevel: "B1", Body: body,
+		ExamConstraints: &learningcontract.ExamPartConstraints{OptionCount: 3, QuestionsPerGroup: 1},
+	})
+	require.NoError(t, err, "three responses is the published Part 2 shape")
+}
+
+// TestVerifyItem_ATask1CarriesItsChart is D22-22: a task written about a chart
+// that carries none is refused before it is stored.
+func TestVerifyItem_ATask1CarriesItsChart(t *testing.T) {
+	svc := service.New(service.Deps{
+		Lesson:       newFakePoolLessons(),
+		LessonAuthor: newFakePoolLessons(),
+		Graders:      passingGraders(),
+		Clock:        clock.NewFake(time.Now()),
+	})
+	task1 := &learningcontract.ExamPartConstraints{QuestionsPerGroup: 1, MinWords: 150, VisualRequired: true}
+	err := svc.VerifyItem(context.Background(), learningcontract.VerifyItemRequest{
+		Kind: examKindWritingPrompt, CEFRLevel: "B2", Body: json.RawMessage(`{"prompt":"Describe the chart."}`),
+		ExamConstraints: task1,
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "carries none")
 }

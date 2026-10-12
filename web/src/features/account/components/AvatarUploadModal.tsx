@@ -1,8 +1,16 @@
-import React, { useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Camera, Loader2, UploadCloud, X, AlertCircle } from "lucide-react";
+import { Camera, Loader2, UploadCloud, AlertCircle } from "lucide-react";
 import { accountApi } from "../api/accountApi";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface AvatarUploadModalProps {
   isOpen: boolean;
@@ -12,6 +20,53 @@ interface AvatarUploadModalProps {
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+/** The preview circle, in CSS pixels (h-36 w-36). */
+const PREVIEW_SIZE = 144;
+
+/**
+ * The chosen image, cropped to a square and drawn the way object-cover would.
+ *
+ * A canvas, not <img src={URL.createObjectURL(file)}>: the file comes from the
+ * page, and CodeQL (js/xss-through-dom) reads any string built from it and set
+ * as a URL as text reinterpreted as HTML. A decoded bitmap is not a string, so
+ * nothing derived from the file ever reaches an attribute.
+ */
+const AvatarPreview: React.FC<{ bitmap: ImageBitmap; label: string }> = ({
+  bitmap,
+  label,
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context) return;
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = PREVIEW_SIZE * ratio;
+    canvas.height = PREVIEW_SIZE * ratio;
+    const side = Math.min(bitmap.width, bitmap.height);
+    context.drawImage(
+      bitmap,
+      (bitmap.width - side) / 2,
+      (bitmap.height - side) / 2,
+      side,
+      side,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+  }, [bitmap]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      role="img"
+      aria-label={label}
+      className="h-full w-full"
+    />
+  );
+};
 
 export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
   isOpen,
@@ -20,10 +75,16 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [preview, setPreview] = useState<ImageBitmap | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Each choice gets a number, so a slow decode of an earlier file cannot
+  // replace the preview of a later one.
+  const decodeRef = useRef(0);
+
+  // A bitmap holds decoded pixels until closed: close the one being replaced.
+  useEffect(() => () => preview?.close(), [preview]);
 
   if (!isOpen) return null;
 
@@ -50,8 +111,18 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
     }
 
     setSelectedFile(file);
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
+    setPreview(null);
+    // No preview where the browser cannot decode one; the upload still works.
+    if (typeof createImageBitmap !== "function") return;
+    const decode = ++decodeRef.current;
+    createImageBitmap(file)
+      .then((bitmap) => {
+        if (decode === decodeRef.current) setPreview(bitmap);
+        else bitmap.close();
+      })
+      .catch(() => {
+        // Undecodable here (the server still validates it): no preview.
+      });
   };
 
   const handleUpload = async () => {
@@ -91,97 +162,91 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
   };
 
   const handleClose = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
+    decodeRef.current += 1;
     setSelectedFile(null);
-    setPreviewUrl(null);
+    setPreview(null);
     setError(null);
     onClose();
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="avatar-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/80 backdrop-blur-sm p-4"
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !isUploading) handleClose();
+      }}
     >
-      <div className="w-full max-w-md rounded-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl space-y-6">
-        <div className="flex items-center justify-between border-b border-border-subtle pb-4">
-          <h2
-            id="avatar-modal-title"
-            className="text-lg font-semibold text-text flex items-center gap-2"
-          >
-            <Camera className="h-5 w-5 text-primary-accent" />
+      <DialogContent className="max-w-md" aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Camera
+              aria-hidden="true"
+              className="h-5 w-5 text-primary-accent"
+            />
             {t("account.updateProfileAvatar", "Update Profile Avatar")}
-          </h2>
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={isUploading}
-            className="rounded-lg p-1 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
-        {error && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3 text-xs text-danger-accent">
-            <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <div className="flex flex-col items-center justify-center space-y-4">
-          {previewUrl ? (
-            <div className="relative h-36 w-36 overflow-hidden rounded-full border-4 border-primary/30 bg-surface-muted">
-              <img
-                src={previewUrl}
-                alt={t("account.avatarPreview", "Avatar preview")}
-                className="h-full w-full object-cover"
+        <DialogBody className="space-y-6">
+          {error && (
+            <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm leading-relaxed text-danger-accent">
+              <AlertCircle
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 text-danger-accent"
               />
-            </div>
-          ) : (
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="flex h-36 w-36 cursor-pointer flex-col items-center justify-center rounded-full border-2 border-dashed border-border-subtle bg-surface-muted/50 hover:border-primary/50 hover:bg-surface-muted transition-all text-text-muted hover:text-primary-accent"
-            >
-              <UploadCloud className="h-8 w-8 mb-1" />
-              <span className="text-xs font-medium">
-                {t("account.chooseFile", "Choose file")}
-              </span>
+              <span>{error}</span>
             </div>
           )}
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleFileChange}
-            className="hidden"
-            id="avatar-file-input"
-          />
+          <div className="flex flex-col items-center justify-center space-y-4">
+            {preview ? (
+              <div className="relative h-36 w-36 overflow-hidden rounded-full border-4 border-primary/30 bg-surface-muted">
+                <AvatarPreview
+                  bitmap={preview}
+                  label={t("account.avatarPreview", "Avatar preview")}
+                />
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="flex h-36 w-36 cursor-pointer flex-col items-center justify-center rounded-full border-2 border-dashed border-border-subtle bg-surface-muted/50 hover:border-primary/50 hover:bg-surface-muted transition-all text-text-muted hover:text-primary-accent"
+              >
+                <UploadCloud aria-hidden="true" className="h-8 w-8 mb-1" />
+                <span className="text-sm font-medium">
+                  {t("account.chooseFile", "Choose file")}
+                </span>
+              </div>
+            )}
 
-          <div className="text-center space-y-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-            >
-              {previewUrl
-                ? t("account.chooseDifferentImage", "Choose different image")
-                : t("account.browseComputer", "Browse computer")}
-            </Button>
-            <p className="text-xs text-text-muted">
-              JPEG, PNG, or WebP. Max size: 5 MB.
-            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileChange}
+              className="hidden"
+              id="avatar-file-input"
+            />
+
+            <div className="text-center space-y-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
+                {selectedFile
+                  ? t("account.chooseDifferentImage", "Choose different image")
+                  : t("account.browseComputer", "Browse computer")}
+              </Button>
+              <p className="text-sm text-text-muted">
+                JPEG, PNG, or WebP. Max size: 5 MB.
+              </p>
+            </div>
           </div>
-        </div>
+        </DialogBody>
 
-        <div className="flex items-center justify-end gap-3 border-t border-border-subtle pt-4">
+        <DialogFooter>
           <Button
             type="button"
             variant="ghost"
@@ -199,15 +264,18 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
           >
             {isUploading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2
+                  aria-hidden="true"
+                  className="mr-2 h-4 w-4 animate-spin"
+                />
                 {t("account.uploadingDirectly", "Uploading directly...")}
               </>
             ) : (
               t("account.saveAvatar", "Save Avatar")
             )}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

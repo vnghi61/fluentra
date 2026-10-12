@@ -14,6 +14,10 @@ export interface PlacementIntroProps {
   /** Shown above the start button, e.g. after a test ended too early to place. */
   notice?: string | undefined;
   retakeAvailableAt?: string | null | undefined;
+  durationMinutes?: number | undefined;
+  duration?: string | number | undefined;
+  itemCount?: number | undefined;
+  whatHappensAfter?: string | undefined;
   onStarted: (session: PlacementSession) => void;
   /** A session is already in progress: the page should load it. */
   onConflict: () => void;
@@ -22,12 +26,41 @@ export interface PlacementIntroProps {
 export const PlacementIntro: React.FC<PlacementIntroProps> = ({
   notice,
   retakeAvailableAt,
+  durationMinutes,
+  duration,
+  itemCount,
+  whatHappensAfter,
   onStarted,
   onConflict,
 }) => {
   const { t, i18n } = useTranslation();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const durationValue =
+    durationMinutes !== undefined
+      ? t("placement.intro.summaryDuration", {
+          minutes: durationMinutes,
+          defaultValue: `${durationMinutes} minutes`,
+        })
+      : duration !== undefined
+        ? String(duration)
+        : null;
+
+  const itemCountValue =
+    itemCount !== undefined
+      ? t("placement.intro.summaryItems", {
+          count: itemCount,
+          defaultValue: `${itemCount} questions`,
+        })
+      : null;
+
+  const afterValue =
+    whatHappensAfter ||
+    t(
+      "placement.intro.summaryAfter",
+      "Places you between A1 and C1 to personalize your lessons.",
+    );
 
   const start = async () => {
     setPending(true);
@@ -62,61 +95,117 @@ export const PlacementIntro: React.FC<PlacementIntroProps> = ({
   const facts = [
     { icon: Clock, text: t("placement.intro.time") },
     { icon: ListChecks, text: t("placement.intro.questions") },
-    { icon: MoveRight, text: t("placement.intro.noGoingBack") },
     { icon: PenLine, text: t("placement.intro.productive") },
   ];
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-base px-4 py-10">
-      <div className="w-full max-w-xl space-y-6 rounded-2xl border border-border bg-surface-card p-6 shadow-lg md:p-8">
-        <div className="space-y-3 text-center">
+    <div className="flex min-h-screen items-center justify-center bg-surface-muted px-3 py-4 sm:px-4 sm:py-8">
+      <div className="w-full max-w-xl space-y-4 rounded-2xl border border-border bg-surface-card p-4 shadow-lg sm:p-6 md:p-8">
+        <div className="space-y-1.5 text-center">
           <Compass
-            className="mx-auto h-10 w-10 text-primary"
+            className="mx-auto h-8 w-8 text-primary"
             aria-hidden="true"
           />
-          <h1 className="text-2xl font-extrabold text-text md:text-3xl">
+          <h1 className="text-2xl md:text-3xl font-bold leading-tight tracking-tight text-text">
             {t("placement.intro.title")}
           </h1>
-          <p className="text-base text-text-muted">
+          <p className="text-base leading-relaxed text-text-muted">
             {t("placement.intro.subtitle")}
           </p>
         </div>
 
-        <ul className="space-y-3 rounded-xl border border-border-subtle bg-surface-base p-4">
-          {facts.map((fact) => (
-            <li
-              key={fact.text}
-              className="flex items-start gap-3 text-sm text-text"
-            >
-              <fact.icon
-                className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+        {/* Short summary above the detail */}
+        <div
+          data-testid="placement-summary"
+          className="space-y-1.5 rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-base leading-relaxed"
+        >
+          <div className="font-semibold text-text">
+            {t("placement.intro.summaryTitle", "Overview")}
+          </div>
+          <ul className="space-y-1 text-text-muted">
+            {durationValue && (
+              <li className="flex items-center gap-2">
+                <Clock
+                  className="h-4 w-4 shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+                <span>{durationValue}</span>
+              </li>
+            )}
+            {itemCountValue && (
+              <li className="flex items-center gap-2">
+                <ListChecks
+                  className="h-4 w-4 shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+                <span>{itemCountValue}</span>
+              </li>
+            )}
+            <li className="flex items-center gap-2">
+              <Compass
+                className="h-4 w-4 shrink-0 text-primary"
                 aria-hidden="true"
               />
-              <span>{fact.text}</span>
+              <span>{afterValue}</span>
             </li>
-          ))}
-        </ul>
+            <li className="flex items-center gap-2">
+              <MoveRight
+                className="h-4 w-4 shrink-0 text-primary"
+                aria-hidden="true"
+              />
+              <span>{t("placement.intro.noGoingBack")}</span>
+            </li>
+          </ul>
+        </div>
+
+        {/* Detail */}
+        <details className="group rounded-xl border border-border-subtle bg-surface-muted p-3 text-base leading-relaxed">
+          <summary className="flex min-h-11 cursor-pointer select-none items-center justify-between gap-2 font-semibold text-text">
+            <span>{t("placement.intro.detailTitle", "Test details")}</span>
+            <span className="text-sm text-text-muted group-open:hidden">
+              {t("placement.intro.showDetails", "Show")}
+            </span>
+            <span className="hidden text-sm text-text-muted group-open:inline">
+              {t("placement.intro.hideDetails", "Hide")}
+            </span>
+          </summary>
+          <ul className="mt-2.5 space-y-2 border-t border-border-subtle pt-2">
+            {facts.map((fact) => (
+              <li
+                key={fact.text}
+                className="flex items-start gap-2.5 text-text"
+              >
+                <fact.icon
+                  className="mt-1 h-4 w-4 shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+                <span>{fact.text}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
 
         {notice && (
-          <p className="rounded-lg bg-warning/10 p-3 text-sm text-text">
+          <p className="rounded-lg bg-warning/10 p-3 text-base leading-relaxed text-text">
             {notice}
           </p>
         )}
         {error && (
           <p
             role="alert"
-            className="rounded-lg bg-danger/10 p-3 text-sm text-danger"
+            className="rounded-lg bg-danger/10 p-3 text-base leading-relaxed text-danger-accent"
           >
             {error}
           </p>
         )}
 
-        <div className="space-y-2">
+        <div className="space-y-2 pt-1">
           <Button
             type="button"
             onClick={() => void start()}
             disabled={pending}
-            className="min-h-[44px] w-full text-base"
+            size="lg"
+            className="w-full"
           >
             {pending
               ? t("placement.intro.starting")
@@ -124,7 +213,7 @@ export const PlacementIntro: React.FC<PlacementIntroProps> = ({
           </Button>
           <Link
             to="/"
-            className="flex min-h-[44px] w-full items-center justify-center rounded-lg text-sm font-medium text-text-muted hover:text-text"
+            className="flex min-h-[44px] w-full items-center justify-center rounded-lg text-sm font-semibold text-text-muted hover:text-text"
           >
             {t("placement.intro.notNow")}
           </Link>

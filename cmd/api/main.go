@@ -178,7 +178,8 @@ type applicationConfig struct {
 		Provider4APIKey  string        `koanf:"provider_4_api_key"`
 		Provider4Timeout time.Duration `koanf:"provider_4_timeout"`
 
-		WritingDailyLimit int `koanf:"writing_daily_limit"`
+		WritingDailyLimit int  `koanf:"writing_daily_limit"`
+		AutoPublish       bool `koanf:"auto_publish"`
 	} `koanf:"ai"`
 	// WORKER_URL maps to `worker.url` under the first-underscore-becomes-a-dot rule.
 	Worker struct {
@@ -433,6 +434,7 @@ func run(ctx context.Context) error {
 		Mailer:            newAPIMailSender(cfg, pool),
 		WorkerNudger:      workerNudger,
 		WritingDailyLimit: cfg.AI.WritingDailyLimit,
+		AutoPublish:       cfg.AI.AutoPublish,
 		SpeechDailyLimit:  cfg.Speech.DailyRecordingsLimit,
 		SpeechASRModel:    speechASRModelName(cfg.Speech.ASRBaseURL, cfg.Speech.ASRModel),
 		SpeechTTSVoice:    cfg.Speech.TTSVoice,
@@ -507,8 +509,8 @@ const (
 	defaultTimeout = "30s"
 	// defaultOTLPEndpoint is the collector address in the local compose stack.
 	defaultOTLPEndpoint = "localhost:4317"
-	// docSectionStorage is the anchor a missing S3 key points the operator at.
-	docSectionStorage = "docs/deployment/configuration.md#storage"
+	// configDoc is where a missing or invalid config key points the operator.
+	configDoc = ".env.example"
 )
 
 // configOptions declares every key this binary reads. A key absent from here
@@ -585,9 +587,11 @@ func configOptions() config.Options {
 			"ai.provider_4_api_key":          "",
 			"ai.provider_4_timeout":          defaultAITimeout,
 			"ai.writing_daily_limit":         10,
+			"ai.auto_publish":                false,
 			"worker.url":                     "",
 			"speech.tts_engine":              "offline",
 			"speech.tts_voice":               "en_US-lessac-medium",
+			"speech.tts_voice_b":             "",
 			"speech.asr_base_url":            "",
 			"speech.asr_model":               "whisper-large-v3",
 			"speech.asr_api_key":             "",
@@ -601,19 +605,19 @@ func configOptions() config.Options {
 			"sepay.account_holder":           "",
 			"sepay.allowed_ips":              "",
 			"sepay.order_ttl":                "24h",
-			"studio.min_price_vnd":           int64(49000),
+			"studio.min_price_vnd":           int64(5000),
 			"studio.max_price_vnd":           int64(5000000),
 			"studio.revenue_share_bps":       7000,
 		},
 		EnvSections: []string{"SPEECH", "EXAM", "SEPAY", "STUDIO"},
 		Required: []config.RequiredKey{
-			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
-			{Name: "redis.url", DocSection: "docs/deployment/configuration.md#redis"},
-			{Name: "s3.endpoint", DocSection: docSectionStorage},
-			{Name: "s3.access_key", DocSection: docSectionStorage},
-			{Name: "s3.secret_key", DocSection: docSectionStorage},
-			{Name: "otp.hmac_key", DocSection: "docs/deployment/configuration.md#auth"},
-			{Name: "jwt.signing_key", DocSection: "docs/deployment/configuration.md#auth"},
+			{Name: "db.dsn", DocSection: configDoc},
+			{Name: "redis.url", DocSection: configDoc},
+			{Name: "s3.endpoint", DocSection: configDoc},
+			{Name: "s3.access_key", DocSection: configDoc},
+			{Name: "s3.secret_key", DocSection: configDoc},
+			{Name: "otp.hmac_key", DocSection: configDoc},
+			{Name: "jwt.signing_key", DocSection: configDoc},
 		},
 	}
 }
@@ -666,7 +670,7 @@ func loadConfig(ctx context.Context) (applicationConfig, error) {
 	} {
 		if timeout.value <= 0 {
 			return target, fmt.Errorf(
-				"config key %s must be a positive duration; see docs/deployment/configuration.md#app",
+				"config key %s must be a positive duration; see .env.example",
 				timeout.key)
 		}
 	}

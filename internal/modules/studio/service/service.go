@@ -296,6 +296,25 @@ func (s *Service) GetDraft(ctx context.Context, ownerID, draftID uuid.UUID) (*do
 	return draft, nil
 }
 
+// GetDraftDetail fetches an owned draft together with its latest submission.
+//
+// The latest submission is optional: a draft nobody has submitted yet has
+// none, and the detail response simply omits the field. Ownership is the same
+// check as GetDraft — another creator's draft id is a 404, not a 403.
+func (s *Service) GetDraftDetail(
+	ctx context.Context, ownerID, draftID uuid.UUID,
+) (*domain.CourseDraft, *domain.Submission, error) {
+	draft, err := s.GetDraft(ctx, ownerID, draftID)
+	if err != nil {
+		return nil, nil, err
+	}
+	latest, err := s.repo.GetLatestSubmissionByDraftID(ctx, draftID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return draft, latest, nil
+}
+
 // ListDrafts returns paginated drafts owned by the given creator.
 func (
 	s *Service) ListDrafts(ctx context.Context,
@@ -316,7 +335,16 @@ func (
 
 // ---------------------------------------------------------------- Submissions & Gate 1
 
-// SubmitDraft submits a course draft for Gate 1 and Gate 2 verification.
+// SubmitDraft records a submission and returns it; it does not run Gate 1.
+//
+// The documented contract is that submitting returns immediately (POST
+// /studio/courses/{id}/submit), because Gate 1 checks every answer key and a
+// creator with forty activities should not watch the request time out. The
+// verification worker picks the submission up and runs Gate 1 out of band.
+//
+// Version allocation, the insert and the draft's move to `submitted` happen in
+// one repository transaction, so a failed write leaves no partial submission
+// and two concurrent submits cannot both allocate the same version.
 func (s *Service) SubmitDraft(ctx context.Context, ownerID, draftID uuid.UUID) (*domain.Submission, error) {
 	draft, err := s.repo.GetCourseDraftByID(ctx, draftID)
 	if err != nil {
@@ -341,32 +369,15 @@ func (s *Service) SubmitDraft(ctx context.Context, ownerID, draftID uuid.UUID) (
 	}
 	gate2Required, gate2Reason := needsHumanReview(profile, draft)
 
-	version := 1
-	latest, err := s.repo.GetLatestSubmissionByDraftID(ctx, draftID)
-	if err == nil && latest != nil {
-		version = latest.Version + 1
-	}
-
 	sub := &domain.Submission{
 		DraftID:       draftID,
-		Version:       version,
 		Status:        domain.SubmissionStatusSubmitted,
 		SubmittedBy:   ownerID,
 		Gate2Required: gate2Required,
 		Gate2Reason:   gate2Reason,
 	}
 
-	created, err := s.repo.CreateSubmission(ctx, sub)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := s.repo.UpdateCourseDraftStatus(ctx, draftID, domain.DraftStatusSubmitted); err != nil {
-		return nil, err
-	}
-
-	// Trigger Gate 1 verification immediately
-	return s.RunGate1Verification(ctx, created.ID)
+	return s.repo.SubmitDraft(ctx, ownerID, sub)
 }
 
 // RunGate1Verification executes automated Gate 1 checks against the submitted draft.
@@ -542,7 +553,16 @@ func missingMaterialRendition(mat *resourcecontract.Material) (string, bool) {
 	// document nor a video. Without this they would wait forever for a preview
 	// they never get, and the creator would read "still processing".
 	if !isMaterialMIME(mat.DetectedMIME) {
-		return "Material must be a PDF, Word or PowerPoint document, or an MP4 or WebM video", false
+		return "Material must be a PDF, Word, Excel or PowerPoint document, " +
+			"a PNG, JPEG or WebP image, or an MP4 or WebM video", false
+	}
+	if strings.HasPrefix(mat.DetectedMIME, "image/") {
+		// An image no larger than a thumbnail skips its display rendition; the
+		// re-encoded thumbnail is then the copy learners see.
+		if !ready["display"] && !ready["thumbnail"] {
+			return "Image is still processing; its display copy is not ready", false
+		}
+		return "", true
 	}
 	if strings.HasPrefix(mat.DetectedMIME, "video/") {
 		if !ready["video_360p"] {
@@ -557,13 +577,20 @@ func missingMaterialRendition(mat *resourcecontract.Material) (string, bool) {
 }
 
 // materialMIMEs are the detected types a lesson material may have: the
-// documents the media pipeline renders a preview for, and web video.
+// documents the media pipeline renders a preview for, still images it
+// re-encodes for display, and web video. Audio stays out: the runner has no
+// player for a standalone material track.
 var materialMIMEs = map[string]bool{
 	"application/pdf":    true,
 	"application/msword": true,
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.document":   true,
 	"application/vnd.ms-powerpoint":                                             true,
 	"application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+	"application/vnd.ms-excel":                                                  true,
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         true,
+	"image/png":  true,
+	"image/jpeg": true,
+	"image/webp": true,
 	"video/mp4":  true,
 	"video/webm": true,
 }
@@ -814,6 +841,13 @@ func collectDraftItems(structure *domain.CourseStructure, courseCEFR string) []d
 				cefr = courseCEFR
 			}
 			for aIdx, act := range lesson.Activities {
+				// A lesson_material is something to read or watch, not a graded
+				// exercise: it has no answer key to verify and is checked by
+				// verifyMaterials. Sending it to ItemVerifier asked a model to
+				// grade a document.
+				if act.Kind == domain.KindLessonMaterial {
+					continue
+				}
 				items = append(items, draftItem{
 					UnitIndex:     uIdx,
 					LessonIndex:   lIdx,
@@ -1126,6 +1160,12 @@ func (s *Service) publishMaterial(
 	if objects.Preview != nil {
 		objectMap["preview"] = *objects.Preview
 	}
+	if objects.Display != nil {
+		objectMap["display"] = *objects.Display
+	}
+	if objects.Thumbnail != nil {
+		objectMap["thumbnail"] = *objects.Thumbnail
+	}
 
 	body := map[string]any{
 		"material_kind": materialKindFromMIME(mat.DetectedMIME),
@@ -1148,10 +1188,14 @@ func (s *Service) publishMaterial(
 // materialKindFromMIME derives the material kind from the resource's bytes,
 // never from the creator-controlled draft (Stage B trap 3).
 func materialKindFromMIME(detected string) string {
-	if strings.HasPrefix(detected, "video/") {
+	switch {
+	case strings.HasPrefix(detected, "video/"):
 		return "video"
+	case strings.HasPrefix(detected, "image/"):
+		return "image"
+	default:
+		return "document"
 	}
-	return "document"
 }
 
 // videoDurationSeconds reads a video's duration off its renditions' metadata.
@@ -1676,23 +1720,15 @@ func (s *Service) courseCompletion(ctx context.Context, userID, courseID uuid.UU
 		return 0, nil
 	}
 
-	units, err := s.lessonReader.ListUnitsByCourseID(ctx, courseID)
+	lessons, err := s.lessonReader.ListLessonsByCourseID(ctx, courseID)
 	if err != nil {
 		slog.WarnContext(ctx, "could not size course for a refund; treating it as not started",
 			"course_id", courseID, "error", err)
 		return 0, nil
 	}
-	lessonIDs := make(map[uuid.UUID]bool)
-	for _, unit := range units {
-		lessons, err := s.lessonReader.ListLessons(ctx, unit.ID)
-		if err != nil {
-			slog.WarnContext(ctx, "could not list unit lessons for a refund",
-				"unit_id", unit.ID, "error", err)
-			return 0, nil
-		}
-		for _, lesson := range lessons {
-			lessonIDs[lesson.ID] = true
-		}
+	lessonIDs := make(map[uuid.UUID]bool, len(lessons))
+	for _, lesson := range lessons {
+		lessonIDs[lesson.ID] = true
 	}
 	if len(lessonIDs) == 0 {
 		return 0, nil

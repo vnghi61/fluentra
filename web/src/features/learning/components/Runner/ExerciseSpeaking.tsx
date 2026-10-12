@@ -9,6 +9,7 @@ import {
   type SpeakingFeedback,
   SpeakingFeedbackView,
 } from "@/features/speaking";
+import { pickLocalized } from "@/lib/localized";
 
 import { GuestNotice } from "../GuestNotice";
 import {
@@ -153,14 +154,17 @@ export const ExerciseSpeaking: React.FC<ExerciseSpeakingProps> = ({
           <div className="flex justify-center">
             <div className="relative flex items-center justify-center">
               <div className="h-12 w-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-              <Sparkles className="h-5 w-5 text-primary absolute" />
+              <Sparkles
+                className="h-5 w-5 text-primary absolute"
+                aria-hidden="true"
+              />
             </div>
           </div>
           <div className="space-y-1">
-            <h3 className="text-lg font-bold text-text">
+            <h3 className="text-lg font-semibold leading-snug text-text">
               {t("runner.markingSpeakingTitle", "Grading your recording...")}
             </h3>
-            <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
+            <p className="text-base text-text-muted max-w-md mx-auto leading-relaxed">
               {t(
                 "runner.markingSpeakingDesc",
                 "Our speech engine is transcribing and analyzing your spoken practice. This usually takes 15-30 seconds.",
@@ -174,15 +178,18 @@ export const ExerciseSpeaking: React.FC<ExerciseSpeakingProps> = ({
       {markingTimedOut && (
         <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-6 space-y-4 shadow-sm animate-in fade-in duration-200">
           <div className="flex items-start gap-3">
-            <AlertCircle className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-text">
+            <AlertCircle
+              className="h-5 w-5 text-amber-500 shrink-0 mt-0.5"
+              aria-hidden="true"
+            />
+            <div className="min-w-0 space-y-1">
+              <h3 className="text-base font-semibold leading-snug text-text">
                 {t(
                   "runner.markingTimeoutTitle",
                   "Marking continues in the background",
                 )}
               </h3>
-              <p className="text-sm text-text-muted leading-relaxed">
+              <p className="text-base text-text-muted leading-relaxed">
                 {t(
                   "runner.speakingMarkingTimeoutDesc",
                   "Grading is taking a little longer than usual. You can continue your lesson, and your evaluation and transcript will appear in My Speaking.",
@@ -195,9 +202,9 @@ export const ExerciseSpeaking: React.FC<ExerciseSpeakingProps> = ({
               <Button
                 variant="outline"
                 onClick={onNavigateToMySpeaking}
-                className="gap-1.5"
+                className="gap-2"
               >
-                <Mic className="h-4 w-4" />
+                <Mic className="h-4 w-4" aria-hidden="true" />
                 <span>{t("runner.goToMySpeaking", "View My Speaking")}</span>
               </Button>
             )}
@@ -221,15 +228,15 @@ export const ExerciseSpeaking: React.FC<ExerciseSpeakingProps> = ({
       {/* Fallback Speaking Feedback Panel when active feedback is still loading */}
       {isSubmitted && !isMarking && !markingTimedOut && !activeFeedback && (
         <div className="rounded-2xl border border-border bg-surface-card p-6 space-y-4 shadow-sm animate-in fade-in duration-200">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <h3 className="text-base font-bold text-text">
+              <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+              <h3 className="text-base font-semibold leading-snug text-text">
                 {t("speaking.assessmentTitle", "Speaking Evaluation")}
               </h3>
             </div>
             {typeof score === "number" && (
-              <span className="font-mono text-sm font-bold px-3 py-1 rounded-lg border bg-primary/10 text-primary border-primary/30">
+              <span className="font-mono text-sm font-bold tabular-nums px-3 py-1 rounded-lg border bg-primary/10 text-primary-accent border-primary/30">
                 {t("speaking.score", "Score")}: {score} / 100
               </span>
             )}
@@ -237,7 +244,10 @@ export const ExerciseSpeaking: React.FC<ExerciseSpeakingProps> = ({
 
           {isFeedbackLoading && (
             <div className="flex items-center gap-2 text-sm text-text-muted">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <Loader2
+                className="h-4 w-4 animate-spin text-primary"
+                aria-hidden="true"
+              />
               <span>
                 {t("runner.loadingFeedback", "Loading evaluation details...")}
               </span>
@@ -249,7 +259,7 @@ export const ExerciseSpeaking: React.FC<ExerciseSpeakingProps> = ({
               <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 {t("speaking.overallFeedback", "Overall Feedback")}
               </div>
-              <p className="text-sm text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
+              <p className="text-base text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
                 {feedback}
               </p>
             </div>
@@ -260,11 +270,12 @@ export const ExerciseSpeaking: React.FC<ExerciseSpeakingProps> = ({
               <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 {t("runner.explanationLabel", "Explanation")}
               </div>
-              <p className="text-sm text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
-                {Boolean(i18n?.language?.startsWith("vi")) &&
-                explanation.text_vi
-                  ? explanation.text_vi
-                  : explanation.text}
+              <p className="text-base text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
+                {pickLocalized(
+                  explanation.text,
+                  explanation.text_vi,
+                  i18n.language,
+                )}
               </p>
             </div>
           )}

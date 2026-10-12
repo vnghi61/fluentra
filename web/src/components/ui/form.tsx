@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import {
   Controller,
   type ControllerProps,
@@ -90,7 +91,7 @@ export const FormLabel = React.forwardRef<
   return (
     <Label
       ref={ref}
-      className={cn(error && "text-danger", className)}
+      className={cn(error && "text-danger-accent", className)}
       htmlFor={formItemId}
       {...props}
     />
@@ -137,7 +138,7 @@ export const FormDescription = React.forwardRef<
     <p
       ref={ref}
       id={formDescriptionId}
-      className={cn("text-xs text-text-muted", className)}
+      className={cn("text-sm text-text-muted", className)}
       {...props}
     />
   );
@@ -149,7 +150,12 @@ export const FormMessage = React.forwardRef<
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField();
-  const body = error ? String(error?.message) : children;
+  const { t, i18n } = useTranslation();
+  const rawBody = error ? String(error?.message) : children;
+  const body =
+    typeof rawBody === "string" && i18n?.exists?.(rawBody)
+      ? t(rawBody)
+      : rawBody;
 
   if (!body) {
     return null;
@@ -161,7 +167,7 @@ export const FormMessage = React.forwardRef<
       id={formMessageId}
       role="alert"
       className={cn(
-        "text-xs font-medium text-danger animate-in fade-in-50",
+        "text-sm font-medium text-danger-accent animate-in fade-in-50",
         className,
       )}
       {...props}

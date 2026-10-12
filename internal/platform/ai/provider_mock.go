@@ -34,6 +34,12 @@ func (p *MockProvider) Name() string {
 	return ProviderMock
 }
 
+// Model returns the model the mock reports. It is the same constant its replies
+// carry, so excluding a stored "mock" provenance also excludes this provider.
+func (p *MockProvider) Model() string {
+	return MockModelName
+}
+
 // MockModelName is what a mocked answer reports as its model, so a stored
 // verification can be told apart from a real one later.
 const MockModelName = "mock"
@@ -53,6 +59,14 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 		}
 	}
 
+	if resp, handled, err := p.itemTask(req); handled {
+		return resp, err
+	}
+	return p.reply(req)
+}
+
+// reply answers the tasks that are not item generation.
+func (p *MockProvider) reply(req Request) (Response, error) {
 	switch req.Task {
 	case TaskVerifyVocabulary:
 		return p.verifyVocabulary(req)
@@ -72,12 +86,104 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 		return p.placementGenerate(req)
 	case TaskPlacementSolve:
 		return p.placementSolve(req)
-	case TaskItemLevel:
-		return p.itemLevel(req)
-	case TaskFoundationTopicGenerate:
-		return p.foundationTopicGenerate(req)
+	case TaskChooseVocabularySense:
+		return p.chooseSense(req)
+	case TaskVocabMeanings:
+		return p.vocabMeanings(req)
 	default:
 		return Response{}, fmt.Errorf("ai: mock provider has no answer for task %q", req.Task)
+	}
+}
+
+// vocabMeanings answers the word-list build tool with placeholder meanings, so
+// the offline stack can exercise the pipeline. The output is deliberately
+// marked as the mock provider's and must never be frozen into a fixture.
+func (p *MockProvider) vocabMeanings(req Request) (Response, error) {
+	type example struct {
+		Sentence   string `json:"sentence"`
+		SentenceVi string `json:"sentence_vi"`
+	}
+	type meaning struct {
+		Lemma        string    `json:"lemma"`
+		POS          string    `json:"pos"`
+		CEFRLevel    string    `json:"cefr_level"`
+		Definition   string    `json:"definition"`
+		DefinitionVI string    `json:"definition_vi"`
+		Examples     []example `json:"examples"`
+	}
+
+	var out []meaning
+	for _, raw := range strings.Split(stringVar(req.Vars, "Lemmas"), "\n") {
+		lemma := strings.TrimSpace(raw)
+		if lemma == "" {
+			continue
+		}
+		out = append(out, meaning{
+			Lemma:        lemma,
+			POS:          "noun",
+			CEFRLevel:    "A2",
+			Definition:   "The mock meaning of " + lemma + ".",
+			DefinitionVI: "Nghĩa thử nghiệm của " + lemma,
+			Examples: []example{
+				{Sentence: "This is an example with " + lemma + ".", SentenceVi: "Đây là ví dụ với " + lemma + "."},
+				{Sentence: "We use " + lemma + " every day.", SentenceVi: "Chúng ta dùng " + lemma + " mỗi ngày."},
+			},
+		})
+	}
+	encoded, err := json.Marshal(out)
+	if err != nil {
+		return Response{}, err
+	}
+	return Response{Text: string(encoded), Model: MockModelName}, nil
+}
+
+// chooseSense picks the first stored sense the mock is given, so a development
+// stack reuses senses rather than duplicating them. It parses the Senses JSON
+// the caller passes; an empty list means the meaning is new.
+func (p *MockProvider) chooseSense(req Request) (Response, error) {
+	var senses []struct {
+		ID string `json:"id"`
+	}
+	if raw := stringVar(req.Vars, "Senses"); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &senses); err != nil {
+			return Response{}, fmt.Errorf("ai: mock choose sense: %w", err)
+		}
+	}
+	payload, err := json.Marshal(map[string]any{
+		"sense_id": "",
+		"is_new":   true,
+		"reason":   "",
+	})
+	if err == nil && len(senses) > 0 {
+		payload, err = json.Marshal(map[string]any{
+			"sense_id": senses[0].ID,
+			"is_new":   false,
+			"reason":   "",
+		})
+	}
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock choose sense: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
+}
+
+// itemTask answers the item-generation, item-level and item-verify tasks.
+//
+// Split out of Complete so the one switch there stays under the complexity
+// ceiling as tasks accumulate; each of these is one call and no branching.
+func (p *MockProvider) itemTask(req Request) (Response, bool, error) {
+	switch req.Task {
+	case TaskItemLevel:
+		resp, err := p.itemLevel(req)
+		return resp, true, err
+	case TaskItemVerify:
+		resp, err := p.itemVerify(req)
+		return resp, true, err
+	case TaskFoundationTopicGenerate:
+		resp, err := p.foundationTopicGenerate(req)
+		return resp, true, err
+	default:
+		return Response{}, false, nil
 	}
 }
 
@@ -250,6 +356,13 @@ func mockCriterion(name string, band float64, commentEn, commentVi string) map[s
 
 func (p *MockProvider) practiceGenerate(req Request) (Response, error) {
 	kind := stringVar(req.Vars, "Kind")
+	if format := stringVar(req.Vars, "ExamFormat"); format != "" && mockExamKinds[kind] {
+		return p.examGenerate(kind, format)
+	}
+	if kind == "listening_comprehension" {
+		// A practice or Foundation recording: four questions of four options.
+		return p.examGenerate(kind, "Questions in this group: exactly 4.\nOptions per question: exactly 4.")
+	}
 	taskType := stringVar(req.Vars, "TaskType")
 	var payload []byte
 	var err error
@@ -351,6 +464,18 @@ func (p *MockProvider) practiceGenerate(req Request) (Response, error) {
 				"explanation_vi": "Bắt đầu với 'Although' và bỏ liên từ 'but'.",
 			},
 		})
+	case "typed_completion":
+		payload, err = json.Marshal(map[string]any{
+			"prompt":         "Complete the note: the museum opens at ___ every day.",
+			"sentence":       "The museum opens at ___ every day.",
+			"correct_answer": "9 a.m.",
+			"acceptable":     []string{"9am", "nine a.m."},
+			"max_words":      2,
+			"explanation": map[string]string{
+				"explanation_en": "The note states the opening time.",
+				"explanation_vi": "Ghi chú nêu giờ mở cửa.",
+			},
+		})
 	case "writing_prompt":
 		payload, err = json.Marshal(map[string]any{
 			"prompt":             "Some people believe that public transportation should be completely free for all citizens. Do you agree or disagree? Give reasons and examples.",
@@ -417,16 +542,16 @@ func (p *MockProvider) practiceSolve(req Request) (Response, error) {
 	var err error
 
 	switch kind {
-	case "reading_comprehension", "listening_comprehension":
-		payload, err = json.Marshal(map[string]any{
-			"answers": map[string]string{
-				"q1": "A",
-				"q2": "A",
-				"q3": "A",
-				"q4": "A",
-				"q5": "A",
-			},
-		})
+	case "reading_comprehension", "listening_comprehension", "text_completion":
+		// Every question of a group up to an IELTS passage's fourteen: the
+		// mock keys every answer "A".
+		answers := make(map[string]string, 20)
+		for i := 1; i <= 20; i++ {
+			answers[fmt.Sprintf("q%d", i)] = "A"
+		}
+		payload, err = json.Marshal(map[string]any{"answers": answers})
+	case "photo_description", "question_response", "mcq_gap":
+		payload, err = json.Marshal(map[string]any{"selected_option_id": "A"})
 	case "grammar_tense_choice":
 		payload, err = json.Marshal(map[string]any{
 			"selected_option_id": "A",
@@ -438,6 +563,10 @@ func (p *MockProvider) practiceSolve(req Request) (Response, error) {
 	case "grammar_sentence_transform":
 		payload, err = json.Marshal(map[string]any{
 			"answer": "Although he was exhausted, he completed the project.",
+		})
+	case "typed_completion":
+		payload, err = json.Marshal(map[string]any{
+			"answer": "9 a.m.",
 		})
 	default:
 		payload, err = json.Marshal(map[string]any{
@@ -693,6 +822,33 @@ func (p *MockProvider) placementSolve(req Request) (Response, error) {
 	}
 	return Response{Text: string(payload), Model: MockModelName}, nil
 }
+
+// itemVerify is the mock's independent-verification answer.
+//
+// It confirms by default, because the mock is what runs when no real provider
+// is configured and a verifier that doubted everything would send the whole
+// catalogue to a person on a development stack. Tests force a doubt by putting
+// mockVerifyDoubtMarker in the item, the same trick itemLevel uses.
+func (p *MockProvider) itemVerify(req Request) (Response, error) {
+	body := stringVar(req.Vars, "RedactedBody")
+	verdict := "confirmed"
+	reason := ""
+	if strings.Contains(body, mockVerifyDoubtMarker) {
+		verdict = "doubt"
+		reason = "mock doubt: second option defensible"
+	}
+	payload, err := json.Marshal(map[string]any{
+		"verdict": verdict,
+		"reason":  reason,
+	})
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock item verify: %w", err)
+	}
+	return Response{Text: string(payload), Model: "mock-verifier"}, nil
+}
+
+// mockVerifyDoubtMarker forces the mock verifier to doubt an item.
+const mockVerifyDoubtMarker = "FORCE_VERIFY_DOUBT"
 
 func (p *MockProvider) itemLevel(req Request) (Response, error) {
 	requested := stringVar(req.Vars, "RequestedLevel")

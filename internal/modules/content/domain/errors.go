@@ -8,7 +8,7 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 )
 
-// Error codes owned by the content module, per AGENT.md §12 and ERROR_HANDLING.md.
+// Error codes owned by the content module, per AGENT.md §12 and docs/CONVENTIONS.md#error-handling.
 var (
 	// ErrItemNotFound is returned when a content item does not exist.
 	ErrItemNotFound = apperr.New(apperr.NotFound, "CONTENT_ITEM_NOT_FOUND", "The content item was not found.")

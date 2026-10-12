@@ -87,6 +87,45 @@ func TestFreeDictionary_SkipsPhoneticsBlocksWithNoAudio(t *testing.T) {
 	assert.NotEmpty(t, entry.AudioURL)
 }
 
+func TestFreeDictionary_PrefersTheAmericanRecording(t *testing.T) {
+	// Both accents exist and the UK block comes first. The course teaches
+	// American English, so the US file wins; choosing in each caller would let
+	// the upload path and the seed backfill pick differently.
+	body := `[{
+	  "word": "eat",
+	  "phonetics": [
+	    {"audio": "https://api.dictionaryapi.dev/media/pronunciations/en/eat-uk.mp3",
+	     "sourceUrl": "https://commons.wikimedia.org/wiki/File:En-uk-eat.ogg",
+	     "license": {"name": "BY 3.0 US"}},
+	    {"audio": "https://api.dictionaryapi.dev/media/pronunciations/en/eat-us.mp3",
+	     "sourceUrl": "https://commons.wikimedia.org/wiki/File:En-us-eat.ogg",
+	     "license": {"name": "BY-SA 3.0"}}
+	  ]
+	}]`
+	entry, err := dictionaryServing(t, http.StatusOK, body).Lookup(context.Background(), "eat")
+	require.NoError(t, err)
+
+	assert.Contains(t, entry.AudioURL, "eat-us.mp3")
+	assert.Equal(t, "https://commons.wikimedia.org/wiki/File:En-us-eat.ogg", entry.AudioAttribution)
+	assert.Equal(t, "BY-SA 3.0", entry.AudioLicence)
+}
+
+func TestFreeDictionary_SkipsARecordingItCannotCredit(t *testing.T) {
+	// No sourceUrl means no way to honour CC BY-SA. Synthesis is the better
+	// fallback: it is not a licence breach.
+	body := `[{
+	  "word": "eat",
+	  "phonetics": [
+	    {"audio": "https://api.dictionaryapi.dev/media/pronunciations/en/eat-us.mp3"}
+	  ]
+	}]`
+	entry, err := dictionaryServing(t, http.StatusOK, body).Lookup(context.Background(), "eat")
+	require.NoError(t, err)
+
+	assert.Empty(t, entry.AudioURL)
+	assert.Empty(t, entry.AudioAttribution)
+}
+
 func TestFreeDictionary_CollectsTheDictionarysOwnExamples(t *testing.T) {
 	entry, err := dictionaryServing(t, http.StatusOK, leisureResponse).
 		Lookup(context.Background(), "leisure")

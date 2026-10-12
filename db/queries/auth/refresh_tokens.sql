@@ -58,8 +58,3 @@ WHERE rt.token_hash = $1;
 UPDATE core.refresh_tokens
 SET revoked_at = sqlc.arg(now)::timestamptz
 WHERE family_id = $1 AND revoked_at IS NULL;
-
--- name: CountLiveRefreshTokensInFamily :one
-SELECT count(*)
-FROM core.refresh_tokens
-WHERE family_id = $1 AND revoked_at IS NULL AND used_at IS NULL;

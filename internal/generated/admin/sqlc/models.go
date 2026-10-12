@@ -208,6 +208,28 @@ type CoreAvatarAsset struct {
 	CreatedAt time.Time
 }
 
+type CoreBanner struct {
+	ID          uuid.UUID
+	Title       string
+	Body        string
+	CtaLabel    *string
+	CtaUrl      *string
+	Tone        string
+	IsActive    bool
+	Priority    int32
+	Dismissible bool
+	StartsAt    *time.Time
+	EndsAt      *time.Time
+	CreatedBy   uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	ImageKey    *string
+	ImageAlt    string
+	ImageWidth  *int32
+	ImageHeight *int32
+	Kind        string
+}
+
 type CoreFeatureFlag struct {
 	Key            string
 	Enabled        bool

@@ -158,18 +158,3 @@ func (q *Queries) ListTagsForContentItems(ctx context.Context, itemIds []uuid.UU
 	}
 	return items, nil
 }
-
-const removeContentTag = `-- name: RemoveContentTag :exec
-DELETE FROM content.content_tags
-WHERE item_id = $1 AND taxonomy_id = $2
-`
-
-type RemoveContentTagParams struct {
-	ItemID     uuid.UUID
-	TaxonomyID uuid.UUID
-}
-
-func (q *Queries) RemoveContentTag(ctx context.Context, arg RemoveContentTagParams) error {
-	_, err := q.db.Exec(ctx, removeContentTag, arg.ItemID, arg.TaxonomyID)
-	return err
-}

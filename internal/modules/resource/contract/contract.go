@@ -63,6 +63,16 @@ type Classification struct {
 	CreatedAt     time.Time            `json:"created_at"`
 }
 
+// LearningSuitable is unknown for old classifications, and fails closed for
+// generation. Empty grounded classifications record an unsuitable document.
+func (c *Classification) LearningSuitable() *bool {
+	if c == nil || c.PromptVersion != "resource_classify.v2" {
+		return nil
+	}
+	suitable := c.CEFREstimate != nil && c.Skill != nil && len(c.NodeCodes) > 0
+	return &suitable
+}
+
 // Rendition represents a processed thumbnail, display image, preview, or web media.
 type Rendition struct {
 	ID            uuid.UUID  `json:"id"`
@@ -135,6 +145,11 @@ type PublishedObjects struct {
 	Video720p *string `json:"video_720p,omitempty"`
 	Preview   *string `json:"preview,omitempty"`
 	AudioWeb  *string `json:"audio_web,omitempty"`
+	// Display is an image material's re-encoded copy: metadata stripped and
+	// bounded in size, so learners never receive the creator's raw upload.
+	Display *string `json:"display,omitempty"`
+	// Thumbnail stands in for Display when the source was too small to need one.
+	Thumbnail *string `json:"thumbnail,omitempty"`
 }
 
 // MaterialPublisher is the narrow read-and-copy surface a course publisher

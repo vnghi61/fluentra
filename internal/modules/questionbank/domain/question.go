@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -74,4 +75,25 @@ type QuestionStats struct {
 	Discrimination *float64
 	AvgTimeMs      int
 	LastComputedAt time.Time
+}
+
+// kindTextCompletion is TOEIC Part 6: four gaps in one text, even when the body
+// names no questions array.
+const kindTextCompletion = "text_completion"
+
+// QuestionCountFromBody is how many questions an item holds: the length of its
+// questions array (a Part 3 conversation holds 3, a VSTEP passage 10), four for a
+// Part 6 text, otherwise one. The composer fills a part by whole groups of this
+// size, so a group recorded as one question can never fill a part of threes.
+func QuestionCountFromBody(kind string, body json.RawMessage) int {
+	var parsed struct {
+		Questions []json.RawMessage `json:"questions"`
+	}
+	if err := json.Unmarshal(body, &parsed); err == nil && len(parsed.Questions) > 0 {
+		return len(parsed.Questions)
+	}
+	if kind == kindTextCompletion {
+		return 4
+	}
+	return 1
 }

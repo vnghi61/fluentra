@@ -41,3 +41,14 @@ export function useAvatarUrl(signedIn: boolean): string | undefined {
   });
   return data?.profile.avatar_url ?? undefined;
 }
+
+/** The account email, from the same cached profile read as the name. */
+export function useAccountEmail(signedIn: boolean): string | undefined {
+  const { data } = useQuery({
+    queryKey: ["account", "me"],
+    queryFn: () => accountApi.getMe(),
+    enabled: signedIn,
+    staleTime: 5 * 60 * 1000,
+  });
+  return data?.email;
+}

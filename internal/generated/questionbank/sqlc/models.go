@@ -385,6 +385,12 @@ type ContentContentVersion struct {
 	UpdatedAt   time.Time
 }
 
+type ContentFoundationCourseNode struct {
+	CourseSlug string
+	NodeID     uuid.UUID
+	Position   int32
+}
+
 type ContentItemReport struct {
 	ID               uuid.UUID
 	ContentVersionID uuid.UUID
@@ -405,6 +411,17 @@ type ContentMediaAsset struct {
 	MimeType   *string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+}
+
+type ContentReviewSample struct {
+	VersionID uuid.UUID
+	Batch     string
+	SampledOn pgtype.Date
+	Decision  *string
+	Note      *string
+	DecidedBy *uuid.UUID
+	DecidedAt *time.Time
+	CreatedAt time.Time
 }
 
 type ContentTaxonomy struct {

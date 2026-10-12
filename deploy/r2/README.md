@@ -8,9 +8,11 @@ last_verified: 2026-08-28
 
 ## Purpose
 
-Avatars are uploaded **from the browser straight to object storage**; the bytes
-never pass through the API. That is why `POST /api/v1/me/avatar/upload-intent`
-hands back a presigned URL instead of accepting a file.
+Avatars, learner resources, speaking recordings and admin banner images are
+uploaded **from the browser straight to object storage**; the bytes never pass
+through the API. That is why every upload intent hands back a presigned URL
+instead of accepting a file. On R2, set `S3_USE_POST_POLICY=false`: R2 has no
+POST policy support, so the browser `PUT`s to a presigned URL instead.
 
 A browser upload is a cross-origin `PUT`, and a `PUT` is never a CORS "simple
 request" — so every one of them is preceded by an `OPTIONS` preflight. A bucket
@@ -48,7 +50,7 @@ and the worker, so it cannot reach a learner again.
 
 ## Contents
 
-- `cors.json` — the policy the avatar bucket needs
+- `cors.json` — the policy the avatar, uploads and media buckets need
 
 ## Applying it
 
@@ -58,11 +60,20 @@ Cloudflare dashboard: **R2 → the bucket → Settings → CORS policy**, and pa
 Or with the S3 API, using an R2 API token that may write bucket settings:
 
 ```bash
-aws s3api put-bucket-cors \
-  --endpoint-url "https://<account-id>.r2.cloudflarestorage.com" \
-  --bucket fluentra-avatars \
-  --cors-configuration file://deploy/r2/cors.json
+for bucket in fluentra-avatars fluentra-uploads fluentra-media; do
+  aws s3api put-bucket-cors \
+    --endpoint-url "https://<account-id>.r2.cloudflarestorage.com" \
+    --bucket "$bucket" \
+    --cors-configuration file://deploy/r2/cors.json
+done
 ```
+
+The application never creates buckets. Create all five by hand first:
+`fluentra-avatars`, `fluentra-media`, `fluentra-uploads`, `fluentra-derived` and
+`fluentra-exports`. An "Object Read & Write" token scoped to them is enough.
+
+Add your Vercel domain to `AllowedOrigins` if learners reach the site through it
+rather than the custom domain.
 
 Verify with the `curl` above: a configured bucket answers `200` and echoes
 `Access-Control-Allow-Origin`.
@@ -94,7 +105,9 @@ Measured against how the code actually uses each bucket today:
 | Bucket | Needs CORS | Why |
 |---|---|---|
 | `fluentra-avatars` | **Yes** | The browser `PUT`s the file itself, through `fetch`. A `PUT` is never a simple request, so it is always preflighted. |
-| `fluentra-media` | No | Nothing reads it yet. When it does, `FlashcardFront` plays pronunciation with `new Audio(url)` — a media element load, not a fetch. |
+| `fluentra-uploads` | **Yes** | Learner resource uploads are browser `PUT`s. |
+| `fluentra-media` | **Yes** | Speaking recordings and admin banner images are browser `PUT`s. Playback (`new Audio(url)`, `<img src>`) needs no policy. |
+| `fluentra-derived` | No | Written by the worker and the media workflow only. |
 | `fluentra-exports` | No | `ExportWorker` presigns a `GET` and **emails** the link. The learner clicks it and the browser navigates; no script reads the response. |
 
 Displaying an avatar needs no policy either — `<img src>` is a plain image load,

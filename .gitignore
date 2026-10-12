@@ -34,3 +34,26 @@ deploy/volumes/
 tmp/
 
 .tmpbin/
+
+# cmd/vocabgen scratch cache (WO 22 Stage C): resumes a run, never committed
+vocabgen-cache.json
+
+# go build ./cmd/<name> in the repo root writes the binary here
+/seed
+/vocabgen
+/examgen
+/foundation
+
+# tools/agentlsp: go.work generated for gopls only (AI agent code intelligence)
+.gopls/
+
+# Local build, debug and reference-screen artifacts (not application source).
+/*.exe
+/bash.exe.stackdump
+/artifacts/
+/ui-screenshots-*/
+/ui-screenshots-*.zip
+/.claude/launch.json
+
+# Screenshots written by web/e2e/responsive/dashboard-layout.spec.ts
+docs/ui-review/

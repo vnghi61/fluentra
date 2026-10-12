@@ -482,3 +482,16 @@ func TestGetLessonDetail_BatchesContentResolution(t *testing.T) {
 		t.Errorf("GetVersion was called %d times; want 0 (N+1 query failure!)", got)
 	}
 }
+
+// ResolveActivities resolves each id through ResolveActivity.
+func (f *fakeLessonRepo) ResolveActivities(
+	ctx context.Context, ids []uuid.UUID,
+) (map[uuid.UUID]*contract.ActivityHierarchy, error) {
+	out := make(map[uuid.UUID]*contract.ActivityHierarchy, len(ids))
+	for _, id := range ids {
+		if h, err := f.ResolveActivity(ctx, id); err == nil && h != nil {
+			out[id] = h
+		}
+	}
+	return out, nil
+}

@@ -21,8 +21,8 @@ import (
 )
 
 // The WP0 gate is "one request, three correlated signals", and its full form
-// needs Tempo, Loki and Prometheus — that part is the 15-minute exercise in
-// docs/development/getting-started.md §5, and it was run.
+// needs Tempo, Loki and Prometheus — that part is a manual exercise against
+// `make dev`, and it was run.
 //
 // What is automated here is the half that does not need the stack: the
 // properties of the request path that make the correlation possible at all. If

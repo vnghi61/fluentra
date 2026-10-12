@@ -34,6 +34,8 @@ type seedActivity struct {
 }
 
 type seedWordSense struct {
+	// Rank is the frequency rank from the fixture; zero means the order given.
+	Rank         int
 	Lemma        string
 	POS          string
 	CEFRLevel    string
@@ -41,6 +43,11 @@ type seedWordSense struct {
 	Definition   string
 	DefinitionVI string
 	Examples     []seedExample
+	// The recording, when the frozen fixture carries one (WO 22 D22-8). Version
+	// 1 holds the link; an empty URL falls back to the browser's speech.
+	AudioURL         string
+	AudioAttribution string
+	AudioLicence     string
 }
 
 // seedExample is one example sentence and its Vietnamese rendering.

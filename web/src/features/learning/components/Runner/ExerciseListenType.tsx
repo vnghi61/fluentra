@@ -89,7 +89,7 @@ export const ExerciseListenType: React.FC<ExerciseListenTypeProps> = ({
             className="h-16 w-16 min-h-[64px] min-w-[64px] border-2 border-primary/30 bg-primary/5"
             label={t("runner.playWord", "Play the word")}
           />
-          <p className="text-xs font-medium text-text-muted">
+          <p className="text-sm font-medium text-text-muted">
             {t("runner.tapToHear", "Tap to hear the word again")}
           </p>
         </div>
@@ -125,7 +125,7 @@ export const ExerciseListenType: React.FC<ExerciseListenTypeProps> = ({
         />
 
         {hint && (
-          <p className="text-center text-sm italic text-text-muted">
+          <p className="text-center text-base leading-relaxed italic text-text-muted">
             {t("runner.meaningLabel", "Meaning")}: {hint}
           </p>
         )}

@@ -100,16 +100,29 @@ export function useUpdateDraft(id: string) {
   });
 }
 
-export function useSubmitDraft(id: string) {
+export function useSubmitDraft(id?: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => studioApi.submitDraft(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: studioKeys.draft(id) });
+    mutationFn: (draftId?: string) => {
+      const target = draftId ?? id;
+      if (!target) {
+        throw new Error("No draft id");
+      }
+      return studioApi.submitDraft(target);
+    },
+    onSuccess: (_data, draftId) => {
+      const target = draftId ?? id;
+      if (target) {
+        void queryClient.invalidateQueries({
+          queryKey: studioKeys.draft(target),
+        });
+      }
       void queryClient.invalidateQueries({ queryKey: studioKeys.drafts() });
-      void queryClient.invalidateQueries({
-        queryKey: studioKeys.submissions(id),
-      });
+      if (target) {
+        void queryClient.invalidateQueries({
+          queryKey: studioKeys.submissions(target),
+        });
+      }
     },
   });
 }
@@ -122,6 +135,10 @@ export function useDraftSubmissions(draftId?: string) {
         ? studioApi.getDraftSubmissions(draftId)
         : Promise.reject(new Error("No draft id")),
     enabled: Boolean(draftId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.[0]?.status;
+      return status === "submitted" || status === "verifying" ? 5000 : false;
+    },
   });
 }
 

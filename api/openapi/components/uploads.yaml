@@ -8,6 +8,18 @@ VocabUploadItem:
   type: object
   required: [term, status]
   properties:
+    id:
+      type: string
+      format: uuid
+      description: The stored word. A term is unique within one upload, not across them.
+    upload_id:
+      type: string
+      format: uuid
+      description: The upload the word arrived in.
+    created_at:
+      type: string
+      format: date-time
+      description: When it was pasted.
     term:
       type: string
       description: The word as the learner wrote it, before normalisation.
@@ -71,6 +83,7 @@ VocabUploadItem:
         - spelling_suggestion
         - meaning_mismatch
         - already_in_your_words
+        - known_word
         - not_a_word
         - proper_noun
         - queued_for_enrichment
@@ -109,6 +122,12 @@ VocabUpload:
       type: integer
       description: How many words are queued for background enrichment.
       example: 0
+    failed_count:
+      type: integer
+      description: >-
+        How many words could not be checked after every attempt. A failure on
+        our side, not a verdict on the word; the learner can add them again.
+      example: 0
     deck_id:
       type: string
       format: uuid
@@ -138,6 +157,19 @@ VocabUploadList:
       type: array
       items:
         $ref: '#/VocabUpload'
+    page:
+      $ref: './pagination.yaml#/Page'
+
+VocabUploadItemPage:
+  type: object
+  required: [items, page]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/VocabUploadItem'
+    page:
+      $ref: './pagination.yaml#/Page'
 
 SubmitVocabUploadRequest:
   type: object

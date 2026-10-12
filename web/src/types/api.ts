@@ -958,6 +958,116 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/banners/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the announcement banners showing now.
+         * @description The banners a signed-in learner's dashboard shows right now: switched on, and with the current time inside the optional `starts_at`..`ends_at` window. At most three, highest `priority` first and then newest first.
+         *
+         *     Any signed-in account may read this; it carries none of the administrative fields (`created_by`, `priority`, the window). The list is cached in-process for 30 seconds, so a change made in the admin screen reaches every learner within one cache generation. `title`, `body` and `cta_label` are plain text and must be rendered as text, never as HTML.
+         */
+        get: operations["adminListActiveBanners"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/banners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List every announcement banner.
+         * @description Every banner, live or not, unpaginated: the set is small by design and an administrator needs all of it to see what is scheduled, what is showing and what has expired. Ordered by `priority` descending, then newest first, and capped at 200.
+         */
+        get: operations["adminListBanners"];
+        put?: never;
+        /**
+         * Create an announcement banner.
+         * @description Defines a new banner, off by default. `cta_label` and `cta_url` are set together or not at all, and `cta_url` must be an internal path (`/...`, never `//...`) or an `https://` URL; `javascript:`, `data:` and protocol-relative links are refused. When both `starts_at` and `ends_at` are given, `ends_at` must be later. Text is stored and served as plain text. The write is recorded in the audit log.
+         */
+        post: operations["adminCreateBanner"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/banners/image-upload-intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a direct upload for a banner image.
+         * @description Issues a presigned upload into a holding area for one JPEG, PNG or WebP image of at most 5 MB, valid for ten minutes. Nothing is published by the upload itself: `POST /admin/banners/images` checks and processes it.
+         */
+        post: operations["adminRequestBannerImageUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/banners/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check and publish an uploaded banner image.
+         * @description Reads the uploaded object and refuses it unless its bytes are a JPEG, PNG or WebP of at most 40 megapixels. It then applies the EXIF orientation, scales the image to fit 1600x900 and re-encodes it as JPEG, which drops every piece of metadata (camera, GPS). The raw upload is deleted either way. The result is attached to no banner until a create or update names its `image_key`.
+         */
+        post: operations["adminProcessBannerImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/banners/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace an announcement banner.
+         * @description A full replacement of the banner's editable fields, under the same rules as creation. Switching a banner off is this call with `is_active: false`. The change invalidates the active-banner cache on the instance that served it and is audited.
+         */
+        put: operations["adminUpdateBanner"];
+        post?: never;
+        /**
+         * Delete an announcement banner.
+         * @description Removes the banner for good. To stop showing it while keeping it for later, switch it off instead. The deletion is audited.
+         */
+        delete: operations["adminDeleteBanner"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/roles": {
         parameters: {
             query?: never;
@@ -1075,7 +1185,7 @@ export interface paths {
         };
         /**
          * Empirical difficulty and discrimination statistics.
-         * @description Returns empirical statistics from real learner attempts.
+         * @description Returns empirical statistics from real learner attempts. A question whose statistics have not been computed yet answers 200 with zero attempts, null indices and a null `last_computed_at`; 404 means the question itself does not exist.
          */
         get: operations["getQuestionStats"];
         put?: never;
@@ -1467,6 +1577,86 @@ export interface paths {
         get: operations["adminListReviewQueue"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/review-queue/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List generation runs awaiting review.
+         * @description Returns one row per generation run whose drafts are still awaiting review, oldest first, so a person can approve a batch at once.
+         */
+        get: operations["adminListReviewBatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/review-queue/batches/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a generation run's doubts.
+         * @description Publishes every draft in the batch except the rejected ones, in one transaction. A rejected version is left for a person.
+         */
+        post: operations["adminApproveReviewBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/review-queue/samples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List auto-published items drawn for spot-check.
+         * @description Returns a daily random sample of the previous day's auto-published items, oldest first, for a person to keep or reject (WO 22 Stage A.5).
+         */
+        get: operations["adminListReviewSamples"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/review-queue/samples/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Keep or reject an auto-published sample.
+         * @description Kept means the item stands; rejected unpublishes it and stops it being drawn.
+         */
+        post: operations["adminDecideReviewSample"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2492,15 +2682,35 @@ export interface paths {
         };
         /**
          * Your uploads, newest first.
-         * @description Each row carries the verified, rejected and still-pending counts, so a learner can see how far the checking has got without opening it.
+         * @description Each row carries the verified, rejected, failed and still-pending counts, so a learner can see how far the checking has got without opening it. Keyset-paginated, newest first.
          */
         get: operations["listVocabUploads"];
         put?: never;
         /**
          * Submit your own vocabulary to be checked.
-         * @description Stores the words and returns immediately. The checking — a dictionary lookup and a model call per word — runs hourly in a background job, because it is slow and fails in ways worth retrying, and a learner pasting three hundred words should not be watching a request time out half way through.
+         * @description Stores the words and answers within a few seconds. Words the dictionary already holds are added before the response (within a time budget), so they come back `verified`. New words — a dictionary lookup and a model call each — are checked by a background job that starts at once and stay `pending` here; the same new word pasted by two learners is checked once. A pasted word that the budget did not reach is added by a follow-up job seconds later.
          */
         post: operations["submitVocabUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/vocabulary/upload-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your pasted words, searchable and a page at a time.
+         * @description Every word the caller has pasted, across uploads: newest upload first, alphabetical within one. Narrow it to one upload, to some statuses, or to words containing some text. An opened upload pages through this rather than loading three hundred words at once, and the search box answers "did I add this one already?" without opening every upload.
+         */
+        get: operations["listVocabUploadItems"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2731,6 +2941,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/exam-versions/{id}/tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The numbered fixed tests of one exam version
+         * @description Lists the version's fixed tests in order. Each is a stored, numbered composition shared by everyone; the fixed tests of one blueprint share no question. The caller's latest attempt at each test is included.
+         */
+        get: operations["listExamVersionTests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mock-tests": {
         parameters: {
             query?: never;
@@ -2762,7 +2992,7 @@ export interface paths {
         put?: never;
         /**
          * Start or retake a mock test attempt
-         * @description Starts a sitting from a composed mock test.
+         * @description Starts a sitting from a composed mock test, in exam mode (full length, timed) or practice mode with the same body a sitting start accepts: chosen sections, a duration, or no limit.
          */
         post: operations["startMockTestAttempt"];
         delete?: never;
@@ -3032,7 +3262,7 @@ export interface paths {
         };
         /**
          * Get course draft by ID.
-         * @description One of the caller's drafts, with its structure and its last verification report. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
+         * @description One of the caller's drafts, with its structure and its latest submission when it has one. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
          */
         get: operations["studioGetCourseDraft"];
         /**
@@ -3550,6 +3780,50 @@ export interface paths {
          * @description Deletes the resource row and its associated object in storage. Unowned resources answer 404.
          */
         delete: operations["deleteMyResource"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/resources/{id}/revalidate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recheck whether an uploaded document is suitable for English practice.
+         * @description Reclassifies existing extracted text asynchronously without reuploading or deleting the original file. Owner only; unsuitable material cannot generate practice.
+         */
+        post: operations["revalidateMyResource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/resources/{id}/practice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the practice generated from one of the caller's resources.
+         * @description Returns the set's status and, once ready, its activities. The same 404 as a foreign resource when the caller does not own it.
+         */
+        get: operations["getResourcePractice"];
+        put?: never;
+        /**
+         * Generate practice from one of the caller's own resources.
+         * @description Queues one set of ten practice items built from the resource's extracted text and classification. Regenerable once a day: asking again the same day returns the existing set. Private to the resource's owner (BR-RESOURCE-12) and never part of the shared bank.
+         */
+        post: operations["startResourcePractice"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4593,6 +4867,218 @@ export interface components {
             /** @example Second-generation streak calculation. */
             description: string;
         };
+        /** @description A banner as an administrator manages it. It shows on the learner dashboard while `is_active` is true and the current time is inside the optional `starts_at`..`ends_at` window. `title`, `body` and `cta_label` are plain text, never HTML. */
+        Banner: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["BannerKind"];
+            /** @example IELTS mock week */
+            title: string;
+            /**
+             * @description Supporting text; may be empty.
+             * @example Take a full mock test free until Sunday.
+             */
+            body: string;
+            /**
+             * @description Call-to-action text. On an announcement, present exactly when `cta_url` is; always null on a slide.
+             * @example Start a mock test
+             */
+            cta_label: string | null;
+            /**
+             * @description Where the call to action leads: an internal path starting with `/` (never `//`) or an `https://` URL.
+             * @example /exams
+             */
+            cta_url: string | null;
+            tone: components["schemas"]["BannerTone"];
+            /** @description The master switch. An inactive banner never shows. */
+            is_active: boolean;
+            /**
+             * @description Higher shows first.
+             * @example 10
+             */
+            priority: number;
+            /** @description Whether a learner may hide it from their own dashboard. */
+            dismissible: boolean;
+            /**
+             * Format: date-time
+             * @description Shown from this instant; null means from now.
+             */
+            starts_at: string | null;
+            /**
+             * Format: date-time
+             * @description Shown until this instant (exclusive); null means indefinitely.
+             */
+            ends_at: string | null;
+            /**
+             * Format: uuid
+             * @description The administrator who created it.
+             */
+            created_by: string;
+            /**
+             * @description Storage key of the banner's processed image, or null for a text-only banner. Set it from `POST /admin/banners/images`.
+             * @example banners/images/0199c3e4-5f60-7a82-9cde-f01234567899.jpg
+             */
+            image_key?: string | null;
+            /**
+             * Format: uri
+             * @description A short-lived signed URL for the image; null without one.
+             */
+            image_url?: string | null;
+            /**
+             * @description Alternative text; empty marks the image as decorative.
+             * @example Learners taking a mock test
+             */
+            image_alt?: string;
+            /**
+             * @description Width in pixels of the processed image.
+             * @example 1600
+             */
+            image_width?: number | null;
+            /**
+             * @description Height in pixels of the processed image.
+             * @example 900
+             */
+            image_height?: number | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /**
+         * @description How the banner is coloured. `info` for neutral news, `success` for good news, `warning` for something a learner must act on, `promo` for an offer.
+         * @example promo
+         * @enum {string}
+         */
+        BannerTone: "info" | "success" | "warning" | "promo";
+        /**
+         * @description How the banner is shown. `announcement` is a message shown once as a dialog on the dashboard: closing a dismissible one hides it for good, a non-dismissible one comes back on the next visit. `slide` is an image-only promotion in the dashboard carousel: it needs an image, has no body, button text or dismissal, and its optional `cta_url` makes the whole picture a link.
+         * @example announcement
+         * @enum {string}
+         */
+        BannerKind: "announcement" | "slide";
+        /** @description Every banner, unpaginated and capped at 200. */
+        BannerList: {
+            items: components["schemas"]["Banner"][];
+        };
+        /** @description The editable fields of a banner, used for both create and full replacement. Unknown fields are refused. For a `slide`, `body`, `cta_label` and `dismissible` are ignored (stored empty, null and false), `image_key` is required, and an empty `image_alt` defaults to the title. */
+        BannerRequest: {
+            /** @default announcement */
+            kind: components["schemas"]["BannerKind"];
+            /** @example IELTS mock week */
+            title: string;
+            /** @default  */
+            body: string;
+            /** @description On an announcement, required when `cta_url` is set, and only then. Ignored on a slide. */
+            cta_label?: string | null;
+            /** @description An internal path starting with `/` (not `//`) or an `https://` URL. `javascript:`, `data:`, `http:` and protocol-relative values are refused with 422. */
+            cta_url?: string | null;
+            tone?: components["schemas"]["BannerTone"];
+            /** @default false */
+            is_active: boolean;
+            /** @default 0 */
+            priority: number;
+            /** @default true */
+            dismissible: boolean;
+            /** Format: date-time */
+            starts_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Must be later than `starts_at` when both are set.
+             */
+            ends_at?: string | null;
+            /** @description A processed image returned by `POST /admin/banners/images`, or null for no image. Replacing or clearing it deletes the previous image. */
+            image_key?: string | null;
+            /**
+             * @description Alternative text; leave empty when the image is decorative.
+             * @default
+             */
+            image_alt: string;
+        };
+        /** @description A banner as a learner sees it. Plain text only; render `title`, `body` and `cta_label` as text, never as HTML. At most three announcements and six slides are listed, each kind highest priority first. */
+        ActiveBanner: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["BannerKind"];
+            /** @example IELTS mock week */
+            title: string;
+            /** @example Take a full mock test free until Sunday. */
+            body: string;
+            /** @example Start a mock test */
+            cta_label: string | null;
+            /** @example /exams */
+            cta_url: string | null;
+            tone: components["schemas"]["BannerTone"];
+            dismissible: boolean;
+            /**
+             * Format: uri
+             * @description A short-lived signed URL for the banner image; null without one.
+             */
+            image_url?: string | null;
+            /** @description Alternative text; empty when the image is decorative. */
+            image_alt?: string;
+            /** @description Lets the client reserve the image's space before it loads. */
+            image_width?: number | null;
+            image_height?: number | null;
+        };
+        /** @description The banners showing now, at most three, in display order. */
+        ActiveBannerList: {
+            items: components["schemas"]["ActiveBanner"][];
+        };
+        BannerImageUploadIntentRequest: {
+            /**
+             * @example image/png
+             * @enum {string}
+             */
+            content_type: "image/jpeg" | "image/png" | "image/webp";
+        };
+        /** @description A constrained browser upload for a banner image: the store itself enforces the content type and the size limit, and the bytes never pass through the API. */
+        BannerImageUploadIntent: {
+            /** Format: uri */
+            upload_url: string;
+            /**
+             * @example POST
+             * @enum {string}
+             */
+            method: "POST" | "PUT";
+            /** @description Form fields for a multipart POST policy upload. */
+            form_data?: {
+                [key: string]: string;
+            };
+            /** @example file */
+            file_field?: string;
+            /** @example banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899 */
+            object_key: string;
+            /** Format: date-time */
+            expires_at: string;
+            /**
+             * Format: int64
+             * @example 5242880
+             */
+            max_bytes: number;
+            /** @example image/png */
+            content_type: string;
+        };
+        BannerImageRequest: {
+            /**
+             * @description The `object_key` of an upload intent whose upload finished.
+             * @example banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899
+             */
+            object_key: string;
+        };
+        /** @description A processed banner image: its bytes checked to be a real JPEG, PNG or WebP, oriented, scaled to fit 1600x900 and re-encoded as JPEG without metadata. Pass `image_key` in a BannerRequest to use it. */
+        BannerImage: {
+            /** @example banners/images/0199c3e4-5f60-7a82-9cde-f01234567899.jpg */
+            image_key: string;
+            /**
+             * Format: uri
+             * @description A short-lived signed URL, for the preview.
+             */
+            image_url: string;
+            /** @example 1600 */
+            width: number;
+            /** @example 900 */
+            height: number;
+        };
         /** @description Current AI provider usage and budget status for today. */
         AdminAIUsageResponse: {
             items: components["schemas"]["AdminAIUsageItem"][];
@@ -4933,6 +5419,75 @@ export interface components {
             /** @example 1 */
             total: number;
         };
+        /** @description One generation run whose drafts are still awaiting review. */
+        AdminReviewBatch: {
+            /** @example foundation:PRESENT_PERFECT:2026-09-23 */
+            batch: string;
+            /**
+             * Format: int64
+             * @example 12
+             */
+            item_count: number;
+            /**
+             * @example [
+             *       "grammar_tense_choice"
+             *     ]
+             */
+            kinds: string[];
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminReviewBatchListResponse: {
+            items: components["schemas"]["AdminReviewBatch"][];
+            /**
+             * Format: int64
+             * @example 1
+             */
+            total: number;
+        };
+        /** @description The version ids in the batch to leave for a person; the rest are approved. */
+        AdminApproveBatchRequest: {
+            reject?: string[];
+            note?: string;
+        };
+        AdminApproveBatchResponse: {
+            /**
+             * @description How many versions the batch approval published.
+             * @example 11
+             */
+            approved: number;
+        };
+        /** @description One auto-published item drawn for a person to spot-check. */
+        AdminReviewSample: {
+            /** Format: uuid */
+            version_id: string;
+            /**
+             * @description Why it was sampled - a daily sample or a learner report.
+             * @example sample
+             */
+            batch: string;
+            /** @example grammar_tense_choice */
+            kind: string;
+            /** @example B1 */
+            cefr_level: string;
+            /** Format: date */
+            sampled_on: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        AdminReviewSampleListResponse: {
+            items: components["schemas"]["AdminReviewSample"][];
+            /**
+             * Format: int64
+             * @example 5
+             */
+            total: number;
+        };
+        AdminDecideSampleRequest: {
+            /** @enum {string} */
+            decision: "kept" | "rejected";
+            note?: string;
+        };
         CourseSummary: {
             /** Format: uuid */
             id: string;
@@ -4998,7 +5553,7 @@ export interface components {
             kind: string;
             /** Format: uuid */
             content_version_id: string;
-            /** @description Activity-specific configuration. A `lesson_material` activity carries the material's object keys and, issued at read time after the paywall, a `sources` object: `{poster_url?, video: [{url, height}], document: {url, preview_url?, page_count?}}`. The URLs expire and are never stored in the lesson cache. */
+            /** @description Activity-specific configuration. A `lesson_material` activity carries the material's object keys and, issued at read time after the paywall, a `sources` object: `{poster_url?, video: [{url, height}], document: {url, preview_url?, page_count?}, image: {url}}`. A material's `material_kind` is `document` (PDF, Word, Excel, PowerPoint), `image` (PNG, JPEG, WebP; served as a re-encoded copy) or `video`. The URLs expire and are never stored in the lesson cache. A `foundation_topic` activity carries the topic's published body: `{objective, explanation: {en, vi}, examples, common_mistakes}`. */
             config?: Record<string, never>;
             /** @example 10 */
             weight: number;
@@ -5405,6 +5960,24 @@ export interface components {
             local_date: string;
             /** @example B1 */
             level: string;
+            activities: components["schemas"]["DailyPracticeActivity"][];
+        };
+        ResourcePracticeSet: {
+            /** Format: uuid */
+            resource_id: string;
+            /**
+             * @example ready
+             * @enum {string}
+             */
+            status: "generating" | "ready" | "failed";
+            /** @example  */
+            failure_reason?: string;
+            /**
+             * Format: date
+             * @example 2026-09-22
+             */
+            generated_on: string;
+            /** @description Empty while generating; the ten items once ready. */
             activities: components["schemas"]["LessonActivity"][];
         };
         /**
@@ -5706,6 +6279,11 @@ export interface components {
              */
             queued_count?: number;
             /**
+             * @description How many words could not be checked after every attempt. A failure on our side, not a verdict on the word; the learner can add them again.
+             * @example 0
+             */
+            failed_count?: number;
+            /**
              * Format: uuid
              * @description The learner's own deck the verified words land in. Null until the first word is verified — creating an empty deck for a paste that turns out to be nonsense leaves a deck nobody asked for.
              */
@@ -5718,6 +6296,21 @@ export interface components {
             items?: components["schemas"]["VocabUploadItem"][];
         };
         VocabUploadItem: {
+            /**
+             * Format: uuid
+             * @description The stored word. A term is unique within one upload, not across them.
+             */
+            id?: string;
+            /**
+             * Format: uuid
+             * @description The upload the word arrived in.
+             */
+            upload_id?: string;
+            /**
+             * Format: date-time
+             * @description When it was pasted.
+             */
+            created_at?: string;
             /**
              * @description The word as the learner wrote it, before normalisation.
              * @example leisure
@@ -5776,10 +6369,15 @@ export interface components {
              * @description Machine-readable reason or note code for the item.
              * @enum {string|null}
              */
-            note_code?: "spelling_corrected" | "meaning_corrected" | "spelling_suggestion" | "meaning_mismatch" | "already_in_your_words" | "not_a_word" | "proper_noun" | "queued_for_enrichment" | null;
+            note_code?: "spelling_corrected" | "meaning_corrected" | "spelling_suggestion" | "meaning_mismatch" | "already_in_your_words" | "known_word" | "not_a_word" | "proper_noun" | "queued_for_enrichment" | null;
         };
         VocabUploadList: {
             items: components["schemas"]["VocabUpload"][];
+            page?: components["schemas"]["Page"];
+        };
+        VocabUploadItemPage: {
+            items: components["schemas"]["VocabUploadItem"][];
+            page: components["schemas"]["Page"];
         };
         SubmitVocabUploadRequest: {
             /**
@@ -6296,6 +6894,12 @@ export interface components {
             overall_score: number;
             /** @description Estimated CEFR band. Absent until a section is scored. */
             overall_band?: string;
+            /** @description The overall on the exam's own scale (an IELTS band, a TOEIC scaled estimate, a VSTEP level), when the version states one. */
+            published_score?: number | null;
+            /** @description The scale published_score is on, e.g. band, raw_with_estimate, vstep. */
+            published_scale?: string;
+            /** @description True when the exam owner publishes no raw-to-score conversion, so the published_score is our estimate and must be labelled so. */
+            score_is_estimate?: boolean;
             per_section: components["schemas"]["ExamSectionOutcome"][];
             integrity_signals: components["schemas"]["ExamIntegritySignal"][];
             disclaimer: string;
@@ -6350,9 +6954,47 @@ export interface components {
             /** @example 7 parts, 200 questions */
             notes: string;
             blueprints: components["schemas"]["BlueprintSummary"][];
+            /**
+             * @description How many distinct tests the published bank can compose for this version (the coverage report's number). Shown to learners so the product never implies more tests than the bank holds.
+             * @example 2
+             */
+            distinct_tests_possible: number;
+            /**
+             * @description How many numbered fixed tests ("Đề 1 … Đề N") exist for this version (WO 22 Stage J). Not distinct_tests_possible: that is what the bank could compose, this is what a learner can open.
+             * @example 5
+             */
+            fixed_test_count: number;
+            /**
+             * @description The calling learner's best overall score (0-100) on this version, from a full sitting in exam mode with a ready report. Absent when they have none.
+             * @example 78.5
+             */
+            best_score?: number;
+            /** @description The version's structure, so a custom composition can name the parts it wants. Counts of available bank items are not here; those stay in the admin coverage report. */
+            parts: {
+                /** @example 1 */
+                part_number: number;
+                /** @example listening */
+                section: string;
+                /** @example photo_description */
+                kind: string;
+                /** @example 6 */
+                question_count: number;
+                /** @example 1 */
+                group_size: number;
+            }[];
         };
         ExamVersionListResponse: {
             items: components["schemas"]["ExamVersion"][];
+        };
+        /** @description The body both a sitting start (POST /exams/{id}/attempts) and a mock test start (POST /mock-tests/{id}/attempts) accept, so the two cannot drift. */
+        StartAttemptRequest: {
+            /** @enum {string} */
+            mode: "exam" | "practice";
+            chosen_duration_minutes?: number;
+            /** @description Practice mode only. Skips chosen_duration_minutes and runs the sitting without a visible time limit. The server still applies a generous backstop deadline so an abandoned sitting cannot block a future one. */
+            unlimited?: boolean;
+            /** @description Practice mode only: the sections to sit, by position. Omitted or empty means all four. A position outside 1–4 or repeated is 400 EXAM_INVALID_SECTIONS. */
+            sections?: number[];
         };
         ComposeMockTestRequest: {
             /** Format: uuid */
@@ -6378,6 +7020,11 @@ export interface components {
             /** @enum {string} */
             mode: "fixed" | "random" | "weak_topic" | "full" | "custom";
             /**
+             * @description The fixed test's number ("Đề 3"); null unless mode is fixed.
+             * @example 3
+             */
+            number?: number | null;
+            /**
              * Format: int64
              * @example 1234567890
              */
@@ -6387,6 +7034,36 @@ export interface components {
             owner_id?: string | null;
             /** Format: date-time */
             created_at: string;
+        };
+        FixedTestSummary: {
+            /** Format: uuid */
+            id: string;
+            /** @example 3 */
+            number: number;
+            /**
+             * @description The test's display title, in Vietnamese ("Đề 3").
+             * @example Đề 3
+             */
+            title: string;
+            /** @example 200 */
+            question_count: number;
+            /** @example 120 */
+            minutes: number;
+            /** @description The calling learner's most recent attempt at this test; absent when there is none. */
+            latest_attempt?: components["schemas"]["FixedTestAttemptSummary"];
+        };
+        FixedTestAttemptSummary: {
+            /** Format: uuid */
+            attempt_id: string;
+            /** @example submitted */
+            status: string;
+            /** @example 750 */
+            score?: number | null;
+            /** @example 6.5 */
+            band?: string | null;
+        };
+        FixedTestListResponse: {
+            items: components["schemas"]["FixedTestSummary"][];
         };
         ExamPartCoverage: {
             /** Format: uuid */
@@ -6859,12 +7536,17 @@ export interface components {
             price_vnd: number;
             /** @enum {string} */
             status: "draft" | "submitted" | "verifying" | "in_review" | "published" | "rejected" | "changes_requested";
-            /** @description Course structure containing units, lessons, and activities. A `lesson_material` activity adds `material: {resource_id, material_kind, title, description?, rights_confirmed}`, where `resource_id` is the creator's own private resource and `material_kind` is a hint the server never trusts — the real kind is derived from the resource's detected MIME. */
+            /** @description Course structure containing units, lessons, and activities. A `lesson_material` activity adds `material: {resource_id, material_kind, title, description?, rights_confirmed}`, where `resource_id` is the creator's own private resource and `material_kind` is a hint the server never trusts — the real kind (`document`, `image` or `video`) is derived from the resource's detected MIME. */
             structure: Record<string, never>;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        /** @description One of the caller's drafts, with its latest submission when it has one. The list endpoint returns CourseDraft; this detail shape is owner-scoped and carries no submission history. */
+        CourseDraftDetail: components["schemas"]["CourseDraft"] & {
+            /** @description The draft's most recent submission, or absent when it has never been submitted. There is deliberately no separate unbounded history endpoint. */
+            latest_submission?: components["schemas"]["CourseSubmission"] | null;
         };
         CreateCourseDraftRequest: {
             /** @example Business English for Tech Professionals */
@@ -6912,7 +7594,8 @@ export interface components {
             /** Format: uuid */
             reviewer_id?: string | null;
             feedback?: string | null;
-            verification_report?: Record<string, never> | null;
+            /** @description Gate 1's report, or null until the verification worker has run it. The request that creates a submission returns before Gate 1 executes. */
+            verification_report?: components["schemas"]["VerificationReport"] | null;
             /** Format: date-time */
             submitted_at: string;
             /** Format: date-time */
@@ -6921,6 +7604,35 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        /** @description The full automated Gate 1 outcome for a submission: what it checked, how many answers were independently blind-solved, and every failure found. */
+        VerificationReport: {
+            passed: boolean;
+            items_checked: number;
+            /** @description How many answers were independently solved by a model and compared to the key. */
+            blind_solved: number;
+            /** @description How many of the blind-solved answers disagreed with the key. */
+            blind_solve_rejects: number;
+            /** @description Every check that failed. Null (or empty) on a passing report: a course that passes every check has no failures to list. */
+            failures: components["schemas"]["VerificationFailure"][] | null;
+        };
+        /** @description One Gate 1 check that failed, and where. */
+        VerificationFailure: {
+            /** @example 0 */
+            unit_index: number;
+            /** @example 1 */
+            lesson_index: number;
+            /** @example 3 */
+            activity_index: number;
+            /** @example vocab_multiple_choice */
+            kind?: string;
+            /**
+             * @description The check that failed: structure, minimum_size, kind_allowed, safety, item_verifier, blind_solve or material_ready.
+             * @example material_ready
+             */
+            check: string;
+            /** @example Video is still processing; its 360p rendition is not ready */
+            message: string;
         };
         ModerationQueueItem: {
             submission: components["schemas"]["CourseSubmission"];
@@ -7276,6 +7988,11 @@ export interface components {
             status: "pending" | "uploaded" | "validated" | "rejected" | "failed";
             /** @example  */
             failure_reason: string;
+            /**
+             * @description Derived rendition state, identical on list and detail responses; separate from file validation.
+             * @enum {string}
+             */
+            processing_status?: "processing" | "ready" | "failed";
             /** @example Advanced Grammar Guide.pdf */
             original_filename: string;
             /** @example application/pdf */
@@ -7510,9 +8227,19 @@ export interface components {
             avg_time_ms: number;
             /**
              * Format: date-time
+             * @description When the statistics were computed; null until they have been.
              * @example 2026-09-20T10:00:00Z
              */
-            last_computed_at: string;
+            last_computed_at: string | null;
+        };
+        DailyPracticeActivity: components["schemas"]["LessonActivity"] & {
+            /** @description Set on the one item drawn to revisit the learner's weakest spine node (WO 21 Stage F). Absent on every other item. */
+            weak_node?: {
+                /** @example PRESENT_PERFECT */
+                code: string;
+                /** @example Present Perfect */
+                label: string;
+            };
         };
         /** @description A derived visual, audio, or video rendition of a validated file resource. */
         ResourceRendition: {
@@ -7570,6 +8297,8 @@ export interface components {
         };
         /** @description Grounded spine taxonomy classification and CEFR estimate. */
         ResourceClassification: {
+            /** @description True only after the current content suitability check; null for older classifications that need revalidation. */
+            learning_suitable?: boolean | null;
             /** @example B1 */
             cefr_estimate?: string | null;
             /** @example grammar */
@@ -9708,6 +10437,320 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    adminListActiveBanners: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The banners to show, possibly none. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveBannerList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    adminListBanners: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every banner. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199c3e4-5f60-7a82-9cde-f01234567890",
+                     *           "kind": "announcement",
+                     *           "title": "IELTS mock week",
+                     *           "body": "Take a full mock test free until Sunday.",
+                     *           "cta_label": "Start a mock test",
+                     *           "cta_url": "/exams",
+                     *           "tone": "promo",
+                     *           "is_active": true,
+                     *           "priority": 10,
+                     *           "dismissible": true,
+                     *           "starts_at": "2026-10-05T00:00:00Z",
+                     *           "ends_at": "2026-10-12T00:00:00Z",
+                     *           "created_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "created_at": "2026-10-01T09:15:00Z",
+                     *           "updated_at": "2026-10-01T09:15:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BannerList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    adminCreateBanner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "title": "IELTS mock week",
+                 *       "body": "Take a full mock test free until Sunday.",
+                 *       "cta_label": "Start a mock test",
+                 *       "cta_url": "/exams",
+                 *       "tone": "promo",
+                 *       "is_active": true,
+                 *       "priority": 10,
+                 *       "dismissible": true,
+                 *       "starts_at": "2026-10-05T00:00:00Z",
+                 *       "ends_at": "2026-10-12T00:00:00Z"
+                 *     }
+                 */
+                "application/json": components["schemas"]["BannerRequest"];
+            };
+        };
+        responses: {
+            /** @description The banner was created. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199c3e4-5f60-7a82-9cde-f01234567890",
+                     *       "kind": "announcement",
+                     *       "title": "IELTS mock week",
+                     *       "body": "Take a full mock test free until Sunday.",
+                     *       "cta_label": "Start a mock test",
+                     *       "cta_url": "/exams",
+                     *       "tone": "promo",
+                     *       "is_active": true,
+                     *       "priority": 10,
+                     *       "dismissible": true,
+                     *       "starts_at": "2026-10-05T00:00:00Z",
+                     *       "ends_at": "2026-10-12T00:00:00Z",
+                     *       "created_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "created_at": "2026-10-01T09:15:00Z",
+                     *       "updated_at": "2026-10-01T09:15:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Banner"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    adminRequestBannerImageUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "content_type": "image/png"
+                 *     }
+                 */
+                "application/json": components["schemas"]["BannerImageUploadIntentRequest"];
+            };
+        };
+        responses: {
+            /** @description The upload intent. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "upload_url": "https://storage.example.com/fluentra-media",
+                     *       "method": "POST",
+                     *       "form_data": {
+                     *         "key": "banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899"
+                     *       },
+                     *       "file_field": "file",
+                     *       "object_key": "banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899",
+                     *       "expires_at": "2026-10-08T09:25:00Z",
+                     *       "max_bytes": 5242880,
+                     *       "content_type": "image/png"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BannerImageUploadIntent"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    adminProcessBannerImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "object_key": "banners/raw/0199c3e4-5f60-7a82-9cde-f01234567890/0199c3e4-5f60-7a82-9cde-f01234567899"
+                 *     }
+                 */
+                "application/json": components["schemas"]["BannerImageRequest"];
+            };
+        };
+        responses: {
+            /** @description The processed image. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "image_key": "banners/images/0199c3e4-5f60-7a82-9cde-f01234567899.jpg",
+                     *       "image_url": "https://storage.example.com/fluentra-media/banners/images/0199c3e4-5f60-7a82-9cde-f01234567899.jpg?X-Amz-Signature=abc",
+                     *       "width": 1600,
+                     *       "height": 900
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BannerImage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    adminUpdateBanner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The banner to replace. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "title": "IELTS mock week",
+                 *       "body": "Take a full mock test free until Sunday.",
+                 *       "cta_label": "Start a mock test",
+                 *       "cta_url": "https://fluentra.dev/ielts",
+                 *       "tone": "promo",
+                 *       "is_active": false,
+                 *       "priority": 10,
+                 *       "dismissible": true,
+                 *       "starts_at": null,
+                 *       "ends_at": null
+                 *     }
+                 */
+                "application/json": components["schemas"]["BannerRequest"];
+            };
+        };
+        responses: {
+            /** @description The banner as it now stands. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199c3e4-5f60-7a82-9cde-f01234567890",
+                     *       "kind": "announcement",
+                     *       "title": "IELTS mock week",
+                     *       "body": "Take a full mock test free until Sunday.",
+                     *       "cta_label": "Start a mock test",
+                     *       "cta_url": "https://fluentra.dev/ielts",
+                     *       "tone": "promo",
+                     *       "is_active": false,
+                     *       "priority": 10,
+                     *       "dismissible": true,
+                     *       "starts_at": null,
+                     *       "ends_at": null,
+                     *       "created_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "created_at": "2026-10-01T09:15:00Z",
+                     *       "updated_at": "2026-10-08T06:25:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Banner"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    adminDeleteBanner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The banner to delete. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The banner is gone. No body. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
     rbacListRoles: {
         parameters: {
             query?: never;
@@ -10951,6 +11994,8 @@ export interface operations {
                 kind?: string;
                 /** @description Filter by spine node code. */
                 node?: string;
+                /** @description Filter by generation batch id. */
+                batch?: string;
                 /** @description Filter by CEFR level. */
                 cefr?: components["schemas"]["CEFRLevel"];
                 /** @description Maximum items to return. */
@@ -11026,6 +12071,162 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminListReviewBatches: {
+        parameters: {
+            query?: {
+                /** @description Maximum items to return. */
+                limit?: number;
+                /** @description Items to skip before returning. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Batches awaiting review. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "batch": "foundation:PRESENT_PERFECT:20260923T101500",
+                     *           "item_count": 2,
+                     *           "kinds": [
+                     *             "grammar_tense_choice",
+                     *             "foundation_quiz"
+                     *           ],
+                     *           "created_at": "2026-09-23T10:15:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminReviewBatchListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminApproveReviewBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The generation batch id. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminApproveBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description The batch was approved. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "approved": 11
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminApproveBatchResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminListReviewSamples: {
+        parameters: {
+            query?: {
+                /** @description Maximum items to return. */
+                limit?: number;
+                /** @description Items to skip before returning. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Samples awaiting a decision. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "version_id": "50000000-0000-0000-0000-000000000001",
+                     *           "batch": "sample",
+                     *           "kind": "grammar_tense_choice",
+                     *           "cefr_level": "B1",
+                     *           "sampled_on": "2026-09-24",
+                     *           "created_at": "2026-09-24T00:05:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminReviewSampleListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminDecideReviewSample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The content version id of the sampled item. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminDecideSampleRequest"];
+            };
+        };
+        responses: {
+            /** @description The decision was recorded. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
             500: components["responses"]["InternalServerError"];
         };
     };
@@ -13553,6 +14754,8 @@ export interface operations {
             query?: {
                 /** @description How many uploads to return. */
                 limit?: number;
+                /** @description Opaque cursor from the previous page's `next_cursor`. */
+                cursor?: components["schemas"]["Cursor"];
             };
             header?: never;
             path?: never;
@@ -13577,16 +14780,22 @@ export interface operations {
                      *           "verified_count": 10,
                      *           "rejected_count": 1,
                      *           "pending_count": 1,
+                     *           "failed_count": 0,
                      *           "deck_id": "0199a1c2-3d4e-7f80-9abc-def0123456bb",
                      *           "created_at": "2026-08-30T09:00:00Z",
                      *           "completed_at": "2026-08-30T10:00:00Z"
                      *         }
-                     *       ]
+                     *       ],
+                     *       "page": {
+                     *         "has_more": false,
+                     *         "limit": 20
+                     *       }
                      *     }
                      */
                     "application/json": components["schemas"]["VocabUploadList"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             500: components["responses"]["InternalServerError"];
         };
@@ -13604,7 +14813,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Accepted. The words are stored but not yet checked — which is why this is a 202 and not a 201. */
+            /** @description Accepted. The words are stored; known words are already added and new ones are still being checked — which is why this is a 202 and not a 201. Carries every word with its status. */
             202: {
                 headers: {
                     "X-Request-Id": components["headers"]["X-Request-Id"];
@@ -13625,6 +14834,62 @@ export interface operations {
                      *     }
                      */
                     "application/json": components["schemas"]["VocabUpload"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listVocabUploadItems: {
+        parameters: {
+            query?: {
+                /** @description Case-insensitive substring of the word as typed or as corrected. */
+                q?: string;
+                /** @description Comma-separated statuses to keep. Absent keeps every status. */
+                status?: ("pending" | "verified" | "rejected" | "failed" | "queued")[];
+                /** @description Keep only the words of this upload. */
+                upload_id?: string;
+                limit?: number;
+                /** @description Opaque cursor from the previous page's `next_cursor`. */
+                cursor?: components["schemas"]["Cursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of the caller's words. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def0123456dd",
+                     *           "upload_id": "0199a1c2-3d4e-7f80-9abc-def0123456aa",
+                     *           "created_at": "2026-08-30T09:00:00Z",
+                     *           "term": "leisure",
+                     *           "provided_meaning": "thời gian rảnh",
+                     *           "status": "verified",
+                     *           "word_sense_id": "0199a1c2-3d4e-7f80-9abc-def0123456cc",
+                     *           "definition_vi": "thời gian rảnh",
+                     *           "note_code": "known_word"
+                     *         }
+                     *       ],
+                     *       "page": {
+                     *         "next_cursor": "eyJjIjoiMjAyNi0wOC0zMFQwOTowMDowMFoiLCJ0IjoibGVpc3VyZSIsImkiOiIwMTk5YTFjMi0zZDRlLTdmODAtOWFiYy1kZWYwMTIzNDU2ZGQifQ",
+                     *         "has_more": true,
+                     *         "limit": 20
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["VocabUploadItemPage"];
                 };
             };
             400: components["responses"]["BadRequest"];
@@ -14170,6 +15435,17 @@ export interface operations {
                      *               },
                      *               "node_distribution": {}
                      *             }
+                     *           ],
+                     *           "distinct_tests_possible": 2,
+                     *           "fixed_test_count": 1,
+                     *           "parts": [
+                     *             {
+                     *               "part_number": 1,
+                     *               "section": "listening",
+                     *               "kind": "photo_description",
+                     *               "question_count": 6,
+                     *               "group_size": 1
+                     *             }
                      *           ]
                      *         }
                      *       ]
@@ -14179,6 +15455,50 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listExamVersionTests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fixed tests in order. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "30000000-0000-0000-0000-000000000001",
+                     *           "number": 1,
+                     *           "title": "Đề 1",
+                     *           "question_count": 200,
+                     *           "minutes": 120,
+                     *           "latest_attempt": {
+                     *             "attempt_id": "60000000-0000-0000-0000-000000000001",
+                     *             "status": "submitted",
+                     *             "score": 750
+                     *           }
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FixedTestListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
         };
     };
@@ -14245,7 +15565,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartAttemptRequest"];
+            };
+        };
         responses: {
             /** @description Created sitting attempt. */
             201: {
@@ -14405,15 +15729,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @enum {string} */
-                    mode: "exam" | "practice";
-                    chosen_duration_minutes?: number;
-                    /** @description Practice mode only. Skips chosen_duration_minutes and runs the sitting without a visible time limit. The server still applies a generous backstop deadline so an abandoned sitting cannot block a future one indefinitely. */
-                    unlimited?: boolean;
-                    /** @description Practice mode only: the sections to sit, by position. Omitted or empty means all four. A position outside 1–4 or repeated is 400 EXAM_INVALID_SECTIONS. */
-                    sections?: number[];
-                };
+                "application/json": components["schemas"]["StartAttemptRequest"];
             };
         };
         responses: {
@@ -15094,7 +16410,7 @@ export interface operations {
                      *       "updated_at": "2026-09-20T09:00:00Z"
                      *     }
                      */
-                    "application/json": components["schemas"]["CourseDraft"];
+                    "application/json": components["schemas"]["CourseDraftDetail"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -16189,6 +17505,138 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    revalidateMyResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Content revalidation queued. */
+            202: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "processing"
+                     *     }
+                     */
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "processing";
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getResourcePractice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The practice set. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "resource_id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531",
+                     *       "status": "generating",
+                     *       "failure_reason": "",
+                     *       "generated_on": "2026-09-22",
+                     *       "activities": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResourcePracticeSet"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    startResourcePractice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The set exists, or is being generated. */
+            202: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "resource_id": "018f3a5e-7b82-7d2c-80a2-bf3d6118d531",
+                     *       "status": "ready",
+                     *       "failure_reason": "",
+                     *       "generated_on": "2026-09-22",
+                     *       "activities": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "lesson_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "position": 1,
+                     *           "kind": "grammar_tense_choice",
+                     *           "content_version_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "config": {
+                     *             "prompt": "She ___ lived here for three years.",
+                     *             "options": [
+                     *               {
+                     *                 "id": "A",
+                     *                 "text": "has"
+                     *               },
+                     *               {
+                     *                 "id": "B",
+                     *                 "text": "have"
+                     *               }
+                     *             ]
+                     *           },
+                     *           "weight": 1
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResourcePracticeSet"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
             500: components["responses"]["InternalServerError"];
         };
     };

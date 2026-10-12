@@ -110,7 +110,7 @@ Migrations: `db/migrations/subscription/` · Queries: `db/queries/subscription/`
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
-(tag: `subscription`). See also [`API.md`](API.md).
+(tag: `subscription`). Per-endpoint detail is in §15.
 
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
@@ -201,7 +201,7 @@ and fails `go-arch-lint` in CI.
 
 ## 12. Coding conventions (module-specific)
 
-Global rules: [`/CODING_STANDARD.md`](../../../CODING_STANDARD.md). Deviations and additions
+Global rules: [`docs/CONVENTIONS.md#coding-standard`](../../../docs/CONVENTIONS.md#coding-standard). Deviations and additions
 for this module:
 
 <!-- BEGIN GENERATED: conventions -->
@@ -225,8 +225,6 @@ _No deviations from the global standard._
 | `INVALID_STATE_TRANSITION` | 409 | e.g. reactivating an expired subscription |
 
 ## 13. Testing
-
-See [`TESTING.md`](TESTING.md) for the full plan.
 
 <!-- BEGIN GENERATED: testing -->
 Coverage target: **80% service, 90% domain**
@@ -256,6 +254,227 @@ go test -tags=integration ./internal/modules/subscription/...  # integration (te
 - Do not convert a trial without explicit consent.
 - Do not grant a complimentary period without a recorded reason.
 <!-- END GENERATED: donot -->
+
+## 15. API detail
+
+### Endpoint detail
+
+<!-- BEGIN GENERATED: api-detail -->
+#### `GET /api/v1/billing/plans`
+
+Plan catalogue with prices
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/me/subscription`
+
+Current subscription and entitlements
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/me/subscription`
+
+Start a subscription or trial (delegates checkout to `payment`)
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 202 |
+| Errors | `SUBSCRIPTION_ALREADY_ACTIVE`, `PLAN_NOT_AVAILABLE` |
+
+#### `POST /api/v1/me/subscription/change`
+
+Upgrade or downgrade
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `INVALID_STATE_TRANSITION` |
+
+#### `POST /api/v1/me/subscription/cancel`
+
+Cancel at period end
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/me/subscription/reactivate`
+
+Undo a pending cancellation
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `GET /api/v1/admin/subscriptions`
+
+Search subscriptions
+
+| | |
+|---|---|
+| Permission | `billing.read` |
+| Success | 200 |
+| Errors | standard set |
+
+#### `POST /api/v1/admin/subscriptions/{id}/grant`
+
+Grant a complimentary period
+
+| | |
+|---|---|
+| Permission | `billing.manage` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Audited with a required reason |
+
+<!-- END GENERATED: api-detail -->
+
+### Error codes
+
+<!-- BEGIN GENERATED: api-errors -->
+| Code | Status | Meaning |
+|---|---|---|
+| `SUBSCRIPTION_ALREADY_ACTIVE` | 409 | Duplicate subscribe |
+| `PLAN_NOT_AVAILABLE` | 409 | Plan withdrawn or region-restricted |
+| `TRIAL_ALREADY_USED` | 409 | One trial per learner |
+| `ENTITLEMENT_REQUIRED` | 403 | The feature requires a higher plan |
+| `INVALID_STATE_TRANSITION` | 409 | e.g. reactivating an expired subscription |
+<!-- END GENERATED: api-errors -->
+
+### Rate limits
+
+<!-- BEGIN GENERATED: api-rate -->
+Standard limits apply — see [/docs/CONVENTIONS.md](../../../docs/CONVENTIONS.md#rate-limiting).
+<!-- END GENERATED: api-rate -->
+
+## 16. Flows
+
+### Entitlement check on an AI feature
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Learner
+    participant W as writing
+    participant S as subscription
+    participant C as Redis
+    participant AI as platform/ai
+
+    U->>W: POST /writing/submissions
+    W->>S: Entitlement(user, "ai.writing.daily")
+    S->>C: cached entitlements?
+    alt miss
+        S->>S: resolve from subscription + plan
+        S->>C: cache 60s
+    end
+    S-->>W: { value: 8 }
+    W->>AI: check today's usage against 8
+    alt over the limit
+        W-->>U: 429 AI_QUOTA_EXCEEDED with an upgrade prompt
+    else within
+        W->>W: proceed with submission
+    end
+```
+
+<!-- END GENERATED: flows -->
+
+<!-- BEGIN GENERATED: states -->
+### State machine
+
+Grace exists so that a card expiring does not immediately take away a paying learner's access. Every transition writes a `subscription_events` row.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Free
+    Free --> Trialing: start a trial
+    Trialing --> Active: converts with consent
+    Trialing --> Free: trial ends without conversion
+    Free --> Active: subscribe
+    Active --> Active: renewal succeeds
+    Active --> Grace: renewal payment fails
+    Grace --> Active: payment recovered
+    Grace --> Free: grace expires
+    Active --> PendingCancel: cancel at period end
+    PendingCancel --> Active: reactivate
+    PendingCancel --> Free: period ends
+    Active --> Free: refunded in full
+```
+
+<!-- END GENERATED: states -->
+
+### Failure paths
+
+<!-- BEGIN GENERATED: failures -->
+_None yet._
+<!-- END GENERATED: failures -->
+
+## 17. Decisions
+
+### Decisions taken
+
+<!-- BEGIN GENERATED: decisions -->
+| Question | Decision | Rationale |
+|---|---|---|
+| Entitlements from subscription state or from payment? | Subscription state | It decouples access from the gateway's availability and makes complimentary grants, trials and grace periods expressible without faking a payment |
+| Cut off access immediately on a failed payment? | No — a 7-day grace period | Most renewal failures are expired cards, not intent to churn; cutting access instantly converts a fixable billing problem into a lost learner |
+| Downgrade immediately or at period end? | At period end | The learner paid for the period; taking capability away early is both unfair and a support burden |
+<!-- END GENERATED: decisions -->
+
+### Related repository ADRs
+
+<!-- BEGIN GENERATED: decisions-adr -->
+_None specific to this module._
+<!-- END GENERATED: decisions-adr -->
+
+### Open questions
+
+<!-- BEGIN GENERATED: decisions-open -->
+_None._
+<!-- END GENERATED: decisions-open -->
+
+## 18. Backlog
+
+### Phase 4
+
+- [ ] Plans and entitlements with a seeded free tier
+- [ ] Subscription lifecycle with the full state machine
+- [ ] Entitlement resolution with caching and eager invalidation
+- [ ] Trials with explicit conversion consent
+- [ ] Upgrade with proration, downgrade at period end
+- [ ] Grace period handling on payment failure
+- [ ] Cancellation and reactivation
+- [ ] Admin search and complimentary grants
+- [ ] Upgrade prompts wherever a feature is gated
+<!-- END GENERATED: todo -->
+
+### Deferred (deliberately not doing yet)
+
+<!-- BEGIN GENERATED: todo-deferred -->
+_Nothing deferred._
+<!-- END GENERATED: todo-deferred -->
+
+### Future improvements
+
+<!-- BEGIN GENERATED: todo-future -->
+- Metered top-ups for AI grading
+- Annual plans with a discount
+- Regional pricing
+- Referral credits
+<!-- END GENERATED: todo-future -->
 
 ---
 

@@ -15,6 +15,7 @@ import {
   type LearnerWordQueueItem,
 } from "../api/adminApi";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 interface AdminEditWordSenseModalProps {
   item: LearnerWordQueueItem | null;
@@ -95,100 +96,114 @@ export const AdminEditWordSenseModal: React.FC<
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="relative w-full max-w-2xl bg-card border border-border rounded-xl shadow-2xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/40">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <Edit3 className="w-5 h-5" />
+        <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-4 py-4 md:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="shrink-0 rounded-lg bg-primary/10 p-2 text-primary">
+              <Edit3 aria-hidden="true" className="h-5 w-5" />
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">
+            <div className="min-w-0">
+              <h2 className="break-words text-lg font-semibold leading-tight text-foreground">
                 Edit Sense:{" "}
-                <span className="text-primary font-mono">{item.term}</span>
+                <span className="break-all font-mono text-primary">
+                  {item.term}
+                </span>
               </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="mt-0.5 break-all text-xs text-muted-foreground">
                 Sense ID: {item.word_sense_id || "None"}
               </p>
             </div>
           </div>
           <Button
+            type="button"
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
+            aria-label={t("common.close")}
+            className="shrink-0 text-muted-foreground hover:text-foreground"
           >
-            <X className="w-5 h-5" />
+            <X aria-hidden="true" className="h-5 w-5" />
           </Button>
         </div>
 
         {/* Form Body */}
         <form
           onSubmit={(e) => void handleSubmit(e)}
-          className="p-6 overflow-y-auto space-y-4 flex-1"
+          className="flex-1 space-y-4 overflow-y-auto p-4 md:p-6"
         >
           {error && (
-            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive flex items-center gap-2 text-xs">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive flex items-center gap-2 text-sm">
+              <AlertCircle aria-hidden="true" className="h-5 w-5 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {/* English Definition */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">
+            <label
+              htmlFor="edit-sense-definition"
+              className="mb-1 block text-sm font-medium text-muted-foreground"
+            >
               English Definition <span className="text-destructive">*</span>
             </label>
-            <textarea
+            <Textarea
+              id="edit-sense-definition"
               value={definition}
               onChange={(e) => setDefinition(e.target.value)}
               required
               rows={2}
-              className="w-full text-base rounded-md border border-input bg-background p-2.5 shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
               placeholder={t("admin.definitionPlaceholder")}
             />
           </div>
 
           {/* Vietnamese Gloss */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">
+            <label
+              htmlFor="edit-sense-definition-vi"
+              className="mb-1 block text-sm font-medium text-muted-foreground"
+            >
               Vietnamese Meaning / Gloss (definition_vi)
             </label>
             <input
+              id="edit-sense-definition-vi"
               type="text"
               value={definitionVi}
               onChange={(e) => setDefinitionVi(e.target.value)}
-              className="w-full h-11 rounded-md border border-input bg-background px-3 py-1 text-base shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-11 w-full rounded-md border border-input bg-background px-3 py-1 text-base shadow-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-ring md:text-sm"
               placeholder={t("admin.definitionViPlaceholder")}
             />
           </div>
 
           {/* Topic */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">
+            <label
+              htmlFor="edit-sense-topic"
+              className="mb-1 block text-sm font-medium text-muted-foreground"
+            >
               {t("admin.topicDomain")}
             </label>
             <input
+              id="edit-sense-topic"
               type="text"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              className="w-full h-11 rounded-md border border-input bg-background px-3 py-1 text-base shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-11 w-full rounded-md border border-input bg-background px-3 py-1 text-base shadow-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-ring md:text-sm"
               placeholder={t("admin.topicPlaceholder")}
             />
           </div>
 
           {/* Examples */}
           <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-foreground">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t("admin.exampleSentences")}
-              </label>
+              </h3>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleAddExample}
-                className="min-h-11 px-4 text-xs"
               >
-                <Plus className="w-3.5 h-3.5 mr-1" />
+                <Plus aria-hidden="true" className="h-4 w-4" />
                 {t("admin.addExample")}
               </Button>
             </div>
@@ -198,19 +213,20 @@ export const AdminEditWordSenseModal: React.FC<
                 key={idx}
                 className="p-3 rounded-lg border border-border bg-muted/20 space-y-2 relative"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-muted-foreground">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-muted-foreground">
                     Example #{idx + 1}
                   </span>
                   {examples.length > 1 && (
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="icon"
                       onClick={() => handleRemoveExample(idx)}
-                      className="min-h-11 min-w-11 p-0 text-muted-foreground hover:text-destructive"
+                      aria-label={t("admin.removeExample")}
+                      className="text-muted-foreground hover:text-destructive"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 aria-hidden="true" className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
@@ -221,7 +237,8 @@ export const AdminEditWordSenseModal: React.FC<
                     handleExampleChange(idx, "sentence", e.target.value)
                   }
                   placeholder={t("admin.exampleEnglish")}
-                  className="w-full h-11 rounded border border-input bg-background px-2.5 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+                  aria-label={t("admin.exampleEnglish")}
+                  className="h-11 w-full rounded border border-input bg-background px-2.5 text-base placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-ring md:text-sm"
                 />
                 <input
                   type="text"
@@ -230,14 +247,15 @@ export const AdminEditWordSenseModal: React.FC<
                     handleExampleChange(idx, "sentence_vi", e.target.value)
                   }
                   placeholder={t("admin.exampleVietnamese")}
-                  className="w-full h-11 rounded border border-input bg-background px-2.5 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+                  aria-label={t("admin.exampleVietnamese")}
+                  className="h-11 w-full rounded border border-input bg-background px-2.5 text-base placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-ring md:text-sm"
                 />
               </div>
             ))}
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
             <Button
               type="button"
               variant="ghost"
@@ -248,9 +266,12 @@ export const AdminEditWordSenseModal: React.FC<
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                <Loader2
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                />
               ) : (
-                <Check className="w-4 h-4 mr-1.5" />
+                <Check aria-hidden="true" className="h-4 w-4" />
               )}
               {t("common.saveChanges")}
             </Button>

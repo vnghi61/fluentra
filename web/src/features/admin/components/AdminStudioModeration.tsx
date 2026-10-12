@@ -3,10 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
+  BookOpen,
   Bot,
   CheckCircle2,
   Clock,
+  DollarSign,
   Eye,
+  FileCheck,
   ShieldAlert,
   UserCheck,
   X,
@@ -15,17 +18,35 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import { adminApi, type ModerationQueueItem } from "../api/adminApi";
+import { formatVnd } from "@/lib/currency";
+import { CopyableId } from "./CopyableId";
+import { StatusBadge } from "./StatusBadge";
+import {
+  AdminDataPanel,
+  AdminListSkeleton,
+  AdminRefreshButton,
+  AdminRowIcon,
+  AdminStatGrid,
+  AdminTag,
+  adminStatTones,
+  adminTable,
+  type AdminStat,
+} from "./AdminSurface";
+import { Textarea } from "@/components/ui/textarea";
 
 export function AdminStudioModeration(): React.JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const currentUser = useAuthStore((state) => state.user);
 
   const {
     data,
     isLoading: loading,
+    isFetching,
     error: queryError,
     refetch,
   } = useQuery({
@@ -35,7 +56,11 @@ export function AdminStudioModeration(): React.JSX.Element {
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
-  const error = queryError instanceof Error ? queryError.message : null;
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : t("adminModeration.errLoadFailed")
+    : null;
 
   const [activeItem, setActiveItem] = useState<ModerationQueueItem | null>(
     null,
@@ -106,158 +131,260 @@ export function AdminStudioModeration(): React.JSX.Element {
     }
   };
 
+  const openReview = (item: ModerationQueueItem) => {
+    setActiveItem(item);
+    setDecisionNotes("");
+    setActionError(null);
+  };
+  const submittedAt = (date: string) => (
+    <time
+      dateTime={date}
+      className="whitespace-nowrap text-sm tabular-nums text-text-muted"
+    >
+      {new Date(date).toLocaleString(i18n.resolvedLanguage, {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })}
+    </time>
+  );
+  const gateBadge = (passed: boolean | undefined) =>
+    passed ? (
+      <StatusBadge tone="success" icon={CheckCircle2}>
+        {t("adminModeration.passed", "Passed")}
+      </StatusBadge>
+    ) : (
+      <StatusBadge tone="warning" icon={Clock}>
+        {t("adminModeration.verifying", "Verification Check")}
+      </StatusBadge>
+    );
+  const price = (amount: number) =>
+    amount > 0 ? (
+      <span className="font-semibold tabular-nums text-text">
+        {formatVnd(amount)}
+      </span>
+    ) : (
+      <AdminTag>{t("studio.courses.freeBadge", "Free")}</AdminTag>
+    );
+  const reviewButton = (item: ModerationQueueItem, className?: string) => (
+    <Button
+      type="button"
+      size="sm"
+      onClick={() => openReview(item)}
+      className={className}
+    >
+      <Eye className="h-4 w-4" aria-hidden="true" />
+      {t("adminModeration.reviewBtn", "Review")}
+    </Button>
+  );
+  const passedCount = items.filter(
+    ({ submission }) => submission.verification_report?.passed,
+  ).length;
+  const stats: AdminStat[] = [
+    {
+      key: "total",
+      label: t("adminModeration.statTotal"),
+      value: total.toLocaleString(i18n.resolvedLanguage),
+      Icon: FileCheck,
+      tone: adminStatTones.primary,
+    },
+    {
+      key: "passed",
+      label: t("adminModeration.passed", "Passed"),
+      value: passedCount.toLocaleString(i18n.resolvedLanguage),
+      Icon: CheckCircle2,
+      tone: adminStatTones.success,
+    },
+    {
+      key: "checking",
+      label: t("adminModeration.verifying", "Verification Check"),
+      value: (items.length - passedCount).toLocaleString(i18n.resolvedLanguage),
+      Icon: Clock,
+      tone: adminStatTones.warning,
+    },
+    {
+      key: "paid",
+      label: t("adminModeration.statPaid"),
+      value: items
+        .filter(({ draft }) => draft.price_vnd > 0)
+        .length.toLocaleString(i18n.resolvedLanguage),
+      Icon: DollarSign,
+      tone: adminStatTones.neutral,
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-text">
-            {t("adminModeration.title", "Course Moderation Queue (Gate 2)")}
-          </h2>
-          <p className="text-xs text-text-muted mt-0.5">
-            {t(
-              "adminModeration.subtitle",
-              "Review community course submissions, examine Gate 1 automated quality reports, and approve or request changes.",
-            )}
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <AdminStatGrid
+          stats={stats}
+          loading={loading}
+          label={t("adminModeration.summary")}
+        />
+        {!loading && total > items.length && (
+          <p className="text-sm text-text-muted">
+            {t("adminModeration.statScope", { count: items.length })}
           </p>
-        </div>
-        <Badge
-          variant="primary"
-          className="text-xs px-2.5 py-1 self-start sm:self-auto"
-        >
-          {t("adminModeration.queueCount", {
-            count: total,
-            defaultValue: `${total} submissions pending review`,
-          })}
-        </Badge>
+        )}
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger font-medium">
-          {error}
+      <AdminDataPanel>
+        <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
+          <p className="text-sm text-text-muted">
+            {t("adminModeration.queueCount", {
+              count: total,
+              defaultValue: `${total} submissions pending review`,
+            })}
+          </p>
+          <AdminRefreshButton
+            onClick={() => void refetch()}
+            busy={isFetching}
+          />
         </div>
-      )}
-
-      {loading ? (
-        <div className="py-16 text-center text-sm text-text-muted">
-          {t("app.loading", "Loading moderation queue...")}
-        </div>
-      ) : items.length === 0 ? (
-        <Card className="border-border-subtle bg-surface-card p-10 text-center space-y-2">
-          <CheckCircle2 className="h-10 w-10 text-success mx-auto" />
-          <CardTitle className="text-base font-bold text-text">
-            {t("adminModeration.emptyTitle", "Queue is clear")}
-          </CardTitle>
-          <CardDescription className="text-xs">
-            {t(
+        {loading ? (
+          <AdminListSkeleton
+            label={t("app.loading", "Loading moderation queue...")}
+          />
+        ) : error ? (
+          <ErrorState
+            description={error}
+            onRetry={() => void refetch()}
+            className="py-10"
+          />
+        ) : items.length === 0 ? (
+          <EmptyState
+            icon={CheckCircle2}
+            title={t("adminModeration.emptyTitle", "Queue is clear")}
+            description={t(
               "adminModeration.emptyDesc",
               "All course submissions have been reviewed and decided.",
             )}
-          </CardDescription>
-        </Card>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface-card shadow-sm">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-surface-base border-b border-border-subtle text-text-muted uppercase tracking-wider">
-              <tr>
-                <th className="p-3.5">
-                  {t("adminModeration.colCourse", "Course & Author")}
-                </th>
-                <th className="p-3.5">
-                  {t("adminModeration.colLevel", "Level")}
-                </th>
-                <th className="p-3.5">
-                  {t("adminModeration.colPricing", "Pricing")}
-                </th>
-                <th className="p-3.5">
-                  {t("adminModeration.colGate1", "Gate 1 Status")}
-                </th>
-                <th className="p-3.5">
-                  {t("adminModeration.colSubmittedAt", "Submitted")}
-                </th>
-                <th className="p-3.5 text-right">
-                  {t("adminModeration.colAction", "Action")}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle">
-              {items.map(({ draft, submission }) => {
-                const report = submission.verification_report as
-                  { passed?: boolean } | null | undefined;
-
-                return (
-                  <tr
-                    key={submission.id}
-                    className="hover:bg-surface-base/50 transition-colors"
-                  >
-                    <td className="p-3.5">
-                      <div className="font-bold text-text">{draft.title}</div>
-                      <div className="text-text-muted text-[11px] font-mono mt-0.5">
-                        Author: {draft.owner_id.slice(0, 8)}...
-                      </div>
-                    </td>
-                    <td className="p-3.5">
-                      <Badge variant="primary" className="font-mono text-xs">
-                        {draft.cefr_level}
-                      </Badge>
-                    </td>
-                    <td className="p-3.5">
-                      {draft.price_vnd > 0 ? (
-                        <span className="font-semibold text-text">
-                          ₫{draft.price_vnd.toLocaleString("vi-VN")}
-                        </span>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">
-                          {t("studio.courses.freeBadge", "Free")}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="p-3.5">
-                      {report?.passed ? (
-                        <Badge variant="success" className="gap-1 text-xs">
-                          <CheckCircle2 className="h-3 w-3" />
-                          {t("adminModeration.passed", "Passed")}
-                        </Badge>
-                      ) : (
-                        <Badge variant="warning" className="gap-1 text-xs">
-                          <Clock className="h-3 w-3" />
-                          {t("adminModeration.verifying", "Verification Check")}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-text-muted">
-                      {new Date(submission.submitted_at).toLocaleDateString(
-                        undefined,
-                        {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        },
-                      )}
-                    </td>
-                    <td className="p-3.5 text-right">
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => {
-                          setActiveItem({ draft, submission });
-                          setDecisionNotes("");
-                          setActionError(null);
-                        }}
-                        className="gap-1 text-xs"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        {t("adminModeration.reviewBtn", "Review")}
-                      </Button>
-                    </td>
+            className="py-10"
+          />
+        ) : (
+          <>
+            <div className="hidden overflow-x-auto md:block">
+              <table className={cn(adminTable.table, "min-w-[900px]")}>
+                <caption className="sr-only">
+                  {t("adminModeration.title", "Course Moderation Queue")}
+                </caption>
+                <thead className={adminTable.head}>
+                  <tr>
+                    <th
+                      scope="col"
+                      className={cn(adminTable.th, "w-14 text-right")}
+                    >
+                      {t("common.rowNumber")}
+                    </th>
+                    <th scope="col" className={adminTable.th}>
+                      {t("adminModeration.colCourse", "Course & Author")}
+                    </th>
+                    <th scope="col" className={cn(adminTable.th, "w-20")}>
+                      {t("adminModeration.colLevel", "Level")}
+                    </th>
+                    <th scope="col" className={cn(adminTable.th, "w-36")}>
+                      {t("adminModeration.colPricing", "Pricing")}
+                    </th>
+                    <th scope="col" className={cn(adminTable.th, "w-48")}>
+                      {t("adminModeration.colGate1", "Gate 1 Status")}
+                    </th>
+                    <th scope="col" className={cn(adminTable.th, "w-44")}>
+                      {t("adminModeration.colSubmittedAt", "Submitted")}
+                    </th>
+                    <th
+                      scope="col"
+                      className={cn(adminTable.th, "w-32 text-right")}
+                    >
+                      {t("adminModeration.colAction", "Action")}
+                    </th>
                   </tr>
+                </thead>
+                <tbody className={adminTable.body}>
+                  {items.map((item, index) => (
+                    <tr
+                      key={item.submission.id}
+                      className={cn(adminTable.row, "h-16")}
+                    >
+                      <td
+                        className={cn(
+                          adminTable.td,
+                          "text-right tabular-nums text-text-muted",
+                        )}
+                      >
+                        {index + 1}
+                      </td>
+                      <td className={adminTable.td}>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <AdminRowIcon icon={BookOpen} />
+                          <div className="min-w-0">
+                            <p
+                              title={item.draft.title}
+                              className="truncate text-sm font-semibold text-text"
+                            >
+                              {item.draft.title}
+                            </p>
+                            <CopyableId id={item.draft.owner_id} />
+                          </div>
+                        </div>
+                      </td>
+                      <td className={adminTable.td}>
+                        <AdminTag>{item.draft.cefr_level}</AdminTag>
+                      </td>
+                      <td className={adminTable.td}>
+                        {price(item.draft.price_vnd)}
+                      </td>
+                      <td className={adminTable.td}>
+                        {gateBadge(item.submission.verification_report?.passed)}
+                      </td>
+                      <td className={adminTable.td}>
+                        {submittedAt(item.submission.submitted_at)}
+                      </td>
+                      <td className={cn(adminTable.td, "text-right")}>
+                        {reviewButton(item)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <ul className="divide-y divide-border-subtle md:hidden">
+              {items.map((item) => {
+                const report = item.submission.verification_report;
+                return (
+                  <li key={item.submission.id} className="space-y-3 p-4">
+                    <div className="flex items-start gap-3">
+                      <AdminRowIcon icon={BookOpen} className="h-10 w-10" />
+                      <div className="min-w-0 flex-1">
+                        <p className="break-words text-sm font-semibold text-text">
+                          {item.draft.title}
+                        </p>
+                        <CopyableId id={item.draft.owner_id} />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <AdminTag>{item.draft.cefr_level}</AdminTag>
+                      {price(item.draft.price_vnd)}
+                      {gateBadge(report?.passed)}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-text-muted">
+                      <span>
+                        {report?.items_checked ?? 0}{" "}
+                        {t("adminModeration.checksPassed", "checks")} ·{" "}
+                        {(report?.failures ?? []).length}{" "}
+                        {t("adminModeration.flags", "flags")}
+                      </span>
+                      {submittedAt(item.submission.submitted_at)}
+                    </div>
+                    {reviewButton(item, "w-full")}
+                  </li>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </ul>
+          </>
+        )}
+      </AdminDataPanel>
 
       {/* Review Detail Modal */}
       {activeItem && (
@@ -267,15 +394,18 @@ export function AdminStudioModeration(): React.JSX.Element {
           aria-labelledby="review-detail-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
         >
-          <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border border-border-subtle bg-surface-card p-6 shadow-2xl space-y-6">
+          <div className="relative max-h-[90dvh] w-full max-w-3xl space-y-6 overflow-y-auto rounded-xl border border-border-subtle bg-surface-card p-4 shadow-2xl sm:p-6">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-border-subtle pb-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <UserCheck className="h-5 w-5 text-primary-accent" />
+            <div className="flex items-center justify-between gap-2 border-b border-border-subtle pb-4">
+              <div className="min-w-0 space-y-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <UserCheck
+                    aria-hidden="true"
+                    className="h-5 w-5 shrink-0 text-primary-accent"
+                  />
                   <h2
                     id="review-detail-title"
-                    className="text-lg font-bold text-text"
+                    className="min-w-0 break-words text-lg font-semibold leading-tight text-text"
                   >
                     {t(
                       "adminModeration.reviewModalTitle",
@@ -283,7 +413,7 @@ export function AdminStudioModeration(): React.JSX.Element {
                     )}
                   </h2>
                 </div>
-                <p className="text-xs text-text-muted">
+                <p className="break-words text-sm text-text-muted">
                   {activeItem.draft.title}
                 </p>
               </div>
@@ -291,16 +421,16 @@ export function AdminStudioModeration(): React.JSX.Element {
                 type="button"
                 onClick={() => setActiveItem(null)}
                 aria-label={t("app.close", "Close")}
-                className="rounded-lg p-1.5 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
+                className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-muted hover:text-text"
               >
-                <X className="h-5 w-5" />
+                <X aria-hidden="true" className="h-5 w-5" />
               </button>
             </div>
 
             {/* BR-STUDIO-06 / BR-CONTENT-03 Self-Review Guard */}
             {isSelfAuthor && (
-              <div className="flex items-center gap-3 rounded-lg border border-danger/40 bg-danger/10 p-4 text-xs text-danger font-semibold">
-                <ShieldAlert className="h-5 w-5 shrink-0" />
+              <div className="flex items-start gap-3 rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm font-semibold leading-relaxed text-danger-accent">
+                <ShieldAlert aria-hidden="true" className="h-5 w-5 shrink-0" />
                 <span>
                   {t(
                     "adminModeration.selfReviewBlocked",
@@ -311,18 +441,18 @@ export function AdminStudioModeration(): React.JSX.Element {
             )}
 
             {actionError && (
-              <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger font-medium">
+              <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm font-medium text-danger-accent">
                 {actionError}
               </div>
             )}
 
             {/* Course Overview */}
-            <div className="rounded-lg border border-border-subtle bg-surface-base p-4 space-y-3">
+            <div className="rounded-lg border border-border-subtle bg-surface-muted p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-sm font-bold text-text">
+                <h3 className="min-w-0 break-words text-base font-semibold leading-snug text-text">
                   {activeItem.draft.title}
                 </h3>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="primary" className="font-mono text-xs">
                     {activeItem.draft.cefr_level}
                   </Badge>
@@ -331,7 +461,7 @@ export function AdminStudioModeration(): React.JSX.Element {
                       variant="secondary"
                       className="font-mono text-xs font-semibold"
                     >
-                      ₫{activeItem.draft.price_vnd.toLocaleString("vi-VN")}
+                      {formatVnd(activeItem.draft.price_vnd)}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-xs">
@@ -342,67 +472,148 @@ export function AdminStudioModeration(): React.JSX.Element {
               </div>
 
               {activeItem.draft.description && (
-                <p className="text-xs text-text-muted leading-relaxed">
+                <p className="break-words text-base leading-relaxed text-text-muted md:text-sm">
                   {activeItem.draft.description}
                 </p>
               )}
 
-              <div className="text-[11px] text-text-muted font-mono pt-1">
+              <div className="break-all pt-1 font-mono text-xs text-text-muted">
                 Slug: /courses/{activeItem.draft.slug} • Author ID:{" "}
                 {activeItem.draft.owner_id}
               </div>
             </div>
 
             {/* Gate 1 Verification Report */}
-            <div className="rounded-lg border border-border-subtle bg-surface-base p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-primary-accent" />
-                  <h4 className="text-xs font-bold text-text uppercase tracking-wider">
+            <div className="rounded-lg border border-border-subtle bg-surface-muted p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Bot
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-primary-accent"
+                  />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-text">
                     {t(
                       "adminModeration.gate1ReportTitle",
                       "Gate 1 Automated Checks Report",
                     )}
-                  </h4>
+                  </h3>
                 </div>
-                <Badge variant="success" className="text-xs">
-                  {t(
-                    "adminModeration.checksPassed",
-                    "All 6 Automated Checks Passed",
-                  )}
+                <Badge
+                  variant={
+                    activeItem.submission.verification_report?.passed
+                      ? "success"
+                      : "warning"
+                  }
+                  className="text-xs"
+                >
+                  {activeItem.submission.verification_report?.items_checked ??
+                    0}{" "}
+                  {t("adminModeration.checksPassed", "checks")}
                 </Badge>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-text-muted pt-1">
+              {activeItem.submission.verification_report?.failures?.length ? (
+                <ul className="space-y-2 text-sm text-danger-accent">
+                  {activeItem.submission.verification_report.failures.map(
+                    (failure, index) => (
+                      <li key={`${failure.check}-${index}`}>
+                        <strong>{failure.check}:</strong> {failure.message}
+                      </li>
+                    ),
+                  )}
+                </ul>
+              ) : (
+                <p className="text-sm text-text-muted">
+                  {t(
+                    "adminModeration.noGate1Flags",
+                    "No Gate 1 failures reported.",
+                  )}
+                </p>
+              )}
+              <div className="hidden">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Curriculum Structure & Bounds</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Size Requirements (≥3 lessons, ≥20 exercises)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Activity Types Allowed (12 kinds)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
+                  <CheckCircle2
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-success"
+                  />
                   <span>
-                    Material Readiness (resource owned, renditions ready)
+                    {t(
+                      "adminModeration.checkCurriculumStructure",
+                      "Curriculum Structure & Bounds",
+                    )}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Item Grader & Redaction Verification</span>
+                  <CheckCircle2
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-success"
+                  />
+                  <span>
+                    {t(
+                      "adminModeration.checkSizeRequirements",
+                      "Size Requirements (≥3 lessons, ≥20 exercises)",
+                    )}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Language, Profanity & Contact Scan</span>
+                  <CheckCircle2
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-success"
+                  />
+                  <span>
+                    {t(
+                      "adminModeration.checkActivityTypes",
+                      "Activity Types Allowed (12 kinds)",
+                    )}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-                  <span>Near-Duplicate Content Check</span>
+                  <CheckCircle2
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-success"
+                  />
+                  <span>
+                    {t(
+                      "adminModeration.checkMaterialReadiness",
+                      "Material Readiness (resource owned, renditions ready)",
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-success"
+                  />
+                  <span>
+                    {t(
+                      "adminModeration.checkItemGrader",
+                      "Item Grader & Redaction Verification",
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-success"
+                  />
+                  <span>
+                    {t(
+                      "adminModeration.checkLanguageScan",
+                      "Language, Profanity & Contact Scan",
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-success"
+                  />
+                  <span>
+                    {t(
+                      "adminModeration.checkDuplicateContent",
+                      "Near-Duplicate Content Check",
+                    )}
+                  </span>
                 </div>
               </div>
             </div>
@@ -411,20 +622,22 @@ export function AdminStudioModeration(): React.JSX.Element {
             <div className="space-y-3 pt-2 border-t border-border-subtle">
               <label
                 htmlFor="moderation-feedback"
-                className="block text-xs font-semibold text-text uppercase tracking-wider"
+                className="block text-sm font-medium text-text"
               >
                 {t(
                   "adminModeration.feedbackLabel",
                   "Reviewer Notes & Feedback (Required for Changes / Rejection)",
                 )}
               </label>
-              <textarea
+              <Textarea
                 id="moderation-feedback"
                 rows={4}
                 value={decisionNotes}
                 onChange={(e) => setDecisionNotes(e.target.value)}
-                placeholder="Provide constructive feedback detailing required corrections or reasons..."
-                className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-base sm:text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                placeholder={t(
+                  "adminModeration.feedbackPlaceholder",
+                  "Provide constructive feedback detailing required corrections or reasons...",
+                )}
               />
             </div>
 
@@ -447,9 +660,9 @@ export function AdminStudioModeration(): React.JSX.Element {
                   onClick={() => {
                     void handleRejectOrRequestChanges("changes_requested");
                   }}
-                  className="text-xs text-warning border-warning/40 hover:bg-warning/10"
+                  className="border-warning/40 text-warning-accent hover:bg-warning/10"
                 >
-                  <AlertCircle className="h-3.5 w-3.5 mr-1" />
+                  <AlertCircle aria-hidden="true" className="h-4 w-4" />
                   {t("adminModeration.requestChanges", "Request Changes")}
                 </Button>
 
@@ -460,9 +673,9 @@ export function AdminStudioModeration(): React.JSX.Element {
                   onClick={() => {
                     void handleRejectOrRequestChanges("rejected");
                   }}
-                  className="text-xs text-danger border-danger/40 hover:bg-danger/10"
+                  className="border-danger/40 text-danger-accent hover:bg-danger/10"
                 >
-                  <XCircle className="h-3.5 w-3.5 mr-1" />
+                  <XCircle aria-hidden="true" className="h-4 w-4" />
                   {t("adminModeration.reject", "Reject")}
                 </Button>
 
@@ -473,9 +686,8 @@ export function AdminStudioModeration(): React.JSX.Element {
                   onClick={() => {
                     void handleApprove();
                   }}
-                  className="text-xs gap-1"
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
                   {actionLoading
                     ? t("adminModeration.publishing", "Publishing...")
                     : t(

@@ -45,10 +45,10 @@ export function ExamReportPage(): React.JSX.Element {
           className="mx-auto h-10 w-10 text-danger"
           aria-hidden="true"
         />
-        <h2 className="text-lg font-bold text-danger">
+        <h2 className="text-lg font-semibold leading-snug text-danger-accent">
           {t("exam.report.loadFailed")}
         </h2>
-        <div className="flex justify-center gap-3 pt-2">
+        <div className="flex flex-wrap justify-center gap-3 pt-2">
           <Button
             type="button"
             variant="outline"

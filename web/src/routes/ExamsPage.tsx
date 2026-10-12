@@ -1,16 +1,16 @@
 import React from "react";
 
-import { ExamList } from "@/features/exam/components/ExamList";
-import { usePreferencesStore } from "@/stores/preferencesStore";
+import { ExamHub } from "@/features/exam/components/ExamHub";
 
+/**
+ * The exam hub (WO 22 Stage L): exams, their numbered tests, and one test sat
+ * full and timed or practised. The old templates/mock tabs are absorbed: the
+ * custom composer is one door inside a version's test list.
+ */
 export function ExamsPage(): React.JSX.Element {
-  const practiceLevel = usePreferencesStore(
-    (s) => s.preferences?.practice_level,
-  );
-
   return (
     <div className="w-full">
-      <ExamList userPracticeLevel={practiceLevel || undefined} />
+      <ExamHub />
     </div>
   );
 }

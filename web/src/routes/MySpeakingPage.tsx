@@ -10,12 +10,21 @@ import {
   Sparkles,
   Volume2,
   VolumeX,
-  X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Card,
   CardDescription,
@@ -65,7 +74,7 @@ export function MySpeakingPage(): React.JSX.Element {
         return (
           <Badge
             variant="outline"
-            className="border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+            className="border-emerald-500/40 bg-emerald-500/10 text-success-accent"
           >
             {t("speaking.statusGraded", "Graded")}
           </Badge>
@@ -74,7 +83,7 @@ export function MySpeakingPage(): React.JSX.Element {
         return (
           <Badge
             variant="outline"
-            className="border-amber-500/40 bg-amber-500/10 text-amber-500 animate-pulse"
+            className="border-amber-500/40 bg-amber-500/10 text-warning-accent animate-pulse"
           >
             {t("speaking.statusGrading", "Evaluating...")}
           </Badge>
@@ -101,14 +110,14 @@ export function MySpeakingPage(): React.JSX.Element {
     <div className="space-y-6 max-w-4xl mx-auto py-6 px-4 animate-in fade-in duration-200">
       {/* Header */}
       <header className="space-y-1">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary-accent">
           <Mic className="h-4 w-4" aria-hidden="true" />
           <span>{t("speaking.mySpeakingTitle", "My Speaking")}</span>
         </div>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-text tracking-tight">
+        <h1 className="text-2xl md:text-3xl font-bold leading-tight text-text tracking-tight">
           {t("speaking.mySpeakingTitle", "My Speaking")}
         </h1>
-        <p className="text-sm text-text-muted">
+        <p className="text-base leading-relaxed text-text-muted">
           {t(
             "speaking.mySpeakingDesc",
             "Review your recorded speaking practice, accuracy scores, transcripts, and AI coaching feedback.",
@@ -138,7 +147,10 @@ export function MySpeakingPage(): React.JSX.Element {
         <Card className="border-danger/30 text-center p-6">
           <CardHeader>
             <div className="flex justify-center mb-2">
-              <AlertCircle className="h-8 w-8 text-danger-accent" />
+              <AlertCircle
+                className="h-8 w-8 text-danger-accent"
+                aria-hidden="true"
+              />
             </div>
             <CardTitle>
               {t("speaking.errorTitle", "Unable to Load Speaking Submissions")}
@@ -157,7 +169,7 @@ export function MySpeakingPage(): React.JSX.Element {
               onClick={() => void refetch()}
               className="gap-2"
             >
-              <RotateCcw className="h-4 w-4" />
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
               {t("common.retry", "Try again")}
             </Button>
           </CardFooter>
@@ -166,24 +178,22 @@ export function MySpeakingPage(): React.JSX.Element {
 
       {/* Empty state */}
       {!isLoading && !isError && items.length === 0 && (
-        <Card className="text-center p-8 border-border bg-surface-card">
-          <CardHeader className="space-y-2">
-            <div className="flex justify-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <Mic className="h-6 w-6" />
-              </div>
-            </div>
-            <CardTitle className="text-lg font-semibold text-text">
-              {t("speaking.noSubmissions", "No speaking submissions yet")}
-            </CardTitle>
-            <CardDescription className="max-w-md mx-auto text-sm">
-              {t(
-                "speaking.noSubmissionsDesc",
-                "Complete speaking activities in your lessons to evaluate your speaking pace, transcript fidelity, and receive AI coaching.",
-              )}
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <EmptyState
+          icon={Mic}
+          title={t("speaking.noSubmissions", "No speaking submissions yet")}
+          description={t(
+            "speaking.noSubmissionsDesc",
+            "Complete speaking activities in your lessons to evaluate your speaking pace, transcript fidelity, and receive AI coaching.",
+          )}
+          action={
+            <Link
+              to="/practice"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-fg shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              {t("speaking.startPractice", "Explore practice")}
+            </Link>
+          }
+        />
       )}
 
       {/* Submissions list */}
@@ -210,7 +220,7 @@ export function MySpeakingPage(): React.JSX.Element {
                 className="border-border bg-surface-card hover:border-border/80 transition-all p-4 shadow-sm"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1.5 flex-1">
+                  <div className="min-w-0 space-y-1.5 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       {getStatusBadge(sub.status)}
                       <Badge variant="outline" className="text-xs">
@@ -232,46 +242,46 @@ export function MySpeakingPage(): React.JSX.Element {
                         </Badge>
                       )}
                       {sub.score != null && (
-                        <span className="text-xs text-text-muted">
+                        <span className="text-sm tabular-nums text-text-muted">
                           {sub.score} / 100
                         </span>
                       )}
                       {sub.overall_band == null && sub.score == null && (
-                        <span className="text-xs text-text-muted italic">
+                        <span className="text-sm text-text-muted italic">
                           {t("speaking.gradeNotRecorded")}
                         </span>
                       )}
-                      <span className="flex items-center gap-1 text-xs text-text-muted">
-                        <Calendar className="h-3.5 w-3.5" />
+                      <span className="flex items-center gap-1.5 text-sm text-text-muted">
+                        <Calendar className="h-4 w-4" aria-hidden="true" />
                         {dateStr}
                       </span>
                       {sub.has_recording ? (
                         <span
-                          className="flex items-center gap-1 text-xs text-emerald-500"
+                          className="flex items-center gap-1.5 text-sm text-success-accent"
                           title={t(
                             "speaking.audioAvailable",
                             "Audio recording available",
                           )}
                         >
-                          <Volume2 className="h-3.5 w-3.5" />
+                          <Volume2 className="h-4 w-4" aria-hidden="true" />
                           <span>{t("speaking.hasAudio", "Audio")}</span>
                         </span>
                       ) : (
                         <span
-                          className="flex items-center gap-1 text-xs text-text-muted"
+                          className="flex items-center gap-1.5 text-sm text-text-muted"
                           title={t(
                             "speaking.audioPurged",
                             "Audio purged after 90 days",
                           )}
                         >
-                          <VolumeX className="h-3.5 w-3.5" />
+                          <VolumeX className="h-4 w-4" aria-hidden="true" />
                           <span>{t("speaking.purged", "Purged")}</span>
                         </span>
                       )}
                     </div>
 
                     {summaryPreview && (
-                      <p className="text-xs text-text-muted line-clamp-2 leading-relaxed">
+                      <p className="text-sm text-text-muted line-clamp-2 leading-relaxed">
                         {summaryPreview}
                       </p>
                     )}
@@ -281,9 +291,9 @@ export function MySpeakingPage(): React.JSX.Element {
                     variant={sub.status === "graded" ? "primary" : "outline"}
                     disabled={sub.status === "grading"}
                     onClick={() => setSelectedAttemptId(sub.attempt_id)}
-                    className="shrink-0 gap-1.5 min-h-[44px]"
+                    className="shrink-0 gap-2"
                   >
-                    <Eye className="h-3.5 w-3.5" />
+                    <Eye className="h-4 w-4" aria-hidden="true" />
                     <span>
                       {t("speaking.viewFeedbackBtn", "View Feedback")}
                     </span>
@@ -303,17 +313,17 @@ export function MySpeakingPage(): React.JSX.Element {
                 defaultValue: `Showing ${from}–${to} of ${total}`,
               })}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 className="gap-1 min-h-[44px]"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                 <span>{t("common.previous", "Previous")}</span>
               </Button>
-              <span className="text-xs px-2 font-medium">
+              <span className="text-sm tabular-nums px-2 font-medium">
                 {t("speaking.pageOf", {
                   current: page,
                   total: totalPages,
@@ -327,7 +337,7 @@ export function MySpeakingPage(): React.JSX.Element {
                 className="gap-1 min-h-[44px]"
               >
                 <span>{t("common.next", "Next")}</span>
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -336,46 +346,38 @@ export function MySpeakingPage(): React.JSX.Element {
 
       {/* Modal Feedback View */}
       {selectedAttemptId && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="speaking-feedback-dialog-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/75 p-4 backdrop-blur-sm animate-in fade-in overflow-y-auto"
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedAttemptId(null);
+          }}
         >
-          <div className="bg-surface-card border border-border rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col my-auto overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface-muted/30">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2
-                  id="speaking-feedback-dialog-title"
-                  className="text-lg font-bold text-text"
-                >
-                  {t("speaking.feedbackTitle", "Speaking Assessment")}
-                </h2>
-              </div>
-              <Button
-                variant="ghost"
-                onClick={() => setSelectedAttemptId(null)}
-                className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 rounded-full text-text-muted hover:text-text"
-                aria-label={t("common.close", "Close")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+          <DialogContent className="max-w-3xl" aria-describedby={undefined}>
+            <DialogHeader className="bg-surface-muted/30">
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+                {t("speaking.feedbackTitle", "Speaking Assessment")}
+              </DialogTitle>
+            </DialogHeader>
 
             {/* Modal Body */}
-            <div className="overflow-y-auto p-6 flex-1">
+            <DialogBody className="p-6">
               {feedbackQuery.isLoading ? (
                 <div className="flex flex-col items-center justify-center p-12 space-y-3">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-border-subtle border-t-primary" />
+                  <div
+                    className="h-8 w-8 animate-spin rounded-full border-4 border-border-subtle border-t-primary"
+                    aria-hidden="true"
+                  />
                   <p className="text-sm text-text-muted">
                     {t("common.loading", "Loading feedback...")}
                   </p>
                 </div>
               ) : feedbackQuery.isError ? (
                 <div className="text-center p-8 space-y-3">
-                  <AlertCircle className="h-8 w-8 text-danger-accent mx-auto" />
+                  <AlertCircle
+                    className="h-8 w-8 text-danger-accent mx-auto"
+                    aria-hidden="true"
+                  />
                   <p className="text-sm text-danger-accent font-medium">
                     {feedbackQuery.error?.message ||
                       t("speaking.feedbackError", "Failed to load feedback")}
@@ -391,19 +393,19 @@ export function MySpeakingPage(): React.JSX.Element {
               ) : feedbackQuery.data ? (
                 <SpeakingFeedbackView feedback={feedbackQuery.data} />
               ) : null}
-            </div>
+            </DialogBody>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3 border-t border-border bg-surface-muted/30 flex justify-end">
+            <DialogFooter className="px-6 py-3 bg-surface-muted/30">
               <Button
                 variant="outline"
                 onClick={() => setSelectedAttemptId(null)}
               >
                 {t("common.close", "Close")}
               </Button>
-            </div>
-          </div>
-        </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

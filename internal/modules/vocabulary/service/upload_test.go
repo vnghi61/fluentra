@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -128,6 +130,12 @@ func (s *stubContentAuthor) EnsureDraft(
 	return s.id, nil
 }
 
+func (s *stubContentAuthor) ApproveVerified(
+	_ context.Context, _ uuid.UUID, _ contentcontract.Verification,
+) error {
+	return nil
+}
+
 type stubQuotaAI struct {
 	stubAI
 	hasQuota bool
@@ -145,6 +153,7 @@ type uploadRepo struct {
 	verified                map[uuid.UUID]string
 	rejected                map[uuid.UUID]string
 	attempts                map[uuid.UUID]string
+	failed                  map[uuid.UUID]string
 	queued                  map[uuid.UUID]string
 	correctedTerms          map[uuid.UUID]string
 	suggestedTerms          map[uuid.UUID]string
@@ -156,6 +165,28 @@ type uploadRepo struct {
 	uploadItems             map[uuid.UUID][]sqlc.ListUploadItemsRow
 	sensesNeedingEnrichment []sqlc.ListSensesNeedingExampleEnrichmentRow
 	enrichUpdates           []sqlc.UpdateWordSenseEnrichmentParams
+	// claimedIDs records the item filter of every by-upload claim.
+	claimedIDs [][]uuid.UUID
+	// lockedTerms records every term verification locked.
+	lockedTerms []string
+	// rejections are earlier verdicts by normalised term.
+	rejections map[string]sqlc.FindRecentTermRejectionRow
+	// inserted are the items Submit stored, in order.
+	inserted []sqlc.SkillVocabUploadItem
+}
+
+func (r *uploadRepo) LockUploadTerm(_ context.Context, term string) error {
+	r.lockedTerms = append(r.lockedTerms, term)
+	return nil
+}
+
+func (r *uploadRepo) FindRecentTermRejection(
+	_ context.Context, term string,
+) (sqlc.FindRecentTermRejectionRow, error) {
+	if prior, ok := r.rejections[term]; ok {
+		return prior, nil
+	}
+	return sqlc.FindRecentTermRejectionRow{}, pgx.ErrNoRows
 }
 
 func newUploadRepo(items ...sqlc.SkillVocabUploadItem) *uploadRepo {
@@ -165,6 +196,7 @@ func newUploadRepo(items ...sqlc.SkillVocabUploadItem) *uploadRepo {
 		verified:                map[uuid.UUID]string{},
 		rejected:                map[uuid.UUID]string{},
 		attempts:                map[uuid.UUID]string{},
+		failed:                  map[uuid.UUID]string{},
 		queued:                  map[uuid.UUID]string{},
 		correctedTerms:          map[uuid.UUID]string{},
 		suggestedTerms:          map[uuid.UUID]string{},
@@ -205,6 +237,20 @@ func (r *uploadRepo) ListUploadItems(
 	if it, ok := r.uploadItems[uploadID]; ok {
 		return it, nil
 	}
+	var rows []sqlc.ListUploadItemsRow
+	for _, stored := range r.inserted {
+		if stored.UploadID != uploadID {
+			continue
+		}
+		rows = append(rows, sqlc.ListUploadItemsRow{
+			ID: stored.ID, UploadID: stored.UploadID, UserID: stored.UserID,
+			Term: stored.Term, ProvidedMeaning: stored.ProvidedMeaning,
+			Status: r.insertedStatus(stored.ID), NoteCode: r.noteCodePtr(stored.ID),
+		})
+	}
+	if rows != nil {
+		return rows, nil
+	}
 	return r.fakeRepo.ListUploadItems(ctx, uploadID, userID)
 }
 
@@ -217,11 +263,19 @@ func (r *uploadRepo) ClaimPendingUploadItems(
 // The limit is honoured rather than ignored: a fake that returns everything
 // however small the batch is cannot fail when the caller stops passing one.
 func (r *uploadRepo) ClaimPendingUploadItemsByUploadID(
-	_ context.Context, uploadID uuid.UUID, _, limit int32,
+	_ context.Context, uploadID uuid.UUID, itemIDs []uuid.UUID, _, limit int32,
 ) ([]sqlc.SkillVocabUploadItem, error) {
+	r.claimedIDs = append(r.claimedIDs, itemIDs)
 	var items []sqlc.SkillVocabUploadItem
 	for _, it := range r.pending {
 		if it.UploadID != uploadID {
+			continue
+		}
+		if itemIDs != nil && !slices.Contains(itemIDs, it.ID) {
+			continue
+		}
+		// As the query's `status = 'pending'` does: a settled word is not claimed.
+		if r.insertedStatus(it.ID) != statusPending {
 			continue
 		}
 		if limit > 0 && len(items) >= int(limit) {
@@ -261,10 +315,36 @@ func (r *uploadRepo) MarkUploadItemRejected(
 }
 
 func (r *uploadRepo) RecordUploadItemAttempt(
-	_ context.Context, id uuid.UUID, reason string,
+	_ context.Context, id uuid.UUID, maxAttempts int32, exhaustedReason string,
 ) error {
+	reason := ""
+	for i := range r.pending {
+		if r.pending[i].ID != id {
+			continue
+		}
+		r.pending[i].Attempts++
+		if r.pending[i].Attempts >= maxAttempts {
+			reason = exhaustedReason
+			r.failed[id] = exhaustedReason
+		}
+	}
 	r.attempts[id] = reason
 	return nil
+}
+
+func (r *uploadRepo) FailExhaustedUploadItems(
+	_ context.Context, maxAttempts int32, reason string,
+) (int64, error) {
+	var n int64
+	for _, it := range r.pending {
+		if it.Attempts >= maxAttempts {
+			if _, done := r.failed[it.ID]; !done {
+				r.failed[it.ID] = reason
+				n++
+			}
+		}
+	}
+	return n, nil
 }
 
 func (r *uploadRepo) MarkUploadItemQueued(
@@ -309,14 +389,14 @@ func (r *uploadRepo) MarkQueuedUploadItemRejected(
 	if noteCode != nil {
 		r.noteCodes[id] = *noteCode
 	}
-	return sqlc.SkillVocabUploadItem{ID: id, Status: "rejected"}, nil
+	return sqlc.SkillVocabUploadItem{ID: id, Status: statusRejected}, nil
 }
 
 func (r *uploadRepo) MarkQueuedUploadItemFailed(
 	_ context.Context, id uuid.UUID, reason string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	r.enrichFailed[id] = reason
-	return sqlc.SkillVocabUploadItem{ID: id, Status: "failed"}, nil
+	return sqlc.SkillVocabUploadItem{ID: id, Status: statusFailed}, nil
 }
 
 // ------------------------------------------------------------- fixtures
@@ -331,8 +411,10 @@ func item(term, meaning string) sqlc.SkillVocabUploadItem {
 func leisureEntry() repository.DictionaryEntry {
 	return repository.DictionaryEntry{
 		Lemma: wordLeisure, IPA: "/ˈliːʒə(ɹ)/", PartOfSpeech: posNoun,
-		Definition: "Time when one is not working or occupied; free time.",
-		AudioURL:   "https://example.test/leisure.mp3",
+		Definition:       "Time when one is not working or occupied; free time.",
+		AudioURL:         "https://example.test/leisure.mp3",
+		AudioAttribution: "https://commons.example/leisure",
+		AudioLicence:     "BY-SA 3.0",
 	}
 }
 
@@ -389,14 +471,20 @@ func newPipelineWithReviews(
 
 type stubEnqueuer struct {
 	enqueued []uuid.UUID
+	itemIDs  [][]uuid.UUID
+	runAt    []time.Time
 	err      error
 }
 
-func (e *stubEnqueuer) EnqueueVerifyUploadTx(_ context.Context, _ pgx.Tx, uploadID uuid.UUID) error {
+func (e *stubEnqueuer) EnqueueVerifyUploadTx(
+	_ context.Context, _ pgx.Tx, uploadID uuid.UUID, itemIDs []uuid.UUID, runAt time.Time,
+) error {
 	if e.err != nil {
 		return e.err
 	}
 	e.enqueued = append(e.enqueued, uploadID)
+	e.itemIDs = append(e.itemIDs, itemIDs)
+	e.runAt = append(e.runAt, runAt)
 	return nil
 }
 
@@ -442,13 +530,48 @@ func (r *uploadRepo) WithTx(_ pgx.Tx) repository.Repository {
 func (r *uploadRepo) InsertUpload(
 	_ context.Context, arg sqlc.InsertUploadParams,
 ) (sqlc.SkillVocabUpload, error) {
-	return sqlc.SkillVocabUpload{
+	upload := sqlc.SkillVocabUpload{
 		ID:        uuid.New(),
 		UserID:    arg.UserID,
 		RawText:   arg.RawText,
 		ItemCount: arg.ItemCount,
 		Status:    statusPending,
-	}, nil
+	}
+	r.uploads[upload.ID] = upload
+	return upload, nil
+}
+
+// InsertUploadItem stores the word as pending, where the job's claim finds it.
+func (r *uploadRepo) InsertUploadItem(
+	_ context.Context, arg sqlc.InsertUploadItemParams,
+) (sqlc.SkillVocabUploadItem, error) {
+	stored := sqlc.SkillVocabUploadItem{
+		ID: uuid.New(), UploadID: arg.UploadID, UserID: arg.UserID,
+		Term: arg.Term, ProvidedMeaning: arg.ProvidedMeaning, Status: statusPending,
+		CreatedAt: time.Now().UTC(),
+	}
+	r.inserted = append(r.inserted, stored)
+	r.pending = append(r.pending, stored)
+	return stored, nil
+}
+
+// insertedStatus is what became of a stored word, read from the outcome maps.
+func (r *uploadRepo) insertedStatus(id uuid.UUID) string {
+	for status, outcomes := range map[string]map[uuid.UUID]string{
+		statusVerified: r.verified, statusRejected: r.rejected, statusFailed: r.failed, statusQueued: r.queued,
+	} {
+		if _, ok := outcomes[id]; ok {
+			return status
+		}
+	}
+	return statusPending
+}
+
+func (r *uploadRepo) noteCodePtr(id uuid.UUID) *string {
+	if code, ok := r.noteCodes[id]; ok {
+		return &code
+	}
+	return nil
 }
 
 // -------------------------------------------------------------- submitting
@@ -558,7 +681,7 @@ func TestVerifyUpload_VerifiesPendingWordsForSpecificUpload(t *testing.T) {
 	}}
 	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: accepted(t)})
 
-	require.NoError(t, uploads.VerifyUpload(context.Background(), uploadID1))
+	require.NoError(t, uploads.VerifyUpload(context.Background(), uploadID1, nil))
 
 	assert.Contains(t, repo.verified, item1.ID)
 	assert.NotContains(t, repo.verified, item2.ID, "items from other uploads should not be touched")
@@ -623,11 +746,33 @@ func TestVerifyPending_TheStoredContentCarriesWhatAFlashcardNeeds(t *testing.T) 
 	// The dictionary's IPA and its link to a human recording, not a stored file.
 	assert.Equal(t, "/ˈliːʒə(ɹ)/", body["ipa"])
 	assert.Equal(t, "https://example.test/leisure.mp3", body["audio_url"])
+	// The credit travels with the recording: CC BY-SA is not satisfied by
+	// playing the file, and the card needs the page that names the author.
+	assert.Equal(t, "https://commons.example/leisure", body["audio_attribution"])
+	assert.Equal(t, "BY-SA 3.0", body["audio_licence"])
 	// The learner's own note becomes the gloss: it is what they will recognise.
 	assert.Equal(t, "thời gian rảnh", body["definition_vi"])
 	assert.NotEmpty(t, body["example_sentences"])
 	// And the grader can score it.
 	assert.Equal(t, wordLeisure, body["correct_answer"])
+}
+
+func TestVerifyPending_DoesNotStoreARecordingItCannotCredit(t *testing.T) {
+	entry := item(wordLeisure, "thời gian rảnh")
+	repo := newUploadRepo(entry)
+	uncredited := leisureEntry()
+	uncredited.AudioAttribution = ""
+	uncredited.AudioLicence = ""
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{wordLeisure: uncredited}}
+	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: accepted(t)})
+
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+	require.Len(t, author.published, 1)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(author.published[0].Body, &body))
+	assert.NotContains(t, body, "audio_url",
+		"a recording with no attribution page must not reach a card")
 }
 
 func TestVerifyPending_RejectsAWordNeitherSourceRecognises(t *testing.T) {
@@ -679,6 +824,33 @@ func TestVerifyPending_AnUnreachableDictionaryLeavesTheWordPending(t *testing.T)
 	assert.Empty(t, repo.verified)
 	assert.Empty(t, repo.rejected)
 	assert.Contains(t, repo.attempts, entry.ID, "the attempt is recorded, so it eventually retires")
+}
+
+func TestVerifyPending_TheAttemptThatReachesTheLimitRetiresTheWord(t *testing.T) {
+	entry := item(wordLeisure, "")
+	entry.Attempts = 2
+	repo := newUploadRepo(entry)
+	dict := &stubDictionary{err: errors.New("connection refused")}
+
+	// The dictionary never answered. On the last attempt the word is failed,
+	// with a reason, and never rejected: an outage is not a verdict on a word
+	// the learner typed correctly.
+	uploads, _ := newPipeline(t, repo, dict, &stubAI{reply: accepted(t)})
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	assert.Empty(t, repo.rejected, "an unreachable dictionary never rejects a word")
+	assert.Contains(t, repo.failed, entry.ID, "a word out of attempts is failed, not left pending")
+	assert.NotEmpty(t, repo.failed[entry.ID], "and says why")
+}
+
+func TestVerifyPending_RetiresWordsLeftPendingWithEveryAttemptUsed(t *testing.T) {
+	stuck := item(wordLeisure, "")
+	stuck.Attempts = 3
+	repo := newUploadRepo(stuck)
+	uploads, _ := newPipeline(t, repo, &stubDictionary{}, &stubAI{reply: accepted(t)})
+
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+	assert.Contains(t, repo.failed, stuck.ID)
 }
 
 func TestVerifyPending_AModelThatRefusesToAnswerIsNotAVerdict(t *testing.T) {

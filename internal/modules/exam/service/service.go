@@ -18,6 +18,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/fluentra/fluentra/internal/generated/exam/sqlc"
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	examcontract "github.com/fluentra/fluentra/internal/modules/exam/contract"
 	"github.com/fluentra/fluentra/internal/modules/exam/domain"
 	examjob "github.com/fluentra/fluentra/internal/modules/exam/job"
@@ -37,6 +38,11 @@ const (
 	OfficialDisclaimer        = "Not an official TOEIC score. Pronunciation not assessed."
 
 	kindListeningComprehension = "listening_comprehension"
+	// TOEIC Parts 1 and 2 are spoken only: a photograph with spoken statements,
+	// a question with spoken responses. They carry the same one-play rule as a
+	// comprehension clip (WO 22 I.3.5).
+	kindPhotoDescription = "photo_description"
+	kindQuestionResponse = "question_response"
 
 	// regradeAfter is how old a report must be before the settle sweep submits an
 	// item the submitting request never reached. Younger than this, the request
@@ -48,6 +54,13 @@ const (
 // WorkerNudger signals a background worker to wake up after a job is enqueued.
 type WorkerNudger interface {
 	Nudge(ctx context.Context)
+}
+
+// PhotoSource hands out the openly licensed, person-described photographs TOEIC
+// Part 1 items are written from (WO 22 D22-21), each photograph once: up to n
+// not yet used, fewer or none when the supply runs out.
+type PhotoSource interface {
+	NextPhotos(ctx context.Context, n int) ([]questionbankcontract.Photo, error)
 }
 
 // PoolDrawer draws items for an exam sitting across the 4 sections.
@@ -112,6 +125,16 @@ type ExamRepository interface {
 	CreateMockTest(ctx context.Context, mt *domain.MockTest) (*domain.MockTest, error)
 	GetMockTestByID(ctx context.Context, id uuid.UUID) (*domain.MockTest, error)
 	ListMockTestsByOwner(ctx context.Context, ownerID *uuid.UUID) ([]*domain.MockTest, error)
+	ListFixedMockTests(ctx context.Context, blueprintID uuid.UUID) ([]*domain.MockTest, error)
+	ListBlueprintsByVersionIDs(ctx context.Context, versionIDs []uuid.UUID) (map[uuid.UUID][]*domain.Blueprint, error)
+	ListExamPartsByVersionIDs(ctx context.Context, versionIDs []uuid.UUID) (map[uuid.UUID][]*domain.ExamPart, error)
+	CountFixedMockTests(ctx context.Context, blueprintIDs []uuid.UUID) (map[uuid.UUID]int, error)
+	ListUserBestVersionScores(
+		ctx context.Context, userID uuid.UUID, versionIDs []uuid.UUID,
+	) (map[uuid.UUID]float64, error)
+	ListLatestUserMockTestAttempts(
+		ctx context.Context, userID uuid.UUID, mockTestIDs []uuid.UUID,
+	) (map[uuid.UUID]*domain.LatestAttempt, error)
 	GetExamByVersionID(ctx context.Context, versionID uuid.UUID) (*sqlc.AssessExam, error)
 	CreateMockTestAttempt(ctx context.Context, arg sqlc.CreateMockTestAttemptParams) (*sqlc.AssessExamAttempt, error)
 	CountUserMockTestAttempts(ctx context.Context, userID, mockTestID uuid.UUID) (int64, error)
@@ -126,11 +149,23 @@ type Deps struct {
 	Exposures    learningcontract.ItemExposureRecorder
 	Lesson       lessoncontract.Reader
 	Questionbank questionbankcontract.Reader
-	Drawer       PoolDrawer
-	Clock        clock.Clock
-	DailyLimit   int
-	Enqueuer     platformjob.Enqueuer
-	Nudger       WorkerNudger
+	// BankAuthor generates the questions the daily job adds to the bank
+	// (WO 22 Stage O). Nil disables the job.
+	BankAuthor questionbankcontract.Author
+	// ReviewBacklog lets the daily job skip an exam whose doubts from two
+	// earlier days nobody has reviewed. Nil never skips.
+	ReviewBacklog contentcontract.ReviewBacklog
+	// DailyGenerationCap bounds how many items one daily run asks for; 0 is
+	// no bound beyond one test's worth.
+	DailyGenerationCap int
+	// Photos supplies Part 1 photographs. Nil leaves photo parts ungenerated:
+	// the model cannot invent a photograph, and nothing else can.
+	Photos     PhotoSource
+	Drawer     PoolDrawer
+	Clock      clock.Clock
+	DailyLimit int
+	Enqueuer   platformjob.Enqueuer
+	Nudger     WorkerNudger
 }
 
 // Service orchestrates exam sittings, timing, auto-submission, and scoring.
@@ -142,6 +177,10 @@ type Service struct {
 	exposures    learningcontract.ItemExposureRecorder
 	lesson       lessoncontract.Reader
 	questionbank questionbankcontract.Reader
+	bankAuthor   questionbankcontract.Author
+	backlog      contentcontract.ReviewBacklog
+	dailyCap     int
+	photos       PhotoSource
 	drawer       PoolDrawer
 	clock        clock.Clock
 	dailyLimit   int
@@ -167,6 +206,10 @@ func New(deps Deps) *Service {
 		exposures:    deps.Exposures,
 		lesson:       deps.Lesson,
 		questionbank: deps.Questionbank,
+		bankAuthor:   deps.BankAuthor,
+		backlog:      deps.ReviewBacklog,
+		dailyCap:     deps.DailyGenerationCap,
+		photos:       deps.Photos,
 		drawer:       deps.Drawer,
 		clock:        clk,
 		dailyLimit:   dailyLimit,
@@ -278,12 +321,17 @@ type IntegritySignalDTO struct {
 
 // ScoreReportDTO response.
 type ScoreReportDTO struct {
-	AttemptID        uuid.UUID               `json:"attempt_id"`
-	Mode             string                  `json:"mode"`
-	SubmittedBy      string                  `json:"submitted_by,omitempty"`
-	Status           string                  `json:"status"`
-	OverallScore     float64                 `json:"overall_score"`
-	OverallBand      string                  `json:"overall_band,omitempty"`
+	AttemptID    uuid.UUID `json:"attempt_id"`
+	Mode         string    `json:"mode"`
+	SubmittedBy  string    `json:"submitted_by,omitempty"`
+	Status       string    `json:"status"`
+	OverallScore float64   `json:"overall_score"`
+	OverallBand  string    `json:"overall_band,omitempty"`
+	// PublishedScore is the overall on the exam's own scale (an IELTS band, a
+	// TOEIC scaled estimate, a VSTEP level), when the version states one.
+	PublishedScore   *float64                `json:"published_score,omitempty"`
+	PublishedScale   string                  `json:"published_scale,omitempty"`
+	ScoreIsEstimate  bool                    `json:"score_is_estimate,omitempty"`
 	PerSection       []domain.SectionOutcome `json:"per_section"`
 	IntegritySignals []IntegritySignalDTO    `json:"integrity_signals"`
 	Disclaimer       string                  `json:"disclaimer"`
@@ -1122,12 +1170,24 @@ func (s *Service) GetScoreReport(ctx context.Context, userID, attemptID uuid.UUI
 		signals = []IntegritySignalDTO{}
 	}
 	overall, _ := report.OverallScore.Float64Value()
+	return s.reportDTO(ctx, attempt, report, perSection, signals, overall.Float64), nil
+}
 
+// reportDTO assembles the learner-facing report, adding the caller's time and
+// the score on the exam's own scale when the version states one.
+func (s *Service) reportDTO(
+	ctx context.Context,
+	attempt *sqlc.AssessExamAttempt,
+	report *sqlc.AssessScoreReport,
+	perSection []domain.SectionOutcome,
+	signals []IntegritySignalDTO,
+	overall float64,
+) *ScoreReportDTO {
 	dto := &ScoreReportDTO{
 		AttemptID:        report.AttemptID,
 		Mode:             attempt.Mode,
 		Status:           report.Status,
-		OverallScore:     overall.Float64,
+		OverallScore:     overall,
 		OverallBand:      report.OverallBand,
 		PerSection:       perSection,
 		IntegritySignals: signals,
@@ -1139,7 +1199,57 @@ func (s *Service) GetScoreReport(ctx context.Context, userID, attemptID uuid.UUI
 	if attempt.SubmittedAt != nil {
 		dto.ElapsedSeconds = int(attempt.SubmittedAt.Sub(attempt.StartedAt).Seconds())
 	}
-	return dto, nil
+	if published, ok := s.publishedScoreForAttempt(ctx, attempt, overall); ok {
+		value := published.Value
+		dto.PublishedScore = &value
+		dto.PublishedScale = published.Scale
+		dto.ScoreIsEstimate = published.Estimate
+	}
+	return dto
+}
+
+// publishedScoreForAttempt maps the overall onto the sitting's exam scale, when
+// the version states one (WO 22 Stage I.3.6).
+func (s *Service) publishedScoreForAttempt(
+	ctx context.Context, attempt *sqlc.AssessExamAttempt, overall float64,
+) (domain.PublishedScore, bool) {
+	scoring, err := s.versionScoringForAttempt(ctx, attempt)
+	if err != nil || len(scoring) == 0 {
+		return domain.PublishedScore{}, false
+	}
+	return domain.ScaleScore(scoring, overall)
+}
+
+// versionScoringForAttempt resolves the exam version a sitting belongs to: a
+// mock test through its blueprint, a template through its own version.
+func (s *Service) versionScoringForAttempt(
+	ctx context.Context, attempt *sqlc.AssessExamAttempt,
+) (json.RawMessage, error) {
+	if attempt.MockTestID != nil {
+		mt, err := s.repo.GetMockTestByID(ctx, *attempt.MockTestID)
+		if err != nil || mt == nil {
+			return nil, err
+		}
+		bp, err := s.repo.GetBlueprintByID(ctx, mt.BlueprintID)
+		if err != nil || bp == nil {
+			return nil, err
+		}
+		version, err := s.repo.GetExamVersionByID(ctx, bp.VersionID)
+		if err != nil || version == nil {
+			return nil, err
+		}
+		return version.Scoring, nil
+	}
+
+	exam, err := s.repo.GetExamByID(ctx, attempt.ExamID)
+	if err != nil || exam == nil || exam.VersionID == nil {
+		return nil, err
+	}
+	version, err := s.repo.GetExamVersionByID(ctx, *exam.VersionID)
+	if err != nil || version == nil {
+		return nil, err
+	}
+	return version.Scoring, nil
 }
 
 // ListUserAttempts returns the caller's sittings, newest first, with the total.
@@ -1262,7 +1372,7 @@ func (s *Service) ListeningPlayPolicy(ctx context.Context, userID, sittingID, ve
 	current := s.currentSection(attempt, now)
 	for _, sec := range decodeSections(attempt) {
 		for _, act := range sec.Activities {
-			if act.ContentVersionID != versionID || act.Kind != kindListeningComprehension {
+			if act.ContentVersionID != versionID || !isListeningKind(act.Kind) {
 				continue
 			}
 			if attempt.Mode == domain.ModeExam && sec.SectionPosition != current {
@@ -1272,6 +1382,16 @@ func (s *Service) ListeningPlayPolicy(ctx context.Context, userID, sittingID, ve
 		}
 	}
 	return 0, domain.ErrPlayNotAllowed
+}
+
+// isListeningKind reports whether an activity kind is heard rather than read.
+func isListeningKind(kind string) bool {
+	switch kind {
+	case kindListeningComprehension, kindPhotoDescription, kindQuestionResponse:
+		return true
+	default:
+		return false
+	}
 }
 
 // ---------------------------------------------------------------------------

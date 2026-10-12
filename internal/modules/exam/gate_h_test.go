@@ -357,6 +357,18 @@ func (r *inMemoryGateRepo) GetMockTestByID(_ context.Context, id uuid.UUID) (*do
 	defer r.mu.Unlock()
 	return r.mockTests[id], nil
 }
+func (r *inMemoryGateRepo) ListFixedMockTests(_ context.Context, blueprintID uuid.UUID) ([]*domain.MockTest, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []*domain.MockTest
+	for _, mt := range r.mockTests {
+		if mt.Mode == domain.MockModeFixed && mt.BlueprintID == blueprintID {
+			out = append(out, mt)
+		}
+	}
+	return out, nil
+}
+
 func (r *inMemoryGateRepo) ListMockTestsByOwner(_ context.Context, ownerID *uuid.UUID) ([]*domain.MockTest, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -496,6 +508,36 @@ func TestStageH_Gate_MockTestsAndCoverage(t *testing.T) {
 	t.Run("FixedTestCompositionIsFrozen", func(t *testing.T) {
 		gateCheckFixed(ctx, t, svc, blueprintID)
 	})
+
+	t.Run("PracticeMockTestHoldsChosenSectionsWithNoLimit", func(t *testing.T) {
+		gateCheckMockPractice(ctx, t, svc, blueprintID)
+	})
+}
+
+// gateCheckMockPractice is Stage K's gate: practising a mock test, Reading
+// only, with no time limit, sits only the chosen section and is unlimited.
+func gateCheckMockPractice(
+	ctx context.Context, t *testing.T, svc *service.Service, blueprintID uuid.UUID,
+) {
+	learnerID := uuid.New()
+	mt, err := svc.ComposeMockTest(ctx, &learnerID, service.ComposeMockTestRequest{
+		BlueprintID: blueprintID,
+		Mode:        domain.MockModeRandom,
+	})
+	require.NoError(t, err)
+
+	attempt, err := svc.StartMockTestAttempt(ctx, learnerID, mt.ID, service.StartAttemptRequest{
+		Mode:      domain.ModePractice,
+		Unlimited: true,
+		Sections:  []int{2},
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, domain.ModePractice, attempt.Mode)
+	assert.True(t, attempt.Unlimited, "no time limit is an unlimited practice sitting")
+	require.Len(t, attempt.SectionActivities, 1, "only the chosen section is held")
+	assert.Equal(t, 2, attempt.SectionActivities[0].SectionPosition)
+	assert.Equal(t, gateReading, attempt.SectionActivities[0].Skill)
 }
 
 func gateCheckRefusal(
@@ -577,7 +619,7 @@ func gateCheck20Tests(
 		require.NoError(t, err, "Failed to compose test %d", i+1)
 		composedTests[i] = mt
 
-		_, err = svc.StartMockTestAttempt(ctx, userID, mt.ID)
+		_, err = svc.StartMockTestAttempt(ctx, userID, mt.ID, service.StartAttemptRequest{})
 		require.NoError(t, err, "Failed to start attempt %d", i+1)
 	}
 
@@ -637,10 +679,10 @@ func gateCheckRetake(
 	})
 	require.NoError(t, err)
 
-	attempt1, err := svc.StartMockTestAttempt(ctx, learnerID, mt.ID)
+	attempt1, err := svc.StartMockTestAttempt(ctx, learnerID, mt.ID, service.StartAttemptRequest{})
 	require.NoError(t, err)
 
-	attempt2, err := svc.StartMockTestAttempt(ctx, learnerID, mt.ID)
+	attempt2, err := svc.StartMockTestAttempt(ctx, learnerID, mt.ID, service.StartAttemptRequest{})
 	require.NoError(t, err)
 
 	require.Equal(t, len(attempt1.SectionActivities), len(attempt2.SectionActivities))
@@ -690,7 +732,7 @@ func gateCheckFixed(
 			Mode:        domain.MockModeRandom,
 		})
 		require.NoError(t, composeErr)
-		_, startErr := svc.StartMockTestAttempt(ctx, veteran, mt.ID)
+		_, startErr := svc.StartMockTestAttempt(ctx, veteran, mt.ID, service.StartAttemptRequest{})
 		require.NoError(t, startErr)
 	}
 	newcomer := uuid.New()
@@ -707,4 +749,81 @@ func gateCheckFixed(
 	assert.Equal(t, fixedTest1.ID, forVeteran.ID, "a fixed test is one stored row")
 	assert.Equal(t, fixedTest1.ID, forNewcomer.ID, "a fixed test is one stored row")
 	assert.Nil(t, forVeteran.OwnerID)
+}
+
+// DrawableSizes counts DrawableForPart by group size.
+func (f *fakeQBReader) DrawableSizes(
+	ctx context.Context, examPartIDs []uuid.UUID,
+) (map[uuid.UUID]map[int]int, error) {
+	out := make(map[uuid.UUID]map[int]int, len(examPartIDs))
+	for _, id := range examPartIDs {
+		questions, err := f.DrawableForPart(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		for _, q := range questions {
+			if q.ActivityID == nil || *q.ActivityID == uuid.Nil {
+				continue
+			}
+			if out[id] == nil {
+				out[id] = map[int]int{}
+			}
+			out[id][max(q.QuestionCount, 1)]++
+		}
+	}
+	return out, nil
+}
+
+func (r *inMemoryGateRepo) ListBlueprintsByVersionIDs(
+	ctx context.Context, versionIDs []uuid.UUID,
+) (map[uuid.UUID][]*domain.Blueprint, error) {
+	out := map[uuid.UUID][]*domain.Blueprint{}
+	for _, id := range versionIDs {
+		bps, err := r.ListBlueprintsByVersionID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = bps
+	}
+	return out, nil
+}
+
+func (r *inMemoryGateRepo) ListExamPartsByVersionIDs(
+	ctx context.Context, versionIDs []uuid.UUID,
+) (map[uuid.UUID][]*domain.ExamPart, error) {
+	out := map[uuid.UUID][]*domain.ExamPart{}
+	for _, id := range versionIDs {
+		parts, err := r.ListExamPartsByVersionID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = parts
+	}
+	return out, nil
+}
+
+func (r *inMemoryGateRepo) CountFixedMockTests(
+	ctx context.Context, blueprintIDs []uuid.UUID,
+) (map[uuid.UUID]int, error) {
+	out := map[uuid.UUID]int{}
+	for _, id := range blueprintIDs {
+		tests, err := r.ListFixedMockTests(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = len(tests)
+	}
+	return out, nil
+}
+
+func (r *inMemoryGateRepo) ListLatestUserMockTestAttempts(
+	_ context.Context, _ uuid.UUID, _ []uuid.UUID,
+) (map[uuid.UUID]*domain.LatestAttempt, error) {
+	return map[uuid.UUID]*domain.LatestAttempt{}, nil
+}
+
+func (r *inMemoryGateRepo) ListUserBestVersionScores(
+	_ context.Context, _ uuid.UUID, _ []uuid.UUID,
+) (map[uuid.UUID]float64, error) {
+	return map[uuid.UUID]float64{}, nil
 }
