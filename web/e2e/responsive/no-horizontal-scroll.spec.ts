@@ -246,10 +246,21 @@ test.describe("R6/R1 at 320 px", () => {
 
       await page.goto("/exams");
       await check(page, `exam hub — ${locale}`);
-      await page.getByRole("button", { name: /VSTEP/ }).first().click();
+      // Below md the exams, a version's tests and the composer live in a
+      // bottom sheet; the desktop copies stay in the DOM, hidden. Every click
+      // takes the visible control.
+      await page
+        .getByRole("button", { name: /Practice options|Tùy chọn luyện thi/i })
+        .click();
+      await page
+        .getByRole("button", { name: /VSTEP/ })
+        .filter({ visible: true })
+        .first()
+        .click();
       await check(page, `one exam's tests — ${locale}`);
       await page
-        .getByRole("button", { name: /Build a custom test|Tạo đề tùy chọn/i })
+        .getByRole("button", { name: /Build a custom test|Tạo đề tùy chỉnh/i })
+        .filter({ visible: true })
         .click();
       await check(page, `custom test — ${locale}`);
     });

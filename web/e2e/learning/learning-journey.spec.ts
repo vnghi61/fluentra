@@ -29,11 +29,54 @@ const routes = {
   review: "/practice/review",
 } as const;
 
-/** Works through one activity of whichever of the three kinds is on screen. */
+/**
+ * /learn opens the first course in the catalogue. The seed archived the
+ * Everyday English course and moved its lessons into the foundation courses;
+ * the catalogue now starts with English Tenses, whose first lesson is a topic
+ * followed by multiple-choice questions.
+ */
+function firstCourseHeading(page: Page) {
+  return page.getByRole("heading", {
+    level: 1,
+    name: "English Tenses",
+    exact: true,
+  });
+}
+
+/**
+ * Works through one activity of whichever kind is on screen, then waits for the
+ * runner to move on. A submit is a round trip, and the topic's button stays on
+ * screen (busy) until it lands: reading the next activity before the counter
+ * moves would find the same one again.
+ */
 async function completeActivity(page: Page): Promise<void> {
+  const counter = page.getByTestId("runner-step-counter");
+  const before = await counter.getAttribute("data-current");
+
+  await answerActivity(page);
+
+  await expect(async () => {
+    if (await page.getByText("Lesson Completed!").isVisible()) return;
+    expect(await counter.getAttribute("data-current")).not.toBe(before);
+  }).toPass({ timeout: 15_000 });
+}
+
+async function answerActivity(page: Page): Promise<void> {
   const flipCard = page.getByRole("button", { name: "Flip Card", exact: true });
   const gapInput = page.getByRole("textbox").first();
   const options = page.getByRole("radio");
+  const checkAnswer = page.getByRole("button", {
+    name: "Check Answer",
+    exact: true,
+  });
+  const next = page.getByRole("button", { name: "Continue", exact: true });
+
+  // Wait for the activity to render before deciding which kind it is: every
+  // branch below reads the screen once, and a screen still mounting reads as
+  // no options and no flip card.
+  await expect(flipCard.or(checkAnswer).or(next).first()).toBeVisible({
+    timeout: 15_000,
+  });
 
   if (await flipCard.isVisible()) {
     // Flashcard: flip, say whether the word came back, then continue. The card
@@ -42,7 +85,14 @@ async function completeActivity(page: Page): Promise<void> {
     // this loop "finished" a three-activity lesson that counted as two.
     await flipCard.click();
     await page.getByRole("button", { name: "I knew it", exact: true }).click();
-    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await next.click();
+    return;
+  }
+
+  if (!(await checkAnswer.isVisible())) {
+    // Foundation topic: it teaches, nothing is graded, and its one button
+    // records the activity and moves on.
+    await next.click();
     return;
   }
 
@@ -53,8 +103,8 @@ async function completeActivity(page: Page): Promise<void> {
     await gapInput.fill("habit");
   }
 
-  await page.getByRole("button", { name: "Check Answer", exact: true }).click();
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await checkAnswer.click();
+  await next.click();
 }
 
 /**
@@ -87,10 +137,7 @@ test.describe("Phase 2 learning journeys", () => {
     await exploreSyllabus(page);
     await expect(page).toHaveURL(/\/learn$/);
 
-    const seededCourse = page.getByRole("heading", {
-      name: /Everyday English: A2–B1 Foundations/,
-    });
-    await expect(seededCourse).toBeVisible({ timeout: 15_000 });
+    await expect(firstCourseHeading(page)).toBeVisible({ timeout: 15_000 });
 
     // 3. Start the first lesson. The route carries the lesson id, so a click that
     //    went nowhere fails here rather than three steps later.
@@ -240,10 +287,6 @@ test.describe("Phase 2 learning journeys", () => {
     // The empty state is a route to somewhere, not a dead end.
     await exploreSyllabus(page);
     await expect(page).toHaveURL(/\/learn$/);
-    await expect(
-      page.getByRole("heading", {
-        name: /Everyday English: A2–B1 Foundations/,
-      }),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(firstCourseHeading(page)).toBeVisible({ timeout: 15_000 });
   });
 });

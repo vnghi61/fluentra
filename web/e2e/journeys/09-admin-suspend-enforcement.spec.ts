@@ -63,11 +63,13 @@ test.describe("Journey 9: admin suspends a learner → the learner is locked out
       results.getByText(learner.email).filter({ visible: true }),
     ).toBeVisible({ timeout: 15_000 });
 
+    // Each row's actions live in one menu, named after the account.
     await results
-      .getByRole("button", { name: /Inspect/i })
+      .getByRole("button", { name: `Actions for ${learner.displayName}` })
       .filter({ visible: true })
       .first()
       .click();
+    await adminPage.getByRole("menuitem", { name: /Inspect account/i }).click();
     await adminPage.getByRole("button", { name: /Suspend User/i }).click();
 
     // The server enforces a ten-character minimum and answers 422 below it; the
