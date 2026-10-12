@@ -35,6 +35,12 @@ var mockExamKinds = map[string]bool{
 	"writing_prompt": true, "speaking_task": true,
 }
 
+// Bounds on what a format can ask the mock to build.
+const (
+	maxMockQuestions = 50
+	maxMockOptions   = 26
+)
+
 // mockExamFormat is what the mock reads from a part's format.
 type mockExamFormat struct {
 	questions int
@@ -54,6 +60,15 @@ func parseMockExamFormat(format string) mockExamFormat {
 	if m := formatOptions.FindStringSubmatch(format); m != nil {
 		f.options, _ = strconv.Atoi(m[1])
 	}
+	// The counts size slices below, and the format is text from a prompt. A real
+	// group holds a handful of questions and options are lettered A to Z, so
+	// anything past these is a malformed prompt, not a bigger exam.
+	if f.questions > maxMockQuestions {
+		f.questions = maxMockQuestions
+	}
+	if f.options > maxMockOptions {
+		f.options = maxMockOptions
+	}
 	f.typed = strings.Contains(format, "have no options") || strings.Contains(format, "Questions are typed")
 	if m := formatMinWords.FindStringSubmatch(format); m != nil {
 		f.minWords, _ = strconv.Atoi(m[1])
@@ -67,7 +82,7 @@ func parseMockExamFormat(format string) mockExamFormat {
 // type in it at least once, the rest by share.
 func mockTypeMix(format string, n int) []string {
 	m := formatMix.FindStringSubmatch(format)
-	if m == nil || n <= 0 {
+	if m == nil || n <= 0 || n > maxMockQuestions {
 		return nil
 	}
 	type share struct {
@@ -165,6 +180,12 @@ func mockExamChoice(prompt, field string, count int) map[string]any {
 }
 
 func mockLetterOptions(count int) []map[string]string {
+	if count < 0 {
+		count = 0
+	}
+	if count > maxMockOptions {
+		count = maxMockOptions
+	}
 	options := make([]map[string]string, 0, count)
 	for i := 0; i < count; i++ {
 		letter := string(rune('A' + i))
@@ -177,6 +198,12 @@ func mockLetterOptions(count int) []map[string]string {
 // completion keyed "A" where the part is typed, a choice of the part's option
 // count otherwise.
 func mockExamQuestions(f mockExamFormat) []map[string]any {
+	if f.questions < 0 {
+		f.questions = 0
+	}
+	if f.questions > maxMockQuestions {
+		f.questions = maxMockQuestions
+	}
 	questions := make([]map[string]any, 0, f.questions)
 	for i := 1; i <= f.questions; i++ {
 		kind := "multiple_choice"

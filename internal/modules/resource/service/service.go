@@ -340,8 +340,15 @@ func (s *Service) ListResources(
 	if pageSize < 1 || pageSize > 100 {
 		pageSize = 20
 	}
+	// page has no ceiling of its own, and (page-1)*pageSize wraps int32 long
+	// before page does. No learner has twenty million resources, so a page past
+	// this one is empty either way.
+	const maxPage = 20_000_000
+	if page > maxPage {
+		page = maxPage
+	}
 
-	//nolint:gosec // page >= 1 and pageSize <= 100 so multiplication cannot overflow int32
+	//nolint:gosec // 1 <= page <= maxPage and pageSize <= 100 keep the product below 2^31
 	offset := int32((page - 1) * pageSize)
 	//nolint:gosec // pageSize <= 100 fits in int32
 	limit := int32(pageSize)

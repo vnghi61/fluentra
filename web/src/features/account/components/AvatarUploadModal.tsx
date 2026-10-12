@@ -59,6 +59,12 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
 
     setSelectedFile(file);
     const url = URL.createObjectURL(file);
+    // createObjectURL only ever returns blob: URLs. Checking says so where the
+    // value reaches <img src>, and a value that is not one is never rendered.
+    if (!url.startsWith("blob:")) {
+      URL.revokeObjectURL(url);
+      return;
+    }
     setPreviewUrl(url);
   };
 

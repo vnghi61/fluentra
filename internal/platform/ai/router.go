@@ -163,7 +163,9 @@ func cacheVars(req Request) map[string]any {
 	if exclude == "" {
 		return req.Vars
 	}
-	vars := make(map[string]any, len(req.Vars)+1)
+	// No +1 for the exclusion: the map grows, and a sized sum is what CodeQL
+	// flags as an allocation that may overflow.
+	vars := make(map[string]any, len(req.Vars))
 	for k, v := range req.Vars {
 		vars[k] = v
 	}

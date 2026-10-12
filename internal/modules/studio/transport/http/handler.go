@@ -369,12 +369,12 @@ func (h *Handler) listCourseDrafts(w http.ResponseWriter, r *http.Request) {
 	limit := 20
 	offset := 0
 	if l := r.URL.Query().Get("limit"); l != "" {
-		if val, err := strconv.Atoi(l); err == nil {
+		if val, err := atoi32(l); err == nil {
 			limit = val
 		}
 	}
 	if o := r.URL.Query().Get("offset"); o != "" {
-		if val, err := strconv.Atoi(o); err == nil {
+		if val, err := atoi32(o); err == nil {
 			offset = val
 		}
 	}
@@ -519,12 +519,12 @@ func (h *Handler) listModerationQueue(w http.ResponseWriter, r *http.Request) {
 	limit := 20
 	offset := 0
 	if l := r.URL.Query().Get("limit"); l != "" {
-		if val, err := strconv.Atoi(l); err == nil {
+		if val, err := atoi32(l); err == nil {
 			limit = val
 		}
 	}
 	if o := r.URL.Query().Get("offset"); o != "" {
-		if val, err := strconv.Atoi(o); err == nil {
+		if val, err := atoi32(o); err == nil {
 			offset = val
 		}
 	}
@@ -712,13 +712,13 @@ func (h *Handler) listPurchases(w http.ResponseWriter, r *http.Request) {
 
 	limit := 20
 	if lStr := r.URL.Query().Get("limit"); lStr != "" {
-		if l, err := strconv.Atoi(lStr); err == nil && l > 0 {
+		if l, err := atoi32(lStr); err == nil && l > 0 {
 			limit = l
 		}
 	}
 	offset := 0
 	if oStr := r.URL.Query().Get("offset"); oStr != "" {
-		if o, err := strconv.Atoi(oStr); err == nil && o >= 0 {
+		if o, err := atoi32(oStr); err == nil && o >= 0 {
 			offset = o
 		}
 	}
@@ -1083,4 +1083,12 @@ func (h *Handler) reinstateCreator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, r, http.StatusOK, toCreatorModerationResponse(profile))
+}
+
+// atoi32 parses a query integer no wider than int32, the width the paging
+// queries take: a value strconv.Atoi accepts on a 64-bit build would otherwise
+// wrap when narrowed, and a huge page or offset would turn negative.
+func atoi32(s string) (int, error) {
+	n, err := strconv.ParseInt(s, 10, 32)
+	return int(n), err
 }

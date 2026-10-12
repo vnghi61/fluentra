@@ -147,11 +147,11 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 	page := 1
-	if p, err := strconv.Atoi(query.Get("page")); err == nil && p > 0 {
+	if p, err := atoi32(query.Get("page")); err == nil && p > 0 {
 		page = p
 	}
 	pageSize := 20
-	if ps, err := strconv.Atoi(query.Get("page_size")); err == nil && ps > 0 {
+	if ps, err := atoi32(query.Get("page_size")); err == nil && ps > 0 {
 		pageSize = ps
 	}
 
@@ -218,4 +218,12 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// atoi32 parses a query integer no wider than int32, the width the paging
+// queries take: a value strconv.Atoi accepts on a 64-bit build would otherwise
+// wrap when narrowed, and a huge page or offset would turn negative.
+func atoi32(s string) (int, error) {
+	n, err := strconv.ParseInt(s, 10, 32)
+	return int(n), err
 }
