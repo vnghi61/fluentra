@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Camera, Loader2, UploadCloud, AlertCircle } from "lucide-react";
 import { accountApi } from "../api/accountApi";
@@ -20,6 +20,53 @@ interface AvatarUploadModalProps {
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+/** The preview circle, in CSS pixels (h-36 w-36). */
+const PREVIEW_SIZE = 144;
+
+/**
+ * The chosen image, cropped to a square and drawn the way object-cover would.
+ *
+ * A canvas, not <img src={URL.createObjectURL(file)}>: the file comes from the
+ * page, and CodeQL (js/xss-through-dom) reads any string built from it and set
+ * as a URL as text reinterpreted as HTML. A decoded bitmap is not a string, so
+ * nothing derived from the file ever reaches an attribute.
+ */
+const AvatarPreview: React.FC<{ bitmap: ImageBitmap; label: string }> = ({
+  bitmap,
+  label,
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context) return;
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = PREVIEW_SIZE * ratio;
+    canvas.height = PREVIEW_SIZE * ratio;
+    const side = Math.min(bitmap.width, bitmap.height);
+    context.drawImage(
+      bitmap,
+      (bitmap.width - side) / 2,
+      (bitmap.height - side) / 2,
+      side,
+      side,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+  }, [bitmap]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      role="img"
+      aria-label={label}
+      className="h-full w-full"
+    />
+  );
+};
 
 export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
   isOpen,
@@ -28,10 +75,16 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [preview, setPreview] = useState<ImageBitmap | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Each choice gets a number, so a slow decode of an earlier file cannot
+  // replace the preview of a later one.
+  const decodeRef = useRef(0);
+
+  // A bitmap holds decoded pixels until closed: close the one being replaced.
+  useEffect(() => () => preview?.close(), [preview]);
 
   if (!isOpen) return null;
 
@@ -58,14 +111,18 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
     }
 
     setSelectedFile(file);
-    const url = URL.createObjectURL(file);
-    // createObjectURL only ever returns blob: URLs. Checking says so where the
-    // value reaches <img src>, and a value that is not one is never rendered.
-    if (!url.startsWith("blob:")) {
-      URL.revokeObjectURL(url);
-      return;
-    }
-    setPreviewUrl(url);
+    setPreview(null);
+    // No preview where the browser cannot decode one; the upload still works.
+    if (typeof createImageBitmap !== "function") return;
+    const decode = ++decodeRef.current;
+    createImageBitmap(file)
+      .then((bitmap) => {
+        if (decode === decodeRef.current) setPreview(bitmap);
+        else bitmap.close();
+      })
+      .catch(() => {
+        // Undecodable here (the server still validates it): no preview.
+      });
   };
 
   const handleUpload = async () => {
@@ -105,11 +162,9 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
   };
 
   const handleClose = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
+    decodeRef.current += 1;
     setSelectedFile(null);
-    setPreviewUrl(null);
+    setPreview(null);
     setError(null);
     onClose();
   };
@@ -144,12 +199,11 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
           )}
 
           <div className="flex flex-col items-center justify-center space-y-4">
-            {previewUrl ? (
+            {preview ? (
               <div className="relative h-36 w-36 overflow-hidden rounded-full border-4 border-primary/30 bg-surface-muted">
-                <img
-                  src={previewUrl}
-                  alt={t("account.avatarPreview", "Avatar preview")}
-                  className="h-full w-full object-cover"
+                <AvatarPreview
+                  bitmap={preview}
+                  label={t("account.avatarPreview", "Avatar preview")}
                 />
               </div>
             ) : (
@@ -181,7 +235,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
               >
-                {previewUrl
+                {selectedFile
                   ? t("account.chooseDifferentImage", "Choose different image")
                   : t("account.browseComputer", "Browse computer")}
               </Button>

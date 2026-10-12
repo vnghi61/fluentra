@@ -273,6 +273,74 @@ describe("Account Management Settings (P5.2)", () => {
         );
       });
     });
+
+    it("previews the chosen image as a decoded bitmap, the latest choice winning", async () => {
+      // The preview is drawn from createImageBitmap(file), never from a URL
+      // built out of the file (CodeQL js/xss-through-dom). jsdom has neither
+      // the decoder nor a 2D context, so both are stood in for.
+      const bitmaps: { close: ReturnType<typeof vi.fn> }[] = [];
+      let resolveFirst: ((bitmap: unknown) => void) | undefined;
+      vi.stubGlobal(
+        "createImageBitmap",
+        vi.fn(() => {
+          const bitmap = { width: 400, height: 200, close: vi.fn() };
+          bitmaps.push(bitmap);
+          // The first decode is slow and lands after the second one.
+          return bitmaps.length === 1
+            ? new Promise((resolve) => {
+                resolveFirst = () => resolve(bitmap);
+              })
+            : Promise.resolve(bitmap);
+        }),
+      );
+      const drawImage = vi.fn();
+      const getContext = vi
+        .spyOn(HTMLCanvasElement.prototype, "getContext")
+        .mockReturnValue({
+          drawImage,
+        } as unknown as CanvasRenderingContext2D);
+
+      render(
+        <AvatarUploadModal
+          isOpen={true}
+          onClose={() => {}}
+          onSuccess={vi.fn()}
+        />,
+      );
+      const fileInput = document.getElementById(
+        "avatar-file-input",
+      ) as HTMLInputElement;
+      const image = (name: string) =>
+        new File(["png"], name, { type: "image/png" });
+
+      fireEvent.change(fileInput, { target: { files: [image("first.png")] } });
+      fireEvent.change(fileInput, { target: { files: [image("second.png")] } });
+
+      expect(
+        await screen.findByRole("img", { name: /avatar preview/i }),
+      ).toBeInTheDocument();
+      expect(document.querySelector("img")).toBeNull();
+      // Cropped to the centre square of the 400x200 image.
+      expect(drawImage).toHaveBeenCalledWith(
+        bitmaps[1],
+        100,
+        0,
+        200,
+        200,
+        0,
+        0,
+        expect.any(Number),
+        expect.any(Number),
+      );
+
+      // The stale first decode arrives last: it is closed, not shown.
+      resolveFirst?.(bitmaps[0]);
+      await waitFor(() => expect(bitmaps[0]!.close).toHaveBeenCalled());
+      expect(drawImage).toHaveBeenCalledTimes(1);
+
+      getContext.mockRestore();
+      vi.unstubAllGlobals();
+    });
   });
 
   describe("PreferencesSettings", () => {

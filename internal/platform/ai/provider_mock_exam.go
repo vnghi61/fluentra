@@ -41,6 +41,19 @@ const (
 	maxMockOptions   = 26
 )
 
+// boundedCount clamps n to [0, limit]. n is read only where it is known to be
+// in range, so a size taken from prompt text cannot reach an allocation
+// unchecked (CodeQL go/uncontrolled-allocation-size).
+func boundedCount(n, limit int) int {
+	if n <= 0 {
+		return 0
+	}
+	if n <= limit {
+		return n
+	}
+	return limit
+}
+
 // mockExamFormat is what the mock reads from a part's format.
 type mockExamFormat struct {
 	questions int
@@ -180,14 +193,9 @@ func mockExamChoice(prompt, field string, count int) map[string]any {
 }
 
 func mockLetterOptions(count int) []map[string]string {
-	if count < 0 {
-		count = 0
-	}
-	if count > maxMockOptions {
-		count = maxMockOptions
-	}
-	options := make([]map[string]string, 0, count)
-	for i := 0; i < count; i++ {
+	size := boundedCount(count, maxMockOptions)
+	options := make([]map[string]string, 0, size)
+	for i := 0; i < size; i++ {
 		letter := string(rune('A' + i))
 		options = append(options, map[string]string{"id": letter, "text": "Choice " + letter})
 	}
@@ -198,14 +206,9 @@ func mockLetterOptions(count int) []map[string]string {
 // completion keyed "A" where the part is typed, a choice of the part's option
 // count otherwise.
 func mockExamQuestions(f mockExamFormat) []map[string]any {
-	if f.questions < 0 {
-		f.questions = 0
-	}
-	if f.questions > maxMockQuestions {
-		f.questions = maxMockQuestions
-	}
-	questions := make([]map[string]any, 0, f.questions)
-	for i := 1; i <= f.questions; i++ {
+	count := boundedCount(f.questions, maxMockQuestions)
+	questions := make([]map[string]any, 0, count)
+	for i := 1; i <= count; i++ {
 		kind := "multiple_choice"
 		if i-1 < len(f.types) {
 			kind = f.types[i-1]
