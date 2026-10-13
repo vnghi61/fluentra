@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -48,7 +48,12 @@ export function DashboardPage(): React.JSX.Element {
   // design; without them (or while they load, or if they fail) the continue
   // and today's-progress row takes that place so the page always opens on an
   // action. Waiting for the list avoids showing the row and then swapping it.
-  const showStarterRow = !banners.isPending && !hasSlides;
+  //
+  // A learner who has not started keeps the row under the slides: it is what
+  // tells them what to do ("Start Your English Journey", "Start your streak
+  // today"), where the compact tiles would show them a 0-day streak.
+  const notStarted = data?.state === "not_started";
+  const showStarterRow = !banners.isPending && (!hasSlides || notStarted);
 
   useEffect(() => {
     // If user has no learning profile yet, redirect to onboarding wizard (WO13 §8)
@@ -64,8 +69,14 @@ export function DashboardPage(): React.JSX.Element {
   // left on this page with an error for a dashboard they never had. Now they
   // land where the guard would have sent them, replacing this entry so Back
   // does not return to it.
+  //
+  // Only from `idle`: a learner who signs out, or whose session is revoked,
+  // goes from `authenticated` and is sent to /login by whoever ended it.
+  const previousStatus = useRef(status);
   useEffect(() => {
-    if (status === "unauthenticated") {
+    const was = previousStatus.current;
+    previousStatus.current = status;
+    if (was === "idle" && status === "unauthenticated") {
       void navigate({ to: "/learn", replace: true });
     }
   }, [status, navigate]);
@@ -114,7 +125,7 @@ export function DashboardPage(): React.JSX.Element {
             summary={gamificationData}
             className={cn(
               "xl:w-[420px] xl:shrink-0",
-              hasSlides ? "grid" : "hidden md:grid",
+              hasSlides && !notStarted ? "grid" : "hidden md:grid",
             )}
           />
         )}

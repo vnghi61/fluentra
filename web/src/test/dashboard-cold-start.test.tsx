@@ -98,4 +98,23 @@ describe("the dashboard while the session is unknown", () => {
     expect(router.state.location.pathname).toBe("/learn");
     expect(screen.queryByRole("alert")).toBeNull();
   });
+
+  it("leaves a learner who signs out to whoever sends them to /login", async () => {
+    useAuthStore.setState({
+      status: "authenticated",
+      user: { userId: "u1", role: "user" },
+    });
+    const router = await renderAt("/");
+
+    act(() => {
+      useAuthStore.setState({ status: "unauthenticated", user: null });
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    // Sending them to /learn here raced the sign-out's own navigation to
+    // /login, and won: E2E journeys 7-9 landed on the catalogue.
+    expect(router.state.location.pathname).toBe("/");
+  });
 });
