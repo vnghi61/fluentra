@@ -143,7 +143,8 @@ func (s *Service) CreateUser(ctx context.Context, newUser contract.NewUser) (uui
 		if _, createErr := repo.CreateProfile(ctx, profileID, userID, profile); createErr != nil {
 			return createErr
 		}
-		_, createErr := repo.CreatePreferences(ctx, preferencesID, userID)
+		_, createErr := repo.CreatePreferences(ctx, preferencesID, userID,
+			domain.RegistrationLocale(newUser.Locale))
 		return createErr
 	})
 	if err != nil {

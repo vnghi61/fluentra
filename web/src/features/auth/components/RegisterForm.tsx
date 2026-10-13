@@ -22,6 +22,7 @@ import {
   type RegisterFormData,
 } from "@/features/auth/model/schemas";
 import { ApiError } from "@/api/client";
+import { currentLocale } from "@/i18n";
 import { getErrorMessage } from "@/lib/errors/catalogue";
 
 export interface RegisterFormProps {
@@ -50,7 +51,7 @@ export function RegisterForm({
       email: "",
       display_name: "",
       password: "",
-      locale: "en",
+      locale: currentLocale(),
       timezone:
         typeof Intl !== "undefined"
           ? Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
@@ -65,7 +66,10 @@ export function RegisterForm({
         email: data.email,
         display_name: data.display_name,
         password: data.password,
-        locale: data.locale,
+        // The language on screen when they press the button, which may have
+        // been switched since the form opened: the account starts in it and
+        // the code arrives in it.
+        locale: currentLocale(),
         timezone: data.timezone,
       });
       // The server returns 201 Challenge for both fresh registrations and already-registered addresses (indistinguishable)

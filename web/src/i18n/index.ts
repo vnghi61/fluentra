@@ -9,7 +9,12 @@ import { initReactI18next } from "react-i18next";
 export const SUPPORTED_LOCALES = ["en", "vi"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
-export const DEFAULT_LOCALE: Locale = "en";
+/**
+ * Vietnamese until the learner chooses otherwise. Not the browser's language:
+ * a Vietnamese learner's browser is as often set to English, and the
+ * interface is meant to be read in Vietnamese.
+ */
+export const DEFAULT_LOCALE: Locale = "vi";
 
 const STORAGE_KEY = "fluentra.locale";
 
@@ -21,7 +26,7 @@ const STORAGE_KEY = "fluentra.locale";
  * Vietnamese reader downloaded the English one — around half the translation
  * payload wasted on every first visit. Only the locale being read is fetched.
  *
- * `fallbackLng` stays English while English may not be loaded. That is safe
+ * `fallbackLng` is the default locale, which may not be loaded. That is safe
  * only because `i18n-keys.test.ts` asserts the two bundles carry exactly the
  * same keys, so the fallback has nothing left to resolve; if that test is ever
  * relaxed, this has to load English alongside.
@@ -51,16 +56,15 @@ export function isLocale(value: string | null | undefined): value is Locale {
   );
 }
 
-/** Stored choice first, then the browser's preference, then English. */
+/** The stored choice, or Vietnamese. */
 export function detectLocale(): Locale {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (isLocale(stored)) return stored;
   } catch {
-    // Private mode denies localStorage; fall through to the browser language.
+    // Private mode denies localStorage; fall through to the default.
   }
-  const browser = navigator.language.split("-")[0];
-  return isLocale(browser) ? browser : DEFAULT_LOCALE;
+  return DEFAULT_LOCALE;
 }
 
 /** The locale i18next is actually running in, not the one on <html lang>. */

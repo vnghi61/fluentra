@@ -201,8 +201,12 @@ func (r *Repository) GetPreferences(ctx context.Context, userID uuid.UUID) (doma
 }
 
 // CreatePreferences inserts the settings record with the column defaults.
-func (r *Repository) CreatePreferences(ctx context.Context, id, userID uuid.UUID) (domain.Preferences, error) {
-	row, err := r.queries.CreateUserPreferences(ctx, sqlcuser.CreateUserPreferencesParams{ID: id, UserID: userID})
+func (r *Repository) CreatePreferences(
+	ctx context.Context, id, userID uuid.UUID, locale string,
+) (domain.Preferences, error) {
+	row, err := r.queries.CreateUserPreferences(ctx, sqlcuser.CreateUserPreferencesParams{
+		ID: id, UserID: userID, Locale: locale,
+	})
 	if err != nil {
 		return domain.Preferences{}, fmt.Errorf("create user preferences: %w", err)
 	}

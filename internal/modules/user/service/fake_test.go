@@ -202,7 +202,9 @@ func (f *fakeRepo) GetPreferences(_ context.Context, userID uuid.UUID) (domain.P
 	return preferences, nil
 }
 
-func (f *fakeRepo) CreatePreferences(_ context.Context, id, userID uuid.UUID) (domain.Preferences, error) {
+func (f *fakeRepo) CreatePreferences(
+	_ context.Context, id, userID uuid.UUID, locale string,
+) (domain.Preferences, error) {
 	if err := f.record("CreatePreferences"); err != nil {
 		return domain.Preferences{}, err
 	}
@@ -211,7 +213,7 @@ func (f *fakeRepo) CreatePreferences(_ context.Context, id, userID uuid.UUID) (d
 	preferences := domain.Preferences{
 		ID:                   id,
 		UserID:               userID,
-		Locale:               domain.DefaultLocale,
+		Locale:               locale,
 		Theme:                domain.ThemeSystem,
 		DailyGoalMinutes:     15,
 		NotificationChannels: []domain.Channel{domain.ChannelInApp, domain.ChannelEmail},

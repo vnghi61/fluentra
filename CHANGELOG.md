@@ -11,6 +11,31 @@ generated text describes commits; release notes should describe change.
 
 ## [Unreleased]
 
+### Changed — Vietnamese by default
+
+- **The interface starts in Vietnamese.** Until a learner picks a language the
+  web app is in Vietnamese, whatever the browser's language. A stored choice
+  still wins.
+- **A new account keeps the language it registered in.** Registration sent a
+  hard-coded `en` and the server ignored it for the account, whose `locale`
+  preference took the column default `en`, so a learner who signed up in
+  Vietnamese was switched to English on their first sign-in. The form now
+  sends the language on screen, the account starts in it, and the column
+  default and `RegisterRequest.locale` default are `vi`. Existing accounts
+  keep their setting.
+
+### Fixed — mobile navigation and home slides
+
+- **Tapping More again jumped to another tab.** On the More screen it closed
+  the screen, uncovering the page beneath, and the highlight moved to that
+  page's tab. More now stays put, as every tab does when tapped again; on a
+  page the More menu leads to, it still stays on that page.
+- **Slides.** On a phone the carousel has no previous/next buttons: it
+  rotates by itself and follows a swipe. On a wide screen the buttons are
+  small and transparent, brighter on hover. The Pause button is gone; the
+  carousel still holds while hovered, focused, dragged or in a hidden tab,
+  and never rotates under reduced motion.
+
 ### Added — operations
 
 - **Seeding production from GitHub.** The `seed-production` workflow

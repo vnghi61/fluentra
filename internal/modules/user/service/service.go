@@ -42,7 +42,7 @@ type Repository interface {
 	DeleteAvatarAssetsByAssetID(ctx context.Context, assetID uuid.UUID) error
 
 	GetPreferences(ctx context.Context, userID uuid.UUID) (domain.Preferences, error)
-	CreatePreferences(ctx context.Context, id, userID uuid.UUID) (domain.Preferences, error)
+	CreatePreferences(ctx context.Context, id, userID uuid.UUID, locale string) (domain.Preferences, error)
 	ReplacePreferences(ctx context.Context, preferences domain.Preferences) (domain.Preferences, error)
 
 	GetLearningProfile(ctx context.Context, userID uuid.UUID) (domain.LearningProfile, error)

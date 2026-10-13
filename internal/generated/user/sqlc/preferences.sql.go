@@ -13,8 +13,8 @@ import (
 )
 
 const createUserPreferences = `-- name: CreateUserPreferences :one
-INSERT INTO core.user_preferences (id, user_id)
-VALUES ($1, $2)
+INSERT INTO core.user_preferences (id, user_id, locale)
+VALUES ($1, $2, $3)
 RETURNING id, user_id, locale, theme, daily_goal_minutes, notification_channels,
           quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at, practice_level
 `
@@ -22,12 +22,14 @@ RETURNING id, user_id, locale, theme, daily_goal_minutes, notification_channels,
 type CreateUserPreferencesParams struct {
 	ID     uuid.UUID
 	UserID uuid.UUID
+	Locale string
 }
 
-// Registration writes this row with the column defaults, so a user always has
-// preferences and every read is a plain SELECT rather than a nullable join.
+// Registration writes this row, so a user always has preferences and every
+// read is a plain SELECT rather than a nullable join. The locale is the one
+// the person registered in; the rest are the column defaults.
 func (q *Queries) CreateUserPreferences(ctx context.Context, arg CreateUserPreferencesParams) (CoreUserPreference, error) {
-	row := q.db.QueryRow(ctx, createUserPreferences, arg.ID, arg.UserID)
+	row := q.db.QueryRow(ctx, createUserPreferences, arg.ID, arg.UserID, arg.Locale)
 	var i CoreUserPreference
 	err := row.Scan(
 		&i.ID,

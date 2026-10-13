@@ -59,6 +59,19 @@ export default defineConfig({
     trace: "retain-on-failure",
     video: "retain-on-failure",
     screenshot: "only-on-failure",
+    // The journeys read the English copy. The interface defaults to
+    // Vietnamese, so every context starts with English chosen, as a learner
+    // who picked it would: the pages render in it and registration sends it,
+    // so the new account's preference is English too.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: E2E_ORIGIN,
+          localStorage: [{ name: "fluentra.locale", value: "en" }],
+        },
+      ],
+    },
   },
   projects: [
     {

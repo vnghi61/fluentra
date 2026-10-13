@@ -172,7 +172,7 @@ func seedAccount(ctx context.Context, t *testing.T, repo *repository.Repository,
 	if _, err := repo.CreateProfile(ctx, newID(ctx, t), userID, profile); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
-	if _, err := repo.CreatePreferences(ctx, newID(ctx, t), userID); err != nil {
+	if _, err := repo.CreatePreferences(ctx, newID(ctx, t), userID, domain.DefaultLocale); err != nil {
 		t.Fatalf("CreatePreferences: %v", err)
 	}
 	return userID
