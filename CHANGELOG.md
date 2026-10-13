@@ -11,6 +11,51 @@ generated text describes commits; release notes should describe change.
 
 ## [Unreleased]
 
+### Added — operations
+
+- **Seeding production from GitHub.** The `seed-production` workflow
+  (`workflow_dispatch`, environment `seed-production`, typed confirmation)
+  migrates, seeds the reference catalogue, promotes `SEED_ADMIN_EMAIL` (an
+  active, verified account) to admin and then starts `tts-render`.
+- **A guard against the wrong database.** `cmd/seed`, `cmd/migrate`, `cmd/tts`
+  and `cmd/media` refuse a non-local DSN unless `APP_ENV` is `production` or
+  `staging`, or `-allow-remote-db` / `MIGRATE_ALLOW_REMOTE_DB` is set. A local
+  `.env` pointed at a hosted database no longer gets migrated by accident.
+- **Faster seed.** Vocabulary seeds over 8 connections (`-concurrency`),
+  partitioned by slug. Exam authoring stays on one worker: in parallel its
+  SERIALIZABLE transactions kept failing even with retries.
+- **Ops alerts.** `tts-render`, `media-render` and `seed-production` open (or
+  comment on) one `ops-alert` issue when they fail and close it when they
+  recover. `tts-render` writes its rendered / cached / failed / remaining
+  counts to the job summary.
+- **One E2E stack script.** `scripts/e2e-stack.sh` (`make e2e-stack`) brings up
+  the stack the E2E job uses, with Mailpit, the AI mock and no outbound
+  dispatch, locally and in CI alike.
+- **Home slides.** Three promo slides (Learn, My words, Exams), seeded with
+  their images to object storage in every environment (`-banners`). The
+  artwork's source is `tools/banners/`; the illustrations are Microsoft Fluent
+  Emoji (MIT).
+- **Import a word list.** "My words" takes a CSV, TSV or Anki export as well as
+  pasted text. More than 300 words are added in batches of 300; the rest stay
+  in the box for the next one.
+
+### Fixed — learner shell
+
+- **The phone's bottom bar jumped.** A guest who tapped Dashboard was
+  redirected to Learn, and the highlight moved to the next icon. Guests no
+  longer see a Dashboard entry; the brand links to Learn for them.
+- **A guest stuck on the dashboard after a cold start.** When the boot refresh
+  outlived its budget, a guest was left on the dashboard's error card. When the
+  session turns out to be anonymous they are now sent to Learn.
+- **"Rate limited".** A 429 read as the server's English title. Too many
+  sign-ins now say so in the learner's language, with how many minutes to wait
+  from `Retry-After`; locked accounts and OTP limits do the same.
+- **Error screens.** A page that cannot load its data no longer prints the
+  API's words ("Authentication required", "Internal Server Error"). It shows
+  the stopped orbit mark from the waking screen with a plain message, retries
+  by itself every 10 seconds when the server is busy (or on reconnect when
+  offline), offers a way on to Learn and shows the request ID for support.
+
 ### Fixed — "My words" uploads
 
 - **Every known word failed.** The database-first lookup named
@@ -24,6 +69,18 @@ generated text describes commits; release notes should describe change.
   Re-seeding a database whose exam fixtures had changed under the same slug
   failed on `questions_content_item_id_key`: the bank row is now found by its
   content item as well as by fingerprint.
+
+### Fixed — listening audio (`tts-render`)
+
+- **A full catalogue never finished rendering.** `cmd/tts -all` rendered while
+  iterating an open cursor over every listening item. On a freshly seeded
+  production catalogue the cursor stayed open for twenty minutes and the
+  pooler closed the connection under it, so the run died on a bare
+  `unexpected EOF` after 207 clips. Items are now read first, and the cursor
+  is closed before anything renders.
+- **The job outgrew its timeout.** About 6 s a clip against a 30-minute job.
+  `-budget 22m` stops starting new clips in time, ends green and reports what
+  is left; the cache skips finished clips, so the next run carries on.
 
 ### Fixed — CI
 

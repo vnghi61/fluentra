@@ -356,6 +356,16 @@ export const AppShell: React.FC<AppShellProps> = ({
 }) => {
   const { t } = useTranslation();
   const signedIn = status === "authenticated";
+  // A known visitor has no dashboard: "/" sends them to /learn (ADR-0025). A
+  // Dashboard tab for them lit up, redirected, and the highlight jumped to
+  // Learn beside it, which read as tapping one tab and getting the next. While
+  // the session is still unknown (`idle`, a cold host) the tab stays, so a
+  // returning learner's bar does not change under them.
+  const guest = status === "unauthenticated";
+  const homePath = guest ? "/learn" : "/";
+  const navItems = guest
+    ? destinations.filter(({ to }) => to !== "/")
+    : destinations;
 
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -548,7 +558,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               >
                 <NavTooltip label="Fluentra">
                   <Link
-                    to="/"
+                    to={homePath}
                     className={cn(
                       "flex items-center gap-2 px-1 min-h-[44px]",
                       collapsed && "justify-center px-0",
@@ -612,7 +622,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                   depsKey={pathname}
                   layoutKey={collapsed}
                 />
-                {destinations.map(({ to, labelKey, fallback, Icon, exact }) => {
+                {navItems.map(({ to, labelKey, fallback, Icon, exact }) => {
                   const label = t(labelKey, fallback);
                   return (
                     <NavTooltip key={to} label={label}>
@@ -708,7 +718,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               on a page reached from More, a way back takes its place. */}
             {mobileBack ?? (
               <Link
-                to="/"
+                to={homePath}
                 className="flex items-center gap-2 min-h-[44px] md:hidden"
               >
                 <BrandMark className="h-6 w-6 shrink-0 text-brand" />
@@ -768,12 +778,14 @@ export const AppShell: React.FC<AppShellProps> = ({
             ref={bottomTabsRef}
             className="relative flex h-16 items-stretch justify-around"
           >
-            <BottomNavLink
-              to="/"
-              active={isDashboardActive}
-              icon={LayoutDashboard}
-              label={t("nav.dashboard", "Dashboard")}
-            />
+            {!guest && (
+              <BottomNavLink
+                to="/"
+                active={isDashboardActive}
+                icon={LayoutDashboard}
+                label={t("nav.dashboard", "Dashboard")}
+              />
+            )}
             <BottomNavLink
               to="/learn"
               active={isLearnActive}

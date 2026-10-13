@@ -48,7 +48,7 @@ export function ForgotPasswordForm({
       onChallengeIssued(challenge, data.email);
     } catch (err) {
       if (err instanceof ApiError) {
-        setServerError(getErrorMessage(err.problem));
+        setServerError(getErrorMessage(err.problem, t));
       } else {
         setServerError(
           t(

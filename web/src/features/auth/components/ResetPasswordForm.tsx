@@ -61,7 +61,7 @@ export function ResetPasswordForm({
       onSuccess?.(result);
     } catch (err) {
       if (err instanceof ApiError) {
-        setServerError(getErrorMessage(err.problem));
+        setServerError(getErrorMessage(err.problem, t));
       } else {
         setServerError(
           t(

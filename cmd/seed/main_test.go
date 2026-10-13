@@ -33,6 +33,32 @@ func TestRun_RefusesProduction(t *testing.T) {
 	}
 }
 
+// TestRun_RefusesARemoteDatabaseUnderALocalName is the mismatch that happened:
+// .env said APP_ENV=local while DB_DSN pointed at production, so the guard
+// above, which trusts the name, would have let the demo accounts through. The
+// host is unresolvable on purpose: refusing must come before connecting.
+func TestRun_RefusesARemoteDatabaseUnderALocalName(t *testing.T) {
+	t.Setenv("APP_ENV", "local")
+	t.Setenv("DB_DSN", "postgres://nobody@db.invalid:5432/nothing?sslmode=disable")
+
+	err := run(context.Background(), io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "db.invalid") {
+		t.Fatalf("run() = %v, want a refusal naming the remote host", err)
+	}
+}
+
+func TestRun_AdminEmailNeedsReference(t *testing.T) {
+	adminEmail = "owner@example.test"
+	t.Cleanup(func() { adminEmail = "" })
+	t.Setenv("APP_ENV", "local")
+	t.Setenv("DB_DSN", "postgres://nobody@127.0.0.1:1/nothing?sslmode=disable")
+
+	err := run(context.Background(), io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "-reference") {
+		t.Fatalf("run() = %v, want -admin-email refused without -reference", err)
+	}
+}
+
 func TestRun_CoursesOnlyRefusesProduction(t *testing.T) {
 	foundationCoursesOnly = true
 	t.Cleanup(func() { foundationCoursesOnly = false })

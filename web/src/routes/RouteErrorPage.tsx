@@ -1,13 +1,10 @@
 import * as React from "react";
-import { Link, useRouter } from "@tanstack/react-router";
-import { RefreshCw, WifiOff } from "lucide-react";
+import { useRouter } from "@tanstack/react-router";
+import { RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError } from "@/api/client";
-import {
-  SystemStatePage,
-  systemStateActionClass,
-} from "@/components/layout/SystemStatePage";
+import { describeLoadError } from "@/api/loadError";
+import { ServerErrorState } from "@/components/layout/ServerErrorState";
 import { Button } from "@/components/ui/button";
 import { tracer } from "@/lib/telemetry";
 
@@ -64,9 +61,9 @@ export function RouteErrorPage({
 
   const kind = classifyError(error);
 
-  const handleRetry = () => {
+  const handleRetry = async () => {
     reset();
-    void router.invalidate();
+    await router.invalidate();
   };
 
   const handleReload = () => {
@@ -75,15 +72,11 @@ export function RouteErrorPage({
     }
   };
 
-  const problem = error instanceof ApiError ? error.problem : undefined;
-  const requestId = problem
-    ? ((problem as unknown as Record<string, unknown>).request_id as
-        string | undefined)
-    : undefined;
+  const { kind: loadKind, requestId } = describeLoadError(error);
 
   return (
     <div
-      role="alert"
+      role={kind === "chunk" ? "alert" : undefined}
       className="flex min-h-[60vh] w-full flex-col items-center justify-center overflow-x-hidden px-4 py-12 text-center"
     >
       {kind === "chunk" && (
@@ -108,59 +101,16 @@ export function RouteErrorPage({
         </div>
       )}
 
-      {kind === "offline" && (
-        <div className="flex max-w-md flex-col items-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-warning/10 text-warning-accent">
-            <WifiOff className="h-7 w-7" aria-hidden="true" />
-          </div>
-          <h1 className="mt-5 text-2xl font-bold leading-tight tracking-tight text-text md:text-3xl">
-            {t("routeError.offlineTitle", "You are offline")}
-          </h1>
-          <p className="mt-2 text-base leading-relaxed text-text-muted">
-            {t(
-              "routeError.offlineDescription",
-              "Check your internet connection and try again.",
-            )}
-          </p>
-          <div className="mt-6 flex items-center gap-3">
-            <Button variant="outline" onClick={handleRetry}>
-              {t("app.tryAgain", "Try again")}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {kind === "generic" && (
-        <SystemStatePage
-          variant="500"
-          actions={
-            <>
-              <button
-                type="button"
-                onClick={handleRetry}
-                className={`${systemStateActionClass} bg-primary text-primary-fg hover:bg-primary-hover`}
-              >
-                {t("systemState.retry", "Try again")}
-              </button>
-              <Link
-                to="/"
-                className={`${systemStateActionClass} border border-border bg-transparent text-text hover:bg-surface-muted`}
-              >
-                {t("systemState.home", "Back to home")}
-              </Link>
-            </>
-          }
-        >
-          {/* The request id is what support needs; the raw error is not for learners. */}
-          {typeof requestId === "string" && requestId && (
-            <p className="mt-6 text-xs text-text-muted">
-              {t("routeError.requestId", "Request ID")}:{" "}
-              <code className="rounded bg-surface-muted px-1.5 py-0.5 font-mono select-all">
-                {requestId}
-              </code>
-            </p>
-          )}
-        </SystemStatePage>
+      {/* Offline and every other failure share the error screen the waking
+          screen leads into; the raw error is not for learners, the request id
+          is what support needs. */}
+      {kind !== "chunk" && (
+        <ServerErrorState
+          kind={loadKind}
+          requestId={requestId}
+          onRetry={handleRetry}
+          className="min-h-0 py-0"
+        />
       )}
     </div>
   );

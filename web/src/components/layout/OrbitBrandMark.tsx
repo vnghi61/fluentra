@@ -5,6 +5,12 @@ import { BrandMark } from "./BrandMark";
 export interface OrbitBrandMarkProps {
   size: "sm" | "md" | "lg";
   animated?: boolean;
+  /**
+   * Something went wrong: the orbit stops and one amber body on the outer ring
+   * pulses, so the error screen reads as the waking screen's sibling without
+   * looking like it is still loading.
+   */
+  alert?: boolean;
 }
 
 const sizeClasses: Record<OrbitBrandMarkProps["size"], string> = {
@@ -17,19 +23,21 @@ const sizeClasses: Record<OrbitBrandMarkProps["size"], string> = {
 export function OrbitBrandMark({
   size,
   animated = true,
+  alert = false,
 }: OrbitBrandMarkProps): React.JSX.Element {
-  const motionClasses = animated
-    ? [
-        "motion-safe:animate-orbit-slow",
-        "motion-safe:animate-orbit-slower",
-        "motion-safe:animate-orbit-reverse",
-      ]
-    : [];
+  const motionClasses =
+    animated && !alert
+      ? [
+          "motion-safe:animate-orbit-slow",
+          "motion-safe:animate-orbit-slower",
+          "motion-safe:animate-orbit-reverse",
+        ]
+      : [];
 
   return (
     <div
       data-testid="orbit-brand-mark"
-      data-animated={animated ? "true" : "false"}
+      data-animated={animated && !alert ? "true" : "false"}
       className={`relative flex ${sizeClasses[size]} items-center justify-center rounded-full bg-[radial-gradient(circle,rgba(37,99,235,0.08),transparent_68%)] dark:drop-shadow-[0_0_18px_rgba(96,165,250,0.12)]`}
     >
       <svg
@@ -50,12 +58,22 @@ export function OrbitBrandMark({
             className="stroke-primary/25"
             strokeWidth="1.5"
           />
-          <circle
-            cx="188"
-            cy="100"
-            r="3"
-            className="fill-primary/60 dark:fill-primary"
-          />
+          {alert ? (
+            <circle
+              data-testid="orbit-alert"
+              cx="188"
+              cy="100"
+              r="5"
+              className="fill-warning motion-safe:animate-pulse"
+            />
+          ) : (
+            <circle
+              cx="188"
+              cy="100"
+              r="3"
+              className="fill-primary/60 dark:fill-primary"
+            />
+          )}
         </g>
         <g
           className={motionClasses[1]}

@@ -85,7 +85,7 @@ export function OtpVerificationScreen({
       onSuccess(verified);
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(getErrorMessage(err.problem));
+        setError(getErrorMessage(err.problem, t));
 
         // Read server attempts_remaining if present in problem meta
         const serverAttempts =
@@ -164,7 +164,7 @@ export function OtpVerificationScreen({
       setSecondsUntilResend(newResend);
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(getErrorMessage(err.problem));
+        setError(getErrorMessage(err.problem, t));
       } else {
         setError(
           t(

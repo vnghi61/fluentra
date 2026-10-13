@@ -4,7 +4,6 @@ import {
   createRoute,
   createRouter,
   lazyRouteComponent,
-  Link,
   Outlet,
   redirect,
   useNavigate,
@@ -12,16 +11,12 @@ import {
   useRouterState,
   type AnyRoute,
 } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
 
 import { AppShell, MotivationCard } from "@/components/layout/AppShell";
 import { MinimalHeader } from "@/components/layout/MinimalHeader";
 import { RouteLoading } from "@/components/layout/RouteLoading";
+import { ServerErrorState } from "@/components/layout/ServerErrorState";
 import { ServerWakingState } from "@/components/layout/ServerWakingState";
-import {
-  SystemStatePage,
-  systemStateActionClass,
-} from "@/components/layout/SystemStatePage";
 import { SLOW_REQUEST_MS, wakeUp } from "@/api/wake";
 import { useDelayedFlag } from "@/hooks/useDelayedFlag";
 import { useWakeStatus } from "@/hooks/useWakeStatus";
@@ -245,7 +240,6 @@ const AdminSidebarNav = React.lazy(() =>
 );
 
 function RootApp(): React.JSX.Element {
-  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const status = useAuthStore((s) => s.status);
   const navigate = useNavigate();
@@ -297,32 +291,42 @@ function RootApp(): React.JSX.Element {
     if (await wakeUp()) await router.invalidate();
   };
 
+  // The route guards decide on `status` when a route loads, and `idle` (the
+  // boot refresh still in flight, as it is for a cold host's first minute)
+  // lets every page through. When that refresh finally fails, the guards have
+  // to run again, or a visitor stays on a signed-in page they were let into
+  // while nobody knew: the dashboard sends them to /learn, the rest to /login.
+  const previousStatus = React.useRef(status);
+  React.useEffect(() => {
+    const was = previousStatus.current;
+    previousStatus.current = status;
+    if (was === "idle" && status === "unauthenticated") {
+      void router.invalidate();
+    }
+  }, [status, router]);
+
+  // The waking screen gave up: the same orbit, stopped, and a wake retried on
+  // a timer the learner can see, as on every page that could not load. A
+  // retry sets the status back to `waking`; the screen stays (its button
+  // reads "Trying again…") until the host answers, rather than going back to
+  // "Starting the server…" for another wake budget each time.
+  const [gaveUp, setGaveUp] = React.useState(false);
+  if (wake === "unreachable" && !gaveUp) setGaveUp(true);
+  if (wake === "awake" && gaveUp) setGaveUp(false);
+
   if (notFound) {
     return standalone(<Outlet />);
   }
 
-  if (wake === "unreachable") {
+  if (gaveUp) {
     return standalone(
-      <SystemStatePage
-        variant="server-unavailable"
-        actions={
-          <>
-            <button
-              type="button"
-              onClick={() => void retryWake()}
-              className={`${systemStateActionClass} bg-primary text-primary-fg hover:bg-primary-hover`}
-            >
-              {t("systemState.retry", "Try again")}
-            </button>
-            <Link
-              to="/"
-              onClick={() => void wakeUp()}
-              className={`${systemStateActionClass} border border-border bg-transparent text-text hover:bg-surface-muted`}
-            >
-              {t("systemState.home", "Back to home")}
-            </Link>
-          </>
+      <ServerErrorState
+        kind={
+          typeof navigator !== "undefined" && navigator.onLine === false
+            ? "offline"
+            : "server"
         }
+        onRetry={retryWake}
       />,
     );
   }

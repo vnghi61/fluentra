@@ -115,63 +115,15 @@ jobs:
         working-directory: .
         run: make dev-infra
 
+      # The same script a developer runs locally (`make e2e-stack`), so the two
+      # stacks cannot drift. It migrates, seeds the curriculum the learning
+      # journeys drive, builds and starts the API (:8080) and the worker
+      # (:8081, which delivers OTP mail to Mailpit), and points every outside
+      # service at a local stand-in. The API runs on the host rather than in
+      # compose so it uses the Go build cache above.
       - name: Apply migrations, seed the curriculum, and start the API and the worker
         working-directory: .
-        env:
-          # These match deploy/compose/compose.dev.yaml. The API runs on the
-          # host rather than in compose so it uses the Go build cache above
-          # instead of rebuilding the hot-reload image on every run.
-          DB_DSN: postgres://fluentra:fluentra@127.0.0.1:5432/fluentra?sslmode=disable
-          REDIS_URL: redis://127.0.0.1:6379/0
-          SMTP_HOST: 127.0.0.1
-          SMTP_PORT: '1025'
-          # Mailpit does not offer AUTH. A non-empty username makes the mailer
-          # try PlainAuth anyway and every OTP mail dead-letters.
-          SMTP_USERNAME: ''
-          SMTP_PASSWORD: ''
-          S3_ENDPOINT: http://127.0.0.1:9000
-          S3_ACCESS_KEY: minioadmin
-          S3_SECRET_KEY: minioadmin
-          CORS_ALLOWED_ORIGINS: http://localhost:5173
-          # Ten journeys across four device projects all register from the
-          # runner's single IP. The shipped cap of 20/hour refuses the back half
-          # of the matrix, which fails as a timeout somewhere unrelated.
-          OTP_ISSUE_PER_IP_PER_HOUR: '500'
-          # RATE_LIMIT_AUTH_PER_MIN ships at 5; the suite signs in far more
-          # often than that from the runner's single address.
-          RATE_LIMIT_AUTH_PER_MIN: '500'
-          RATE_LIMIT_ANON_PER_MIN: '2000'
-        run: |
-          export OTP_HMAC_KEY="$(openssl rand -hex 32)"
-          export JWT_SIGNING_KEY="$(openssl rand -hex 32)"
-          go run ./cmd/migrate up
-
-          # The Phase 2 journeys drive the seeded curriculum: `/learn` has to show
-          # "Everyday English: A2-B1 Foundations" and a "Start Lesson" link, and
-          # the review queue only fills once a vocabulary activity has been
-          # completed against a real lesson. Migrating alone leaves an empty
-          # database, so those journeys look for a course nobody authored and
-          # fail as "element(s) not found" fifteen seconds later.
-          go run ./cmd/seed
-
-          # Built, not `go run`: a backgrounded `go run` is a parent whose child
-          # is the actual server, so the pid this step leaves behind is not the
-          # process the next step depends on.
-          go build -o ./bin/api ./cmd/api
-          go build -o ./bin/worker ./cmd/worker
-
-          HTTP_PORT=8080 ./bin/api > api.log 2>&1 &
-          # The worker is what turns an outbox row into an email in Mailpit.
-          # Without it, registration writes the challenge and nothing delivers
-          # the code, and every OTP journey times out — which is exactly the
-          # "passing against nothing" failure this stack exists to prevent.
-          HTTP_PORT=8081 ./bin/worker > worker.log 2>&1 &
-
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:8080/ready; then echo "API is ready"; exit 0; fi
-            sleep 1
-          done
-          echo "API never became ready"; cat api.log; exit 1
+        run: bash scripts/e2e-stack.sh start
 
       - name: Set up pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10

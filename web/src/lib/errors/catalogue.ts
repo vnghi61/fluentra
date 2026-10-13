@@ -6,11 +6,17 @@ export interface ProblemDetails {
   detail?: string | undefined;
   instance?: string | undefined;
   code?: string | undefined;
+  /** Set by the API on every problem; what support looks a request up by. */
+  request_id?: string | undefined;
   errors?: Record<string, string[]> | undefined;
   meta?: Record<string, unknown> | undefined;
 }
 
 export const ERROR_MESSAGES: Record<string, string> = {
+  // The rate limiter (internal/shared/httpx/ratelimit.go), for any endpoint.
+  RATE_LIMITED:
+    "You have tried too many times in a short while. Please wait a few minutes and try again.",
+
   // Session & token lifecycle
   SESSION_ABSOLUTE_EXPIRED:
     "Your session reached its maximum lifetime. Please sign in again to continue learning.",
@@ -88,16 +94,67 @@ export const ERROR_MESSAGES: Record<string, string> = {
     "This action is not available while your account is in its current state.",
 };
 
-export function getErrorMessage(problem: ProblemDetails): string {
-  if (problem.code) {
-    const msg = ERROR_MESSAGES[problem.code];
-    if (msg) {
-      return msg;
+/**
+ * The i18next `t` a caller passes in: lib may not import i18n (eslint
+ * boundaries), so the screen that shows the message lends its translator.
+ */
+export type Translate = (
+  key: string,
+  options: { count?: number | undefined; defaultValue: string },
+) => string;
+
+/** How long the server asked the caller to wait, in whole minutes (at least 1). */
+export function retryAfterMinutes(problem: ProblemDetails): number | undefined {
+  const seconds = Number(problem.meta?.["retry_after_seconds"]);
+  return Number.isFinite(seconds) && seconds > 0
+    ? Math.max(1, Math.ceil(seconds / 60))
+    : undefined;
+}
+
+/**
+ * The message a learner reads for a refused request, in their language.
+ *
+ * A 429 without a catalogued code is the rate limiter's (RATE_LIMITED): it
+ * used to fall through to the RFC 9457 title, so a learner who signed in too
+ * often read "Rate limited" in English and was not told for how long.
+ */
+export function getErrorMessage(
+  problem: ProblemDetails,
+  t?: Translate,
+): string {
+  const code =
+    problem.code ?? (problem.status === 429 ? "RATE_LIMITED" : undefined);
+  if (code) {
+    const minutes = retryAfterMinutes(problem);
+    const fallback = ERROR_MESSAGES[code];
+    if (fallback) {
+      const timed = minutes !== undefined && TIMED_CODES.has(code);
+      const key = timed ? `errors.${code}_timed` : `errors.${code}`;
+      const english = timed ? (TIMED_MESSAGES[code] ?? fallback) : fallback;
+      return t
+        ? t(key, { count: minutes, defaultValue: english })
+        : english.replace("{{count}}", String(minutes));
     }
     console.warn(
-      `[ErrorCatalogue] Uncatalogued error code received: "${problem.code}". Falling back to title.`,
+      `[ErrorCatalogue] Uncatalogued error code received: "${code}". Falling back to title.`,
     );
   }
 
   return problem.title || "An unexpected error occurred. Please try again.";
 }
+
+/** Codes whose refusal is temporary and comes with a Retry-After. */
+const TIMED_CODES = new Set([
+  "RATE_LIMITED",
+  "ACCOUNT_LOCKED",
+  "OTP_ISSUE_LIMIT_REACHED",
+]);
+
+const TIMED_MESSAGES: Record<string, string> = {
+  RATE_LIMITED:
+    "You have tried too many times. Please wait {{count}} minute(s) and try again.",
+  ACCOUNT_LOCKED:
+    "Too many failed sign-in attempts. Your account is locked for {{count}} minute(s); please try again then.",
+  OTP_ISSUE_LIMIT_REACHED:
+    "Too many codes have been requested from here. Please wait {{count}} minute(s) and try again.",
+};

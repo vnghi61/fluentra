@@ -70,18 +70,38 @@ func seedExamFixtures(
 	for _, file := range files {
 		// Per file: the line printed below is one exam version's.
 		published, drafted, questions := 0, 0, 0
-		for _, item := range file.Items {
-			versionID, itemPublished, err := authorExamItem(ctx, pool, doors, adminID, item)
-			if err != nil {
-				return fmt.Errorf("author %s: %w", item.Slug, err)
-			}
-			if !itemPublished {
+
+		// Authoring is most of the round trips and is keyed by the item's slug,
+		// so it runs concurrently. The bank step stays in order: two items can
+		// share a fingerprint, and its lookup-then-create must see the first.
+		type authored struct {
+			versionID uuid.UUID
+			published bool
+		}
+		results := make([]authored, len(file.Items))
+		if err := forEachPartitioned(ctx, min(seedConcurrency, maxAuthoringWorkers), file.Items,
+			func(item examfixture.ExamItem) string { return item.Slug },
+			func(ctx context.Context, i int, item examfixture.ExamItem) error {
+				return withSerializationRetry(ctx, func() error {
+					versionID, itemPublished, err := authorExamItem(ctx, pool, doors, adminID, item)
+					if err != nil {
+						return fmt.Errorf("author %s: %w", item.Slug, err)
+					}
+					results[i] = authored{versionID: versionID, published: itemPublished}
+					return nil
+				})
+			}); err != nil {
+			return err
+		}
+
+		for i, item := range file.Items {
+			if !results[i].published {
 				drafted++
 				continue
 			}
 			published++
 
-			created, err := ensureBankQuestion(ctx, pool, questionbankMod, versionID, item)
+			created, err := ensureBankQuestion(ctx, pool, questionbankMod, results[i].versionID, item)
 			if err != nil {
 				return fmt.Errorf("bank %s: %w", item.Slug, err)
 			}

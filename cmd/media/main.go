@@ -18,6 +18,7 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
+	"github.com/fluentra/fluentra/cmd/internal/dbtarget"
 	sqlc "github.com/fluentra/fluentra/internal/generated/resource/sqlc"
 	resourcejob "github.com/fluentra/fluentra/internal/modules/resource/job"
 	"github.com/fluentra/fluentra/internal/platform/job"
@@ -29,7 +30,10 @@ import (
 
 type mediaCLIConfig struct {
 	App struct {
+		// Environment is APP_ENVIRONMENT, which media-render.yml sets; Env is
+		// APP_ENV, which .env and every other command use. Either names it.
 		Environment string `koanf:"environment"`
+		Env         string `koanf:"env"`
 	} `koanf:"app"`
 	Database struct {
 		DSN string `koanf:"dsn"`
@@ -44,6 +48,16 @@ type mediaCLIConfig struct {
 	} `koanf:"s3"`
 }
 
+// environment is the name the run gives its database.
+func (c mediaCLIConfig) environment() string {
+	for _, name := range []string{c.App.Environment, c.App.Env} {
+		if strings.TrimSpace(name) != "" {
+			return name
+		}
+	}
+	return "development"
+}
+
 func main() {
 	if err := run(context.Background(), os.Args[1:], os.Stdout); err != nil {
 		fmt.Fprintf(os.Stderr, "media renderer error: %v\n", err)
@@ -53,7 +67,7 @@ func main() {
 
 // mediaOptions are the CLI's flags.
 type mediaOptions struct {
-	all, dryRun                        bool
+	all, dryRun, allowRemoteDB         bool
 	limit                              int32
 	kinds                              []string
 	ffmpeg, pdftoppm, soffice, pdftext string
@@ -84,6 +98,8 @@ func parseOptions(args []string) (mediaOptions, error) {
 	pdftoppmFlag := flags.String("pdftoppm", "", "Path to the pdftoppm binary (defaults to PATH)")
 	sofficeFlag := flags.String("soffice", "", "Path to the soffice (LibreOffice) binary (defaults to PATH)")
 	pdftotextFlag := flags.String("pdftotext", "", "Path to the pdftotext binary (defaults to PATH)")
+	allowRemoteFlag := flags.Bool("allow-remote-db", false,
+		"Write to a remote database even though APP_ENV does not say production or staging")
 	if err := flags.Parse(args); err != nil {
 		return mediaOptions{}, err
 	}
@@ -91,14 +107,15 @@ func parseOptions(args []string) (mediaOptions, error) {
 		return mediaOptions{}, fmt.Errorf("-limit must be between 1 and %d", maxBatch)
 	}
 	return mediaOptions{
-		all:      *allFlag,
-		dryRun:   *dryRunFlag,
-		limit:    int32(*limitFlag), //nolint:gosec // G115: bounded to 1..maxBatch just above
-		kinds:    expandKindsFilter(*kindsFlag),
-		ffmpeg:   *ffmpegFlag,
-		pdftoppm: *pdftoppmFlag,
-		soffice:  *sofficeFlag,
-		pdftext:  *pdftotextFlag,
+		all:           *allFlag,
+		dryRun:        *dryRunFlag,
+		allowRemoteDB: *allowRemoteFlag,
+		limit:         int32(*limitFlag), //nolint:gosec // G115: bounded to 1..maxBatch just above
+		kinds:         expandKindsFilter(*kindsFlag),
+		ffmpeg:        *ffmpegFlag,
+		pdftoppm:      *pdftoppmFlag,
+		soffice:       *sofficeFlag,
+		pdftext:       *pdftotextFlag,
 	}, nil
 }
 
@@ -117,6 +134,12 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	cfg, err := loadMediaConfig(ctx)
 	if err != nil {
 		return err
+	}
+	// A dry run writes nothing, so it may look at any database.
+	if !opts.dryRun {
+		if err := dbtarget.Check(cfg.environment(), cfg.Database.DSN, opts.allowRemoteDB); err != nil {
+			return err
+		}
 	}
 	pool, err := pgxpool.New(ctx, cfg.Database.DSN)
 	if err != nil {
@@ -552,7 +575,8 @@ func loadMediaConfig(ctx context.Context) (mediaCLIConfig, error) {
 	var cfg mediaCLIConfig
 	opts := config.Options{
 		Defaults: map[string]any{
-			"app.environment": "development",
+			"app.environment": "",
+			"app.env":         "",
 			"s3.endpoint":     "localhost:9000",
 			"s3.access_key":   "minioadmin",
 			"s3.secret_key":   "minioadmin",

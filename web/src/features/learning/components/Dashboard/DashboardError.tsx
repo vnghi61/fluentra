@@ -1,58 +1,28 @@
 import React from "react";
-import { AlertCircle, RotateCcw } from "lucide-react";
-import { useTranslation } from "react-i18next";
 
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { describeLoadError } from "@/api/loadError";
+import { ServerErrorState } from "@/components/layout/ServerErrorState";
 
 export interface DashboardErrorProps {
-  onRetry: () => void;
+  onRetry: () => unknown;
   error?: Error | null;
-  title?: string;
 }
 
+/**
+ * A learner page (the dashboard, progress) that could not load its data.
+ *
+ * This used to be a red card titled "Unable to Load Dashboard" over
+ * `error.message`, which on a cold start was the API's own words —
+ * "Authentication required", "Internal Server Error". It is now the error
+ * screen the waking screen leads into: what happened in plain words, a timed
+ * retry when the server is busy, and a way on to Learn.
+ */
 export const DashboardError: React.FC<DashboardErrorProps> = ({
   onRetry,
   error,
-  title,
 }) => {
-  const { t } = useTranslation();
-
+  const { kind, requestId } = describeLoadError(error);
   return (
-    <div className="py-8" role="alert">
-      <Card className="border-danger/30 max-w-lg mx-auto bg-surface-card">
-        <CardHeader>
-          <div className="flex items-center gap-2 text-danger-accent mb-2">
-            <AlertCircle className="h-6 w-6 shrink-0" aria-hidden="true" />
-            <CardTitle className="text-lg font-bold">
-              {title || t("dashboard.error.title", "Unable to Load Dashboard")}
-            </CardTitle>
-          </div>
-          <CardDescription>
-            {error?.message ||
-              t(
-                "dashboard.error.desc",
-                "We encountered an issue fetching your learning data. Please try again.",
-              )}
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button
-            variant="outline"
-            onClick={onRetry}
-            className="gap-2 min-h-[44px] min-w-[44px]"
-          >
-            <RotateCcw className="h-4 w-4" aria-hidden="true" />
-            {t("action.retry", "Try again")}
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>
+    <ServerErrorState kind={kind} requestId={requestId} onRetry={onRetry} />
   );
 };

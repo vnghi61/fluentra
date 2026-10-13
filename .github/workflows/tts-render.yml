@@ -35,6 +35,8 @@ concurrency:
 
 permissions:
   contents: read
+  # ops-alert.sh opens an issue when a run fails and closes it on recovery.
+  issues: write
 
 env:
   PIPER_VERSION: 2023.11.14-2
@@ -90,8 +92,23 @@ jobs:
           S3_REGION: auto
           S3_USE_SSL: 'true'
           SPEECH_TTS_VOICE: ${{ env.PIPER_VOICE }}
+        # -budget stops starting new clips well inside timeout-minutes, so a
+        # catalogue larger than one run (~6 s a clip) ends green with the rest
+        # left for the next run instead of being killed mid-upload.
         run: >-
-          go run ./cmd/tts -all -engine piper
+          go run ./cmd/tts -all -budget 22m -engine piper
           -piper "${GITHUB_WORKSPACE}/.piper/piper/piper"
           -models "${GITHUB_WORKSPACE}/.piper/voices"
           -engine-version "${PIPER_VERSION}"
+
+      - name: Report the failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ops-alert.sh failed
+
+      - name: Close the failure report
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ops-alert.sh recovered

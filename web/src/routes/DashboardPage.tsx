@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -25,6 +25,7 @@ import {
   WeeklyPlanCard,
 } from "@/features/learning";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/authStore";
 
 const greetingFallback = {
   morning: "Good morning! 👋",
@@ -35,6 +36,7 @@ const greetingFallback = {
 export function DashboardPage(): React.JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const status = useAuthStore((s) => s.status);
   const { data, isLoading, isError, error, refetch } = useDashboard();
   const { data: gamificationData } = useGamificationSummary();
   const { data: profile, isLoading: isProfileLoading } = useLearningProfile();
@@ -46,7 +48,12 @@ export function DashboardPage(): React.JSX.Element {
   // design; without them (or while they load, or if they fail) the continue
   // and today's-progress row takes that place so the page always opens on an
   // action. Waiting for the list avoids showing the row and then swapping it.
-  const showStarterRow = !banners.isPending && !hasSlides;
+  //
+  // A learner who has not started keeps the row under the slides: it is what
+  // tells them what to do ("Start Your English Journey", "Start your streak
+  // today"), where the compact tiles would show them a 0-day streak.
+  const notStarted = data?.state === "not_started";
+  const showStarterRow = !banners.isPending && (!hasSlides || notStarted);
 
   useEffect(() => {
     // If user has no learning profile yet, redirect to onboarding wizard (WO13 §8)
@@ -55,12 +62,33 @@ export function DashboardPage(): React.JSX.Element {
     }
   }, [isProfileLoading, profile, navigate]);
 
-  if (isLoading) {
+  // The dashboard is a signed-in page; a visitor's home is /learn (ADR-0025).
+  // The route guard only redirects once it knows: on a cold host the boot
+  // refresh outlives its paint budget, `status` stays `idle`, and the guard
+  // lets the page render. When the refresh finally fails, the visitor was
+  // left on this page with an error for a dashboard they never had. Now they
+  // land where the guard would have sent them, replacing this entry so Back
+  // does not return to it.
+  //
+  // Only from `idle`: a learner who signs out, or whose session is revoked,
+  // goes from `authenticated` and is sent to /login by whoever ended it.
+  const previousStatus = useRef(status);
+  useEffect(() => {
+    const was = previousStatus.current;
+    previousStatus.current = status;
+    if (was === "idle" && status === "unauthenticated") {
+      void navigate({ to: "/learn", replace: true });
+    }
+  }, [status, navigate]);
+
+  // Until the session is known, the dashboard requests can only fail for want
+  // of a token: that is a wait, not an error.
+  if (status !== "authenticated" || isLoading) {
     return <DashboardSkeleton />;
   }
 
   if (isError || !data) {
-    return <DashboardError onRetry={() => void refetch()} error={error} />;
+    return <DashboardError onRetry={() => refetch()} error={error} />;
   }
 
   const greetingKey = greetingKeyFor(new Date().getHours());
@@ -97,7 +125,7 @@ export function DashboardPage(): React.JSX.Element {
             summary={gamificationData}
             className={cn(
               "xl:w-[420px] xl:shrink-0",
-              hasSlides ? "grid" : "hidden md:grid",
+              hasSlides && !notStarted ? "grid" : "hidden md:grid",
             )}
           />
         )}

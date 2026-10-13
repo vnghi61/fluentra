@@ -235,9 +235,11 @@ describe("Phase 1 shell and status pages", () => {
     const mainNav = await screen.findByRole("navigation", {
       name: /Main navigation/i,
     });
+    // A guest's "/" redirects to /learn (ADR-0025): a Dashboard entry would
+    // land them on Learn with the wrong item highlighted.
     expect(
-      within(mainNav).getByRole("link", { name: /Dashboard/i }),
-    ).toHaveAttribute("href", "/");
+      within(mainNav).queryByRole("link", { name: /Dashboard/i }),
+    ).not.toBeInTheDocument();
     expect(
       within(mainNav).getByRole("link", { name: /Learn/i }),
     ).toHaveAttribute("href", "/learn");
