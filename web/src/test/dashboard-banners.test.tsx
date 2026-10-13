@@ -346,7 +346,7 @@ describe("DashboardBanners: slides", () => {
     ).toHaveAttribute("aria-current", "true");
   });
 
-  it("advances on its own and stops once paused", async () => {
+  it("advances on its own and holds while the pointer is over it", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     serve([slide(1), slide(2)]);
     await renderBanners();
@@ -359,17 +359,16 @@ describe("DashboardBanners: slides", () => {
       await screen.findByRole("img", { name: "Promo picture 2" }),
     ).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Pause rotating announcements" }),
-    );
+    // No Pause button any more: hovering (or focus inside) is what holds it.
+    expect(
+      screen.queryByRole("button", { name: /rotating announcements/ }),
+    ).not.toBeInTheDocument();
+    fireEvent.mouseEnter(screen.getByRole("region", { name: "Promotions" }));
     act(() => {
       vi.advanceTimersByTime(SLIDE_AUTOPLAY_MS * 3);
     });
     expect(
       screen.getByRole("img", { name: "Promo picture 2" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Resume rotating announcements" }),
     ).toBeInTheDocument();
   });
 
