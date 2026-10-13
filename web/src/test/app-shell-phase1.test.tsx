@@ -109,6 +109,32 @@ describe("Phase 1 shell and status pages", () => {
     expect(screen.getByText("settings content")).toBeInTheDocument();
   });
 
+  it("keeps the More screen, and its tab, when More is tapped again", async () => {
+    const user = userEvent.setup();
+    await renderAt("/learn", () => (
+      <AppShell status="authenticated" user={{ role: "user" }}>
+        <div>learn content</div>
+      </AppShell>
+    ));
+
+    const nav = await screen.findByRole("navigation", {
+      name: /Mobile navigation/i,
+    });
+    const more = within(nav).getByRole("button", { name: /More/i });
+    await user.click(more);
+    await screen.findByRole("dialog", { name: "More" });
+    await user.click(more);
+
+    // Closing it here uncovered Learn, and the highlight jumped to Learn's tab.
+    expect(screen.getByRole("dialog", { name: "More" })).toBeInTheDocument();
+    expect(more).toHaveAttribute("aria-expanded", "true");
+    // data-indicator is what the sliding highlight follows.
+    expect(more).toHaveAttribute("data-indicator", "true");
+    expect(
+      within(nav).getByRole("link", { name: /Learn/i }),
+    ).toHaveAttribute("data-indicator", "false");
+  });
+
   it("draws five mobile nav items and opens the More sheet", async () => {
     const user = userEvent.setup();
     await renderAt("/", () => (
