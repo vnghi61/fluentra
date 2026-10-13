@@ -50,9 +50,21 @@ const (
 )
 
 // DefaultLocale is the fallback language, matching the column default.
-const DefaultLocale = "en"
+// Vietnamese: the learners are Vietnamese speakers, so it is the language an
+// account that never chose one reads the interface in.
+const DefaultLocale = "vi"
 
 var localePattern = regexp.MustCompile(`^[a-z]{2}(-[A-Z]{2})?$`)
+
+// RegistrationLocale is the language a new account starts in: the one the
+// person was reading the site in when they registered, or DefaultLocale when
+// that is missing or not a language tag.
+func RegistrationLocale(requested string) string {
+	if validateLocale(requested) != nil {
+		return DefaultLocale
+	}
+	return requested
+}
 
 // TimeOfDay is a wall-clock time with no date and no zone. Quiet hours are
 // local to the learner, so binding them to an instant would be wrong: 22:00

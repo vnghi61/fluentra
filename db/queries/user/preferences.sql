@@ -1,8 +1,9 @@
 -- name: CreateUserPreferences :one
--- Registration writes this row with the column defaults, so a user always has
--- preferences and every read is a plain SELECT rather than a nullable join.
-INSERT INTO core.user_preferences (id, user_id)
-VALUES ($1, $2)
+-- Registration writes this row, so a user always has preferences and every
+-- read is a plain SELECT rather than a nullable join. The locale is the one
+-- the person registered in; the rest are the column defaults.
+INSERT INTO core.user_preferences (id, user_id, locale)
+VALUES ($1, $2, $3)
 RETURNING id, user_id, locale, theme, daily_goal_minutes, notification_channels,
           quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at, practice_level;
 

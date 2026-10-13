@@ -132,7 +132,7 @@ function signIn() {
 
 describe("Speaking Screens & Components (§3.6)", () => {
   beforeEach(async () => {
-    await initI18n();
+    await initI18n("en");
     useAuthStore.getState().clearAuth();
     localStorage.clear();
 

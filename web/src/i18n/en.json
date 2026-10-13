@@ -3152,8 +3152,6 @@
     "slideLabel": "{{index}} of {{total}}",
     "previous": "Previous announcement",
     "next": "Next announcement",
-    "pause": "Pause rotating announcements",
-    "play": "Resume rotating announcements",
     "slidesLabel": "Promotions",
     "close": "Close",
     "closeAnnouncement": "Close announcement: {{title}}",

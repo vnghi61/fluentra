@@ -132,7 +132,7 @@ function signIn() {
 
 describe("Writing Screens & Drafts (§3.5)", () => {
   beforeEach(async () => {
-    await initI18n();
+    await initI18n("en");
     await loadLocale("en");
     await i18n.changeLanguage("en");
     useAuthStore.getState().clearAuth();

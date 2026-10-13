@@ -420,11 +420,13 @@ export const AppShell: React.FC<AppShellProps> = ({
     pathname.startsWith("/settings") ||
     pathname.startsWith("/admin");
   const handleOpenMore = () => {
-    // Tapping the current tab keeps the page, as it does for every other tab,
-    // rather than covering it with the More menu.
-    if (!moreOpen && onMoreRoute) return;
+    // Tapping the current tab keeps what is on screen, as it does for every
+    // other tab: on the More screen it stays (closing it uncovered the page
+    // beneath, and the highlight jumped to that page's tab), and on a page the
+    // More menu leads to it stays on that page rather than covering it.
+    if (moreOpen || onMoreRoute) return;
     setHasOpenedMore(true);
-    setMoreOpen((value) => !value);
+    setMoreOpen(true);
   };
 
   const isLearnActive =
@@ -767,7 +769,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         <nav
           aria-label={t("nav.mobileNavigation", "Mobile navigation")}
           onClick={(event) => {
-            // A tab tap leaves the More screen; the More tab toggles it itself.
+            // A tab tap leaves the More screen; the More tab only ever opens it.
             if (!(event.target as Element).closest("[data-more-trigger]")) {
               setMoreOpen(false);
             }

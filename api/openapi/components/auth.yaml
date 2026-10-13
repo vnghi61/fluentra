@@ -36,8 +36,11 @@ RegisterRequest:
     locale:
       type: string
       pattern: '^[a-z]{2}(-[A-Z]{2})?$'
-      default: en
-      description: Chooses the language the verification email is written in.
+      default: vi
+      description: >-
+        The language the person registered in: the verification email is
+        written in it, and the new account's interface starts in it (its
+        `locale` preference). Vietnamese when left out.
       example: vi
     timezone:
       type: string

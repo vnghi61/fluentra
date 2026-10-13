@@ -382,14 +382,16 @@ func TestPreferenceQueries_DefaultsThenFullReplacement(t *testing.T) {
 	created, err := q.CreateUserPreferences(ctx, sqlcuser.CreateUserPreferencesParams{
 		ID:     newID(ctx, t),
 		UserID: user.ID,
+		Locale: "en",
 	})
 	if err != nil {
 		t.Fatalf("CreateUserPreferences: %v", err)
 	}
-	// Registration inserts the row with no values, so the column defaults are
-	// the product decision. Assert them here rather than in a comment.
+	// Registration writes the language the person registered in; everything
+	// else takes the column defaults, which are the product decision. Assert
+	// them here rather than in a comment.
 	if created.Locale != "en" {
-		t.Errorf("default locale = %q, want en", created.Locale)
+		t.Errorf("locale = %q, want the registered en", created.Locale)
 	}
 	if created.Theme != sqlcuser.CoreUiThemeSystem {
 		t.Errorf("default theme = %q, want system", created.Theme)
@@ -502,7 +504,7 @@ func TestUserQueries_DeletingAUserCascadesToItsSatelliteTables(t *testing.T) {
 		t.Fatalf("CreateProfile: %v", err)
 	}
 	if _, err := q.CreateUserPreferences(ctx, sqlcuser.CreateUserPreferencesParams{
-		ID: newID(ctx, t), UserID: user.ID,
+		ID: newID(ctx, t), UserID: user.ID, Locale: "vi",
 	}); err != nil {
 		t.Fatalf("CreateUserPreferences: %v", err)
 	}

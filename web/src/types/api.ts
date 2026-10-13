@@ -3970,8 +3970,8 @@ export interface components {
              */
             display_name: string;
             /**
-             * @description Chooses the language the verification email is written in.
-             * @default en
+             * @description The language the person registered in: the verification email is written in it, and the new account's interface starts in it (its `locale` preference). Vietnamese when left out.
+             * @default vi
              * @example vi
              */
             locale: string;

@@ -91,8 +91,8 @@ func (s *Service) GetUserByID(ctx context.Context, id uuid.UUID) (*contract.User
 	}
 	pref, err := s.repo.GetPreferences(ctx, id)
 	if err != nil {
-		// Default to 'en' if preferences not found
-		pref = domain.Preferences{Locale: "en"}
+		// The column default, if preferences are not found.
+		pref = domain.Preferences{Locale: domain.DefaultLocale}
 	}
 
 	return &contract.UserDetail{

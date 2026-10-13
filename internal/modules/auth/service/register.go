@@ -434,9 +434,11 @@ func normaliseEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
 
+// defaultLocale is Vietnamese, the interface's default (user's DefaultLocale):
+// a registration that names no language gets its email in Vietnamese.
 func defaultLocale(locale string) string {
 	if locale == "" {
-		return "en"
+		return "vi"
 	}
 	return locale
 }

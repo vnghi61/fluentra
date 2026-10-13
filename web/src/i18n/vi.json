@@ -3152,8 +3152,6 @@
     "slideLabel": "{{index}}/{{total}}",
     "previous": "Thông báo trước",
     "next": "Thông báo tiếp theo",
-    "pause": "Tạm dừng tự chuyển thông báo",
-    "play": "Tiếp tục tự chuyển thông báo",
     "slidesLabel": "Khuyến mãi",
     "close": "Đóng",
     "closeAnnouncement": "Đóng thông báo: {{title}}",

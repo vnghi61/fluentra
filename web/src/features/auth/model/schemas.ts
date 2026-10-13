@@ -21,7 +21,7 @@ export const registerSchema = z.object({
     .min(1, "validation.nameRequired")
     .max(50, "validation.nameTooLong"),
   password: z.string().min(12, "validation.passwordMinLength"),
-  locale: z.string().default("en"),
+  locale: z.string().default("vi"),
   timezone: z.string().default("UTC"),
 });
 

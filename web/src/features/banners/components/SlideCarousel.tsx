@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
@@ -18,11 +18,14 @@ const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
  * The dashboard's promotional slides, image only, always shown while live.
  *
  * With two or more it is a carousel (WAI-ARIA APG pattern): it moves on every
- * six seconds, and can be moved with the previous/next buttons, the dots, or a
- * swipe. Rotation pauses while the pointer is over it, while focus is inside
- * it and while the tab is hidden, stops for good once the learner presses
- * Pause, and never starts under prefers-reduced-motion. Every slide has the
- * same fixed frame, so moving between them never changes the page's height.
+ * six seconds, and can be moved with a swipe or the dots, and on a wide
+ * screen with the previous/next buttons too; a phone has no room for them on
+ * the picture, and a thumb swipes. Rotation pauses while the pointer is over
+ * it, while focus is inside it, while a finger is dragging it and while the
+ * tab is hidden, and never starts under prefers-reduced-motion. There is no
+ * Pause button (the owner asked for a clean picture); those pauses are the
+ * way to stop it. Every slide has the same fixed frame, so moving between
+ * them never changes the page's height.
  */
 export function SlideCarousel({
   slides,
@@ -38,7 +41,6 @@ export function SlideCarousel({
   // The list can shrink when a slide ends; clamp rather than reset.
   const position = Math.min(index, total - 1);
 
-  const [userPaused, setUserPaused] = React.useState(false);
   const [hovering, setHovering] = React.useState(false);
   const [focusWithin, setFocusWithin] = React.useState(false);
   const [pageHidden, setPageHidden] = React.useState(
@@ -60,7 +62,6 @@ export function SlideCarousel({
   const rotating =
     many &&
     !reducedMotion &&
-    !userPaused &&
     !hovering &&
     !focusWithin &&
     !pageHidden &&
@@ -74,8 +75,8 @@ export function SlideCarousel({
   }, [rotating, position, go]);
 
   // ── Swipe ───────────────────────────────────────────────────────────────
-  // Touch and pen only: a mouse drag would fight text selection, and the
-  // desktop has the buttons. `touch-action: pan-y` leaves vertical scrolling
+  // Touch and pen only: a mouse drag would fight text selection, and a wide
+  // screen has the buttons. On a phone this is the way to move it by hand. `touch-action: pan-y` leaves vertical scrolling
   // to the browser and hands horizontal movement to us.
   const gesture = React.useRef<{
     id: number;
@@ -160,11 +161,11 @@ export function SlideCarousel({
     );
   }
 
-  // Controls sit on the picture (as on most promo carousels), so they carry
-  // their own dark, blurred backdrop to stay legible over any image. Each
-  // keeps a 44px hit area even where the visible mark is smaller.
+  // Previous/next sit on the picture from md up only, and stay out of its
+  // way: no backdrop, a small chevron with a shadow to read over any image,
+  // faint until the pointer is over the carousel or the button has focus.
   const overlayButton =
-    "pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-black/35 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transition-none";
+    "pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-white opacity-60 drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)] transition-[opacity,background-color] hover:bg-black/20 hover:opacity-100 group-hover/carousel:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transition-none";
 
   return (
     <section
@@ -178,7 +179,7 @@ export function SlideCarousel({
           setFocusWithin(false);
         }
       }}
-      className="@container relative"
+      className="group/carousel @container relative"
     >
       <div
         ref={viewportRef}
@@ -216,24 +217,24 @@ export function SlideCarousel({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute inset-y-0 left-2 flex items-center @2xl:left-4">
+      <div className="pointer-events-none absolute inset-y-0 left-1 hidden items-center md:flex @2xl:left-2">
         <button
           type="button"
           onClick={() => go(position - 1)}
           aria-label={t("banners.previous")}
           className={overlayButton}
         >
-          <ChevronLeft aria-hidden="true" className="h-5 w-5" />
+          <ChevronLeft aria-hidden="true" className="h-4 w-4" />
         </button>
       </div>
-      <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center @2xl:right-4">
+      <div className="pointer-events-none absolute inset-y-0 right-1 hidden items-center md:flex @2xl:right-2">
         <button
           type="button"
           onClick={() => go(position + 1)}
           aria-label={t("banners.next")}
           className={overlayButton}
         >
-          <ChevronRight aria-hidden="true" className="h-5 w-5" />
+          <ChevronRight aria-hidden="true" className="h-4 w-4" />
         </button>
       </div>
 
@@ -282,28 +283,6 @@ export function SlideCarousel({
           ))}
         </div>
       </div>
-
-      {!reducedMotion && (
-        <div className="pointer-events-none absolute bottom-0 right-1 flex @2xl:right-3">
-          <button
-            type="button"
-            onClick={() => setUserPaused((value) => !value)}
-            aria-label={userPaused ? t("banners.play") : t("banners.pause")}
-            className="group pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-          >
-            <span
-              aria-hidden="true"
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm transition-colors group-hover:bg-black/55 motion-reduce:transition-none"
-            >
-              {userPaused ? (
-                <Play className="h-3.5 w-3.5" />
-              ) : (
-                <Pause className="h-3.5 w-3.5" />
-              )}
-            </span>
-          </button>
-        </div>
-      )}
     </section>
   );
 }
