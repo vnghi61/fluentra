@@ -191,18 +191,64 @@ function parseDelimited(text: string, separator: string): string[][] {
  * entities decoded, and whitespace (including a quoted newline) collapsed, so
  * a field can never start a second line in the box.
  *
- * The markup is read by DOMParser, not stripped with a pattern: its document
- * is inert (no script runs, nothing loads), it decodes every entity, and
- * only its text is kept. The result goes into a textarea's value, never into
- * HTML.
+ * Plain string work, no HTML parser: the file is the learner's own and the
+ * result only ever goes into a textarea's value, but handing file text to
+ * DOMParser is what CodeQL reads as "DOM text reinterpreted as HTML", and
+ * nothing here needs a document.
  */
 function cleanField(raw: string): string {
-  const withoutSound = raw.replace(/\[sound:[^\]]*\]/gi, " ");
-  const text = /[<&]/.test(withoutSound)
-    ? (new DOMParser().parseFromString(
-        withoutSound.replace(/<br\s*\/?>/gi, " "),
-        "text/html",
-      ).body.textContent ?? "")
-    : withoutSound;
-  return text.replace(/\s+/g, " ").trim();
+  const withoutSound = raw
+    .replace(/\[sound:[^\]]*\]/gi, " ")
+    .replace(/<br\s*\/?>/gi, " ");
+  return decodeEntities(stripTags(withoutSound)).replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Drops every tag and keeps the text around it, as a document's textContent
+ * would (`<b>r</b>ảnh` is one word; a line break was made a space before).
+ * As in HTML, `<` opens a tag only before a letter, `/` or `!`; a bare
+ * `a < b` is text.
+ */
+function stripTags(text: string): string {
+  let out = "";
+  let inTag = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charAt(i);
+    if (inTag) {
+      if (ch === ">") inTag = false;
+    } else if (ch === "<" && /[a-z/!]/i.test(text.charAt(i + 1))) {
+      inTag = true;
+    } else {
+      out += ch;
+    }
+  }
+  return out;
+}
+
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+};
+
+/** The entities Anki writes: the named few and every numeric reference. */
+function decodeEntities(text: string): string {
+  return text.replace(
+    /&(#x[0-9a-f]+|#\d+|[a-z]+);/gi,
+    (entity, body: string) => {
+      if (body.startsWith("#")) {
+        const code =
+          body[1] === "x" || body[1] === "X"
+            ? parseInt(body.slice(2), 16)
+            : parseInt(body.slice(1), 10);
+        return code > 0 && code <= 0x10ffff
+          ? String.fromCodePoint(code)
+          : entity;
+      }
+      return NAMED_ENTITIES[body.toLowerCase()] ?? entity;
+    },
+  );
 }

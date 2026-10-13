@@ -55,6 +55,15 @@ describe("importWordFile", () => {
     expect(imported.text).toBe("xss\talert(2)ok");
   });
 
+  it("decodes entities once and keeps a bare < as text", () => {
+    const imported = importWordFile(
+      "caf&#233;\t&lt;b&gt; is &amp;amp; &#x1F600; a < b <i>r</i>ảnh &bogus;",
+    );
+    // An escaped tag stays text, &amp;amp; decodes one level only, and an
+    // unknown entity is left as written.
+    expect(imported.text).toBe("café\t<b> is &amp; 😀 a < b rảnh &bogus;");
+  });
+
   it("produces lines the paste parser counts as words", () => {
     const imported = importWordFile("a,1\nb,2\nb,3\nc");
     expect(countWords(imported.text)).toBe(3);
