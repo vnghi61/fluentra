@@ -98,6 +98,12 @@ From a machine instead of Actions, `APP_ENV` must say where the DSN goes:
 `local`, `development` or `ci`: a `.env` pointed at production but still named
 local is how demo accounts reach production.
 
+The dashboard slides alone (after changing `db/fixtures/banners`, say) are
+`APP_ENV=production go run ./cmd/seed -banners-only`, with `DB_DSN` and the R2
+`S3_*` values (`S3_REGION=auto`, `S3_USE_SSL=true`, `S3_USE_POST_POLICY=false`).
+It uploads the three images and upserts their rows, owned by the first admin,
+and touches nothing else.
+
 ### Every deploy
 
 Push to `main`; Render rebuilds. When the release adds migrations, run

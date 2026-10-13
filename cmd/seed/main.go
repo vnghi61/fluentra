@@ -112,6 +112,11 @@ var allowRemoteDB bool
 // includeBanners is set from -banners.
 var includeBanners = true
 
+// bannersOnly is set from -banners-only: the dashboard slides and nothing
+// else. It implies -reference (an existing admin owns them, no demo
+// accounts), so it is allowed in production.
+var bannersOnly bool
+
 func main() {
 	audio := flag.Bool("audio", false,
 		"backfill recorded pronunciation onto flashcards that have none, then exit")
@@ -126,6 +131,8 @@ func main() {
 		"sync Foundation lessons from existing published content, without changing accounts or fixtures")
 	flag.BoolVar(&includeBanners, "banners", true,
 		"upload the dashboard slides in db/fixtures/banners to S3_* storage and create their banners")
+	flag.BoolVar(&bannersOnly, "banners-only", false,
+		"seed the dashboard slides and nothing else; implies -reference (allowed in production)")
 	flag.IntVar(&seedConcurrency, "concurrency", defaultSeedConcurrency,
 		"how many workers write at once; 1 seeds one row at a time")
 	flag.StringVar(&adminEmail, "admin-email", "",
@@ -135,6 +142,10 @@ func main() {
 	flag.Parse()
 	includeFoundationFixtures = *foundation
 	includeExamFixtures = *exams
+	if bannersOnly {
+		referenceOnly = true
+		includeBanners = true
+	}
 	if *audio {
 		if err := runAudioBackfill(context.Background(), os.Stdout); err != nil {
 			log.Print(err)
@@ -275,6 +286,9 @@ func run(ctx context.Context, out io.Writer) error {
 // courses and words, the Foundation content and courses, the mock tests and
 // the dashboard slides, in that order.
 func seedCatalogue(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, cfg seedConfig, out io.Writer) error {
+	if bannersOnly {
+		return seedBanners(ctx, pool, adminID, cfg, out)
+	}
 	if err := seedAuthoredContent(ctx, pool, adminID, out); err != nil {
 		return err
 	}
@@ -308,13 +322,20 @@ func seedCatalogue(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, c
 	// The dashboard's promotional slides (tools/banners), last: they are the
 	// one step that needs object storage as well as the database.
 	if includeBanners {
-		store, err := newSeedStore(cfg)
-		if err != nil {
-			return err
-		}
-		if err := seedBannerSlides(ctx, pool, store, adminID, defaultBannerFixtureDir, out); err != nil {
-			return fmt.Errorf("seed banners: %w", err)
-		}
+		return seedBanners(ctx, pool, adminID, cfg, out)
+	}
+	return nil
+}
+
+// seedBanners uploads the slides in db/fixtures/banners to S3_* storage and
+// upserts their banners, owned by adminID.
+func seedBanners(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, cfg seedConfig, out io.Writer) error {
+	store, err := newSeedStore(cfg)
+	if err != nil {
+		return err
+	}
+	if err := seedBannerSlides(ctx, pool, store, adminID, defaultBannerFixtureDir, out); err != nil {
+		return fmt.Errorf("seed banners: %w", err)
 	}
 	return nil
 }

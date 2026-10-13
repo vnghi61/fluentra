@@ -59,6 +59,21 @@ func TestRun_AdminEmailNeedsReference(t *testing.T) {
 	}
 }
 
+// TestRun_BannersOnlyPassesTheProductionGuard: -banners-only writes no demo
+// account, so production is allowed. It gets as far as the database, which
+// here is unreachable; the error must be that, not the refusal.
+func TestRun_BannersOnlyPassesTheProductionGuard(t *testing.T) {
+	bannersOnly, referenceOnly = true, true // as main sets them
+	t.Cleanup(func() { bannersOnly, referenceOnly = false, false })
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("DB_DSN", "postgres://nobody@127.0.0.1:1/nothing?sslmode=disable&connect_timeout=2")
+
+	err := run(context.Background(), io.Discard)
+	if err == nil || strings.Contains(err.Error(), "refusing") {
+		t.Fatalf("run() = %v, want it past the production guard and failing to connect", err)
+	}
+}
+
 func TestRun_CoursesOnlyRefusesProduction(t *testing.T) {
 	foundationCoursesOnly = true
 	t.Cleanup(func() { foundationCoursesOnly = false })
