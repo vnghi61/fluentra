@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Fluentra slides</title>
+<style>
+  /* Option 6, "Tối giản hiện đại": the app's own font and tokens
+     (web/src/index.css) plus one warm accent for slide 1. Illustrations are
+     Microsoft Fluent Emoji 3D (MIT). */
+  @font-face {
+    font-family: "Inter";
+    src: url("../../web/public/fonts/inter-var.woff2") format("woff2");
+    font-weight: 100 900;
+  }
+  :root {
+    --primary: #2563eb;
+    --brand: #011ad1;
+    --mission: #7c3aed;
+    --success-accent: #15803d;
+    --xp: #b45309;
+    /* Orange-600: 3.6:1 on white, for the 62px headline only (large text, 3:1). */
+    --warm: #ea580c;
+    --surface: #ffffff;
+    --surface-muted: #f8fafc;
+    --surface-raised: #eef4ff;
+    --border-subtle: #e2e8f0;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --radius-card: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: "Inter", system-ui, sans-serif; background: #cbd5e1; padding: 24px; display: grid; gap: 24px; }
+
+  /* 1500×500 is the 3:1 frame phones show. Desktop shows 4:1, cropping 62.5px
+     top and bottom, so everything that matters sits in the middle 375px. */
+  .slide { position: relative; width: 1500px; height: 500px; overflow: hidden; color: var(--text); -webkit-font-smoothing: antialiased; }
+  .safe { position: absolute; left: 96px; right: 72px; top: 72px; bottom: 72px; display: grid; grid-template-columns: 1fr 660px; gap: 24px; align-items: center; }
+  .copy { display: flex; flex-direction: column; gap: 18px; }
+  .brandrow { display: flex; align-items: center; gap: 14px; }
+  .mark { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: #fff; box-shadow: 0 1px 2px rgb(15 23 42 / .1); }
+  .mark img { width: 34px; height: 34px; }
+  .chip { display: inline-flex; align-items: center; height: 40px; padding: 0 16px; border-radius: 999px; font-size: 22px; font-weight: 600; }
+  h1 { font-size: 62px; line-height: 1.08; font-weight: 800; letter-spacing: -0.025em; }
+  h1 em { font-style: normal; }
+  .features { display: flex; align-items: center; gap: 18px; font-size: 19px; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+  .features span { display: inline-flex; align-items: center; gap: 8px; }
+  .features svg { width: 22px; height: 22px; flex: none; }
+  .cta { display: inline-flex; align-items: center; gap: 12px; height: 58px; padding: 0 26px; border-radius: 14px; font-size: 25px; font-weight: 700; width: max-content; color: #fff; box-shadow: 0 8px 20px -10px currentColor; }
+  .cta svg { width: 24px; height: 24px; }
+  .card { background: var(--surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); box-shadow: 0 1px 2px rgb(15 23 42 / .06), 0 16px 36px -14px rgb(15 23 42 / .22); }
+  .muted { color: var(--text-muted); }
+  .blob { position: absolute; border-radius: 50%; }
+  .art { position: absolute; filter: drop-shadow(0 18px 22px rgb(15 23 42 / .18)); }
+  .stage { position: relative; height: 356px; }
+  svg.i { stroke: currentColor; fill: none; stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ---- 1 · Foundation path: primary blue, warm accent ---- */
+  .s1 { background: linear-gradient(110deg, #eef4ff 0%, #ffffff 45%, #fff6ee 100%); }
+  .s1 .chip { background: rgb(37 99 235 / .1); color: var(--primary); }
+  .s1 h1 em { color: var(--warm); }
+  .s1 .features svg { color: var(--primary); }
+  .s1 .cta { background: var(--primary); color: #fff; }
+  .path { position: absolute; left: 0; top: 34px; width: 400px; padding: 20px; display: grid; gap: 10px; }
+  .path .head { display: flex; justify-content: space-between; align-items: baseline; font-size: 19px; font-weight: 700; }
+  .lesson { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 12px; background: var(--surface-muted); font-size: 18px; font-weight: 600; }
+  .lesson .dot { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+  .lesson.done .dot { background: rgb(34 197 94 / .14); color: var(--success-accent); }
+  .lesson.now { background: var(--surface-raised); outline: 2px solid rgb(37 99 235 / .35); }
+  .lesson.now .dot { background: var(--primary); color: #fff; }
+  .lesson .pct { margin-left: auto; font-size: 16px; font-weight: 700; color: var(--primary); }
+  .bar { height: 7px; border-radius: 99px; background: #dbe5ff; overflow: hidden; margin-top: 7px; }
+  .bar > i { display: block; height: 100%; width: 60%; background: var(--primary); border-radius: 99px; }
+  .streak { position: absolute; left: 270px; top: 6px; display: inline-flex; gap: 8px; align-items: center; padding: 9px 13px; border-radius: 12px; font-size: 17px; font-weight: 700; color: var(--xp); background: #fff7e6; border: 1px solid #fde7b0; }
+
+  /* ---- 2 · My words: light, brand blue ---- */
+  .s2 { background: linear-gradient(110deg, #f1f5ff 0%, #ffffff 45%, #eef2ff 100%); }
+  .s2 .chip { background: rgb(37 99 235 / .1); color: var(--primary); }
+  .s2 h1 em { color: var(--primary); }
+  .s2 .cta { background: var(--primary); color: #fff; }
+  .flash { position: absolute; left: 0; top: 30px; width: 400px; height: 280px; padding: 22px 24px; display: flex; flex-direction: column; gap: 8px; }
+  .flash.back { transform: translate(16px, 12px) rotate(3deg); background: #f8fafc; }
+  .flash .row { display: flex; justify-content: space-between; align-items: center; }
+  .pos { font-size: 15px; font-weight: 700; color: var(--mission); background: rgb(124 58 237 / .1); padding: 4px 10px; border-radius: 8px; }
+  .speak { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-raised); color: var(--primary); }
+  .word { font-size: 44px; font-weight: 800; letter-spacing: -0.02em; }
+  .ipa { font-size: 19px; }
+  .meaning { font-size: 21px; font-weight: 600; }
+  .grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: auto; }
+  .grades span { text-align: center; padding: 9px 0; border-radius: 10px; font-size: 16px; font-weight: 700; border: 1px solid var(--border-subtle); }
+  .grades .good { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .due { position: absolute; left: 196px; top: 292px; display: inline-flex; gap: 8px; align-items: center; padding: 9px 13px; border-radius: 12px; background: #fff; color: var(--success-accent); font-size: 17px; font-weight: 700; border: 1px solid var(--border-subtle); box-shadow: 0 8px 22px -10px rgb(2 6 23 / .3); }
+  .photo { position: absolute; left: 418px; top: 46px; width: 220px; height: 250px; transform: rotate(8deg); padding: 16px; display: grid; place-items: center; background: linear-gradient(160deg, #e0f2fe, #fef3c7); }
+  .photo img { width: 176px; height: 176px; }
+
+  /* ---- 3 · Mock exams: mission violet ---- */
+  .s3 { background: linear-gradient(110deg, #f5f0ff 0%, #ffffff 45%, #fdf2f8 100%); }
+  .s3 .chip { background: rgb(124 58 237 / .1); color: var(--mission); }
+  .s3 h1 em { color: var(--mission); }
+  .s3 .lead { font-size: 21px; color: var(--text-muted); font-weight: 500; margin-top: -6px; }
+  .s3 .features svg { color: var(--mission); }
+  .s3 .cta { background: var(--mission); color: #fff; }
+  .report { position: absolute; left: 0; top: 18px; width: 410px; padding: 20px 22px; display: grid; gap: 11px; }
+  .report .top { display: flex; align-items: center; justify-content: space-between; }
+  .report .name { font-size: 18px; font-weight: 700; white-space: nowrap; }
+  .band { display: flex; align-items: baseline; gap: 10px; }
+  .band b { font-size: 56px; line-height: 1; font-weight: 800; letter-spacing: -0.03em; color: var(--mission); }
+  .sec { display: grid; grid-template-columns: 96px 1fr 40px; gap: 12px; align-items: center; font-size: 16px; font-weight: 600; }
+  .sec .track { height: 9px; border-radius: 99px; background: #ede9fe; overflow: hidden; }
+  .sec .track i { display: block; height: 100%; background: var(--mission); border-radius: 99px; }
+  .sec .v { text-align: right; font-variant-numeric: tabular-nums; }
+  .exams { display: flex; gap: 6px; }
+  .exams span { font-size: 13px; font-weight: 700; padding: 5px 8px; border-radius: 8px; background: var(--surface-muted); border: 1px solid var(--border-subtle); color: var(--text-muted); }
+  .exams span.on { color: var(--mission); border-color: rgb(124 58 237 / .35); background: rgb(124 58 237 / .08); }
+</style>
+</head>
+<body>
+
+<!-- 1 -->
+<section class="slide s1" id="slide-1">
+  <div class="blob" style="width:460px;height:460px;right:-120px;top:-190px;background:rgb(249 115 22 / .08)"></div>
+  <div class="blob" style="width:300px;height:300px;left:-110px;bottom:-170px;background:rgb(37 99 235 / .07)"></div>
+  <div class="safe">
+    <div class="copy">
+      <div class="brandrow">
+        <span class="mark"><img src="../../web/public/brand/fluentra-mark-64.png" alt=""></span>
+        <span class="chip">13 khóa học nền tảng</span>
+      </div>
+      <h1>Học chắc nền tảng,<br><em>mỗi ngày một bài</em></h1>
+      <div class="features">
+        <span><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Bài học ngắn gọn</span>
+        <span><svg class="i" viewBox="0 0 24 24"><path d="M5 19c3-1 4-4 7-7s6-4 7-7"/><circle cx="5" cy="19" r="1.5"/><circle cx="19" cy="5" r="1.5"/></svg>Lộ trình theo trình độ</span>
+        <span><svg class="i" viewBox="0 0 24 24"><path d="M4 19h16M7 16v-4M12 16V8M17 16v-7"/></svg>Theo dõi tiến độ</span>
+      </div>
+      <span class="cta">Bắt đầu học <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+    </div>
+    <div class="stage">
+      <img class="art" src="art/books_3d.png" alt="" style="width:236px;left:404px;top:128px">
+      <img class="art" src="art/potted_plant_3d.png" alt="" style="width:220px;left:440px;top:-4px">
+      <div class="card path">
+        <div class="head"><span>English Tenses</span><span class="muted" style="font-size:15px">3 / 13 bài</span></div>
+        <div class="lesson done"><span class="dot"><svg class="i" viewBox="0 0 24 24" width="19" height="19"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Present Simple</div>
+        <div class="lesson done"><span class="dot"><svg class="i" viewBox="0 0 24 24" width="19" height="19"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Present Continuous</div>
+        <div class="lesson now"><span class="dot"><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M8 5.5v13l10-6.5z"/></svg></span>
+          <span style="flex:1">Past Simple<div class="bar"><i></i></div></span><span class="pct">60%</span></div>
+      </div>
+      <span class="streak"><svg class="i" viewBox="0 0 24 24" width="19" height="19"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5.3 1.6 1.2 2.5 2 2.5-1-3 0-6 1-8z"/></svg>Chuỗi 7 ngày</span>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide s2" id="slide-2">
+  <div class="blob" style="width:480px;height:480px;right:-140px;top:-200px;background:rgb(37 99 235 / .08)"></div>
+  <div class="blob" style="width:280px;height:280px;left:-90px;bottom:-160px;background:rgb(124 58 237 / .06)"></div>
+  <div class="safe">
+    <div class="copy">
+      <div class="brandrow">
+        <span class="mark"><img src="../../web/public/brand/fluentra-mark-64.png" alt=""></span>
+        <span class="chip">Ôn tập ngắt quãng</span>
+      </div>
+      <h1>Từ vựng của bạn,<br><em>nhớ lâu hơn</em></h1>
+      <div class="features">
+        <span><svg class="i" viewBox="0 0 24 24" style="color:#f59e0b"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></svg>Lặp lại thông minh</span>
+        <span><svg class="i" viewBox="0 0 24 24" style="color:var(--primary)"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8zM18.5 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></svg>AI viết ví dụ</span>
+        <span><svg class="i" viewBox="0 0 24 24" style="color:var(--success-accent)"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>Tiến bộ rõ rệt</span>
+      </div>
+      <span class="cta">Thêm từ của bạn <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+    </div>
+    <div class="stage">
+      <div class="card photo"><img src="art/beach_with_umbrella_3d.png" alt=""></div>
+      <img class="art" src="art/light_bulb_3d.png" alt="" style="width:104px;left:560px;top:-4px">
+      <div class="card flash back"></div>
+      <div class="card flash">
+        <div class="row"><span class="pos">noun · B1</span>
+          <span class="speak"><svg class="i" viewBox="0 0 24 24" width="22" height="22"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></span></div>
+        <span class="word">leisure</span>
+        <span class="ipa muted">/ˈleʒ.ər/</span>
+        <span class="meaning">thời gian rảnh rỗi</span>
+        <div class="grades"><span>Lại</span><span>Khó</span><span class="good">Tốt</span><span>Dễ</span></div>
+      </div>
+      <span class="due"><svg class="i" viewBox="0 0 24 24" width="19" height="19"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>Ôn lại sau 3 ngày</span>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide s3" id="slide-3">
+  <div class="blob" style="width:460px;height:460px;right:-130px;bottom:-220px;background:rgb(236 72 153 / .07)"></div>
+  <div class="blob" style="width:260px;height:260px;left:-70px;top:-140px;background:rgb(124 58 237 / .07)"></div>
+  <div class="safe">
+    <div class="copy">
+      <div class="brandrow">
+        <span class="mark"><img src="../../web/public/brand/fluentra-mark-64.png" alt=""></span>
+        <span class="chip">IELTS · TOEIC · VSTEP</span>
+      </div>
+      <h1>Luyện đề sát thật,<br><em>xem điểm từng phần</em></h1>
+      <div class="features">
+        <span><svg class="i" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4V20.5H7z"/><path d="M14 3.5v4h4M10 12h5M10 15.5h5"/></svg>Đề thi chuẩn</span>
+        <span><svg class="i" viewBox="0 0 24 24"><path d="M4 19h16M7 16v-4M12 16V8M17 16v-7"/></svg>Phân tích chi tiết</span>
+        <span><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Lịch sử điểm</span>
+      </div>
+      <span class="cta">Luyện đề ngay <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+    </div>
+    <div class="stage">
+      <img class="art" src="art/books_3d.png" alt="" style="width:210px;left:440px;top:150px">
+      <img class="art" src="art/bullseye_3d.png" alt="" style="width:236px;left:420px;top:0">
+      <div class="card report">
+        <div class="top">
+          <span class="name">IELTS · Đề 3</span>
+          <div class="exams"><span class="on">IELTS</span><span>TOEIC</span><span>VSTEP</span></div>
+        </div>
+        <div class="band"><b>7.0</b><span class="muted" style="font-size:17px;font-weight:600">Overall band</span></div>
+        <div class="sec"><span>Listening</span><span class="track"><i style="width:78%"></i></span><span class="v">7.5</span></div>
+        <div class="sec"><span>Reading</span><span class="track"><i style="width:72%"></i></span><span class="v">7.0</span></div>
+        <div class="sec"><span>Writing</span><span class="track"><i style="width:64%"></i></span><span class="v">6.5</span></div>
+        <div class="sec"><span>Speaking</span><span class="track"><i style="width:58%"></i></span><span class="v">6.0</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

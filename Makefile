@@ -252,6 +252,12 @@ test-web: ## Frontend unit tests
 test-e2e: ## Playwright end-to-end
 	cd web && pnpm run test:e2e
 
+e2e-stack: ## Start the API and worker for E2E with mail in Mailpit and no outside service (after dev-infra)
+	bash scripts/e2e-stack.sh start
+
+e2e-stack-down: ## Stop what e2e-stack started
+	bash scripts/e2e-stack.sh stop
+
 test-load: ## k6 load scenarios
 	k6 run test/load/scenarios.js
 
@@ -377,5 +383,5 @@ security: ## Security scans
 .PHONY: help setup dev dev-infra dev-infra-down dev-down logs prod-up api worker web gen gen-backend gen-sql bundle-api gen-web \
         gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed seed-audio promote-admin due-reviews audit-logs \
         db-reset-DANGEROUS check check-ci fmt fmt-check vet lint lint-int lint-go arch test test-int \
-        test-contract test-web test-e2e test-load test-eval cover cover-check cover-gate docs \
+        test-contract test-web test-e2e e2e-stack e2e-stack-down test-load test-eval cover cover-check cover-gate docs \
         docs-check ci ci-backend ci-frontend ci-fast security

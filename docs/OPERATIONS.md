@@ -72,22 +72,37 @@ Session mode (5432) is required: transaction mode (6543) breaks River's
 
 1. **Supabase.** Create the project. Under API settings, turn the Data API off; the
    app does not use it.
-2. **Migrate** from your machine; Render's free plan has no shell or pre-deploy step:
-   `DB_DSN='<session pooler DSN>' go run ./cmd/migrate up`.
+2. **GitHub environment.** Create `seed-production` (Settings → Environments),
+   restrict it to `main`, add yourself as a required reviewer, and give it
+   `DB_DSN` (the session pooler DSN), `SEED_ADMIN_EMAIL` (the address you will
+   register with in step 5), and the R2 values the API uses, `S3_ENDPOINT`,
+   `S3_ACCESS_KEY` and `S3_SECRET_KEY`: the seed uploads the dashboard's
+   promotional slides (`db/fixtures/banners`, rendered by `tools/banners`).
 3. **R2.** Create the buckets and apply CORS: [deploy/r2/README.md](../deploy/r2/README.md).
-4. **Render**, then **Vercel** (root directory `web`). If the Render hostname
-   changes, update the `/api` rewrite in `web/vercel.json`.
-5. **Admin.** Register on the site, then promote the account:
-   `psql '<DSN>' -v seed_admin_email=you@example.com -f db/seeds/rbac.sql`.
-6. **Catalogue.** `APP_ENV=production DB_DSN='<DSN>' go run ./cmd/seed -reference`
-   loads the courses, 10,000 words and the mock tests (about 77 MB), owned by that admin.
-   It takes about 20 minutes against a local database and longer over the internet;
-   it is idempotent, so an interrupted run can simply be repeated.
+4. **Migrate.** Actions → **seed-production** → Run workflow, task `migrate`,
+   confirm `production`. Render's free plan has no shell or pre-deploy step, so
+   migrations run from here.
+5. **Render**, then **Vercel** (root directory `web`). If the Render hostname
+   changes, update the `/api` rewrite in `web/vercel.json`. Register on the site
+   with `SEED_ADMIN_EMAIL` and verify the address.
+6. **Catalogue.** Run **seed-production** again with task `migrate-and-seed`. It
+   promotes that account to admin (it never creates one), loads the courses,
+   10,000 words and the mock tests (about 77 MB) with `cmd/seed -reference`, and
+   starts **tts-render** to voice the listening items. It is idempotent, so an
+   interrupted run can simply be repeated.
+
+From a machine instead of Actions, `APP_ENV` must say where the DSN goes:
+`APP_ENV=production DB_DSN='<DSN>' go run ./cmd/migrate up`, then
+`APP_ENV=production DB_DSN='<DSN>' go run ./cmd/seed -reference -admin-email you@example.com`.
+`cmd/migrate`, `cmd/seed` and `cmd/tts` refuse a remote DSN while `APP_ENV` says
+`local`, `development` or `ci`: a `.env` pointed at production but still named
+local is how demo accounts reach production.
 
 ### Every deploy
 
-Push to `main`; Render rebuilds. When the release adds migrations, run step 2
-first. Migrations must stay backward-compatible with the running version.
+Push to `main`; Render rebuilds. When the release adds migrations, run
+**seed-production** with task `migrate` first. Migrations must stay
+backward-compatible with the running version.
 
 ### Free-plan limits
 

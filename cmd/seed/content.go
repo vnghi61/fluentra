@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -367,107 +369,127 @@ func seedVocabularyWords(
 ) (int, error) {
 	decks := &deckCache{pool: pool, ids: map[string]uuid.UUID{}, linked: map[uuid.UUID][]uuid.UUID{}}
 
-	seededCount := 0
-	for i, s := range senses {
-		// 1. Ensure content version for sense
-		slug := vocabSlug(s.Lemma, s.POS)
-		// The dictionary entry, not just the answer key. All of this is already
-		// on seedWordSense; it simply never reached the body, so the review
-		// screen had a word to schedule and nothing to show for it.
-		body := map[string]any{
-			bodyKeyPrompt:        fmt.Sprintf("What does the word '%s' mean?", s.Lemma),
-			bodyKeyCorrectAnswer: s.Lemma,
-			bodyKeyAcceptable:    []string{s.Lemma},
-			bodyKeyDefinition:    s.Definition,
-			bodyKeyWord:          s.Lemma,
-			bodyKeyPOS:           s.POS,
-			bodyKeyIPA:           s.IPA,
-		}
-		if s.DefinitionVI != "" {
-			body[bodyKeyDefinitionVI] = s.DefinitionVI
-		}
-		if len(s.Examples) > 0 {
-			// `example_sentence` stays a bare string: it is the key the
-			// published OpenAPI examples show, and the one a client written
-			// before the list existed reads.
-			body[bodyKeyExampleSentence] = s.Examples[0].Sentence
-			body[bodyKeyExampleSentences] = s.Examples
-		}
-		if s.AudioURL != "" {
-			body["audio_url"] = s.AudioURL
-			body["audio_attribution"] = s.AudioAttribution
-			body["audio_licence"] = s.AudioLicence
-		}
-		versionID, err := ensureContentItemAndVersion(ctx, pool, adminID, slug, "vocabulary_quiz", s.CEFRLevel, body)
-		if err != nil {
-			return seededCount, fmt.Errorf("ensure vocab content for %s: %w", s.Lemma, err)
-		}
-
-		// 2. Upsert word
-		var wordID uuid.UUID
-		rank := seedRank(s, i)
-		const upsertWord = `
-			INSERT INTO skill.words (lemma, pos, cefr_level, frequency_rank, ipa, updated_at)
-			VALUES ($1, $2, $3, $4, $5, now())
-			ON CONFLICT (lemma, pos) DO UPDATE
-			SET cefr_level = EXCLUDED.cefr_level,
-			    frequency_rank = EXCLUDED.frequency_rank,
-			    ipa = EXCLUDED.ipa,
-			    updated_at = now()
-			RETURNING id`
-		if err := pool.QueryRow(ctx, upsertWord, s.Lemma, s.POS, s.CEFRLevel, rank, s.IPA).
-			Scan(&wordID); err != nil {
-			return seededCount, fmt.Errorf("upsert word %s: %w", s.Lemma, err)
-		}
-
-		// 3. Upsert word_sense
-		examplesJSON, err := json.Marshal(s.Examples)
-		if err != nil {
-			examplesJSON = []byte("[]")
-		}
-
-		var senseID uuid.UUID
-		err = pool.QueryRow(ctx, "SELECT id FROM skill.word_senses WHERE word_id = $1 LIMIT 1", wordID).Scan(&senseID)
-		if err != nil && !pgxIsNoRows(err) {
-			return seededCount, fmt.Errorf("query word sense %s: %w", s.Lemma, err)
-		}
-
-		if senseID == uuid.Nil {
-			const insertSense = `
-				INSERT INTO skill.word_senses (word_id, content_version_id, definition, definition_vi, examples)
-				VALUES ($1, $2, $3, $4, $5)
-				RETURNING id`
-			err := pool.QueryRow(ctx, insertSense,
-				wordID, versionID, s.Definition, s.DefinitionVI, examplesJSON,
-			).Scan(&senseID)
-			if err != nil {
-				return seededCount, fmt.Errorf("insert sense for %s: %w", s.Lemma, err)
+	// Words are written concurrently. Everything below is keyed by the word's
+	// slug (lemma and part of speech), so two senses of one word share a worker
+	// and the sense lookup-then-insert cannot race itself.
+	var seeded atomic.Int64
+	err := forEachPartitioned(ctx, seedConcurrency, senses,
+		func(s seedWordSense) string { return vocabSlug(s.Lemma, s.POS) },
+		func(ctx context.Context, i int, s seedWordSense) error {
+			if err := seedVocabularyWord(ctx, pool, adminID, s, seedRank(s, i), decksFor, decks); err != nil {
+				return err
 			}
-		} else {
-			const updateSense = `
-				UPDATE skill.word_senses
-				SET definition = $1, definition_vi = $2, examples = $3, content_version_id = $4, updated_at = now()
-				WHERE id = $5`
-			_, err := pool.Exec(ctx, updateSense,
-				s.Definition, s.DefinitionVI, examplesJSON, versionID, senseID,
-			)
-			if err != nil {
-				return seededCount, fmt.Errorf("update sense for %s: %w", s.Lemma, err)
-			}
-		}
-
-		// 4. Add to its public decks
-		if err := linkDecks(ctx, pool, decksFor(s), decks, senseID); err != nil {
-			return seededCount, fmt.Errorf("link decks for %s: %w", s.Lemma, err)
-		}
-
-		seededCount++
+			seeded.Add(1)
+			return nil
+		})
+	seededCount := int(seeded.Load())
+	if err != nil {
+		return seededCount, err
 	}
 
 	if err := decks.prune(ctx); err != nil {
 		return seededCount, err
 	}
 	return seededCount, nil
+}
+
+// seedVocabularyWord writes one sense: its content version, the word, the
+// sense, and its deck links.
+func seedVocabularyWord(
+	ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, s seedWordSense, rank int,
+	decksFor func(seedWordSense) []seedDeck, decks *deckCache,
+) error {
+	// 1. Ensure content version for sense
+	slug := vocabSlug(s.Lemma, s.POS)
+	// The dictionary entry, not just the answer key. All of this is already
+	// on seedWordSense; it simply never reached the body, so the review
+	// screen had a word to schedule and nothing to show for it.
+	body := map[string]any{
+		bodyKeyPrompt:        fmt.Sprintf("What does the word '%s' mean?", s.Lemma),
+		bodyKeyCorrectAnswer: s.Lemma,
+		bodyKeyAcceptable:    []string{s.Lemma},
+		bodyKeyDefinition:    s.Definition,
+		bodyKeyWord:          s.Lemma,
+		bodyKeyPOS:           s.POS,
+		bodyKeyIPA:           s.IPA,
+	}
+	if s.DefinitionVI != "" {
+		body[bodyKeyDefinitionVI] = s.DefinitionVI
+	}
+	if len(s.Examples) > 0 {
+		// `example_sentence` stays a bare string: it is the key the
+		// published OpenAPI examples show, and the one a client written
+		// before the list existed reads.
+		body[bodyKeyExampleSentence] = s.Examples[0].Sentence
+		body[bodyKeyExampleSentences] = s.Examples
+	}
+	if s.AudioURL != "" {
+		body["audio_url"] = s.AudioURL
+		body["audio_attribution"] = s.AudioAttribution
+		body["audio_licence"] = s.AudioLicence
+	}
+	versionID, err := ensureContentItemAndVersion(ctx, pool, adminID, slug, "vocabulary_quiz", s.CEFRLevel, body)
+	if err != nil {
+		return fmt.Errorf("ensure vocab content for %s: %w", s.Lemma, err)
+	}
+
+	// 2. Upsert word
+	var wordID uuid.UUID
+	const upsertWord = `
+		INSERT INTO skill.words (lemma, pos, cefr_level, frequency_rank, ipa, updated_at)
+		VALUES ($1, $2, $3, $4, $5, now())
+		ON CONFLICT (lemma, pos) DO UPDATE
+		SET cefr_level = EXCLUDED.cefr_level,
+		    frequency_rank = EXCLUDED.frequency_rank,
+		    ipa = EXCLUDED.ipa,
+		    updated_at = now()
+		RETURNING id`
+	if err := pool.QueryRow(ctx, upsertWord, s.Lemma, s.POS, s.CEFRLevel, rank, s.IPA).
+		Scan(&wordID); err != nil {
+		return fmt.Errorf("upsert word %s: %w", s.Lemma, err)
+	}
+
+	// 3. Upsert word_sense
+	examplesJSON, err := json.Marshal(s.Examples)
+	if err != nil {
+		examplesJSON = []byte("[]")
+	}
+
+	var senseID uuid.UUID
+	err = pool.QueryRow(ctx, "SELECT id FROM skill.word_senses WHERE word_id = $1 LIMIT 1", wordID).Scan(&senseID)
+	if err != nil && !pgxIsNoRows(err) {
+		return fmt.Errorf("query word sense %s: %w", s.Lemma, err)
+	}
+
+	if senseID == uuid.Nil {
+		const insertSense = `
+			INSERT INTO skill.word_senses (word_id, content_version_id, definition, definition_vi, examples)
+			VALUES ($1, $2, $3, $4, $5)
+			RETURNING id`
+		err := pool.QueryRow(ctx, insertSense,
+			wordID, versionID, s.Definition, s.DefinitionVI, examplesJSON,
+		).Scan(&senseID)
+		if err != nil {
+			return fmt.Errorf("insert sense for %s: %w", s.Lemma, err)
+		}
+	} else {
+		const updateSense = `
+			UPDATE skill.word_senses
+			SET definition = $1, definition_vi = $2, examples = $3, content_version_id = $4, updated_at = now()
+			WHERE id = $5`
+		_, err := pool.Exec(ctx, updateSense,
+			s.Definition, s.DefinitionVI, examplesJSON, versionID, senseID,
+		)
+		if err != nil {
+			return fmt.Errorf("update sense for %s: %w", s.Lemma, err)
+		}
+	}
+
+	// 4. Add to its public decks
+	if err := linkDecks(ctx, pool, decksFor(s), decks, senseID); err != nil {
+		return fmt.Errorf("link decks for %s: %w", s.Lemma, err)
+	}
+	return nil
 }
 
 // seedRank is a word's frequency rank: the fixture's when it carries one,
@@ -482,7 +504,9 @@ func seedRank(sense seedWordSense, index int) int {
 // deckCache upserts each public deck once per seed run.
 type deckCache struct {
 	pool *pgxpool.Pool
-	ids  map[string]uuid.UUID
+	// mu guards ids and linked: words are seeded concurrently.
+	mu  sync.Mutex
+	ids map[string]uuid.UUID
 	// linked is every sense this run put in each deck, by deck id.
 	linked map[uuid.UUID][]uuid.UUID
 }
@@ -510,6 +534,8 @@ func (c *deckCache) prune(ctx context.Context) error {
 // everyone's. The unique constraint is NULLS NOT DISTINCT, so the upsert still
 // matches on re-run.
 func (c *deckCache) id(ctx context.Context, deck seedDeck) (uuid.UUID, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if id, ok := c.ids[deck.Slug]; ok {
 		return id, nil
 	}
@@ -546,7 +572,9 @@ func linkDecks(
 		if _, err := pool.Exec(ctx, insertDeckItem, id, senseID); err != nil {
 			return err
 		}
+		cache.mu.Lock()
 		cache.linked[id] = append(cache.linked[id], senseID)
+		cache.mu.Unlock()
 	}
 	return nil
 }

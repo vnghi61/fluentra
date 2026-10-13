@@ -14,6 +14,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
+	"github.com/fluentra/fluentra/cmd/internal/dbtarget"
 	"github.com/fluentra/fluentra/db/migrations"
 	"github.com/fluentra/fluentra/internal/shared/config"
 )
@@ -21,9 +22,16 @@ import (
 const migrationRole = "fluentra_migrator"
 
 type databaseConfig struct {
+	App struct {
+		Environment string `koanf:"env"`
+	} `koanf:"app"`
 	Database struct {
 		DSN string `koanf:"dsn"`
 	} `koanf:"db"`
+	Migrate struct {
+		// AllowRemoteDB is MIGRATE_ALLOW_REMOTE_DB: see dbtarget.Check.
+		AllowRemoteDB bool `koanf:"allow_remote_db"`
+	} `koanf:"migrate"`
 }
 
 func main() {
@@ -43,11 +51,24 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	}
 
 	var cfg databaseConfig
-	if err := config.Load(ctx, config.Options{Required: []config.RequiredKey{{
-		Name:       "db.dsn",
-		DocSection: ".env.example",
-	}}}, &cfg); err != nil {
+	if err := config.Load(ctx, config.Options{
+		// Declared so APP_ENV and MIGRATE_ALLOW_REMOTE_DB are read at all:
+		// config.Load drops variables whose section it was not told about.
+		Defaults: map[string]any{"app.env": "local", "migrate.allow_remote_db": false},
+		Required: []config.RequiredKey{{
+			Name:       "db.dsn",
+			DocSection: ".env.example",
+		}},
+	}, &cfg); err != nil {
 		return fmt.Errorf("load migration configuration: %w", err)
+	}
+
+	// Reading the status is harmless anywhere; changing the schema of a remote
+	// database needs APP_ENV to say which one it is.
+	if command != "status" {
+		if err := dbtarget.Check(cfg.App.Environment, cfg.Database.DSN, cfg.Migrate.AllowRemoteDB); err != nil {
+			return err
+		}
 	}
 
 	db, err := sql.Open("pgx", cfg.Database.DSN)

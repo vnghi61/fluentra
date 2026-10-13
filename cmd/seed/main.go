@@ -23,11 +23,13 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/fluentra/fluentra/cmd/internal/dbtarget"
 	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	"github.com/fluentra/fluentra/internal/modules/user"
@@ -49,6 +51,16 @@ type seedConfig struct {
 	Redis struct {
 		URL string `koanf:"url"`
 	} `koanf:"redis"`
+	// Storage is where the dashboard slides are uploaded: the same S3_* the
+	// API serves banner images from.
+	Storage struct {
+		Endpoint      string `koanf:"endpoint"`
+		AccessKey     string `koanf:"access_key"`
+		SecretKey     string `koanf:"secret_key"`
+		Region        string `koanf:"region"`
+		UseSSL        bool   `koanf:"use_ssl"`
+		UsePostPolicy bool   `koanf:"use_post_policy"`
+	} `koanf:"s3"`
 }
 
 type demoAccount struct {
@@ -90,6 +102,16 @@ var foundationCoursesOnly bool
 // referenceOnly is set from -reference: the catalogue without demo accounts.
 var referenceOnly bool
 
+// adminEmail is set from -admin-email: the registered account -reference
+// promotes before it looks for an admin to own the catalogue.
+var adminEmail string
+
+// allowRemoteDB is set from -allow-remote-db: see dbtarget.Check.
+var allowRemoteDB bool
+
+// includeBanners is set from -banners.
+var includeBanners = true
+
 func main() {
 	audio := flag.Bool("audio", false,
 		"backfill recorded pronunciation onto flashcards that have none, then exit")
@@ -102,6 +124,14 @@ func main() {
 		"load the catalogue only, owned by the first admin; no demo accounts (allowed in production)")
 	flag.BoolVar(&foundationCoursesOnly, "foundation-courses-only", false,
 		"sync Foundation lessons from existing published content, without changing accounts or fixtures")
+	flag.BoolVar(&includeBanners, "banners", true,
+		"upload the dashboard slides in db/fixtures/banners to S3_* storage and create their banners")
+	flag.IntVar(&seedConcurrency, "concurrency", defaultSeedConcurrency,
+		"how many workers write at once; 1 seeds one row at a time")
+	flag.StringVar(&adminEmail, "admin-email", "",
+		"with -reference, grant the admin role to this already registered account first (bootstraps the first admin)")
+	flag.BoolVar(&allowRemoteDB, "allow-remote-db", false,
+		"seed a remote database even though APP_ENV does not say production or staging")
 	flag.Parse()
 	includeFoundationFixtures = *foundation
 	includeExamFixtures = *exams
@@ -176,7 +206,12 @@ func run(ctx context.Context, out io.Writer) error {
 	// dropped, `cfg.App.Environment` stays empty, and the production guard can
 	// never fire. TestRun_RefusesProduction is what caught that.
 	if err := config.Load(ctx, config.Options{
-		Defaults: map[string]any{"app.env": "local", "redis.url": ""},
+		Defaults: map[string]any{
+			"app.env": "local", "redis.url": "",
+			// .env.example's local MinIO; production passes the R2 values.
+			"s3.endpoint": "localhost:9000", "s3.access_key": "minioadmin", "s3.secret_key": "minioadmin",
+			"s3.region": "us-east-1", "s3.use_ssl": false, "s3.use_post_policy": true,
+		},
 		Required: []config.RequiredKey{{
 			Name:       "db.dsn",
 			DocSection: ".env.example",
@@ -191,10 +226,18 @@ func run(ctx context.Context, out io.Writer) error {
 	if err := refuseProduction(cfg.App.Environment); err != nil {
 		return err
 	}
+	// And the name has to match where the DSN goes: APP_ENV=local with a
+	// production DSN would otherwise sail past the guard above.
+	if err := dbtarget.Check(cfg.App.Environment, cfg.Database.DSN, allowRemoteDB); err != nil {
+		return err
+	}
+	if adminEmail != "" && !referenceOnly {
+		return errors.New("-admin-email bootstraps the owner of a -reference seed; use it with -reference")
+	}
 
-	pool, err := pgxpool.New(ctx, cfg.Database.DSN)
+	pool, err := newSeedPool(ctx, cfg.Database.DSN, seedConcurrency)
 	if err != nil {
-		return fmt.Errorf("connect: %w", err)
+		return err
 	}
 	defer pool.Close()
 
@@ -218,6 +261,20 @@ func run(ctx context.Context, out io.Writer) error {
 	if adminID == uuid.Nil {
 		return fmt.Errorf("no admin account was seeded, so content cannot be authored")
 	}
+	if err := seedCatalogue(ctx, pool, adminID, cfg, out); err != nil {
+		return err
+	}
+
+	if !referenceOnly {
+		_, _ = fmt.Fprintf(out, "\npassword for all: %s\n", demoPassword)
+	}
+	return nil
+}
+
+// seedCatalogue loads everything the admin account owns: the authored
+// courses and words, the Foundation content and courses, the mock tests and
+// the dashboard slides, in that order.
+func seedCatalogue(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, cfg seedConfig, out io.Writer) error {
 	if err := seedAuthoredContent(ctx, pool, adminID, out); err != nil {
 		return err
 	}
@@ -248,8 +305,16 @@ func run(ctx context.Context, out io.Writer) error {
 		}
 	}
 
-	if !referenceOnly {
-		_, _ = fmt.Fprintf(out, "\npassword for all: %s\n", demoPassword)
+	// The dashboard's promotional slides (tools/banners), last: they are the
+	// one step that needs object storage as well as the database.
+	if includeBanners {
+		store, err := newSeedStore(cfg)
+		if err != nil {
+			return err
+		}
+		if err := seedBannerSlides(ctx, pool, store, adminID, defaultBannerFixtureDir, out); err != nil {
+			return fmt.Errorf("seed banners: %w", err)
+		}
 	}
 	return nil
 }
@@ -267,6 +332,11 @@ func refuseProduction(environment string) error {
 // admin it seeds, or with -reference an admin that already exists.
 func contentOwner(ctx context.Context, pool *pgxpool.Pool, roles *rbac.Module, out io.Writer) (uuid.UUID, error) {
 	if referenceOnly {
+		if adminEmail != "" {
+			if err := promoteRegisteredAdmin(ctx, pool, adminEmail, out); err != nil {
+				return uuid.Nil, err
+			}
+		}
 		id, err := roles.RoleMembers().FirstHolderOf(ctx, "admin")
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("find an admin to own the catalogue: %w", err)
@@ -366,6 +436,36 @@ func ensureRole(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, roleN
 		ON CONFLICT (user_id, role_id) DO NOTHING`
 	_, err := pool.Exec(ctx, grant, userID, roleName)
 	return err
+}
+
+// promoteRegisteredAdmin grants the admin role to an account somebody already
+// registered and verified, the same grant db/seeds/rbac.sql makes, so a fresh
+// production database gets its first admin without a psql session. It never
+// creates an account: the person signs up through the app like anyone else.
+func promoteRegisteredAdmin(ctx context.Context, pool *pgxpool.Pool, email string, out io.Writer) error {
+	var userID uuid.UUID
+	var verified bool
+	var status string
+	err := pool.QueryRow(ctx,
+		`SELECT id, email_verified_at IS NOT NULL, status::text FROM core.users WHERE email = $1`,
+		strings.TrimSpace(email)).Scan(&userID, &verified, &status)
+	if pgxIsNoRows(err) {
+		return fmt.Errorf("no account for %s: register it in the app first, then re-run", email)
+	}
+	if err != nil {
+		return fmt.Errorf("look up %s: %w", email, err)
+	}
+	if status != "active" {
+		return fmt.Errorf("%s is %s, not active: it cannot own the catalogue", email, status)
+	}
+	if !verified {
+		return fmt.Errorf("%s has not verified its email yet: finish sign-up, then re-run", email)
+	}
+	if err := ensureAdmin(ctx, pool, userID); err != nil {
+		return fmt.Errorf("grant admin to %s: %w", email, err)
+	}
+	_, _ = fmt.Fprintf(out, "  ✓ admin role granted to %s\n", email)
+	return nil
 }
 
 // ensureAdmin grants the admin role, the same insert db/seeds/rbac.sql makes.

@@ -23,6 +23,8 @@ concurrency:
 
 permissions:
   contents: read
+  # ops-alert.sh opens an issue when a run fails and closes it on recovery.
+  issues: write
 
 jobs:
   render:
@@ -64,3 +66,15 @@ jobs:
           S3_REGION: auto
           S3_USE_SSL: 'true'
         run: go run ./cmd/media -all -limit 50
+
+      - name: Report the failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ops-alert.sh failed
+
+      - name: Close the failure report
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ops-alert.sh recovered
