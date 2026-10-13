@@ -41,13 +41,7 @@ export function ProgressPage(): React.JSX.Element {
   }
 
   if (isError || !data) {
-    return (
-      <DashboardError
-        title={t("progress.error.title", "Unable to Load Progress")}
-        onRetry={() => void refetch()}
-        error={error}
-      />
-    );
+    return <DashboardError onRetry={() => refetch()} error={error} />;
   }
 
   // `courses` and `skills` are required in ProgressResponse and the backend ships

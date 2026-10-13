@@ -69,7 +69,7 @@ export function OAuthCallbackPage(): React.JSX.Element {
       } catch (err) {
         setIsLoading(false);
         if (err instanceof ApiError) {
-          setError(getErrorMessage(err.problem));
+          setError(getErrorMessage(err.problem, t));
           setErrorCode(err.problem.code ?? null);
         } else {
           setError(

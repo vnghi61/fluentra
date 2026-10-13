@@ -25,6 +25,7 @@ import {
   WeeklyPlanCard,
 } from "@/features/learning";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/authStore";
 
 const greetingFallback = {
   morning: "Good morning! 👋",
@@ -35,6 +36,7 @@ const greetingFallback = {
 export function DashboardPage(): React.JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const status = useAuthStore((s) => s.status);
   const { data, isLoading, isError, error, refetch } = useDashboard();
   const { data: gamificationData } = useGamificationSummary();
   const { data: profile, isLoading: isProfileLoading } = useLearningProfile();
@@ -55,12 +57,27 @@ export function DashboardPage(): React.JSX.Element {
     }
   }, [isProfileLoading, profile, navigate]);
 
-  if (isLoading) {
+  // The dashboard is a signed-in page; a visitor's home is /learn (ADR-0025).
+  // The route guard only redirects once it knows: on a cold host the boot
+  // refresh outlives its paint budget, `status` stays `idle`, and the guard
+  // lets the page render. When the refresh finally fails, the visitor was
+  // left on this page with an error for a dashboard they never had. Now they
+  // land where the guard would have sent them, replacing this entry so Back
+  // does not return to it.
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      void navigate({ to: "/learn", replace: true });
+    }
+  }, [status, navigate]);
+
+  // Until the session is known, the dashboard requests can only fail for want
+  // of a token: that is a wait, not an error.
+  if (status !== "authenticated" || isLoading) {
     return <DashboardSkeleton />;
   }
 
   if (isError || !data) {
-    return <DashboardError onRetry={() => void refetch()} error={error} />;
+    return <DashboardError onRetry={() => refetch()} error={error} />;
   }
 
   const greetingKey = greetingKeyFor(new Date().getHours());

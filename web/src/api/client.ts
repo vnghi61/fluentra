@@ -149,6 +149,13 @@ export async function apiFetch<T>(
           title: response.statusText || "Request failed",
           status: response.status,
         };
+    // A 429 (and a lockout) says how long to wait in Retry-After, not in the
+    // body. Kept with the problem so the message can say "in 5 minutes"
+    // instead of only "rate limited".
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    if (Number.isFinite(retryAfter) && retryAfter > 0) {
+      problem.meta = { ...problem.meta, retry_after_seconds: retryAfter };
+    }
 
     // Single-flight 401 refresh interceptor
     if (

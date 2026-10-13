@@ -17,7 +17,12 @@ import { ERROR_MESSAGES, getErrorMessage } from "@/lib/errors/catalogue";
  * So this reads the Go source and fails on the mismatch itself.
  */
 
-const MODULE_ROOT = join(__dirname, "../../../internal/modules");
+// The modules, and the shared HTTP layer: the rate limiter answers RATE_LIMITED
+// for every endpoint from internal/shared/httpx, not from a module.
+const SOURCE_ROOTS = [
+  join(__dirname, "../../../internal/modules"),
+  join(__dirname, "../../../internal/shared"),
+];
 
 let cachedServerErrorCodes: Set<string> | undefined;
 
@@ -65,7 +70,7 @@ function serverErrorCodes(): Set<string> {
     }
   };
 
-  walk(MODULE_ROOT);
+  for (const root of SOURCE_ROOTS) walk(root);
   cachedServerErrorCodes = codes;
   return codes;
 }
@@ -105,6 +110,34 @@ describe("the error catalogue against the server's own codes", () => {
         `${code} has no catalogue entry`,
       ).toBeTruthy();
     }
+  });
+
+  it("says how long to wait when the rate limiter refuses", () => {
+    // What a learner who signs in too often used to read: "Rate limited".
+    const refused = {
+      title: "Rate limited",
+      status: 429,
+      code: "RATE_LIMITED",
+      meta: { retry_after_seconds: 241 },
+    };
+    expect(getErrorMessage(refused)).toBe(
+      "You have tried too many times. Please wait 5 minute(s) and try again.",
+    );
+
+    // The translator gets the timed key and the minutes to pluralise.
+    const calls: unknown[] = [];
+    const t = (key: string, options: { count?: number | undefined }) => {
+      calls.push([key, options.count]);
+      return `${key}:${String(options.count)}`;
+    };
+    expect(getErrorMessage(refused, t)).toBe("errors.RATE_LIMITED_timed:5");
+    expect(calls).toEqual([["errors.RATE_LIMITED_timed", 5]]);
+  });
+
+  it("treats a bare 429 as the rate limiter, not as its title", () => {
+    expect(getErrorMessage({ title: "Too Many Requests", status: 429 })).toBe(
+      ERROR_MESSAGES["RATE_LIMITED"],
+    );
   });
 
   it("falls back to the title for a code it does not know", () => {

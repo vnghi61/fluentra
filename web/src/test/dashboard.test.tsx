@@ -275,9 +275,9 @@ describe("DashboardPage (P10.1)", () => {
 
     // Should show error state
     expect(
-      await screen.findByText("Unable to Load Dashboard"),
+      await screen.findByText("The server is a little busy"),
     ).toBeInTheDocument();
-    const retryBtn = screen.getByRole("button", { name: /Try again/i });
+    const retryBtn = screen.getByRole("button", { name: /Try again now/i });
     expect(retryBtn).toBeInTheDocument();
 
     // Clicking retry recovers

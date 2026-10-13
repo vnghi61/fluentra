@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
   Check,
   Clock,
+  FileUp,
   PlayCircle,
   Upload,
   X,
@@ -20,6 +21,13 @@ import {
   type VocabUpload,
 } from "../api/uploadApi";
 import type { WordSummary } from "../api/searchApi";
+import {
+  countWords,
+  importWordFile,
+  MAX_IMPORT_BYTES,
+  MAX_UPLOAD_WORDS,
+  splitAtLimit,
+} from "../model/wordList";
 import { WordAutocomplete } from "./WordAutocomplete";
 
 /**
@@ -47,57 +55,80 @@ export interface UploadFormProps {
 /** The line separator the box and the server's parser both work in. */
 const NEWLINE = "\n";
 
-/** Counts what the server's parser will find, using the same rules. */
-function countWords(text: string): number {
-  const seen = new Set<string>();
-  for (const rawLine of text.split("\n")) {
-    let line = rawLine.trim().replace(/^[-*•\t ]+/, "");
-    line = line.replace(/^\d+[.):]\s*/, "");
-    if (line === "") continue;
-
-    let term = line;
-    for (const separator of [
-      "\t",
-      " - ",
-      " – ",
-      " — ",
-      " = ",
-      ": ",
-      " : ",
-      "=",
-      ";",
-      "|",
-    ]) {
-      const index = line.indexOf(separator);
-      if (index > 0) {
-        term = line.slice(0, index);
-        break;
-      }
-    }
-    term = term.trim().replace(/[.,;:]+$/, "");
-    if (term === "" || !/\p{L}/u.test(term)) continue;
-    seen.add(term.toLowerCase());
-  }
-  return seen.size;
-}
-
 export const UploadForm: React.FC<UploadFormProps> = ({ onSubmitted }) => {
   const { t } = useTranslation();
   const [text, setText] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const submit = useSubmitUpload();
 
   const wordCount = countWords(text);
   const canSubmit = wordCount > 0 && !submit.isPending;
+  const overLimit = wordCount > MAX_UPLOAD_WORDS;
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!canSubmit) return;
-    submit.mutate(text, {
+    // One upload takes MAX_UPLOAD_WORDS words and the server drops the rest
+    // without saying so; the rest stays in the box for the next one.
+    const { head, rest } = splitAtLimit(text);
+    submit.mutate(head, {
       onSuccess: () => {
-        setText("");
+        setText(rest);
+        setNotice(
+          rest
+            ? t("uploads.import.restLeft", {
+                count: countWords(rest),
+                defaultValue:
+                  "{{count}} more words are still in the box. Add them when you are ready.",
+              })
+            : null,
+        );
         onSubmitted?.();
       },
     });
+  };
+
+  /**
+   * Reads a CSV, TSV or Anki export into the box, below what is there. It
+   * does not submit: the learner sees the list and the count first.
+   */
+  const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (file.size > MAX_IMPORT_BYTES) {
+      setNotice(
+        t(
+          "uploads.import.tooLarge",
+          "That file is over 1 MB. Export fewer cards, or split it.",
+        ),
+      );
+      return;
+    }
+    const imported = importWordFile(await file.text());
+    if (imported.rows === 0) {
+      setNotice(
+        t(
+          "uploads.import.empty",
+          "No words found in that file. Each row should start with a word.",
+        ),
+      );
+      return;
+    }
+    setText((current) =>
+      current.trim() === ""
+        ? imported.text
+        : `${current.replace(/\n*$/, "")}${NEWLINE}${imported.text}`,
+    );
+    setNotice(
+      t("uploads.import.done", {
+        count: imported.rows,
+        name: file.name,
+        defaultValue:
+          "Read {{count}} rows from {{name}}. Check the list, then add them.",
+      }),
+    );
   };
 
   /**
@@ -177,6 +208,37 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onSubmitted }) => {
             "One word per line. Add its meaning after a dash, colon or tab if you want to — a plain list of words is fine.",
           )}
         </p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <input
+            ref={fileInput}
+            id="vocab-import"
+            type="file"
+            accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
+            className="sr-only"
+            tabIndex={-1}
+            onChange={(event) => void handleFile(event)}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 gap-2"
+            onClick={() => fileInput.current?.click()}
+          >
+            <FileUp className="h-4 w-4" aria-hidden="true" />
+            {t("uploads.import.button", "Import a file")}
+          </Button>
+          <span className="text-sm text-text-muted">
+            {t(
+              "uploads.import.hint",
+              "CSV, TSV, or an Anki export (Notes in Plain Text): the word first, its meaning second.",
+            )}
+          </span>
+        </div>
+        {notice && (
+          <p role="status" className="text-sm text-text">
+            {notice}
+          </p>
+        )}
       </div>
 
       {submit.data && (
@@ -202,6 +264,11 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onSubmitted }) => {
           {wordCount > 0
             ? `${wordCount} ${t("uploads.wordsFound", "words found")}`
             : t("uploads.nothingYet", "Nothing to add yet")}
+          {overLimit &&
+            ` · ${t("uploads.import.overLimit", {
+              count: MAX_UPLOAD_WORDS,
+              defaultValue: "the first {{count}} go now, the rest stay here",
+            })}`}
         </p>
         <Button
           type="submit"
