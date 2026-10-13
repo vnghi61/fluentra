@@ -90,8 +90,11 @@ jobs:
           S3_REGION: auto
           S3_USE_SSL: 'true'
           SPEECH_TTS_VOICE: ${{ env.PIPER_VOICE }}
+        # -budget stops starting new clips well inside timeout-minutes, so a
+        # catalogue larger than one run (~6 s a clip) ends green with the rest
+        # left for the next run instead of being killed mid-upload.
         run: >-
-          go run ./cmd/tts -all -engine piper
+          go run ./cmd/tts -all -budget 22m -engine piper
           -piper "${GITHUB_WORKSPACE}/.piper/piper/piper"
           -models "${GITHUB_WORKSPACE}/.piper/voices"
           -engine-version "${PIPER_VERSION}"
