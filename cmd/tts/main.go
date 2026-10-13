@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -66,6 +67,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	modelsFlag := flags.String("models", "", "Directory holding the piper voice models; SPEECH_PIPER_MODELS")
 	versionFlag := flags.String("engine-version", "", "Engine version recorded in the TTS cache")
 	allFlag := flags.Bool("all", false, "Render every listening_comprehension script that has no clip yet")
+	budgetFlag := flags.Duration("budget", 0,
+		"With -all, stop starting new items after this long (e.g. 25m); 0 means no limit")
 
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -112,11 +115,16 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		_, _ = fmt.Fprintf(out, "Rendered clip: %s\n", key)
 	}
 	if *allFlag {
-		count, err := processAll(ctx, db, uploader, engine, voice, cfg.Speech.TTSVoiceB, out)
+		var deadline time.Time
+		if *budgetFlag > 0 {
+			deadline = time.Now().Add(*budgetFlag)
+		}
+		summary, err := processAll(ctx, db, uploader, engine, voice, cfg.Speech.TTSVoiceB, deadline, out)
 		if err != nil {
 			return err
 		}
-		_, _ = fmt.Fprintf(out, "Finished: %d clips rendered or already cached\n", count)
+		_, _ = fmt.Fprintf(out, "Finished: %d clip(s) rendered or already cached, %d failed, %d left for the next run\n",
+			summary.Done, summary.Failed, summary.Remaining)
 	}
 	return nil
 }
@@ -256,6 +264,87 @@ type listeningBody struct {
 	Turns  []media.ScriptTurn `json:"turns"`
 }
 
+// listeningItem is one listening version with something to say.
+type listeningItem struct {
+	ID   string
+	Body listeningBody
+}
+
+// loadListeningItems reads every listening version up front and closes the
+// cursor before anything is rendered.
+//
+// The loop used to render while iterating the open result set. A render is a
+// Piper run, an upload and two queries, so on a full catalogue the cursor stayed
+// open for twenty minutes, and the pooler in front of production closed the
+// connection under it: rows.Err() came back as a bare "unexpected EOF" and took
+// the whole run down with the rest of the items unrendered.
+func loadListeningItems(ctx context.Context, db *sql.DB) ([]listeningItem, error) {
+	rows, err := db.QueryContext(ctx,
+		"SELECT id, body FROM content.content_versions WHERE kind = 'listening_comprehension' ORDER BY id",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query listening items: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var items []listeningItem
+	for rows.Next() {
+		var id string
+		var rawBody []byte
+		if err := rows.Scan(&id, &rawBody); err != nil {
+			return nil, fmt.Errorf("scan content version: %w", err)
+		}
+		var body listeningBody
+		if err := json.Unmarshal(rawBody, &body); err != nil {
+			continue
+		}
+		if strings.TrimSpace(body.Script) == "" && len(body.Turns) < 2 {
+			continue
+		}
+		items = append(items, listeningItem{ID: id, Body: body})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read listening items: %w", err)
+	}
+	return items, nil
+}
+
+// renderSummary is what one -all run did.
+type renderSummary struct {
+	Done      int
+	Failed    int
+	Remaining int
+}
+
+// renderItems renders items until they run out or the deadline passes. A zero
+// deadline means no limit. Stopping at the deadline is not a failure: the cache
+// skips what is done, so the next run carries on from here.
+func renderItems(
+	items []listeningItem,
+	render func(listeningItem) (string, error),
+	deadline time.Time,
+	now func() time.Time,
+	out io.Writer,
+) renderSummary {
+	var summary renderSummary
+	for i, item := range items {
+		if !deadline.IsZero() && !now().Before(deadline) {
+			summary.Remaining = len(items) - i
+			_, _ = fmt.Fprintf(out, "Budget spent: stopping with %d item(s) left for the next run\n", summary.Remaining)
+			break
+		}
+		key, err := render(item)
+		if err != nil {
+			summary.Failed++
+			_, _ = fmt.Fprintf(out, "Warning: failed to synthesise item %s: %v\n", item.ID, err)
+			continue
+		}
+		summary.Done++
+		_, _ = fmt.Fprintf(out, "Processed item %s -> %s\n", item.ID, key)
+	}
+	return summary
+}
+
 // processItemTurns renders a conversation turn by turn, each in its speaker's
 // voice, and stores the concatenated clip under one cache row (WO 22 D22-23).
 // The first speaker heard is voiceA; anyone else is voiceB.
@@ -326,51 +415,24 @@ func processAll(
 	uploader storage.Store,
 	engine media.SynthesiserEngine,
 	defaultVoice, secondVoice string,
+	deadline time.Time,
 	out io.Writer,
-) (int, error) {
-	rows, err := db.QueryContext(ctx,
-		"SELECT id, body FROM content.content_versions WHERE kind = 'listening_comprehension'",
-	)
+) (renderSummary, error) {
+	items, err := loadListeningItems(ctx, db)
 	if err != nil {
-		return 0, fmt.Errorf("query listening items: %w", err)
+		return renderSummary{}, err
 	}
-	defer func() { _ = rows.Close() }()
+	_, _ = fmt.Fprintf(out, "%d listening item(s) with a script\n", len(items))
 
-	processed := 0
-	for rows.Next() {
-		var id string
-		var rawBody []byte
-		if err := rows.Scan(&id, &rawBody); err != nil {
-			return processed, fmt.Errorf("scan content version: %w", err)
+	// A conversation renders turn by turn, each in its speaker's voice; a
+	// monologue in the one configured voice. The voice is configuration,
+	// never the item's: see media.ConfiguredVoice.
+	render := func(item listeningItem) (string, error) {
+		if len(item.Body.Turns) >= 2 {
+			return processItemTurns(ctx, db, uploader, engine,
+				item.Body.Turns, media.ConfiguredVoice(defaultVoice), media.ConfiguredVoice(secondVoice))
 		}
-
-		var body listeningBody
-		if err := json.Unmarshal(rawBody, &body); err != nil {
-			continue
-		}
-
-		if strings.TrimSpace(body.Script) == "" && len(body.Turns) < 2 {
-			continue
-		}
-
-		// A conversation renders turn by turn, each in its speaker's voice; a
-		// monologue in the one configured voice. The voice is configuration,
-		// never the item's: see media.ConfiguredVoice.
-		var key string
-		var err error
-		if len(body.Turns) >= 2 {
-			key, err = processItemTurns(ctx, db, uploader, engine,
-				body.Turns, media.ConfiguredVoice(defaultVoice), media.ConfiguredVoice(secondVoice))
-		} else {
-			key, err = processItem(ctx, db, uploader, engine, body.Script, media.ConfiguredVoice(defaultVoice))
-		}
-		if err != nil {
-			_, _ = fmt.Fprintf(out, "Warning: failed to synthesise item %s: %v\n", id, err)
-			continue
-		}
-		processed++
-		_, _ = fmt.Fprintf(out, "Processed item %s -> %s\n", id, key)
+		return processItem(ctx, db, uploader, engine, item.Body.Script, media.ConfiguredVoice(defaultVoice))
 	}
-
-	return processed, rows.Err()
+	return renderItems(items, render, deadline, time.Now, out), nil
 }

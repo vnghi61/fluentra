@@ -25,6 +25,18 @@ generated text describes commits; release notes should describe change.
   failed on `questions_content_item_id_key`: the bank row is now found by its
   content item as well as by fingerprint.
 
+### Fixed — listening audio (`tts-render`)
+
+- **A full catalogue never finished rendering.** `cmd/tts -all` rendered while
+  iterating an open cursor over every listening item. On a freshly seeded
+  production catalogue the cursor stayed open for twenty minutes and the
+  pooler closed the connection under it, so the run died on a bare
+  `unexpected EOF` after 207 clips. Items are now read first, and the cursor
+  is closed before anything renders.
+- **The job outgrew its timeout.** About 6 s a clip against a 30-minute job.
+  `-budget 22m` stops starting new clips in time, ends green and reports what
+  is left; the cache skips finished clips, so the next run carries on.
+
 ### Fixed — CI
 
 - **MinIO.** MinIO publishes no images any more: `minio/minio` and
