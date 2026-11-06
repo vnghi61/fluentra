@@ -11,6 +11,13 @@ generated text describes commits; release notes should describe change.
 
 ## [Unreleased]
 
+### Added — page-view analytics
+
+- **The web app can report page views to Google Analytics 4.** It loads only in a
+  production build with `VITE_GA_MEASUREMENT_ID` set, and sends the route template
+  rather than the URL, so reset tokens, OAuth codes and learner ids never leave
+  the app. No user id is sent and ads signals are denied.
+
 ### Changed — Vietnamese by default
 
 - **The interface starts in Vietnamese.** Until a learner picks a language the

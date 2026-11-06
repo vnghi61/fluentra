@@ -1,7 +1,7 @@
 ---
 doc_type: agent_entrypoint
 scope: frontend
-last_verified: 2026-10-07
+last_verified: 2026-11-06
 ---
 
 # web/AGENT.md — Frontend Entry Point
@@ -424,6 +424,17 @@ correct/incorrect states carry an icon and text.
 | INP                     | < 200 ms      |
 
 Tiptap (writing editor) and wavesurfer (audio) are lazy-loaded on the routes that need them.
+
+## 8b. Analytics (GA4)
+
+`src/app/analytics.ts` loads gtag.js only in a production build with
+`VITE_GA_MEASUREMENT_ID` set (declared in `src/vite-env.d.ts`, set in Vercel); dev,
+tests and E2E load nothing. It sends one `page_view` per resolved path change, as the
+matched route template (`/exams/$attemptId`, `/404` when unmatched), never the URL.
+Never pass it a user id, email, token or query string. There is no consent banner:
+ads signals are denied and `analytics_storage` is granted by default. A self-hosted
+deploy behind `deploy/nginx` must add `https://www.googletagmanager.com` to
+`script-src` and `https://*.google-analytics.com` to `connect-src`; Vercel sends no CSP.
 
 ## 9. Common tasks
 
