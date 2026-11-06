@@ -2,6 +2,8 @@
 Description=Fluentra API
 After=network-online.target
 Wants=network-online.target
+# Never give up restarting: a long database or Redis outage must not leave the API stopped.
+StartLimitIntervalSec=0
 
 [Service]
 User=fluentra

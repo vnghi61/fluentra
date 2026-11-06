@@ -65,6 +65,10 @@ free instance-hours a month.
 
 - **First setup:** copy `deploy/vps` to the server and run `setup.sh` as root,
   fill `/etc/fluentra/api.env`, then `cloudflared service install <tunnel token>`.
+- **Self-healing:** `fluentra-api`, `9router` and `cloudflared` (drop-in
+  [cloudflared-restart.conf](../deploy/vps/cloudflared-restart.conf)) restart on
+  any exit with no start limit, and start at boot. Whether the VM itself boots
+  after a host power loss is the panel's setting, not the guest's.
 - **Every deploy:** `deploy/vps/deploy.sh <ssh-host>` builds a linux/amd64 binary,
   swaps it in and checks `/health`. Logs: `journalctl -u fluentra-api -f`.
 - **Client IP:** only `cloudflared` on localhost is trusted, so the API takes the

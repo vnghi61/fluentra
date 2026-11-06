@@ -26,8 +26,12 @@ fi
 
 install -m 0644 "$here/fluentra-api.service" "$here/fluentra-worker-keepalive.service" \
   "$here/fluentra-worker-keepalive.timer" /etc/systemd/system/
+install -d -m 0755 /etc/systemd/system/cloudflared.service.d
+install -m 0644 "$here/cloudflared-restart.conf" /etc/systemd/system/cloudflared.service.d/restart.conf
 systemctl daemon-reload
-systemctl enable fluentra-api fluentra-worker-keepalive.timer
+# The API waits for api.env; the timer can start now.
+systemctl enable fluentra-api
+systemctl enable --now fluentra-worker-keepalive.timer
 
 # The API binds every interface and the VPS has a public IPv6: only SSH comes in, the tunnel goes out.
 ufw allow 22/tcp

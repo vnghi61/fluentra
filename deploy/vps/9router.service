@@ -2,6 +2,7 @@
 Description=9router AI gateway (headless server, no tray)
 After=network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=0
 
 [Service]
 # Runs the Next.js server that cli.js would spawn; cli.js itself needs a desktop tray and crash-loops headless.
