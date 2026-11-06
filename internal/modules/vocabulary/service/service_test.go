@@ -38,6 +38,9 @@ type fakeRepo struct {
 
 	// lemma -> the content version of that word's sense.
 	senseVersionByLemma map[string]uuid.UUID
+
+	// What CountUploadedWordsLastDay reports.
+	uploadedLastDay int
 }
 
 func newFakeRepo() *fakeRepo {
@@ -801,6 +804,10 @@ func (f *fakeRepo) InsertUpload(
 	_ context.Context, _ sqlc.InsertUploadParams,
 ) (sqlc.SkillVocabUpload, error) {
 	return sqlc.SkillVocabUpload{}, nil
+}
+
+func (f *fakeRepo) CountUploadedWordsLastDay(_ context.Context, _ uuid.UUID) (int, error) {
+	return f.uploadedLastDay, nil
 }
 
 func (f *fakeRepo) InsertUploadItem(

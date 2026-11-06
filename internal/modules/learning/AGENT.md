@@ -10,7 +10,7 @@ tables: [enrollments, progress, attempts, learning_sessions, placement_results, 
 depends_on: [lesson, content, srs, resource, user, admin, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
-last_verified: 2026-08-25
+last_verified: 2026-11-06
 ---
 
 # learning — AGENT.md
@@ -142,6 +142,11 @@ Migrations: `db/migrations/learning/` · Queries: `db/queries/learning/`
 - `idx_placement_sessions_open_deadline` — the expiry sweep
 - `idx_node_mastery_user_score` — learner weak node lookup
 <!-- END GENERATED: schema -->
+
+`learn.answer_explanations` is written only from the signed-in attempt flow. The
+anonymous preview (`POST /activities/{id}/grade`) serves stored explanations and
+never calls the model, and an answer over 200 characters is never explained: it
+is free text, not an option, and would be a prompt of the learner's choosing.
 
 ## 6. HTTP endpoints
 

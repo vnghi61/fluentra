@@ -776,6 +776,7 @@ func (s *Service) completeSynchronousGrading(
 		}
 		result.Explanation = s.resolveExplanation(
 			ctx, activity.ContentVersionID, userAnswer, gradeResult.CorrectAnswer, gradeResult.Correct, activity.Config,
+			true,
 		)
 	}
 	return result, nil
@@ -868,12 +869,19 @@ func (s *Service) GradePreview(
 		preview.Explanation = result.Explanation
 	} else {
 		userAnswer := extractUserAnswer(response)
+		// A visitor with no account is served stored explanations only: this
+		// route is unauthenticated, and generating one here was a model call per request.
 		preview.Explanation = s.resolveExplanation(
 			ctx, activity.ContentVersionID, userAnswer, result.CorrectAnswer, result.Correct, activity.Config,
+			false,
 		)
 	}
 	return preview, nil
 }
+
+// maxExplainedAnswerRunes bounds the answer a model is asked to explain. Choice,
+// gap-fill and matching answers are a word or a short phrase.
+const maxExplainedAnswerRunes = 200
 
 func (s *Service) resolveExplanation(
 	ctx context.Context,
@@ -882,6 +890,7 @@ func (s *Service) resolveExplanation(
 	correctAnswer string,
 	isCorrect bool,
 	config json.RawMessage,
+	allowGenerate bool,
 ) *contract.AnswerExplanation {
 	if contentVersionID == uuid.Nil || strings.TrimSpace(userAnswer) == "" {
 		return nil
@@ -899,6 +908,11 @@ func (s *Service) resolveExplanation(
 		return cached
 	}
 
+	// A long answer is free text, not an option: it would be a prompt of the
+	// learner's choosing, cached under a key nobody else will ever send.
+	if !allowGenerate || len([]rune(userAnswer)) > maxExplainedAnswerRunes {
+		return nil
+	}
 	if s.ai == nil || !checkExplanationQuota(ctx, s.ai) {
 		return nil
 	}

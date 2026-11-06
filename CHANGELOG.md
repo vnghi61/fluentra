@@ -11,6 +11,18 @@ generated text describes commits; release notes should describe change.
 
 ## [Unreleased]
 
+### Security — AI calls a learner or visitor can trigger
+
+- **The anonymous preview no longer calls the model.** It shows an answer
+  explanation only if one is already stored. A signed-in learner still gets
+  one generated, but not for an answer longer than 200 characters.
+- **One learner's meaning no longer becomes everyone's.** The Vietnamese
+  meaning a learner types with an uploaded word stays on their upload. Shared
+  word senses are written from the dictionary and the model only, so a card
+  shows the model's gloss rather than the learner's own wording.
+- **A daily cap on uploaded words.** A learner can paste up to 600 words in
+  24 hours; a paste past that is refused with 429 and nothing is stored.
+
 ### Changed — Vietnamese by default
 
 - **The interface starts in Vietnamese.** Until a learner picks a language the
