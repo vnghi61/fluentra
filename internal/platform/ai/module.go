@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -14,6 +15,9 @@ const (
 	ProviderMock             = "mock"
 	ProviderOpenAICompatible = "openai_compatible"
 )
+
+// ErrMockRefused is returned when the mock provider is configured where it must not run.
+var ErrMockRefused = errors.New("ai: the mock provider is not allowed in this environment")
 
 // ProviderConfig represents one configured AI provider slot.
 type ProviderConfig struct {
@@ -43,6 +47,10 @@ type Config struct {
 
 	// Optional database pool for persistent response caching and usage recording.
 	Pool *pgxpool.Pool
+
+	// RefuseMock makes a mock provider a configuration error. Production sets
+	// it: the mock grades every essay and accepts every word.
+	RefuseMock bool
 
 	// Optional overrides for cache, usage, budget or fallback providers.
 	Cache            ResponseCache
@@ -133,7 +141,15 @@ func New(config Config) (Client, error) {
 		return nil, err
 	}
 
-	builtProviders, err := buildProviders(resolveProviderConfigs(config), registry)
+	configs := resolveProviderConfigs(config)
+	if config.RefuseMock {
+		for _, pc := range configs {
+			if strings.EqualFold(strings.TrimSpace(pc.Name), ProviderMock) {
+				return nil, ErrMockRefused
+			}
+		}
+	}
+	builtProviders, err := buildProviders(configs, registry)
 	if err != nil {
 		return nil, err
 	}

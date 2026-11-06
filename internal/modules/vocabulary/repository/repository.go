@@ -50,6 +50,8 @@ type Repository interface {
 
 	// Learner uploads.
 	InsertUpload(ctx context.Context, arg sqlc.InsertUploadParams) (sqlc.SkillVocabUpload, error)
+	// CountUploadedWordsLastDay is what the daily upload word quota is charged on.
+	CountUploadedWordsLastDay(ctx context.Context, userID uuid.UUID) (int, error)
 	InsertUploadItem(ctx context.Context, arg sqlc.InsertUploadItemParams) (sqlc.SkillVocabUploadItem, error)
 	GetUpload(ctx context.Context, id, userID uuid.UUID) (sqlc.SkillVocabUpload, error)
 	ListUploadsByUser(ctx context.Context, arg sqlc.ListUploadsByUserParams) ([]sqlc.ListUploadsByUserRow, error)
@@ -288,6 +290,11 @@ func (r *pgxRepository) InsertUpload(
 	ctx context.Context, arg sqlc.InsertUploadParams,
 ) (sqlc.SkillVocabUpload, error) {
 	return r.q.InsertUpload(ctx, arg)
+}
+
+func (r *pgxRepository) CountUploadedWordsLastDay(ctx context.Context, userID uuid.UUID) (int, error) {
+	count, err := r.q.CountUploadedWordsLastDay(ctx, userID)
+	return int(count), err
 }
 
 func (r *pgxRepository) InsertUploadItem(

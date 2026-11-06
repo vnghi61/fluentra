@@ -172,6 +172,8 @@ type identityDeps struct {
 
 	// SpeechTTSVoice is the configured voice listening clips are looked up by.
 	SpeechTTSVoice string
+	// SpeechTTSVoiceB is the second voice, part of a conversation clip's key.
+	SpeechTTSVoiceB string
 
 	// Transcriber is the audio transcription provider adapter.
 	Transcriber media.Transcriber
@@ -340,7 +342,8 @@ func newIdentity(deps identityDeps) *identity {
 		Storage:   deps.Storage,
 		Sittings:  lazyListeningSittings{of: assembled},
 		Placement: lazyPlacementPlays{of: assembled},
-		Audio:     media.NewCacheLocator(assembled.content.TTSCache()).WithVoice(deps.SpeechTTSVoice),
+		Audio: media.NewCacheLocator(assembled.content.TTSCache()).WithVoice(deps.SpeechTTSVoice).
+			WithSecondVoice(deps.SpeechTTSVoiceB),
 	})
 
 	assembled.speaking = speaking.New(speaking.Deps{
@@ -394,16 +397,17 @@ func newIdentity(deps identityDeps) *identity {
 		),
 		Metrics:       deps.Instruments,
 		DeclaredKinds: buildDeclaredKinds(),
-		Audio:         media.NewCacheLocator(assembled.content.TTSCache()).WithVoice(deps.SpeechTTSVoice),
-		Charts:        media.ChartDataURI{},
-		Env:           deps.Env,
-		AI:            deps.AI,
-		User:          assembled.user.LearningProfileReader(),
-		Flags:         assembled.admin.FlagReader(),
-		Courses:       assembled.lesson.Catalog(),
-		SRSPace:       assembled.srs.ReviewPace(),
-		StudioAccess:  lazyStudioAccess{of: assembled},
-		Resource:      lazyResourceReader{of: assembled},
+		Audio: media.NewCacheLocator(assembled.content.TTSCache()).WithVoice(deps.SpeechTTSVoice).
+			WithSecondVoice(deps.SpeechTTSVoiceB),
+		Charts:       media.ChartDataURI{},
+		Env:          deps.Env,
+		AI:           deps.AI,
+		User:         assembled.user.LearningProfileReader(),
+		Flags:        assembled.admin.FlagReader(),
+		Courses:      assembled.lesson.Catalog(),
+		SRSPace:      assembled.srs.ReviewPace(),
+		StudioAccess: lazyStudioAccess{of: assembled},
+		Resource:     lazyResourceReader{of: assembled},
 	})
 
 	paymentMod, err := payment.NewModule(payment.Dependencies{

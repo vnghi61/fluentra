@@ -67,6 +67,9 @@ func (s *CachedSynthesiser) WithSecondVoice(voice string) *CachedSynthesiser {
 // The voice argument is ignored; the clip is rendered in the configured voice.
 // See ConfiguredVoice.
 func (s *CachedSynthesiser) Synthesise(ctx context.Context, text, _ string) (string, error) {
+	if turns := DialogueTurns(text, nil); len(turns) >= 2 {
+		return s.synthesiseDialogue(ctx, text, turns)
+	}
 	voice := ConfiguredVoice(s.voice)
 	textHash := HashText(text)
 
@@ -108,55 +111,49 @@ type ScriptTurn struct {
 }
 
 // SynthesiseTurns renders a conversation turn by turn, each in its speaker's
-// voice, and concatenates them into one clip. A script with fewer than two
-// turns is rendered as a single clip in the configured voice, so a monologue is
-// unchanged. It reports the object key and the voice the clip was cached under.
+// voice, and joins them into one clip. A script with fewer than two turns is
+// rendered as a single clip in the configured voice, so a monologue is
+// unchanged. It reports the object key of the clip.
 func (s *CachedSynthesiser) SynthesiseTurns(ctx context.Context, turns []ScriptTurn) (string, error) {
 	if len(turns) < 2 {
 		return s.Synthesise(ctx, turnsText(turns), "")
 	}
+	return s.synthesiseDialogue(ctx, turnsText(turns), turns)
+}
+
+// synthesiseDialogue finds or renders a two-voice clip, cached under the script's
+// hash and DialogueVoiceKey. Without an engine it only looks up, and a clip
+// voiced before conversations had two voices still counts.
+func (s *CachedSynthesiser) synthesiseDialogue(ctx context.Context, script string, turns []ScriptTurn) (string, error) {
+	voice := DialogueVoiceKey(s.voice, s.secondVoice)
+	textHash := HashText(script)
+	if s.cache != nil {
+		if key, found, err := s.cache.Get(ctx, textHash, voice); err == nil && found && key != "" {
+			return key, nil
+		}
+	}
 	if s.engine == nil {
+		if s.cache != nil {
+			key, found, err := s.cache.Get(ctx, textHash, ConfiguredVoice(s.voice))
+			if err == nil && found && key != "" {
+				return key, nil
+			}
+		}
 		return "", ErrTTSNotFound
 	}
 
-	voiceA := ConfiguredVoice(s.voice)
-	voiceB := ConfiguredVoice(firstNonBlank(s.secondVoice, s.voice))
-	// The first speaker heard is voice A; anyone else is voice B. A third
-	// speaker stays voice B: the exam specs carry at most two voices.
-	firstSpeaker := strings.TrimSpace(turns[0].Speaker)
-	voiceFor := func(speaker string) string {
-		if strings.EqualFold(strings.TrimSpace(speaker), firstSpeaker) {
-			return voiceA
-		}
-		return voiceB
+	data, mimeType, err := RenderTurns(ctx, s.engine, turns, s.voice, s.secondVoice)
+	if err != nil {
+		return "", fmt.Errorf("render tts: %w", err)
 	}
-
-	var audio bytes.Buffer
-	mimeType := mimeAudioMPEG
-	for _, turn := range turns {
-		data, mime, err := s.engine.Render(ctx, turn.Text, voiceFor(turn.Speaker))
-		if err != nil {
-			return "", fmt.Errorf("render tts turn: %w", err)
-		}
-		if mime != "" {
-			mimeType = mime
-		}
-		audio.Write(data)
-	}
-
-	joined := turnsText(turns)
-	combinedVoice := voiceA + "+" + voiceB
-	textHash := HashText(joined)
-
-	objectKey := ObjectKey(combinedVoice, textHash, mimeType)
+	objectKey := ObjectKey(voice, textHash, mimeType)
 	if s.storage != nil {
-		if err := s.storage.Put(ctx, s.bucket, objectKey,
-			bytes.NewReader(audio.Bytes()), int64(audio.Len()), mimeType); err != nil {
+		if err := s.storage.Put(ctx, s.bucket, objectKey, bytes.NewReader(data), int64(len(data)), mimeType); err != nil {
 			return "", fmt.Errorf("upload tts to storage: %w", err)
 		}
 	}
 	if s.cache != nil {
-		_ = s.cache.Put(ctx, textHash, combinedVoice, s.engine.EngineName(), s.engine.EngineVersion(), objectKey)
+		_ = s.cache.Put(ctx, textHash, voice, s.engine.EngineName(), s.engine.EngineVersion(), objectKey)
 	}
 	return objectKey, nil
 }
@@ -228,8 +225,9 @@ const EngineMock = "mock"
 // not in the published item, which is append-only. Everything that needs a
 // clip — drawing a sitting, issuing a play URL — looks here.
 type CacheLocator struct {
-	cache TTSCache
-	voice string
+	cache       TTSCache
+	voice       string
+	secondVoice string
 }
 
 // NewCacheLocator builds a locator over the TTS cache.
@@ -243,14 +241,28 @@ func (l *CacheLocator) WithVoice(voice string) *CacheLocator {
 	return l
 }
 
-// AudioKey returns the object key of the clip rendered for script.
+// WithSecondVoice sets SPEECH_TTS_VOICE_B, part of the key a conversation clip
+// is looked up by. It must match the renderer's.
+func (l *CacheLocator) WithSecondVoice(voice string) *CacheLocator {
+	l.secondVoice = voice
+	return l
+}
+
+// AudioKey returns the object key of the clip rendered for script: the
+// two-voice conversation clip first, then a clip in the configured voice, which
+// is every monologue and any conversation voiced before it had two voices.
 //
 // The voice argument is the item's and is ignored; see ConfiguredVoice.
 func (l *CacheLocator) AudioKey(ctx context.Context, script, _ string) (string, bool, error) {
 	if l == nil || l.cache == nil {
 		return "", false, nil
 	}
-	return l.cache.Get(ctx, HashText(script), ConfiguredVoice(l.voice))
+	textHash := HashText(script)
+	key, found, err := l.cache.Get(ctx, textHash, DialogueVoiceKey(l.voice, l.secondVoice))
+	if err != nil || found {
+		return key, found, err
+	}
+	return l.cache.Get(ctx, textHash, ConfiguredVoice(l.voice))
 }
 
 // MockSynthesiser provides a deterministic synthesiser for local dev and tests.

@@ -10,7 +10,7 @@ tables: [speaking_feedback, speaking_consents]
 depends_on: [media, ai, storage, job, content, learning]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
-last_verified: 2026-09-18
+last_verified: 2026-11-06
 ---
 
 # speaking — AGENT.md
@@ -206,6 +206,7 @@ _No deviations from the global standard._
 - Voice is biometric-adjacent personal data: private bucket, presigned access only, explicit consent, short retention, learner-controlled deletion.
 - Only speech providers with no-training-on-customer-data terms are used.
 - Admin access to a recording requires a stated reason and is audited.
+- Built today (`speaking_grade.v2`): the transcript is fenced in the user message as writing's essay is; the grade is validated (score 0–100, four criteria with bands 0–9, feedback present) and rejected output fails the attempt without retries; no AI client is an error, never a default score. `Grade` checks the stored object (1 byte to `MaxRecordingBytes`, an audio type) because R2 enforces no POST policy (`RECORDING_TOO_LARGE`, 413), and the worker reads at most `MaxRecordingBytes`.
 
 ## 13. Testing
 

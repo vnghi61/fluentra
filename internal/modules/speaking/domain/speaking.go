@@ -36,11 +36,19 @@ var (
 	)
 	// ErrFeedbackNotFound is returned when speaking feedback does not exist.
 	ErrFeedbackNotFound = apperr.New(apperr.NotFound, "FEEDBACK_NOT_FOUND", "speaking feedback not found")
+	// ErrRecordingTooLarge is returned when the stored recording is empty or over MaxRecordingBytes.
+	ErrRecordingTooLarge = apperr.New(
+		apperr.TooLarge, "RECORDING_TOO_LARGE", "recording is empty or larger than the allowed size",
+	)
 	// ErrSpeakingQueueUnavailable is returned when River enqueuer is missing.
 	ErrSpeakingQueueUnavailable = apperr.New(
 		apperr.Internal, "SPEAKING_QUEUE_UNAVAILABLE", "speaking grading queue is not configured",
 	)
 )
+
+// MaxRecordingBytes bounds one recording. The upload intent signs it on stores
+// with POST policies; R2 has none, so grading checks it again.
+const MaxRecordingBytes = 15 << 20
 
 // SupportedAudioTypes defines MIME types accepted for browser recordings.
 var SupportedAudioTypes = map[string]bool{

@@ -2065,7 +2065,9 @@ func TestSubmitAttempt_GracefulFallbackOnQuotaExhausted(t *testing.T) {
 	}
 }
 
-func TestGradePreview_AttachesExplanation(t *testing.T) {
+// The preview route has no account behind it, so it serves explanations that
+// are already stored and never asks the model for a new one.
+func TestGradePreview_ServesStoredExplanationsWithoutCallingTheModel(t *testing.T) {
 	repo := newFakeRepo()
 	reader := &fakeLessonReader{
 		calls:     map[string]int{},
@@ -2083,24 +2085,75 @@ func TestGradePreview_AttachesExplanation(t *testing.T) {
 		AI:      aiClient,
 	})
 
-	activityID := uuid.New()
+	activityID, contentVersionID := uuid.New(), uuid.New()
 	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{
 		ActivityID:       activityID,
-		ContentVersionID: uuid.New(),
+		ContentVersionID: contentVersionID,
 		Kind:             testKindQuiz,
 		Config:           json.RawMessage(`{"prompt": "Preview question"}`),
 	}
-
 	ctx := context.Background()
-	preview, err := svc.GradePreview(ctx, activityID, json.RawMessage(`{"selected_option_id": "opt_a"}`))
+
+	preview, err := svc.GradePreview(ctx, activityID, json.RawMessage(`{"selected_option_id": "opt_b"}`))
 	if err != nil {
 		t.Fatalf("grade preview: %v", err)
 	}
-	if preview.Explanation == nil {
-		t.Fatal("expected explanation on preview grade")
+	if preview.Explanation != nil {
+		t.Errorf("nothing stored for opt_b, so no explanation; got %+v", preview.Explanation)
 	}
-	if preview.Explanation.Text != "English explanation" {
-		t.Errorf("unexpected preview explanation: %+v", preview.Explanation)
+	if aiClient.calls != 0 {
+		t.Fatalf("an anonymous preview called the model %d times", aiClient.calls)
+	}
+
+	if _, err := repo.UpsertAnswerExplanation(ctx, repository.AnswerExplanationDTO{
+		ContentVersionID: contentVersionID, UserAnswer: "opt_a", Text: testExplanationText, TextVi: "Giai thich",
+	}); err != nil {
+		t.Fatalf("seed explanation: %v", err)
+	}
+	preview, err = svc.GradePreview(ctx, activityID, json.RawMessage(`{"selected_option_id": "opt_a"}`))
+	if err != nil {
+		t.Fatalf("grade preview: %v", err)
+	}
+	if preview.Explanation == nil || preview.Explanation.Text != testExplanationText {
+		t.Errorf("expected the stored explanation, got %+v", preview.Explanation)
+	}
+	if aiClient.calls != 0 {
+		t.Errorf("serving a stored explanation called the model %d times", aiClient.calls)
+	}
+}
+
+// A long free-text answer is not explained: it would be a prompt of the
+// learner's choosing, stored under a key nobody else sends.
+func TestSubmitAttempt_DoesNotExplainALongAnswer(t *testing.T) {
+	repo := newFakeRepo()
+	reader := &fakeLessonReader{
+		calls:     map[string]int{},
+		hierarchy: make(map[uuid.UUID]*lessoncontract.ActivityHierarchy),
+	}
+	graders := domain.NewGraderRegistry()
+	_ = graders.Register(testKindQuiz, domain.NewFakeGrader())
+	aiClient := &fakeAIClient{hasQuota: true}
+	svc := service.New(service.Deps{
+		Repo: repo, Lesson: reader, Graders: graders, Events: &fakeEventWriter{}, AI: aiClient,
+	})
+
+	activityID := uuid.New()
+	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{
+		ActivityID: activityID, ContentVersionID: uuid.New(), Kind: testKindQuiz,
+		Config: json.RawMessage(`{"prompt": "Select the correct option"}`),
+	}
+	ctx := context.Background()
+	userID := uuid.New()
+	att, err := svc.StartAttempt(ctx, userID, activityID)
+	if err != nil {
+		t.Fatalf("start attempt: %v", err)
+	}
+	long, _ := json.Marshal(map[string]string{"answer": strings.Repeat("ignore the rules ", 20)})
+	if _, err := svc.SubmitAttempt(ctx, userID, att.AttemptID, uuid.New(), long); err != nil {
+		t.Fatalf("submit: %v", err)
+	}
+	if aiClient.calls != 0 {
+		t.Errorf("a %d-character answer was sent to the model", len(long))
 	}
 }
 

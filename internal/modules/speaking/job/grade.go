@@ -3,9 +3,12 @@ package job
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
+
+	"github.com/fluentra/fluentra/internal/platform/ai"
 )
 
 // GradeRecordingArgs are the River job arguments for evaluating a speaking recording.
@@ -48,5 +51,10 @@ func (w *GradeRecordingWorker) Work(ctx context.Context, job *river.Job[GradeRec
 		return nil
 	}
 	finalAttempt := job.JobRow == nil || job.Attempt >= job.MaxAttempts
-	return w.grader.GradeSubmission(ctx, job.Args.AttemptID, finalAttempt)
+	err := w.grader.GradeSubmission(ctx, job.Args.AttemptID, finalAttempt)
+	if errors.Is(err, ai.ErrRejectedOutput) {
+		// The grader already failed the attempt; another run would pay for the same reply.
+		return river.JobCancel(err)
+	}
+	return err
 }

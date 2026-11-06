@@ -267,3 +267,28 @@ func TestRepository_LockUploadTermHoldsUntilTheTransactionEnds(t *testing.T) {
 	}
 	_, _ = other.Exec(ctx, release, key)
 }
+
+// TestRepository_CountUploadedWordsLastDay is what the daily word quota is
+// charged on: the caller's uploads in the last 24 hours, nobody else's, and not
+// yesterday's.
+func TestRepository_CountUploadedWordsLastDay(t *testing.T) {
+	ctx := context.Background()
+	repo, userID := newRepo(ctx, t)
+	_, otherUser := newRepo(ctx, t)
+
+	seedUploadItems(ctx, t, repo, userID, "apple", "banana")
+	old, _ := seedUploadItems(ctx, t, repo, userID, "cherry", "damson", "elder")
+	seedUploadItems(ctx, t, repo, otherUser, "fig")
+	if _, err := packagePool.Exec(ctx,
+		`UPDATE skill.vocab_uploads SET created_at = now() - interval '25 hours' WHERE id = $1`, old.ID); err != nil {
+		t.Fatalf("age upload: %v", err)
+	}
+
+	count, err := repo.CountUploadedWordsLastDay(ctx, userID)
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("count = %d, want 2 (today's upload only, this user only)", count)
+	}
+}

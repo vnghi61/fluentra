@@ -44,6 +44,12 @@ env:
   # voice when unset): a clip is looked up by the voice it was rendered in.
   # Changing it also means changing the download path in the step below.
   PIPER_VOICE: en_US-lessac-medium
+  # A conversation's second speaker. Must equal SPEECH_TTS_VOICE_B on the API and
+  # the worker: a two-voice clip is looked up by both voices. Same 22050 Hz as
+  # PIPER_VOICE, which joining two speakers' turns into one clip requires.
+  PIPER_VOICE_B: en_US-ryan-medium
+  # Above 1 is slower than the voice's own pace, for learners.
+  TTS_LENGTH_SCALE: '1.25'
 
 jobs:
   render:
@@ -69,7 +75,7 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .piper
-          key: piper-${{ env.PIPER_VERSION }}-${{ env.PIPER_VOICE }}
+          key: piper-${{ env.PIPER_VERSION }}-${{ env.PIPER_VOICE }}-${{ env.PIPER_VOICE_B }}
 
       - name: Download Piper and the voice model
         if: steps.piper-cache.outputs.cache-hit != 'true'
@@ -78,9 +84,13 @@ jobs:
           mkdir -p .piper/voices
           curl -fsSL "https://github.com/rhasspy/piper/releases/download/${PIPER_VERSION}/piper_linux_x86_64.tar.gz" \
             | tar -xz -C .piper
-          voice_url="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium"
-          curl -fsSL -o ".piper/voices/${PIPER_VOICE}.onnx" "${voice_url}/${PIPER_VOICE}.onnx"
-          curl -fsSL -o ".piper/voices/${PIPER_VOICE}.onnx.json" "${voice_url}/${PIPER_VOICE}.onnx.json"
+          # A voice name is <lang>_<REGION>-<speaker>-<quality>; the repository nests it the same way.
+          for voice in "${PIPER_VOICE}" "${PIPER_VOICE_B}"; do
+            IFS=- read -r locale speaker quality <<<"${voice}"
+            voice_url="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/${locale%%_*}/${locale}/${speaker}/${quality}"
+            curl -fsSL -o ".piper/voices/${voice}.onnx" "${voice_url}/${voice}.onnx"
+            curl -fsSL -o ".piper/voices/${voice}.onnx.json" "${voice_url}/${voice}.onnx.json"
+          done
 
       - name: Render clips that are not in the cache yet
         env:
@@ -92,14 +102,18 @@ jobs:
           S3_REGION: auto
           S3_USE_SSL: 'true'
           SPEECH_TTS_VOICE: ${{ env.PIPER_VOICE }}
+          SPEECH_TTS_VOICE_B: ${{ env.PIPER_VOICE_B }}
+          SPEECH_TTS_LENGTH_SCALE: ${{ env.TTS_LENGTH_SCALE }}
         # -budget stops starting new clips well inside timeout-minutes, so a
         # catalogue larger than one run (~6 s a clip) ends green with the rest
         # left for the next run instead of being killed mid-upload.
+        # The engine version names the pace, and -rerender-stale re-renders any
+        # clip made at another one, a few hundred a run until all are current.
         run: >-
-          go run ./cmd/tts -all -budget 22m -engine piper
+          go run ./cmd/tts -all -budget 22m -engine piper -rerender-stale
           -piper "${GITHUB_WORKSPACE}/.piper/piper/piper"
           -models "${GITHUB_WORKSPACE}/.piper/voices"
-          -engine-version "${PIPER_VERSION}"
+          -engine-version "${PIPER_VERSION} pace=${TTS_LENGTH_SCALE}"
 
       - name: Report the failure
         if: failure()

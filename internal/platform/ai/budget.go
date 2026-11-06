@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -16,6 +17,12 @@ var ErrQuotaExhausted = errors.New("ai: quota exhausted across all providers")
 // BudgetChecker inspects daily provider and task usage against configured ceilings.
 type BudgetChecker interface {
 	CheckQuota(ctx context.Context, provider string, task Task) (bool, error)
+}
+
+// BudgetReserver is a BudgetChecker that can also count a request against the
+// ceiling before the call. The router prefers it when the checker offers it.
+type BudgetReserver interface {
+	Reserve(ctx context.Context, provider string, task Task) (bool, error)
 }
 
 // DBBudgetChecker queries ai.ai_budgets and ai.ai_usage in PostgreSQL.
@@ -28,72 +35,157 @@ func NewDBBudgetChecker(pool *pgxpool.Pool) *DBBudgetChecker {
 	return &DBBudgetChecker{pool: pool}
 }
 
-// CheckQuota returns true if the provider has remaining request and token quota for the task today.
-// If no active budget is configured for (provider, task), quota is considered available (true).
-// If checking encounters an error, it logs the error and fails closed (returns false and error)
-// so that unbudgeted spending is never silently permitted.
+// budgetQuery reads the ceiling for (provider, task) and today's spend against
+// it. A named row wins over a `*` row; the `*` rows (migration 1700000957) are
+// what a provider nobody listed is held to. Requests count the larger of the
+// atomic reservations and the recorded usage.
+const budgetQuery = `
+	SELECT
+		b.daily_request_limit,
+		b.daily_token_limit,
+		b.is_active,
+		GREATEST(
+			COALESCE((SELECT SUM(u.request_count) FROM ai.ai_usage u
+			          WHERE u.provider = $1 AND u.task = $2 AND u.usage_date = CURRENT_DATE), 0),
+			COALESCE((SELECT r.reserved FROM ai.ai_budget_reservations r
+			          WHERE r.provider = $1 AND r.task = $2 AND r.usage_date = CURRENT_DATE), 0)
+		)::integer AS used_requests,
+		COALESCE((SELECT SUM(u.total_prompt_tokens + u.total_completion_tokens) FROM ai.ai_usage u
+		          WHERE u.provider = $1 AND u.task = $2 AND u.usage_date = CURRENT_DATE), 0)::bigint AS used_tokens
+	FROM ai.ai_budgets b
+	WHERE b.provider IN ($1, '*') AND b.task IN ($2, '*')
+	ORDER BY (b.provider = '*'), (b.task = '*')
+	LIMIT 1`
+
+// reserveQuery counts one request against today's ceiling, or returns no row
+// when the ceiling is reached. One statement, so concurrent callers serialise
+// on the row instead of all passing a check made before any of them recorded.
+const reserveQuery = `
+	INSERT INTO ai.ai_budget_reservations AS r (provider, task, usage_date, reserved)
+	VALUES ($1, $2, CURRENT_DATE, 1)
+	ON CONFLICT (provider, task, usage_date) DO UPDATE SET reserved = r.reserved + 1
+	WHERE r.reserved < $3
+	RETURNING r.reserved`
+
+type budgetRow struct {
+	reqLimit   int
+	tokenLimit int64
+	usedReqs   int
+	usedTokens int64
+}
+
+// readBudget returns the applicable budget, or ok=false when none applies.
+func (b *DBBudgetChecker) readBudget(ctx context.Context, provider string, task Task) (budgetRow, bool, error) {
+	var row budgetRow
+	var isActive bool
+	err := b.pool.QueryRow(ctx, budgetQuery, provider, string(task)).Scan(
+		&row.reqLimit, &row.tokenLimit, &isActive, &row.usedReqs, &row.usedTokens,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return budgetRow{}, false, nil
+	}
+	if isUndefinedTable(err) {
+		logSchemaBehind(ctx, err)
+		return budgetRow{}, false, nil
+	}
+	if err != nil {
+		// A check that errors must not silently allow (which spends money nobody authorized)
+		// and must not silently deny either (which strands a learner for a reason they cannot see).
+		slog.ErrorContext(ctx, "ai: budget check query failed; failing closed to prevent unauthorized spend",
+			"provider", provider, "task", string(task), "error", err)
+		return budgetRow{}, false, fmt.Errorf("ai: budget check failed: %w", err)
+	}
+	return row, isActive, nil
+}
+
+// sqlstateUndefinedTable is Postgres' undefined_table.
+const sqlstateUndefinedTable = "42P01"
+
+// isUndefinedTable reports a schema older than migration 1700000957. Deploys do
+// not run migrations here, and refusing every AI call until someone does would
+// be an outage; the budget then behaves as it did before that migration.
+func isUndefinedTable(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == sqlstateUndefinedTable
+}
+
+func logSchemaBehind(ctx context.Context, err error) {
+	slog.ErrorContext(ctx, "ai: budget tables missing; run migration 1700000957. Budget not enforced", "error", err)
+}
+
+func (row budgetRow) exhausted() bool {
+	return (row.reqLimit > 0 && row.usedReqs >= row.reqLimit) ||
+		(row.tokenLimit > 0 && row.usedTokens >= row.tokenLimit)
+}
+
+func logBudgetReached(ctx context.Context, provider string, task Task, row budgetRow) {
+	slog.WarnContext(ctx, "ai: provider daily budget limit reached for task",
+		"provider", provider,
+		"task", string(task),
+		"used_requests", row.usedReqs,
+		"request_limit", row.reqLimit,
+		"used_tokens", row.usedTokens,
+		"token_limit", row.tokenLimit,
+	)
+}
+
+// CheckQuota reports, without spending anything, whether the provider has
+// request and token quota left for the task today. No applicable budget row is
+// permitted; a failed check fails closed (false and the error).
 func (b *DBBudgetChecker) CheckQuota(ctx context.Context, provider string, task Task) (bool, error) {
 	if b.pool == nil {
 		return true, nil
 	}
-
-	const query = `
-		SELECT
-			b.daily_request_limit,
-			b.daily_token_limit,
-			b.is_active,
-			COALESCE(u.request_count, 0) AS used_requests,
-			COALESCE(u.total_prompt_tokens + u.total_completion_tokens, 0) AS used_tokens
-		FROM ai.ai_budgets b
-		LEFT JOIN (
-			SELECT provider, task,
-			       SUM(request_count) AS request_count,
-			       SUM(total_prompt_tokens) AS total_prompt_tokens,
-			       SUM(total_completion_tokens) AS total_completion_tokens
-			FROM ai.ai_usage
-			WHERE usage_date = CURRENT_DATE
-			GROUP BY provider, task
-		) u ON u.provider = b.provider AND u.task = b.task
-		WHERE b.provider = $1 AND b.task = $2`
-
-	var reqLimit int
-	var tokenLimit int64
-	var isActive bool
-	var usedReqs int
-	var usedTokens int64
-
-	err := b.pool.QueryRow(ctx, query, provider, string(task)).Scan(
-		&reqLimit, &tokenLimit, &isActive, &usedReqs, &usedTokens,
-	)
+	row, applies, err := b.readBudget(ctx, provider, task)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			// No budget row configured for this provider+task; permitted.
-			return true, nil
-		}
-		// A check that errors must not silently allow (which spends money nobody authorized)
-		// and must not silently deny either (which strands a learner for a reason they cannot see).
-		// Logged with structured alert; fails closed so caller routes to fallback/queue.
-		slog.ErrorContext(ctx, "ai: budget check query failed; failing closed to prevent unauthorized spend",
-			"provider", provider, "task", string(task), "error", err)
-		return false, fmt.Errorf("ai: budget check failed: %w", err)
+		return false, err
 	}
-
-	if !isActive {
+	if !applies {
 		return true, nil
 	}
-
-	if (reqLimit > 0 && usedReqs >= reqLimit) || (tokenLimit > 0 && usedTokens >= tokenLimit) {
-		slog.WarnContext(ctx, "ai: provider daily budget limit reached for task",
-			"provider", provider,
-			"task", string(task),
-			"used_requests", usedReqs,
-			"request_limit", reqLimit,
-			"used_tokens", usedTokens,
-			"token_limit", tokenLimit,
-		)
+	if row.exhausted() {
+		logBudgetReached(ctx, provider, task, row)
 		return false, nil
 	}
+	return true, nil
+}
 
+// Reserve is CheckQuota that also counts this request against the ceiling,
+// atomically, before the provider is called.
+func (b *DBBudgetChecker) Reserve(ctx context.Context, provider string, task Task) (bool, error) {
+	if b.pool == nil {
+		return true, nil
+	}
+	row, applies, err := b.readBudget(ctx, provider, task)
+	if err != nil {
+		return false, err
+	}
+	if !applies {
+		return true, nil
+	}
+	if row.exhausted() {
+		logBudgetReached(ctx, provider, task, row)
+		return false, nil
+	}
+	if row.reqLimit <= 0 {
+		return true, nil
+	}
+	var reserved int
+	err = b.pool.QueryRow(ctx, reserveQuery, provider, string(task), row.reqLimit).Scan(&reserved)
+	if errors.Is(err, pgx.ErrNoRows) {
+		row.usedReqs = row.reqLimit
+		logBudgetReached(ctx, provider, task, row)
+		return false, nil
+	}
+	if isUndefinedTable(err) {
+		logSchemaBehind(ctx, err)
+		return true, nil
+	}
+	if err != nil {
+		slog.ErrorContext(ctx, "ai: budget reservation failed; failing closed to prevent unauthorized spend",
+			"provider", provider, "task", string(task), "error", err)
+		return false, fmt.Errorf("ai: budget reservation failed: %w", err)
+	}
 	return true, nil
 }
 

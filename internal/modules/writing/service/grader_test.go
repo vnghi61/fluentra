@@ -240,7 +240,8 @@ func TestWritingGrader_DailyLimitReached(t *testing.T) {
 		},
 	}
 	enq := &mockEnqueuer{}
-	counter := &mockAttemptCounter{count: 10}
+	// Ten graded today plus this attempt, which was claimed before Grade ran.
+	counter := &mockAttemptCounter{count: 11}
 	grader := NewGraderWithDeps(GraderDeps{
 		Content:    reader,
 		Enqueuer:   enq,
@@ -530,7 +531,7 @@ func TestWritingGrader_GradeSubmission_StoresStructuredFeedback(t *testing.T) {
 	assert.Equal(t, attemptID, fb.AttemptID)
 	assert.Equal(t, userID, fb.UserID)
 	assert.Equal(t, 6.5, fb.OverallBand)
-	assert.Equal(t, "writing_grade.v2", fb.PromptVersion)
+	assert.Equal(t, "writing_grade.v3", fb.PromptVersion)
 	assert.NotEmpty(t, fb.FeedbackEn)
 	assert.NotEmpty(t, fb.FeedbackVi)
 	assert.Len(t, fb.Criteria, 4)

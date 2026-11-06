@@ -3,9 +3,12 @@ package job
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
+
+	"github.com/fluentra/fluentra/internal/platform/ai"
 )
 
 // GradeSubmissionArgs are the River job parameters for grading a writing submission.
@@ -50,5 +53,10 @@ func (w *GradeSubmissionWorker) Work(ctx context.Context, job *river.Job[GradeSu
 	// River always supplies the row. A job built without one — in a test — is
 	// treated as its last attempt, which is the conservative reading.
 	finalAttempt := job.JobRow == nil || job.Attempt >= job.MaxAttempts
-	return w.grader.GradeSubmission(ctx, job.Args.AttemptID, finalAttempt)
+	err := w.grader.GradeSubmission(ctx, job.Args.AttemptID, finalAttempt)
+	if errors.Is(err, ai.ErrRejectedOutput) {
+		// The grader already failed the attempt; another run would pay for the same reply.
+		return river.JobCancel(err)
+	}
+	return err
 }
