@@ -45,10 +45,21 @@ allowBuilds:
 #   source-map-js    <1.2.2    (via vite -> postcss, tailwind)
 #   handlebars       <4.7.10   critical; eslint-plugin-boundaries 7.2.0, the
 #                    latest, pins 4.7.9 exactly
+#
+# Added 2026-11-06, same rule:
+#
+#   undici     <8.12.2   floor raised (via jsdom, vitest)
+#   dompurify  <3.4.17   critical (via jspdf, the account report PDF)
+#   vite       <6.4.4    (via @tailwindcss/vite, plugin-react, vitest)
+#   zod 4.x    <4.6.6    (via eslint-plugin-react-hooks); the app's own zod is
+#                        a direct dependency on ^4.6.6
 overrides:
   js-yaml@>=4.0.0 <4.3.2: '>=4.3.2 <5'
   nanoid@<3.3.18: '>=3.3.18 <4'
-  undici@>=8.0.0 <8.10.2: '>=8.10.2 <9'
+  undici@>=8.0.0 <8.12.2: '>=8.12.2 <9'
+  dompurify@>=3.0.0 <3.4.17: '>=3.4.17 <4'
+  vite@>=6.0.0 <6.4.4: '>=6.4.4 <7'
+  zod@>=4.0.0 <4.6.6: '>=4.6.6 <5'
   brace-expansion@<1.1.20: '>=1.1.20 <2'
   brace-expansion@>=2.0.0 <2.1.6: '>=2.1.6 <3'
   brace-expansion@>=4.0.0 <5.0.11: '>=5.0.11 <6'

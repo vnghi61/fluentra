@@ -1,0 +1,23 @@
+[Unit]
+Description=Fluentra API
+After=network-online.target
+Wants=network-online.target
+# Never give up restarting: a long database or Redis outage must not leave the API stopped.
+StartLimitIntervalSec=0
+
+[Service]
+User=fluentra
+Group=fluentra
+EnvironmentFile=/etc/fluentra/api.env
+ExecStart=/opt/fluentra/api
+Restart=always
+RestartSec=3
+# Longer than HTTP_SHUTDOWN_GRACE so in-flight requests drain before SIGKILL.
+TimeoutStopSec=40
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Keep the Render worker awake
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=fluentra
+EnvironmentFile=/etc/fluentra/api.env
+# /health, never /ready: /ready pings Redis and R2 and spends the Upstash quota.
+ExecStart=/usr/bin/curl -fsS -m 90 -o /dev/null ${WORKER_URL}/health

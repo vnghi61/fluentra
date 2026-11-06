@@ -1,0 +1,9 @@
+[Unit]
+Description=Ping the Render worker before its 15-minute idle sleep
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+
+[Install]
+WantedBy=timers.target
