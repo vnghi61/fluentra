@@ -4786,6 +4786,8 @@ paths:
           $ref: '#/components/responses/AccountRequired'
         '404':
           $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '422':
           $ref: '#/components/responses/ValidationFailed'
         '500':
@@ -4860,6 +4862,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '422':
           $ref: '#/components/responses/ValidationFailed'
   /attempts/{id}:
@@ -9850,6 +9854,8 @@ components:
       $ref: ./components/responses.yaml#/Conflict
     ValidationFailed:
       $ref: ./components/responses.yaml#/ValidationFailed
+    PayloadTooLarge:
+      $ref: ./components/responses.yaml#/PayloadTooLarge
     TooManyRequests:
       $ref: ./components/responses.yaml#/TooManyRequests
     InternalServerError:

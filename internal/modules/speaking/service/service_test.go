@@ -18,6 +18,8 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
+const contentTypeWebm = "audio/webm"
+
 type mockStorageStore struct {
 	presignPutFn func(
 		ctx context.Context, bucket, key, contentType string, maxBytes int64, expiry time.Duration,
@@ -25,6 +27,7 @@ type mockStorageStore struct {
 	deleteFn    func(ctx context.Context, bucket, key string) error
 	getFn       func(ctx context.Context, bucket, key string) (io.ReadCloser, error)
 	statErr     error
+	stat        *storage.ObjectStat
 	deletedKeys []string
 }
 
@@ -49,7 +52,10 @@ func (m *mockStorageStore) Stat(_ context.Context, _, key string) (storage.Objec
 	if m.statErr != nil {
 		return storage.ObjectStat{}, m.statErr
 	}
-	return storage.ObjectStat{Key: key, Size: 1}, nil
+	if m.stat != nil {
+		return *m.stat, nil
+	}
+	return storage.ObjectStat{Key: key, Size: 1, ContentType: contentTypeWebm}, nil
 }
 
 func (m *mockStorageStore) Get(ctx context.Context, bucket, key string) (io.ReadCloser, error) {
@@ -153,7 +159,7 @@ func TestUploadIntent_DailyLimitExceeded(t *testing.T) {
 		Clock:      clock.NewFake(time.Now()),
 	})
 
-	_, err := svc.UploadIntent(context.Background(), uuid.New(), "audio/webm")
+	_, err := svc.UploadIntent(context.Background(), uuid.New(), contentTypeWebm)
 	assert.ErrorIs(t, err, domain.ErrDailyLimitReached)
 }
 
@@ -170,7 +176,7 @@ func TestUploadIntent_ConsentRequired(t *testing.T) {
 		Clock:      clock.NewFake(time.Now()),
 	})
 
-	_, err := svc.UploadIntent(context.Background(), uuid.New(), "audio/webm")
+	_, err := svc.UploadIntent(context.Background(), uuid.New(), contentTypeWebm)
 	assert.ErrorIs(t, err, domain.ErrConsentRequired)
 }
 
@@ -183,7 +189,7 @@ func TestUploadIntent_NoConsentStoreFailsClosed(t *testing.T) {
 		Clock:      clock.NewFake(time.Now()),
 	})
 
-	_, err := svc.UploadIntent(context.Background(), uuid.New(), "audio/webm")
+	_, err := svc.UploadIntent(context.Background(), uuid.New(), contentTypeWebm)
 	assert.ErrorIs(t, err, domain.ErrConsentRequired)
 }
 

@@ -35,7 +35,8 @@
       { "name": "ai_usage", "purpose": "Cost attribution", "notes": "`user_id`, `task`, `tokens_in`, `tokens_out`, `cost_usd`, `occurred_on` — the source for per-user unit economics" },
       { "name": "prompt_versions", "purpose": "Registry of deployed prompt versions", "notes": "`task`, `version`, `status` (draft/shadow/active/deprecated), `checksum`, `activated_at`" },
       { "name": "ai_cache_entries", "purpose": "Response cache index", "notes": "`input_hash` UNIQUE, `task`, `prompt_version`, `embedding vector(1536)` for semantic lookup, `expires_at`" },
-      { "name": "ai_budgets", "purpose": "Daily spend accounting", "notes": "`scope` (global/user), `date`, `spent_usd`, `cap_usd`" }
+      { "name": "ai_budgets", "purpose": "Daily spend accounting", "notes": "`scope` (global/user), `date`, `spent_usd`, `cap_usd`" },
+      { "name": "ai_budget_reservations", "purpose": "Requests counted against today's ceiling before each call", "notes": "`provider`, `task`, `usage_date`, `reserved`; one atomic upsert per call" }
     ],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/admin/ai/usage", "permission": "ai.read", "purpose": "Spend and volume by task, provider and day", "success": "200" },

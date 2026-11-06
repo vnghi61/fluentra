@@ -11,6 +11,27 @@ generated text describes commits; release notes should describe change.
 
 ## [Unreleased]
 
+### Security — AI grading and spend
+
+- **An essay or a spoken answer can no longer grade itself.** The grading
+  instructions go to the model as the system message and the learner's text
+  as the user message, inside markers with a random id per call. Whether an
+  answer passes is computed from the score, not taken from the model, and a
+  speaking grade is checked against the rubric as writing's already was.
+- **A rejected grade is not paid for three times.** Output the rubric cannot
+  mean fails the attempt at once, and grading replies are no longer cached.
+- **Size limits on what reaches the model.** Answer bodies are capped at
+  64 KB and essays at 1,500 words; a recording is checked for size and type
+  before it is accepted, also on R2, and read with a cap.
+- **The daily AI budget covers every provider.** A provider with no budget row
+  (production's `9router`) was unlimited; `*` rows now cap it, and requests
+  are counted atomically before the call. Needs migration `1700000957`.
+- **No silent passes.** Speaking without a model is a failure rather than a
+  score of 70, and the mock provider refuses to start under
+  `APP_ENV=production`.
+- **The writing and speaking daily limits allowed one fewer grading than
+  configured**; they now allow exactly the configured number.
+
 ### Changed — Vietnamese by default
 
 - **The interface starts in Vietnamese.** Until a learner picks a language the

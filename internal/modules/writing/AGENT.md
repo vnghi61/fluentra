@@ -10,7 +10,7 @@ tables: [writing_feedback]
 depends_on: [ai, job, content, learning, notification]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
-last_verified: 2026-09-10
+last_verified: 2026-11-06
 ---
 
 # writing — AGENT.md
@@ -218,6 +218,7 @@ _No deviations from the global standard._
 - Essays are sensitive personal content: only the author and an admin with an audited reason may read one.
 - The prompt-injection defence is layered — wrapper, hardened preamble, schema validation, band clamping, and a red-team eval suite that must score 1.0.
 - Similarity checking never exposes another learner's text; it reports a score, not a source.
+- Built today (`writing_grade.v3`): instructions in the system message, the essay fenced with a per-call random id in the user message; `correct` is `score >= 60` computed in Go; out-of-rubric output fails the attempt at once (no retry, River job cancelled); the reply is never cached; essays over 1,500 words are refused with `SUBMISSION_TOO_LONG` and the submit body is capped at 64 KB. The daily limit counts the attempt being submitted, so `count > limit` refuses.
 
 ## 13. Testing
 

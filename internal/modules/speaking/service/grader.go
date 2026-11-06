@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"path"
 	"strings"
 
@@ -204,8 +206,15 @@ func (g *Grader) Grade(ctx context.Context, req learningcontract.GradeRequest) (
 	if g.storage == nil {
 		return learningcontract.GradeResult{}, domain.ErrSpeakingQueueUnavailable
 	}
-	if _, err := g.storage.Stat(ctx, g.bucket, recordingKey); err != nil {
+	stat, err := g.storage.Stat(ctx, g.bucket, recordingKey)
+	if err != nil {
 		return learningcontract.GradeResult{}, domain.ErrRecordingNotFound
+	}
+	if stat.Size <= 0 || stat.Size > domain.MaxRecordingBytes {
+		return learningcontract.GradeResult{}, domain.ErrRecordingTooLarge
+	}
+	if !domain.IsValidAudioFormat(stat.ContentType) {
+		return learningcontract.GradeResult{}, domain.ErrUnsupportedAudioFormat
 	}
 
 	// Rate limit check
@@ -215,7 +224,8 @@ func (g *Grader) Grade(ctx context.Context, req learningcontract.GradeRequest) (
 		if err != nil {
 			return learningcontract.GradeResult{}, fmt.Errorf("count daily speaking attempts: %w", err)
 		}
-		if used >= g.dailyLimit {
+		// The count includes this attempt: it was claimed, as grading, before Grade ran.
+		if used > g.dailyLimit {
 			return learningcontract.GradeResult{}, domain.ErrDailyLimitReached
 		}
 	}
@@ -247,7 +257,6 @@ type aiSpeakingCriterionOutput struct {
 type aiSpeakingGradeOutput struct {
 	OverallBand float64                     `json:"overall_band"`
 	Score       int                         `json:"score"`
-	Correct     bool                        `json:"correct"`
 	Criteria    []aiSpeakingCriterionOutput `json:"criteria"`
 	Feedback    string                      `json:"feedback,omitempty"`
 	FeedbackEn  string                      `json:"feedback_en,omitempty"`
@@ -274,7 +283,8 @@ func (g *Grader) GradeSubmission(ctx context.Context, attemptID uuid.UUID, final
 
 	fb, gradeResult, err := g.evaluate(ctx, attempt)
 	if err != nil {
-		g.failIfFinal(ctx, attemptID, finalAttempt, err)
+		// A rejected reply is final at once: retrying would pay for the same answer again.
+		g.failIfFinal(ctx, attemptID, finalAttempt || errors.Is(err, ai.ErrRejectedOutput), err)
 		return err
 	}
 
@@ -339,7 +349,7 @@ func (g *Grader) evaluate(
 		WordsPerMinute:    wordsPerMinute,
 		FeedbackEn:        out.FeedbackEn,
 		FeedbackVi:        out.FeedbackVi,
-		PromptVersion:     "speaking_grade.v1",
+		PromptVersion:     "speaking_grade.v2",
 		Model:             modelName,
 		ASRModel:          g.asrModel,
 		// Kept, not left to be reconstructed later. The history screen reads
@@ -392,7 +402,9 @@ func (g *Grader) transcribe(ctx context.Context, recordingKey string) (*media.Tr
 	}
 	defer func() { _ = audioReader.Close() }()
 
-	result, err := g.transcriber.Transcribe(ctx, audioReader, path.Base(recordingKey))
+	// Bounded: the transcriber buffers the whole recording in memory.
+	capped := http.MaxBytesReader(nil, audioReader, domain.MaxRecordingBytes)
+	result, err := g.transcriber.Transcribe(ctx, capped, path.Base(recordingKey))
 	if err != nil {
 		return nil, fmt.Errorf("transcribe recording %s: %w", recordingKey, err)
 	}
@@ -427,19 +439,12 @@ func (g *Grader) judge(
 		taskType = contract.TypeRespond
 	}
 
-	var out aiSpeakingGradeOutput
+	// No model is a failure, not a grade: a recording nobody marked is not a pass.
 	if g.ai == nil {
-		// Fallback for tests without an AI client.
-		out = aiSpeakingGradeOutput{
-			OverallBand: 6.0,
-			Score:       70,
-			Correct:     true,
-			FeedbackEn:  "Speaking submission evaluated.",
-			FeedbackVi:  "Bài nói đã được đánh giá.",
-		}
-		return out, "", nil
+		return aiSpeakingGradeOutput{}, "", errNoAIProvider
 	}
 
+	var out aiSpeakingGradeOutput
 	resp, err := ai.CompleteJSONWithResponse(ctx, g.ai, ai.Request{
 		Task: ai.TaskGradeSpeaking,
 		Vars: map[string]any{"TaskType": taskType, "Prompt": promptText, "Transcript": transcript},
@@ -450,7 +455,42 @@ func (g *Grader) judge(
 	if out.FeedbackEn == "" {
 		out.FeedbackEn = out.Feedback
 	}
+	if err := validateSpeakingOutput(out); err != nil {
+		return aiSpeakingGradeOutput{}, "", fmt.Errorf("ai evaluate speaking: %w: %w", ai.ErrRejectedOutput, err)
+	}
 	return out, resp.Model, nil
+}
+
+var errNoAIProvider = errors.New("no AI provider is configured to grade speaking")
+
+// The bounds a speaking grade must fall within before anything is stored.
+const (
+	maxSpeakingScore = 100
+	maxSpeakingBand  = 9.0
+	speakingCriteria = 4
+)
+
+// validateSpeakingOutput rejects model output the rubric cannot mean, as the
+// writing grader does: out-of-range scores or bands, missing criteria, no feedback.
+func validateSpeakingOutput(out aiSpeakingGradeOutput) error {
+	if out.Score < 0 || out.Score > maxSpeakingScore {
+		return fmt.Errorf("score %d is outside 0–%d", out.Score, maxSpeakingScore)
+	}
+	if out.OverallBand < 0 || out.OverallBand > maxSpeakingBand {
+		return fmt.Errorf("overall band %.1f is outside 0–9", out.OverallBand)
+	}
+	if len(out.Criteria) != speakingCriteria {
+		return fmt.Errorf("expected %d criteria, got %d", speakingCriteria, len(out.Criteria))
+	}
+	for _, c := range out.Criteria {
+		if c.Band < 0 || c.Band > maxSpeakingBand {
+			return fmt.Errorf("criterion %q band %.1f is outside 0–9", c.Name, c.Band)
+		}
+	}
+	if strings.TrimSpace(out.FeedbackEn) == "" {
+		return errors.New("feedback is empty")
+	}
+	return nil
 }
 
 func (g *Grader) failIfFinal(ctx context.Context, attemptID uuid.UUID, finalAttempt bool, err error) {

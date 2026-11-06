@@ -146,14 +146,18 @@ func (p *OpenAICompatibleProvider) Complete(ctx context.Context, req Request) (R
 	if err != nil {
 		return Response{}, err
 	}
-	rendered, err := tmpl.Render(req.Vars)
+	rendered, err := tmpl.RenderMessages(req.Vars)
 	if err != nil {
 		return Response{}, err
+	}
+	messages := make([]chatMessage, 0, len(rendered))
+	for _, m := range rendered {
+		messages = append(messages, chatMessage(m))
 	}
 
 	body, err := json.Marshal(chatRequest{
 		Model:       p.config.Model,
-		Messages:    []chatMessage{{Role: "user", Content: rendered}},
+		Messages:    messages,
 		MaxTokens:   tmpl.MaxTokens,
 		Temperature: tmpl.Temperature,
 		Stream:      false,

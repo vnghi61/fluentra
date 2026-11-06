@@ -656,8 +656,9 @@ func startLearning(
 // attempt instead of recording a grade nobody gave.
 func newWorkerAIClient(ctx context.Context, cfg workerConfig, pool *pgxpool.Pool) ai.Client {
 	aiClient, err := ai.New(ai.Config{
-		Providers: cfg.aiProviders(),
-		Pool:      pool,
+		Providers:  cfg.aiProviders(),
+		Pool:       pool,
+		RefuseMock: strings.EqualFold(cfg.App.Environment, "production"),
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "no AI client; uploads will be verified against the dictionary alone",
