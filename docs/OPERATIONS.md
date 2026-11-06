@@ -66,8 +66,12 @@ free instance-hours a month.
   [cloudflared-restart.conf](../deploy/vps/cloudflared-restart.conf)) restart on
   any exit with no start limit, and start at boot. Whether the VM itself boots
   after a host power loss is the panel's setting, not the guest's.
-- **Every deploy:** `deploy/vps/deploy.sh <ssh-host>` builds a linux/amd64 binary,
-  swaps it in and checks `/health`. Logs: `journalctl -u fluentra-api -f`.
+- **Every deploy:** `deploy/vps/deploy.sh <ssh-host>` builds a linux/amd64 binary
+  stamped with `git describe` and the commit, swaps it in, and checks `/health`;
+  a failed check puts the old binary back. The replaced binary stays as
+  `/opt/fluentra/api.prev`, and `deploy/vps/deploy.sh --rollback <ssh-host>`
+  swaps the two. `curl 127.0.0.1:8080/version` on the VPS names what is running
+  (the public `/version` is blocked at the edge). Logs: `journalctl -u fluentra-api -f`.
 - **Client IP:** only `cloudflared` on localhost is trusted. Behind Vercel the
   last hop in `X-Forwarded-For` is Vercel's egress address, so the API reads
   `HTTP_CLIENT_IP_HEADER=X-Vercel-Forwarded-For` first; Vercel overwrites that
