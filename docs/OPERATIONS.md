@@ -26,8 +26,9 @@ the self-hosted Docker Compose topology instead.
 
 | Piece | Host | Notes |
 |---|---|---|
-| Web (`web/`) | Vercel Hobby | `web/vercel.json` proxies `/api/*` to Render, so cookies stay same-site |
-| API and worker | Render free web service | One service runs both through `deploy/render/start.sh` |
+| Web (`web/`) | Vercel Hobby | `web/vercel.json` proxies `/api/*` to `api.fluentra.io.vn`, so cookies stay same-site |
+| API | VPS (1 vCPU, 1 GB, NAT IPv4 + IPv6) | systemd service behind a Cloudflare Tunnel: [VPS API](#vps-api) |
+| Worker | Render free web service `fluentra-worker` | `deploy/render/start-worker.sh`; the VPS pings it every 10 minutes |
 | PostgreSQL | Supabase free | Session pooler, port 5432 |
 | Redis | Upstash free | `rediss://` URL |
 | Object storage | Cloudflare R2 | Five buckets, created by hand, CORS on three |
@@ -38,13 +39,37 @@ the self-hosted Docker Compose topology instead.
 | Setting | Value |
 |---|---|
 | Runtime | Go |
-| Build command | `go build -o bin/api ./cmd/api && go build -o bin/worker ./cmd/worker` |
-| Start command | `bash deploy/render/start.sh` |
+| Build command | `go build -o bin/worker ./cmd/worker` |
+| Start command | `bash deploy/render/start-worker.sh` |
 | Health check path | `/health` — never `/ready`, which pings Redis and R2 on every check and would spend the Upstash quota |
 
-`start.sh` maps Render's `PORT` to the API's `HTTP_PORT`, runs the worker on
-8081, points `WORKER_URL` at it, and splits the database pool (API 8, worker
-`WORKER_DB_MAX_CONNS`, default 5).
+`start-worker.sh` maps Render's `PORT` to the worker's `HTTP_PORT` and gives it
+`WORKER_DB_MAX_CONNS` (default 5) of the pooler's slots; the VPS API holds 8.
+`deploy/render/start.sh` still runs API and worker together if the VPS goes away.
+Keep only one of the two Render services running: two copies of the worker
+and the VPS API together exceed the pooler's slots.
+
+The API hostname is proxied, so a zone-wide "I'm under attack" mode challenges
+Vercel's proxy requests too and every `/api` call fails with 403.
+
+### VPS API
+
+The API runs as `fluentra-api.service` from `/opt/fluentra/api`, reading
+`/etc/fluentra/api.env`: the Render variables below, with the overrides in
+[deploy/vps/api.env.template](../deploy/vps/api.env.template). A Cloudflare
+Tunnel (`cloudflared` service, hostname `api.fluentra.io.vn` → `http://localhost:8080`)
+carries the traffic, so no inbound port is open: `ufw` allows only SSH.
+`fluentra-worker-keepalive.timer` requests the worker's `/health` every 10
+minutes so River's cron jobs keep running; that uses about 744 of Render's 750
+free instance-hours a month.
+
+- **First setup:** copy `deploy/vps` to the server and run `setup.sh` as root,
+  fill `/etc/fluentra/api.env`, then `cloudflared service install <tunnel token>`.
+- **Every deploy:** `deploy/vps/deploy.sh <ssh-host>` builds a linux/amd64 binary,
+  swaps it in and checks `/health`. Logs: `journalctl -u fluentra-api -f`.
+- **Client IP:** only `cloudflared` on localhost is trusted, so the API takes the
+  last hop in `X-Forwarded-For` that Cloudflare saw. Behind the Vercel proxy that
+  hop can be Vercel's egress address rather than the learner's.
 
 Environment variables (everything else keeps its `.env.example` default):
 
@@ -106,7 +131,8 @@ and touches nothing else.
 
 ### Every deploy
 
-Push to `main`; Render rebuilds. When the release adds migrations, run
+Push to `main`; Render rebuilds the worker and Vercel the web. Then run
+`deploy/vps/deploy.sh` for the API. When the release adds migrations, run
 **seed-production** with task `migrate` first. Migrations must stay
 backward-compatible with the running version.
 

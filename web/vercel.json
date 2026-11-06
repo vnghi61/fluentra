@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://fluentra-b78t.onrender.com/api/:path*"
+      "destination": "https://api.fluentra.io.vn/api/:path*"
     },
     {
       "source": "/((?!assets/).*)",
