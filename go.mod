@@ -3,10 +3,10 @@ module github.com/fluentra/fluentra
 go 1.26.0
 
 // The toolchain CI builds with. `go 1.26.0` above is the language minimum
-// (golang.org/x/net v0.60.0 requires it); without this line actions/setup-go
+// (golang.org/x/net v0.62.0 requires it); without this line actions/setup-go
 // installs exactly that, whose standard library carries known vulnerabilities
-// that fail govulncheck in the security job. go1.26.9 fixes GO-2026-6610..6617.
-toolchain go1.26.9
+// that fail govulncheck in the security job. go1.26.10 fixes GO-2026-6809.
+toolchain go1.26.10
 
 require (
 	github.com/alexedwards/argon2id v1.0.0
@@ -43,7 +43,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.45.0
 	go.opentelemetry.io/otel/trace v1.45.0
 	golang.org/x/image v0.45.0
-	golang.org/x/sync v0.23.0
+	golang.org/x/sync v0.24.0
 	pgregory.net/rapid v1.3.0
 )
 
@@ -63,7 +63,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
@@ -93,10 +93,10 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.57.0 // indirect
-	golang.org/x/net v0.60.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/crypto v0.58.1-0.20261009181718-2f1f834330b2 // indirect
+	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260803160001-6ac0973c030d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
 	google.golang.org/grpc v1.83.2 // indirect

@@ -28,7 +28,7 @@ export const courseFormSchema = z
       v.priceVnd > PRICE.max
     ) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         path: ["priceVnd"],
         message: "priceBounds",
       });

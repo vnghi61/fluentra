@@ -33,7 +33,7 @@ export const bannerFormSchema = z
     ctaUrl: z.string().trim(),
     tone: z.enum(BANNER_TONES),
     priority: z
-      .number({ invalid_type_error: "adminBanners.err.priorityRange" })
+      .number({ error: "adminBanners.err.priorityRange" })
       .int("adminBanners.err.priorityRange")
       .min(0, "adminBanners.err.priorityRange")
       .max(BANNER_LIMITS.priorityMax, "adminBanners.err.priorityRange"),
@@ -54,7 +54,7 @@ export const bannerFormSchema = z
   .superRefine((v, ctx) => {
     if (v.ctaUrl && !isSafeBannerUrl(v.ctaUrl)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         path: ["ctaUrl"],
         message: "adminBanners.err.urlUnsafe",
       });
@@ -63,7 +63,7 @@ export const bannerFormSchema = z
       // A slide is its picture; its link stands alone, with no button text.
       if (!v.imageKey) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           path: ["imageKey"],
           message: "adminBanners.err.slideImageRequired",
         });
@@ -72,14 +72,14 @@ export const bannerFormSchema = z
     }
     if (v.ctaUrl && !v.ctaLabel) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         path: ["ctaLabel"],
         message: "adminBanners.err.ctaPair",
       });
     }
     if (v.ctaLabel && !v.ctaUrl) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         path: ["ctaUrl"],
         message: "adminBanners.err.ctaPair",
       });
@@ -88,7 +88,7 @@ export const bannerFormSchema = z
     const end = parseLocal(v.endsAt);
     if (start !== null && end !== null && end <= start) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         path: ["endsAt"],
         message: "adminBanners.err.windowOrder",
       });
