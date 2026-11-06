@@ -6,7 +6,7 @@ status: IN_PROGRESS
 phase: 3
 owner: "@ai-team"
 schema: ai
-tables: [ai_requests, ai_usage, prompt_versions, ai_cache_entries, ai_budgets]
+tables: [ai_requests, ai_usage, prompt_versions, ai_cache_entries, ai_budgets, ai_budget_reservations]
 depends_on: [cache, telemetry, job]
 depended_on_by: [writing, speaking, grammar, questionbank, content, reading, media, learning]
 spec_version: 1.0.0
@@ -164,6 +164,7 @@ Migrations: `db/migrations/ai/` · Queries: `db/queries/ai/`
 | `ai.prompt_versions` | Registry of deployed prompt versions | `task`, `version`, `status` (draft/shadow/active/deprecated), `checksum`, `activated_at` |
 | `ai.ai_cache_entries` | Response cache index | `input_hash` UNIQUE, `task`, `prompt_version`, `embedding vector(1536)` for semantic lookup, `expires_at` |
 | `ai.ai_budgets` | Daily spend accounting | `scope` (global/user), `date`, `spent_usd`, `cap_usd` |
+| `ai.ai_budget_reservations` | Requests counted against today's ceiling before each call | `provider`, `task`, `usage_date`, `reserved`; one atomic upsert per call |
 
 <!-- END GENERATED: schema -->
 
