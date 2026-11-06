@@ -790,8 +790,9 @@ func speechASRModelName(baseURL, configured string) string {
 
 func initAIClient(ctx context.Context, cfg applicationConfig, pool *pgxpool.Pool) ai.Client {
 	aiClient, err := ai.New(ai.Config{
-		Providers: cfg.aiProviders(),
-		Pool:      pool,
+		Providers:  cfg.aiProviders(),
+		Pool:       pool,
+		RefuseMock: strings.EqualFold(cfg.App.Environment, "production"),
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "could not initialize AI client; running without AI explanations", "error", err)

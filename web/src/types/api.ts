@@ -8447,6 +8447,25 @@ export interface components {
                 "application/problem+json": components["schemas"]["ValidationProblem"];
             };
         };
+        /** @description The request body, or the object it refers to, is larger than this endpoint accepts. */
+        PayloadTooLarge: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://fluentra.dev/errors/too-large",
+                 *       "title": "Payload too large",
+                 *       "status": 413,
+                 *       "detail": "Request body exceeds the maximum size.",
+                 *       "code": "PAYLOAD_TOO_LARGE",
+                 *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
         /**
          * @description The applicable rate limit has been exceeded.
          *
@@ -12818,6 +12837,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["AccountRequired"];
             404: components["responses"]["NotFound"];
+            413: components["responses"]["PayloadTooLarge"];
             422: components["responses"]["ValidationFailed"];
             500: components["responses"]["InternalServerError"];
         };
@@ -12895,6 +12915,7 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            413: components["responses"]["PayloadTooLarge"];
             422: components["responses"]["ValidationFailed"];
         };
     };

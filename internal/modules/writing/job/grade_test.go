@@ -3,6 +3,7 @@ package job_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -12,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	writingjob "github.com/fluentra/fluentra/internal/modules/writing/job"
+	"github.com/fluentra/fluentra/internal/platform/ai"
 )
 
 type fakeSubmissionGrader struct {
@@ -95,4 +97,19 @@ func TestGradeSubmissionWorker_Work_ErrorPropagation(t *testing.T) {
 
 	err := worker.Work(context.Background(), job)
 	require.ErrorIs(t, err, wantErr)
+}
+
+// A rejected model reply cancels the job: the grader already failed the
+// attempt, and a retry would pay for the same reply again.
+func TestGradeSubmissionWorker_CancelsOnRejectedOutput(t *testing.T) {
+	grader := &fakeSubmissionGrader{err: fmt.Errorf("grade: %w", ai.ErrRejectedOutput)}
+	worker := writingjob.NewGradeSubmissionWorker(grader)
+	job := &river.Job[writingjob.GradeSubmissionArgs]{
+		JobRow: &rivertype.JobRow{Attempt: 1, MaxAttempts: 3},
+		Args:   writingjob.GradeSubmissionArgs{AttemptID: uuid.New()},
+	}
+
+	err := worker.Work(context.Background(), job)
+	var cancel *river.JobCancelError
+	require.True(t, errors.As(err, &cancel), "want a JobCancel, got %v", err)
 }

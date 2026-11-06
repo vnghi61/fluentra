@@ -59,6 +59,10 @@ const (
 
 	skillWriting    = "writing"
 	maxWritingScore = 100
+	// passScore decides Correct in Go; the model's own verdict is never read.
+	passScore = 60
+	// maxSubmissionWords bounds what one essay can send to the model.
+	maxSubmissionWords = 1500
 )
 
 type writingPromptBody struct {
@@ -90,7 +94,6 @@ type aiCriterionOutput struct {
 type aiGradeV2Output struct {
 	OverallBand float64             `json:"overall_band"`
 	Score       int                 `json:"score"`
-	Correct     bool                `json:"correct"`
 	Criteria    []aiCriterionOutput `json:"criteria"`
 	Annotations []rawAnnotation     `json:"annotations"`
 	Feedback    string              `json:"feedback,omitempty"`
@@ -219,6 +222,14 @@ func (g *Grader) Grade(
 		return buildResult(req.ContentVersionID, score, false, short, body, body.Explanation), nil
 	}
 
+	if words > maxSubmissionWords {
+		return learningcontract.GradeResult{}, apperr.New(
+			apperr.Validation,
+			"SUBMISSION_TOO_LONG",
+			fmt.Sprintf("a writing submission may be at most %d words", maxSubmissionWords),
+		).WithMeta("max_words", maxSubmissionWords)
+	}
+
 	// 3. Over daily limit -> 429 WRITING_DAILY_LIMIT_REACHED; attempt stays resubmittable
 	if g.counter != nil && g.dailyLimit > 0 {
 		startOfDay := startOfLearnerDay(g.clock.Now())
@@ -226,7 +237,8 @@ func (g *Grader) Grade(
 		if err != nil {
 			return learningcontract.GradeResult{}, fmt.Errorf("count today's writing attempts: %w", err)
 		}
-		if count >= g.dailyLimit {
+		// The count includes this attempt: it was claimed, as grading, before Grade ran.
+		if count > g.dailyLimit {
 			return learningcontract.GradeResult{}, apperr.New(
 				apperr.RateLimited,
 				"WRITING_DAILY_LIMIT_REACHED",
@@ -294,8 +306,9 @@ func (g *Grader) GradeSubmission(ctx context.Context, attemptID uuid.UUID, final
 	out, modelName, evalErr := g.evaluateAIv2(ctx, submitted, body)
 	if evalErr != nil {
 		// No score, no progress row, no review card, nothing counted against the
-		// limit — and not until the last retry has had its chance.
-		g.failIfFinal(ctx, attemptID, finalAttempt, evalErr)
+		// limit — and not until the last retry has had its chance. A rejected
+		// reply is final at once: retrying would pay for the same answer again.
+		g.failIfFinal(ctx, attemptID, finalAttempt || errors.Is(evalErr, ai.ErrRejectedOutput), evalErr)
 		return evalErr
 	}
 
@@ -326,7 +339,7 @@ func (g *Grader) GradeSubmission(ctx context.Context, attemptID uuid.UUID, final
 			Annotations:   locatedAnnotations,
 			FeedbackEn:    feedback,
 			FeedbackVi:    out.FeedbackVi,
-			PromptVersion: "writing_grade.v2",
+			PromptVersion: "writing_grade.v3",
 			Model:         modelName,
 		}
 		if err := g.feedback.InsertWritingFeedback(ctx, fb); err != nil {
@@ -344,7 +357,7 @@ func (g *Grader) GradeSubmission(ctx context.Context, attemptID uuid.UUID, final
 		explanation = body.Explanation
 	}
 
-	result := buildResult(attempt.ContentVersionID, out.Score, out.Correct, feedback, body, explanation)
+	result := buildResult(attempt.ContentVersionID, out.Score, out.Score >= passScore, feedback, body, explanation)
 	if _, compErr := g.completer.CompleteAsyncGrading(ctx, attemptID, result); compErr != nil {
 		return fmt.Errorf("complete async grading for attempt %s: %w", attemptID, compErr)
 	}
@@ -440,7 +453,7 @@ func (g *Grader) evaluateAIv2(
 		out.Feedback = out.FeedbackEn
 	}
 	if err := validateGradeOutput(out); err != nil {
-		return aiGradeV2Output{}, "", fmt.Errorf("ai grade writing: %w", err)
+		return aiGradeV2Output{}, "", fmt.Errorf("ai grade writing: %w: %w", ai.ErrRejectedOutput, err)
 	}
 	return out, resp.Model, nil
 }

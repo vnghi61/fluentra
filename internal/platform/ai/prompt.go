@@ -2,6 +2,8 @@ package ai
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"path"
@@ -85,13 +87,73 @@ func (r *Registry) Get(task Task) (Template, error) {
 	return found, nil
 }
 
-// Render fills a template's variables.
+// UserMarker is the line in a template body that splits the system message
+// (instructions, above) from the user message (learner data, below).
+const UserMarker = "<!-- user message -->"
+
+// Message is one chat message a rendered template produces.
+type Message struct {
+	Role    string
+	Content string
+}
+
+// Render fills a template's variables and returns the whole text.
 func (t Template) Render(vars map[string]any) (string, error) {
-	var out bytes.Buffer
-	if err := t.Body.Execute(&out, vars); err != nil {
-		return "", fmt.Errorf("ai: render %s: %w", t.Task, err)
+	messages, err := t.RenderMessages(vars)
+	if err != nil {
+		return "", err
 	}
-	return out.String(), nil
+	parts := make([]string, 0, len(messages))
+	for _, m := range messages {
+		parts = append(parts, m.Content)
+	}
+	return strings.Join(parts, "\n\n"), nil
+}
+
+// RenderMessages fills a template and splits it at UserMarker. A template with
+// no marker is one user message, as every template was before the split.
+func (t Template) RenderMessages(vars map[string]any) ([]Message, error) {
+	nonce, err := newFenceNonce()
+	if err != nil {
+		return nil, fmt.Errorf("ai: render %s: %w", t.Task, err)
+	}
+	// Cloned so concurrent renders each bind their own nonce to `fence`.
+	body, err := t.Body.Clone()
+	if err != nil {
+		return nil, fmt.Errorf("ai: render %s: %w", t.Task, err)
+	}
+	body.Funcs(fenceFuncs(nonce))
+
+	var out bytes.Buffer
+	if err := body.Execute(&out, vars); err != nil {
+		return nil, fmt.Errorf("ai: render %s: %w", t.Task, err)
+	}
+	system, user, split := strings.Cut(out.String(), UserMarker)
+	if !split {
+		return []Message{{Role: "user", Content: out.String()}}, nil
+	}
+	return []Message{
+		{Role: "system", Content: strings.TrimSpace(system)},
+		{Role: "user", Content: strings.TrimSpace(user)},
+	}, nil
+}
+
+// fenceFuncs wraps learner text in markers carrying a per-call random id, so the
+// text cannot close its own fence and continue as instructions.
+func fenceFuncs(nonce string) template.FuncMap {
+	return template.FuncMap{
+		"fence": func(value any) string {
+			return fmt.Sprintf("<<<LEARNER_TEXT %s>>>\n%v\n<<<END_LEARNER_TEXT %s>>>", nonce, value, nonce)
+		},
+	}
+}
+
+func newFenceNonce() (string, error) {
+	raw := make([]byte, 12)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(raw), nil
 }
 
 // parseTemplate reads `<task>.v<N>.md` and its front matter.
@@ -103,7 +165,7 @@ func parseTemplate(name string, raw []byte) (Template, error) {
 	}
 
 	front, body := splitFrontMatter(string(raw))
-	parsed, err := template.New(base).Option("missingkey=zero").Parse(body)
+	parsed, err := template.New(base).Option("missingkey=zero").Funcs(fenceFuncs("")).Parse(body)
 	if err != nil {
 		return Template{}, fmt.Errorf("ai: parse %s: %w", name, err)
 	}

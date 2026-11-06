@@ -101,8 +101,9 @@ func TestRegistry_LoadsGradeWritingTemplate(t *testing.T) {
 	tmpl, err := registry.Get(ai.TaskGradeWriting)
 	require.NoError(t, err)
 
-	assert.Equal(t, 2, tmpl.Version)
+	assert.Equal(t, 3, tmpl.Version)
 	assert.True(t, tmpl.JSONOutput)
+	assert.False(t, tmpl.Cache, "a grade is validated after the call, so a cached reply could be one that was rejected")
 	assert.Equal(t, 2048, tmpl.MaxTokens)
 	assert.InDelta(t, 0.2, tmpl.Temperature, 0.001)
 }

@@ -145,7 +145,7 @@ func (s *Service) UploadIntent(
 		s.bucket,
 		objectKey,
 		contentType,
-		15*1024*1024, // 15MB max recording
+		domain.MaxRecordingBytes,
 		storage.DefaultPresignPutExpiry,
 	)
 	if err != nil {

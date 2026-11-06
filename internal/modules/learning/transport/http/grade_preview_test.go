@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -156,5 +157,28 @@ func TestGradePreview_Returns401WhenAccountRequired(t *testing.T) {
 	}
 	if got["code"] != "ACCOUNT_REQUIRED" {
 		t.Errorf("code = %v, want ACCOUNT_REQUIRED", got["code"])
+	}
+}
+
+// An answer body over the cap is refused before anything is graded: an essay
+// of any length used to be read in full and handed to the model.
+func TestGradePreview_RefusesAnOversizeBody(t *testing.T) {
+	t.Parallel()
+
+	router, err := setupTestRouter(&fakeLearningService{
+		previewDTO: &service.PreviewGradeResultDTO{Correct: true, Score: 100, MaxScore: 100},
+	})
+	if err != nil {
+		t.Fatalf("setup router: %v", err)
+	}
+
+	big := `{"response":{"text_answer":"` + strings.Repeat("a", 70<<10) + `"}}`
+	req := httptest.NewRequest(http.MethodPost, "/activities/"+uuid.NewString()+"/grade",
+		bytes.NewReader([]byte(big)))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want 413", rec.Code)
 	}
 }

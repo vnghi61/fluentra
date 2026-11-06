@@ -147,15 +147,21 @@ func CompleteJSONWithResponse(ctx context.Context, client Client, req Request, o
 		return Response{}, err
 	}
 
+	// The reply is left out of the error: it can echo learner text into logs.
 	payload := extractJSON(response.Text)
 	if payload == "" {
-		return response, fmt.Errorf("ai: task %s returned no JSON: %.200q", req.Task, response.Text)
+		return response, fmt.Errorf("%w: task %s returned no JSON (%d bytes)",
+			ErrRejectedOutput, req.Task, len(response.Text))
 	}
 	if err := json.Unmarshal([]byte(payload), out); err != nil {
-		return response, fmt.Errorf("ai: task %s returned invalid JSON: %w", req.Task, err)
+		return response, fmt.Errorf("%w: task %s returned invalid JSON: %w", ErrRejectedOutput, req.Task, err)
 	}
 	return response, nil
 }
+
+// ErrRejectedOutput means the model answered but its reply was unusable. Asking
+// again costs another call for the same input, so graders do not retry it.
+var ErrRejectedOutput = errors.New("ai: model output rejected")
 
 // extractJSON finds the outermost JSON object or array in a model's reply.
 func extractJSON(text string) string {
