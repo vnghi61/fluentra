@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -48,6 +49,8 @@ type ttsCLIConfig struct {
 		// TTSVoiceB is the second voice a conversation's other speaker is
 		// rendered in (WO 22 D22-23). Empty means one voice.
 		TTSVoiceB string `koanf:"tts_voice_b"`
+		// TTSLengthScale is Piper's --length_scale; above 1 speaks slower for learners.
+		TTSLengthScale string `koanf:"tts_length_scale"`
 		// Where piper and its voice models are, so `make tts` needs no flags.
 		PiperBinary string `koanf:"piper_binary"`
 		PiperModels string `koanf:"piper_models"`
@@ -74,6 +77,10 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		"With -all, stop starting new items after this long (e.g. 25m); 0 means no limit")
 	allowRemoteFlag := flags.Bool("allow-remote-db", false,
 		"Render into a remote database even though APP_ENV does not say production or staging")
+	lengthScaleFlag := flags.Float64("length-scale", 0,
+		"Piper --length_scale, above 1 is slower; SPEECH_TTS_LENGTH_SCALE, or the voice's own pace")
+	rerenderStaleFlag := flags.Bool("rerender-stale", false,
+		"Treat a cached clip whose engine version differs from -engine-version as missing")
 
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -94,7 +101,11 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	}
 	piperBinary := firstNonEmpty(*piperFlag, cfg.Speech.PiperBinary, media.EnginePiper)
 	modelDir := firstNonEmpty(*modelsFlag, cfg.Speech.PiperModels)
-	engine, err := engineFor(*engineFlag, piperBinary, modelDir, *versionFlag, environment)
+	lengthScale, err := lengthScaleFrom(*lengthScaleFlag, cfg.Speech.TTSLengthScale)
+	if err != nil {
+		return err
+	}
+	engine, err := engineFor(*engineFlag, piperBinary, modelDir, *versionFlag, environment, lengthScale)
 	if err != nil {
 		return err
 	}
@@ -102,8 +113,9 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 
 	// Said before anything is written. This reads .env like every other command,
 	// and a .env pointed at production renders into production.
-	_, _ = fmt.Fprintf(out, "Rendering with %s, voice %s, into %s; storage %s\n",
-		engine.EngineName(), media.ConfiguredVoice(voice), describeDatabase(cfg.Database.DSN), cfg.Storage.Endpoint)
+	_, _ = fmt.Fprintf(out, "Rendering with %s %s, voices %s, into %s; storage %s\n",
+		engine.EngineName(), engine.EngineVersion(), media.DialogueVoiceKey(voice, cfg.Speech.TTSVoiceB),
+		describeDatabase(cfg.Database.DSN), cfg.Storage.Endpoint)
 
 	db, err := sql.Open("pgx", cfg.Database.DSN)
 	if err != nil {
@@ -116,27 +128,19 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return err
 	}
 
+	r := renderer{
+		db: db, uploader: uploader, engine: engine,
+		voiceA: voice, voiceB: cfg.Speech.TTSVoiceB, rerenderStale: *rerenderStaleFlag,
+	}
 	if *textFlag != "" {
-		key, _, err := processItem(ctx, db, uploader, engine, *textFlag, voice)
+		key, _, err := r.item(ctx, *textFlag, nil)
 		if err != nil {
 			return err
 		}
 		_, _ = fmt.Fprintf(out, "Rendered clip: %s\n", key)
 	}
 	if *allFlag {
-		var deadline time.Time
-		if *budgetFlag > 0 {
-			deadline = time.Now().Add(*budgetFlag)
-		}
-		summary, err := processAll(ctx, db, uploader, engine, voice, cfg.Speech.TTSVoiceB, deadline, out)
-		if err != nil {
-			return err
-		}
-		_, _ = fmt.Fprintf(out, "Finished: %d already voiced, %d rendered now, %d failed, %d left for the next run\n",
-			summary.Cached, summary.Rendered, summary.Failed, summary.Remaining)
-		if err := writeStepSummary(os.Getenv("GITHUB_STEP_SUMMARY"), summary); err != nil {
-			_, _ = fmt.Fprintf(out, "Warning: could not write the job summary: %v\n", err)
-		}
+		return r.runAll(ctx, *budgetFlag, out)
 	}
 	return nil
 }
@@ -171,17 +175,18 @@ func loadTTSConfig(ctx context.Context) (ttsCLIConfig, error) {
 	var cfg ttsCLIConfig
 	opts := config.Options{
 		Defaults: map[string]any{
-			"app.environment":     "",
-			"app.env":             "",
-			"speech.tts_voice":    media.DefaultVoice,
-			"speech.tts_voice_b":  "",
-			"speech.piper_binary": "",
-			"speech.piper_models": "",
-			"s3.endpoint":         "localhost:9000",
-			"s3.access_key":       "minioadmin",
-			"s3.secret_key":       "minioadmin",
-			"s3.region":           "us-east-1",
-			"s3.use_ssl":          false,
+			"app.environment":         "",
+			"app.env":                 "",
+			"speech.tts_voice":        media.DefaultVoice,
+			"speech.tts_voice_b":      "en_US-ryan-medium",
+			"speech.tts_length_scale": "",
+			"speech.piper_binary":     "",
+			"speech.piper_models":     "",
+			"s3.endpoint":             "localhost:9000",
+			"s3.access_key":           "minioadmin",
+			"s3.secret_key":           "minioadmin",
+			"s3.region":               "us-east-1",
+			"s3.use_ssl":              false,
 		},
 		EnvSections: []string{"SPEECH"},
 		Required: []config.RequiredKey{
@@ -197,13 +202,18 @@ func loadTTSConfig(ctx context.Context) (ttsCLIConfig, error) {
 // engineFor builds the engine. The mock renders a few bytes that are not audio,
 // so it is refused anywhere but a development database: a learner would get a
 // play URL for silence and no one would notice until they pressed play.
-func engineFor(name, piperBinary, modelDir, version, environment string) (media.SynthesiserEngine, error) {
+func engineFor(
+	name, piperBinary, modelDir, version, environment string, lengthScale float64,
+) (media.SynthesiserEngine, error) {
 	switch name {
 	case media.EnginePiper:
 		if modelDir == "" {
 			return nil, errors.New("the piper voice models directory is required: -models or SPEECH_PIPER_MODELS")
 		}
-		return media.NewPiperEngine(piperBinary, modelDir, version), nil
+		engine := media.NewPiperEngine(piperBinary, modelDir, version)
+		engine.LengthScale = lengthScale
+		engine.SentenceSilence = sentencePause
+		return engine, nil
 	case media.EngineMock:
 		if environment == "production" || environment == "staging" {
 			return nil, fmt.Errorf("the mock engine renders no audio and is refused in %s", environment)
@@ -230,6 +240,18 @@ func newUploader(cfg ttsCLIConfig) (storage.Store, error) {
 	return storage.NewMinIOStoreNoPostPolicy(minioClient), nil
 }
 
+// lengthScaleFrom is the -length-scale flag, else SPEECH_TTS_LENGTH_SCALE, else 0 (the voice's own pace).
+func lengthScaleFrom(flagValue float64, configured string) (float64, error) {
+	if flagValue != 0 || strings.TrimSpace(configured) == "" {
+		return flagValue, nil
+	}
+	scale, err := strconv.ParseFloat(strings.TrimSpace(configured), 64)
+	if err != nil || scale <= 0 {
+		return 0, fmt.Errorf("SPEECH_TTS_LENGTH_SCALE must be a positive number, got %q", configured)
+	}
+	return scale, nil
+}
+
 func firstNonEmpty(values ...string) string {
 	for _, v := range values {
 		if strings.TrimSpace(v) != "" {
@@ -239,39 +261,80 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-func processItem(
-	ctx context.Context,
-	db *sql.DB,
-	uploader storage.Store,
-	engine media.SynthesiserEngine,
-	text, voice string,
+// sentencePause is Piper's --sentence_silence: a learner hears where a sentence ends.
+const sentencePause = 0.35
+
+// renderer renders listening scripts into the TTS cache.
+type renderer struct {
+	db       *sql.DB
+	uploader storage.Store
+	engine   media.SynthesiserEngine
+	voiceA   string
+	voiceB   string
+	// rerenderStale treats a clip rendered by another engine version, which
+	// names the speed too, as missing, so a change of voice or pace reaches
+	// clips already in the cache.
+	rerenderStale bool
+}
+
+// item finds or renders one script: a conversation in two voices without the
+// speakers' names, anything else in voice A. It is cached under the script's
+// hash, which is what the API looks a clip up by.
+func (r renderer) item(
+	ctx context.Context, script string, turns []media.ScriptTurn,
 ) (key string, cached bool, err error) {
-	textHash := media.HashText(text)
+	dialogue := media.DialogueTurns(script, turns)
+	source := script
+	if strings.TrimSpace(source) == "" {
+		source = media.JoinScriptTurns(dialogue)
+	}
+	textHash := media.HashText(source)
 
-	// Check if already in cache
-	var existingKey string
-	err = db.QueryRowContext(ctx,
-		"SELECT object_key FROM content.tts_cache WHERE text_hash = $1 AND voice = $2",
-		textHash, voice,
-	).Scan(&existingKey)
-
-	if err == nil && existingKey != "" {
-		return existingKey, true, nil
+	voice := media.ConfiguredVoice(r.voiceA)
+	if len(dialogue) >= 2 {
+		voice = media.DialogueVoiceKey(r.voiceA, r.voiceB)
+	}
+	if existing, ok := r.cached(ctx, textHash, voice); ok {
+		return existing, true, nil
 	}
 
-	data, mimeType, err := engine.Render(ctx, text, voice)
+	var data []byte
+	var mimeType string
+	if len(dialogue) >= 2 {
+		data, mimeType, err = media.RenderTurns(ctx, r.engine, dialogue, r.voiceA, r.voiceB)
+	} else {
+		data, mimeType, err = r.engine.Render(ctx, script, voice)
+	}
 	if err != nil {
 		return "", false, fmt.Errorf("render audio: %w", err)
 	}
-	objectKey := media.ObjectKey(voice, textHash, mimeType)
+	key, err = r.store(ctx, textHash, voice, data, mimeType)
+	return key, false, err
+}
 
-	if err := uploader.Put(
+func (r renderer) cached(ctx context.Context, textHash, voice string) (string, bool) {
+	var objectKey, engineVersion string
+	err := r.db.QueryRowContext(ctx,
+		"SELECT object_key, engine_version FROM content.tts_cache WHERE text_hash = $1 AND voice = $2",
+		textHash, voice,
+	).Scan(&objectKey, &engineVersion)
+	if err != nil || objectKey == "" {
+		return "", false
+	}
+	if r.rerenderStale && engineVersion != r.engine.EngineVersion() {
+		return "", false
+	}
+	return objectKey, true
+}
+
+func (r renderer) store(ctx context.Context, textHash, voice string, data []byte, mimeType string) (string, error) {
+	objectKey := media.ObjectKey(voice, textHash, mimeType)
+	if err := r.uploader.Put(
 		ctx, storage.BucketMedia, objectKey, bytes.NewReader(data), int64(len(data)), mimeType,
 	); err != nil {
-		return "", false, fmt.Errorf("upload audio to storage: %w", err)
+		return "", fmt.Errorf("upload audio to storage: %w", err)
 	}
-
-	_, err = db.ExecContext(ctx, `
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO content.tts_cache (text_hash, voice, engine, engine_version, object_key, created_at)
 		VALUES ($1, $2, $3, $4, $5, clock_timestamp())
 		ON CONFLICT (text_hash, voice) DO UPDATE
@@ -279,13 +342,12 @@ func processItem(
 		    engine_version = EXCLUDED.engine_version,
 		    object_key = EXCLUDED.object_key,
 		    created_at = clock_timestamp()`,
-		textHash, voice, engine.EngineName(), engine.EngineVersion(), objectKey,
+		textHash, voice, r.engine.EngineName(), r.engine.EngineVersion(), objectKey,
 	)
 	if err != nil {
-		return "", false, fmt.Errorf("save tts cache record: %w", err)
+		return "", fmt.Errorf("save tts cache record: %w", err)
 	}
-
-	return objectKey, false, nil
+	return objectKey, nil
 }
 
 type listeningBody struct {
@@ -399,94 +461,32 @@ func renderItems(
 	return summary
 }
 
-// processItemTurns renders a conversation turn by turn, each in its speaker's
-// voice, and stores the concatenated clip under one cache row (WO 22 D22-23).
-// The first speaker heard is voiceA; anyone else is voiceB.
-func processItemTurns(
-	ctx context.Context,
-	db *sql.DB,
-	uploader storage.Store,
-	engine media.SynthesiserEngine,
-	turns []media.ScriptTurn,
-	voiceA, voiceB string,
-) (key string, cached bool, err error) {
-	textHash := media.HashText(media.JoinScriptTurns(turns))
-	combinedVoice := voiceA + "+" + voiceB
-
-	var existingKey string
-	err = db.QueryRowContext(ctx,
-		"SELECT object_key FROM content.tts_cache WHERE text_hash = $1 AND voice = $2",
-		textHash, combinedVoice,
-	).Scan(&existingKey)
-	if err == nil && existingKey != "" {
-		return existingKey, true, nil
+// runAll renders every listening item within budget and reports the coverage.
+func (r renderer) runAll(ctx context.Context, budget time.Duration, out io.Writer) error {
+	var deadline time.Time
+	if budget > 0 {
+		deadline = time.Now().Add(budget)
 	}
-
-	firstSpeaker := strings.TrimSpace(turns[0].Speaker)
-	var audio bytes.Buffer
-	mimeType := "audio/mpeg"
-	for _, turn := range turns {
-		voice := voiceB
-		if strings.EqualFold(strings.TrimSpace(turn.Speaker), firstSpeaker) {
-			voice = voiceA
-		}
-		data, mime, renderErr := engine.Render(ctx, turn.Text, voice)
-		if renderErr != nil {
-			return "", false, fmt.Errorf("render audio turn: %w", renderErr)
-		}
-		if mime != "" {
-			mimeType = mime
-		}
-		audio.Write(data)
-	}
-
-	objectKey := media.ObjectKey(combinedVoice, textHash, mimeType)
-	if err := uploader.Put(
-		ctx, storage.BucketMedia, objectKey, bytes.NewReader(audio.Bytes()), int64(audio.Len()), mimeType,
-	); err != nil {
-		return "", false, fmt.Errorf("upload audio to storage: %w", err)
-	}
-
-	_, err = db.ExecContext(ctx, `
-		INSERT INTO content.tts_cache (text_hash, voice, engine, engine_version, object_key, created_at)
-		VALUES ($1, $2, $3, $4, $5, clock_timestamp())
-		ON CONFLICT (text_hash, voice) DO UPDATE
-		SET engine = EXCLUDED.engine,
-		    engine_version = EXCLUDED.engine_version,
-		    object_key = EXCLUDED.object_key,
-		    created_at = clock_timestamp()`,
-		textHash, combinedVoice, engine.EngineName(), engine.EngineVersion(), objectKey,
-	)
+	summary, err := r.all(ctx, deadline, out)
 	if err != nil {
-		return "", false, fmt.Errorf("save tts cache record: %w", err)
+		return err
 	}
-	return objectKey, false, nil
+	_, _ = fmt.Fprintf(out, "Finished: %d already voiced, %d rendered now, %d failed, %d left for the next run\n",
+		summary.Cached, summary.Rendered, summary.Failed, summary.Remaining)
+	if err := writeStepSummary(os.Getenv("GITHUB_STEP_SUMMARY"), summary); err != nil {
+		_, _ = fmt.Fprintf(out, "Warning: could not write the job summary: %v\n", err)
+	}
+	return nil
 }
 
-func processAll(
-	ctx context.Context,
-	db *sql.DB,
-	uploader storage.Store,
-	engine media.SynthesiserEngine,
-	defaultVoice, secondVoice string,
-	deadline time.Time,
-	out io.Writer,
-) (renderSummary, error) {
-	items, err := loadListeningItems(ctx, db)
+func (r renderer) all(ctx context.Context, deadline time.Time, out io.Writer) (renderSummary, error) {
+	items, err := loadListeningItems(ctx, r.db)
 	if err != nil {
 		return renderSummary{}, err
 	}
 	_, _ = fmt.Fprintf(out, "%d listening item(s) with a script\n", len(items))
-
-	// A conversation renders turn by turn, each in its speaker's voice; a
-	// monologue in the one configured voice. The voice is configuration,
-	// never the item's: see media.ConfiguredVoice.
 	render := func(item listeningItem) (string, bool, error) {
-		if len(item.Body.Turns) >= 2 {
-			return processItemTurns(ctx, db, uploader, engine,
-				item.Body.Turns, media.ConfiguredVoice(defaultVoice), media.ConfiguredVoice(secondVoice))
-		}
-		return processItem(ctx, db, uploader, engine, item.Body.Script, media.ConfiguredVoice(defaultVoice))
+		return r.item(ctx, item.Body.Script, item.Body.Turns)
 	}
 	return renderItems(items, render, deadline, time.Now, out), nil
 }
