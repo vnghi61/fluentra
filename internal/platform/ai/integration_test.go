@@ -272,3 +272,23 @@ func TestDBBudgetChecker_ReserveIsAtomicUnderConcurrency(t *testing.T) {
 	wg.Wait()
 	assert.Equal(t, int64(5), granted.Load(), "exactly the ceiling is granted")
 }
+
+// Deploys do not run migrations here. A binary that reaches production before
+// migration 1700000957 must keep serving, as the budget did before it, rather
+// than failing closed on every call.
+func TestDBBudgetChecker_AllowsWhenTheReservationTableIsMissing(t *testing.T) {
+	pool := newTestPool(t)
+	ctx := context.Background()
+	checker := ai.NewDBBudgetChecker(pool)
+
+	_, err := pool.Exec(ctx, `ALTER TABLE ai.ai_budget_reservations RENAME TO ai_budget_reservations_hidden`)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(),
+			`ALTER TABLE ai.ai_budget_reservations_hidden RENAME TO ai_budget_reservations`)
+	})
+
+	allowed, err := checker.Reserve(ctx, "9router", ai.TaskGradeWriting)
+	require.NoError(t, err)
+	assert.True(t, allowed)
+}

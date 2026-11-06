@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -83,6 +84,10 @@ func (b *DBBudgetChecker) readBudget(ctx context.Context, provider string, task 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return budgetRow{}, false, nil
 	}
+	if isUndefinedTable(err) {
+		logSchemaBehind(ctx, err)
+		return budgetRow{}, false, nil
+	}
 	if err != nil {
 		// A check that errors must not silently allow (which spends money nobody authorized)
 		// and must not silently deny either (which strands a learner for a reason they cannot see).
@@ -91,6 +96,21 @@ func (b *DBBudgetChecker) readBudget(ctx context.Context, provider string, task 
 		return budgetRow{}, false, fmt.Errorf("ai: budget check failed: %w", err)
 	}
 	return row, isActive, nil
+}
+
+// sqlstateUndefinedTable is Postgres' undefined_table.
+const sqlstateUndefinedTable = "42P01"
+
+// isUndefinedTable reports a schema older than migration 1700000957. Deploys do
+// not run migrations here, and refusing every AI call until someone does would
+// be an outage; the budget then behaves as it did before that migration.
+func isUndefinedTable(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == sqlstateUndefinedTable
+}
+
+func logSchemaBehind(ctx context.Context, err error) {
+	slog.ErrorContext(ctx, "ai: budget tables missing; run migration 1700000957. Budget not enforced", "error", err)
 }
 
 func (row budgetRow) exhausted() bool {
@@ -156,6 +176,10 @@ func (b *DBBudgetChecker) Reserve(ctx context.Context, provider string, task Tas
 		row.usedReqs = row.reqLimit
 		logBudgetReached(ctx, provider, task, row)
 		return false, nil
+	}
+	if isUndefinedTable(err) {
+		logSchemaBehind(ctx, err)
+		return true, nil
 	}
 	if err != nil {
 		slog.ErrorContext(ctx, "ai: budget reservation failed; failing closed to prevent unauthorized spend",
