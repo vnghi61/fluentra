@@ -252,6 +252,17 @@ func (u *Uploads) Submit(ctx context.Context, userID uuid.UUID, rawText string) 
 		return Upload{}, fmt.Errorf("submit upload: no transaction source configured")
 	}
 
+	used, err := u.repo.CountUploadedWordsLastDay(ctx, userID)
+	if err != nil {
+		return Upload{}, fmt.Errorf("submit upload: count today's words: %w", err)
+	}
+	if used+len(entries) > domain.MaxDailyUploadEntries {
+		return Upload{}, apperr.New(apperr.RateLimited, "VOCAB_UPLOAD_DAILY_LIMIT_REACHED",
+			fmt.Sprintf("You can add up to %d words a day. Try a shorter list or come back tomorrow.",
+				domain.MaxDailyUploadEntries)).
+			WithMeta("remaining", max(domain.MaxDailyUploadEntries-used, 0))
+	}
+
 	known := u.knownWordRows(ctx, entries)
 	upload, knownItems, err := u.storeUpload(ctx, userID, rawText, entries, known)
 	if err != nil {
@@ -1401,7 +1412,7 @@ func (u *Uploads) judge(
 		if errors.Is(err, ai.ErrQuotaExhausted) {
 			slog.WarnContext(ctx, "ai: quota exhausted across all providers; degrading word to queued flashcard",
 				"term", item.Term)
-			def := firstNonEmpty(entry.Definition, item.ProvidedMeaning, item.Term)
+			def := firstNonEmpty(entry.Definition, item.Term)
 			lemma := firstNonEmpty(entry.Lemma, strings.ToLower(strings.TrimSpace(item.Term)))
 			return verdict{
 				Valid:          false,
@@ -1441,7 +1452,7 @@ func (u *Uploads) materialise(
 	lemma := firstNonEmpty(answer.Lemma, entry.Lemma, strings.ToLower(item.Term))
 	pos := firstNonEmpty(answer.PartOfSpeech, entry.PartOfSpeech)
 	cefr := normaliseCEFR(answer.CEFRLevel)
-	definition := firstNonEmpty(answer.Definition, entry.Definition, item.ProvidedMeaning, item.Term)
+	definition := firstNonEmpty(answer.Definition, entry.Definition, item.Term)
 	if definition == "" {
 		return uuid.Nil, false, fmt.Errorf("no definition for %q", item.Term)
 	}
@@ -1476,8 +1487,10 @@ func (u *Uploads) materialise(
 		// The sense's own content version, which is what a review card points at.
 		// Without it the card has nothing to render and the learner meets "this
 		// card has no content yet".
-		gloss := firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)
-		body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, gloss, entry, examples))
+		// Shared senses are published from the dictionary and the model only. The
+		// learner's own meaning stays on their upload item: one learner's text
+		// must not become what every other learner of the word is shown.
+		body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, answer.DefinitionVi, entry, examples))
 		if err != nil {
 			return uuid.Nil, false, err
 		}
@@ -1500,12 +1513,8 @@ func (u *Uploads) materialise(
 
 		sense, err := u.service.CreateSense(ctx, domain.WordSense{
 			WordID: word.ID, ContentVersionID: &versionID,
-			Definition: definition,
-			// The learner's own note first, because it is the wording they will
-			// recognise, and it is theirs. The model's gloss is the fallback, and
-			// it is the only Vietnamese a bare word list ever gets -- pasting
-			// "time" with no meaning used to store nothing here at all.
-			DefinitionVi: nilIfEmpty(firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)),
+			Definition:   definition,
+			DefinitionVi: nilIfEmpty(answer.DefinitionVi),
 			Domain:       domainTopic,
 			Examples:     toDomainExamples(examples),
 		})
@@ -1999,7 +2008,7 @@ func (u *Uploads) enrichExistingSense(
 	lemma := firstNonEmpty(answer.Lemma, entry.Lemma, strings.ToLower(item.Term))
 	pos := firstNonEmpty(answer.PartOfSpeech, entry.PartOfSpeech)
 	cefr := normaliseCEFR(answer.CEFRLevel)
-	definition := firstNonEmpty(answer.Definition, entry.Definition, item.ProvidedMeaning, item.Term)
+	definition := firstNonEmpty(answer.Definition, entry.Definition, item.Term)
 
 	_, err := u.repo.InsertWord(ctx, sqlc.InsertWordParams{
 		Lemma:     lemma,
@@ -2015,8 +2024,7 @@ func (u *Uploads) enrichExistingSense(
 	if len(examples) == 0 {
 		examples = fromDictionaryExamples(entry.Examples)
 	}
-	gloss := firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)
-	body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, gloss, entry, examples))
+	body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, answer.DefinitionVi, entry, examples))
 	if err != nil {
 		return fmt.Errorf("marshal sense body: %w", err)
 	}

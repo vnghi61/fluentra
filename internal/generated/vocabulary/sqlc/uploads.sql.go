@@ -255,6 +255,22 @@ func (q *Queries) CountLearnerWordsQueueAdmin(ctx context.Context, arg CountLear
 	return column_1, err
 }
 
+const countUploadedWordsLastDay = `-- name: CountUploadedWordsLastDay :one
+SELECT COALESCE(SUM(item_count), 0)::integer
+FROM skill.vocab_uploads
+WHERE user_id = $1
+  AND created_at >= now() - interval '24 hours'
+`
+
+// The words a learner pasted in the last 24 hours, for the daily word quota.
+// Served by idx_vocab_uploads_user (user_id, created_at).
+func (q *Queries) CountUploadedWordsLastDay(ctx context.Context, userID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, countUploadedWordsLastDay, userID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const failExhaustedUploadItems = `-- name: FailExhaustedUploadItems :execrows
 UPDATE skill.vocab_upload_items
 SET status = 'failed', reason = $1::text

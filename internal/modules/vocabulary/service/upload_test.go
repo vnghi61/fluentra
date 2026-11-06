@@ -20,6 +20,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/service"
 	"github.com/fluentra/fluentra/internal/platform/ai"
+	"github.com/fluentra/fluentra/internal/shared/apperr"
 )
 
 // The upload pipeline, exercised through the verification job.
@@ -750,8 +751,8 @@ func TestVerifyPending_TheStoredContentCarriesWhatAFlashcardNeeds(t *testing.T) 
 	// playing the file, and the card needs the page that names the author.
 	assert.Equal(t, "https://commons.example/leisure", body["audio_attribution"])
 	assert.Equal(t, "BY-SA 3.0", body["audio_licence"])
-	// The learner's own note becomes the gloss: it is what they will recognise.
-	assert.Equal(t, "thời gian rảnh", body["definition_vi"])
+	// The learner's own note is not the shared gloss: other learners see this card.
+	assert.NotEqual(t, "thời gian rảnh", body["definition_vi"])
 	assert.NotEmpty(t, body["example_sentences"])
 	// And the grader can score it.
 	assert.Equal(t, wordLeisure, body["correct_answer"])
@@ -1066,10 +1067,12 @@ func TestVerify_AWordPastedWithNoMeaningStillGetsVietnamese(t *testing.T) {
 	assert.Equal(t, "thời gian", published["definition_vi"])
 }
 
-func TestVerify_TheLearnersOwnWordingWinsOverTheModels(t *testing.T) {
-	// Their note is what they will recognise, and it is theirs. The model's
-	// gloss is the fallback, not the correction.
-	repo := newUploadRepo(item(wordBook, "quyển sách của tôi"))
+func TestVerify_ALearnersWordingIsNeverPublishedToTheSharedSense(t *testing.T) {
+	// The sense and its content version are shared by every learner of the word.
+	// One learner's text, even one the model calls a match, must not become what
+	// everyone else is shown; it stays on that learner's upload item.
+	const learnerText = "quyển sách của tôi — xem bit.ly/xyz"
+	repo := newUploadRepo(item(wordBook, learnerText))
 	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
 		wordBook: {Lemma: wordBook, PartOfSpeech: posNoun, Definition: defWrittenWork},
 	}}
@@ -1090,7 +1093,8 @@ func TestVerify_TheLearnersOwnWordingWinsOverTheModels(t *testing.T) {
 	require.Len(t, author.published, 1)
 	var published map[string]any
 	require.NoError(t, json.Unmarshal(author.published[0].Body, &published))
-	assert.Equal(t, "quyển sách của tôi", published["definition_vi"])
+	assert.Equal(t, "sách", published["definition_vi"])
+	assert.NotContains(t, string(author.published[0].Body), "bit.ly")
 }
 
 func TestVerify_ModelTopicCreatesTopicDeck(t *testing.T) {
@@ -1404,4 +1408,27 @@ func TestEnrichExamples_KeepsThePronunciation(t *testing.T) {
 	sentences, ok := body["example_sentences"].([]any)
 	require.True(t, ok, "body carries example sentences")
 	assert.Len(t, sentences, 2)
+}
+
+// A learner who has pasted most of the day's quota cannot paste past it: new
+// words each cost a model call.
+func TestSubmit_RefusesWordsOverTheDailyQuota(t *testing.T) {
+	repo := newUploadRepo()
+	repo.uploadedLastDay = domain.MaxDailyUploadEntries - 1
+	enqueuer := &stubEnqueuer{}
+	pool := stubPool{}
+	uploads := service.NewUploads(service.New(service.Deps{Repo: repo}), repo, service.UploadDeps{
+		Pool: pool, Beginner: pool, Enqueuer: enqueuer,
+	})
+
+	_, err := uploads.Submit(context.Background(), uuid.New(), "leisure - free time\nserendipity")
+	var appErr *apperr.Error
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, "VOCAB_UPLOAD_DAILY_LIMIT_REACHED", appErr.Code)
+	assert.Equal(t, 429, appErr.Status())
+	assert.Empty(t, enqueuer.enqueued, "nothing is stored or queued over the quota")
+
+	// One word still fits.
+	_, err = uploads.Submit(context.Background(), uuid.New(), "leisure - free time")
+	require.NoError(t, err)
 }

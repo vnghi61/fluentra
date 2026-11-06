@@ -10,7 +10,7 @@ tables: [words, word_senses, word_relations, decks, deck_items, user_word_state,
 depends_on: [content, srs, media, ai, search]
 depended_on_by: [learning, reading, writing, grammar]
 spec_version: 1.0.0
-last_verified: 2026-08-30
+last_verified: 2026-11-06
 ---
 
 # vocabulary — AGENT.md
@@ -115,6 +115,13 @@ submission is finished the moment it is stored, and each word in it is a
 separate unit of work the verification job can succeed at, fail at or retry on
 its own. One table would mean a single unresolvable word marking the whole paste
 as failed.
+
+What a learner types as a meaning (`vocab_upload_items.provided_meaning`) stays
+on their upload item. Shared senses and their content versions, which every
+learner of the word sees, are published from the dictionary and the model only.
+A learner may paste at most `MaxDailyUploadEntries` (600) words in 24 hours,
+counted from `skill.vocab_uploads.item_count`; past it, Submit answers 429
+`VOCAB_UPLOAD_DAILY_LIMIT_REACHED` and stores nothing.
 
 ## 6. HTTP endpoints
 

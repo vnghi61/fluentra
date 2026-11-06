@@ -14859,6 +14859,25 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            /** @description `VOCAB_UPLOAD_DAILY_LIMIT_REACHED`: this paste would take the caller past 600 words in the last 24 hours. `remaining` says how many still fit. Nothing is stored. The general per-route limit also answers 429. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "type": "https://fluentra.dev/errors/rate-limited",
+                     *       "title": "Too many requests",
+                     *       "status": 429,
+                     *       "detail": "You can add up to 600 words a day. Try a shorter list or come back tomorrow.",
+                     *       "code": "VOCAB_UPLOAD_DAILY_LIMIT_REACHED",
+                     *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             500: components["responses"]["InternalServerError"];
         };
     };

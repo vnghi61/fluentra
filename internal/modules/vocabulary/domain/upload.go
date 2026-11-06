@@ -39,6 +39,11 @@ var uploadSeparators = []string{"\t", " - ", " – ", " — ", " = ", ": ", " : 
 // hours while everybody else's uploads waited behind it.
 const MaxUploadEntries = 300
 
+// MaxDailyUploadEntries bounds the words one learner may paste in 24 hours.
+// New words each cost a model call, and the hourly request limit alone allowed
+// thousands an hour.
+const MaxDailyUploadEntries = 600
+
 // ParseUpload turns pasted text into entries.
 //
 // Blank lines and duplicates are dropped, and the order is the learner's own so

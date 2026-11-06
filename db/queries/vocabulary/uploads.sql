@@ -12,6 +12,14 @@ VALUES ($1, $2, $3, $4)
 ON CONFLICT (upload_id, term) DO NOTHING
 RETURNING *;
 
+-- name: CountUploadedWordsLastDay :one
+-- The words a learner pasted in the last 24 hours, for the daily word quota.
+-- Served by idx_vocab_uploads_user (user_id, created_at).
+SELECT COALESCE(SUM(item_count), 0)::integer
+FROM skill.vocab_uploads
+WHERE user_id = $1
+  AND created_at >= now() - interval '24 hours';
+
 -- name: GetUpload :one
 SELECT * FROM skill.vocab_uploads WHERE id = $1 AND user_id = $2;
 
