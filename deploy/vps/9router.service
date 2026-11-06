@@ -1,0 +1,20 @@
+[Unit]
+Description=9router AI gateway (headless server, no tray)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Runs the Next.js server that cli.js would spawn; cli.js itself needs a desktop tray and crash-loops headless.
+WorkingDirectory=/usr/lib/node_modules/9router/app
+Environment=NODE_ENV=production
+Environment=PORT=20128
+Environment=HOSTNAME=127.0.0.1
+Environment=NODE_PATH=/root/.9router/runtime/node_modules:/usr/lib/node_modules/9router/app/node_modules
+ExecStart=/usr/bin/node --dns-result-order=ipv4first --max-old-space-size=256 /usr/lib/node_modules/9router/app/custom-server.js
+Restart=on-failure
+RestartSec=5
+MemoryHigh=350M
+MemoryMax=450M
+
+[Install]
+WantedBy=multi-user.target

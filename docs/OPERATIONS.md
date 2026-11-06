@@ -70,6 +70,15 @@ free instance-hours a month.
 - **Client IP:** only `cloudflared` on localhost is trusted, so the API takes the
   last hop in `X-Forwarded-For` that Cloudflare saw. Behind the Vercel proxy that
   hop can be Vercel's egress address rather than the learner's.
+- **AI gateway:** 9router (`npm i -g 9router`) runs as
+  [deploy/vps/9router.service](../deploy/vps/9router.service) on `127.0.0.1:20128`.
+  The unit starts its Next.js server directly: the `9router` CLI loads a desktop
+  tray icon and crash-loops on a headless server. The API sets
+  `AI_PROVIDER_1_BASE_URL=http://127.0.0.1:20128/v1`; the Render worker uses
+  `https://ai.fluentra.io.vn/v1`, a tunnel route limited to the path `^/v1/` so
+  the dashboard stays private. Both send a 9router API key. Open the dashboard
+  through `ssh -L 20128:127.0.0.1:20128`, and name the provider `9router`, not
+  `opencode`, which adds an OpenCode-only header.
 
 Environment variables (everything else keeps its `.env.example` default):
 
