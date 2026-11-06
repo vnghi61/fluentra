@@ -176,6 +176,7 @@ type workerConfig struct {
 	Speech struct {
 		TTSEngine            string        `koanf:"tts_engine"`
 		TTSVoice             string        `koanf:"tts_voice"`
+		TTSVoiceB            string        `koanf:"tts_voice_b"`
 		ASRBaseURL           string        `koanf:"asr_base_url"`
 		ASRModel             string        `koanf:"asr_model"`
 		ASRAPIKey            string        `koanf:"asr_api_key"`
@@ -305,7 +306,7 @@ func configOptions() config.Options {
 			"ai.auto_publish":                false,
 			"speech.tts_engine":              "offline",
 			"speech.tts_voice":               "en_US-lessac-medium",
-			"speech.tts_voice_b":             "",
+			"speech.tts_voice_b":             "en_US-ryan-medium",
 			"speech.asr_base_url":            "",
 			"speech.asr_model":               "whisper-large-v3",
 			"speech.asr_api_key":             "",
@@ -597,7 +598,7 @@ func startLearning(
 		// No engine runs in the worker (work order 12 §4): a script is rendered
 		// offline by cmd/tts, and the synthesiser only finds what is already cached.
 		mediaSynthesiser = media.NewCachedSynthesiser(contentModule.TTSCache(), nil, storageStore, "").
-			WithVoice(cfg.Speech.TTSVoice)
+			WithVoice(cfg.Speech.TTSVoice).WithSecondVoice(cfg.Speech.TTSVoiceB)
 	}
 
 	learningModule := learning.New(learning.Deps{
@@ -616,9 +617,10 @@ func startLearning(
 		AuthorResolver:    roleAuthorResolver{members: rbacModule.RoleMembers()},
 		Synthesiser:       mediaSynthesiser,
 		Charts:            media.ChartDataURI{},
-		Audio:             media.NewCacheLocator(contentModule.TTSCache()).WithVoice(cfg.Speech.TTSVoice),
-		AudioRender:       newRenderDispatcher(ctx, cfg),
-		Resource:          resourceReader,
+		Audio: media.NewCacheLocator(contentModule.TTSCache()).WithVoice(cfg.Speech.TTSVoice).
+			WithSecondVoice(cfg.Speech.TTSVoiceB),
+		AudioRender: newRenderDispatcher(ctx, cfg),
+		Resource:    resourceReader,
 	})
 
 	for _, scheduled := range learningModule.CronJobs() {

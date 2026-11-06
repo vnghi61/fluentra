@@ -189,6 +189,7 @@ type applicationConfig struct {
 	Speech struct {
 		TTSEngine            string        `koanf:"tts_engine"`
 		TTSVoice             string        `koanf:"tts_voice"`
+		TTSVoiceB            string        `koanf:"tts_voice_b"`
 		ASRBaseURL           string        `koanf:"asr_base_url"`
 		ASRModel             string        `koanf:"asr_model"`
 		ASRAPIKey            string        `koanf:"asr_api_key"`
@@ -440,6 +441,7 @@ func run(ctx context.Context) error {
 		SpeechDailyLimit:  cfg.Speech.DailyRecordingsLimit,
 		SpeechASRModel:    speechASRModelName(cfg.Speech.ASRBaseURL, cfg.Speech.ASRModel),
 		SpeechTTSVoice:    cfg.Speech.TTSVoice,
+		SpeechTTSVoiceB:   cfg.Speech.TTSVoiceB,
 		ExamDailyLimit:    cfg.Exam.DailySittingsLimit,
 		Transcriber:       mediaTranscriber,
 		PaymentCfg: paymentsvc.Config{
@@ -594,7 +596,7 @@ func configOptions() config.Options {
 			"worker.url":                     "",
 			"speech.tts_engine":              "offline",
 			"speech.tts_voice":               "en_US-lessac-medium",
-			"speech.tts_voice_b":             "",
+			"speech.tts_voice_b":             "en_US-ryan-medium",
 			"speech.asr_base_url":            "",
 			"speech.asr_model":               "whisper-large-v3",
 			"speech.asr_api_key":             "",

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -26,6 +27,10 @@ type PiperEngine struct {
 	Binary   string
 	ModelDir string
 	Version  string
+	// LengthScale above 1 speaks slower (Piper's --length_scale); 0 keeps the voice's own pace.
+	LengthScale float64
+	// SentenceSilence is the pause after each sentence, in seconds; 0 keeps Piper's default.
+	SentenceSilence float64
 
 	// run executes the binary. Tests replace it; production uses os/exec.
 	run func(ctx context.Context, name string, args []string, stdin io.Reader) error
@@ -74,6 +79,12 @@ func (p *PiperEngine) Render(ctx context.Context, text, voice string) ([]byte, s
 
 	outPath := filepath.Join(dir, "clip.wav")
 	args := []string{"--model", filepath.Join(p.ModelDir, voice+".onnx"), "--output_file", outPath}
+	if p.LengthScale > 0 {
+		args = append(args, "--length_scale", strconv.FormatFloat(p.LengthScale, 'f', -1, 64))
+	}
+	if p.SentenceSilence > 0 {
+		args = append(args, "--sentence_silence", strconv.FormatFloat(p.SentenceSilence, 'f', -1, 64))
+	}
 	run := p.run
 	if run == nil {
 		run = execPiper
