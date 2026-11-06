@@ -44,6 +44,13 @@ generated text describes commits; release notes should describe change.
 - **A daily cap on uploaded words.** A learner can paste up to 600 words in
   24 hours; a paste past that is refused with 429 and nothing is stored.
 
+### Added — page-view analytics
+
+- **The web app can report page views to Google Analytics 4.** It loads only in a
+  production build with `VITE_GA_MEASUREMENT_ID` set, and sends the route template
+  rather than the URL, so reset tokens, OAuth codes and learner ids never leave
+  the app. No user id is sent and ads signals are denied.
+
 ### Changed — Vietnamese by default
 
 - **The interface starts in Vietnamese.** Until a learner picks a language the

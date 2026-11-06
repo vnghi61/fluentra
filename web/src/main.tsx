@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 
+import { analyticsMeasurementId, startAnalytics } from "@/app/analytics";
 import { preloadPrimaryTabs, router } from "@/app/router";
 import { initApp } from "@/app/bootstrap";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -48,6 +49,9 @@ async function bootstrap(): Promise<void> {
   preloadPrimaryTabs();
   // A deterrent only; see the module. Development keeps its DevTools.
   if (import.meta.env.PROD) installDevtoolsGuard();
+
+  const gaId = analyticsMeasurementId(import.meta.env);
+  if (gaId !== null) startAnalytics(router, gaId);
 }
 
 void bootstrap();

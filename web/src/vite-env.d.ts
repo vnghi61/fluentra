@@ -8,6 +8,8 @@
 interface ImportMetaEnv {
   /** OTLP/HTTP traces endpoint. Absent means browser tracing stays off. */
   readonly VITE_OTEL_ENDPOINT?: string;
+  /** GA4 measurement id (G-XXXXXXXXXX). Absent means no analytics; read only in production builds. */
+  readonly VITE_GA_MEASUREMENT_ID?: string;
 }
 
 interface ImportMeta {

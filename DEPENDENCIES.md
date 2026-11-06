@@ -420,6 +420,7 @@ happens when the service fails, and how we would replace it.
 | Breached-password service (HIBP range API) | Password policy | First 5 chars of a SHA-1 hash — **never the password** | Low | immediately | Free, k-anonymity |
 | GitHub | Source, CI, registry | Source code, build metadata | High (dev only) | weeks | Commercial |
 | Error/uptime monitoring (optional) | External availability check | URL probes only | Low | immediately | — |
+| Google Analytics 4 (web) | Page-view counts | Route template (`/exams/$attemptId`, no ids, no query), referrer without query, GA's own client cookie. **No user id, email or token**; ads signals denied | Low | immediately (unset `VITE_GA_MEASUREMENT_ID`) | Google Analytics terms |
 
 ### 2. Data classification sent externally
 
@@ -444,6 +445,7 @@ third parties whose terms we do not individually negotiate.
 | Payment gateway | Checkout unavailable; existing subscriptions unaffected | Webhooks replayed when it returns |
 | Email provider | Signup verification delayed | Queued; support can resend manually |
 | Push | Silent | Best-effort, no retry |
+| Google Analytics | Silent; an ad blocker has the same effect | gtag.js loads async after mount; the app never waits on it |
 | GitHub | No deploys | Local development unaffected |
 
 Every one of these is exercised by a chaos test in staging at least once per quarter.
