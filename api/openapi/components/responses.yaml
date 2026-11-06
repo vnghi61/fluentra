@@ -93,6 +93,21 @@ ValidationFailed:
           - field: email
             code: EMAIL
             message: Enter a valid email address.
+PayloadTooLarge:
+  description: >-
+    The request body, or the object it refers to, is larger than this endpoint
+    accepts.
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/Problem
+      example:
+        type: https://fluentra.dev/errors/too-large
+        title: Payload too large
+        status: 413
+        detail: Request body exceeds the maximum size.
+        code: PAYLOAD_TOO_LARGE
+        request_id: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
 TooManyRequests:
   description: >-
     The applicable rate limit has been exceeded.

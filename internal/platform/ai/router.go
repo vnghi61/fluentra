@@ -116,7 +116,7 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 	primary := chain[0]
 
 	// 2. Try primary provider if budget allows
-	primaryAllowed, primaryBudgetErr := r.budget.CheckQuota(ctx, primary.Name(), req.Task)
+	primaryAllowed, primaryBudgetErr := r.admit(ctx, primary.Name(), req.Task)
 	primaryVerdict := classifyQuota(primaryAllowed, primaryBudgetErr)
 	var primaryExecErr error
 	switch primaryVerdict {
@@ -147,11 +147,21 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 	if ctx.Err() != nil {
 		return Response{}, ctx.Err()
 	}
-	res, err := r.executeFallback(ctx, req, cacheKey, primary, chain[1:], primaryExecErr, primaryVerdict, start)
+	fallbacks := fallbacksAfter(chain, primaryExecErr)
+	res, err := r.executeFallback(ctx, req, cacheKey, primary, fallbacks, primaryExecErr, primaryVerdict, start)
 	if ctx.Err() != nil {
 		return Response{}, ctx.Err()
 	}
 	return res, err
+}
+
+// fallbacksAfter is the rest of the chain, or none when the primary refused the
+// request itself: every other provider would refuse it too.
+func fallbacksAfter(chain []Provider, primaryErr error) []Provider {
+	if isRequestRejected(primaryErr) {
+		return nil
+	}
+	return chain[1:]
 }
 
 // cacheVars is what the cache key is computed over. An excluded model is part of
@@ -281,7 +291,7 @@ func (r *Router) executeFallback(
 			"fallback", fallback.Name(),
 			"previous_error", primaryErr)
 
-		fallbackAllowed, fallbackBudgetErr := r.budget.CheckQuota(ctx, fallback.Name(), req.Task)
+		fallbackAllowed, fallbackBudgetErr := r.admit(ctx, fallback.Name(), req.Task)
 		switch classifyQuota(fallbackAllowed, fallbackBudgetErr) {
 		case quotaUnknown:
 			// Checked before `allowed`, because a failed check returns false for
@@ -412,6 +422,15 @@ func (r *Router) record(ctx context.Context, entry RequestLog) {
 		slog.WarnContext(ctx, "ai: usage recording failed",
 			"error", err, "task", string(entry.Task), "status", string(entry.Status))
 	}
+}
+
+// admit asks the budget whether a provider may be called, reserving the request
+// when the budget can do that atomically.
+func (r *Router) admit(ctx context.Context, provider string, task Task) (bool, error) {
+	if reserver, ok := r.budget.(BudgetReserver); ok {
+		return reserver.Reserve(ctx, provider, task)
+	}
+	return r.budget.CheckQuota(ctx, provider, task)
 }
 
 // HasQuota reports whether any configured provider has available quota for task.

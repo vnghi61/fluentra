@@ -10,7 +10,7 @@ tables: [ai_requests, ai_usage, prompt_versions, ai_cache_entries, ai_budgets]
 depends_on: [cache, telemetry, job]
 depended_on_by: [writing, speaking, grammar, questionbank, content, reading, media, learning]
 spec_version: 1.0.0
-last_verified: 2026-09-04
+last_verified: 2026-11-06
 ---
 
 # ai — AGENT.md
@@ -32,11 +32,13 @@ caching (`ai.ai_cache_entries`), budget enforcement (`ai.ai_budgets`), and usage
 | `ai.Client` — the one interface business code sees | Task routing by model tier |
 | Versioned prompt registry with front-matter settings | Semantic caching (pgvector) |
 | `MockProvider` — offline, the default | Circuit breaker |
-| `OpenAICompatibleProvider` with named instances (Cerebras, Groq, Mistral, Ollama) | PII redaction, untrusted-content wrapping |
+| `OpenAICompatibleProvider` with named instances (Cerebras, Groq, Mistral, Ollama) | PII redaction; untrusted-content wrapping outside the two graders |
 | `CompleteJSON` — tolerant structured-output parsing | Streaming, output repair pass, eval harness |
 | `Router` — retry, backoff, multi-provider fallback chain | Quota per user — `ai.Request` carries no user id and `ai.ai_requests.user_id` is always NULL |
 | 4 numbered provider slots (`AI_PROVIDER_1_*` .. `AI_PROVIDER_4_*`) | |
-| Global daily budget enforcement (`DBBudgetChecker` against `ai.ai_budgets`) | |
+| Global daily budget enforcement (`DBBudgetChecker` against `ai.ai_budgets`); `*` rows cap any provider or task without its own row; requests are reserved atomically in `ai.ai_budget_reservations` before the call | |
+| System/user split: a template's text above `<!-- user message -->` is the system message; `{{fence .X}}` wraps learner text in markers with a per-call random id (`writing_grade.v3`, `speaking_grade.v2`) | |
+| `ErrRejectedOutput` for an unusable reply; graders fail the attempt at once instead of retrying. A 413 from the first provider tried skips the fallbacks. `RefuseMock` (set when `APP_ENV=production`) makes the mock a startup error | |
 | Exact-hash response caching (`MemoryCache` & `DBCache` on `ai.ai_cache_entries`) | |
 | Usage & request auditing (`DBUsageRecorder` on `ai.ai_requests` & `ai.ai_usage`) | |
 

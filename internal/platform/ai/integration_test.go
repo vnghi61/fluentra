@@ -6,6 +6,8 @@ import (
 	"context"
 	"database/sql"
 	"os"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -61,7 +63,7 @@ func newTestPool(t *testing.T) *pgxpool.Pool {
 	}
 	t.Cleanup(pool.Close)
 	if _, err := pool.Exec(context.Background(),
-		"TRUNCATE ai.ai_cache_entries, ai.ai_requests, ai.ai_usage, ai.ai_budgets"); err != nil {
+		"TRUNCATE ai.ai_cache_entries, ai.ai_requests, ai.ai_usage, ai.ai_budgets, ai.ai_budget_reservations"); err != nil {
 		t.Fatalf("reset: %v", err)
 	}
 	return pool
@@ -206,4 +208,67 @@ func TestDBBudgetChecker_EnforcesTheConfiguredCeiling(t *testing.T) {
 			"the admin has to see the exhaustion the router is already enforcing")
 	}
 	assert.True(t, found, "the overview must include a provider that has usage today")
+}
+
+// A provider nobody listed by name is held to the `*` row, and a named row
+// still wins over it. Production's `9router` had no row and no ceiling.
+func TestDBBudgetChecker_DefaultRowCapsAnUnlistedProvider(t *testing.T) {
+	pool := newTestPool(t)
+	ctx := context.Background()
+	checker := ai.NewDBBudgetChecker(pool)
+
+	_, err := pool.Exec(ctx, `
+		INSERT INTO ai.ai_budgets (provider, task, daily_request_limit, daily_token_limit, is_active)
+		VALUES ('*', '*', 2, 1000000, true)`)
+	require.NoError(t, err)
+
+	for i := range 2 {
+		allowed, err := checker.Reserve(ctx, "9router", ai.TaskGradeWriting)
+		require.NoError(t, err)
+		assert.True(t, allowed, "reservation %d is under the default ceiling", i+1)
+	}
+	allowed, err := checker.Reserve(ctx, "9router", ai.TaskGradeWriting)
+	require.NoError(t, err)
+	assert.False(t, allowed, "the third request passes a default ceiling of two")
+
+	allowed, err = checker.CheckQuota(ctx, "9router", ai.TaskGradeWriting)
+	require.NoError(t, err)
+	assert.False(t, allowed, "the read-only check sees the reservations")
+
+	_, err = pool.Exec(ctx, `
+		INSERT INTO ai.ai_budgets (provider, task, daily_request_limit, daily_token_limit, is_active)
+		VALUES ('9router', '*', 5, 1000000, true)`)
+	require.NoError(t, err)
+	allowed, err = checker.CheckQuota(ctx, "9router", ai.TaskGradeWriting)
+	require.NoError(t, err)
+	assert.True(t, allowed, "a row naming the provider wins over the default")
+}
+
+// Concurrent callers cannot all pass a check made before any of them recorded:
+// the reservation is one atomic statement.
+func TestDBBudgetChecker_ReserveIsAtomicUnderConcurrency(t *testing.T) {
+	pool := newTestPool(t)
+	ctx := context.Background()
+	checker := ai.NewDBBudgetChecker(pool)
+
+	_, err := pool.Exec(ctx, `
+		INSERT INTO ai.ai_budgets (provider, task, daily_request_limit, daily_token_limit, is_active)
+		VALUES ('probe-provider', $1, 5, 1000000, true)`, string(ai.TaskExplainAnswer))
+	require.NoError(t, err)
+
+	var granted atomic.Int64
+	var wg sync.WaitGroup
+	for range 20 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			allowed, err := checker.Reserve(ctx, "probe-provider", ai.TaskExplainAnswer)
+			assert.NoError(t, err)
+			if allowed {
+				granted.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	assert.Equal(t, int64(5), granted.Load(), "exactly the ceiling is granted")
 }

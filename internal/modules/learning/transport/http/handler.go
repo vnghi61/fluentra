@@ -345,6 +345,10 @@ func (h *Handler) startAttempt(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, r, http.StatusCreated, toStartAttemptResponse(dto))
 }
 
+// maxAnswerBodyBytes bounds one submitted answer. The longest is an essay, and
+// the writing grader's 1,500-word cap fits in well under this.
+const maxAnswerBodyBytes = 64 << 10
+
 // gradePreview grades a response for a caller with no account, and records
 // nothing.
 //
@@ -370,8 +374,8 @@ func (h *Handler) gradePreview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req SubmitAttemptRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_REQUEST_BODY", "Failed to parse request body"))
+	if err := httpx.DecodeJSONLimit(r, &req, maxAnswerBodyBytes); err != nil {
+		httpx.WriteProblem(w, r, err)
 		return
 	}
 
@@ -415,8 +419,8 @@ func (h *Handler) submitAttempt(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req SubmitAttemptRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_REQUEST_BODY", "Failed to parse request body"))
+	if err := httpx.DecodeJSONLimit(r, &req, maxAnswerBodyBytes); err != nil {
+		httpx.WriteProblem(w, r, err)
 		return
 	}
 
