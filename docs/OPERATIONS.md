@@ -49,9 +49,6 @@ the self-hosted Docker Compose topology instead.
 Keep only one of the two Render services running: two copies of the worker
 and the VPS API together exceed the pooler's slots.
 
-The API hostname is proxied, so a zone-wide "I'm under attack" mode challenges
-Vercel's proxy requests too and every `/api` call fails with 403.
-
 ### VPS API
 
 The API runs as `fluentra-api.service` from `/opt/fluentra/api`, reading
@@ -71,9 +68,27 @@ free instance-hours a month.
   after a host power loss is the panel's setting, not the guest's.
 - **Every deploy:** `deploy/vps/deploy.sh <ssh-host>` builds a linux/amd64 binary,
   swaps it in and checks `/health`. Logs: `journalctl -u fluentra-api -f`.
-- **Client IP:** only `cloudflared` on localhost is trusted, so the API takes the
-  last hop in `X-Forwarded-For` that Cloudflare saw. Behind the Vercel proxy that
-  hop can be Vercel's egress address rather than the learner's.
+- **Client IP:** only `cloudflared` on localhost is trusted. Behind Vercel the
+  last hop in `X-Forwarded-For` is Vercel's egress address, so the API reads
+  `HTTP_CLIENT_IP_HEADER=X-Vercel-Forwarded-For` first; Vercel overwrites that
+  header, and the Cloudflare transform rule below strips it from anything else.
+  Without both, every learner shares Vercel's few addresses and the per-IP auth
+  limits and lockout hit everyone at once.
+- **Cloudflare edge** (zone `fluentra.io.vn`, Free plan). `api` and `ai` are the
+  only proxied hostnames, and every caller of both is a server:
+  - Custom rule *API and AI hosts: only real endpoints* blocks anything but
+    `/api/*` and `/health` on `api`, anything but `/v1/*` on `ai`, and unusual
+    methods. `/ready` (which spends Upstash quota) is never public.
+  - Transform rule *Strip forged X-Vercel-Forwarded-For* removes that header
+    from `api` requests outside AS16509, the Amazon network Vercel proxies from.
+    A caller inside AWS can still forge it.
+  - Rate limiting rule *Rate Limit Auth API*: `/api/v1/auth*`, 100 requests per
+    10 s per IP. The Free plan matches on path only and counts per connecting IP,
+    which behind Vercel is shared, so keep the threshold high; the API's own
+    limiter is the per-learner control.
+  - Keep **Bot Fight Mode** and **I'm Under Attack** off. Neither can be scoped
+    to a hostname on Free, and both answer Vercel's server-side requests with a
+    challenge page, so every `/api` call fails with 403.
 - **AI gateway:** 9router (`npm i -g 9router`) runs as
   [deploy/vps/9router.service](../deploy/vps/9router.service) on `127.0.0.1:20128`.
   The unit starts its Next.js server directly: the `9router` CLI loads a desktop
@@ -97,7 +112,8 @@ Environment variables (everything else keeps its `.env.example` default):
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | An R2 "Object Read & Write" token for the five buckets |
 | `JWT_SIGNING_KEY`, `OTP_HMAC_KEY` | Two different random values of at least 32 bytes |
 | `CORS_ALLOWED_ORIGINS` | The site's origins, comma-separated |
-| `HTTP_TRUSTED_PROXIES` | Render's internal range (`10.0.0.0/8`). Without it every client shares one IP, and the per-IP auth limits and lockout hit everyone at once |
+| `HTTP_TRUSTED_PROXIES` | VPS: `127.0.0.1,::1` (cloudflared). Render: its internal range (`10.0.0.0/8`). Without it every client shares one IP, and the per-IP auth limits and lockout hit everyone at once |
+| `HTTP_CLIENT_IP_HEADER` | `X-Vercel-Forwarded-For` while the web proxies `/api` through Vercel; see Client IP above |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Empty: logs go to stdout (the Render log view) and nothing is exported |
 | `MAIL_TRANSPORT`, `RESEND_API_KEY`, `MAIL_FROM` | `resend`, the key, an address on a domain verified in Resend |
 | `OAUTH_GOOGLE_CLIENT_ID`, `OAUTH_GOOGLE_CLIENT_SECRET`, `OAUTH_GOOGLE_REDIRECT_URL` | `https://<site>/auth/google/callback` |

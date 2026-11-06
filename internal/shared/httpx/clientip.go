@@ -26,6 +26,7 @@ type clientIPKey struct{}
 // forwarding headers count only when the immediate peer is a proxy we run.
 type ClientIPResolver struct {
 	trusted []netip.Prefix
+	header  string
 }
 
 // NewClientIPResolver builds a resolver that trusts the given CIDR ranges as
@@ -52,16 +53,29 @@ func NewClientIPResolver(trustedCIDRs []string) (*ClientIPResolver, error) {
 	return &ClientIPResolver{trusted: prefixes}, nil
 }
 
+// WithClientIPHeader names a header that carries the client address, read
+// before X-Forwarded-For and only from a trusted peer. The edge in front of
+// that peer must strip it from requests that did not pass the proxy setting it.
+func (r *ClientIPResolver) WithClientIPHeader(name string) *ClientIPResolver {
+	r.header = http.CanonicalHeaderKey(strings.TrimSpace(name))
+	return r
+}
+
 // ClientIP returns the client address for request.
 //
 // When the peer is not a trusted proxy the socket address wins and any
-// forwarding header is ignored. When it is, the rightmost entry of
+// forwarding header is ignored. When it is, the configured client-IP header
+// wins if it holds an address; otherwise the rightmost entry of
 // X-Forwarded-For that is not itself a trusted proxy is the client: entries to
 // the left of it were appended by hops the client controls and may be forged.
 func (r *ClientIPResolver) ClientIP(request *http.Request) netip.Addr {
 	peer := parseAddr(request.RemoteAddr)
 	if !peer.IsValid() || !r.isTrusted(peer) {
 		return peer
+	}
+
+	if address, ok := r.fromClientIPHeader(request); ok {
+		return address
 	}
 
 	forwarded := request.Header.Get(forwardedForHeader)
@@ -81,6 +95,22 @@ func (r *ClientIPResolver) ClientIP(request *http.Request) netip.Addr {
 		}
 	}
 	return peer
+}
+
+func (r *ClientIPResolver) fromClientIPHeader(request *http.Request) (netip.Addr, bool) {
+	if r.header == "" {
+		return netip.Addr{}, false
+	}
+	value := request.Header.Get(r.header)
+	if value == "" {
+		return netip.Addr{}, false
+	}
+	first, _, _ := strings.Cut(value, ",")
+	address, err := netip.ParseAddr(strings.TrimSpace(first))
+	if err != nil {
+		return netip.Addr{}, false
+	}
+	return address.Unmap(), true
 }
 
 func (r *ClientIPResolver) isTrusted(address netip.Addr) bool {

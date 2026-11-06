@@ -62,6 +62,54 @@ func TestClientIP_UsesForwardedHeaderFromATrustedProxy(t *testing.T) {
 	}
 }
 
+// Vercel's proxy appends its own egress address to X-Forwarded-For, so behind it
+// the rightmost untrusted hop is Vercel; X-Vercel-Forwarded-For holds the client.
+func TestClientIP_PrefersTheClientIPHeaderFromATrustedProxy(t *testing.T) {
+	t.Parallel()
+	const vercelEgress = "16.163.104.241"
+	resolver, err := NewClientIPResolver([]string{trustedCIDR})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver.WithClientIPHeader("x-vercel-forwarded-for")
+
+	cases := map[string]struct {
+		header, forwarded, want string
+	}{
+		"header wins":             {forwardedIP, forwardedIP + ", " + vercelEgress, forwardedIP},
+		"first of a list":         {forwardedIP + ", 192.0.2.1", vercelEgress, forwardedIP},
+		"absent falls back":       {"", forwardedIP, forwardedIP},
+		"malformed falls back":    {"not-an-ip", forwardedIP, forwardedIP},
+		"ipv4-mapped is unmapped": {"::ffff:" + forwardedIP, "", forwardedIP},
+	}
+	for name, tc := range cases {
+		req := request("10.0.0.5:443", tc.forwarded)
+		if tc.header != "" {
+			req.Header.Set("X-Vercel-Forwarded-For", tc.header)
+		}
+		if got := resolver.ClientIP(req); got.String() != tc.want {
+			t.Errorf("%s: ClientIP = %s, want %s", name, got, tc.want)
+		}
+	}
+}
+
+// TestClientIP_IgnoresTheClientIPHeaderFromAnUntrustedPeer keeps the header as
+// forgeable as any other when the request did not come through our proxy.
+func TestClientIP_IgnoresTheClientIPHeaderFromAnUntrustedPeer(t *testing.T) {
+	t.Parallel()
+	resolver, err := NewClientIPResolver([]string{trustedCIDR})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver.WithClientIPHeader("X-Vercel-Forwarded-For")
+
+	req := request(peerIP+":51234", "")
+	req.Header.Set("X-Vercel-Forwarded-For", "1.2.3.4")
+	if got := resolver.ClientIP(req); got.String() != peerIP {
+		t.Errorf("ClientIP = %s, want the socket address 203.0.113.9", got)
+	}
+}
+
 // TestClientIP_TakesTheRightmostUntrustedHop is what stops a client from
 // prepending forged entries: everything left of the last proxy-appended hop is
 // attacker-controlled.
