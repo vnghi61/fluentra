@@ -33,6 +33,12 @@ systemctl daemon-reload
 systemctl enable fluentra-api
 systemctl enable --now fluentra-worker-keepalive.timer
 
+# Key-only SSH, but never before a key is installed: that would lock root out.
+if [ -s /root/.ssh/authorized_keys ]; then
+  install -m 0644 "$here/sshd-key-only.conf" /etc/ssh/sshd_config.d/00-key-only.conf
+  sshd -t && systemctl reload ssh
+fi
+
 # The API binds every interface and the VPS has a public IPv6: only SSH comes in, the tunnel goes out.
 ufw allow 22/tcp
 ufw --force enable
