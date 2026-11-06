@@ -57,6 +57,7 @@ type applicationConfig struct {
 		RequestTimeout time.Duration `koanf:"request_timeout"`
 		ShutdownGrace  time.Duration `koanf:"shutdown_grace"`
 		TrustedProxies string        `koanf:"trusted_proxies"`
+		ClientIPHeader string        `koanf:"client_ip_header"`
 	} `koanf:"http"`
 	// CORS_ALLOWED_ORIGINS, a comma-separated allowlist. Empty means the
 	// same-origin deployment and no cross-origin client is expected; the local
@@ -348,6 +349,7 @@ func run(ctx context.Context) error {
 		pool.Close()
 		return fmt.Errorf("config key http.trusted_proxies: %w", err)
 	}
+	clientIP.WithClientIPHeader(cfg.HTTP.ClientIPHeader)
 
 	// The business modules, after the infrastructure they are built over and
 	// before the router that mounts them (ARCHITECTURE.md §6.3).
@@ -532,6 +534,7 @@ func configOptions() config.Options {
 			"http.request_timeout":           defaultTimeout,
 			"http.shutdown_grace":            defaultTimeout,
 			"http.trusted_proxies":           "",
+			"http.client_ip_header":          "",
 			"cors.allowed_origins":           "",
 			"s3.use_ssl":                     false,
 			"s3.use_post_policy":             true,
